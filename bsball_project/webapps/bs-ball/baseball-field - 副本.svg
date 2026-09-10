@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 880" width="1000" height="880">
+  <!--
+    viewBox 高度 880：本垒后方红土圆 cy=792、r=38 底边约 830，打击区 y 至约 807，原 820 会裁切底部。
+    g#grp-field 使用 translate(0,-48) 把整场上移，避免球场「沉在画布下方」。
+    内场红土弧端落在白界线上；垒角顶点在垒包外侧（相对菱形中心外扩）。
+  -->
+
+  <title id="meta-title">Baseball field overhead diagram</title>
+
+  <defs>
+    <linearGradient id="grassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4da362"/>
+      <stop offset="50%" stop-color="#3a7d48"/>
+      <stop offset="100%" stop-color="#2d6638"/>
+    </linearGradient>
+    <linearGradient id="infieldClay" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c17a3a"/>
+      <stop offset="50%" stop-color="#a85c32"/>
+      <stop offset="100%" stop-color="#8b4a28"/>
+    </linearGradient>
+    <clipPath id="fairClip">
+      <path d="M 500 795 L 231.4 526.4 A 380 380 0 0 1 500 415 A 380 380 0 0 1 768.6 526.4 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- 画布底色 -->
+  <rect id="el-canvas-bg" x="0" y="0" width="1000" height="880" fill="#e4dfd4"/>
+
+  <g id="grp-field" transform="translate(0 -48)">
+
+    <path id="el-fair-grass" fill="url(#grassGrad)" d="M 500 795 L 231.4 526.4 A 380 380 0 0 1 500 415 A 380 380 0 0 1 768.6 526.4 Z"/>
+
+    <!--
+      内场红土：顶点相对垒包中心 (约 500,661) 沿垒线向外扩约 18～22px，使红土在垒包「外侧」；
+      二垒方向弧端沿白界线略向外野（t≈0.57），与 el-foul-line 仍共线。
+    -->
+    <path id="el-infield-dirt" fill="url(#infieldClay)" stroke="#7a4420" stroke-width="1.2" d="M 500 815 L 654 661 L 653 642 Q 500 418 347 642 L 346 661 L 500 815 Z"/>
+
+    <path id="el-infield-grass-patch" fill="#2d8a3c" stroke="#1f6b2e" stroke-width="1.2" d="M 500 746 L 585 661 L 500 576 L 415 661 Z"/>
+
+    <circle id="el-pitcher-mound" cx="500" cy="661" r="26" fill="#9a5f3a" stroke="#6d3f24" stroke-width="1.5"/>
+    <rect id="el-pitcher-rubber" x="491.5" y="658" width="17" height="5.5" rx="1" fill="#fafafa" stroke="#cfd8dc" stroke-width="0.75"/>
+
+    <circle id="el-home-dirt-circle" cx="500" cy="792" r="38" fill="#b87333" opacity="0.85"/>
+
+    <line id="el-foul-line-lf" x1="500" y1="795" x2="231.4" y2="526.4" stroke="#F4F6FA" stroke-width="2"/>
+    <line id="el-foul-line-rf" x1="500" y1="795" x2="768.6" y2="526.4" stroke="#F4F6FA" stroke-width="2"/>
+
+    <rect id="el-base-first" fill="#ffffff" stroke="#b0bec5" stroke-width="1.2" x="628" y="655" width="13" height="13" transform="rotate(45 634.35 661.65)"/>
+    <rect id="el-base-second" fill="#ffffff" stroke="#b0bec5" stroke-width="1.2" x="493.5" y="519.8" width="13" height="13" transform="rotate(45 500 526.3)"/>
+    <rect id="el-base-third" fill="#ffffff" stroke="#b0bec5" stroke-width="1.2" x="359.5" y="655" width="13" height="13" transform="rotate(45 365.65 661.65)"/>
+
+    <path id="el-home-plate" fill="#fafafa" stroke="#90a4ae" stroke-width="1" d="M 500 768 L 508 778 L 508 794 L 492 794 L 492 778 Z"/>
+
+    <rect id="el-batters-box-left" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter" x="475" y="767" width="15" height="40" rx="0.5"/>
+    <rect id="el-batters-box-right" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter" x="510" y="767" width="15" height="40" rx="0.5"/>
+
+    <g id="grp-mowing-stripes" clip-path="url(#fairClip)" opacity="0.08" stroke="#1b5e20" stroke-width="36">
+      <line id="el-mowing-line-a" x1="0" y1="120" x2="1000" y2="700"/>
+      <line id="el-mowing-line-b" x1="0" y1="200" x2="1000" y2="780"/>
+      <line id="el-mowing-line-c" x1="0" y1="40" x2="1000" y2="620"/>
+    </g>
+  </g>
+</svg>

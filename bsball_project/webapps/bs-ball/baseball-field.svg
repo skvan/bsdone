@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+  xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+  version="1.1"
+  viewBox="-460 -130 1920 1020"
+  width="1098"
+  height="880">
+  <!--
+    原先用 grp-field translate(0,-48) 避免顶部裁切；该外包在 SVG-edit 中会导致一点即选中整图。
+    已将全体 Y 坐标减去 48 并删除外包，各 layer-* 为 svg 直接子节点，便于点选子路径/分组。
+    若在编辑器中仍选到整组：对目标图层执行「进入分组 / 取消分组」或从图层面板点选。
+  -->
+
+  <title>Baseball field (overhead)</title>
+
+  <defs id="defs-root">
+    <linearGradient id="grad-outfield-grass" inkscape:label="Gradient outfield grass" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4da362"/>
+      <stop offset="50%" stop-color="#3a7d48"/>
+      <stop offset="100%" stop-color="#2d6638"/>
+    </linearGradient>
+    <linearGradient id="grad-infield-clay" inkscape:label="Gradient infield clay" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c17a3a"/>
+      <stop offset="50%" stop-color="#a85c32"/>
+      <stop offset="100%" stop-color="#8b4a28"/>
+    </linearGradient>
+  </defs>
+
+  <g id="layer-fair-grass" inkscape:groupmode="layer" inkscape:label="01 Fair outfield grass">
+    <title>Fair outfield grass</title>
+    <path
+      id="el-fair-grass"
+      inkscape:label="Fair grass fill"
+      fill="url(#grad-outfield-grass)"
+      d="M 500 767 L -48.74 255.74 A 750 750 0 0 1 500 17 A 750 750 0 0 1 1048.74 255.74 Z"/>
+  </g>
+
+  <g id="layer-infield-dirt" inkscape:groupmode="layer" inkscape:label="02 Infield dirt / skin">
+    <title>Infield dirt (skin)</title>
+    <path
+      id="el-infield-dirt"
+      inkscape:label="Infield dirt"
+      fill="url(#grad-infield-clay)"
+      stroke="#7a4420"
+      stroke-width="1.2"
+      d="M 500 767 L 310 577 L 231 498 A 283.6 283.6 0 0 1 500 302 A 283.6 283.6 0 0 1 769 498 L 690 577 L 500 767 Z"/>
+  </g>
+
+  <g id="layer-infield-grass-patch" inkscape:groupmode="layer" inkscape:label="03 Infield grass patch">
+    <title>Infield grass patch</title>
+    <path
+      id="el-infield-grass-patch"
+      inkscape:label="Infield grass"
+      fill="#2d8a3c"
+      stroke="#1f6b2e"
+      stroke-width="1.2"
+      d="M 500 718 L 641 577 L 500 436 L 359 577 Z"/>
+  </g>
+
+  <g id="layer-pitcher" inkscape:groupmode="layer" inkscape:label="04 Pitcher mound + rubber">
+    <title>Pitcher mound and rubber</title>
+    <circle
+      id="el-pitcher-mound"
+      inkscape:label="Pitcher mound"
+      cx="500" cy="586.5" r="27"
+      fill="#9a5f3a" stroke="#6d3f24" stroke-width="1.5"/>
+    <rect
+      id="el-pitcher-rubber"
+      inkscape:label="Pitcher rubber"
+      x="491" y="583.5" width="18" height="6" rx="0.5"
+      fill="#fafafa" stroke="#cfd8dc" stroke-width="0.6"/>
+  </g>
+
+  <g id="layer-home-dirt" inkscape:groupmode="layer" inkscape:label="05 Home plate dirt area">
+    <title>Home plate dirt circle</title>
+    <circle
+      id="el-home-dirt-circle"
+      inkscape:label="Home dirt circle"
+      cx="500" cy="744" r="38"
+      fill="#b87333" opacity="0.85"/>
+  </g>
+
+  <g id="layer-foul-lines" inkscape:groupmode="layer" inkscape:label="06 Foul lines">
+    <title>Foul lines</title>
+    <line
+      id="el-foul-line-lf"
+      inkscape:label="Foul line LF"
+      x1="500" y1="767" x2="-453.34" y2="-121.23"
+      stroke="#F4F6FA" stroke-width="2"/>
+    <line
+      id="el-foul-line-rf"
+      inkscape:label="Foul line RF"
+      x1="500" y1="767" x2="1453.34" y2="-121.23"
+      stroke="#F4F6FA" stroke-width="2"/>
+  </g>
+
+  <g id="layer-bases" inkscape:groupmode="layer" inkscape:label="07 Bases">
+    <title>Bases</title>
+    <rect
+      id="el-base-first"
+      inkscape:label="Base 1st"
+      fill="#ffffff" stroke="#b0bec5" stroke-width="1.2"
+      x="683.5" y="570.5" width="13" height="13" transform="rotate(45 690 577)"/>
+    <rect
+      id="el-base-second"
+      inkscape:label="Base 2nd"
+      fill="#ffffff" stroke="#b0bec5" stroke-width="1.2"
+      x="493.5" y="380.5" width="13" height="13" transform="rotate(45 500 387)"/>
+    <rect
+      id="el-base-third"
+      inkscape:label="Base 3rd"
+      fill="#ffffff" stroke="#b0bec5" stroke-width="1.2"
+      x="303.5" y="570.5" width="13" height="13" transform="rotate(45 310 577)"/>
+  </g>
+
+  <g id="layer-home-batter" inkscape:groupmode="layer" inkscape:label="08 Home plate + batter boxes">
+    <title>Home plate and batter boxes</title>
+    <path
+      id="el-home-plate"
+      inkscape:label="Home plate"
+      fill="#fafafa" stroke="#90a4ae" stroke-width="1"
+      d="M 500 720 L 508 730 L 508 746 L 492 746 L 492 730 Z"/>
+    <rect
+      id="el-batters-box-left"
+      inkscape:label="Batters box left"
+      fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter"
+      x="473" y="718" width="12" height="18" rx="0.5"/>
+    <rect
+      id="el-batters-box-right"
+      inkscape:label="Batters box right"
+      fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="miter"
+      x="515" y="718" width="12" height="18" rx="0.5"/>
+  </g>
+</svg>

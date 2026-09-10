@@ -1,0 +1,616 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.bsball:bsball-server >----------------------
+[INFO] Building BS-Ball Server 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.5.0:clean (default-clean) @ bsball-server ---
+[INFO] Deleting C:\Users\Clay\Qoder\bsball-backend\target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.5.0:resources (default-resources) @ bsball-server ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 74 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.15.0:compile (default-compile) @ bsball-server ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 342 source files with javac [debug parameters release 17] to target\classes
+[INFO] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/entity/BaseEntity.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/entity/BaseEntity.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java: 某些输入文件使用了未经检查或不安全的操作。
+[INFO] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 某些消息已经过简化; 请使用 -Xdiags:verbose 重新编译以获得完整输出
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[57,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[69,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[78,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[87,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[140,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[146,37] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUserTenant
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[176,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUserRole
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[181,61] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[87,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysSmsCode
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[90,40] 不兼容的类型: 推论变量 K 具有不兼容的上限
+    等式约束条件：java.lang.String
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[95,36] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[111,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysSmsCode
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[118,49] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[528,27] 不兼容的类型: 推论变量 E 具有不兼容的上限
+    等式约束条件：java.lang.String
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[537,39] 不兼容的类型: 条件表达式中的类型错误
+    推论变量 E 具有不兼容的上限
+      等式约束条件：java.lang.String
+      下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1094,49] 找不到符号
+  符号:   变量 cx
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1095,49] 找不到符号
+  符号:   变量 cx
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1096,49] 找不到符号
+  符号:   变量 cy
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1097,49] 找不到符号
+  符号:   变量 cy
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1098,49] 找不到符号
+  符号:   变量 cx
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1099,49] 找不到符号
+  符号:   变量 cx
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1100,49] 找不到符号
+  符号:   变量 cy
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1101,49] 找不到符号
+  符号:   变量 cy
+  位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TenantResolutionService.java:[59,53] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TenantResolutionService.java:[128,50] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[83,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[99,68] 找不到符号
+  符号:   方法 getTenantId()
+  位置: 类型为java.lang.Object的变量 ut
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[131,68] 找不到符号
+  符号:   方法 getTenantId()
+  位置: 类型为java.lang.Object的变量 ut
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[148,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[159,30] 不兼容的类型: 推论变量 K 具有不兼容的上限
+    等式约束条件：java.lang.String
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[161,65] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[169,22] 不兼容的类型: 推论变量 K 具有不兼容的上限
+    等式约束条件：java.lang.String
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[178,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[186,22] 不兼容的类型: 推论变量 K 具有不兼容的上限
+    等式约束条件：java.lang.String
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[191,83] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[201,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[212,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[219,40] 不兼容的类型: 方法引用无效
+    无法将 类 com.bsball.model.entity.SysRoleMenu中的 方法 getMenuId应用到给定类型
+      需要: 没有参数
+      找到:    java.lang.Object
+      原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[224,44] 不兼容的类型: 方法引用无效
+    无法将 类 com.bsball.model.entity.SysMenu中的 方法 getPath应用到给定类型
+      需要: 没有参数
+      找到:    java.lang.Object
+      原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[225,40] 不兼容的类型: 方法引用无效
+    无法将 类 com.bsball.model.entity.SysMenu中的 方法 getPermission应用到给定类型
+      需要: 没有参数
+      找到:    java.lang.Object
+      原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[248,50] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[254,33] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.SysUserTenant
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[255,60] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[91,53] 不兼容的类型: 条件表达式中的类型错误
+    不存在类型变量E的实例, 以使java.util.Set<E>与java.util.HashSet一致
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[101,95] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[127,61] 找不到符号
+  符号:   方法 getCode()
+  位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[127,77] 找不到符号
+  符号:   方法 getTenantId()
+  位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[139,68] 找不到符号
+  符号:   方法 getCode()
+  位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,57] 找不到符号
+  符号:   方法 getMethod()
+  位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,106] 找不到符号
+  符号:   方法 getMethod()
+  位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,221] 找不到符号
+  符号:   方法 getPath()
+  位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,264] 不兼容的类型: java.lang.Object无法转换为java.util.List
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[164,90] 找不到符号
+  符号:   方法 getApiId()
+  位置: 类型为java.lang.Object的变量 ra
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[164,125] 不兼容的类型: 方法引用无效
+    无法将 接口 java.util.Set<E>中的 方法 add应用到给定类型
+      需要: java.lang.Object
+      找到:    java.lang.Object,java.lang.Object
+      原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[165,91] 不兼容的类型: 方法引用无效
+    无法将 类 com.bsball.model.entity.SysRoleMenu中的 方法 getMenuId应用到给定类型
+      需要: 没有参数
+      找到:    java.lang.Object
+      原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[167,74] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.SysMenuApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[203,16] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[228,171] 找不到符号
+  符号:   方法 getPath()
+  位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[228,252] 找不到符号
+  符号:   方法 getPath()
+  位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[256,53] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[256,116] 不兼容的类型: K无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[265,39] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/JwtService.java:[83,60] 对于add(java.lang.Object), 找不到合适的方法
+    方法 io.jsonwebtoken.lang.CollectionMutator.add(java.lang.String)不适用
+      (参数不匹配; java.lang.Object无法转换为java.lang.String)
+    方法 io.jsonwebtoken.lang.CollectionMutator.add(java.util.Collection<? extends java.lang.String>)不适用
+      (参数不匹配; java.lang.Object无法转换为java.util.Collection<? extends java.lang.String>)
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[51,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[56,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[63,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[68,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[73,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[79,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[85,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[43,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[61,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[105,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[116,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[120,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[131,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[135,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[176,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysUser
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[91,33] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysEmailCode
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[105,31] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[121,33] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysEmailCode
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[135,23] 找不到符号
+  符号: 类 PasswordAuthentication
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[136,28] 找不到符号
+  符号: 类 PasswordAuthentication
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[149,44] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[96,17] 找不到符号
+  符号:   变量 v0
+  位置: 类 com.bsball.api.AuthApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[98,17] 找不到符号
+  符号:   变量 v0
+  位置: 类 com.bsball.api.AuthApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[114,29] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[199,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[205,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[211,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[219,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[227,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[242,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+    等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[75,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+  需要: S
+  找到:    java.lang.Object
+  原因: 推论变量 S 具有不兼容的上限
+    下限：com.bsball.model.entity.SysLoginLog
+    下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[65,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[73,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[81,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[128,76] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.IpLocationCache
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[200,54] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[201,49] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.IpLocationCache
+[INFO] 100 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.549 s
+[INFO] Finished at: 2026-07-27T23:55:52+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.15.0:compile (default-compile) on project bsball-server: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[57,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[69,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[78,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountAuthApi.java:[87,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[140,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[146,37] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUserTenant
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[176,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUserRole
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[181,61] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[87,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysSmsCode
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[90,40] 不兼容的类型: 推论变量 K 具有不兼容的上限
+[ERROR]     等式约束条件：java.lang.String
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[95,36] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[111,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysSmsCode
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SmsService.java:[118,49] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[528,27] 不兼容的类型: 推论变量 E 具有不兼容的上限
+[ERROR]     等式约束条件：java.lang.String
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[537,39] 不兼容的类型: 条件表达式中的类型错误
+[ERROR]     推论变量 E 具有不兼容的上限
+[ERROR]       等式约束条件：java.lang.String
+[ERROR]       下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1094,49] 找不到符号
+[ERROR]   符号:   变量 cx
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1095,49] 找不到符号
+[ERROR]   符号:   变量 cx
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1096,49] 找不到符号
+[ERROR]   符号:   变量 cy
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1097,49] 找不到符号
+[ERROR]   符号:   变量 cy
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1098,49] 找不到符号
+[ERROR]   符号:   变量 cx
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1099,49] 找不到符号
+[ERROR]   符号:   变量 cx
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1100,49] 找不到符号
+[ERROR]   符号:   变量 cy
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1101,49] 找不到符号
+[ERROR]   符号:   变量 cy
+[ERROR]   位置: 类型为java.lang.Object的变量 x
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TenantResolutionService.java:[59,53] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TenantResolutionService.java:[128,50] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[83,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[99,68] 找不到符号
+[ERROR]   符号:   方法 getTenantId()
+[ERROR]   位置: 类型为java.lang.Object的变量 ut
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[131,68] 找不到符号
+[ERROR]   符号:   方法 getTenantId()
+[ERROR]   位置: 类型为java.lang.Object的变量 ut
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[148,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[159,30] 不兼容的类型: 推论变量 K 具有不兼容的上限
+[ERROR]     等式约束条件：java.lang.String
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[161,65] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[169,22] 不兼容的类型: 推论变量 K 具有不兼容的上限
+[ERROR]     等式约束条件：java.lang.String
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[178,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[186,22] 不兼容的类型: 推论变量 K 具有不兼容的上限
+[ERROR]     等式约束条件：java.lang.String
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[191,83] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[201,56] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[212,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[219,40] 不兼容的类型: 方法引用无效
+[ERROR]     无法将 类 com.bsball.model.entity.SysRoleMenu中的 方法 getMenuId应用到给定类型
+[ERROR]       需要: 没有参数
+[ERROR]       找到:    java.lang.Object
+[ERROR]       原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[224,44] 不兼容的类型: 方法引用无效
+[ERROR]     无法将 类 com.bsball.model.entity.SysMenu中的 方法 getPath应用到给定类型
+[ERROR]       需要: 没有参数
+[ERROR]       找到:    java.lang.Object
+[ERROR]       原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[225,40] 不兼容的类型: 方法引用无效
+[ERROR]     无法将 类 com.bsball.model.entity.SysMenu中的 方法 getPermission应用到给定类型
+[ERROR]       需要: 没有参数
+[ERROR]       找到:    java.lang.Object
+[ERROR]       原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[248,50] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[254,33] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.SysUserTenant
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthService.java:[255,60] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[91,53] 不兼容的类型: 条件表达式中的类型错误
+[ERROR]     不存在类型变量E的实例, 以使java.util.Set<E>与java.util.HashSet一致
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[101,95] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[127,61] 找不到符号
+[ERROR]   符号:   方法 getCode()
+[ERROR]   位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[127,77] 找不到符号
+[ERROR]   符号:   方法 getTenantId()
+[ERROR]   位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[139,68] 找不到符号
+[ERROR]   符号:   方法 getCode()
+[ERROR]   位置: 类型为java.lang.Object的变量 r
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,57] 找不到符号
+[ERROR]   符号:   方法 getMethod()
+[ERROR]   位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,106] 找不到符号
+[ERROR]   符号:   方法 getMethod()
+[ERROR]   位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,221] 找不到符号
+[ERROR]   符号:   方法 getPath()
+[ERROR]   位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[149,264] 不兼容的类型: java.lang.Object无法转换为java.util.List
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[164,90] 找不到符号
+[ERROR]   符号:   方法 getApiId()
+[ERROR]   位置: 类型为java.lang.Object的变量 ra
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[164,125] 不兼容的类型: 方法引用无效
+[ERROR]     无法将 接口 java.util.Set<E>中的 方法 add应用到给定类型
+[ERROR]       需要: java.lang.Object
+[ERROR]       找到:    java.lang.Object,java.lang.Object
+[ERROR]       原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[165,91] 不兼容的类型: 方法引用无效
+[ERROR]     无法将 类 com.bsball.model.entity.SysRoleMenu中的 方法 getMenuId应用到给定类型
+[ERROR]       需要: 没有参数
+[ERROR]       找到:    java.lang.Object
+[ERROR]       原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[167,74] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.SysMenuApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[203,16] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[228,171] 找不到符号
+[ERROR]   符号:   方法 getPath()
+[ERROR]   位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[228,252] 找不到符号
+[ERROR]   符号:   方法 getPath()
+[ERROR]   位置: 类型为java.lang.Object的变量 a
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[256,53] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[256,116] 不兼容的类型: K无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/ApiPermissionService.java:[265,39] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/JwtService.java:[83,60] 对于add(java.lang.Object), 找不到合适的方法
+[ERROR]     方法 io.jsonwebtoken.lang.CollectionMutator.add(java.lang.String)不适用
+[ERROR]       (参数不匹配; java.lang.Object无法转换为java.lang.String)
+[ERROR]     方法 io.jsonwebtoken.lang.CollectionMutator.add(java.util.Collection<? extends java.lang.String>)不适用
+[ERROR]       (参数不匹配; java.lang.Object无法转换为java.util.Collection<? extends java.lang.String>)
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[51,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[56,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[63,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[68,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[73,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[79,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AccountProfileApi.java:[85,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[43,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[61,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[105,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[116,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[120,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[131,62] 不兼容的类型: java.lang.Object无法转换为java.lang.Long
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[135,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountProfileService.java:[176,31] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysUser
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[91,33] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysEmailCode
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[105,31] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[121,33] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysEmailCode
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[135,23] 找不到符号
+[ERROR]   符号: 类 PasswordAuthentication
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[136,28] 找不到符号
+[ERROR]   符号: 类 PasswordAuthentication
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[149,44] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[96,17] 找不到符号
+[ERROR]   符号:   变量 v0
+[ERROR]   位置: 类 com.bsball.api.AuthApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[98,17] 找不到符号
+[ERROR]   符号:   变量 v0
+[ERROR]   位置: 类 com.bsball.api.AuthApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[114,29] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[199,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[205,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[211,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[219,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[227,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/api/AuthApi.java:[242,25] 不兼容的类型: 推论变量 T 具有不兼容的上限
+[ERROR]     等式约束条件：java.util.Map<java.lang.String,java.lang.Object>
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[75,35] 无法将接口 org.springframework.data.repository.CrudRepository<T,ID>中的方法 save应用到给定类型;
+[ERROR]   需要: S
+[ERROR]   找到:    java.lang.Object
+[ERROR]   原因: 推论变量 S 具有不兼容的上限
+[ERROR]     下限：com.bsball.model.entity.SysLoginLog
+[ERROR]     下限：java.lang.Object
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[65,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[73,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[81,41] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[128,76] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.IpLocationCache
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[200,54] 不兼容的类型: java.lang.Object无法转换为java.lang.String
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/IpLocationCacheService.java:[201,49] 不兼容的类型: java.lang.Object无法转换为com.bsball.model.entity.IpLocationCache
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

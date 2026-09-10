@@ -1,0 +1,1 @@
+import{Rn as r,ar as o,lr as t}from"./element-plus-QVmext20.js";import{t as n}from"./_plugin-vue_export-helper-CX4Cl1ui.js";var a={};function _(c,l){const e=t("router-view");return o(),r(e)}var u=n(a,[["render",_]]);export{u as default};

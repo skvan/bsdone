@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bsball.mapper.PlayerStatsMapper">
+
+    <!-- 与 StatsLeadersMapper battingLeaderSelect 一致：非投手、打击行有 AB/PA 登记即计入（含 0-0 场次），不隐藏 -->
+    <sql id="battingRowWhereCareerLeaders">
+        AND COALESCE(s.is_pitcher, 0) = 0
+        AND ((s.ab IS NOT NULL AND s.ab &gt;= 0) OR (s.pa IS NOT NULL AND s.pa &gt;= 0))
+    </sql>
+
+    <sql id="gameModeFilter">
+        <if test="gameMode != null and gameMode != ''">
+            AND COALESCE(NULLIF(e.game_mode, ''), 'BASEBALL') = #{gameMode}
+        </if>
+    </sql>
+
+    <!-- PostgreSQL: 单字母后缀列名无下划线 -->
+    <sql id="pitchHCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchh</when><otherwise>s.pitch_h</otherwise></choose></sql>
+    <sql id="pitchRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchr</when><otherwise>s.pitch_r</otherwise></choose></sql>
+    <!-- 单场 IP 转出局数，与 StatsFormatUtil.baseballIpToOuts 对齐后再 SUM，避免 0.1+0.2=0.3 按小数相加 -->
+    <sql id="ipToOutsFromIpCol">(
+        FLOOR(s.ip) * 3 + (CASE
+            WHEN s.ip - FLOOR(s.ip) &lt; 0.0000001 THEN 0
+            WHEN ROUND((s.ip - FLOOR(s.ip)) * 10) = 0 THEN 0
+            WHEN ROUND((s.ip - FLOOR(s.ip)) * 10) = 1 THEN 1
+            WHEN ROUND((s.ip - FLOOR(s.ip)) * 10) = 2 THEN 2
+            WHEN ROUND((s.ip - FLOOR(s.ip)) * 10) = 3 AND (s.ip - FLOOR(s.ip)) &lt; 0.31 THEN 2
+            ELSE 0
+        END)
+    )</sql>
+    <!-- 单场守备局转出局数再聚合，与投球 IP 同理，避免 SUM(def_inn) 小数误加 -->
+    <sql id="defInnToOutsFromCol">(
+        FLOOR(COALESCE(s.def_inn, 0)) * 3 + (CASE
+            WHEN COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0)) &lt; 0.0000001 THEN 0
+            WHEN ROUND((COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0))) * 10) = 0 THEN 0
+            WHEN ROUND((COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0))) * 10) = 1 THEN 1
+            WHEN ROUND((COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0))) * 10) = 2 THEN 2
+            WHEN ROUND((COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0))) * 10) = 3 AND (COALESCE(s.def_inn, 0) - FLOOR(COALESCE(s.def_inn, 0))) &lt; 0.31 THEN 2
+            ELSE 0
+        END)
+    )</sql>
+    <!-- 单场投手自由击球数：有 pitch_ab 用库值，否则 BF−BB−IBB−HBP -->
+    <sql id="pitchAbEffectiveCol">COALESCE(s.pitch_ab, GREATEST(0, COALESCE(s.pitch_bf,0) - COALESCE(s.pitch_bb,0) - COALESCE(s.pitch_ibb,0) - COALESCE(s.pitch_hbp,0)))</sql>
+
+    <select id="selectBattingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Batting">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            COALESCE(SUM(s.pa), 0) AS pa,
+            COALESCE(SUM(s.ab), 0) AS ab,
+            COALESCE(SUM(s.r), 0) AS r,
+            COALESCE(SUM(s.h), 0) AS h,
+            COALESCE(SUM(s.rbi), 0) AS rbi,
+            COALESCE(SUM(s.hr), 0) AS hr,
+            COALESCE(SUM(s.inside_park_hr), 0) AS insideParkHr,
+            COALESCE(SUM(s.sb), 0) AS sb,
+            COALESCE(SUM(s.bb_hp), 0) AS bbHp,
+            COALESCE(SUM(s.so), 0) AS so,
+            COALESCE(SUM(s.doubles), 0) AS doubles,
+            COALESCE(SUM(s.triples), 0) AS triples,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.gdp), 0) AS gdp,
+            COALESCE(SUM(s.sh), 0) AS sh,
+            COALESCE(SUM(s.sf), 0) AS sf,
+            COALESCE(SUM(s.bb), 0) AS bb,
+            COALESCE(SUM(s.ibb), 0) AS ibb,
+            COALESCE(SUM(s.hbp), 0) AS hbp,
+            COALESCE(SUM(s.cs), 0) AS cs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <include refid="battingRowWhereCareerLeaders"/>
+    </select>
+
+    <select id="selectPitchingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            END) AS ip,
+            COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
+            COALESCE(SUM(s.pitch_bb_hp), 0) AS pitchBbHp,
+            COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
+            COALESCE(SUM(s.pitch_hr), 0) AS pitchHr,
+            COALESCE(SUM(s.pitch_inside_park_hr), 0) AS pitchInsideParkHr,
+            COALESCE(SUM(s.gs), 0) AS gs,
+            COALESCE(SUM(s.svo), 0) AS svo,
+            COALESCE(SUM(s.cg), 0) AS cg,
+            COALESCE(SUM(s.pg), 0) AS pg,
+            COALESCE(SUM(s.w), 0) AS w,
+            COALESCE(SUM(s.l), 0) AS l,
+            COALESCE(SUM(s.sv), 0) AS sv,
+            COALESCE(SUM(s.hld), 0) AS hld,
+            COALESCE(SUM(s.pitch_pa), 0) AS pitchPa,
+            COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
+            COALESCE(SUM(<include refid="pitchAbEffectiveCol"/>), 0) AS pitchAb,
+            COALESCE(SUM(s.np), 0) AS np,
+            COALESCE(SUM(s.pitch_bb), 0) AS pitchBb,
+            COALESCE(SUM(s.pitch_ibb), 0) AS pitchIbb,
+            COALESCE(SUM(s.pitch_hbp), 0) AS pitchHbp,
+            COALESCE(SUM(s.wp), 0) AS wp,
+            COALESCE(SUM(s.bk), 0) AS bk,
+            COALESCE(SUM(<include refid="pitchRCol"/>), 0) AS pitchR,
+            COALESCE(SUM(s.go), 0) AS go,
+            COALESCE(SUM(s.fo), 0) AS fo
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.is_pitcher = 1
+          AND s.ip IS NOT NULL AND s.ip > 0
+    </select>
+
+    <select id="selectFieldingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0)) / 10.0
+            END) AS inn,
+            COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) AS tc,
+            COALESCE(SUM(s.po), 0) AS po,
+            COALESCE(SUM(s.a), 0) AS a,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.position IS NOT NULL
+          AND s.position NOT IN ('P', 'DH', 'PH')
+          AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL
+            OR COALESCE(s.def_inn,0) > 0
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0))
+          )
+    </select>
+
+    <!-- 按赛事分组：JOIN game + event -->
+    <select id="selectBattingStatsByEvent" resultType="com.bsball.model.dto.EventStatRow">
+        SELECT
+            e.id AS eventId,
+            e.name AS eventName,
+            COALESCE(e.season, '') AS season,
+            COUNT(DISTINCT s.game_id) AS gp,
+            COALESCE(SUM(s.pa), 0) AS pa,
+            COALESCE(SUM(s.ab), 0) AS ab,
+            COALESCE(SUM(s.r), 0) AS r,
+            COALESCE(SUM(s.h), 0) AS h,
+            COALESCE(SUM(s.rbi), 0) AS rbi,
+            COALESCE(SUM(s.hr), 0) AS hr,
+            COALESCE(SUM(s.inside_park_hr), 0) AS insideParkHr,
+            COALESCE(SUM(s.sb), 0) AS sb,
+            COALESCE(SUM(s.bb_hp), 0) AS bbHp,
+            COALESCE(SUM(s.so), 0) AS so,
+            COALESCE(SUM(s.doubles), 0) AS doubles,
+            COALESCE(SUM(s.triples), 0) AS triples,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.gdp), 0) AS gdp,
+            COALESCE(SUM(s.sh), 0) AS sh,
+            COALESCE(SUM(s.sf), 0) AS sf,
+            COALESCE(SUM(s.bb), 0) AS bb,
+            COALESCE(SUM(s.ibb), 0) AS ibb,
+            COALESCE(SUM(s.hbp), 0) AS hbp,
+            COALESCE(SUM(s.cs), 0) AS cs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <include refid="battingRowWhereCareerLeaders"/>
+        GROUP BY e.id, e.name, e.season
+        ORDER BY e.season DESC, e.id DESC
+    </select>
+
+    <select id="selectPitchingStatsByEvent" resultType="com.bsball.model.dto.EventStatRow">
+        SELECT
+            e.id AS eventId,
+            e.name AS eventName,
+            COALESCE(e.season, '') AS season,
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            END) AS ip,
+            COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
+            COALESCE(SUM(s.pitch_bb_hp), 0) AS pitchBbHp,
+            COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
+            COALESCE(SUM(s.pitch_hr), 0) AS pitchHr,
+            COALESCE(SUM(s.pitch_inside_park_hr), 0) AS pitchInsideParkHr,
+            COALESCE(SUM(s.gs), 0) AS gs,
+            COALESCE(SUM(s.svo), 0) AS svo,
+            COALESCE(SUM(s.cg), 0) AS cg,
+            COALESCE(SUM(s.pg), 0) AS pg,
+            COALESCE(SUM(s.w), 0) AS w,
+            COALESCE(SUM(s.l), 0) AS l,
+            COALESCE(SUM(s.sv), 0) AS sv,
+            COALESCE(SUM(s.hld), 0) AS hld,
+            COALESCE(SUM(s.pitch_pa), 0) AS pitchPa,
+            COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
+            COALESCE(SUM(<include refid="pitchAbEffectiveCol"/>), 0) AS pitchAb,
+            COALESCE(SUM(s.np), 0) AS np,
+            COALESCE(SUM(s.pitch_bb), 0) AS pitchBb,
+            COALESCE(SUM(s.pitch_ibb), 0) AS pitchIbb,
+            COALESCE(SUM(s.pitch_hbp), 0) AS pitchHbp,
+            COALESCE(SUM(s.wp), 0) AS wp,
+            COALESCE(SUM(s.bk), 0) AS bk,
+            COALESCE(SUM(<include refid="pitchRCol"/>), 0) AS pitchR,
+            COALESCE(SUM(s.go), 0) AS go,
+            COALESCE(SUM(s.fo), 0) AS fo
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.is_pitcher = 1
+          AND s.ip IS NOT NULL AND s.ip > 0
+        GROUP BY e.id, e.name, e.season
+        ORDER BY e.season DESC, e.id DESC
+    </select>
+
+    <select id="selectFieldingStatsByEvent" resultType="com.bsball.model.dto.EventStatRow">
+        SELECT
+            e.id AS eventId,
+            e.name AS eventName,
+            COALESCE(e.season, '') AS season,
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0)) / 10.0
+            END) AS inn,
+            COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) AS tc,
+            COALESCE(SUM(s.po), 0) AS po,
+            COALESCE(SUM(s.a), 0) AS a,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.position IS NOT NULL
+          AND s.position NOT IN ('P', 'DH', 'PH')
+          AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL
+            OR COALESCE(s.def_inn,0) > 0
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0))
+          )
+        GROUP BY e.id, e.name, e.season
+        ORDER BY e.season DESC, e.id DESC
+    </select>
+
+    <!-- 按赛事汇总球员曾代表的球队（PostgreSQL：子查询去重后再 STRING_AGG） -->
+    <select id="selectTeamNamesByPlayerEvents" resultType="map">
+        SELECT sub.event_id AS "eventId",
+               STRING_AGG(sub.team_name, ', ' ORDER BY sub.team_name) AS "teamNames"
+        FROM (
+            SELECT DISTINCT g.event_id AS event_id, t.name AS team_name
+            FROM bs_game_player_stat s
+            INNER JOIN bs_game g ON s.game_id = g.id
+            INNER JOIN bs_event e ON g.event_id = e.id
+            LEFT JOIN bs_team t ON t.id = s.team_id AND t.deleted_at IS NULL
+            WHERE s.player_id = #{playerId}
+              AND e.tenant_id = #{tenantId}
+              AND g.deleted_at IS NULL
+              AND e.deleted_at IS NULL
+            <include refid="gameModeFilter"/>
+              AND g.event_id IN
+              <foreach collection="eventIds" item="eid" open="(" separator="," close=")">
+                  #{eid}
+              </foreach>
+        ) sub
+        GROUP BY sub.event_id
+    </select>
+
+    <!-- 比赛日志：最近 limit 场，每场一行，含 game 与 stat 列 -->
+    <select id="selectGameLog" resultType="map">
+        SELECT
+            g.id AS gameId,
+            g.event_id AS eventId,
+            g.gameday AS gameday,
+            e.name AS eventName,
+            g.home_team_id AS homeTeamId,
+            g.away_team_id AS awayTeamId,
+            g.home_score AS homeScore,
+            g.away_score AS awayScore,
+            s.team_id AS teamId,
+            tm.name AS teamName,
+            (s.team_id = g.home_team_id) AS isHome,
+            s.pa AS pa, s.ab AS ab, s.r AS r, s.h AS h, s.rbi AS rbi, s.hr AS hr, s.inside_park_hr AS insideParkHr, s.sb AS sb,
+            s.bb_hp AS bbHp, s.so AS so, s.doubles AS doubles, s.triples AS triples, s.e AS e,
+            s.gdp AS gdp, s.sh AS sh, s.sf AS sf, s.bb AS bb, s.ibb AS ibb, s.hbp AS hbp, s.cs AS cs,
+            s.ip AS ip, s.er AS er, <include refid="pitchHCol"/> AS pitchH, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
+            s.pitch_hr AS pitchHr, s.pitch_inside_park_hr AS pitchInsideParkHr, s.gs AS gs, s.svo AS svo, s.cg AS cg, s.pg AS pg,
+            s.w AS w, s.l AS l, s.sv AS sv, s.hld AS hld, s.pitch_pa AS pitchPa, s.pitch_bf AS pitchBf,
+            <include refid="pitchAbEffectiveCol"/> AS pitchAb,
+            s.np AS np,
+            s.pitch_bb AS pitchBb, s.pitch_ibb AS pitchIbb, s.pitch_hbp AS pitchHbp,
+            s.wp AS wp, s.bk AS bk, <include refid="pitchRCol"/> AS pitchR, s.go AS go, s.fo AS fo,
+            s.is_pitcher AS isPitcher,
+            s.tc AS tc, s.po AS po, s.a AS a,
+            s.def_inn AS defInn,
+            s.pb AS pb, s.catcher_cs AS catcherCs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        LEFT JOIN bs_team tm ON tm.id = s.team_id AND tm.deleted_at IS NULL
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+        <include refid="gameModeFilter"/>
+        ORDER BY g.gameday DESC, g.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 生涯打击钻取：valueSql 仅来自 PlayerStatDrillBattingMetric，禁止用户输入 -->
+    <sql id="battingDrillBaseFrom">
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        LEFT JOIN bs_team tm ON tm.id = s.team_id AND tm.deleted_at IS NULL
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <include refid="battingRowWhereCareerLeaders"/>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <if test="season != null and season != ''">AND e.season = #{season}</if>
+    </sql>
+
+    <select id="countBattingDrillDown" resultType="long">
+        SELECT COUNT(*) <include refid="battingDrillBaseFrom"/>
+    </select>
+
+    <select id="selectBattingDrillDownPage" resultType="map">
+        SELECT
+            g.id AS "gameId",
+            g.event_id AS "eventId",
+            g.gameday AS "gameday",
+            e.name AS "eventName",
+            g.home_team_id AS "homeTeamId",
+            g.away_team_id AS "awayTeamId",
+            g.home_score AS "homeScore",
+            g.away_score AS "awayScore",
+            s.team_id AS "teamId",
+            tm.name AS "teamName",
+            (s.team_id = g.home_team_id) AS "isHome",
+            (${valueSql}) AS "metricValue"
+        <include refid="battingDrillBaseFrom"/>
+        ORDER BY g.gameday DESC, g.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="pitchingDrillBaseFrom">
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        LEFT JOIN bs_team tm ON tm.id = s.team_id AND tm.deleted_at IS NULL
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.is_pitcher = 1
+          AND s.ip IS NOT NULL AND s.ip &gt; 0
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <if test="season != null and season != ''">AND e.season = #{season}</if>
+    </sql>
+
+    <select id="countPitchingDrillDown" resultType="long">
+        SELECT COUNT(*) <include refid="pitchingDrillBaseFrom"/>
+    </select>
+
+    <select id="selectPitchingDrillDownPage" resultType="map">
+        SELECT
+            g.id AS "gameId",
+            g.event_id AS "eventId",
+            g.gameday AS "gameday",
+            e.name AS "eventName",
+            g.home_team_id AS "homeTeamId",
+            g.away_team_id AS "awayTeamId",
+            g.home_score AS "homeScore",
+            g.away_score AS "awayScore",
+            s.team_id AS "teamId",
+            tm.name AS "teamName",
+            (s.team_id = g.home_team_id) AS "isHome",
+            (${valueSql}) AS "metricValue"
+        <include refid="pitchingDrillBaseFrom"/>
+        ORDER BY g.gameday DESC, g.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="fieldingDrillBaseFrom">
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        LEFT JOIN bs_team tm ON tm.id = s.team_id AND tm.deleted_at IS NULL
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+          AND s.position IS NOT NULL
+          AND s.position NOT IN ('P', 'DH', 'PH')
+          AND (
+            COALESCE(s.tc,0) &gt; 0 OR COALESCE(s.po,0) &gt; 0 OR COALESCE(s.a,0) &gt; 0 OR s.e IS NOT NULL
+            OR COALESCE(s.def_inn,0) &gt; 0
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) &gt; 0 OR COALESCE(s.catcher_cs,0) &gt; 0))
+          )
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <if test="season != null and season != ''">AND e.season = #{season}</if>
+    </sql>
+
+    <select id="countFieldingDrillDown" resultType="long">
+        SELECT COUNT(*) <include refid="fieldingDrillBaseFrom"/>
+    </select>
+
+    <select id="selectFieldingDrillDownPage" resultType="map">
+        SELECT
+            g.id AS "gameId",
+            g.event_id AS "eventId",
+            g.gameday AS "gameday",
+            e.name AS "eventName",
+            g.home_team_id AS "homeTeamId",
+            g.away_team_id AS "awayTeamId",
+            g.home_score AS "homeScore",
+            g.away_score AS "awayScore",
+            s.team_id AS "teamId",
+            tm.name AS "teamName",
+            (s.team_id = g.home_team_id) AS "isHome",
+            (${valueSql}) AS "metricValue"
+        <include refid="fieldingDrillBaseFrom"/>
+        ORDER BY g.gameday DESC, g.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

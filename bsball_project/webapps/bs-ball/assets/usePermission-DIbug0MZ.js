@@ -1,0 +1,1 @@
+import{In as u}from"./element-plus-QVmext20.js";import{S as o}from"./request-DYh6k9hF.js";function a(){const r=o(),t=u(()=>r.perms);function s(e){return r.hasPerm(e)}function n(e){return r.user?.superAdmin?!0:r.menuIds.has(e)}return{perms:t,hasPerm:s,hasMenuId:n}}export{a as t};

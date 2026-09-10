@@ -1,0 +1,217 @@
+# =============================================================================
+# 开发环境（spring.profiles.active=dev）
+# =============================================================================
+# 默认：PostgreSQL + Druid + JPA + Flyway（脚本在 classpath:db/migration/postgresql）
+#
+# 日志（SQL 调试）：
+#   org.hibernate.SQL — JPQL 对应的 SQL（占位符 ?）
+#   org.hibernate.orm.jdbc.bind / extract — Hibernate 6 绑定参数与结果提取（TRACE，日志多可改 INFO）
+#   com.bsball.mapper — INFO：关闭 MyBatis 默认多行 Preparing/Parameters 日志
+#   com.bsball.mybatis.sql — DEBUG：dev 下 CompactSqlLoggingInterceptor 单行压缩 SQL
+# Druid 控制台：http://localhost:8080/bsball-server/druid/index.html（allow 默认 127.0.0.1）
+# =============================================================================
+
+logging:
+  level:
+    root: INFO
+    com.bsball: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: DEBUG
+    org.hibernate.orm.jdbc.extract: DEBUG
+    com.bsball.mapper: INFO
+    com.bsball.mybatis.sql: DEBUG
+server:
+  # 开发环境默认允许局域网访问；可用 SERVER_ADDRESS 覆盖
+  address: ${SERVER_ADDRESS:0.0.0.0}
+spring:
+  #  #################### SQLite 数据库 Start ####################
+#  datasource:
+#    url: jdbc:sqlite:${DB_PATH:${app.workspace:.}/data/bsball.db}
+#    driver-class-name: org.sqlite.JDBC
+#    hikari:
+#      maximum-pool-size: 3
+#      minimum-idle: 1
+#      auto-commit: false
+#  jpa:
+#    # 使用自定义方言，建表/改表时不生成 COMMENT ON（SQLite 不支持）
+#    database-platform: com.bsball.config.SQLiteNoCommentDialect
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+  #  #################### SQLite 数据库 End ####################
+
+  # #################### PostgreSQL（开发默认） ####################
+  datasource:
+    # 连接池实现：Druid（含监控、SQL 统计、防 SQL 注入 Wall）
+    type: com.alibaba.druid.pool.DruidDataSource
+    # reWriteBatchedInserts：批处理 insert 时合并为一条多 VALUES 的 SQL（需配合 hibernate.jdbc.batch_size）
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    druid:
+      # false：与 JPA 事务一致，由 Spring 管理提交
+      default-auto-commit: false
+      initial-size: 2
+      min-idle: 2
+      max-active: 20
+      # 取连接最大等待毫秒
+      max-wait: 60000
+      test-while-idle: true
+      validation-query: SELECT 1
+      # 内置监控页：{context-path}/druid/（须登录，见 login-username/password）
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        # 允许访问监控页的客户端 IP，仅支持数字 IP（本机用 127.0.0.1，勿写 localhost）
+        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
+        login-username: ${DRUID_LOGIN_USER:admin}
+        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+      # Web 请求统计（URI、耗时等），静态资源已排除
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.css,*.gif,*.png,*.jpg,*.ico,/druid/*"
+      filter:
+        # SQL 执行统计、慢 SQL
+        stat:
+          enabled: true
+        # 防注入、危险语句拦截。Druid 1.2.28 的 PG 解析器不支持 Hibernate 7 的 ALTER COLUMN SET DATA TYPE（#6467，PR 未合并）
+        # throw-exception 属于 WallFilter；strict-syntax-check=false 允许解析失败的 DDL 放行（仅记录）
+        wall:
+          enabled: true
+          throw-exception: false
+          config:
+            db-type: postgresql
+            none-base-statement-allow: true
+            strict-syntax-check: false
+            alter-table-allow: true
+            create-table-allow: true
+  jpa:
+    # 空间类型（球场坐标等）需 PostGIS 方言
+    database-platform: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+    hibernate:
+      # update：启动时按实体增量更新表结构（开发用；生产见 prod 注释）
+      ddl-auto: update
+    # 是否把 SQL 打印到标准输出（一般用 logback 的 org.hibernate.SQL，此处常 false）
+    show-sql: false
+    properties:
+      hibernate:
+        # 默认 schema（PostgreSQL public）
+        default_schema: public
+  # 若改 SQLite 本地库，请关闭 flyway 并换 SQLite 方言（本文件上方有注释块）
+  # enabled=false：禁用 Boot 内置「启动即迁移」；由 FlywayAfterHibernateConfiguration 在 Hibernate 建表后再 migrate
+  flyway:
+    enabled: false
+    # 独立连接执行迁移，不经 Druid WallFilter（否则部分索引 CREATE INDEX … WHERE、复杂 UPDATE 会被误拦）
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
+    user: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    # 迁移脚本目录（仅 PostgreSQL 版 SQL）
+    locations: classpath:db/migration/postgresql
+    # 已有库首次接 Flyway 时打基线，避免从 V1 重跑
+    baseline-on-migrate: true
+    baseline-version: 0
+    # 开发改脚本后校验失败可关；修复后建议 mvn flyway:repair
+    validate-on-migrate: false
+  #  #################### PostgreSQL 数据库 End ####################
+
+  #  #################### MySQL 数据库 Start ####################
+#  datasource:
+#    type: com.alibaba.druid.pool.DruidDataSource
+#    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:bsball}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+#    username: ${DB_USER:root}
+#    password: ${DB_PASSWORD:123456}
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    druid:
+#      default-auto-commit: false
+#      initial-size: 2
+#      min-idle: 2
+#      max-active: 20
+#      max-wait: 60000
+#      test-while-idle: true
+#      validation-query: SELECT 1
+#      stat-view-servlet:
+#        enabled: true
+#        url-pattern: /druid/*
+#        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
+#        login-username: ${DRUID_LOGIN_USER:admin}
+#        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+#      web-stat-filter:
+#        enabled: true
+#        url-pattern: /*
+#        exclusions: "*.js,*.css,*.gif,*.png,*.jpg,*.ico,/druid/*"
+#      filter:
+#        stat:
+#          enabled: true
+#        wall:
+#          enabled: true
+#  jpa:
+#    database-platform: org.hibernate.dialect.MySQLDialect
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+  #  #################### MySQL 数据库 End ####################
+
+  # Redis 可选：当 app.cache.type=redis 时启用
+  # data:
+  #   redis:
+  #     host: ${REDIS_HOST:localhost}
+  #     port: ${REDIS_PORT:6379}
+  #     password: ${REDIS_PASSWORD:}
+  #     database: 0
+
+# ------------------------------------------------------------------------------
+# dev：控制台 SQL 尽量单行（Hibernate 见 application.yml 中 hibernate.format_sql）
+# ------------------------------------------------------------------------------
+app:
+  init:
+    import-test-data: ${APP_IMPORT_TEST_DATA:${APP_INIT_IMPORT_TEST_DATA:true}}
+    seed-tenant-id: ${APP_INIT_SEED_TENANT_ID:1}
+  upload:
+    # 开发环境默认使用独立目录，便于与生产区分
+    dir: ${APP_UPLOAD_DIR:uploads-local}
+  # true：Flyway 在 Hibernate ddl 之后执行（空库先有实体表再跑 ALTER/COMMENT 类迁移）；false：不执行延后迁移
+  flyway:
+    run-after-hibernate: true
+  open-platform:
+    lbs:
+      providers:
+        amap:
+          # 开发环境地图 API Key（可通过 APP_AMAP_WEB_KEY 环境变量覆盖）
+          key: ${APP_AMAP_WEB_KEY:9afe0ba888f54b558e997ba6f1448550}
+        baidu:
+          # 开发环境地图 API Key（可通过 APP_BAIDU_MAP_AK 环境变量覆盖）
+          key: ${APP_BAIDU_MAP_AK:EDpfAn3kTcZptsHfX9X1zoU3dKT2Zsu8}
+        tencent:
+          # 开发环境地图 API Key（可通过 APP_TENCENT_MAP_KEY 环境变量覆盖）
+          key: ${APP_TENCENT_MAP_KEY:4EABZ-MQ3CX-FUV4F-ZH2UH-ZR665-FZFGT}
+        interface-box:
+          enabled: ${APP_INTERFACE_BOX_ENABLED:true}
+          key: ${APP_INTERFACE_BOX_KEY:82df5f28491f6750e1184b12e8366526}
+          id: ${APP_INTERFACE_BOX_ID:10015630}
+  sql:
+    format: false
+  # 阿里云短信（开发环境）
+  # 注意：sign-name 必须填入阿里云已审核通过的「短信签名」，否则发送会被阿里云拒绝（mock 仅打印验证码）。
+  sms:
+    # 开发环境默认不真实发送（仅在日志打印验证码，不消耗短信额度）。
+    # 需要联调真发时，启动加环境变量 APP_SMS_ENABLED=true 即可临时开启。
+    enabled: ${APP_SMS_ENABLED:false}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:LTAI5t8hgmnsEu6k4RguEgs6}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:FnXY9Nwc2unJYKrMS3w6NF2pHZKKxG}
+    # 短信签名（必填，需阿里云审核通过）
+    sign-name: ${ALIYUN_SMS_SIGN_NAME:广州康胜体育管理}
+    # 注册验证码模板 Code（${code}/${time}）
+    template-code-register: ${ALIYUN_SMS_TEMPLATE_REGISTER:SMS_508140178}
+    # 登录验证码模板 Code（${code}/${time}）
+    template-code-login: ${ALIYUN_SMS_TEMPLATE_LOGIN:SMS_508265171}
+    # 重置密码验证码模板 Code（${code}/${time}；未配置时回退到注册模板）
+    template-code-reset-password: ${ALIYUN_SMS_TEMPLATE_RESET_PASSWORD:}
+  auth:
+    captcha:
+      # 与 application.yml 默认一致（false）；需要落盘时设 true 或环境变量 APP_AUTH_*=true。
+      # Dev profile 不再默认 true，避免覆盖主配置里写的 false（Spring 后加载的 profile 会覆盖同名键）。
+      debug-save-on-fail: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_ON_FAIL:false}
+      debug-save-on-success: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_ON_SUCCESS:false}
+      debug-save-dir: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_DIR:logs/captcha-debug}

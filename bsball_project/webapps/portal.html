@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BSD · 棒垒球数据平台</title>
+  <link rel="icon" type="image/png" href="https://bsdone.com/static/logo/logo2.png" />
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy-light: #132238;
+      --navy-mid: #1a3050;
+      --red: #c8102e;
+      --red-hover: #e01835;
+      --white: #ffffff;
+      --gray-400: #94a3b8;
+      --gray-600: #475569;
+      --radius: 16px;
+      --radius-lg: 24px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─ Background ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 40%, rgba(200,16,46,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 30% 70%, rgba(26,48,80,0.6) 0%, transparent 60%),
+        linear-gradient(160deg, #0a1628 0%, #132238 50%, #0d1f35 100%);
+    }
+
+    /* ── Diamond decoration ── */
+    .diamond {
+      position: fixed; right: -8%; top: 50%; transform: translateY(-50%) rotate(45deg);
+      width: 45vw; max-width: 500px; aspect-ratio: 1;
+      border: 2px solid rgba(255,255,255,0.03);
+      border-radius: 4px;
+      z-index: 0;
+    }
+    .diamond::before {
+      content: ''; position: absolute; inset: 15%;
+      border: 1px solid rgba(200,16,46,0.1); border-radius: 2px;
+    }
+
+    /* ── Content ── */
+    .content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      width: 100%; max-width: 720px; padding: 24px;
+      margin-bottom: 120px;
+      transform: scale(1.5);
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .logo-mark {
+      width: 70px; height: 70px;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+    .logo-text { font-weight: 700; font-size: 36px; letter-spacing: 0.5px; }
+    .logo-sub { font-size: 16px; color: var(--gray-400); font-weight: 400; display: block; margin-top: -2px; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; justify-content: center; gap: 18px;
+      width: 300px;
+      background: rgba(200,16,46,0.12); border: 1px solid rgba(200,16,46,0.25);
+      color: #ff6b7a; font-size: 11px; font-weight: 600;
+      padding: 6px 16px; border-radius: 100px; margin-bottom: 28px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px; background: var(--red); border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ── Heading ─ */
+    .heading {
+      font-size: clamp(28px, 4.5vw, 42px); font-weight: 900;
+      text-align: center; line-height: 1.2; letter-spacing: -0.3px;
+      margin-bottom: 12px;
+    }
+    .heading em { font-style: normal; color: var(--red); }
+    .subheading {
+      font-size: 11px; color: rgba(255,255,255,0.5);
+      text-align: center; margin-bottom: 24px; max-width: 440px;
+    }
+
+    /* ── Cards ── */
+    .cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      width: 100%; max-width: 364px;
+    }
+    .card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px;
+      aspect-ratio: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      padding: 31px 21px;
+      text-decoration: none; color: var(--white);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(200,16,46,0.08), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .card:hover {
+      border-color: rgba(200,16,46,0.35);
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(200,16,46,0.15);
+    }
+    .card:hover::before { opacity: 1; }
+    .card-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: rgba(200,16,46,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      transition: transform 0.3s ease;
+      position: relative; z-index: 1;
+    }
+    .card:hover .card-icon { transform: scale(1.08); }
+    .card-title {
+      font-size: 23px; font-weight: 700; letter-spacing: 0.5px;
+      position: relative; z-index: 1;
+    }
+    .card-desc {
+      font-size: 13px; color: rgba(255,255,255,0.45);
+      text-align: justify; text-align-last: justify;
+      text-justify: inter-ideograph;
+      line-height: 1.6;
+      position: relative; z-index: 1;
+    }
+    .card-arrow {
+      font-size: 18px; color: rgba(255,255,255,0.2);
+      opacity: 0.22;
+      transition: all 0.3s ease;
+      position: relative; z-index: 1;
+    }
+    .cards .card:nth-child(1) .card-arrow,
+    .cards .card:nth-child(2) .card-arrow { top: -8px; }
+    .card:hover .card-arrow { color: var(--red); transform: translateX(4px); }
+
+    /* ── Login bar ── */
+    .login-bar {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px;
+      width: 100%; max-width: 364px;
+      margin-bottom: 16px;
+      padding: 20px 24px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      text-decoration: none; color: var(--white);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-bar::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(200,16,46,0.08), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .login-bar:hover {
+      border-color: rgba(200,16,46,0.35);
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(200,16,46,0.15);
+    }
+    .login-bar:hover::before { opacity: 1; }
+    .login-bar .card-title { position: relative; z-index: 1; }
+    .login-bar .card-arrow { position: relative; z-index: 1; }
+
+    /* ── Footer ── */
+    .footer {
+      position: fixed; bottom: 24px; left: 0; right: 0;
+      text-align: center; font-size: 12px;
+      color: rgba(255,255,255,0.2);
+      z-index: 1;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .cards { grid-template-columns: 1fr; max-width: 208px; }
+      .card { padding: 23px 18px; }
+      .heading { font-size: 26px; }
+      .subheading { font-size: 14px; margin-bottom: 36px; }
+      .logo { margin-bottom: 32px; }
+      .badge { margin-bottom: 20px; }
+    }
+
+    /* ── Fade-in ── */
+    .fade-up {
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.7s ease forwards;
+    }
+    .fade-up:nth-child(1) { animation-delay: 0.1s; }
+    .fade-up:nth-child(2) { animation-delay: 0.2s; }
+    .fade-up:nth-child(3) { animation-delay: 0.35s; }
+    .fade-up:nth-child(4) { animation-delay: 0.5s; }
+    .fade-up:nth-child(5) { animation-delay: 0.65s; }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="diamond"></div>
+
+<div class="content">
+
+  <!-- Logo -->
+  <div class="logo fade-up">
+    <img class="logo-mark" src="/bs-ball/bs-ball-logo.png" alt="BSD Logo" />
+    <div>
+      <span class="logo-text">棒垒球数据库</span>
+      <span class="logo-sub">Baseball & Softball Database</span>
+    </div>
+  </div>
+
+  <!-- Badge -->
+  <div class="badge fade-up">
+    <span class="badge-dot"></span>
+    国内领先 · 专业级棒垒球 SaaS 平台
+    <span class="badge-dot"></span>
+  </div>
+
+  <!-- Heading -->
+  <h1 class="heading fade-up">选择您的<em>&nbsp;入口</em></h1>
+  <p class="subheading fade-up">了解平台功能，或直接进入数据系统</p>
+
+  <!-- Login Bar -->
+  <a href="/bs-ball/bs-ball/account/login?redirect=/bs-ball" class="login-bar fade-up">
+    <div class="card-icon">🔐</div>
+    <div class="card-title">球员 / 用户 登录</div>
+    <div class="card-arrow">→</div>
+  </a>
+
+  <!-- Two Cards -->
+  <div class="cards fade-up">
+    <a href="/index.html" class="card">
+      <div class="card-icon">📋</div>
+      <div class="card-title">系统介绍</div>
+      <div class="card-desc">平台功能<br>定价方案<br>应用场景</div>
+      <div class="card-arrow">→</div>
+    </a>
+    <a href="/bs-ball/bs-ball" class="card">
+      <div class="card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-label="本垒板">
+          <path d="M3 4 H21 V12 L12 20 L3 12 Z" fill="#ffffff"/>
+        </svg>
+      </div>
+      <div class="card-title">进入数据库</div>
+      <div class="card-desc">查看数据<br>球队排名<br>球员统计</div>
+      <div class="card-arrow">→</div>
+    </a>
+    <a href="/bs-ball/bs-ball" class="card">
+      <div class="card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-label="棒球">
+          <circle cx="12" cy="12" r="10" fill="#ffffff" stroke="#e0e0e0" stroke-width="0.6"/>
+          <path d="M11.1 2.1 C12.6 5.2 16.5 10 21.9 12" fill="none" stroke="#c8102e" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M12.9 21.9 C11.4 18.8 7.5 14 2.1 12" fill="none" stroke="#c8102e" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M12.7 2.5 L10.5 3.5 M13.7 4.9 L11.9 6.3 M15.3 6.9 L13.9 8.7 M17.7 8.7 L16.7 10.9" stroke="#c8102e" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          <path d="M11.3 21.5 L13.5 20.5 M10.3 19.1 L12.1 17.7 M8.7 17.1 L10.1 15.3 M6.3 15.3 L7.3 13.1" stroke="#c8102e" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="card-title" style="width: 96px; text-align: center;">棒&nbsp;&nbsp;&nbsp;&nbsp;球</div>
+      <div class="card-desc">棒球赛事数据<br>球队资讯</div>
+      <div class="card-arrow">→</div>
+    </a>
+    <a href="/bs-ball/bs-ball" class="card">
+      <div class="card-icon">🥎</div>
+      <div class="card-title" style="width: 96px; text-align: center;">垒&nbsp;&nbsp;&nbsp;&nbsp;球</div>
+      <div class="card-desc">垒球赛事数据<br>球队资讯</div>
+      <div class="card-arrow">→</div>
+    </a>
+  </div>
+
+</div>
+
+<div class="footer">© 2026 BSD · Baseball & Softball Database</div>
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.bsball:bsball-server >----------------------
+[INFO] Building BS-Ball Server 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.5.0:clean (default-clean) @ bsball-server ---
+[INFO] Deleting C:\Users\Clay\Qoder\bsball-backend\target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.5.0:resources (default-resources) @ bsball-server ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 74 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.15.0:compile (default-compile) @ bsball-server ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 342 source files with javac [debug parameters release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsJsonUtil.java:[27,94] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsJsonUtil.java:[27,136] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsSerializer.java:[32,73] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsSerializer.java:[32,115] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameResponseDTO.java:[123,78] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameResponseDTO.java:[123,120] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[94,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[94,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[92,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[92,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[112,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[112,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[134,84] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[134,126] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[108,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[108,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[125,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[125,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HighlightMomentService.java:[56,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HighlightMomentService.java:[56,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HistoryRecordService.java:[71,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HistoryRecordService.java:[71,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,26] 需要')'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,71] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,72] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,74] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,75] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,82] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,83] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,84] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,85] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,87] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PlayerClaimService.java:[152,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PlayerClaimService.java:[152,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalDevtoolsReportService.java:[127,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalDevtoolsReportService.java:[127,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[195,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[195,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[217,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[217,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[267,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[267,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/StadiumService.java:[171,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/StadiumService.java:[171,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysApiService.java:[51,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysApiService.java:[51,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[84,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[84,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[88,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[88,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[148,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[148,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[180,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[180,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysDictService.java:[50,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysDictService.java:[50,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[90,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[90,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaGalleryItemService.java:[69,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaGalleryItemService.java:[69,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[81,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[81,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[163,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[163,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[217,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[217,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[77,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[77,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[81,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[81,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysOperationLogService.java:[71,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysOperationLogService.java:[71,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysResourceService.java:[103,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysResourceService.java:[103,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysUserService.java:[110,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysUserService.java:[110,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[133,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[133,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[244,77] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[244,119] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/WeatherDataFetchService.java:[59,79] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/WeatherDataFetchService.java:[59,121] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[17,26] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[18,26] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[19,26] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[20,26] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[21,27] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[22,25] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[23,31] 字段声明必须为静态
+  （考虑将字段替换为记录组件）
+[INFO] 89 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.479 s
+[INFO] Finished at: 2026-07-28T00:03:10+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.15.0:compile (default-compile) on project bsball-server: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsJsonUtil.java:[27,94] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsJsonUtil.java:[27,136] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsSerializer.java:[32,73] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/common/json/PositionsSerializer.java:[32,115] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameResponseDTO.java:[123,78] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameResponseDTO.java:[123,120] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[94,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AccountRegisterService.java:[94,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[92,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[92,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[112,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/CoachService.java:[112,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[134,84] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/EmailService.java:[134,126] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[108,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[108,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[125,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/GameService.java:[125,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HighlightMomentService.java:[56,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HighlightMomentService.java:[56,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HistoryRecordService.java:[71,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/HistoryRecordService.java:[71,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,26] 需要')'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,71] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,72] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,74] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,75] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,82] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,83] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,84] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,85] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/LbsIpLocationService.java:[197,87] 需要case, default或'}'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PlayerClaimService.java:[152,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PlayerClaimService.java:[152,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalDevtoolsReportService.java:[127,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalDevtoolsReportService.java:[127,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[195,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[195,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[217,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalFeedbackService.java:[217,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[267,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[267,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/StadiumService.java:[171,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/StadiumService.java:[171,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysApiService.java:[51,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysApiService.java:[51,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[84,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[84,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[88,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[88,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[148,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[148,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[180,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysArticleService.java:[180,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysDictService.java:[50,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysDictService.java:[50,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[90,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysLoginLogService.java:[90,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaGalleryItemService.java:[69,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaGalleryItemService.java:[69,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[81,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[81,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[163,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[163,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[217,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysMediaIconService.java:[217,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[77,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[77,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[81,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysNoticeService.java:[81,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysOperationLogService.java:[71,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysOperationLogService.java:[71,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysResourceService.java:[103,27] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysResourceService.java:[103,41] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysUserService.java:[110,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/SysUserService.java:[110,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[133,23] 不是语句
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[133,37] 需要';'
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[244,77] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/TeamLineupTemplateService.java:[244,119] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/WeatherDataFetchService.java:[59,79] 需要<标识符>
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/WeatherDataFetchService.java:[59,121] 需要'('或'['
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[17,26] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[18,26] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[19,26] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[20,26] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[21,27] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[22,25] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/iplocation/IpLocationDetail.java:[23,31] 字段声明必须为静态
+[ERROR]   （考虑将字段替换为记录组件）
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

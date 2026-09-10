@@ -1,0 +1,1 @@
+var A={A:"A级（职棒/国际赛）",B:"B级（职棒）",C:"C级（业余/地区）"},L={PLANNED:"筹建中",IN_USE:"使用中",RENOVATION:"整建中",CLOSED:"停用"},E={NATURAL:"天然草",ARTIFICIAL:"人工草"},S={OPEN:"开放式",RETRACTABLE:"可开阖",DOME:"室内（天幕）"};export{E as i,A as n,L as r,S as t};

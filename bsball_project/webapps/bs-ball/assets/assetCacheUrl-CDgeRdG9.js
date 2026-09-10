@@ -1,0 +1,1 @@
+function r(t,n){const e=(t||n||"").trim();if(!e)return null;const i=Date.parse(e);return Number.isFinite(i)?i:null}function a(t,n){return!t||n==null||!Number.isFinite(n)||t.startsWith("data:")?t:`${t}${t.includes("?")?"&":"?"}t=${Math.trunc(n)}`}export{a as n,r as t};

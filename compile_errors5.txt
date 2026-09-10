@@ -1,0 +1,179 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.bsball:bsball-server >----------------------
+[INFO] Building BS-Ball Server 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.5.0:clean (default-clean) @ bsball-server ---
+[INFO] Deleting C:\Users\Clay\Qoder\bsball-backend\target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.5.0:resources (default-resources) @ bsball-server ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 74 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.15.0:compile (default-compile) @ bsball-server ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 342 source files with javac [debug parameters release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[372,13] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[389,12] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[404,30] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[218,13] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[255,12] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[290,32] 找不到符号
+  符号:   类 Map
+  位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[23,57] 程序包org.springframework.boot.data.redis.autoconfigure不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[29,44] 程序包org.springframework.data.redis.cache不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[30,44] 程序包org.springframework.data.redis.cache不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[31,49] 程序包org.springframework.data.redis.connection不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[40,38] 找不到符号
+  符号:   类 RedisConnectionFactory
+  位置: 类 com.bsball.config.RedisCacheConfig
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/SQLiteNoCommentDialect.java:[10,39] 程序包org.hibernate.community.dialect不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/SQLiteNoCommentDialect.java:[13,9] 找不到符号
+  符号: 类 SQLiteDialect
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1704,19] 找不到符号
+  符号:   类 ImageWriter
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1705,19] 找不到符号
+  符号:   类 ImageWriteParam
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1706,19] 找不到符号
+  符号:   类 IIOMetadata
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1707,19] 找不到符号
+  符号:   类 ImageOutputStream
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1742,44] 找不到符号
+  符号:   类 IIOMetadataNode
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1742,20] 找不到符号
+  符号:   类 IIOMetadataNode
+  位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[788,6] 找不到符号
+  符号:   类 JsonDeserialize
+  位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[788,28] 找不到符号
+  符号:   类 BoolToIntDeserializer
+  位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[801,6] 找不到符号
+  符号:   类 JsonAlias
+  位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameSaveLiveDTO.java:[114,6] 找不到符号
+  符号:   类 JsonDeserialize
+  位置: 类 com.bsball.model.dto.GameSaveLiveDTO.GamePlayerStatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameSaveLiveDTO.java:[114,28] 找不到符号
+  符号:   类 BoolToIntDeserializer
+  位置: 类 com.bsball.model.dto.GameSaveLiveDTO.GamePlayerStatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,40] 找不到符号
+  符号:   类 JsonFormat
+  位置: 类 com.bsball.service.PortalVisitService.PortalVisitDailyDto
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,90] 找不到符号
+  符号:   类 JsonInclude
+  位置: 类 com.bsball.service.PortalVisitService.PortalVisitDailyDto
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,119] 程序包JsonInclude不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[36,16] 找不到符号
+  符号: 类 DataRedisAutoConfiguration
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[37,27] 找不到符号
+  符号: 类 RedisConnectionFactory
+[INFO] 29 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  10.114 s
+[INFO] Finished at: 2026-07-27T23:42:11+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.15.0:compile (default-compile) on project bsball-server: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[372,13] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[389,12] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[404,30] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.Lbs
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[218,13] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[255,12] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/OpenPlatformProperties.java:[290,32] 找不到符号
+[ERROR]   符号:   类 Map
+[ERROR]   位置: 类 com.bsball.config.OpenPlatformProperties.IpLocationApi
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[23,57] 程序包org.springframework.boot.data.redis.autoconfigure不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[29,44] 程序包org.springframework.data.redis.cache不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[30,44] 程序包org.springframework.data.redis.cache不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[31,49] 程序包org.springframework.data.redis.connection不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[40,38] 找不到符号
+[ERROR]   符号:   类 RedisConnectionFactory
+[ERROR]   位置: 类 com.bsball.config.RedisCacheConfig
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/SQLiteNoCommentDialect.java:[10,39] 程序包org.hibernate.community.dialect不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/SQLiteNoCommentDialect.java:[13,9] 找不到符号
+[ERROR]   符号: 类 SQLiteDialect
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1704,19] 找不到符号
+[ERROR]   符号:   类 ImageWriter
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1705,19] 找不到符号
+[ERROR]   符号:   类 ImageWriteParam
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1706,19] 找不到符号
+[ERROR]   符号:   类 IIOMetadata
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1707,19] 找不到符号
+[ERROR]   符号:   类 ImageOutputStream
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1742,44] 找不到符号
+[ERROR]   符号:   类 IIOMetadataNode
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/AuthCaptchaService.java:[1742,20] 找不到符号
+[ERROR]   符号:   类 IIOMetadataNode
+[ERROR]   位置: 类 com.bsball.service.AuthCaptchaService.GifSequenceWriter
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[788,6] 找不到符号
+[ERROR]   符号:   类 JsonDeserialize
+[ERROR]   位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[788,28] 找不到符号
+[ERROR]   符号:   类 BoolToIntDeserializer
+[ERROR]   位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/SaveGameResultDTO.java:[801,6] 找不到符号
+[ERROR]   符号:   类 JsonAlias
+[ERROR]   位置: 类 com.bsball.model.dto.SaveGameResultDTO.StatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameSaveLiveDTO.java:[114,6] 找不到符号
+[ERROR]   符号:   类 JsonDeserialize
+[ERROR]   位置: 类 com.bsball.model.dto.GameSaveLiveDTO.GamePlayerStatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/model/dto/GameSaveLiveDTO.java:[114,28] 找不到符号
+[ERROR]   符号:   类 BoolToIntDeserializer
+[ERROR]   位置: 类 com.bsball.model.dto.GameSaveLiveDTO.GamePlayerStatPart
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,40] 找不到符号
+[ERROR]   符号:   类 JsonFormat
+[ERROR]   位置: 类 com.bsball.service.PortalVisitService.PortalVisitDailyDto
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,90] 找不到符号
+[ERROR]   符号:   类 JsonInclude
+[ERROR]   位置: 类 com.bsball.service.PortalVisitService.PortalVisitDailyDto
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/service/PortalVisitService.java:[366,119] 程序包JsonInclude不存在
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[36,16] 找不到符号
+[ERROR]   符号: 类 DataRedisAutoConfiguration
+[ERROR] /C:/Users/Clay/Qoder/bsball-backend/src/main/java/com/bsball/config/RedisCacheConfig.java:[37,27] 找不到符号
+[ERROR]   符号: 类 RedisConnectionFactory
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

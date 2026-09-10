@@ -1,0 +1,1 @@
+import{Tr as u,rr as o}from"./element-plus-QVmext20.js";function c(r){const l=u(!0),e=u(null),a=u(null);async function n(){l.value=!0,e.value=null;try{a.value=await r()??null}catch(t){e.value=t?.message??"加载失败",a.value=null}finally{l.value=!1}}return o(n),{loading:l,error:e,result:a,retry:n}}export{c as t};

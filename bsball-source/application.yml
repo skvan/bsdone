@@ -1,0 +1,291 @@
+# =============================================================================
+# BS-Ball 主配置（所有环境共用）
+# =============================================================================
+# 激活环境（优先级从高到低）：
+#   1) 环境变量 SPRING_PROFILES_ACTIVE
+#   2) 启动参数 --spring.profiles.active=
+#   3) 打包时由 Maven 写入的默认值：在 IDE Maven 中勾选 Profile「dev」或「prod」后 package/install，
+#      会把 application.yml 中占位替换为对应环境；未勾选时默认 dev。
+#   dev  — 开发：PostgreSQL + Flyway，见 application-dev.yml
+#   prod — 生产：PostgreSQL，见 application-prod.yml
+#
+# 说明：主文件里 flyway.enabled=false，避免未选 profile 时误跑迁移。dev/prod 关闭 Boot 内置 Flyway，
+# 由 app.flyway.run-after-hibernate=true 时在 Hibernate 建表后再执行迁移（见 FlywayAfterHibernateConfiguration）。
+# =============================================================================
+
+spring:
+  # 应用名：日志、监控里显示的服务标识
+  application:
+    name: bsball-server
+  # 排除 Redis 自动配置。注解 exclude 用 .class 在 prod 缺 jar 时会 TypeNotPresentException；
+  # 改为字符串排除，类不存在时无害（仅 WARN），dev 下有效禁止 Redis 自动初始化。
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+  # 默认后缀由 pom 的 maven.active.spring.profile 在打包时注入；运行/Docker 仍可用 SPRING_PROFILES_ACTIVE 覆盖
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+  # 数据库版本迁移（Flyway）：主配置关闭；dev/prod 里按数据库类型再 enabled: true
+  flyway:
+    enabled: false
+  # JSON 序列化：日期格式、时区、null 字段是否输出（non_null = 不输出 null 属性）
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  # JPA/Hibernate 全局属性（具体方言、ddl 在各环境 yml）
+  jpa:
+    properties:
+      hibernate:
+        # 日志/SQL 输出是否换行缩进（便于阅读）；也可由 app.sql.format 覆盖
+        format_sql: ${app.sql.format:true}
+        # 大批量导入（如行政区划）：saveAll 时合并为 JDBC batch；配合 PostgreSQL reWriteBatchedInserts 可生成多值 INSERT
+        jdbc:
+          batch_size: 400
+        order_inserts: true
+        order_updates: true
+  # 上传文件大小限制（控制器接收 multipart 请求）
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+--- #################### HTTP 服务 ####################
+
+server:
+  # 监听端口
+  port: ${SERVER_PORT:8080}
+  servlet:
+    # 应用上下文路径：所有接口前加此前缀，如 /bsball-server/api/...
+    context-path: /bsball-server
+
+--- #################### MyBatis（统计类 SQL，与 JPA 并存） ####################
+
+mybatis:
+  # XML 映射文件位置
+  mapper-locations: classpath:mapper/**/*.xml
+  # 类型别名包（XML 里可写短类名）
+  type-aliases-package: com.bsball.model.dto
+  configuration:
+    # 下划线列名自动映射为驼峰 Java 属性
+    map-underscore-to-camel-case: true
+
+--- #################### 业务自定义（非 Spring 标准键，代码里 @Value 读取） ####################
+
+app:
+  # Maven 资源过滤写入，供门户反馈等接口记录服务端版本；未过滤时运行时代码回落为 unknown
+  release-version: 1.0.0
+  # 空库种子：详见 InitSeedProperties、InitDataRunner、ImportTestDataRunner（此处仅允许一个 app.init，禁止重复键）
+  init:
+    # 种子数据写入的租户：0=使用 app.tenant.default-id；否则为指定租户 ID（APP_INIT_SEED_TENANT_ID）
+    seed-tenant-id: ${APP_INIT_SEED_TENANT_ID:0}
+    import-china-region: ${APP_IMPORT_CHINA_REGION:true}
+    # 登录是否写入 sys_login_log（预留）。兼容 APP_RECORD_LOGIN_LOG、APP_INIT_RECORD_LOGIN_LOG
+    record-login-log: ${APP_RECORD_LOGIN_LOG:${APP_INIT_RECORD_LOGIN_LOG:true}}
+    # 是否从 classpath:data/data_demo.json 导入演示数据（默认 false）。兼容 APP_IMPORT_TEST_DATA、APP_INIT_IMPORT_TEST_DATA
+    import-test-data: ${APP_IMPORT_TEST_DATA:${APP_INIT_IMPORT_TEST_DATA:true}}
+    seed-business-menus-and-apis: ${APP_SEED_BUSINESS_MENUS_AND_APIS:${APP_INIT_SEED_BUSINESS:true}}
+    seed-content-menus-and-apis: ${APP_SEED_CONTENT_MENUS_AND_APIS:${APP_INIT_SEED_CONTENT:true}}
+    seed-audit-menus-and-apis: ${APP_SEED_AUDIT_MENUS_AND_APIS:${APP_INIT_SEED_AUDIT:true}}
+    # 默认 false；需要空库自动写入四座演示球场时设 APP_SEED_DEFAULT_STADIUMS=true
+    seed-default-stadiums: ${APP_SEED_DEFAULT_STADIUMS:${APP_INIT_SEED_DEFAULT_STADIUMS:false}}
+  # 工作目录：部分文件、SQLite 路径等相对此目录
+  workspace: ${APP_WORKSPACE:.}
+  api:
+    # 与 Controller 上 @RequestMapping 前缀一致，供文档/拼接用
+    prefix: /api
+    guest-check:
+      # 是否启用「无 JWT 时仅允许 guest 角色 API 白名单」校验（ApiPermissionFilter）
+      enabled: ${APP_GUEST_CHECK_ENABLED:true}
+    # 无 token 时始终放行的路径前缀（逗号分隔），不走角色 API 表
+    guest-whitelist: ${APP_GUEST_WHITELIST:/auth/login,/auth/login-by-phone,/auth/register,/auth/sms,/auth/password,/auth/legal-docs,/auth/captcha,/health,/files,/druid,/druid-entry,/portal/visit,/portal/ip-location,/portal/devtools,/portal/tenant,/portal/settings,/portal/feedback,/portal/player-claim-invite,/sys/article/increment-view,/sys/article/platform/list,/sys/article/}
+  # 游客 API 鉴权缓存：isGuestAllowed 合并查询 sys_api + guest 的 sys_role_api，过期后自动刷新
+  api-permission:
+    guest-cache-ttl-sec: ${APP_API_GUEST_CACHE_TTL_SEC:60}
+  upload:
+    # 本地上传根目录（相对 workspace 或绝对路径）
+    dir: ${APP_UPLOAD_DIR:uploads}
+    image-extensions: jpg,jpeg,png,gif,webp
+    max-file-size: 5242880
+  # 是否格式化 Hibernate SQL 日志（与 spring.jpa.properties.hibernate.format_sql 对应，app.sql.format 优先）
+  sql:
+    format: ${APP_SQL_FORMAT:false}
+  # 缓存类型：local=Caffeine 本进程；redis 需配 spring.data.redis（见各环境注释）
+  cache:
+    type: ${APP_CACHE_TYPE:local}
+  # 是否记录操作日志切面
+  operation-log:
+    enabled: ${APP_OPERATION_LOG_ENABLED:true}
+  # 全站 IP 黑白名单（IpAccessFilter；模式与放行路径在 sys_config，规则在 sys_ip_access_rule）
+  security:
+    ip-access:
+      enabled: ${APP_IP_ACCESS_ENABLED:true}
+      trust-x-forwarded-for: ${APP_IP_ACCESS_TRUST_XFF:true}
+      refresh-ms: ${APP_IP_ACCESS_REFRESH_MS:60000}
+  # 简易限流（过滤器）：登录、全局限流、门户 PV、资讯浏览量等
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    login-limit: 5
+    druid-login-limit: ${APP_RATE_LIMIT_DRUID_LOGIN_LIMIT:5}
+    public-limit: 300
+    admin-limit: 300
+    window-sec: 60
+    # POST /portal/visit/record：单 IP 每窗口最多次数（防刷 PV 接口）
+    visit-post-limit: ${APP_RATE_LIMIT_VISIT_POST:120}
+    visit-post-window-sec: ${APP_RATE_LIMIT_VISIT_POST_WINDOW:60}
+    # POST /portal/devtools/report：开发者工具打开上报（单 IP 每窗口上限，低于 PV 接口）
+    devtools-post-limit: ${APP_RATE_LIMIT_DEVTOOLS_POST:30}
+    devtools-post-window-sec: ${APP_RATE_LIMIT_DEVTOOLS_POST_WINDOW:60}
+    # POST /sys/article/increment-view：单 IP 每窗口最多次数（防遍历刷浏览量）
+    notice-increment-limit: ${APP_RATE_LIMIT_NOTICE_INCREMENT:60}
+    notice-increment-window-sec: ${APP_RATE_LIMIT_NOTICE_INCREMENT_WINDOW:60}
+    # POST /auth/sms/send：单 IP 每窗口最多次数（防刷短信）
+    sms-send-limit: ${APP_RATE_LIMIT_SMS_SEND:5}
+    sms-send-window-sec: ${APP_RATE_LIMIT_SMS_SEND_WINDOW:60}
+  # 阿里云短信（注册/登录验证码）
+  sms:
+    enabled: ${APP_SMS_ENABLED:false}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    sign-name: ${ALIYUN_SMS_SIGN_NAME:}
+    template-code-register: ${ALIYUN_SMS_TEMPLATE_REGISTER:}
+    template-code-login: ${ALIYUN_SMS_TEMPLATE_LOGIN:}
+    template-code-reset-password: ${ALIYUN_SMS_TEMPLATE_RESET_PASSWORD:}
+    code-length: ${APP_SMS_CODE_LENGTH:6}
+    code-expire-sec: ${APP_SMS_CODE_EXPIRE_SEC:300}
+    send-interval-sec: ${APP_SMS_SEND_INTERVAL_SEC:60}
+    phone-daily-limit: ${APP_SMS_PHONE_DAILY_LIMIT:10}
+    ip-hourly-limit: ${APP_SMS_IP_HOURLY_LIMIT:20}
+    ip-daily-limit: ${APP_SMS_IP_DAILY_LIMIT:50}
+  # 门户账号注册与球员认领
+  account:
+    register-enabled: ${APP_ACCOUNT_REGISTER_ENABLED:true}
+    default-role-code: ${APP_ACCOUNT_DEFAULT_ROLE:member}
+    invite-default-expire-hours: ${APP_ACCOUNT_INVITE_EXPIRE_HOURS:72}
+    invite-default-max-uses: ${APP_ACCOUNT_INVITE_MAX_USES:1}
+  # JWT 签发与校验（登录接口写入 token）
+  jwt:
+    # HS256 密钥（UTF-8 长度须 ≥ 32）；生产必须用环境变量覆盖
+    secret: ${JWT_SECRET:dev-jwt-only-CHANGE-ME-32chars-min}
+    # Token 有效期：如 7d、12h、90m、120s（分钟用 m，勿写 min）
+    expiration: ${JWT_EXPIRATION:30d}
+    issuer: ${JWT_ISSUER:bs-ball}
+    # audience 留空则 JWT 中不写 aud
+    audience: ${JWT_AUDIENCE:}
+
+  # 登录验证码（默认值；租户在「配置管理」保存后会写入 sys_config 并覆盖以下默认）
+  auth:
+    captcha:
+      # 是否启用（默认 true；可用 APP_AUTH_CAPTCHA_ENABLED=false 或库内 authCaptchaEnabled 关闭）
+      enabled: ${APP_AUTH_CAPTCHA_ENABLED:true}
+      # 验证码类型：input（字符输入）/ click（点选）/ drag（拖拽）/ random（每次在 input、click、drag 中随机）
+      type: ${APP_AUTH_CAPTCHA_TYPE:random}
+      # random 模式下的候选池（逗号分隔；可用 APP_AUTH_CAPTCHA_RANDOM_TYPES 覆盖；库内 authCaptchaRandomTypes 可再覆盖）
+      random-types: ${APP_AUTH_CAPTCHA_RANDOM_TYPES:input,click,drag}
+      # 开发调试：校验失败时保存当次验证码图片（需 true；且仅 spring.profiles.active 含 dev 时才落盘）
+      debug-save-on-fail: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_ON_FAIL:false}
+      # 开发调试：校验成功时也保存（文件名前缀 ok_；同上：true + dev profile）
+      debug-save-on-success: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_ON_SUCCESS:false}
+      # 调试验证码保存目录（相对 app.workspace 或绝对路径）
+      debug-save-dir: ${APP_AUTH_CAPTCHA_DEBUG_SAVE_DIR:logs/captcha-debug}
+
+  # 多租户：JWT 中带 tid；数据范围表 sys_data_scope；访客可传 X-Tenant-Id / X-Tenant-Code / ?tenantCode=
+  tenant:
+    # 无法解析租户时的默认租户 ID（与库 sys_tenant.id 一致）
+    default-id: ${APP_TENANT_DEFAULT_ID:1}
+    # 按租户 code 解析行的短期缓存（秒），合并 Filter/Controller 链内重复查询
+    code-cache-ttl-sec: ${APP_TENANT_CODE_CACHE_TTL_SEC:60}
+    # 用户在某租户下无数据范围行时：true=严格按空范围；false=视为不限制（见 DataScopeService）
+    strict-data-scope: ${APP_TENANT_STRICT_DATA_SCOPE:false}
+    # 子域租户：如 tenant.example.com 从子域解析租户编码（需配 base-host）
+    host-mapping:
+      enabled: ${APP_TENANT_HOST_MAPPING_ENABLED:false}
+      base-host: ${APP_TENANT_HOST_MAPPING_BASE_HOST:}
+
+  open-platform:
+    common:
+      max-batch-ips: ${APP_LBS_MAX_BATCH_IPS:60}
+      region-cache-hours: ${APP_AMAP_REGION_CACHE_HOURS:168}
+      region-cache-max-size: ${APP_AMAP_REGION_CACHE_MAX_SIZE:50000}
+      region-stale-days: ${APP_AMAP_REGION_STALE_DAYS:90}
+    lbs:
+      max-attempts: ${APP_LBS_MAX_ATTEMPTS:3}
+      strategy: ${APP_LBS_STRATEGY:parallel}
+      providers:
+        amap:
+          enabled: ${APP_AMAP_ENABLED:true}
+          id: ${APP_AMAP_WEB_ID:}
+          key: ${APP_AMAP_WEB_KEY:}
+          ip-location-api:
+            endpoint: ${APP_AMAP_IP_LOCATION_ENDPOINT:https://restapi.amap.com/v3/ip}
+            key-param: key
+            ip-param: ip
+            max-qps: ${APP_AMAP_MAX_QPS:3}
+            extra-spacing-ms: ${APP_AMAP_EXTRA_SPACING_MS:0}
+        baidu:
+          enabled: ${APP_BAIDU_ENABLED:true}
+          id: ${APP_BAIDU_MAP_ID:}
+          key: ${APP_BAIDU_MAP_AK:}
+          ip-location-api:
+            endpoint: ${APP_BAIDU_IP_LOCATION_ENDPOINT:https://api.map.baidu.com/location/ip}
+            key-param: ak
+            ip-param: ip
+            fixed-params:
+              coor: bd09ll
+            max-qps: ${APP_BAIDU_MAP_MAX_QPS:3}
+            extra-spacing-ms: ${APP_BAIDU_MAP_EXTRA_SPACING_MS:0}
+        tencent:
+          enabled: ${APP_TENCENT_ENABLED:true}
+          id: ${APP_TENCENT_MAP_ID:}
+          key: ${APP_TENCENT_MAP_KEY:}
+          ip-location-api:
+            endpoint: ${APP_TENCENT_IP_LOCATION_ENDPOINT:https://apis.map.qq.com/ws/location/v1/ip}
+            key-param: key
+            ip-param: ip
+            max-qps: ${APP_TENCENT_MAP_MAX_QPS:5}
+            extra-spacing-ms: ${APP_TENCENT_MAP_EXTRA_SPACING_MS:0}
+        interface-box:
+          enabled: ${APP_INTERFACE_BOX_ENABLED:false}
+          id: ${APP_INTERFACE_BOX_ID:}
+          key: ${APP_INTERFACE_BOX_KEY:}
+          ip-location-api:
+            endpoint: ${APP_INTERFACE_BOX_IP_LOCATION_ENDPOINT:https://cn.apihz.cn/api/ip/chaapi.php}
+            id-param: id
+            key-param: key
+            ip-param: ip
+            fixed-params:
+              td: ${APP_INTERFACE_BOX_TD:0}
+            max-qps: ${APP_INTERFACE_BOX_MAX_QPS:1}
+            extra-spacing-ms: ${APP_INTERFACE_BOX_EXTRA_SPACING_MS:800}
+
+  # 门户打点 IP 回填：按定时任务补全 portal_visit_hit 中尚未命中缓存的 IP（不阻塞 PV 打点）
+  portal-visit:
+    # 生产建议关闭启动回填，避免与部署时间窗口冲突
+    ip-backfill-on-startup: ${APP_PORTAL_VISIT_IP_BACKFILL_ON_STARTUP:false}
+    # 是否启用定时回填
+    ip-backfill-schedule-enabled: ${APP_PORTAL_VISIT_IP_BACKFILL_SCHEDULE_ENABLED:true}
+    # 每天凌晨 05:20 执行一次（秒 分 时 日 月 周）
+    ip-backfill-cron: ${APP_PORTAL_VISIT_IP_BACKFILL_CRON:0 20 5 * * *}
+
+  # 计数去重：TTL 内重复请求不计入 PV / 不增加 view_count（仍返回成功或当前值）
+  count-abuse:
+    enabled: ${APP_COUNT_ABUSE_ENABLED:true}
+    # 同 portal_vid（或同 IP 无 Cookie）+ 同路径，在此秒内只记 1 条 PV
+    portal-pv-dedup-sec: ${APP_PORTAL_PV_DEDUP_SEC:300}
+    # 同 IP + 同内容 ID，在此秒内浏览量最多 +1（重复打开返回当前值）
+    notice-view-dedup-sec: ${APP_NOTICE_VIEW_DEDUP_SEC:300}
+    # 同访客（portal_vid）或同 IP，在此秒内开发者工具上报只入库一次（仍返回 200）
+    devtools-report-dedup-sec: ${APP_DEVTOOLS_REPORT_DEDUP_SEC:600}
+    # 同 IP + 租户，反馈提交冷却（防重复提交）
+    portal-feedback-dedup-sec: ${APP_PORTAL_FEEDBACK_DEDUP_SEC:45}
+    # 同 IP + 租户，反馈验证码刷新冷却（防恶意刷图）
+    portal-feedback-captcha-dedup-sec: ${APP_PORTAL_FEEDBACK_CAPTCHA_DEDUP_SEC:3}
+
+  # 气象抓取：按 cron 拉取第三方 JSONP 并转换为 GeoJSON 文件
+  weather-fetch:
+    enabled: ${APP_WEATHER_FETCH_ENABLED:false}
+    cron: ${APP_WEATHER_FETCH_CRON:0 */15 * * * *}
+    save-dir: ${APP_WEATHER_FETCH_SAVE_DIR:data/resources/weather}
+    diluting: ${APP_WEATHER_FETCH_DILUTING:15}
+    connect-timeout-ms: ${APP_WEATHER_FETCH_CONNECT_TIMEOUT_MS:8000}
+    read-timeout-ms: ${APP_WEATHER_FETCH_READ_TIMEOUT_MS:15000}

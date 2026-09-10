@@ -1,0 +1,1 @@
+import{Tr as e}from"./element-plus-QVmext20.js";function a(){const t=e(!1);async function r(u){if(!t.value){t.value=!0;try{return await u()}finally{t.value=!1}}}return{submitting:t,withSubmitLock:r}}export{a as t};

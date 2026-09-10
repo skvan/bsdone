@@ -1,0 +1,188 @@
+# =============================================================================
+# 生产环境（spring.profiles.active=prod）
+# =============================================================================
+# PostgreSQL + Druid + JPA + Flyway。所有配置项均有默认值，
+# 可通过环境变量或启动参数可选覆盖。
+#
+# 环境变量覆盖（均为可选）：
+#   - SERVER_ADDRESS: 服务监听地址（默认 127.0.0.1）
+#   - DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME
+#   - JWT_SECRET: JWT 签名密钥（默认已有值）
+#   - DRUID_LOGIN_PASSWORD: Druid 监控页密码
+#   - APP_SMS_ENABLED / ALIYUN_SMS_ACCESS_KEY_ID 等：短信配置（默认已有值）
+#   - APP_AMAP_WEB_KEY 等：地图 API Key（默认已有值）
+# =============================================================================
+
+logging:
+  level:
+    root: WARN
+    com.bsball: INFO
+server:
+  # 生产默认仅本机监听，通过 Nginx 反向代理对外暴露
+  address: ${SERVER_ADDRESS:127.0.0.1}
+spring:
+  #  #################### SQLite 数据库 Start ####################
+#  datasource:
+#    url: jdbc:sqlite:${DB_PATH:${app.workspace:.}/data/bsball.db}
+#    driver-class-name: org.sqlite.JDBC
+#    hikari:
+#      maximum-pool-size: 3
+#      minimum-idle: 1
+#      auto-commit: false
+#  jpa:
+#    # 使用自定义方言，建表/改表时不生成 COMMENT ON（SQLite 不支持）
+#    database-platform: com.bsball.config.SQLiteNoCommentDialect
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+  #  #################### SQLite 数据库 End ####################
+
+  # #################### PostgreSQL ####################
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    driver-class-name: org.postgresql.Driver
+    druid:
+      initial-size: 2
+      min-idle: 2
+      max-active: 20
+      max-wait: 60000
+      test-while-idle: true
+      validation-query: SELECT 1
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        # 云服务器需外网访问时：allow 留空或设环境变量 DRUID_STAT_ALLOW= 空；限制 IP 可填 1.2.3.4,5.6.7.8
+        allow: ${DRUID_STAT_ALLOW:}
+        login-username: ${DRUID_LOGIN_USER:admin}
+        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.css,*.gif,*.png,*.jpg,*.ico,/druid/*"
+      filter:
+        stat:
+          enabled: true
+        wall:
+          enabled: true
+          throw-exception: false
+          config:
+            db-type: postgresql
+            none-base-statement-allow: true
+            strict-syntax-check: false
+            alter-table-allow: true
+            create-table-allow: true
+  jpa:
+    database-platform: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: public
+  # enabled=false：由 FlywayAfterHibernateConfiguration 在 Hibernate 建表后再 migrate（空库兼容）
+  flyway:
+    enabled: false
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
+    user: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    locations: classpath:db/migration/postgresql
+    baseline-on-migrate: true
+    baseline-version: 0
+    # 允许执行「版本号小于当前库已应用最大版本」的未执行脚本（例如后发合并里带了更早时间戳的迁移，如 V20260410180000）
+    out-of-order: true
+  #  #################### PostgreSQL 数据库 End ####################
+
+  #  #################### MySQL 数据库 Start ####################
+#  datasource:
+#    type: com.alibaba.druid.pool.DruidDataSource
+#    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:bsball}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+#    username: ${DB_USER:root}
+#    password: ${DB_PASSWORD:123456}
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    druid:
+#      default-auto-commit: false
+#      initial-size: 2
+#      min-idle: 2
+#      max-active: 20
+#      max-wait: 60000
+#      test-while-idle: true
+#      validation-query: SELECT 1
+#      stat-view-servlet:
+#        enabled: true
+#        url-pattern: /druid/*
+#        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
+#        login-username: ${DRUID_LOGIN_USER:admin}
+#        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+#      web-stat-filter:
+#        enabled: true
+#        url-pattern: /*
+#        exclusions: "*.js,*.css,*.gif,*.png,*.jpg,*.ico,/druid/*"
+#      filter:
+#        stat:
+#          enabled: true
+#        wall:
+#          enabled: true
+#  jpa:
+#    database-platform: org.hibernate.dialect.MySQLDialect
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+  #  #################### MySQL 数据库 End ####################
+
+  # Redis 可选：当 app.cache.type=redis 时启用
+  # data:
+  #   redis:
+  #     host: ${REDIS_HOST:localhost}
+  #     port: ${REDIS_PORT:6379}
+  #     password: ${REDIS_PASSWORD:}
+  #     database: 0
+
+# ------------------------------------------------------------------------------
+# JWT（与 application.yml 的 app.jwt 合并；prod 覆盖密钥，禁止沿用开发默认值）
+# ------------------------------------------------------------------------------
+app:
+  init:
+    import-test-data: ${APP_IMPORT_TEST_DATA:${APP_INIT_IMPORT_TEST_DATA:true}}
+    seed-tenant-id: ${APP_INIT_SEED_TENANT_ID:2}
+  upload:
+    # 生产环境上传目录（可通过 APP_UPLOAD_DIR 覆盖）
+    dir: ${APP_UPLOAD_DIR:uploads}
+  flyway:
+    run-after-hibernate: true
+  jwt:
+    # HS256 密钥 UTF-8 长度须 ≥ 32（生产环境必须通过 JWT_SECRET 环境变量覆盖）
+    # 生成示例：openssl rand -hex 32
+    secret: ${JWT_SECRET:yehQy0pZuhaDdRtP0N5R8XFBhm8hWCqJ}
+  open-platform:
+    lbs:
+      providers:
+        amap:
+          # 可通过 APP_AMAP_WEB_KEY 环境变量覆盖
+          key: ${APP_AMAP_WEB_KEY:9afe0ba888f54b558e997ba6f1448550}
+        baidu:
+          # 可通过 APP_BAIDU_MAP_AK 环境变量覆盖
+          key: ${APP_BAIDU_MAP_AK:EDpfAn3kTcZptsHfX9X1zoU3dKT2Zsu8}
+        tencent:
+          # 可通过 APP_TENCENT_MAP_KEY 环境变量覆盖
+          key: ${APP_TENCENT_MAP_KEY:4EABZ-MQ3CX-FUV4F-ZH2UH-ZR665-FZFGT}
+        interface-box:
+          enabled: ${APP_INTERFACE_BOX_ENABLED:true}
+          key: ${APP_INTERFACE_BOX_KEY:82df5f28491f6750e1184b12e8366526}
+          id: ${APP_INTERFACE_BOX_ID:10015630}
+  # 短信服务（阿里云短信）
+  # 所有配置项均有默认值，可通过环境变量可选覆盖
+  sms:
+    enabled: ${APP_SMS_ENABLED:true}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:LTAI5t8hgmnsEu6k4RguEgs6}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:FnXY9Nwc2unJYKrMS3w6NF2pHZKKxG}
+    sign-name: ${ALIYUN_SMS_SIGN_NAME:广州康胜体育管理}
+    template-code-register: ${ALIYUN_SMS_TEMPLATE_REGISTER:SMS_508140178}
+    template-code-login: ${ALIYUN_SMS_TEMPLATE_LOGIN:SMS_508265171}
+    template-code-reset-password: ${ALIYUN_SMS_TEMPLATE_RESET_PASSWORD:}
+  # 气象抓取：按 cron 拉取第三方 JSONP 并转换为 GeoJSON 文件
+  weather-fetch:
+    cron: ${APP_WEATHER_FETCH_CRON:0 */30 * * * *}
+    save-dir: ${APP_WEATHER_FETCH_SAVE_DIR:/usr/local/webapps/resources/weather}

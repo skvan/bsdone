@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.bin/
+
+# Build output
+dist/
+.vite/
+.vite-temp/
+
+# Runtime data
+data/
+logs/
+uploads/
+uploads-local/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Java
+*.class
+*.jar
+*.zip
+*.tar.gz
+*.gz
+# Build artifact bsball-server.jar (~85MB) is intentionally NOT tracked.
+# Deploy it out-of-band; do not re-add, it bloats the whole repo history.
+
+# Decompiled intermediate (keep final source only)
+bsball-cfr-clean/
+bsball-cfr-inner/
+bsball-fernflower-output/
+bsball-inner-classes/
+bsball-inner-src/
+bsball-extracted/
+BOOT-INF/
+cfr.jar
+bsball-classes-only.jar
+
+# Database backup (optional, large file)
+# bsball_backup.sql
+
+# Environment
+.env
+.env.local

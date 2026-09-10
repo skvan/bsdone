@@ -1,0 +1,1 @@
+import{mr as m,tr as l}from"./element-plus-QVmext20.js";var n="html-scroll-locked",t=0;function r(){t++,t===1&&document.documentElement.classList.add(n)}function o(){t<=0||(t--,t===0&&document.documentElement.classList.remove(n))}function a(e){m(e,c=>{c?r():o()},{immediate:!0}),l(()=>{e.value&&o()})}export{a as t};
