@@ -1,0 +1,48 @@
+name: "功能需求"
+description: "提出一个现在还没有的新功能、新玩法或新页面"
+labels: ["功能"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 说说你的想法
+        把需求写清楚，评估后会安排排期。
+
+  - type: input
+    id: want
+    attributes:
+      label: "你想要什么功能？"
+      placeholder: "例如：增加比赛数据导出 Excel 的功能"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: "为什么要它？"
+      description: "什么场景下会用到它？它能帮你解决什么问题？"
+      placeholder: "例如：每次比赛后需要把数据发给教练组，现在只能手动抄"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: "你期望的效果（可选）"
+      description: "可以描述理想中的样子，或贴上参考截图"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: "重要程度"
+      description: "拿不准就选「不确定」，负责人会帮忙评估"
+      options:
+        - "很需要，没有它工作受影响"
+        - "需要，有它效率更高"
+        - "有更好，没有也行"
+        - "以后再说"
+        - "不确定"
+    validations:
+      required: true
