@@ -49,3 +49,13 @@ bsball-classes-only.jar
 # Environment
 .env
 .env.local
+
+# Local developer artifacts (never commit)
+askpass.cmd
+/*.ps1
+/*.png
+compile_*.txt
+*.bak
+
+# Qoder IDE local cache
+.qoder/
