@@ -1,5 +1,6 @@
-# BsBall 棒垒球赛事数据管理平台
+# BSD棒垒球数据平台
 
+> **简体中文** | [繁體中文](README.zh-TW.md)  
 > 线上环境：<https://www.bsdone.com>
 
 赛事实时录入、球员与球队管理、比赛数据统计、多租户架构的棒球 / 垒球数据管理平台。
@@ -21,7 +22,7 @@
 
 ## 开发者入口
 
-- 技术架构 / 部署配置 / 服务器信息：[PROJECT_README.md](PROJECT_README.md)
+- 技术架构 / 部署配置 / 服务器信息：[简体版](PROJECT_README.md) / [繁體版](PROJECT_README.zh-TW.md)
 - AI 协作规范：[AGENTS.md](AGENTS.md)
 
 ### 分支策略（版本驱动）
