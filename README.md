@@ -23,6 +23,7 @@
 ## 开发者入口
 
 - 技术架构 / 部署配置 / 服务器信息：[简体版](PROJECT_README.md) / [繁體版](PROJECT_README.zh-TW.md)
+- 深度技术参考（API 接口 / 数据模型）：[docs/tech](docs/tech/README.md)
 - AI 协作规范：[AGENTS.md](AGENTS.md)
 
 ### 分支策略（版本驱动）
