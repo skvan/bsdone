@@ -12,7 +12,7 @@
 ## 專案結構
 
 ```
-C:\Users\Clay\Qoder\
+bsdone/                      # 專案根目錄
 ├── bsball-backend/          # Java 後端源碼
 │   ├── src/main/java/com/bsball/
 │   │   ├── api/             # REST API 控制器
@@ -153,12 +153,8 @@ C:\Users\Clay\Qoder\
 ## 常用指令
 
 ```bash
-# 設置環境變量（Windows PowerShell）
-$env:JAVA_HOME = "C:\Users\Clay\java\jdk-17"
-$env:Path = "C:\Users\Clay\java\jdk-17\bin;C:\Users\Clay\Downloads\apache-maven-3.6.3-bin\apache-maven-3.6.3\bin;$env:Path"
-
-# 後端編譯
-cd C:\Users\Clay\Qoder\bsball-backend
+# 後端編譯（在專案根目錄執行）
+cd bsball-backend
 mvn compile
 
 # 後端運行
@@ -171,5 +167,5 @@ mvn package -DskipTests
 ## 注意事項
 
 - 阿里雲服務器上的檔案為生產版本，**不對阿里雲的檔案做任何變動**
-- 本地開發環境為 Windows，JDK 17 位於 `C:\Users\Clay\java\jdk-17`
-- Maven 3.6.3 位於 `C:\Users\Clay\Downloads\apache-maven-3.6.3-bin\apache-maven-3.6.3`
+- 本地需自行安裝 JDK 17 與 Maven 3.6+，確保 `java`、`mvn` 已加入 PATH
+- 每位開發者使用自己的本地環境路徑，**不要將個人路徑寫入倉庫任何檔案**
