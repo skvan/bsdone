@@ -1,0 +1,38 @@
+name: "日常任务"
+description: "不涉及产品功能的杂项工作：更新资料、检查配置、整理文档等"
+labels: ["任务"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 一件要做的事
+        非产品功能类的工作用这个模板登记，避免口头交代后遗忘。
+
+  - type: input
+    id: what
+    attributes:
+      label: "要做什么？"
+      placeholder: "例如：把青训梯队的球员名单更新到系统里"
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: "做到什么程度算完成？（可选）"
+      placeholder: "例如：名单里的 20 名球员都能在球队页面看到"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: "紧急程度"
+      description: "拿不准就选「不确定」，负责人会帮忙评估"
+      options:
+        - "尽快（一周内）"
+        - "本版本内完成"
+        - "不急"
+        - "不确定"
+    validations:
+      required: true

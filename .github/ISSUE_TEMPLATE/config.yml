@@ -1,0 +1,6 @@
+# 允许成员创建空白 Issue（当三种模板都不合适时）
+blank_issues_enabled: true
+contact_links:
+  - name: "使用指南（先看这里）"
+    url: "https://github.com/skvan/bsdone/blob/main/docs/PROJECT_MANAGEMENT.md"
+    about: "看板怎么用、标签怎么选、任务怎么提"

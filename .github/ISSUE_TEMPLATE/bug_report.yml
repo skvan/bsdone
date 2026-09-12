@@ -1,0 +1,69 @@
+name: "缺陷报告"
+description: "报告一个坏了、报错或显示不对的现有功能"
+labels: ["缺陷"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 感谢反馈！
+        请尽量把下面几项填完整，这样我们能更快定位和修复。
+
+  - type: input
+    id: where
+    attributes:
+      label: "哪里出了问题？"
+      description: "出问题的页面或功能名称"
+      placeholder: "例如：登录页面 / 比赛比分页 / 球队管理"
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: "发生了什么？"
+      description: "描述你看到的现象。如果有报错提示，请把文字一并复制过来"
+      placeholder: "例如：点击「登录」按钮后，页面没有任何反应"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "你期望发生什么？"
+      placeholder: "例如：应该登录成功，跳转到首页"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "怎么操作会重现？（可选）"
+      description: "一步一步写下来，能大幅加快修复速度"
+      placeholder: |
+        1. 打开 xxx 页面
+        2. 点击 xxx 按钮
+        3. 看到 xxx
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "截图（可选）"
+      description: "截图可以直接拖拽或粘贴到这里"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: "影响程度"
+      description: "拿不准就选「不确定」，负责人会帮忙评估"
+      options:
+        - "所有人都用不了（紧急）"
+        - "严重影响使用，但有临时办法（高）"
+        - "有影响，但不着急（中）"
+        - "轻微问题，有空再修（低）"
+        - "不确定"
+    validations:
+      required: true
