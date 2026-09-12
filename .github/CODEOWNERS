@@ -1,0 +1,13 @@
+# CODEOWNERS — 代码审核规则
+# 默认所有文件变更都需要 skvan 审核
+*   @skvan
+
+# 关键配置只有 skvan 能改
+bsball-backend/pom.xml                                          @skvan
+bsball-backend/src/main/resources/application-prod.yml          @skvan
+bsball-backend/src/main/resources/application.yml               @skvan
+bsball-backend/src/main/resources/application-dev.yml           @skvan
+bsball-frontend/vite.config.js                                  @skvan
+bsball-frontend/package.json                                    @skvan
+.github/**                                                      @skvan
+AGENTS.md                                                       @skvan

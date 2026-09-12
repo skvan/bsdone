@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'v*/dev', 'feature/**']
+  pull_request:
+    branches: [main, 'v*/dev']
+
+jobs:
+  backend-compile:
+    name: Backend Compile Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compile Backend
+        run: |
+          cd bsball-backend
+          mvn compile -q --batch-mode

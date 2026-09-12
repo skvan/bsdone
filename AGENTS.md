@@ -35,6 +35,33 @@ C:\Users\Clay\Qoder\
 5. 優先沿用現有元件、函式與工具
 6. 函式保持單一職責，避免不必要的抽象
 
+## 分支策略（重要！）
+
+本專案採用**版本驅動**的分支策略，分支與環境一一對應：
+
+| 分支 | 環境 | 說明 |
+|------|------|------|
+| `main` | 生產環境 | 阿里雲線上版本，受保護 |
+| `v{版本號}/dev` | 測試環境 | 每個版本從 main fork，集成所有人的功能 |
+| `feature/*` | 本地開發 | 每個人從對應 dev 分支 fork 的功能分支 |
+
+### 工作流
+
+1. 技術負責人從 `main` 創建版本分支（如 `v1.0/dev`）
+2. 開發者從版本分支拉功能分支：`git checkout -b feature/我的功能`
+3. 開發完成後，創建 Pull Request 合併回對應的 `v{版本號}/dev`
+4. 測試通過後，由技術負責人將 `v{版本號}/dev` 合併回 `main` 並打 Tag 發版
+
+### Git 規範
+
+- **每個功能必須開 feature 分支**，不要在 main 或 dev 分支上直接開發
+- commit message 必須以類型前綴開頭：`feat:`, `fix:`, `style:`, `refactor:`, `chore:`
+- 不要提交 `node_modules/`、`*.class`、`*.jar`、`.env` 等檔案
+- 不要修改 `application-prod.yml` 中的敏感配置
+- 不要刪除或重構現有檔案，除非任務明確要求
+- 開始工作前先 `git pull origin <對應dev分支>` 確保最新代碼
+- 不要使用 `git push --force`
+
 ## 代碼規範
 
 - 使用 TypeScript（前端）；避免使用 `any`，除非有明確理由
