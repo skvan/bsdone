@@ -56,6 +56,7 @@ askpass.cmd
 /*.png
 compile_*.txt
 *.bak
+*.orig
 
 # Qoder IDE local cache
 .qoder/
