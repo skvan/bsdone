@@ -62,12 +62,53 @@ C:\Users\Clay\Qoder\
 - 開始工作前先 `git pull origin <對應dev分支>` 確保最新代碼
 - 不要使用 `git push --force`
 
-## 代碼規範
+## 編碼規範（重要！所有 AI 生成代碼必須遵守）
 
-- 使用 TypeScript（前端）；避免使用 `any`，除非有明確理由
-- 不要留下註解掉的程式碼或除錯輸出
-- 新增公開函式或重要邏輯時，補上必要文件
-- 不要手動修改自動產生的檔案
+### 命名約定
+
+| 類型 | 風格 | 示例 |
+|------|------|------|
+| Java 變量 / 方法 | camelCase | `getPlayerStats`, `teamName` |
+| Java 類名 | PascalCase | `GameService`, `PlayerApi` |
+| Java 常量 | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`, `DEFAULT_PAGE_SIZE` |
+| 數據庫表名 / 欄位 | snake_case | `player_stats`, `created_at` |
+| 前端變量 / 函數 | camelCase | `fetchGameData`, `isActive` |
+| CSS 類名 | kebab-case | `game-card`, `player-avatar` |
+| API 路由 | kebab-case | `/hit-spray/record`, `/sys-user/list` |
+| Flyway 遷移腳本 | `V{版本}__{描述}.sql` | `V12__add_player_stats.sql` |
+
+### 檔案組織
+
+- 新增 API 控制器 → `api/` 目錄，命名 `XxxApi.java`
+- 新增業務邏輯 → `service/` 目錄，命名 `XxxService.java`
+- 新增資料存取 → `repository/` 目錄，命名 `XxxRepository.java`
+- 新增實體類 → `model/entity/` 目錄
+- 新增 DTO → `model/dto/` 目錄
+- 數據庫變更 → 必須通過 Flyway migration 腳本，放 `resources/db/migration/postgresql/`
+- **禁止在已有目錄外創建新頂層目錄**，除非明確討論過
+
+### 代碼風格
+
+- 每個方法不超過 50 行，超過就拆分成更小的私有方法
+- 不要重複寫相同邏輯，抽成工具方法放 `utils/`
+- API 返回值統一用 `Result<T>` 包裝（成功 `Result.ok(...)`, 失敗 `Result.fail(...)`）
+- 列表接口統一返回 `PageResult<T>`，支持 `page`/`pageSize`/`keyword` 分頁參數
+- 需要登入的接口在方法入口讀取 `CurrentUserHolder.get()`，為空返回 401
+- CRUD 路由遵循 `/sys/{resource}/list|all|create|update/{id}|delete/{id}` 命名
+- 使用建構器注入（`@RequiredArgsConstructor`），不用 `@Autowired` 字段注入
+- 不要留下註解掉的程式碼或 `System.out.println` 除錯輸出
+- 新增公開方法時補上 Javadoc 註釋
+
+### 禁止事項
+
+- ❌ 不要自己發明新的架構模式，沿用現有代碼風格
+- ❌ 不要直接修改已編譯的前端產物（`bsball_project/webapps/assets/`）
+- ❌ 不要在代碼中硬編碼密碼、密鑰、服務器地址
+- ❌ 不要引入新的第三方依賴，除非明確討論過
+- ❌ 不要創建與現有目錄結構不一致的新目錄
+- ❌ 不要修改 `.gitignore`、`pom.xml`、`application*.yml` 等配置文件，除非任務明確要求
+- ❌ 不要使用 `any`（前端 TypeScript），除非有明確理由並加註說明
+- ❌ 不要手動修改自動產生的檔案
 
 ## 測試與驗證
 
