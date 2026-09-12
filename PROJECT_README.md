@@ -1,134 +1,135 @@
-# BsBall 女子棒球賽系統 — 專案文件
+# BSD棒垒球数据平台 — 项目文档
 
-> **上線網址**: [www.bsdone.com](https://www.bsdone.com)  
-> **文件版本**: 2026-09-09  
-> **專案狀態**: 線上運行中（阿里雲）
+> **简体中文** | [繁體中文](PROJECT_README.zh-TW.md)  
+> **上线网址**: [www.bsdone.com](https://www.bsdone.com)  
+> **文档版本**: 2026-09-09  
+> **项目状态**: 线上运行中（阿里云）
 
 ---
 
-## 目錄
+## 目录
 
-- [1. 專案概覽](#1-專案概覽)
-- [2. 技術架構](#2-技術架構)
-- [3. 目錄結構](#3-目錄結構)
-- [4. 後端 (bsball-backend)](#4-後端-bsball-backend)
+- [1. 项目概览](#1-项目概览)
+- [2. 技术架构](#2-技术架构)
+- [3. 目录结构](#3-目录结构)
+- [4. 后端 (bsball-backend)](#4-后端-bsball-backend)
 - [5. 前端 (bsball-frontend)](#5-前端-bsball-frontend)
 - [6. 部署包 (bsball_project)](#6-部署包-bsball_project)
-- [7. 部署環境](#7-部署環境)
-- [8. 即時比賽球場 SVG](#8-即時比賽球場-svg)
-- [9. Demo 帳號功能](#9-demo-帳號功能)
-- [10. 自動守護與維護](#10-自動守護與維護)
-- [11. 已知問題與解決方案](#11-已知問題與解決方案)
+- [7. 部署环境](#7-部署环境)
+- [8. 实时比赛球场 SVG](#8-实时比赛球场-svg)
+- [9. Demo 账号功能](#9-demo-账号功能)
+- [10. 自动守护与维护](#10-自动守护与维护)
+- [11. 已知问题与解决方案](#11-已知问题与解决方案)
 
 ---
 
-## 1. 專案概覽
+## 1. 项目概览
 
-BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
+BsBall 是一套**棒球 / 垒球赛事数据管理平台**，支持：
 
-- 賽事即時錄入（Live Scoring）
-- 球員 / 球隊管理
-- 比賽數據統計（打擊、投球、守備）
-- 多租戶架構（每支隊伍 / 聯盟獨立租戶）
-- 棒球 / 壘球模式切換（共用一套球場幾何）
-- 門戶首頁 + 後台管理
-- Demo 帳號（唯讀 + 記憶體暫存錄入）
+- 赛事实时录入（Live Scoring）
+- 球员 / 球队管理
+- 比赛数据统计（打击、投球、防守）
+- 多租户架构（每支球队 / 联盟独立租户）
+- 棒球 / 垒球模式切换（共用一套球场几何）
+- 门户首页 + 后台管理
+- Demo 账号（只读 + 内存暂存录入）
 
 ---
 
-## 2. 技術架構
+## 2. 技术架构
 
 ```
 ┌─────────────┐       ┌──────────────────┐       ┌─────────────┐
 │  Nginx      │──────▶│  Spring Boot     │──────▶│ PostgreSQL  │
-│  (前端靜態 + │       │  (Java, 8080)    │       │  (資料庫)    │
+│  (前端静态 + │       │  (Java, 8080)    │       │  (数据库)    │
 │   gzip_static)│      │                  │       │             │
 └──────┬──────┘       └──────────────────┘       └─────────────┘
        │
        ▼
 ┌─────────────┐
-│  Vite 編譯   │
-│  前端產物    │
+│  Vite 编译   │
+│  前端产物    │
 │  (assets/)  │
 └─────────────┘
 ```
 
-| 層級 | 技術 | 說明 |
+| 层级 | 技术 | 说明 |
 |------|------|------|
-| **後端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6.0 編譯 | 編譯後產物，無原始 .vue 碼 |
-| **資料庫** | PostgreSQL | Flyway migration 管理 schema |
-| **反向代理** | Nginx | gzip_static on（優先返回 .gz） |
-| **部署** | 阿里雲 ECS | systemd 管理 Java 服務 |
+| **后端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
+| **前端** | Vite 6.0 编译 | 编译后产物，无原始 .vue 源码 |
+| **数据库** | PostgreSQL | Flyway migration 管理 schema |
+| **反向代理** | Nginx | gzip_static on（优先返回 .gz） |
+| **部署** | 阿里云 ECS | systemd 管理 Java 服务 |
 
 ---
 
-## 3. 目錄結構
+## 3. 目录结构
 
 ```
 Bsdone-project-backup/
-├── bsball-backend/           # 後端 Java 源碼（Spring Boot）
+├── bsball-backend/           # 后端 Java 源码（Spring Boot）
 │   ├── src/main/java/com/bsball/
-│   │   ├── api/              # REST API 控制器（55 檔）
-│   │   ├── common/           # 通用工具（13 檔）
-│   │   ├── config/           # 配置類（22 檔）
-│   │   ├── core/             # 核心邏輯（22 檔）
-│   │   ├── data/             # 資料初始化（1 檔）
-│   │   ├── exception/        # 例外處理（2 檔）
-│   │   ├── mapper/           # MyBatis Mapper（2 檔）
-│   │   ├── model/            # 資料模型 / Entity（93 檔）
+│   │   ├── api/              # REST API 控制器（55 个文件）
+│   │   ├── common/           # 通用工具（13 个文件）
+│   │   ├── config/           # 配置类（22 个文件）
+│   │   ├── core/             # 核心逻辑（22 个文件）
+│   │   ├── data/             # 数据初始化（1 个文件）
+│   │   ├── exception/        # 异常处理（2 个文件）
+│   │   ├── mapper/           # MyBatis Mapper（2 个文件）
+│   │   ├── model/            # 数据模型 / Entity（93 个文件）
 │   │   │   ├── dto/          # Data Transfer Objects
 │   │   │   ├── entity/       # JPA Entity
-│   │   │   ├── enums/        # 枚舉（比賽狀態等）
+│   │   │   ├── enums/        # 枚举（比赛状态等）
 │   │   │   └── vo/           # View Objects
-│   │   ├── mybatis/          # MyBatis 配置（1 檔）
-│   │   ├── repository/       # 資料存取層（45 檔）
-│   │   ├── service/          # 業務邏輯層（72 檔）
-│   │   ├── stats/            # 統計相關（3 檔）
-│   │   ├── util/             # 工具類（1 檔）
-│   │   ├── utils/            # 工具類（9 檔）
+│   │   ├── mybatis/          # MyBatis 配置（1 个文件）
+│   │   ├── repository/       # 数据访问层（45 个文件）
+│   │   ├── service/          # 业务逻辑层（72 个文件）
+│   │   ├── stats/            # 统计相关（3 个文件）
+│   │   ├── util/             # 工具类（1 个文件）
+│   │   ├── utils/            # 工具类（9 个文件）
 │   │   └── BsBallApplication.java  # 主入口
 │   ├── src/main/resources/
-│   │   ├── application-prod.yml    # 生產環境配置
-│   │   ├── application-dev.yml     # 開發環境配置
-│   │   ├── logback-spring.xml      # 日誌配置
+│   │   ├── application-prod.yml    # 生产环境配置
+│   │   ├── application-dev.yml     # 开发环境配置
+│   │   ├── logback-spring.xml      # 日志配置
 │   │   ├── mapper/                 # MyBatis XML
-│   │   └── db/migration/postgresql/  # Flyway 遷移腳本
-│   ├── target/                     # Maven 編譯產物
+│   │   └── db/migration/postgresql/  # Flyway 迁移脚本
+│   ├── target/                     # Maven 编译产物
 │   └── pom.xml                     # Maven 配置
 │
 ├── bsball-frontend/          # 前端工程
-│   ├── package.json          # 依賴定義
+│   ├── package.json          # 依赖定义
 │   ├── vite.config.js        # Vite 配置
-│   └── node_modules/         # npm 依賴（可重建）
+│   └── node_modules/         # npm 依赖（可重建）
 │
-├── bsball-source-full/       # 反編譯完整源碼（JAR 解壓）
-│   ├── com/bsball/           # 同後端套件結構
+├── bsball-source-full/       # 反编译完整源码（JAR 解压）
+│   ├── com/bsball/           # 同后端包结构
 │   └── org/springframework/  # Spring Framework loader
 │
 ├── bsball_project/           # 完整部署包
 │   ├── java-server/
-│   │   ├── bsball-server.jar   # 可執行 JAR
-│   │   ├── logs/               # 執行期日誌
-│   │   ├── uploads/            # 上傳檔案
-│   │   └── data/               # 執行期資料
+│   │   ├── bsball-server.jar   # 可执行 JAR
+│   │   ├── logs/               # 运行期日志
+│   │   ├── uploads/            # 上传文件
+│   │   └── data/               # 运行期数据
 │   └── webapps/
-│       ├── bs-ball/            # 前端靜態資源
-│       │   ├── assets/         # Vite 編譯產物（JS/CSS）
-│       │   ├── team-logos/     # 球隊 Logo 圖片
-│       │   ├── index.html      # 後台入口
-│       │   └── *.svg           # 球場 SVG
-│       ├── home/               # 門戶首頁
-│       ├── static/             # 共用靜態（fonts/logo）
-│       ├── index.html          # 根頁面
-│       └── portal.html         # 門戶頁面
+│       ├── bs-ball/            # 前端静态资源
+│       │   ├── assets/         # Vite 编译产物（JS/CSS）
+│       │   ├── team-logos/     # 球队 Logo 图片
+│       │   ├── index.html      # 后台入口
+│       │   └── *.svg           # 球场 SVG
+│       ├── home/               # 门户首页
+│       ├── static/             # 共用静态资源（fonts/logo）
+│       ├── index.html          # 根页面
+│       └── portal.html         # 门户页面
 │
-└── bsball_backup.dump        # 資料庫備份
+└── bsball_backup.dump        # 数据库备份
 ```
 
 ---
 
-## 4. 後端 (bsball-backend)
+## 4. 后端 (bsball-backend)
 
 ### 4.1 Maven 配置
 
@@ -139,70 +140,70 @@ Bsdone-project-backup/
 <!-- parent: spring-boot-starter-parent 4.1.0 -->
 ```
 
-### 4.2 套件說明
+### 4.2 包说明
 
-| 套件 | 檔案數 | 職責 |
+| 包 | 文件数 | 职责 |
 |------|--------|------|
 | `api` | 55 | REST 控制器（Auth、Game、Player、Team、HitSpray、Portal 等） |
-| `service` | 72 | 業務邏輯（比賽、錄入、統計、租戶管理） |
+| `service` | 72 | 业务逻辑（比赛、录入、统计、租户管理） |
 | `model` | 93 | Entity / DTO / VO / Enum |
-| `repository` | 45 | JPA Repository + 自訂查詢 |
-| `config` | 22 | Spring 配置（安全、快取、跨域、Flyway） |
-| `core` | 22 | 核心機制（權限過濾器、租戶解析、Token 管理） |
-| `common` | 13 | 通用回應、常數、工具 |
-| `utils` | 9 | 字串、日期、加密等工具 |
-| `stats` | 3 | 統計計算 |
+| `repository` | 45 | JPA Repository + 自定义查询 |
+| `config` | 22 | Spring 配置（安全、缓存、跨域、Flyway） |
+| `core` | 22 | 核心机制（权限过滤器、租户解析、Token 管理） |
+| `common` | 13 | 通用响应、常量、工具 |
+| `utils` | 9 | 字符串、日期、加密等工具 |
+| `stats` | 3 | 统计计算 |
 | `mapper` | 2 | MyBatis XML Mapper |
-| `exception` | 2 | 全域例外處理 |
+| `exception` | 2 | 全局异常处理 |
 
 ### 4.3 核心 API
 
-| 路徑 | 說明 |
+| 路径 | 说明 |
 |------|------|
-| `POST /bsball-server/auth/login` | 登入（無 /api 前綴） |
-| `GET /bsball-server/portal/settings` | 門戶設定 |
-| `/game/**` | 比賽 CRUD |
-| `/hit-spray/**` | 落點數據錄入 |
-| `/actuator/health` | 健康檢查（需鑑權） |
+| `POST /bsball-server/auth/login` | 登录（无 /api 前缀） |
+| `GET /bsball-server/portal/settings` | 门户设置 |
+| `/game/**` | 比赛 CRUD |
+| `/hit-spray/**` | 落点数据录入 |
+| `/actuator/health` | 健康检查（需鉴权） |
 
-### 4.4 多租戶架構
+### 4.4 多租户架构
 
-- 租戶碼（`tenantCode`）由前端 URL 路徑提取
-- `AuthApi` 對 `demo` 帳號特殊處理：直接返回 `tenantId=2`，不受 URL 租戶碼影響
-- Token 按租戶隔離存於 `localStorage` 的 `admin_token::<租戶碼>`
+- 租户码（`tenantCode`）由前端 URL 路径提取
+- `AuthApi` 对 `demo` 账号特殊处理：直接返回 `tenantId=2`，不受 URL 租户码影响
+- Token 按租户隔离存储于 `localStorage` 的 `admin_token::<租户码>`
 
-### 4.5 驗證碼配置
+### 4.5 验证码配置
 
-| 配置鍵 | 說明 | 預設 |
+| 配置键 | 说明 | 默认 |
 |--------|------|------|
-| `app.auth.captcha.enabled` | 是否啟用 | `true` |
-| `app.auth.captcha.type` | 類型：input/click/drag/random | `random` |
-| `app.auth.captcha.random-types` | 隨機模式候選池 | `input,click,drag` |
+| `app.auth.captcha.enabled` | 是否启用 | `true` |
+| `app.auth.captcha.type` | 类型：input/click/drag/random | `random` |
+| `app.auth.captcha.random-types` | 随机模式候选池 | `input,click,drag` |
 
-可透過環境變數 `APP_AUTH_CAPTCHA_TYPE` / `APP_AUTH_CAPTCHA_RANDOM_TYPES` 覆蓋。
+可通过环境变量 `APP_AUTH_CAPTCHA_TYPE` / `APP_AUTH_CAPTCHA_RANDOM_TYPES` 覆盖。
 
 ---
 
 ## 5. 前端 (bsball-frontend)
 
-### 5.1 現狀
+### 5.1 现状
 
-前端為 **Vite 6.0 編譯後的靜態產物**，原始 `.vue` 源碼不在備份中。
+前端为 **Vite 6.0 编译后的静态产物**，原始 `.vue` 源码不在备份中。
 
-- `package.json` 僅含 `vite` 開發依賴
-- 編譯產物位於 `bsball_project/webapps/bs-ball/assets/`
-- 主要 JS 入口：`LiveGame-Bjdd5Cir.js`（即時比賽頁面）
+- `package.json` 仅含 `vite` 开发依赖
+- 编译产物位于 `bsball_project/webapps/bs-ball/assets/`
+- 主要 JS 入口：`LiveGame-Bjdd5Cir.js`（实时比赛页面）
 - 主要 CSS：`LiveGame-Opn_XCmh.css`
 
 ### 5.2 前端修改方式
 
-因無源碼，所有修改直接在 **minified 編譯產物** 上操作：
+因无源码，所有修改直接在 **minified 编译产物** 上操作：
 
-1. `grep` 定位特徵字串
-2. Python 腳本 `assert` 精確替換（搭配上下文印出核對）
-3. `gzip -9 -c file > file.gz` 重新生成壓縮檔（Nginx gzip_static 必要）
-4. `curl --compressed` 驗證線上
-5. 瀏覽器 `Ctrl+Shift+R` 強制刷新
+1. `grep` 定位特征字符串
+2. Python 脚本 `assert` 精确替换（搭配上下文打印核对）
+3. `gzip -9 -c file > file.gz` 重新生成压缩文件（Nginx gzip_static 必需）
+4. `curl --compressed` 验证线上
+5. 浏览器 `Ctrl+Shift+R` 强制刷新
 
 ---
 
@@ -212,97 +213,97 @@ Bsdone-project-backup/
 
 ```
 java-server/
-├── bsball-server.jar    # Spring Boot 可執行 JAR（prod profile）
+├── bsball-server.jar    # Spring Boot 可执行 JAR（prod profile）
 ├── logs/                # bs-ball.log, bs-ball-error.log
-├── uploads/             # 用戶上傳（按 yyyy/MM/dd 目錄）
-└── data/                # 執行期資料
+├── uploads/             # 用户上传（按 yyyy/MM/dd 目录）
+└── data/                # 运行期数据
 ```
 
 ### 6.2 webapps
 
 ```
 webapps/
-├── index.html           # 根頁面
-├── portal.html          # 門戶首頁
-├── static/              # 共用資源（fonts, logo）
-├── home/                # 門戶子頁面
-└── bs-ball/             # 後台 + 即時比賽前端
-    ├── assets/          # JS + CSS（Vite 編譯）
-    ├── team-logos/      # 球隊 Logo
-    ├── index.html       # 後台 SPA 入口
-    └── *.svg            # 球場、頭像等 SVG
+├── index.html           # 根页面
+├── portal.html          # 门户首页
+├── static/              # 共用资源（fonts, logo）
+├── home/                # 门户子页面
+└── bs-ball/             # 后台 + 实时比赛前端
+    ├── assets/          # JS + CSS（Vite 编译）
+    ├── team-logos/      # 球队 Logo
+    ├── index.html       # 后台 SPA 入口
+    └── *.svg            # 球场、头像等 SVG
 ```
 
 ---
 
-## 7. 部署環境
+## 7. 部署环境
 
-### 7.1 阿里雲伺服器
+### 7.1 阿里云服务器
 
-| 項目 | 值 |
+| 项目 | 值 |
 |------|------|
 | IP | `8.138.99.113` |
 | OS | Linux |
-| 遠程 | SSH port 22 |
-| Java 服務路徑 | `/usr/local/java-server/` |
-| 前端靜態路徑 | `/usr/local/webapps/` |
-| 備份路徑 | `/usr/local/bsball-login-fix/` |
+| 远程 | SSH port 22 |
+| Java 服务路径 | `/usr/local/java-server/` |
+| 前端静态路径 | `/usr/local/webapps/` |
+| 备份路径 | `/usr/local/bsball-login-fix/` |
 | Nginx 配置 | `/etc/nginx/nginx.conf` |
 
-### 7.2 systemd 服務
+### 7.2 systemd 服务
 
 ```ini
 # java-server.service
 [Service]
 ExecStart=java -jar bsball-server.jar --spring.profiles.active=prod
 WorkingDirectory=/usr/local/java-server
-# 開機自啟 (enabled)、自動重啟 (auto-restart)
-# 監聽 8080, context-path=/bsball-server
+# 开机自启 (enabled)、自动重启 (auto-restart)
+# 监听 8080, context-path=/bsball-server
 ```
 
-**重啟命令**: `systemctl restart java-server`（啟動約 34 秒）
+**重启命令**: `systemctl restart java-server`（启动约 34 秒）
 
-> **⚠️ 嚴禁** `nohup java -jar &` 手動啟動——會與 systemd 進程衝突，導致 8080 端口崩潰循環。
+> **⚠️ 严禁** `nohup java -jar &` 手动启动——会与 systemd 进程冲突，导致 8080 端口崩溃循环。
 
 ### 7.3 Nginx 配置
 
 ```nginx
 root /usr/local/webapps/;
-gzip_static on;    # 優先返回 .gz 預壓縮檔
+gzip_static on;    # 优先返回 .gz 预压缩文件
 ```
 
-**關鍵**：改任何靜態檔（JS/CSS/SVG）後**必須**同步重生成 `.gz`：
+**关键**：改任何静态文件（JS/CSS/SVG）后**必须**同步重新生成 `.gz`：
 
 ```bash
 gzip -9 -c file.js > file.js.gz
 ```
 
-否則 Nginx 繼續發舊 `.gz`，改了不生效。
+否则 Nginx 继续发旧的 `.gz`，改了不生效。
 
 ---
 
-## 8. 即時比賽球場 SVG
+## 8. 实时比赛球场 SVG
 
-### 8.1 概覽
+### 8.1 概览
 
-球場 SVG 渲染於 `LiveGame-Bjdd5Cir.js`，核心參數：
+球场 SVG 渲染于 `LiveGame-Bjdd5Cir.js`，核心参数：
 
-| 參數 | 值 |
+| 参数 | 值 |
 |------|------|
 | viewBox | `-300 -150 1080 780` |
-| 本壘座標 | `(240, 555)` |
+| 本垒坐标 | `(240, 555)` |
 | 草地外野弧 | `M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z` |
-| 白線（右） | 起點 y545 → 終點 (659.5, 165.8) |
-| 白線（左） | 起點 y545 → 終點 (-179.5, 165.8) |
+| 白线（右） | 起点 y545 → 终点 (659.5, 165.8) |
+| 白线（左） | 起点 y545 → 终点 (-179.5, 165.8) |
 
-### 8.2 棒球 / 壘球模式
+### 8.2 棒球 / 垒球模式
 
-**共用一套幾何**。`gameMode` 為運行時變量（`"BASEBALL"` / `"SOFTBALL"`），同一檔案切換：
+**共用一套几何**。`gameMode` 为运行时变量（`"BASEBALL"` / `"SOFTBALL"`），同一文件切换：
 
-- 球場幾何（守備員座標、circle、白線、草地）**只有一套**，改一次即兩模式生效
-- 僅 `balls` / `strikes` 起始數分模式（壘球起手 1 球）
+- 球场几何（防守队员坐标、circle、白线、草地）**只有一套**，改一次即两模式生效
+- 仅 `balls` / `strikes` 起始数分模式（垒球起手 1 球）
 
-### 8.3 守備員座標 (Zo)
+### 8.3 防守队员坐标 (Zo)
 
 | 位置 | x | y |
 |------|---|---|
@@ -316,19 +317,19 @@ gzip -9 -c file.js > file.js.gz
 | CF | 240 | 150 |
 | RF | 405 | 230 |
 
-### 8.4 本壘區元素
+### 8.4 本垒区元素
 
-| 元素 | 參數 |
+| 元素 | 参数 |
 |------|------|
-| 內野土區 circle | `cx=240, cy=559, r=38.9`（下緣 597.9） |
+| 内野土区 circle | `cx=240, cy=559, r=38.9`（下缘 597.9） |
 | 投手丘 circle | `cx=240, cy=448, r=16` |
-| 打擊區白框（右） | `x=252, y=545, w=10, h=22` |
-| 打擊區白框（左） | `x=218, y=545, w=10, h=22` |
-| 本壘板 polygon | `233,548 247,548 247,555 240,562 233,555` |
+| 打击区白框（右） | `x=252, y=545, w=10, h=22` |
+| 打击区白框（左） | `x=218, y=545, w=10, h=22` |
+| 本垒板 polygon | `233,548 247,548 247,555 240,562 233,555` |
 
-### 8.5 擊球按鈕 (field-quick-pitch)
+### 8.5 击球按钮 (field-quick-pitch)
 
-CSS 絕對定位覆蓋（規則 9）：
+CSS 绝对定位覆盖（规则 9）：
 
 ```css
 .field-quick-pitch {
@@ -339,67 +340,67 @@ CSS 絕對定位覆蓋（規則 9）：
 }
 ```
 
-守備員字體已放大 ×1.3（defender-text 31.2px、dual 23.4px、sub 16.9px）。
+防守队员字体已放大 ×1.3（defender-text 31.2px、dual 23.4px、sub 16.9px）。
 
 ---
 
-## 9. Demo 帳號功能
+## 9. Demo 账号功能
 
-### 9.1 登入
+### 9.1 登录
 
-- **帳號**: `demo` / **密碼**: `demo`
-- 自動綁定 `tenantId=2`（demo 租戶），不受 URL tenantCode 影響
+- **账号**: `demo` / **密码**: `demo`
+- 自动绑定 `tenantId=2`（demo 租户），不受 URL tenantCode 影响
 
-### 9.2 唯讀保護
+### 9.2 只读保护
 
-採用**後端攔截寫入請求**方案：
+采用**后端拦截写入请求**方案：
 
-- `ApiPermissionFilter` 攔截 demo 用戶的所有寫入 API
-- 前端操作看起來正常（不報錯），但資料不寫入資料庫
-- 刷新頁面後改動消失
+- `ApiPermissionFilter` 拦截 demo 用户的所有写入 API
+- 前端操作看起来正常（不报错），但数据不写入数据库
+- 刷新页面后改动消失
 
-### 9.3 實時錄入（記憶體暫存）
+### 9.3 实时录入（内存暂存）
 
-允許 demo 帳號創建比賽和錄入落點，但**只存記憶體**：
+允许 demo 账号创建比赛和录入落点，但**只存内存**：
 
-| 元件 | 說明 |
+| 组件 | 说明 |
 |------|------|
-| `DemoGameStore` | `ConcurrentHashMap<Long, DemoGame>` 記憶體緩存 |
-| `GameService` | demo 用戶創建比賽生成負數 ID（`-demo-{timestamp}`） |
-| `HitSprayService` | 落點數據存記憶體 |
+| `DemoGameStore` | `ConcurrentHashMap<Long, DemoGame>` 内存缓存 |
+| `GameService` | demo 用户创建比赛生成负数 ID（`-demo-{timestamp}`） |
+| `HitSprayService` | 落点数据存内存 |
 
-> **注意**：演示數據隨服務重啟而消失。
+> **注意**：演示数据随服务重启而消失。
 
-### 9.4 DevTools 反調試守衛
+### 9.4 DevTools 反调试守卫
 
-配置鍵 `portalDevtoolsGuard`（存 `sys_config` 表）：
+配置键 `portalDevtoolsGuard`（存 `sys_config` 表）：
 
-- 偵測 DevTools 開啟時顯示全屏遮罩鎖死
-- demo / 非 admin 用戶易誤報
-- 解法：設 `portalDevtoolsGuard=false`（需 `systemctl restart java-server` 清快取）
+- 检测 DevTools 开启时显示全屏遮罩锁死
+- demo / 非 admin 用户易误报
+- 解决：设置 `portalDevtoolsGuard=false`（需 `systemctl restart java-server` 清缓存）
 
 ---
 
-## 10. 自動守護與維護
+## 10. 自动守护与维护
 
-### 10.1 門戶登入修復守護
+### 10.1 门户登录修复守护
 
 ```ini
 # bsball-login-guard.timer
-OnCalendar=*-*-* 03:30    # 每日 03:30 執行
-Persistent=true           # 錯過開機補跑
+OnCalendar=*-*-* 03:30    # 每日 03:30 执行
+Persistent=true           # 错过开机补跑
 ```
 
-腳本 `/usr/local/bsball-login-fix/bsball_login_guard.sh`：
+脚本 `/usr/local/bsball-login-fix/bsball_login_guard.sh`：
 
-- 檢查 assets 是否含登入修復標記
-- 缺失時自動調用 `apply_login_fix.sh` 重打補丁
-- 日誌寫 `/var/log/bsball-login-guard.log`（>1MB 自動截尾）
+- 检查 assets 是否含登录修复标记
+- 缺失时自动调用 `apply_login_fix.sh` 重打补丁
+- 日志写入 `/var/log/bsball-login-guard.log`（>1MB 自动截断）
 
-### 10.2 健康檢查
+### 10.2 健康检查
 
 ```bash
-# 用 demo 登入判斷服務存活（actuator/health 需鑑權返回 403）
+# 用 demo 登录判断服务存活（actuator/health 需鉴权返回 403）
 curl -s -o /dev/null -w "%{http_code}" \
   -X POST https://www.bsdone.com/bsball-server/auth/login \
   -H "Content-Type: application/json" \
@@ -407,111 +408,111 @@ curl -s -o /dev/null -w "%{http_code}" \
 # 期望: 200
 ```
 
-### 10.3 日誌查看
+### 10.3 日志查看
 
 ```bash
-# Spring Boot 日誌
+# Spring Boot 日志
 tail -f /usr/local/java-server/logs/bs-ball.log
 
 # systemd journal
 journalctl -u java-server -f
 
-# 登入守護日誌
+# 登录守护日志
 tail -20 /var/log/bsball-login-guard.log
 ```
 
 ---
 
-## 11. 已知問題與解決方案
+## 11. 已知问题与解决方案
 
 ### 11.1 前端修改不生效
 
-**原因**：Nginx `gzip_static on` 優先返回 `.gz` 檔，改了 `.js` 沒更新 `.gz`。
+**原因**：Nginx `gzip_static on` 优先返回 `.gz` 文件，改了 `.js` 没更新 `.gz`。
 
-**解法**：
+**解决**：
 
 ```bash
 gzip -9 -c file.js > file.js.gz
-# 驗證：zcat file.js.gz | grep '特徵字串'
+# 验证：zcat file.js.gz | grep '特征字符串'
 ```
 
-### 11.2 瀏覽器看到舊版
+### 11.2 浏览器看到旧版
 
-**原因**：hash 檔名不變，瀏覽器 / Safari 快取未更新。
+**原因**：hash 文件名不变，浏览器 / Safari 缓存未更新。
 
-**解法**：`Ctrl+Shift+R`（Mac `Cmd+Shift+R`）強制刷新；Safari 建議移除特定域名數據。
+**解决**：`Ctrl+Shift+R`（Mac `Cmd+Shift+R`）强制刷新；Safari 建议移除特定域名数据。
 
-### 11.3 登入後停在門戶進不去後台
+### 11.3 登录后停在门户进不去后台
 
-**原因**：前端 token 按租戶隔離（`admin_token::<租戶碼>`），門戶登入 redirect 回門戶根。
+**原因**：前端 token 按租户隔离（`admin_token::<租户码>`），门户登录 redirect 回门户根。
 
-**解法**：已打補丁——redirect 為門戶根時改寫為 `/${tenant}/admin/dashboard`。補丁由每日 timer 自動守護。
+**解决**：已打补丁——redirect 为门户根时改写为 `/${tenant}/admin/dashboard`。补丁由每日 timer 自动守护。
 
-### 11.4 Demo 前台按鈕點不了
+### 11.4 Demo 前台按钮点不了
 
-**原因**：`portalDevtoolsGuard` 反調試守衛誤報，全屏 `not-allowed` 遮罩鎖死。
+**原因**：`portalDevtoolsGuard` 反调试守卫误报，全屏 `not-allowed` 遮罩锁死。
 
-**解法**：
+**解决**：
 
 ```sql
--- sys_config 表（demo=租戶 2）
+-- sys_config 表（demo=租户 2）
 UPDATE sys_config SET config_value='false'
 WHERE tenant_id=2 AND config_key='portalDevtoolsGuard';
 ```
 
-然後 `systemctl restart java-server`（清 `@Cacheable` 快取）。
+然后 `systemctl restart java-server`（清 `@Cacheable` 缓存）。
 
-### 11.5 Spring Boot 重啟進程衝突
+### 11.5 Spring Boot 重启进程冲突
 
-**原因**：手動 `nohup java -jar &` 導致多個進程爭 8080 端口。
+**原因**：手动 `nohup java -jar &` 导致多个进程争抢 8080 端口。
 
-**解法**：
+**解决**：
 
 ```bash
-# 查看進程
+# 查看进程
 ps -ef | grep java-server
-# 只保留 systemd 管理的單一進程
+# 只保留 systemd 管理的单一进程
 systemctl restart java-server
 ```
 
-> **排查時 `grep` 要含 `java-server`**，不能只篩 `ball` / `bs` 關鍵字。
+> **排查时 `grep` 要含 `java-server`**，不能只筛 `ball` / `bs` 关键字。
 
-### 11.6 basebal-field.svg 改了沒效
+### 11.6 basebal-field.svg 改了没效果
 
-**原因**：`baseball-field.svg` 是孤立檔案，前端無引用。球場 SVG 在 `LiveGame-Bjdd5Cir.js` 內聯渲染。
+**原因**：`baseball-field.svg` 是孤立文件，前端无引用。球场 SVG 在 `LiveGame-Bjdd5Cir.js` 内联渲染。
 
-**解法**：改 `LiveGame-Bjdd5Cir.js` 中的 SVG 參數，不要動 `baseball-field.svg`。
+**解决**：改 `LiveGame-Bjdd5Cir.js` 中的 SVG 参数，不要动 `baseball-field.svg`。
 
 ---
 
-## 附錄：快速參考
+## 附录：快速参考
 
 ### 常用命令
 
 ```bash
-# 重啟服務
+# 重启服务
 systemctl restart java-server
 
-# 查看服務狀態
+# 查看服务状态
 systemctl status java-server
 
-# 查看日誌
+# 查看日志
 journalctl -u java-server --since "10 min ago"
 
-# 手動觸發登入守護
+# 手动触发登录守护
 systemctl start bsball-login-guard.service
 
-# 驗證線上 JS 內容
-curl --compressed https://www.bsdone.com/bs-ball/assets/LiveGame-Bjdd5Cir.js | grep '特徵'
+# 校验线上 JS 内容
+curl --compressed https://www.bsdone.com/bs-ball/assets/LiveGame-Bjdd5Cir.js | grep '特征'
 
 # 重新生成 gzip
 gzip -9 -c file.js > file.js.gz
 ```
 
-### 驗證碼配置
+### 验证码配置
 
 ```yaml
-# application-prod.yml 或環境變數
+# application-prod.yml 或环境变量
 app:
   auth:
     captcha:
