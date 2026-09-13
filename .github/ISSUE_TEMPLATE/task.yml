@@ -8,6 +8,18 @@ body:
         ### 一件要做的事
         非产品功能类的工作用这个模板登记，避免口头交代后遗忘。
 
+        ---
+        ### 交给 AI 做时，把下面这段一起发给它
+        ```text
+        请先阅读项目根目录的 AGENTS.md，并严格遵循其中的「单元测试」与「文档同步」规则：
+        1. 为本次改动新增/更新单元测试（JUnit 5 + Mockito，纯单元测试，不启动 Spring、不连数据库），
+           参考 bsball-backend/src/test/java/com/bsball/service/DataScopeServiceTest.java 的写法；
+        2. 按「文档同步」清单更新对应文档；README / PROJECT_README 要同时更新 .zh-TW.md 繁体版，
+           繁体版保留台湾用语；
+        3. 完成后运行 mvn test 并贴出结果；如果失败，修到通过或说明原因；
+        4. 不要修改与本次任务无关的文件。
+        ```
+
   - type: input
     id: what
     attributes:

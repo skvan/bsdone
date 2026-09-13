@@ -8,6 +8,18 @@ body:
         ### 感谢反馈！
         请尽量把下面几项填完整，这样我们能更快定位和修复。
 
+        ---
+        ### 交给 AI 修复时，把下面这段一起发给它
+        ```text
+        请先阅读项目根目录的 AGENTS.md，并严格遵循其中的「单元测试」与「文档同步」规则：
+        1. 先写一个能复现该问题的失败测试（JUnit 5 + Mockito，纯单元测试，不启动 Spring、不连数据库），
+           再修改代码；参考 bsball-backend/src/test/java/com/bsball/service/DataScopeServiceTest.java 的写法；
+        2. 按「文档同步」清单更新对应文档；README / PROJECT_README 要同时更新 .zh-TW.md 繁体版，
+           繁体版保留台湾用语；
+        3. 完成后运行 mvn test 并贴出结果；如果失败，修到通过或说明原因；
+        4. 不要修改与本次任务无关的文件。
+        ```
+
   - type: input
     id: where
     attributes:
