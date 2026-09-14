@@ -317,10 +317,10 @@ public class GameService {
         }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
-            Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId(), s -> s));
+            Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> a));
             for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
-                String key = part.getTeamId() + "_" + part.getPlayerId();
+                String key = part.getTeamId() + "_" + part.getPlayerId() + "_" + (part.getIsPitcher() == null ? 0 : part.getIsPitcher());
                 GamePlayerStat stat = existingMap.get(key);
                 Long statTid = game.getTenantId();
                 if (stat != null) {
