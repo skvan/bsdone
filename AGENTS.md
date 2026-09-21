@@ -58,7 +58,7 @@ bsdone/                      # 项目根目录
 - **每个功能必须开 feature 分支**，不要在 main 或 dev 分支上直接开发
 - commit message 必须以类型前缀开头：`feat:`, `fix:`, `style:`, `refactor:`, `docs:`, `test:`, `chore:`
 - 不要提交 `node_modules/`、`*.class`、`*.jar`、`.env` 等文件
-- 不要修改 `application-prod.yml` 中的敏感配置
+- 应用敏感配置（密码/密钥/ApiKey）不得写入仓库文件：application-*.yml 只保留空默认值 `${VAR:}`，真实值由服务器 systemd EnvironmentFile 提供（/etc/bsball/java-server.env、/etc/bsball/java-server-test.env，600 权限，不入库）
 - 不要删除或重构现有文件，除非任务明确要求
 - 开始工作前先 `git pull origin <对应dev分支>` 确保最新代码
 - 不要使用 `git push --force`
@@ -179,6 +179,7 @@ bsdone/                      # 项目根目录
 
 - 未经要求，不要新增生产环境依赖
 - **不要把 API key、密码、token 或其他机密写入代码**
+- 应用运行所需的机密通过服务器 systemd EnvironmentFile 注入（/etc/bsball/*.env），不在仓库文件中保留任何真实值
 - 不要修改 `.env` 或提交机密资料
 - 不要执行破坏性数据库操作
 - 不要为了让测试通过而移除安全检查或降低验证标准

@@ -66,7 +66,7 @@ spring:
         # 允许访问监控页的客户端 IP，仅支持数字 IP（本机用 127.0.0.1，勿写 localhost）
         allow: ${DRUID_STAT_ALLOW:127.0.0.1}
         login-username: ${DRUID_LOGIN_USER:admin}
-        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+        login-password: ${DRUID_LOGIN_PASSWORD:}
       # Web 请求统计（URI、耗时等），静态资源已排除
       web-stat-filter:
         enabled: true
@@ -136,7 +136,7 @@ spring:
 #        url-pattern: /druid/*
 #        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
 #        login-username: ${DRUID_LOGIN_USER:admin}
-#        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+#        login-password: ${DRUID_LOGIN_PASSWORD:}
 #      web-stat-filter:
 #        enabled: true
 #        url-pattern: /*
@@ -179,17 +179,17 @@ app:
       providers:
         amap:
           # 开发环境地图 API Key（可通过 APP_AMAP_WEB_KEY 环境变量覆盖）
-          key: ${APP_AMAP_WEB_KEY:9afe0ba888f54b558e997ba6f1448550}
+          key: ${APP_AMAP_WEB_KEY:}
         baidu:
           # 开发环境地图 API Key（可通过 APP_BAIDU_MAP_AK 环境变量覆盖）
-          key: ${APP_BAIDU_MAP_AK:EDpfAn3kTcZptsHfX9X1zoU3dKT2Zsu8}
+          key: ${APP_BAIDU_MAP_AK:}
         tencent:
           # 开发环境地图 API Key（可通过 APP_TENCENT_MAP_KEY 环境变量覆盖）
-          key: ${APP_TENCENT_MAP_KEY:4EABZ-MQ3CX-FUV4F-ZH2UH-ZR665-FZFGT}
+          key: ${APP_TENCENT_MAP_KEY:}
         interface-box:
           enabled: ${APP_INTERFACE_BOX_ENABLED:true}
-          key: ${APP_INTERFACE_BOX_KEY:82df5f28491f6750e1184b12e8366526}
-          id: ${APP_INTERFACE_BOX_ID:10015630}
+          key: ${APP_INTERFACE_BOX_KEY:}
+          id: ${APP_INTERFACE_BOX_ID:}
   sql:
     format: false
   # 阿里云短信（开发环境）
@@ -198,8 +198,8 @@ app:
     # 开发环境默认不真实发送（仅在日志打印验证码，不消耗短信额度）。
     # 需要联调真发时，启动加环境变量 APP_SMS_ENABLED=true 即可临时开启。
     enabled: ${APP_SMS_ENABLED:false}
-    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:LTAI5t8hgmnsEu6k4RguEgs6}
-    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:FnXY9Nwc2unJYKrMS3w6NF2pHZKKxG}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
     # 短信签名（必填，需阿里云审核通过）
     sign-name: ${ALIYUN_SMS_SIGN_NAME:广州康胜体育管理}
     # 注册验证码模板 Code（${code}/${time}）
