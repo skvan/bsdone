@@ -1,16 +1,18 @@
 # =============================================================================
 # 生产环境（spring.profiles.active=prod）
 # =============================================================================
-# PostgreSQL + Druid + JPA + Flyway。所有配置项均有默认值，
-# 可通过环境变量或启动参数可选覆盖。
+# PostgreSQL + Druid + JPA + Flyway。非敏感配置带安全默认值；
+# 敏感配置（密码/密钥/API Key）不写任何默认值，必须由运行环境注入：
+# 两个服务器单元均通过 systemd EnvironmentFile 提供
+#   /etc/bsball/java-server.env       (生产 java-server)
+#   /etc/bsball/java-server-test.env  (测试 java-server-test)
 #
-# 环境变量覆盖（均为可选）：
-#   - SERVER_ADDRESS: 服务监听地址（默认 127.0.0.1）
-#   - DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME
-#   - JWT_SECRET: JWT 签名密钥（默认已有值）
-#   - DRUID_LOGIN_PASSWORD: Druid 监控页密码
-#   - APP_SMS_ENABLED / ALIYUN_SMS_ACCESS_KEY_ID 等：短信配置（默认已有值）
-#   - APP_AMAP_WEB_KEY 等：地图 API Key（默认已有值）
+# 敏感环境变量（必填，缺失则对应功能不可用）：
+#   - DB_PASSWORD / JWT_SECRET / DRUID_LOGIN_PASSWORD
+#   - ALIYUN_SMS_ACCESS_KEY_ID / ALIYUN_SMS_ACCESS_KEY_SECRET
+#   - APP_AMAP_WEB_KEY / APP_BAIDU_MAP_AK / APP_TENCENT_MAP_KEY
+#   - APP_INTERFACE_BOX_KEY / APP_INTERFACE_BOX_ID
+# 其余配置（SERVER_ADDRESS / DB_HOST / DB_PORT / DB_USER / DB_NAME 等）可选。
 # =============================================================================
 
 logging:
@@ -42,7 +44,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     druid:
       initial-size: 2
@@ -57,7 +59,7 @@ spring:
         # 云服务器需外网访问时：allow 留空或设环境变量 DRUID_STAT_ALLOW= 空；限制 IP 可填 1.2.3.4,5.6.7.8
         allow: ${DRUID_STAT_ALLOW:}
         login-username: ${DRUID_LOGIN_USER:admin}
-        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+        login-password: ${DRUID_LOGIN_PASSWORD:}
       web-stat-filter:
         enabled: true
         url-pattern: /*
@@ -87,7 +89,7 @@ spring:
     enabled: false
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
     user: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    password: ${DB_PASSWORD:}
     locations: classpath:db/migration/postgresql
     baseline-on-migrate: true
     baseline-version: 0
@@ -115,7 +117,7 @@ spring:
 #        url-pattern: /druid/*
 #        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
 #        login-username: ${DRUID_LOGIN_USER:admin}
-#        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+#        login-password: ${DRUID_LOGIN_PASSWORD:}
 #      web-stat-filter:
 #        enabled: true
 #        url-pattern: /*
@@ -153,31 +155,30 @@ app:
   flyway:
     run-after-hibernate: true
   jwt:
-    # HS256 密钥 UTF-8 长度须 ≥ 32（生产环境必须通过 JWT_SECRET 环境变量覆盖）
+    # HS256 密钥 UTF-8 长度须 ≥ 32（必须由 JWT_SECRET 环境变量提供）
     # 生成示例：openssl rand -hex 32
-    secret: ${JWT_SECRET:yehQy0pZuhaDdRtP0N5R8XFBhm8hWCqJ}
+    secret: ${JWT_SECRET:}
   open-platform:
     lbs:
       providers:
         amap:
-          # 可通过 APP_AMAP_WEB_KEY 环境变量覆盖
-          key: ${APP_AMAP_WEB_KEY:9afe0ba888f54b558e997ba6f1448550}
+          # 由 APP_AMAP_WEB_KEY 环境变量提供（EnvironmentFile）
+          key: ${APP_AMAP_WEB_KEY:}
         baidu:
-          # 可通过 APP_BAIDU_MAP_AK 环境变量覆盖
-          key: ${APP_BAIDU_MAP_AK:EDpfAn3kTcZptsHfX9X1zoU3dKT2Zsu8}
+          # 由 APP_BAIDU_MAP_AK 环境变量提供
+          key: ${APP_BAIDU_MAP_AK:}
         tencent:
-          # 可通过 APP_TENCENT_MAP_KEY 环境变量覆盖
-          key: ${APP_TENCENT_MAP_KEY:4EABZ-MQ3CX-FUV4F-ZH2UH-ZR665-FZFGT}
+          # 由 APP_TENCENT_MAP_KEY 环境变量提供
+          key: ${APP_TENCENT_MAP_KEY:}
         interface-box:
           enabled: ${APP_INTERFACE_BOX_ENABLED:true}
-          key: ${APP_INTERFACE_BOX_KEY:82df5f28491f6750e1184b12e8366526}
-          id: ${APP_INTERFACE_BOX_ID:10015630}
-  # 短信服务（阿里云短信）
-  # 所有配置项均有默认值，可通过环境变量可选覆盖
+          key: ${APP_INTERFACE_BOX_KEY:}
+          id: ${APP_INTERFACE_BOX_ID:}
+  # 短信服务（阿里云短信）：AccessKey 必须由环境变量提供
   sms:
     enabled: ${APP_SMS_ENABLED:true}
-    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:LTAI5t8hgmnsEu6k4RguEgs6}
-    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:FnXY9Nwc2unJYKrMS3w6NF2pHZKKxG}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
     sign-name: ${ALIYUN_SMS_SIGN_NAME:广州康胜体育管理}
     template-code-register: ${ALIYUN_SMS_TEMPLATE_REGISTER:SMS_508140178}
     template-code-login: ${ALIYUN_SMS_TEMPLATE_LOGIN:SMS_508265171}
