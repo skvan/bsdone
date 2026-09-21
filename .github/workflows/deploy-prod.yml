@@ -1,0 +1,94 @@
+# Manual production deployment - triggered ONLY via the Actions tab
+# ("Run workflow" button) after typing the confirmation word.
+#
+# What it does:
+#   1. builds bsball-server jar from the CURRENT main commit (tests included)
+#   2. uploads jar + scripts/deploy-prod.sh to the server staging dir
+#   3. runs the deploy script on the server: safety gate -> backup ->
+#      atomic jar swap -> restart java-server -> health check ->
+#      automatic rollback on failure
+#
+# Required repository secrets: PROD_HOST, PROD_USER, PROD_SSH_KEY
+name: Deploy Production (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm (this restarts the production service)'
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy backend to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Confirm guard
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY" ]; then
+            echo "::error::confirmation input must be exactly DEPLOY - aborting"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build backend jar (tests included)
+        run: |
+          cd bsball-backend
+          mvn clean package --batch-mode
+          echo "== jar md5 =="
+          md5sum target/bsball-server-1.0.0.jar
+
+      - name: Upload jar artifact (rollback evidence)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsball-server-jar
+          path: bsball-backend/target/bsball-server-1.0.0.jar
+          retention-days: 30
+
+      - name: Prepare SSH and staging dir
+        env:
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$PROD_USER@$PROD_HOST" \
+            'mkdir -p /root/deploy-prod/staging && echo STAGING_READY'
+
+      - name: Upload jar + deploy script
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          scp -i ~/.ssh/id_deploy \
+            bsball-backend/target/bsball-server-1.0.0.jar \
+            "$PROD_USER@$PROD_HOST:/root/deploy-prod/staging/bsball-server-1.0.0.jar.new"
+          scp -i ~/.ssh/id_deploy \
+            scripts/deploy-prod.sh \
+            "$PROD_USER@$PROD_HOST:/root/deploy-prod/staging/deploy-prod.sh.new"
+
+      - name: Deploy on server (safety gate -> swap -> restart -> health -> rollback)
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$PROD_USER@$PROD_HOST" \
+            'bash -n /root/deploy-prod/staging/deploy-prod.sh.new && bash /root/deploy-prod/staging/deploy-prod.sh.new'

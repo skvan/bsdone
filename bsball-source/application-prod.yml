@@ -42,7 +42,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     druid:
       initial-size: 2
@@ -57,7 +57,7 @@ spring:
         # 云服务器需外网访问时：allow 留空或设环境变量 DRUID_STAT_ALLOW= 空；限制 IP 可填 1.2.3.4,5.6.7.8
         allow: ${DRUID_STAT_ALLOW:}
         login-username: ${DRUID_LOGIN_USER:admin}
-        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+        login-password: ${DRUID_LOGIN_PASSWORD:}
       web-stat-filter:
         enabled: true
         url-pattern: /*
@@ -87,7 +87,7 @@ spring:
     enabled: false
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bsball}?reWriteBatchedInserts=true
     user: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:DrYCLl6dcp7jTiX8VobU}
+    password: ${DB_PASSWORD:}
     locations: classpath:db/migration/postgresql
     baseline-on-migrate: true
     baseline-version: 0
@@ -115,7 +115,7 @@ spring:
 #        url-pattern: /druid/*
 #        allow: ${DRUID_STAT_ALLOW:127.0.0.1}
 #        login-username: ${DRUID_LOGIN_USER:admin}
-#        login-password: ${DRUID_LOGIN_PASSWORD:admin_druid}
+#        login-password: ${DRUID_LOGIN_PASSWORD:}
 #      web-stat-filter:
 #        enabled: true
 #        url-pattern: /*
@@ -155,29 +155,29 @@ app:
   jwt:
     # HS256 密钥 UTF-8 长度须 ≥ 32（生产环境必须通过 JWT_SECRET 环境变量覆盖）
     # 生成示例：openssl rand -hex 32
-    secret: ${JWT_SECRET:yehQy0pZuhaDdRtP0N5R8XFBhm8hWCqJ}
+    secret: ${JWT_SECRET:}
   open-platform:
     lbs:
       providers:
         amap:
           # 可通过 APP_AMAP_WEB_KEY 环境变量覆盖
-          key: ${APP_AMAP_WEB_KEY:9afe0ba888f54b558e997ba6f1448550}
+          key: ${APP_AMAP_WEB_KEY:}
         baidu:
           # 可通过 APP_BAIDU_MAP_AK 环境变量覆盖
-          key: ${APP_BAIDU_MAP_AK:EDpfAn3kTcZptsHfX9X1zoU3dKT2Zsu8}
+          key: ${APP_BAIDU_MAP_AK:}
         tencent:
           # 可通过 APP_TENCENT_MAP_KEY 环境变量覆盖
-          key: ${APP_TENCENT_MAP_KEY:4EABZ-MQ3CX-FUV4F-ZH2UH-ZR665-FZFGT}
+          key: ${APP_TENCENT_MAP_KEY:}
         interface-box:
           enabled: ${APP_INTERFACE_BOX_ENABLED:true}
-          key: ${APP_INTERFACE_BOX_KEY:82df5f28491f6750e1184b12e8366526}
-          id: ${APP_INTERFACE_BOX_ID:10015630}
+          key: ${APP_INTERFACE_BOX_KEY:}
+          id: ${APP_INTERFACE_BOX_ID:}
   # 短信服务（阿里云短信）
   # 所有配置项均有默认值，可通过环境变量可选覆盖
   sms:
     enabled: ${APP_SMS_ENABLED:true}
-    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:LTAI5t8hgmnsEu6k4RguEgs6}
-    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:FnXY9Nwc2unJYKrMS3w6NF2pHZKKxG}
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
     sign-name: ${ALIYUN_SMS_SIGN_NAME:广州康胜体育管理}
     template-code-register: ${ALIYUN_SMS_TEMPLATE_REGISTER:SMS_508140178}
     template-code-login: ${ALIYUN_SMS_TEMPLATE_LOGIN:SMS_508265171}
