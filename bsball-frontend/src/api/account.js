@@ -7,6 +7,8 @@ export const accountApi = {
   register: (data) => post('/api/auth/register', data),
   loginByPhone: (data) => post('/api/auth/login-by-phone', data),
   getProfile: () => get('/api/account/profile'),
+  // 当前用户信息（App 启动时恢复登录态；编译产物 authApi.me）
+  me: () => get('/api/auth/me'),
   updateProfile: (data) => put('/api/account/profile', data),
   sendEmailCode: (data) => post('/api/account/email/send-code', data),
   bindEmail: (data) => post('/api/account/email/bind', data),

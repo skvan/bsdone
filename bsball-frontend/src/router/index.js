@@ -1,10 +1,12 @@
 // 路由骨架（B1）—— 按 B0 提取契约（out/contracts/routes.md，99 条）全量注册
 // 约定：
 //  - 未迁移页面统一指向 PlaceholderView；meta.plannedComponent 记录计划组件（后续批次按此替换）
-//  - meta.requiresAuth 标记管理端路由（登录守卫在 B1-b 落地）
+//  - meta.requiresAuth 标记管理端路由（守卫见 ./guards.js，B1-b 已落地）
 //  - 门户端 /:tenantCode 为用户侧；/docs、/404、/service-unavailable 为平台级页面
 import { createRouter, createWebHistory } from 'vue-router';
 import PlaceholderView from '../views/placeholder/PlaceholderView.vue';
+import TenantShell from '../layouts/TenantShell.vue';
+import { installRouterGuards } from './guards';
 
 // 占位路由工厂
 function ph(plannedComponent, extraMeta = {}) {
@@ -34,7 +36,7 @@ const router = createRouter({
     {
       path: '/:tenantCode',
       name: 'TenantShell',
-      ...ph('TenantShell'),
+      component: TenantShell,
       children: [
         { path: '', name: 'TenantIndex', redirect: { name: 'PortalHome' } },
         { path: 'article', name: 'PortalArticleList', ...ph('News') },
@@ -119,5 +121,7 @@ const router = createRouter({
     { path: '/:pathMatch(.*)*', name: 'NotFoundCatchAll', redirect: '/404' }
   ]
 });
+
+installRouterGuards(router);
 
 export default router;
