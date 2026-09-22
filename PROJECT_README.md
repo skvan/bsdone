@@ -57,7 +57,7 @@ BsBall 是一套**棒球 / 垒球赛事数据管理平台**，支持：
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | **后端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6.0 编译 | 编译后产物，无原始 .vue 源码 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 源码重建中（`bsball-frontend/`，分批次实施）；生产仍为编译产物 |
 | **数据库** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（优先返回 .gz） |
 | **部署** | 阿里云 ECS | systemd 管理 Java 服务 |
@@ -98,9 +98,12 @@ Bsdone-project-backup/
 │   ├── target/                     # Maven 编译产物
 │   └── pom.xml                     # Maven 配置
 │
-├── bsball-frontend/          # 前端工程
-│   ├── package.json          # 依赖定义
-│   ├── vite.config.js        # Vite 配置
+├── bsball-frontend/          # 前端源码工程（Vite + Vue 3 + Element Plus）
+│   ├── index.html            # SPA 入口（base=/bs-ball/）
+│   ├── src/                  # 源码（router/views/... 随批次建设）
+│   ├── scripts/              # 打包脚本（package-webapps.mjs）
+│   ├── vite.config.js        # 正式构建配置（npm run dev/build/package）
+│   ├── vite.legacy-preview.config.js  # 旧编译版对照预览（npm run preview:legacy，3001）
 │   └── node_modules/         # npm 依赖（可重建）
 │
 ├── bsball-source-full/       # 反编译完整源码（JAR 解压）
@@ -186,18 +189,26 @@ Bsdone-project-backup/
 
 ## 5. 前端 (bsball-frontend)
 
-### 5.1 现状
+### 5.1 现状（源码重建中，2026-09 起）
 
-前端为 **Vite 6.0 编译后的静态产物**，原始 `.vue` 源码不在备份中。
+原始 `.vue` 源码缺失（历史仓库与上游均无、无 source map），现以 **编译产物为规格** 分批次重建源码工程：
 
-- `package.json` 仅含 `vite` 开发依赖
-- 编译产物位于 `bsball_project/webapps/bs-ball/assets/`
-- 主要 JS 入口：`LiveGame-Bjdd5Cir.js`（实时比赛页面）
-- 主要 CSS：`LiveGame-Opn_XCmh.css`
+- 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router，`base=/bs-ball/`）
+- 批次：B0 工程化 → B1 骨架与契约底座 → B2 认证族 → B3 标准 CRUD 族 → B4 领域族 → B5 LiveGame 家族
+- 生产环境在切换前仍为原编译产物（`bsball_project/webapps/`，只读对照基线）
 
-### 5.2 前端修改方式
+### 5.2 开发与对照
 
-因无源码，所有修改直接在 **minified 编译产物** 上操作：
+```bash
+cd bsball-frontend
+npm run dev              # 新工程开发服务器（3000，/bsball-server 代理到本地后端 8080）
+npm run preview:legacy   # 旧编译版对照预览（3001）
+npm run package          # 构建 + 打包 webapps-dev.tar.gz（部署包约定：顶层含 webapps/）
+```
+
+### 5.3 过渡期（生产仍为编译版时）的应急修改方式
+
+在重建完成、生产切换之前，如必须快速修复线上旧版，仍沿用「直接修改编译产物」流程（过渡手段）：
 
 1. `grep` 定位特征字符串
 2. Python 脚本 `assert` 精确替换（搭配上下文打印核对）
