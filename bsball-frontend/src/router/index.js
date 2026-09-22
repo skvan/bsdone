@@ -6,7 +6,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import PlaceholderView from '../views/placeholder/PlaceholderView.vue';
 import TenantShell from '../layouts/TenantShell.vue';
+import AdminLayout from '../components/admin/AdminLayout.js';
 import { installRouterGuards } from './guards';
+import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
 // 占位路由工厂
 function ph(plannedComponent, extraMeta = {}) {
@@ -60,7 +62,8 @@ const router = createRouter({
         {
           path: 'admin',
           name: 'AdminRoot',
-          ...ph('AdminLayout', { requiresAuth: true }),
+          component: AdminLayout,
+          meta: { requiresAuth: true },
           children: [
             { path: '', redirect: { name: 'AdminDashboard' } },
             adminChild('dashboard', 'AdminDashboard', 'Dashboard'),
@@ -121,6 +124,19 @@ const router = createRouter({
     { path: '/:pathMatch(.*)*', name: 'NotFoundCatchAll', redirect: '/404' }
   ]
 });
+
+// 回填原版 meta 标题（页面标题/标签页标题/面包屑末级）
+function applyLegacyMeta(records) {
+  for (const record of records || []) {
+    if (record.name) {
+      record.meta = record.meta || {};
+      if (record.meta.title == null && ROUTE_TITLES[record.name]) record.meta.title = ROUTE_TITLES[record.name];
+      if (record.meta.titleKey == null && ROUTE_TITLE_KEYS[record.name]) record.meta.titleKey = ROUTE_TITLE_KEYS[record.name];
+    }
+    if (record.children) applyLegacyMeta(record.children);
+  }
+}
+applyLegacyMeta(router.options.routes);
 
 installRouterGuards(router);
 
