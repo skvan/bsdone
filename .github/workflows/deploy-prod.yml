@@ -27,7 +27,7 @@ jobs:
   deploy:
     name: Build and deploy backend to production
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Confirm guard
         run: |
@@ -73,17 +73,62 @@ jobs:
           ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$PROD_USER@$PROD_HOST" \
             'mkdir -p /root/deploy-prod/staging && echo STAGING_READY'
 
-      - name: Upload jar + deploy script
+      - name: Upload jar (chunked, parallel, retries) + deploy script
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_USER: ${{ secrets.PROD_USER }}
         run: |
-          scp -i ~/.ssh/id_deploy \
-            bsball-backend/target/bsball-server-1.0.0.jar \
-            "$PROD_USER@$PROD_HOST:/root/deploy-prod/staging/bsball-server-1.0.0.jar.new"
-          scp -i ~/.ssh/id_deploy \
-            scripts/deploy-prod.sh \
-            "$PROD_USER@$PROD_HOST:/root/deploy-prod/staging/deploy-prod.sh.new"
+          set -e
+          STAGE=/root/deploy-prod/staging
+          JAR=bsball-backend/target/bsball-server-1.0.0.jar
+          KEY=$HOME/.ssh/id_deploy
+          TARGET="$PROD_USER@$PROD_HOST"
+          SCP_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=15"
+
+          echo "== small file first: deploy script =="
+          scp -i "$KEY" $SCP_OPTS scripts/deploy-prod.sh "$TARGET:$STAGE/deploy-prod.sh.new"
+
+          echo "== big file: chunked parallel upload (6MB x 4 connections, per-chunk retries) =="
+          echo "(single 84MB scp to a cross-border host stalled on 2026-09-21;"
+          echo " short parallel chunks with retries are stable)"
+          LOCAL_MD5=$(md5sum "$JAR" | cut -d' ' -f1)
+          echo "local jar md5: $LOCAL_MD5"
+          split -b 6m -d -a 2 "$JAR" /tmp/chunk_
+          CHUNKS=$(ls /tmp/chunk_* | wc -l)
+          echo "split into $CHUNKS chunks"
+
+          upload_chunk() {
+            local f="$1" t
+            for t in 1 2 3 4 5; do
+              if scp -i "$KEY" $SCP_OPTS "$f" "$TARGET:$STAGE/parts/"; then
+                return 0
+              fi
+              echo "  retry $t for $(basename "$f")"
+              sleep 3
+            done
+            echo "  FATAL: $(basename "$f") failed after 5 attempts"
+            return 1
+          }
+          export -f upload_chunk
+          export KEY TARGET STAGE SCP_OPTS
+
+          ssh -i "$KEY" $SCP_OPTS "$TARGET" "rm -rf $STAGE/parts && mkdir -p $STAGE/parts"
+          ls /tmp/chunk_* | xargs -P 4 -I {} bash -c 'upload_chunk "$1"' _ {}
+
+          echo "== assembling remotely + verifying md5 =="
+          REMOTE_PARTS=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "ls $STAGE/parts | wc -l")
+          echo "remote parts: $REMOTE_PARTS (expect $CHUNKS)"
+          if [ "$REMOTE_PARTS" != "$CHUNKS" ]; then
+            echo "::error::chunk count mismatch after upload"
+            exit 1
+          fi
+          REMOTE_MD5=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "cd $STAGE/parts && cat chunk_* > $STAGE/bsball-server-1.0.0.jar.new && cd $STAGE && rm -rf parts && md5sum bsball-server-1.0.0.jar.new | cut -d' ' -f1")
+          echo "remote jar md5: $REMOTE_MD5"
+          if [ "$REMOTE_MD5" != "$LOCAL_MD5" ]; then
+            echo "::error::jar md5 mismatch after chunked upload (local=$LOCAL_MD5 remote=$REMOTE_MD5)"
+            exit 1
+          fi
+          echo "chunked upload verified OK"
 
       - name: Deploy on server (safety gate -> swap -> restart -> health -> rollback)
         env:
