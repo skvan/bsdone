@@ -149,10 +149,12 @@ if [ -f "$FRONT_NEW" ]; then
     chown -R root:root "$FRONT_DIR" 2>/dev/null || true
     chmod -R a+rX "$FRONT_DIR" || true
 
-    FS1=$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' http://127.0.0.1/)
-    FS2=$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' http://127.0.0.1/portal.html)
-    FS3=$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' http://127.0.0.1/bs-ball/bs-ball)
-    echo "frontend smoke: / -> $FS1  /portal.html -> $FS2  /bs-ball/bs-ball -> $FS3 (expect 200)"
+    # NOTE: nginx always 301-redirects http -> https for bsdone.com, so probe
+    # https directly (-k skips the local cert check) to assert real content.
+    FS1=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/)
+    FS2=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/portal.html)
+    FS3=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/bs-ball)
+    echo "frontend smoke(https): / -> $FS1  /portal.html -> $FS2  /bs-ball/bs-ball -> $FS3 (expect 200)"
     if [ "$FS1" = "200" ] && [ "$FS2" = "200" ] && [ "$FS3" = "200" ]; then
         rm -rf "$OLD"
         mv -f "$FRONT_NEW" "$STAGING/webapps-prod.tar.gz.deployed-$STAMP" || true
@@ -166,7 +168,7 @@ if [ -f "$FRONT_NEW" ]; then
         done
         mv "$FRONT_DIR" "$FRONT_DIR.failed-$STAMP" 2>/dev/null || true
         mv "$OLD" "$FRONT_DIR" || echo "!! frontend rollback move failed - MANUAL ATTENTION"
-        RC2=$(curl -s -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' http://127.0.0.1/)
+        RC2=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/)
         echo "rollback frontend smoke / -> $RC2"
         fail "frontend smoke failed - frontend rolled back"
     fi
