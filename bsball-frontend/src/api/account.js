@@ -1,6 +1,13 @@
 // 账户与认证 API —— 行为与端点移植自编译产物 account chunk（B0 契约）
 import { get, post, put } from './request';
 
+// 认证 API（编译产物 authApi：管理台租户切换/当前用户/改密）
+export const authApi = {
+  me: () => get('/api/auth/me'),
+  switchTenant: (tenantId) => post('/api/auth/switch-tenant', { tenantId }),
+  changePassword: (data) => post('/api/auth/change-password', data)
+};
+
 export const accountApi = {
   legalDocs: () => get('/api/auth/legal-docs'),
   sendSms: (data) => post('/api/auth/sms/send', data),

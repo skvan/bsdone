@@ -103,5 +103,16 @@ export const useAppConfigStore = defineStore('appConfig', () => {
   // 站点名称（标题拼接用；无配置时回退默认）
   const siteName = computed(() => config.value?.siteName || DEFAULT_APP_CONFIG.siteName);
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant };
+  // 管理台标题（adminTitle 优先，回退默认值；对应编译产物 getAdminTitle）
+  function getAdminTitle() {
+    return config.value?.adminTitle || DEFAULT_APP_CONFIG.adminTitle;
+  }
+
+  // 站点资源 URL 解析（相对路径补 /bs-ball/ 前缀；对应编译产物 resolveAssetUrl）
+  function resolveAssetUrl(url) {
+    if (!url || url.startsWith('data:') || url.startsWith('http')) return url;
+    return '/bs-ball/'.replace(/\/+$/, '') + '/' + (url.startsWith('/') ? url.slice(1) : url);
+  }
+
+  return { config, siteName, apply, loadFromCache, load, init, initForTenant, getAdminTitle, resolveAssetUrl };
 });
