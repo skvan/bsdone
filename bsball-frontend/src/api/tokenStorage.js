@@ -1,6 +1,6 @@
 // 登录态令牌存储 —— 行为移植自编译产物 request chunk（多租户键位与迁移逻辑）
 // 键位约定：旧版全局键 admin_token / admin_user；多租户键 admin_token::<tenant> / admin_user::<tenant>
-import { DEFAULT_TENANT_CODE, tenantCodeFromUser } from '../utils/tenantRoute';
+import { DEFAULT_TENANT_CODE, tenantCodeFromUser, currentTenantCodeFromUrl } from '../utils/tenantRoute';
 
 const LEGACY_TOKEN_KEY = 'admin_token';
 const LEGACY_USER_KEY = 'admin_user';
@@ -20,6 +20,17 @@ export function setExplicitTenantCode(code) {
 
 export function getExplicitTenantCode() {
   return explicitTenantCode;
+}
+
+// 设活动租户（编译产物 setActiveTenant：路由守卫每次导航调用，内容等同于显式租户码）
+export function setActiveTenant(code) {
+  setExplicitTenantCode(code);
+}
+
+// 当前请求租户码：URL 解析 → 显式租户 → 默认（编译产物 currentTenantCode）
+export function currentTenantCode() {
+  if (typeof window === 'undefined') return DEFAULT_TENANT_CODE.toLowerCase();
+  return currentTenantCodeFromUrl()?.toLowerCase() || explicitTenantCode || DEFAULT_TENANT_CODE.toLowerCase();
 }
 
 export function tenantTokenKey(code) {

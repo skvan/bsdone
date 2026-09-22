@@ -1,0 +1,1621 @@
+{
+  "glossary": {
+    "formula": {
+      "ip": "십진 이닝 = 아웃카운트/3, 표기: 정수 이닝 + 0.0/0.1/0.2",
+      "inn": "투구 이닝(IP)과 동일한 표기(아웃카운트/3)"
+    },
+    "term": {
+      "pa": {
+        "fullName": "타석",
+        "definition": "타자가 타석에 들어선 횟수",
+        "shortLabel": "PA"
+      },
+      "gp": {
+        "fullName": "출전 경기",
+        "definition": "선수가 출전한 경기 수",
+        "shortLabel": "GP"
+      },
+      "g": {
+        "fullName": "등판 경기",
+        "definition": "투수가 최소 한 공 이상 던진 경기 수",
+        "shortLabel": "G"
+      },
+      "ab": {
+        "fullName": "타수",
+        "definition": "볼넷, 사구, 희생타 등을 제외한 공식 타수",
+        "shortLabel": "AB"
+      },
+      "oneB": {
+        "fullName": "1루타",
+        "definition": "타자가 1루까지 안전하게 진루한 안타",
+        "shortLabel": "1B"
+      },
+      "r": {
+        "fullName": "득점",
+        "definition": "주자가 홈을 밟아 기록한 점수",
+        "shortLabel": "R"
+      },
+      "h": {
+        "fullName": "안타",
+        "definition": "수비 실책 없이 타자의 타격으로 출루한 경우",
+        "shortLabel": "H"
+      },
+      "pitchH": {
+        "fullName": "피안타",
+        "definition": "투수가 허용한 안타 수",
+        "shortLabel": "H"
+      },
+      "twoB": {
+        "fullName": "2루타",
+        "definition": "타자가 2루까지 안전하게 진루한 안타",
+        "shortLabel": "2B"
+      },
+      "threeB": {
+        "fullName": "3루타",
+        "definition": "타자가 3루까지 안전하게 진루한 안타",
+        "shortLabel": "3B"
+      },
+      "hr": {
+        "fullName": "홈런",
+        "definition": "타자가 타격 후 모든 베이스를 돌아 득점한 타구",
+        "shortLabel": "HR"
+      },
+      "iphr": {
+        "fullName": "장내 홈런",
+        "definition": "공이 담장 밖으로 나가지 않아도 주자가 홈을 밟아 득점한 경우",
+        "shortLabel": "장내 홈런"
+      },
+      "pitchHr": {
+        "fullName": "피홈런",
+        "definition": "투수가 허용한 홈런 수",
+        "shortLabel": "HR"
+      },
+      "pitchInsideParkHr": {
+        "fullName": "피장내 홈런",
+        "definition": "투수가 허용한 장내 홈런 횟수",
+        "shortLabel": "IPHR"
+      },
+      "rbi": {
+        "fullName": "타점",
+        "definition": "타자의 플레이로 팀 득점이 기록된 횟수",
+        "shortLabel": "RBI"
+      },
+      "bb": {
+        "fullName": "볼넷",
+        "definition": "4구 또는 고의4구로 1루가 주어진 경우",
+        "shortLabel": "BB"
+      },
+      "pitchBb": {
+        "fullName": "볼넷 허용",
+        "definition": "투수가 허용한 볼넷 수",
+        "shortLabel": "BB"
+      },
+      "ibb": {
+        "fullName": "고의4구",
+        "definition": "타자가 고의4구로 출루한 횟수",
+        "shortLabel": "IBB"
+      },
+      "hbp": {
+        "fullName": "사구",
+        "definition": "타자가 투구에 맞아 1루가 주어진 경우",
+        "shortLabel": "HBP"
+      },
+      "hb": {
+        "fullName": "사구 허용",
+        "definition": "투수가 타자에게 사구를 허용한 횟수",
+        "shortLabel": "HB"
+      },
+      "so": {
+        "fullName": "삼진",
+        "definition": "타자가 3스트라이크로 아웃된 경우",
+        "shortLabel": "SO"
+      },
+      "pitchSo": {
+        "fullName": "탈삼진",
+        "definition": "투수가 타자를 3스트라이크로 잡아낸 횟수",
+        "shortLabel": "SO"
+      },
+      "w": {
+        "fullName": "승리",
+        "definition": "투수 재적 시 팀이 리드를 잡고 끝까지 유지한 경우",
+        "shortLabel": "W"
+      },
+      "l": {
+        "fullName": "패전",
+        "definition": "투수 재적 시 팀이 결승점을 허용해 패배한 경우",
+        "shortLabel": "L"
+      },
+      "gs": {
+        "fullName": "선발",
+        "definition": "투수가 선발로 등판한 경기 수",
+        "shortLabel": "GS"
+      },
+      "cg": {
+        "fullName": "완투",
+        "definition": "선발 투수가 교체 없이 경기 종료까지 투구",
+        "shortLabel": "CG"
+      },
+      "pg": {
+        "fullName": "완봉",
+        "definition": "투수가 완투하며 실점을 허용하지 않은 경기",
+        "shortLabel": "PG"
+      },
+      "sho": {
+        "fullName": "완봉",
+        "definition": "투수가 완투하며 실점을 허용하지 않은 경기",
+        "shortLabel": "SHO"
+      },
+      "sv": {
+        "fullName": "세이브",
+        "definition": "구원 투수가 승리를 지켜 세이브를 기록한 경우",
+        "shortLabel": "SV"
+      },
+      "svo": {
+        "fullName": "세이브 기회",
+        "definition": "세이브 요건에서 등판한 횟수",
+        "shortLabel": "SVO"
+      },
+      "ip": {
+        "fullName": "투구 이닝",
+        "definition": "투수가 기록한 아웃카운트를 3으로 나눈 이닝",
+        "shortLabel": "IP"
+      },
+      "tbf": {
+        "fullName": "상대한 타자 수",
+        "definition": "투수가 상대하여 기록한 총 타자 수",
+        "shortLabel": "TBF"
+      },
+      "bf": {
+        "fullName": "상대한 타자 수",
+        "definition": "투수가 상대하여 기록한 총 타자 수",
+        "shortLabel": "BF"
+      },
+      "pitchBf": {
+        "fullName": "상대한 타자 수",
+        "definition": "투수가 상대하여 기록한 총 타자 수",
+        "shortLabel": "BF"
+      },
+      "np": {
+        "fullName": "투구 수",
+        "definition": "투수가 던진 총 투구 수",
+        "shortLabel": "NP"
+      },
+      "pIp": {
+        "fullName": "이닝당 투구 수",
+        "definition": "이닝당 평균 투구 수",
+        "shortLabel": "P/IP"
+      },
+      "qs": {
+        "fullName": "퀄리티 스타트",
+        "definition": "선발 6이닝 이상, 자책 3점 이하 경기",
+        "shortLabel": "QS"
+      },
+      "gf": {
+        "fullName": "경기 마무리",
+        "definition": "팀의 마지막 투수로 경기를 끝낸 횟수",
+        "shortLabel": "GF"
+      },
+      "pitchR": {
+        "fullName": "실점",
+        "definition": "투수가 허용한 총 실점(자책/비자책 포함)",
+        "shortLabel": "R"
+      },
+      "er": {
+        "fullName": "자책점",
+        "definition": "투수 책임으로 기록된 실점",
+        "shortLabel": "ER"
+      },
+      "era": {
+        "fullName": "평균자책점",
+        "definition": "9이닝당 자책점 평균",
+        "shortLabel": "ERA"
+      },
+      "whip": {
+        "fullName": "이닝당 출루허용률",
+        "definition": "이닝당 볼넷+피안타 허용 비율",
+        "shortLabel": "WHIP"
+      },
+      "so9": {
+        "fullName": "9이닝당 탈삼진",
+        "definition": "9이닝 기준 평균 탈삼진 수",
+        "shortLabel": "K/9"
+      },
+      "bb9": {
+        "fullName": "9이닝당 볼넷",
+        "definition": "9이닝 기준 평균 볼넷 허용 수",
+        "shortLabel": "BB/9"
+      },
+      "h9": {
+        "fullName": "9이닝당 피안타",
+        "definition": "9이닝 기준 평균 피안타 수",
+        "shortLabel": "H/9"
+      },
+      "kBb": {
+        "fullName": "탈삼진/볼넷 비율",
+        "definition": "탈삼진을 볼넷으로 나눈 비율",
+        "shortLabel": "K/BB"
+      },
+      "avgAgainst": {
+        "fullName": "피안타율",
+        "definition": "상대 타자가 해당 투수를 상대로 기록한 타율",
+        "shortLabel": "AVG"
+      },
+      "sbAllowed": {
+        "fullName": "허용 도루",
+        "definition": "투수 등판 중 상대에게 허용한 도루 수",
+        "shortLabel": "SBA"
+      },
+      "csAllowed": {
+        "fullName": "도루 저지",
+        "definition": "투수 등판 중 도루를 저지한 횟수",
+        "shortLabel": "CSA"
+      },
+      "pk": {
+        "fullName": "견제사",
+        "definition": "견제로 주자를 아웃시킨 횟수",
+        "shortLabel": "PK"
+      },
+      "sh": {
+        "fullName": "희생번트",
+        "definition": "번트로 주자를 진루시키는 타격",
+        "shortLabel": "SH"
+      },
+      "sac": {
+        "fullName": "희생번트",
+        "definition": "번트로 주자를 진루시키는 타격",
+        "shortLabel": "SAC"
+      },
+      "sf": {
+        "fullName": "희생플라이",
+        "definition": "외야 뜬공으로 타점을 올린 타격",
+        "shortLabel": "SF"
+      },
+      "gdp": {
+        "fullName": "병살타",
+        "definition": "타격으로 인해 병살이 된 경우",
+        "shortLabel": "GDP"
+      },
+      "gidp": {
+        "fullName": "병살타",
+        "definition": "타격으로 인해 병살이 된 경우",
+        "shortLabel": "GIDP"
+      },
+      "goFo": {
+        "fullName": "땅볼/뜬공 비율",
+        "definition": "땅볼 아웃 대비 뜬공 아웃 비율",
+        "shortLabel": "GO/AO"
+      },
+      "goAo": {
+        "fullName": "땅볼/뜬공 비율",
+        "definition": "땅볼 아웃 대비 뜬공 아웃 비율",
+        "shortLabel": "GO/AO"
+      },
+      "xbh": {
+        "fullName": "장타 수",
+        "definition": "단타를 제외한 장타(2루타+3루타+홈런) 수",
+        "shortLabel": "XBH"
+      },
+      "tb": {
+        "fullName": "루타 수",
+        "definition": "타자의 총 루타 수",
+        "shortLabel": "TB"
+      },
+      "babip": {
+        "fullName": "인플레이 타구 타율",
+        "definition": "인플레이 타구 기준 타율(BABIP)",
+        "shortLabel": "BABIP"
+      },
+      "iso": {
+        "fullName": "순장타율",
+        "definition": "타자의 순수 장타 생산력 지표",
+        "shortLabel": "ISO"
+      },
+      "abHr": {
+        "fullName": "홈런당 타수",
+        "definition": "홈런 1개를 치는 데 필요한 평균 타수",
+        "shortLabel": "AB/HR"
+      },
+      "bbK": {
+        "fullName": "볼넷/삼진 비율",
+        "definition": "볼넷과 삼진의 비율",
+        "shortLabel": "BB/K"
+      },
+      "bbPct": {
+        "fullName": "볼넷 비율",
+        "definition": "타석 대비 볼넷 비율",
+        "shortLabel": "BB%"
+      },
+      "kPct": {
+        "fullName": "삼진 비율",
+        "definition": "타석 대비 삼진 비율",
+        "shortLabel": "K%"
+      },
+      "fip": {
+        "fullName": "수비무관 평균실점",
+        "definition": "홈런, 볼넷, 사구, 탈삼진 중심의 투수 지표",
+        "shortLabel": "FIP"
+      },
+      "eraPlus": {
+        "fullName": "조정 ERA",
+        "definition": "리그/구장 보정을 반영한 ERA 지표(100=평균)",
+        "shortLabel": "ERA+"
+      },
+      "inn": {
+        "fullName": "수비 이닝",
+        "definition": "해당 수비 위치에서 소화한 총 이닝",
+        "shortLabel": "INN"
+      },
+      "tc": {
+        "fullName": "수비 기회",
+        "definition": "수비에서 처리한 총 기회(PO+A+E)",
+        "shortLabel": "TC"
+      },
+      "po": {
+        "fullName": "풋아웃",
+        "definition": "직접 아웃을 완성한 수비 기록",
+        "shortLabel": "PO"
+      },
+      "a": {
+        "fullName": "어시스트",
+        "definition": "아웃 과정에 기여한 보살 기록",
+        "shortLabel": "A"
+      },
+      "e": {
+        "fullName": "실책",
+        "definition": "수비 실수로 타자/주자의 추가 진루를 허용한 경우",
+        "shortLabel": "E"
+      },
+      "dp": {
+        "fullName": "병살",
+        "definition": "한 플레이로 2개의 아웃을 기록한 수비",
+        "shortLabel": "DP"
+      },
+      "pb": {
+        "fullName": "포일",
+        "definition": "포수가 통상적으로 처리해야 할 정상 투구를 놓쳐 타자/주자의 진루를 허용한 경우",
+        "shortLabel": "PB"
+      },
+      "catcherCs": {
+        "fullName": "도루 저지",
+        "definition": "포수가 도루 시도 주자를 송구로 아웃시킨 횟수",
+        "shortLabel": "CS"
+      },
+      "tcPct": {
+        "fullName": "수비율",
+        "definition": "수비 기회 대비 실책 없이 처리한 비율",
+        "shortLabel": "TC%"
+      },
+      "sb": {
+        "fullName": "도루",
+        "definition": "타격/실책 없이 주자가 다음 루를 훔쳐 진루한 경우",
+        "shortLabel": "SB"
+      },
+      "cs": {
+        "fullName": "도루실패",
+        "definition": "주자가 도루 시도 중 아웃된 경우",
+        "shortLabel": "CS"
+      },
+      "avg": {
+        "fullName": "타율",
+        "definition": "타수 대비 안타 비율",
+        "shortLabel": "AVG"
+      },
+      "obp": {
+        "fullName": "출루율",
+        "definition": "타석 대비 출루 비율",
+        "shortLabel": "OBP"
+      },
+      "slg": {
+        "fullName": "장타율",
+        "definition": "타수 대비 루타 비율",
+        "shortLabel": "SLG"
+      },
+      "ops": {
+        "fullName": "OPS",
+        "definition": "출루율과 장타율의 합",
+        "shortLabel": "OPS"
+      },
+      "opsPlus": {
+        "fullName": "조정 OPS",
+        "definition": "리그/구장 보정을 반영한 OPS 지표(100=평균)",
+        "shortLabel": "OPS+"
+      },
+      "bipPct": {
+        "fullName": "인플레이 타구 비율",
+        "definition": "타석 중 인플레이 타구로 끝난 비율",
+        "shortLabel": "BIP%"
+      }
+    }
+  },
+  "versionCheck": {
+    "title": "새 버전 안내",
+    "intro": "새 버전이 배포되었습니다.",
+    "currentVersionLabel": "현재 버전:",
+    "latestVersionLabel": "최신 버전:",
+    "updateContentHeading": "업데이트 내용:",
+    "refreshHintLine1": "「지금 새로고침」을 누르면 새 버전 페이지를 불러옵니다.",
+    "refreshHintLine2": "「나중에」를 눌러 작업을 저장한 뒤, 직접 페이지를 새로고침해도 됩니다.",
+    "confirmRefresh": "지금 새로고침",
+    "cancelLater": "나중에"
+  },
+  "nav": {
+    "home": "홈",
+    "events": "대회",
+    "teams": "팀",
+    "starPlayers": "스타 선수",
+    "news": "소식",
+    "stats": "스탯",
+    "language": "언어",
+    "theme": "테마",
+    "themeLight": "라이트",
+    "themeDark": "다크",
+    "themeAuto": "시스템",
+    "adminEntry": "관리자 / 로그인",
+    "adminDashboard": "관리자 페이지",
+    "logout": "로그아웃",
+    "logoutSuccess": "로그아웃했습니다",
+    "userMenu": "계정 메뉴",
+    "expandMenu": "메뉴 열기",
+    "prevSlide": "이전",
+    "nextSlide": "다음",
+    "slideIndex": "{n}번째",
+    "feedback": "의견 보내기"
+  },
+  "portalFeedback": {
+    "drawerTitle": "의견 보내기",
+    "typeLabel": "유형",
+    "typeSuggestion": "기능 제안",
+    "typeBug": "버그 / 장애",
+    "typeContent": "콘텐츠 오류",
+    "typeAccount": "계정 및 로그인",
+    "typeOther": "기타",
+    "titleLabel": "제목",
+    "titlePlaceholder": "한 줄 요약 (선택)",
+    "contentLabel": "상세 내용",
+    "contentPlaceholder": "발생 현상과 기대 결과를 작성해 주세요. 버그인 경우 재현 절차와 페이지/메뉴 경로를 함께 적어 주세요.",
+    "contactTypeLabel": "연락처 유형",
+    "contactPhone": "휴대폰",
+    "contactEmail": "이메일",
+    "contactQq": "QQ",
+    "contactWechat": "WeChat",
+    "contactOther": "기타",
+    "contactValueLabel": "연락처",
+    "contactValuePlaceholder": "답변을 위해 필요합니다",
+    "contactRequiredGuest": "비로그인 상태에서는 답변을 위해 연락처를 입력해 주세요.",
+    "captchaLabel": "보안문자",
+    "captchaDragPrompt": "슬라이더를 드래그해 퍼즐을 완료하세요",
+    "captchaDragSliderAria": "드래그하여 보안문자 완료",
+    "captchaVerifyOk": "인증 완료",
+    "captchaRefresh": "새로고침",
+    "captchaRefreshIn": "{n}s 후 새로고침 가능",
+    "getCaptcha": "보안문자 받기",
+    "submitTab": "제출",
+    "myTab": "내 피드백",
+    "submit": "제출",
+    "submitOk": "피드백 감사합니다. 정상 접수되었습니다.",
+    "historyEmpty": "피드백 내역이 없습니다",
+    "guestHistoryHint": "현재 게스트 기록입니다. 브라우저 로컬에만 저장되므로 캐시 삭제/기기 변경/브라우저 변경 시 사라집니다.",
+    "appendLimitHint": "이 피드백은 처리 대기 단계에서 추가 작성 한도(3회)에 도달했습니다. 처리 결과를 기다리거나 새 피드백을 등록해 주세요.",
+    "statusPending": "처리 대기",
+    "statusReplied": "답변 완료",
+    "statusClosed": "종료",
+    "replyLabel": "운영 답변",
+    "ruleType": "유형을 선택해 주세요",
+    "ruleContent": "상세 내용을 입력해 주세요",
+    "ruleReservedMarker": "시스템 예약 마커(예: \"--- 用户补充（\")는 포함할 수 없습니다. 삭제 후 다시 시도해 주세요.",
+    "ruleCaptcha": "보안문자를 완료해 주세요",
+    "ruleContactType": "연락처 유형을 선택해 주세요",
+    "ruleContactValue": "연락처를 입력해 주세요",
+    "ruleContactPhone": "유효한 휴대폰 번호를 입력해 주세요",
+    "ruleContactEmail": "일반적으로 사용되는 이메일 주소를 입력해 주세요",
+    "continueModeTip": "현재 \"추가 작성 모드\"입니다 (제출 시 기존 피드백에 이어서 저장됩니다).",
+    "switchToNew": "새 피드백으로 전환",
+    "continueAppend": "추가 작성",
+    "guestSubmitActor": "게스트 제출",
+    "userSubmitActor": "사용자 제출",
+    "guestAppendActor": "게스트 추가 작성",
+    "userAppendActor": "사용자 추가 작성",
+    "handlerFallback": "처리자",
+    "captchaAlt": "보안문자",
+    "guideTitle": "여기에서 의견을 보낼 수 있습니다",
+    "guideDesc": "기능 제안, 버그, 콘텐츠 오류를 보낼 수 있습니다. 제출 후 \"내 피드백\"에서 처리 현황을 확인할 수 있습니다.",
+    "guideConfirm": "확인"
+  },
+  "platformDocs": {
+    "backToPortal": "포털 홈으로",
+    "refreshListHint": "클릭하여 목록 새로고침",
+    "empty": "등록된 문서가 없습니다."
+  },
+  "route": {
+    "home": "홈",
+    "news": "소식",
+    "platformDocs": "문서",
+    "articleDetail": "글 상세",
+    "newsDetail": "소식 상세",
+    "noticeDetail": "공지 상세",
+    "events": "대회",
+    "eventGames": "일정 및 결과",
+    "gameDetail": "경기 상세",
+    "teams": "팀",
+    "starPlayers": "스타 선수",
+    "teamDetail": "팀 상세",
+    "playerDetail": "선수 상세",
+    "stats": "스탯",
+    "stadiumDetail": "구장 안내",
+    "announcementDoc": "공지",
+    "notFound": "페이지 없음",
+    "serviceUnavailable": "서비스 이용 불가"
+  },
+  "stadiumDetail": {
+    "notFound": "구장을 찾을 수 없습니다.",
+    "address": "주소",
+    "contactPhone": "전화",
+    "mapTitle": "위치 지도",
+    "noCoords": "좌표가 없어 지도를 표시할 수 없습니다.",
+    "factsTitle": "시설 정보",
+    "level": "등급",
+    "operating": "운영 상태",
+    "capacityTotal": "수용 인원(약)",
+    "seating": "좌석",
+    "distLeft": "좌측 펜스",
+    "distCenter": "중앙 펜스",
+    "distRight": "우측 펜스",
+    "turf": "잔디",
+    "roof": "지붕",
+    "largeScreen": "대형 전광판",
+    "screenYes": "있음",
+    "screenNo": "없음",
+    "screenUnknown": "미입력",
+    "homeTeams": "홈 구단",
+    "introTitle": "구장 소개",
+    "transportTitle": "교통 안내",
+    "layoutTitle": "좌석 배치도",
+    "layoutEmpty": "배치도가 없습니다. 관리자에서 업로드하세요.",
+    "coverAlt": "구장 소개 이미지",
+    "stadiumInfoTitle": "구장 정보",
+    "milestonesTitle": "주요 일자",
+    "constructionEra": "건설 시기",
+    "openedOn": "개장일",
+    "enums": {
+      "level": {
+        "A": "A급(프로/국제)",
+        "B": "B급(프로)",
+        "C": "C급(아마/지역)"
+      },
+      "operating": {
+        "PLANNED": "축공 중",
+        "IN_USE": "운영 중",
+        "RENOVATION": "보수 중",
+        "CLOSED": "폐쇄"
+      },
+      "turf": {
+        "NATURAL": "천연 잔디",
+        "ARTIFICIAL": "인조 잔디"
+      },
+      "roof": {
+        "OPEN": "개방형",
+        "RETRACTABLE": "개폐식 지붕",
+        "DOME": "돔"
+      }
+    }
+  },
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다",
+    "hint": "주소가 잘못되었거나 페이지가 삭제되었을 수 있습니다.",
+    "titleNetwork": "불러올 수 없음",
+    "hintNetwork": "네트워크 연결을 확인한 뒤 다시 시도하세요.",
+    "backHome": "홈으로",
+    "retry": "다시 시도"
+  },
+  "serviceUnavailable": {
+    "title": "서비스를 일시적으로 사용할 수 없습니다",
+    "hint": "백엔드에 연결할 수 없거나 테넌트 확인 API 오류입니다(재시작 중일 수 있음). 잠시 후 다시 시도하세요. 방문한 페이지가 없다는 뜻은 아닙니다.",
+    "backHome": "홈으로",
+    "retry": "다시 시도"
+  },
+  "home": {
+    "eventsTitle": "대회",
+    "teamsTitle": "팀",
+    "newsTitle": "소식",
+    "newsTitleEn": "news",
+    "more": "더보기 >",
+    "eventStart": "시작",
+    "eventEnd": "종료",
+    "homeStadium": "홈구장",
+    "readMore": "더보기",
+    "noNews": "소식 없음",
+    "noEvents": "대회 없음",
+    "noTeams": "팀 없음",
+    "promoAdAlt": "광고",
+    "promoTicketAlt": "티켓"
+  },
+  "teams": {
+    "title": "팀",
+    "noTeams": "팀 없음",
+    "homeStadium": "홈구장"
+  },
+  "starPlayers": {
+    "title": "스타 선수",
+    "subtitle": "인기 단일 지표 기준 Top 10을 빠르게 확인합니다.",
+    "allYears": "전체 연도",
+    "allSeasons": "전체 시즌",
+    "loadFailed": "스타 선수 랭킹을 불러오지 못했습니다",
+    "metricGroup": {
+      "batting": "타격",
+      "pitching": "투구"
+    },
+    "metrics": {
+      "era": "평균자책점",
+      "avg": "타율",
+      "w": "다승",
+      "h": "안타",
+      "sv": "세이브",
+      "hr": "홈런",
+      "hld": "홀드",
+      "rbi": "타점",
+      "so": "탈삼진",
+      "sb": "도루"
+    },
+    "metricDesc": {
+      "avg": "타격",
+      "hr": "타격",
+      "rbi": "타격",
+      "so": "투구",
+      "w": "투구",
+      "era": "투구"
+    },
+    "valueLabels": {
+      "pitchSo": "투구 삼진"
+    },
+    "awards": {
+      "yearPlaceholder": "연도 선택",
+      "tabBatting": "타격상",
+      "tabPitching": "투수상",
+      "tabGoldGlove": "골든글러브",
+      "tabBestTen": "베스트 나인",
+      "tabOthers": "기타 상",
+      "empty": "수상 데이터가 없습니다",
+      "colAward": "상",
+      "colWinner": "수상자",
+      "colTeam": "팀",
+      "colPosition": "포지션",
+      "colValue": "기록"
+    }
+  },
+  "events": {
+    "title": "대회",
+    "noEvents": "대회 없음",
+    "noEventsOrGames": "대회/경기 없음",
+    "noGames": "경기 없음",
+    "allEvents": "전체 대회",
+    "viewDefault": "카드 보기",
+    "viewList": "표 보기",
+    "viewCalendar": "달력 보기",
+    "scheduleAndResult": "일정 및 결과",
+    "scheduleTable": "일정표",
+    "filterGameStatus": "경기 상태",
+    "filterGameMode": "전체 경기 모드",
+    "downloadSchedulePdf": "일정표 다운로드(PDF)",
+    "downloadSchedulePdfSuccess": "일정표 PDF를 저장했습니다",
+    "downloadSchedulePdfFail": "PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "pdfColDate": "날짜",
+    "pdfColGameNo": "경기",
+    "pdfColVenue": "구장",
+    "pdfColTime": "시간",
+    "pdfColTeams": "팀",
+    "pdfColScore": "스코어",
+    "pdfUndated": "날짜 미정",
+    "pdfSheetTagline": "일정표",
+    "eventStatus": {
+      "draft": "예정",
+      "published": "공개",
+      "ended": "종료",
+      "ongoing": "진행 중"
+    }
+  },
+  "eventGames": {
+    "title": "일정 및 결과",
+    "noGames": "경기 없음",
+    "gameNumber": "제 {n} 경기",
+    "vs": "VS",
+    "viewDetail": "상세",
+    "viewGameDetail": "경기 상세 보기",
+    "scheduled": "예정",
+    "live": "진행 중",
+    "finished": "종료",
+    "status": {
+      "scheduled": "예정",
+      "live": "진행 중",
+      "final": "종료",
+      "postponed": "연기",
+      "cancelled": "취소"
+    }
+  },
+  "gameDetail": {
+    "vs": "VS",
+    "score": "스코어",
+    "batting": "타격",
+    "pitching": "투구",
+    "fielding": "수비",
+    "back": "뒤로",
+    "fieldSettings": "항목 설정",
+    "gameNotFound": "경기를 찾을 수 없습니다",
+    "fieldTips": {
+      "batter": {
+        "pa": "타석(PA, Plate Appearances).",
+        "ab": "타수(AB, At Bats).",
+        "r": "득점.",
+        "h": "안타.",
+        "doubles": "2루타.",
+        "triples": "3루타.",
+        "hr": "홈런(장내 홈런 포함).",
+        "shSf": "희생번트+희생플라이(SH+SF).",
+        "rbi": "타점(RBI).",
+        "bbHp": "볼넷+사구(합산).",
+        "so": "삼진.",
+        "sb": "도루.",
+        "cs": "도루 실패.",
+        "e": "실책.",
+        "avg": "타율(H/AB).",
+        "obp": "출루율(이 페이지는 (H+BB+HP)/PA 근사).",
+        "slg": "장타율(TB/AB).",
+        "ops": "OPS(출루율+장타율)."
+      },
+      "pitcher": {
+        "ip": "이닝.",
+        "pitchR": "실점.",
+        "er": "자책점.",
+        "pitchH": "피안타.",
+        "pitchBbHp": "볼넷+사구.",
+        "pitchSo": "탈삼진.",
+        "pitchHr": "피홈런(넘어간 홈런).",
+        "pitchInsideParkHr": "장내 홈런 허용.",
+        "pitAb": "상대 타수(BF−BB−IBB−HBP; 타자 AB와 다름).",
+        "pitE": "해당 투수 타격 기록 행의 수비 실책.",
+        "np": "투구 수.",
+        "pitchPa": "상대 타석(PA).",
+        "pitchBf": "상대 타자(BF).",
+        "pitchBb": "볼넷.",
+        "pitchIbb": "고의사구.",
+        "pitchHbp": "사구.",
+        "wp": "폭투.",
+        "bk": "보크.",
+        "go": "땅볼 아웃.",
+        "fo": "뜬공 아웃.",
+        "gs": "선발 등판 여부(0=아니오, 1=예).",
+        "w": "승리 투수 기록 여부(0/1).",
+        "l": "패전 투수 기록 여부(0/1).",
+        "sv": "세이브 기록 여부(0/1).",
+        "svo": "세이브 기회.",
+        "hld": "홀드.",
+        "cg": "완투 여부(0/1).",
+        "pg": "퍼펙트 여부(0/1).",
+        "era": "방어율(ER×9/IP)."
+      }
+    }
+  },
+  "news": {
+    "title": "소식",
+    "viewCount": "조회 {n}회",
+    "noNews": "소식 없음",
+    "back": "뒤로",
+    "categoryAll": "전체",
+    "categoryNews": "소식",
+    "categoryAnnouncement": "공지",
+    "categoryNotice": "알림",
+    "categoryPublicity": "고시"
+  },
+  "stats": {
+    "title": "스탯",
+    "batting": "타격",
+    "pitching": "투구",
+    "fielding": "수비",
+    "noData": "데이터 없음",
+    "rank": "순위",
+    "player": "선수",
+    "team": "팀",
+    "position": "포지션",
+    "number": "등번호",
+    "allTeams": "전체 팀",
+    "allYears": "전체 연도",
+    "allSeasons": "전체 시즌",
+    "filterPlayerName": "선수 이름으로 검색",
+    "filterPosition": "포지션 필터",
+    "allPositions": "전체 포지션",
+    "filterHomeAway": "홈/원정 필터",
+    "allHomeAway": "전체 홈/원정",
+    "home": "홈",
+    "away": "원정",
+    "scopeGameDetail": "경기 상세 데이터",
+    "scopePlayer": "선수 데이터",
+    "scopeTeam": "팀 데이터",
+    "gameModeAll": "전체",
+    "gameModeBaseball": "야구",
+    "gameModeSoftball": "소프트볼",
+    "tabStandings": "순위표",
+    "tabPitching": "투구",
+    "tabBatting": "타격",
+    "tabFielding": "수비",
+    "columnAdjust": "데이터 항목 설정",
+    "columnSettingsTitle": "데이터 항목 설정",
+    "resetDisplayColumns": "기본값 복원",
+    "cancel": "취소",
+    "save": "저장",
+    "saveSuccess": "로컬에 저장됨",
+    "scrollTableLeft": "왼쪽 열 더 보기",
+    "scrollTableRight": "오른쪽 열 더 보기",
+    "tableViewHint": "화면에 다 보이지 않는 데이터를 확인하려면 표 영역 안에서 마우스 가운데 버튼을 누른 채 방향을 이동하거나, 표 영역을 먼저 클릭한 뒤 방향키로 조작하세요",
+    "tableViewHintShort": "표를 좌우로 스크롤하면 더 많은 열을 볼 수 있습니다",
+    "streakWins": "연승 {n}",
+    "streakLosses": "연패 {n}",
+    "streakDraws": "연무 {n}",
+    "winRateStandingsTip": "승 ÷ 경기 수(무승부는 경기 수에는 포함, 승에는 미포함)",
+    "standingsRecentHeaderTip": "팀별 최근 종료 경기(최대 10경기, 실제 경기 수는 팀마다 다름)에 대한 승-무-패, 10경기 미만이면 표본이 작다",
+    "qualificationTitle": "순위 자격",
+    "battingQualification": "타석은 팀 예정 경기 수 × {coeff}(올림) 이상. 예정 경기 수는 순위 반영 경기만 해당(순위 제외 경기 제외). 선수 개인 페이지에는 적용되지 않음.",
+    "battingQualificationWithExample": "타석은 팀 예정 경기 수 × {coeff}(올림) 이상. 현재 필터 기준 최대 {games}경기, 예: {minPa}타석 이상. 선수 개인 페이지에는 적용되지 않음.",
+    "pitchingQualification": "투구 이닝은 팀 예정 경기 수 × 1이닝 이상. 순위 반영 경기만 해당. 선수 개인 페이지에는 적용되지 않음.",
+    "pitchingQualificationWithExample": "투구 이닝은 팀 예정 경기 수 × 1이닝 이상. 현재 필터 기준 최대 {games}경기, 예: {minIp}이닝 이상. 선수 개인 페이지에는 적용되지 않음.",
+    "col": {
+      "rank": "순위",
+      "team": "팀",
+      "player": "선수",
+      "nameColumn": "이름",
+      "win": "승",
+      "draw": "무",
+      "loss": "패",
+      "gb": "게임차",
+      "runDiff": "득실",
+      "streak": "흐름",
+      "recentRecord": "최근",
+      "winRate": "승률",
+      "points": "승점",
+      "gp": "경기",
+      "gs": "선발",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "승",
+      "l": "패",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "이닝",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "타석",
+      "pitchBf": "BF",
+      "np": "구",
+      "ab": "타수",
+      "h": "안타",
+      "hr": "홈런",
+      "iphr": "장내 홈런",
+      "pitchInsideParkHr": "피장내 홈런",
+      "bb": "볼넷",
+      "ibb": "IBB",
+      "hbp": "사구",
+      "so": "삼진",
+      "wp": "폭투",
+      "bk": "보크",
+      "r": "득점",
+      "er": "자책",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "땅볼·뜬공 아웃 비율",
+      "rbi": "타점",
+      "oneB": "1루타",
+      "twoB": "2루타",
+      "threeB": "3루타",
+      "tb": "루타",
+      "sb": "도루",
+      "obp": "출루율",
+      "slg": "장타율",
+      "avg": "타율",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "도루실패",
+      "sbPct": "도루율",
+      "ops": "OPS",
+      "ssi": "SSI",
+      "pos": "위치",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "실책",
+      "inn": "수비 이닝",
+      "dp": "병살",
+      "tcPct": "수비율"
+    },
+    "colEn": {
+      "rank": "Rank",
+      "team": "Team",
+      "player": "Player",
+      "nameColumn": "Name",
+      "win": "W",
+      "draw": "D",
+      "loss": "L",
+      "gb": "GB",
+      "runDiff": "RD",
+      "streak": "STRK",
+      "recentRecord": "LAST",
+      "winRate": "Win%",
+      "points": "PTS",
+      "gp": "GP",
+      "gs": "GS",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "W",
+      "l": "L",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "IP",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "PA",
+      "pitchBf": "BF",
+      "np": "NP",
+      "ab": "AB",
+      "h": "H",
+      "hr": "HR",
+      "iphr": "IPHR",
+      "pitchInsideParkHr": "IPHR",
+      "bb": "BB",
+      "ibb": "IBB",
+      "hbp": "HBP",
+      "so": "SO",
+      "wp": "WP",
+      "bk": "BK",
+      "r": "R",
+      "er": "ER",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "GO/FO",
+      "rbi": "RBI",
+      "oneB": "1B",
+      "twoB": "2B",
+      "threeB": "3B",
+      "tb": "TB",
+      "sb": "SB",
+      "obp": "OBP",
+      "slg": "SLG",
+      "avg": "AVG",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "CS",
+      "sbPct": "SB%",
+      "ops": "OPS",
+      "ssi": "SSI",
+      "pos": "POS",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "E",
+      "inn": "INN",
+      "dp": "DP",
+      "tcPct": "TC%"
+    }
+  },
+  "player": {
+    "profile": "프로필",
+    "intro": "소개",
+    "team": "소속 팀",
+    "verified": {
+      "claimedTip": "본인이 인증·소유 확인한 선수 프로필입니다",
+      "teamTip": "플랫폼 인증 팀",
+      "leagueTip": "플랫폼 인증 리그"
+    },
+    "claim": {
+      "prompt": "본인이신가요? 이 선수 프로필을 클레임하면 본인 데이터를 관리할 수 있습니다",
+      "action": "이 선수 클레임",
+      "submitted": "클레임 요청이 제출되었습니다. 팀 책임자 또는 플랫폼 검토를 기다려 주세요",
+      "failed": "클레임 요청 제출에 실패했습니다"
+    },
+    "stats": "스탯",
+    "dimensionCareer": "통산",
+    "dimensionBySeason": "시즌별",
+    "dimensionGameLog": "경기 기록",
+    "noSeasonData": "시즌 데이터 없음",
+    "noStatsForGameMode": "해당 모드의 경기 데이터가 없습니다",
+    "noGameLog": "경기 기록 없음",
+    "detail": "상세",
+    "statDrill": {
+      "titleSuffix": "경기별 내역",
+      "colDate": "일자",
+      "colEvent": "대회",
+      "colTeam": "팀",
+      "colScore": "스코어",
+      "colSide": "홈/원정",
+      "colValue": "값",
+      "sideHome": "홈",
+      "sideAway": "원정",
+      "viewGame": "경기",
+      "empty": "기록 없음",
+      "noMetric": "이 항목은 경기별 조회를 지원하지 않습니다",
+      "loadError": "불러오기 실패"
+    },
+    "date": "날짜",
+    "event": "대회",
+    "score": "스코어",
+    "battingShort": "타",
+    "pitchingShort": "투",
+    "fieldingShort": "수",
+    "statCardBatting": "타격",
+    "statCardPitching": "투구",
+    "statCardFielding": "수비",
+    "careerBat": {
+      "gp": "출장 경기",
+      "pa": "타석",
+      "ab": "타수",
+      "avg": "타율",
+      "obp": "출루율",
+      "slg": "장타율",
+      "ops": "OPS",
+      "h": "안타",
+      "singles": "1루타",
+      "doubles": "2루타",
+      "triples": "3루타",
+      "hr": "홈런",
+      "iphr": "장내 홈런",
+      "shSf": "희생번트+희생플라이",
+      "tb": "루타",
+      "rbi": "타점",
+      "r": "득점",
+      "sb": "도루",
+      "cs": "도루 실패",
+      "bbHp": "볼넷+사구",
+      "so": "삼진"
+    },
+    "careerPitch": {
+      "gp": "출장 경기",
+      "ip": "이닝",
+      "era": "평균자책점",
+      "whip": "WHIP",
+      "pitchBf": "BF",
+      "pitchAb": "자유 타석(타수 성격)",
+      "ggComplete": "완투(GG)",
+      "pgShutout": "완봉(PG)",
+      "pitchH": "피안타",
+      "pitchHr": "피홈런",
+      "pitchInsideParkHr": "피장내 홈런",
+      "bbHp": "볼넷+사구 허용",
+      "so": "탈삼진",
+      "wp": "폭투",
+      "bk": "보크"
+    },
+    "careerFld": {
+      "gp": "출장 경기",
+      "inn": "수비 이닝(INN)",
+      "tc": "수비 기회",
+      "po": "아웃(직접)",
+      "a": "어시스트",
+      "e": "실책",
+      "tcPct": "수비율",
+      "pb": "포실",
+      "catcherCs": "도루 저지"
+    },
+    "seasonBlock": "{season} · {event}",
+    "seasonEventColumn": "시즌 · 대회",
+    "seasonTeamColumn": "팀",
+    "seasonColTip": {
+      "seasonEvent": "이 행이 집계한 시즌·대회",
+      "teamNames": "해당 시즌·대회에서 뛴 팀(이적 시 여럿일 수 있음)",
+      "gp": "출장 경기 수",
+      "pa": "타석 등",
+      "ab": "타수",
+      "avg": "타율, 안타÷타수",
+      "obp": "출루율",
+      "slg": "장타율",
+      "ops": "출루+장타 지표",
+      "h": "안타",
+      "singles": "1루타",
+      "doubles": "2루타",
+      "triples": "3루타",
+      "hr": "홈런",
+      "insideParkHr": "장내 홈런",
+      "shSf": "희생번트와 희생플라이 합",
+      "tb": "루타",
+      "rbi": "타점",
+      "r": "득점",
+      "sb": "도루",
+      "cs": "도루 실패",
+      "bb": "볼넷",
+      "bbHp": "볼넷·고의·사구 합",
+      "batSo": "삼진",
+      "ip": "투구 이닝",
+      "era": "자책점 평균",
+      "whip": "이닝당 출루 허용",
+      "pitchBf": "맞이한 타자 총인원",
+      "pitchAb": "자유 타석, 대면 타자에서 볼넷·고의·사구 제외",
+      "ggComplete": "완투",
+      "pgShutout": "완봉",
+      "pitchH": "피안타",
+      "pitchHr": "담 넘는 홈런, 장내 홈런 제외",
+      "pitchInsideParkHr": "장내 홈런 허용",
+      "pitK": "탈삼진",
+      "pitBB": "볼넷 허용",
+      "pitchBbHp": "볼넷·고의·사구 합",
+      "wp": "폭투",
+      "bk": "보크",
+      "inn": "수비 이닝, 투구 이닝과 같은 기록 방식",
+      "tc": "수비 기회",
+      "po": "아웃 처리",
+      "a": "어시스트",
+      "e": "실책",
+      "tcPct": "수비율",
+      "fldPb": "포수 포실",
+      "fldCatcherCs": "도루 저지",
+      "pitchR": "실점",
+      "w": "승",
+      "l": "패",
+      "sv": "세이브",
+      "svo": "세이브 기회",
+      "gs": "선발",
+      "cg": "완투 경기",
+      "er": "자책점",
+      "pitchBb": "볼넷 허용",
+      "pitchHbp": "사구",
+      "dp": "병살"
+    },
+    "gameLogColTip": {
+      "date": "경기 일자.",
+      "event": "해당 경기가 속한 대회.",
+      "team": "이 경기에서 선수 기록이 귀속된 팀.",
+      "score": "스코어(홈 - 원정).",
+      "batting": "해당 경기 타격 요약(안타-타수, 타점 등).",
+      "pitching": "해당 경기 투구 요약(이닝, 자책점, 승패).",
+      "fielding": "해당 경기 수비 요약.",
+      "detail": "경기 상세 페이지로 이동."
+    },
+    "unnamedEvent": "대회명 없음",
+    "shareCard": {
+      "generateButton": "선수 카드 공유",
+      "dialogTitle": "선수 카드 공유",
+      "orientationPortrait": "세로 4:5",
+      "orientationLandscape": "가로 16:9",
+      "bgImage": "배경 이미지",
+      "bgImageNth": "배경 {n}",
+      "subjectAvatar": "선수 사진",
+      "photoEdit": "구도 편집",
+      "photoFit": "이미지 표시",
+      "photoFitCover": "자르기·채우기",
+      "photoFitContain": "전체 표시",
+      "composeUndo": "실행 취소",
+      "composeRedo": "다시 실행",
+      "photoEditHint": "「구도」에서 배경 또는 선수 레이어를 탭한 뒤 드래그로 이동하고, 두 손가락으로 핀치해 확대/축소합니다. PC에서는 마우스 휠을 사용할 수 있습니다.",
+      "pickLayerForZoom": "먼저 배경 또는 선수 레이어를 탭한 뒤 확대/축소하세요.",
+      "photoFocusX": "가로 위치",
+      "photoFocusY": "세로 위치",
+      "photoScale": "확대/축소",
+      "composePreview": "구도 미리보기",
+      "tabCompose": "구도",
+      "tabPreview": "미리보기",
+      "previewEmpty": "표시할 미리보기가 없습니다. 생성에 실패했다면 「구도」로 돌아가 확인 후 다시 이 탭으로 전환하세요.",
+      "cardColors": "카드 색",
+      "frameBorderColor": "테두리 색",
+      "numberColor": "등번호 색",
+      "cardFillColor": "카드 배경색",
+      "dataScope": "데이터 범위",
+      "statPickLabel": "카드 통계(6개 선택)",
+      "scopeCareer": "통산",
+      "roleBatting": "타격",
+      "rolePitching": "투구",
+      "roleFielding": "수비",
+      "captureScale": "보내기 해상도",
+      "captureScaleHint": "높을수록 선명하지만 생성이 더 느려집니다.",
+      "scale1": "표준 (1×)",
+      "scale15": "향상 (1.5×)",
+      "scale2": "고화질 (2×)",
+      "generatePreview": "미리보기 생성",
+      "regeneratePreview": "미리보기 다시 생성",
+      "download": "이미지 다운로드",
+      "copyImage": "이미지 복사",
+      "copySuccess": "클립보드에 복사했습니다",
+      "copyFailed": "복사에 실패했습니다. 다운로드를 사용하거나 브라우저 권한을 확인하세요.",
+      "copyNotSupported": "이 환경에서는 이미지를 클립보드로 복사할 수 없습니다",
+      "previewTitle": "미리보기(탭하면 확대)",
+      "previewDirty": "구도가 변경되었습니다. 미리보기를 다시 생성하세요.",
+      "statBatting": {
+        "avg": {
+          "native": "타율",
+          "abbr": "AVG"
+        },
+        "obp": {
+          "native": "출루율",
+          "abbr": "OBP"
+        },
+        "slg": {
+          "native": "장타율",
+          "abbr": "SLG"
+        },
+        "ops": {
+          "native": "OPS",
+          "abbr": "OPS"
+        },
+        "h": {
+          "native": "안타",
+          "abbr": "H"
+        },
+        "hr": {
+          "native": "홈런",
+          "abbr": "HR"
+        },
+        "rbi": {
+          "native": "타점",
+          "abbr": "RBI"
+        },
+        "r": {
+          "native": "득점",
+          "abbr": "R"
+        },
+        "sb": {
+          "native": "도루",
+          "abbr": "SB"
+        },
+        "so": {
+          "native": "삼진",
+          "abbr": "SO"
+        },
+        "doubles": {
+          "native": "2루타",
+          "abbr": "2B"
+        },
+        "triples": {
+          "native": "3루타",
+          "abbr": "3B"
+        },
+        "pa": {
+          "native": "타석",
+          "abbr": "PA"
+        },
+        "ab": {
+          "native": "타수",
+          "abbr": "AB"
+        },
+        "bb": {
+          "native": "볼넷",
+          "abbr": "BB"
+        }
+      },
+      "statPitching": {
+        "era": {
+          "native": "평균자책점",
+          "abbr": "ERA"
+        },
+        "whip": {
+          "native": "이닝당 출루 허용",
+          "abbr": "WHIP"
+        },
+        "ip": {
+          "native": "이닝",
+          "abbr": "IP"
+        },
+        "pitchSo": {
+          "native": "탈삼진",
+          "abbr": "SO"
+        },
+        "w": {
+          "native": "승",
+          "abbr": "W"
+        },
+        "sv": {
+          "native": "세이브",
+          "abbr": "SV"
+        },
+        "l": {
+          "native": "패",
+          "abbr": "L"
+        },
+        "hld": {
+          "native": "홀드",
+          "abbr": "HLD"
+        },
+        "np": {
+          "native": "투구 수",
+          "abbr": "NP"
+        },
+        "er": {
+          "native": "자책점",
+          "abbr": "ER"
+        },
+        "pitchH": {
+          "native": "피안타",
+          "abbr": "H"
+        },
+        "pitchBb": {
+          "native": "볼넷 허용",
+          "abbr": "BB"
+        },
+        "gs": {
+          "native": "선발",
+          "abbr": "GS"
+        },
+        "pitchPa": {
+          "native": "상대 타석",
+          "abbr": "PA"
+        },
+        "pitchBf": {
+          "native": "상대 타자",
+          "abbr": "BF"
+        }
+      },
+      "statFielding": {
+        "gp": {
+          "native": "출장 경기",
+          "abbr": "G"
+        },
+        "inn": {
+          "native": "수비 이닝",
+          "abbr": "INN"
+        },
+        "tc": {
+          "native": "수비 기회",
+          "abbr": "TC"
+        },
+        "po": {
+          "native": "아웃(직접)",
+          "abbr": "PO"
+        },
+        "a": {
+          "native": "어시스트",
+          "abbr": "A"
+        },
+        "e": {
+          "native": "실책",
+          "abbr": "E"
+        },
+        "tcPct": {
+          "native": "수비율",
+          "abbr": "FLD%"
+        },
+        "pb": {
+          "native": "포실",
+          "abbr": "PB"
+        },
+        "catcherCs": {
+          "native": "도루 저지",
+          "abbr": "CS"
+        }
+      },
+      "noStats": "카드를 만들 수 있는 통계가 아직 없습니다",
+      "exportFailed": "보내기에 실패했습니다. 잠시 후 다시 시도하세요."
+    },
+    "meta": {
+      "positionLine": "포지션: {v}",
+      "batThrowLine": "{v}",
+      "heightLine": "신장: {v}",
+      "weightLine": "체중: {v}",
+      "ageLine": "나이: {v}세"
+    },
+    "hand": {
+      "L": "좌",
+      "R": "우",
+      "B": "스위치"
+    },
+    "batThrow": {
+      "throwsBats": "투구 {thr} · 타격 {bat}",
+      "throwsOnly": "투구 {thr}",
+      "batsOnly": "타격 {bat}"
+    },
+    "position": {
+      "P": "투수",
+      "C": "포수",
+      "1B": "1루수",
+      "2B": "2루수",
+      "3B": "3루수",
+      "SS": "유격수",
+      "LF": "좌익수",
+      "CF": "중견수",
+      "RF": "우익수",
+      "DH": "지명타자",
+      "PH": "대타",
+      "PR": "대주자",
+      "OF": "외야수",
+      "IF": "내야수"
+    },
+    "unit": {
+      "cmSuffix": " cm",
+      "kgSuffix": " kg"
+    },
+    "bio": {
+      "fullName": "성명(전체)",
+      "nickname": "별명",
+      "born": "출생",
+      "draft": "드래프트",
+      "education": "학력",
+      "joinDate": "입단일",
+      "debut": "데뷔"
+    }
+  },
+  "teamDetail": {
+    "roster": "로스터",
+    "coaches": "코치",
+    "players": "선수",
+    "playerList": "선수 명단",
+    "noCoach": "코치 없음",
+    "noPlayer": "선수 없음",
+    "schedule": "일정",
+    "noSchedule": "일정 없음",
+    "data": "데이터",
+    "coachGroup": "코칭스태프",
+    "tabBatting": "타격",
+    "tabPitching": "투구",
+    "tabFielding": "수비",
+    "city": "도시",
+    "stadium": "홈구장",
+    "contactPerson": "담당자",
+    "contactPhone": "전화",
+    "contactEmail": "이메일",
+    "nameColumn": "이름",
+    "rosterGroupPitcher": "투수",
+    "rosterGroupCatcher": "포수",
+    "rosterGroupInfield": "내야",
+    "rosterGroupOutfield": "외야",
+    "rosterGroupOther": "기타",
+    "rosterUncategorized": "미분류",
+    "coachPositionCoach": "코치",
+    "coachPositionHeadCoach": "감독"
+  },
+  "noticeDetail": {
+    "attachment": "첨부"
+  },
+  "fieldSettings": {
+    "title": "항목 설정",
+    "sectionNumberControl": "숫자 형식",
+    "sectionFieldControl": "필드 설정",
+    "rateDisplayStyle": "율 표시",
+    "rateStyleDot": ".xxx",
+    "rateStyleLeadingZero": "0.xxx",
+    "trailingZeros": "끝자리 0",
+    "keep": "표시",
+    "noKeep": "숨김",
+    "decimalPlaces": "소수 자리",
+    "twoPlaces": "2자리",
+    "threePlaces": "3자리",
+    "batter": "타자",
+    "pitcher": "투수",
+    "hintDrag": "체크로 표시, 드래그로 순서 변경",
+    "hintMinVisible": "타자·투수 통계 열(이름 열 제외)은 각각 최소 {batterMin}열·{pitcherMin}열을 표시해야 합니다.",
+    "minVisibleUncheckReject": "최소 {n}열은 표시해야 하며 더 줄일 수 없습니다.",
+    "minVisibleSaveBatter": "타자 통계는 최소 {n}열 이상 표시한 뒤 저장하세요.",
+    "minVisibleSavePitcher": "투수 통계는 최소 {n}열 이상 표시한 뒤 저장하세요.",
+    "show": "표시",
+    "showColumnToggleHint": "클릭: 미전체 선택 시 전체 선택 · 전체 선택 시 전체 해제. 저장 시 위 최소 열 수 준수.",
+    "field": "항목",
+    "desc": "설명",
+    "gameDetailColDesc": {
+      "batter": {
+        "pa": "타석(볼넷·사구 등 AB에 포함되지 않는 타석 포함)",
+        "ab": "타수",
+        "r": "득점",
+        "h": "안타",
+        "doubles": "2루타",
+        "triples": "3루타",
+        "hr": "홈런",
+        "shSf": "희생타(번트+플라이)",
+        "rbi": "타점",
+        "bbHp": "볼넷+사구",
+        "so": "삼진",
+        "sb": "도루 성공",
+        "cs": "도루 실패",
+        "e": "실책",
+        "avg": "타율",
+        "obp": "출루율",
+        "slg": "장타율",
+        "ops": "OPS(출루율+장타율)"
+      },
+      "pitcher": {
+        "ip": "이닝",
+        "pitchR": "실점",
+        "er": "자책점",
+        "pitchH": "피안타",
+        "pitchBbHp": "볼넷+사구",
+        "pitchSo": "삼진",
+        "pitchHr": "피홈런",
+        "pitchInsideParkHr": "피내야 홈런",
+        "pitAb": "대략 타자수−볼넷−고의−사구",
+        "pitE": "해당 경기 수비 실책(있을 때)",
+        "np": "투구 수",
+        "pitchPa": "상대 타석",
+        "pitchBf": "상대 타자(BF)",
+        "pitchBb": "볼넷",
+        "pitchIbb": "고의사구",
+        "pitchHbp": "사구",
+        "wp": "폭투",
+        "bk": "보크",
+        "go": "땅볼 아웃",
+        "fo": "뜬공 아웃",
+        "gs": "선발 등판(항목)",
+        "w": "승",
+        "l": "패",
+        "sv": "세이브",
+        "svo": "세이브 기회",
+        "hld": "홀드",
+        "cg": "완투",
+        "pg": "완봉승(퍼펙트)",
+        "era": "평균자책점"
+      }
+    },
+    "resetDefault": "초기화",
+    "save": "저장",
+    "guideTitle": "여기에서 데이터 항목 표시를 조정할 수 있습니다",
+    "guideDesc": "표시 필드, 소수 자릿수, 비율 표시 스타일 등을 설정합니다.",
+    "guideConfirm": "확인",
+    "pageHint": "열·형식"
+  },
+  "adminLogin": {
+    "backHome": "포털 홈으로",
+    "usernamePlaceholder": "사용자 이름",
+    "passwordPlaceholder": "비밀번호",
+    "login": "로그인",
+    "captchaPlaceholder": "보안문자",
+    "captchaClickPromptFallback": "이미지에서 지시한 도형을 클릭하세요",
+    "refreshCaptcha": "새로고침",
+    "getCaptcha": "보안문자 받기",
+    "verifyOk": "확인됨",
+    "verifyFailClick": "인증에 실패했습니다. 새로고침 후 다시 시도하세요.",
+    "captchaAlt": "보안문자",
+    "captchaTitleInput": "더블클릭으로 새로고침; 이미지 아래에서 새 코드(5자)",
+    "captchaTitleClick": "안내된 순서대로 대상 도형을 클릭하세요(3단계). 실패 시 캡차를 새로고침한 뒤 다시 시도하세요",
+    "captchaTitleDrag": "슬라이더를 드래그해 퍼즐을 맞추세요. 실패 시 캡차를 새로고침한 뒤 다시 시도하세요",
+    "captchaClickPromptTpl": "클릭하세요: {item}",
+    "captchaClickItemTpl": "{color} {size} {shape}",
+    "captchaClickItemTplQualified": "{qualifier} {item}",
+    "captchaClickSeqTpl": "먼저 {first} 클릭 후 {second} 클릭",
+    "captchaClickSeqTplMulti": "순서대로 클릭: {items}",
+    "captchaClickStep": "{current}/{total} 단계",
+    "ruleUsername": "사용자 이름을 입력하세요",
+    "rulePassword": "비밀번호를 입력하세요",
+    "ruleCaptchaCode": "보안문자를 입력하세요",
+    "ruleCaptchaClick": "먼저 클릭 보안문자를 완료하세요",
+    "captchaDragPrompt": "슬라이더를 드래그해 퍼즐을 완료하세요",
+    "captchaDragSliderAria": "드래그하여 보안문자 완료",
+    "verifyFailDrag": "인증에 실패했습니다. 새로고침 후 다시 시도하세요.",
+    "ruleCaptchaDrag": "먼저 슬라이더 보안문자를 완료하세요",
+    "errBadCredentials": "사용자 이름 또는 비밀번호가 올바르지 않습니다",
+    "errCaptchaGeneric": "인증에 실패했습니다. 새로고침 후 다시 시도하세요.",
+    "errCaptchaExpiredRefresh": "인증 코드가 만료되었습니다. 새로고침 후 다시 시도하세요.",
+    "errForbidden": "비활성화된 계정입니다",
+    "errNotFound": "로그인 API를 찾을 수 없습니다. java-server 실행 여부를 확인하세요",
+    "errNetwork": "서버에 연결할 수 없습니다. java-server 실행 여부를 확인하세요",
+    "errGeneric": "불러오기 실패",
+    "captchaOptionsFailed": "보안문자 설정을 불러오지 못했습니다: {detail}",
+    "captchaImageFailed": "보안문자 이미지를 불러오지 못했습니다: {detail}",
+    "pageTitle": "관리자 로그인 - {site}",
+    "reasonExpired": "세션이 만료되었습니다. 다시 로그인하세요",
+    "reasonInvalidToken": "유효하지 않은 세션입니다. 다시 로그인하세요",
+    "reasonNeedLogin": "로그인이 필요합니다"
+  },
+  "captcha": {
+    "colors": {
+      "red": "빨간색",
+      "blue": "파란색",
+      "green": "초록색"
+    },
+    "shapes": {
+      "circle": "원",
+      "square": "사각형",
+      "triangle": "삼각형"
+    },
+    "sizes": {
+      "small": "작은",
+      "large": "큰"
+    },
+    "qualifiers": {
+      "leftmost": "가장 왼쪽",
+      "rightmost": "가장 오른쪽",
+      "topmost": "가장 위쪽",
+      "bottommost": "가장 아래쪽"
+    }
+  },
+  "common": {
+    "loading": "로딩…",
+    "error": "로드 실패",
+    "retry": "다시 시도",
+    "back": "뒤로",
+    "backTop": "맨 위로 돌아가기",
+    "confirm": "확인",
+    "cancel": "취소"
+  }
+}

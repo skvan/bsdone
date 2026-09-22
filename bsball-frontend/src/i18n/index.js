@@ -1,14 +1,15 @@
-// 轻量 i18n —— 语言列表/探测/存储键移植自编译产物入口 chunk
-// 说明：当前仅内置 zh-CN 词典（自 i18n-dictionary.json 生成）；zh-TW/en/ko/ja 词典待运行态抓取补齐（B1-b 前完成）。
-import { ref, inject } from 'vue';
+// 应用国际化 —— 行为移植自编译产物入口 chunk（vue-i18n 实例 + 语言探测/持久化）
+// 依据：createI18n({legacy:false, locale:<storage|探测>, fallbackLocale:"zh-CN", messages:{zh-CN,zh-TW,en,ko,ja}})
+// 词典为 recon-extract-locales4.mjs 从编译产物提取（zh-CN 30 命名空间；其余 24 命名空间 + zh-CN 兜底）
+import { createI18n } from 'vue-i18n';
 import zhCN from '../locales/zh-CN.json';
+import zhTW from '../locales/zh-TW.json';
+import en from '../locales/en.json';
+import ko from '../locales/ko.json';
+import ja from '../locales/ja.json';
 
 export const LOCALE_STORAGE_KEY = 'bs-ball-locale';
 export const SUPPORTED_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ko', 'ja'];
-
-const DICTS = {
-  'zh-CN': zhCN
-};
 
 export function isSupportedLocale(locale) {
   return SUPPORTED_LOCALES.includes(locale);
@@ -27,66 +28,52 @@ export function detectLocale() {
   return 'zh-CN';
 }
 
-export function initialLocale() {
+// 语言来源：localStorage 优先，其次浏览器探测
+export function storedLocale() {
   if (typeof localStorage === 'undefined') return detectLocale();
-  const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-  return stored && isSupportedLocale(stored) ? stored : detectLocale();
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (stored && isSupportedLocale(stored)) return stored;
+  } catch {
+    // ignore
+  }
+  return detectLocale();
 }
 
-function getByPath(dict, key) {
-  const parts = key.split('.');
-  let node = dict;
-  for (const part of parts) {
-    if (node == null) return undefined;
-    node = node[part];
-  }
-  return node;
+export const i18n = createI18n({
+  legacy: false,
+  locale: storedLocale(),
+  fallbackLocale: 'zh-CN',
+  messages: { 'zh-CN': zhCN, 'zh-TW': zhTW, en, ko, ja }
+});
+
+// 取词（与编译产物 t 包装一致：字符串化返回；支持 {param} 插值）
+export function t(key, params) {
+  return params ? String(i18n.global.t(key, params)) : String(i18n.global.t(key));
 }
 
-// 取词：支持 {param} 插值；缺失键回退 zh-CN，再回退键名
-export function createI18n() {
-  const locale = ref(initialLocale());
-  const messages = ref(DICTS);
-
-  function t(key, params) {
-    let value = getByPath(messages.value[locale.value], key);
-    if (value === undefined) value = getByPath(messages.value['zh-CN'], key);
-    if (value === undefined || typeof value !== 'string') return key;
-    if (!params) return value;
-    return value.replace(/\{(\w+)\}/g, (match, name) => (params[name] != null ? String(params[name]) : match));
-  }
-
-  function setLocale(next) {
-    if (!isSupportedLocale(next)) return;
-    locale.value = next;
-    try {
-      localStorage.setItem(LOCALE_STORAGE_KEY, next);
-    } catch {
-      // ignore
-    }
-  }
-
-  // 运行态注入词典（如从旧版抓取的 zh-TW/en/ko/ja）
-  function mergeMessages(code, dict) {
-    messages.value = { ...messages.value, [code]: dict };
-  }
-
-  return { locale, t, setLocale, mergeMessages };
+export function currentLocale() {
+  return i18n.global.locale.value;
 }
 
-const I18N_KEY = Symbol('bsball-i18n');
-
-export function installI18n(app) {
-  const i18n = createI18n();
-  app.provide(I18N_KEY, i18n);
-  app.config.globalProperties.$t = i18n.t;
-  return i18n;
+// 切换语言并持久化（编译产物：写入 bs-ball-locale）
+export function setLocale(next) {
+  if (!isSupportedLocale(next)) return;
+  i18n.global.locale.value = next;
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, next);
+  } catch {
+    // ignore
+  }
 }
 
-export function useI18n() {
-  const i18n = inject(I18N_KEY, null);
-  if (!i18n) {
-    throw new Error('i18n 未安装：请在 main.js 中调用 installI18n(app)');
-  }
-  return i18n;
+// 应用语言码 → Element Plus / dayjs 语言包码（编译产物 wr 映射）
+export const VENDOR_LOCALE_CODES = { 'zh-CN': 'zh-cn', 'zh-TW': 'zh-tw', en: 'en', ko: 'ko', ja: 'ja' };
+
+// 当前语言对应的第三方语言包码（编译产物 Tr()：非 zh-TW/en/ko/ja 一律回退 zh-cn）
+export function vendorLocaleCode() {
+  const current = currentLocale();
+  return current === 'zh-TW' || current === 'en' || current === 'ko' || current === 'ja'
+    ? VENDOR_LOCALE_CODES[current]
+    : VENDOR_LOCALE_CODES['zh-CN'];
 }

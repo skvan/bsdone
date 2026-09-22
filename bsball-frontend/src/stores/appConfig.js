@@ -1,7 +1,7 @@
 // 站点配置 —— 默认值与缓存键移植自编译产物入口 chunk（appConfig store）
 // 说明：footerText 默认值保持与编译产物逐字一致（仍含 "By aDz"）。
 // 注意：静态页（webapps/index.html、portal.html）已按 PR #41 移除 aDz 署名——新工程是否同步移除待产品确认。
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { get } from '../api/request';
 import { currentTenantCodeFromUrl, DEFAULT_TENANT_CODE } from '../utils/tenantRoute';
@@ -60,9 +60,9 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     config.value = { ...DEFAULT_APP_CONFIG, ...(partial || {}) };
   }
 
-  function loadFromCache() {
+  function loadFromCache(tenantCode) {
     try {
-      const key = cacheKeyFor(currentTenantCodeFromUrl());
+      const key = cacheKeyFor(tenantCode || currentTenantCodeFromUrl());
       const raw = localStorage.getItem(key);
       if (raw) {
         apply(sanitizeConfig(JSON.parse(raw)));
@@ -74,13 +74,13 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     return false;
   }
 
-  async function load() {
+  async function load(tenantCode) {
     try {
       const body = await get('/api/portal/settings');
       const sanitized = sanitizeConfig(body?.data);
       apply(sanitized);
       try {
-        localStorage.setItem(cacheKeyFor(currentTenantCodeFromUrl()), JSON.stringify(sanitized || {}));
+        localStorage.setItem(cacheKeyFor(tenantCode || currentTenantCodeFromUrl()), JSON.stringify(sanitized || {}));
       } catch {
         // ignore
       }
@@ -94,5 +94,14 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     load();
   }
 
-  return { config, apply, loadFromCache, load, init };
+  // 指定租户初始化（路由守卫调用：标题/门户壳依赖站点名）
+  function initForTenant(tenantCode) {
+    loadFromCache(tenantCode);
+    load(tenantCode);
+  }
+
+  // 站点名称（标题拼接用；无配置时回退默认）
+  const siteName = computed(() => config.value?.siteName || DEFAULT_APP_CONFIG.siteName);
+
+  return { config, siteName, apply, loadFromCache, load, init, initForTenant };
 });
