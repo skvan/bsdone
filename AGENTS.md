@@ -4,8 +4,8 @@
 
 这是一个棒球赛事管理与数据展示网站，功能类似 GameChanger App（赛事记录、数据统计、团队管理等）。
 
-- **主要技术**：Spring Boot 4.1.0 + Java 17（后端）、Vue/React（前端）
-- **包管理器**：Maven 3.6.3（后端）、pnpm（前端）
+- **主要技术**：Spring Boot 4.1.0 + Java 17（后端）、Vue 3 + Vite 6 + Element Plus（前端，源码重建中）
+- **包管理器**：Maven 3.6.3（后端）、npm（前端，使用 `npm run ...`）
 - **数据库**：PostgreSQL
 - **部署环境**：阿里云服务器
 
@@ -23,7 +23,12 @@ bsdone/                      # 项目根目录
 │   │   └── core/            # 核心组件
 │   ├── src/test/java/com/bsball/        # 单元测试（与被测类同包）
 │   └── pom.xml
-├── bsball_project/          # 从服务器下载的原始项目文件
+├── bsball-frontend/         # 前端源码工程（Vite + Vue 3 + Element Plus；分批次重建中）
+│   ├── src/                 # 源码（router/views/... 随批次建设）
+│   ├── scripts/             # 打包脚本（package-webapps.mjs）
+│   ├── vite.config.js       # 正式构建配置（base=/bs-ball/）
+│   └── vite.legacy-preview.config.js  # 旧编译版对照预览（3001）
+├── bsball_project/          # 从服务器下载的原始项目文件（webapps/ 为对照基线）
 └── bsball_backup.sql        # 数据库备份文件
 ```
 
@@ -86,6 +91,7 @@ bsdone/                      # 项目根目录
 - 新增实体类 → `model/entity/` 目录
 - 新增 DTO → `model/dto/` 目录
 - 数据库变更 → 必须通过 Flyway migration 脚本，放 `resources/db/migration/postgresql/`
+- 前端页面/组件 → `bsball-frontend/src/views/`、`bsball-frontend/src/components/`（随重建批次建设）
 - **禁止在已有目录外创建新顶层目录**，除非明确讨论过
 
 ### 代码风格
@@ -146,7 +152,7 @@ bsdone/                      # 项目根目录
   mvn test
   ```
 - 测试未通过不允许交付；确实无法运行时，必须在交付说明中写明原因
-- 前端（`bsball-frontend`）目前无源码与测试基建，**暂不纳入单元测试要求**
+- 前端（`bsball-frontend`）：源码重建中（以编译产物为规格、分批次实施）。新增前端代码适用本文件命名/风格约定；测试基建（Vitest）随批次建设，api 层与工具函数优先补单测，**页面级 UI 暂不纳入强制单测**；构建与打包使用 `npm run build` / `npm run package`（禁止在服务器构建）
 
 ## 文档同步（重要！改代码必须同步改文档）
 
@@ -214,6 +220,11 @@ mvn spring-boot:run
 
 # 后端打包
 mvn package -DskipTests
+
+# 前端（在 bsball-frontend 目录执行）
+npm run dev              # 新工程开发服务器（3000，代理后端 8080）
+npm run preview:legacy   # 旧编译版对照预览（3001）
+npm run package          # 构建 + 打包 webapps-dev.tar.gz（部署包约定）
 ```
 
 ## 给非技术成员的照抄提示词
