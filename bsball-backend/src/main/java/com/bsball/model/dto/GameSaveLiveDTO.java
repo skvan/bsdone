@@ -11,7 +11,7 @@ package com.bsball.model.dto;
 
 import com.bsball.common.BoolToIntDeserializer;
 import com.bsball.model.dto.GameSaveLiveDTO;
-import com.fasterxml.jackson.annotation.JsonDeserializeAs;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.List;
 import lombok.Generated;
 
@@ -112,7 +112,7 @@ public class GameSaveLiveDTO {
         private Integer bb;
         private Integer hbp;
         private Integer cs;
-        @JsonDeserializeAs(BoolToIntDeserializer.class)
+        @JsonDeserialize(using=BoolToIntDeserializer.class)
         private Integer isPitcher;
         private Integer pitcherOrder;
         private Double ip;
