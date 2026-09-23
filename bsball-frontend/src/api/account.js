@@ -5,7 +5,9 @@ import { get, post, put } from './request';
 export const authApi = {
   me: () => get('/api/auth/me'),
   switchTenant: (tenantId) => post('/api/auth/switch-tenant', { tenantId }),
-  changePassword: (data) => post('/api/auth/change-password', data)
+  changePassword: (data) => post('/api/auth/change-password', data),
+  // 拖拽验证码校验（PortalDragCaptcha 使用）
+  verifyDragCaptcha: (data) => post('/api/auth/captcha/verify-drag', data)
 };
 
 export const accountApi = {

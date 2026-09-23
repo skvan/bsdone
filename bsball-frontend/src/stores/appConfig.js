@@ -54,7 +54,8 @@ function cacheKeyFor(tenantCode) {
 }
 
 export const useAppConfigStore = defineStore('appConfig', () => {
-  const config = ref(null);
+  // 初始即为默认配置（对齐编译产物：各字段 ref 初始化为默认值，未加载时也可直接读取）
+  const config = ref({ ...DEFAULT_APP_CONFIG });
 
   function apply(partial) {
     config.value = { ...DEFAULT_APP_CONFIG, ...(partial || {}) };
@@ -94,6 +95,11 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     load();
   }
 
+  // 兼容编译产物命名：重新拉取门户站点配置
+  function fetchPortalSettings() {
+    load();
+  }
+
   // 指定租户初始化（路由守卫调用：标题/门户壳依赖站点名）
   function initForTenant(tenantCode) {
     loadFromCache(tenantCode);
@@ -114,5 +120,5 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     return '/bs-ball/'.replace(/\/+$/, '') + '/' + (url.startsWith('/') ? url.slice(1) : url);
   }
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant, getAdminTitle, resolveAssetUrl };
+  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl };
 });
