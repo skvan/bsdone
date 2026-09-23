@@ -1,0 +1,214 @@
+# TEST-environment semi-auto deployment (per design doc 2026-09-17 §4):
+#   - push to v1.0/dev  -> build + package + archive artifacts ONLY (no server access)
+#   - workflow_dispatch -> build + deploy to the test env (java-server-test, port 8081)
+#
+# Deploy chain: SSH (key from secrets.TEST_SSH_KEY, host key pinned via vars.TEST_SSH_KNOWN_HOST)
+#   -> upload (chunked / parallel / retries, md5 verified on both ends)
+#   -> run .github/scripts/deploy-test.sh on the server:
+#      safety assertions -> env-file preflight -> backup -> swap -> restart
+#      -> health check -> auto-rollback on failure -> prod zero-impact proof.
+name: Deploy Test (semi-auto)
+
+on:
+  push:
+    branches: ['v1.0/dev']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build artifacts (no deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build backend jar (tests included)
+        run: |
+          cd bsball-backend
+          mvn clean package --batch-mode
+          echo "== jar md5 =="
+          md5sum target/bsball-server-1.0.0.jar
+
+      - name: Package frontend tarball
+        run: |
+          tar -czf webapps-dev.tar.gz -C bsball_project webapps
+          echo "== tarball md5 =="
+          md5sum webapps-dev.tar.gz
+
+      - name: Write build info
+        run: |
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "run_id=${{ github.run_id }}"
+            echo "run_attempt=${{ github.run_attempt }}"
+            echo "jar_md5=$(md5sum bsball-backend/target/bsball-server-1.0.0.jar | cut -d' ' -f1)"
+            echo "tgz_md5=$(md5sum webapps-dev.tar.gz | cut -d' ' -f1)"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > build-info.txt
+          cat build-info.txt
+
+      - name: Upload artifacts (retention 14 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-deploy-bundle
+          retention-days: 14
+          path: |
+            build-info.txt
+            webapps-dev.tar.gz
+            bsball-backend/target/bsball-server-1.0.0.jar
+
+  deploy:
+    name: Deploy to TEST (manual only)
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/v1.0/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: test
+    steps:
+      - name: Checkout (deploy script source)
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-deploy-bundle
+
+      - name: Artifact sanity check
+        run: |
+          ls -la
+          ls -la bsball-backend/target/ || true
+          test -f bsball-backend/target/bsball-server-1.0.0.jar
+          test -f webapps-dev.tar.gz
+
+      - name: Install SSH key + pin host key
+        env:
+          SSH_KEY: ${{ secrets.TEST_SSH_KEY }}
+          KNOWN_HOST: ${{ vars.TEST_SSH_KNOWN_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOST" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Connectivity check (retries)
+        env:
+          TEST_HOST: ${{ vars.TEST_HOST }}
+          TEST_USER: ${{ vars.TEST_USER }}
+        run: |
+          for i in 1 2 3; do
+            ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=10 "$TEST_USER@$TEST_HOST" 'echo SSH_READY && hostname' && exit 0
+            echo "retry $i ..."; sleep 5
+          done
+          echo "::error::cannot reach test server"; exit 1
+
+      - name: Upload deploy script + tarball + jar (chunked, parallel, md5-verified)
+        env:
+          TEST_HOST: ${{ vars.TEST_HOST }}
+          TEST_USER: ${{ vars.TEST_USER }}
+        run: |
+          set -e
+          STAGE=/root/deploy-dev
+          KEY=$HOME/.ssh/id_ed25519
+          JAR=bsball-backend/target/bsball-server-1.0.0.jar
+          TGZ=webapps-dev.tar.gz
+          TARGET="$TEST_USER@$TEST_HOST"
+          SCP_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=15"
+
+          echo "== stage dir =="
+          ssh -i "$KEY" $SCP_OPTS "$TARGET" "mkdir -p $STAGE && echo STAGE_READY"
+
+          echo "== deploy script (small) =="
+          scp -i "$KEY" $SCP_OPTS .github/scripts/deploy-test.sh "$TARGET:$STAGE/deploy-test.sh.new"
+
+          echo "== frontend tarball (retries + md5) =="
+          LOCAL_TGZ=$(md5sum "$TGZ" | cut -d' ' -f1)
+          echo "local tgz md5: $LOCAL_TGZ"
+          OK=0
+          for t in 1 2 3 4 5; do
+            if scp -i "$KEY" $SCP_OPTS "$TGZ" "$TARGET:$STAGE/webapps-dev.tar.gz.new"; then OK=1; break; fi
+            echo "  retry $t for tarball"; sleep 5
+          done
+          [ "$OK" = "1" ] || { echo "::error::tarball upload failed after 5 attempts"; exit 1; }
+          REMOTE_TGZ=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "md5sum $STAGE/webapps-dev.tar.gz.new | cut -d' ' -f1")
+          echo "remote tgz md5: $REMOTE_TGZ"
+          [ "$LOCAL_TGZ" = "$REMOTE_TGZ" ] || { echo "::error::tarball md5 mismatch"; exit 1; }
+
+          echo "== jar chunked parallel upload (6MB x 4 conns, per-chunk retries) =="
+          LOCAL_MD5=$(md5sum "$JAR" | cut -d' ' -f1)
+          echo "local jar md5: $LOCAL_MD5"
+          split -b 6m -d -a 2 "$JAR" /tmp/chunk_
+          CHUNKS=$(ls /tmp/chunk_* | wc -l)
+          echo "split into $CHUNKS chunks"
+
+          upload_chunk() {
+            local f="$1" t
+            for t in 1 2 3 4 5; do
+              if scp -i "$KEY" $SCP_OPTS "$f" "$TARGET:$STAGE/parts/"; then
+                return 0
+              fi
+              echo "  retry $t for $(basename "$f")"
+              sleep 3
+            done
+            echo "  FATAL: $(basename "$f") failed after 5 attempts"
+            return 1
+          }
+          export -f upload_chunk
+          export KEY TARGET STAGE SCP_OPTS
+
+          ssh -i "$KEY" $SCP_OPTS "$TARGET" "rm -rf $STAGE/parts && mkdir -p $STAGE/parts"
+          ls /tmp/chunk_* | xargs -P 4 -I {} bash -c 'upload_chunk "$1"' _ {}
+
+          echo "== assembling remotely + verifying md5 =="
+          REMOTE_PARTS=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "ls $STAGE/parts | wc -l")
+          echo "remote parts: $REMOTE_PARTS (expect $CHUNKS)"
+          if [ "$REMOTE_PARTS" != "$CHUNKS" ]; then
+            echo "::error::chunk count mismatch after upload"
+            exit 1
+          fi
+          REMOTE_MD5=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "cd $STAGE/parts && cat chunk_* > $STAGE/bsball-server-1.0.0.jar.new && cd $STAGE && rm -rf parts && md5sum bsball-server-1.0.0.jar.new | cut -d' ' -f1")
+          echo "remote jar md5: $REMOTE_MD5"
+          if [ "$REMOTE_MD5" != "$LOCAL_MD5" ]; then
+            echo "::error::jar md5 mismatch after chunked upload (local=$LOCAL_MD5 remote=$REMOTE_MD5)"
+            exit 1
+          fi
+          echo "chunked upload verified OK"
+
+          echo "== move staged files into place (md5 verified) =="
+          ssh -i "$KEY" $SCP_OPTS "$TARGET" "cd $STAGE && mv -f bsball-server-1.0.0.jar.new bsball-server-1.0.0.jar && mv -f webapps-dev.tar.gz.new webapps-dev.tar.gz && ls -la"
+
+      - name: Run deploy script on server (auto-rollback inside)
+        env:
+          TEST_HOST: ${{ vars.TEST_HOST }}
+          TEST_USER: ${{ vars.TEST_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=15 \
+            "$TEST_USER@$TEST_HOST" \
+            'bash -n /root/deploy-dev/deploy-test.sh.new && bash /root/deploy-dev/deploy-test.sh.new'
+
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "## Deploy Test (semi-auto)"
+            echo ''
+            echo '```'
+            cat build-info.txt 2>/dev/null || echo "(build-info.txt not available)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
