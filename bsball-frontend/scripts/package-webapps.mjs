@@ -80,8 +80,6 @@ if (!legacy) {
     updateContent: '修复已知问题。'
   };
   fs.writeFileSync(path.join(bsBall, 'version.json'), JSON.stringify(versionJson, null, 2) + '\n', 'utf8');
-  // 删除旧的预压缩副本：nginx gzip_static 会优先命中 .gz，不删会发旧版 version.json
-  fs.rmSync(path.join(bsBall, 'version.json.gz'), { force: true });
   log('已替换 bs-ball/index.html + assets/（来自 dist/）；version.json buildTime =', buildTime);
 } else {
   log('legacy 模式：不替换（等值重打包，页面零变化）');
@@ -95,16 +93,11 @@ if (tar.status !== 0) fail('tar 退出码 ' + tar.status);
 // ---------- 4) 校验 ----------
 const list = spawnSync('tar', ['-tzf', OUT_TAR], { encoding: 'utf8' });
 if (list.status !== 0) fail('tar -t 校验失败');
-// 注意：Windows tar 输出为 CRLF，需按 \r?\n 拆分并剔除尾部 \r
-const files = list.stdout.split(/\r?\n/).map((s) => s.replace(/\r$/, '')).filter(Boolean);
+const files = list.stdout.split('\n').filter(Boolean);
 const hasIndex = files.includes('webapps/bs-ball/index.html');
 const hasVersion = files.includes('webapps/bs-ball/version.json');
 const hasPortal = files.includes('webapps/portal.html');
 const assetCount = files.filter((f) => f.startsWith('webapps/bs-ball/assets/')).length;
-if (!hasIndex || !hasVersion || !hasPortal) {
-  fail(
-    `打包校验未通过（index.html=${hasIndex} version.json=${hasVersion} portal.html=${hasPortal}；条目=${files.length}）`
-  );
-}
+if (!hasIndex || !hasVersion || !hasPortal) fail('打包校验未通过（缺 index.html / version.json / portal.html）');
 log('打包校验通过：条目总数 =', files.length, '；assets 条目 =', assetCount);
 log('输出：', OUT_TAR, '(' + (fs.statSync(OUT_TAR).size / 1024 / 1024).toFixed(1) + ' MB)');
