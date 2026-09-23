@@ -23,6 +23,7 @@
 | H4 | 2026-09-22 | commit `21a6ef8`（PR #41） | 官网/入口页页脚版本号 v1.0 + 去除 aDz 署名（含 `APP_VERSION` 标记） | `webapps/index.html`、`portal.html`（静态页，重建范围外） | 不适用（非 Vue 范围，无需并入） |
 | H5 | 2026-09-22 | commit `93cda93`（PR #40） | 生产部署前端冒烟改 https 校验（部署脚本修复） | `scripts/deploy-prod.sh`（非前端产物） | 已完成（脚本已入库） |
 | H6 | 2026-09-23 | commit `4a1e29f`（PR #50） | 修正辰寰 box score 的 IP/R 紀錄與代跑、安全進壘選項 | `LiveGame-*.js` 产物 chunk | 待并入（B5 LiveGame 批次以对照合并；不影响 B1 骨架） |
+| H7 | 2026-09-23 | commit `43dee01`（PR #52） | 站点版本号升级至 v1.0.1（页脚 + `APP_VERSION` 标记） | `webapps/index.html`、`portal.html`（静态页，重建范围外） | 不适用（非 Vue 范围，无需并入）；重建 versionCheck 常量显示升级列入 AppConfig 页批次 |
 
 ## 三、待并入登记（新热修在此追加）
 
