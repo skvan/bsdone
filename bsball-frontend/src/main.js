@@ -7,11 +7,16 @@ import router from './router';
 import { i18n } from './i18n';
 import { useSettingsStore } from './stores/settings';
 import { startVersionCheck } from './composables/useVersionCheck';
+import { installMessageDedupe } from './utils/messageDedupe';
+import { installPortalDevtoolsGuard } from './composables/portalDevtoolsGuard';
 import './styles/index.css';
 
-// 装配顺序对齐编译产物入口：pinia → 弹窗默认值补丁 → i18n → Element Plus → router → mount → 版本检查
+// 装配顺序对齐编译产物入口：消息去重 ur() → pinia → 弹窗默认值补丁 → i18n → Element Plus → router → mount → 版本检查 → devtools 防护
 // 说明：全局注册 Element Plus 与旧版编译产物行为对齐（旧入口 chunk 全局注册）。
 // 路由 99 条已全量注册；页面/布局按批次以 meta.plannedComponent 逐个替换。
+// 全局消息去重（ElMessage.error/warning 2.5s 同文案抑制；对应编译产物 ur()）
+installMessageDedupe();
+
 const app = createApp(App);
 
 app.use(createPinia());
@@ -38,3 +43,8 @@ app.mount('#app');
 
 // 版本更新检查（立即检查 + 5 分钟轮询 + 可见性触发）
 startVersionCheck();
+
+// 开发者工具防护（门户路径启用；对应编译产物 Se.isReady().then(() => nr(Se))）
+router.isReady().then(() => {
+  installPortalDevtoolsGuard(router);
+});

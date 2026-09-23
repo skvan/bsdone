@@ -30,15 +30,49 @@ export const DEFAULT_APP_CONFIG = {
   portalFooterText: '',
   portalLayoutWidthMode: 'boxed',
   portalContentMaxWidth: 1440,
-  portalHomeSectionOrder: undefined
+  portalHomeSectionOrder: undefined,
+  portalHomeSectionHidden: undefined,
+  portalPromoAdImageUrl: '',
+  portalPromoTicketImageUrl: '',
+  portalPromoAdSlides: [],
+  portalPromoTicketSlides: [],
+  portalDevtoolsGuard: true,
+  portalDevtoolsGuardOverlay: true,
+  portalDevtoolsGuardDebuggerTrap: true,
+  portalDevtoolsGuardCopyrightNotice: true
 };
 
-// 白名单式净化：只接收默认值中已知字段（类型一致的才覆盖）
+// HTML 转义（编译产物 sa）
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// footer 文本合并（编译产物 at：footerText + copyright → 合并后的 footerTextPortal）
+function mergeFooterText(footer, copyright, fallback) {
+  const a = (footer ?? '').trim();
+  const b = (copyright ?? '').trim();
+  if (!a && !b) return fallback;
+  if (b) return a ? (a.includes(b) ? a : `${a}<p>${escapeHtml(b)}</p>`) : `<p>${escapeHtml(b)}</p>`;
+  return a;
+}
+
+// 白名单式净化：只接收默认值中已知字段（类型一致的才覆盖；footer/copyright 先合并）
 function sanitizeConfig(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  const merged = { ...raw };
+  merged.footerTextPortal = mergeFooterText(
+    raw.footerTextPortal ?? raw.footerText,
+    raw.copyrightPortal ?? raw.copyright,
+    DEFAULT_APP_CONFIG.footerTextPortal
+  );
+  merged.footerTextAdmin = mergeFooterText(raw.footerTextAdmin, raw.copyrightAdmin, DEFAULT_APP_CONFIG.footerTextAdmin);
   const out = {};
   for (const [key, def] of Object.entries(DEFAULT_APP_CONFIG)) {
-    const value = raw[key];
+    const value = merged[key];
     if (value === undefined || value === null) continue;
     if (Array.isArray(def)) {
       if (Array.isArray(value)) out[key] = value;
