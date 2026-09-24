@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -203,7 +204,33 @@ class GameServiceSaveResultTest {
     }
 
     private void givenExistingRows(GamePlayerStat... rows) {
-        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(Arrays.asList(rows));
+        final List<GamePlayerStat> list = Arrays.asList(rows);
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(list);
+        // 修正前的 saveResult 靠 existsById/findById 定位既有列，修正後改由 findByGameId 回傳的列直接比對。
+        // 這裡一律補上 lenient stub，讓同一份測試在未修正的代碼上也能重現真實行為：
+        // 缺了它們，舊實作會把兩筆都當成新增列（走 new GamePlayerStat），
+        // 「正確 payload 原本就正常」那條回歸斷言就會變成與被測代碼無關的偽失敗。
+        lenient().when(gamePlayerStatRepository.existsById(anyLong())).thenAnswer(inv -> {
+            Long id = inv.getArgument(0);
+            return id != null && containsId(list, id);
+        });
+        lenient().when(gamePlayerStatRepository.findById(anyLong())).thenAnswer(inv -> {
+            Long id = inv.getArgument(0);
+            return firstById(list, id);
+        });
+    }
+
+    private static boolean containsId(List<GamePlayerStat> rows, Long id) {
+        return firstById(rows, id).isPresent();
+    }
+
+    private static Optional<GamePlayerStat> firstById(List<GamePlayerStat> rows, Long id) {
+        for (GamePlayerStat row : rows) {
+            if (id != null && id.equals(row.getId())) {
+                return Optional.of(row);
+            }
+        }
+        return Optional.empty();
     }
 
     private List<GamePlayerStat> deletedRows() {
