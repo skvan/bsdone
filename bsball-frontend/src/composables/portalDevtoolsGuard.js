@@ -15,7 +15,7 @@ const OUTER_WIDTH_DELTA = 110;
 const DETECT_THROTTLE_MS = 4000;
 const REPORT_THROTTLE_KEY = 'bsball_devtools_report_at';
 const REPORT_THROTTLE_MS = 480 * 1000;
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 // 运行态
 let overlayEl = null;
