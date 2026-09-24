@@ -317,7 +317,7 @@ public class GameService {
         }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
-            Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> a));
+            Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> statRichness(a) >= statRichness(b) ? a : b));
             for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
                 String key = part.getTeamId() + "_" + part.getPlayerId() + "_" + (part.getIsPitcher() == null ? 0 : part.getIsPitcher());
@@ -650,6 +650,42 @@ public class GameService {
         catch (JsonProcessingException e) {
             return null;
         }
+    }
+
+    /** 統計欄位充實度：同 key 重複筆時優先保留資料較完整的列（與 GamePlayerStatService#statRichness 保持一致） */
+    private static int statRichness(GamePlayerStat r) {
+        int score = 0;
+        if (r.getAb() != null) {
+            ++score;
+        }
+        if (r.getR() != null) {
+            ++score;
+        }
+        if (r.getH() != null) {
+            ++score;
+        }
+        if (r.getRbi() != null) {
+            ++score;
+        }
+        if (r.getIp() != null) {
+            ++score;
+        }
+        if (r.getPitchPa() != null) {
+            ++score;
+        }
+        if (r.getNp() != null) {
+            ++score;
+        }
+        if (r.getPitchH() != null) {
+            ++score;
+        }
+        if (r.getPitchSo() != null) {
+            ++score;
+        }
+        if (r.getPitchR() != null) {
+            ++score;
+        }
+        return score;
     }
 
     private void applyPartToStat(GamePlayerStat stat, GameSaveLiveDTO.GamePlayerStatPart part, Long gameId, Long tenantId) {
