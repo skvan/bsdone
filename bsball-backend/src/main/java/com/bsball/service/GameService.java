@@ -68,6 +68,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -522,26 +524,62 @@ public class GameService {
         Long statTenantId = game.getTenantId();
         if (dto.getStats() != null) {
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
-            Set<Long> keepIds = dto.getStats().stream().map(SaveGameResultDTO.StatPart::getId).filter(Objects::nonNull).collect(Collectors.toSet());
-            for (GamePlayerStat s : existing) {
-                if (keepIds.contains(s.getId())) continue;
-                this.gamePlayerStatRepository.delete(s);
+            LinkedHashSet<Long> declaredIds = new LinkedHashSet<>();
+            for (SaveGameResultDTO.StatPart part : dto.getStats()) {
+                if (part.getId() != null) {
+                    declaredIds.add(part.getId());
+                }
             }
+            // 行身分複合鍵與 saveLive 保持一致：teamId_playerId_isPitcher。
+            // 同一球員可有「打者列 + 投手列」兩列並存，所以不能只靠 id 決定去留。
+            Map<Long, GamePlayerStat> existingById = new HashMap<>();
+            Map<String, GamePlayerStat> existingByKey = new LinkedHashMap<>();
+            for (GamePlayerStat s : existing) {
+                existingById.put(s.getId(), s);
+                String key = resultStatKey(s.getTeamId(), s.getPlayerId(), s.getIsPitcher());
+                GamePlayerStat prev = existingByKey.get(key);
+                if (prev != null && (declaredIds.contains(prev.getId()) || !declaredIds.contains(s.getId()))) continue;
+                existingByKey.put(key, s);
+            }
+            LinkedHashSet<Long> keepIds = new LinkedHashSet<>();
             for (SaveGameResultDTO.StatPart part : dto.getStats()) {
                 GamePlayerStat stat;
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
-                if (part.getId() != null && this.gamePlayerStatRepository.existsById(part.getId())) {
-                    stat = this.gamePlayerStatRepository.findById(part.getId()).orElse(null);
-                    if (stat == null) {
+                int isPitcher = part.getIsPitcher() == null ? 0 : part.getIsPitcher().intValue();
+                if (part.getId() != null) {
+                    GamePlayerStat byId = existingById.get(part.getId());
+                    // id 指向的列必須與該筆身分一致才認，否則視為前端 id 錯位（例如投手筆帶了打者列 id），
+                    // 改由複合鍵決定落點，避免把既有列的 isPitcher 就地翻轉。
+                    if (byId != null && isPitcher == (byId.getIsPitcher() == null ? 0 : byId.getIsPitcher().intValue())) {
+                        stat = byId;
+                        this.applyResultPartToStat(stat, part, gameId, statTenantId);
+                        this.gamePlayerStatRepository.save(stat);
+                        keepIds.add(stat.getId());
                         continue;
                     }
-                } else {
+                }
+                String key = resultStatKey(part.getTeamId(), part.getPlayerId(), Integer.valueOf(isPitcher));
+                stat = existingByKey.get(key);
+                if (stat == null) {
                     stat = new GamePlayerStat();
                 }
                 this.applyResultPartToStat(stat, part, gameId, statTenantId);
                 this.gamePlayerStatRepository.save(stat);
+                keepIds.add(stat.getId());
+                existingByKey.put(key, stat);
+            }
+            // 刪除改為「本次沒有被任何一筆落點命中的列」，而不是「id 沒出現在 payload 裡」。
+            // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
+            for (GamePlayerStat s : existing) {
+                if (keepIds.contains(s.getId())) continue;
+                this.gamePlayerStatRepository.delete(s);
             }
         }
+    }
+
+    /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
+    private static String resultStatKey(Long teamId, Long playerId, Integer isPitcher) {
+        return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
     }
 
     private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part, Long gameId, Long tenantId) {
