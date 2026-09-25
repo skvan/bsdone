@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import { fileURLToPath, URL } from 'node:url';
 
 // 正式前端工程构建配置（B0 工程化）
 // - base 与线上部署路径一致：/bs-ball/（部署到 webapps/bs-ball/）
@@ -8,6 +9,12 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
   base: '/bs-ball/',
   plugins: [vue()],
+  resolve: {
+    alias: {
+      // wangeditor 的 ESM 版对 vue 使用默认导入（仅 CJS interop 可用），构建/开发统一改指其 CJS 版
+      '@wangeditor/editor-for-vue': fileURLToPath(new URL('./node_modules/@wangeditor/editor-for-vue/dist/index.js', import.meta.url))
+    }
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true

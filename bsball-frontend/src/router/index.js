@@ -17,6 +17,12 @@ import Roles from '../views/admin/Roles.js';
 import Menus from '../views/admin/Menus.js';
 import Apis from '../views/admin/Apis.js';
 import Dict from '../views/admin/Dict.js';
+import Announcements from '../views/admin/Announcements.js';
+import Content from '../views/admin/Content.js';
+import ContentEdit from '../views/admin/ContentEdit.js';
+import Resources from '../views/admin/Resources.js';
+import MediaIcons from '../views/admin/MediaIcons.js';
+import MediaGallery from '../views/admin/MediaGallery.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -80,17 +86,17 @@ const routes = [
             { path: 'menus', name: 'AdminMenus', component: Menus },
             { path: 'apis', name: 'AdminApis', component: Apis },
             { path: 'dict', name: 'AdminDict', component: Dict },
-            adminChild('announcements', 'AdminAnnouncements', 'Announcements'),
-            adminChild('articles', 'AdminArticles', 'Content'),
-            adminChild('articles/new', 'AdminArticlesNew', 'ContentEdit'),
-            adminChild('articles/:id/edit', 'AdminArticlesEdit', 'ContentEdit'),
-            adminChild('content', 'AdminContent', 'Content'),
-            adminChild('content/new', 'AdminContentNew', 'ContentEdit'),
-            adminChild('content/:id/edit', 'AdminContentEdit', 'ContentEdit'),
+            { path: 'announcements', name: 'AdminAnnouncements', component: Announcements },
+            { path: 'articles', name: 'AdminArticles', component: Content },
+            { path: 'articles/new', name: 'AdminArticlesNew', component: ContentEdit },
+            { path: 'articles/:id/edit', name: 'AdminArticlesEdit', component: ContentEdit },
+            { path: 'content', name: 'AdminContent', component: Content },
+            { path: 'content/new', name: 'AdminContentNew', component: ContentEdit },
+            { path: 'content/:id/edit', name: 'AdminContentEdit', component: ContentEdit },
             adminChild('config', 'AdminConfig', 'AppConfig'),
-            adminChild('resources', 'AdminResources', 'Resources'),
-            adminChild('media-icons', 'AdminMediaIcons', 'MediaIcons'),
-            adminChild('media-gallery', 'AdminMediaGallery', 'MediaGallery'),
+            { path: 'resources', name: 'AdminResources', component: Resources },
+            { path: 'media-icons', name: 'AdminMediaIcons', component: MediaIcons },
+            { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
             adminChild('login-logs', 'AdminLoginLogs', 'LoginLogs'),
             adminChild('operation-logs', 'AdminOperationLogs', 'OperationLogs'),
             adminChild('tenants', 'AdminTenants', 'Tenants'),
