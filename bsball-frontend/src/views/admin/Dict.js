@@ -13,7 +13,7 @@ import { useFixedOperationColumn as We } from '../../composables/useListTable';
 import { useListTableAttrs as Xe } from '../../composables/useListTable';
 import { useModalClose as Ye } from '../../composables/useModalClose';
 import { useSubmitLock as K } from '../../composables/useSubmitLock';
-import '../../styles/legacy/b3-dict.css';
+import '../../styles/legacy/dict.css';
 var he={
   class:"admin-page admin-page-dict"
 }

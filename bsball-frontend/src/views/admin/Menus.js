@@ -8,14 +8,14 @@ import { useMediaQuery as Ge } from '../../composables/useMediaQuery';
 import { exportSfc as de } from '../../utils/exportSfc';
 import { apiResourceApi as qe } from '../../api/system';
 import { menuApi as O } from '../../api/system';
-import { assetIconNames as He } from '../../components/admin/menu-icons';
+import { assetIconNames as He } from '../../components/admin/menuIcons';
 import { useMenuMediaIconsStore as re } from '../../stores/menuMediaIcons';
 import { useFixedOperationColumn as Je } from '../../composables/useListTable';
 import { useListTableAttrs as Ke } from '../../composables/useListTable';
 import { useModalClose as We } from '../../composables/useModalClose';
 import { useSubmitLock as ee } from '../../composables/useSubmitLock';
 import { usePermission as Ye } from '../../composables/usePermission';
-import '../../styles/legacy/b3-menus.css';
+import '../../styles/legacy/menus.css';
 var Xe={
   class:"icon-picker"
 }

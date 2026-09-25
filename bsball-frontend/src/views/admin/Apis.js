@@ -12,7 +12,7 @@ import { useFixedOperationColumn as he } from '../../composables/useListTable';
 import { useListTableAttrs as xe } from '../../composables/useListTable';
 import { useModalClose as Ee } from '../../composables/useModalClose';
 import { useSubmitLock as U } from '../../composables/useSubmitLock';
-import '../../styles/legacy/b3-apis.css';
+import '../../styles/legacy/apis.css';
 var Se={
   class:"admin-page"
 }
