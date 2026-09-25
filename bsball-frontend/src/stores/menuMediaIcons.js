@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { mediaIconApi } from '../api/system';
-import { staticIconMap, MENU_MEDIA_ICON_PREFIX } from '../components/admin/menu-icons';
+import { staticIconMap, MENU_MEDIA_ICON_PREFIX } from '../components/admin/menuIcons';
 import { createMenuMediaIconWrap } from '../components/admin/MediaMenuIcon';
 
 // 全量分页拉取（pageSize 100，与编译产物一致）

@@ -22,7 +22,7 @@ import { useModalClose as ha } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as Va } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as se } from '../../composables/useSubmitLock';
 import { usePermission as Sa } from '../../composables/usePermission';
-import '../../styles/legacy/b3-users.css';
+import '../../styles/legacy/users.css';
 var re={
   0:"未知",1:"男",2:"女"
 }

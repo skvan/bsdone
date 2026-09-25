@@ -19,7 +19,7 @@ import { useModalClose as dt } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as pt } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as me } from '../../composables/useSubmitLock';
 import { usePermission as mt } from '../../composables/usePermission';
-import '../../styles/legacy/b3-roles.css';
+import '../../styles/legacy/roles.css';
 var ct={
   class:"admin-page"
 }
