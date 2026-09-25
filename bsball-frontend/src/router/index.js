@@ -7,6 +7,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import PlaceholderView from '../views/placeholder/PlaceholderView.vue';
 import TenantShell from '../layouts/TenantShell.vue';
 import AdminLayout from '../components/admin/AdminLayout.js';
+import AccountLogin from '../views/auth/AccountLogin.js';
+import Register from '../views/auth/Register.js';
+import ForgotPassword from '../views/auth/ForgotPassword.js';
+import PlayerClaimInvite from '../views/auth/PlayerClaimInvite.js';
+import Login from '../views/auth/Login.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -54,11 +59,11 @@ const router = createRouter({
         { path: 'stats', name: 'PortalStats', ...ph('Stats') },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', ...ph('AnnouncementDoc') },
         { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
-        { path: 'account/login', name: 'PortalAccountLogin', ...ph('AccountLogin') },
-        { path: 'account/register', name: 'PortalRegister', ...ph('Register') },
-        { path: 'account/forgot-password', name: 'PortalForgotPassword', ...ph('ForgotPassword') },
-        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', ...ph('PlayerClaimInvite') },
-        { path: 'admin/login', name: 'AdminLogin', ...ph('Login', { requiresAuth: false }) },
+        { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
+        { path: 'account/register', name: 'PortalRegister', component: Register },
+        { path: 'account/forgot-password', name: 'PortalForgotPassword', component: ForgotPassword },
+        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite },
+        { path: 'admin/login', name: 'AdminLogin', component: Login, meta: { requiresAuth: false } },
         {
           path: 'admin',
           name: 'AdminRoot',
