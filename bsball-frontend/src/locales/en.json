@@ -1,0 +1,1626 @@
+{
+  "glossary": {
+    "formula": {
+      "ip": "Decimal innings = outs / 3; notation: whole innings + 0.0 / 0.1 / 0.2",
+      "inn": "Same notation as innings pitched (outs / 3)"
+    },
+    "term": {
+      "pa": {
+        "fullName": "Plate Appearances",
+        "definition": "The number of times a player has taken his turn at bat",
+        "shortLabel": "PA"
+      },
+      "gp": {
+        "fullName": "Games Played",
+        "definition": "Games in which a player has appeared",
+        "shortLabel": "GP"
+      },
+      "g": {
+        "fullName": "Games",
+        "definition": "Games in which the pitcher threw at least one pitch",
+        "shortLabel": "G"
+      },
+      "ab": {
+        "fullName": "At Bats",
+        "definition": "Trips to the plate that do not result in a walk, hit by pitch, sacrifice, or reach on interference",
+        "shortLabel": "AB"
+      },
+      "oneB": {
+        "fullName": "Singles",
+        "definition": "A hit on which the batter reaches first base safely",
+        "shortLabel": "1B"
+      },
+      "r": {
+        "fullName": "Runs",
+        "definition": "When a baserunner safely reaches home plate and scores",
+        "shortLabel": "R"
+      },
+      "h": {
+        "fullName": "Hits",
+        "definition": "When a batter reaches base safely on a fair batted ball, without the benefit of an error or a fielder's choice",
+        "shortLabel": "H"
+      },
+      "pitchH": {
+        "fullName": "Hits Allowed",
+        "definition": "Hits allowed by a pitcher",
+        "shortLabel": "H"
+      },
+      "twoB": {
+        "fullName": "Doubles",
+        "definition": "A hit on which the batter reaches second base safely",
+        "shortLabel": "2B"
+      },
+      "threeB": {
+        "fullName": "Triples",
+        "definition": "A hit on which the batter reaches third base safely",
+        "shortLabel": "3B"
+      },
+      "hr": {
+        "fullName": "Home Runs",
+        "definition": "When a batter reaches on a hit, touches all bases, and scores a run without a putout recorded or the benefit of error",
+        "shortLabel": "HR"
+      },
+      "iphr": {
+        "fullName": "Inside-the-park home runs",
+        "definition": "A batter scores by circling the bases on a batted ball that stays in play",
+        "shortLabel": "IPHR"
+      },
+      "pitchHr": {
+        "fullName": "Home Runs Allowed",
+        "definition": "Home runs allowed by a pitcher",
+        "shortLabel": "HR"
+      },
+      "pitchInsideParkHr": {
+        "fullName": "Inside-the-park home runs allowed",
+        "definition": "Inside-the-park home runs credited against the pitcher",
+        "shortLabel": "IPHR"
+      },
+      "rbi": {
+        "fullName": "Runs Batted In",
+        "definition": "Runs scored as a direct result of the batter's plate appearance (for example, on a hit, walk, sacrifice fly, or hit-by-pitch when the bases are loaded)",
+        "shortLabel": "RBI"
+      },
+      "bb": {
+        "fullName": "Walks",
+        "definition": "Awarded first base after four balls, including intentional walks",
+        "shortLabel": "BB"
+      },
+      "pitchBb": {
+        "fullName": "Walks Allowed",
+        "definition": "Walks allowed by a pitcher",
+        "shortLabel": "BB"
+      },
+      "ibb": {
+        "fullName": "Intentional Walks",
+        "definition": "The number of times a batter was intentionally walked",
+        "shortLabel": "IBB"
+      },
+      "hbp": {
+        "fullName": "Hit-by-Pitch",
+        "definition": "When a batter is struck by a pitched ball which he is not attempting to hit and is awarded first base",
+        "shortLabel": "HBP"
+      },
+      "hb": {
+        "fullName": "Hit Batsmen",
+        "definition": "When a batter is struck by a pitched ball which he is not attempting to hit",
+        "shortLabel": "HB"
+      },
+      "so": {
+        "fullName": "Strikeouts",
+        "definition": "When the batter is retired on three strikes",
+        "shortLabel": "SO"
+      },
+      "pitchSo": {
+        "fullName": "Strikeouts",
+        "definition": "When a pitcher throws any combination of three swinging or looking strikes to a hitter",
+        "shortLabel": "SO"
+      },
+      "w": {
+        "fullName": "Wins",
+        "definition": "Credited to the pitcher whose team takes the lead while he is the pitcher of record and keeps it",
+        "shortLabel": "W"
+      },
+      "l": {
+        "fullName": "Losses",
+        "definition": "Credited to the pitcher when his team gives up a lead it never regains",
+        "shortLabel": "L"
+      },
+      "gs": {
+        "fullName": "Games Started",
+        "definition": "Games started by the pitcher (the first pitcher for his team)",
+        "shortLabel": "GS"
+      },
+      "cg": {
+        "fullName": "Complete Games",
+        "definition": "When a pitcher starts and finishes the entire game without relief",
+        "shortLabel": "CG"
+      },
+      "pg": {
+        "fullName": "Shutouts",
+        "definition": "When a pitcher throws a complete game and allows no runs",
+        "shortLabel": "PG"
+      },
+      "sho": {
+        "fullName": "Shutouts",
+        "definition": "When a pitcher throws a complete game and allows no runs",
+        "shortLabel": "SHO"
+      },
+      "sv": {
+        "fullName": "Saves",
+        "definition": "Awarded to a relief pitcher who preserves a win under save-rule conditions",
+        "shortLabel": "SV"
+      },
+      "svo": {
+        "fullName": "Save Opportunities",
+        "definition": "Appearances in which a pitcher enters with a chance to earn a save",
+        "shortLabel": "SVO"
+      },
+      "ip": {
+        "fullName": "Innings Pitched",
+        "definition": "Number of putouts recorded while pitching divided by three; .1 means 1/3 inning and .2 means 2/3",
+        "shortLabel": "IP"
+      },
+      "tbf": {
+        "fullName": "Total Batters Faced",
+        "definition": "Total number of batters faced by a pitcher",
+        "shortLabel": "TBF"
+      },
+      "bf": {
+        "fullName": "Batters Faced",
+        "definition": "Total number of batters faced by a pitcher",
+        "shortLabel": "BF"
+      },
+      "pitchBf": {
+        "fullName": "Batters Faced",
+        "definition": "Total number of batters faced by a pitcher",
+        "shortLabel": "BF"
+      },
+      "np": {
+        "fullName": "Number of Pitches",
+        "definition": "Total number of pitches thrown",
+        "shortLabel": "NP"
+      },
+      "pIp": {
+        "fullName": "Pitches per Inning",
+        "definition": "Average number of pitches thrown per inning",
+        "shortLabel": "PIP"
+      },
+      "qs": {
+        "fullName": "Quality Starts",
+        "definition": "Credited to a starting pitcher who pitches at least six innings and allows three earned runs or fewer",
+        "shortLabel": "QS"
+      },
+      "gf": {
+        "fullName": "Games Finished",
+        "definition": "Credited to a pitcher who is the last pitcher for his team in a game and was not the starter",
+        "shortLabel": "GF"
+      },
+      "pitchR": {
+        "fullName": "Runs Allowed",
+        "definition": "Runs allowed by a pitcher",
+        "shortLabel": "R"
+      },
+      "er": {
+        "fullName": "Earned Runs",
+        "definition": "Earned runs allowed by a pitcher",
+        "shortLabel": "ER"
+      },
+      "era": {
+        "fullName": "Earned Run Average",
+        "definition": "The average number of earned runs a pitcher allows per 9 innings",
+        "shortLabel": "ERA"
+      },
+      "whip": {
+        "fullName": "Walks and Hits Per Inning Pitched",
+        "definition": "The ratio of walks plus hits to innings pitched",
+        "shortLabel": "WHIP"
+      },
+      "so9": {
+        "fullName": "Strikeouts per 9 IP",
+        "definition": "",
+        "shortLabel": "K/9"
+      },
+      "bb9": {
+        "fullName": "Walks per 9 IP",
+        "definition": "",
+        "shortLabel": "BB/9"
+      },
+      "h9": {
+        "fullName": "Hits per 9 IP",
+        "definition": "",
+        "shortLabel": "H/9"
+      },
+      "kBb": {
+        "fullName": "Strikeout to Walk Rate",
+        "definition": "",
+        "shortLabel": "K/BB"
+      },
+      "avgAgainst": {
+        "fullName": "Batting Average Against",
+        "definition": "The rate of hits per at bat against a pitcher",
+        "shortLabel": "AVG"
+      },
+      "sbAllowed": {
+        "fullName": "Stolen Bases Allowed",
+        "definition": "Total stolen bases while a pitcher is on the mound",
+        "shortLabel": "SBALLOWED"
+      },
+      "csAllowed": {
+        "fullName": "Caught Stealing",
+        "definition": "Total runners caught stealing while a pitcher is on the mound",
+        "shortLabel": "CSALLOWED"
+      },
+      "pk": {
+        "fullName": "Pickoffs",
+        "definition": "When a pitcher throws to a fielder resulting in a putout of a baserunner leading off base",
+        "shortLabel": "PK"
+      },
+      "sh": {
+        "fullName": "Sacrifice Bunts",
+        "definition": "When a batter advances one or more runners at least one base with a bunt",
+        "shortLabel": "SH"
+      },
+      "sac": {
+        "fullName": "Sacrifice Bunts",
+        "definition": "When a batter advances one or more runners at least one base with a bunt",
+        "shortLabel": "SAC"
+      },
+      "sf": {
+        "fullName": "Sacrifice Flies",
+        "definition": "When a batter hits a caught fly ball that allows a runner to score",
+        "shortLabel": "SF"
+      },
+      "gdp": {
+        "fullName": "Ground Into Double Play",
+        "definition": "When a player hits a ground ball that results in more than one out",
+        "shortLabel": "GDP"
+      },
+      "gidp": {
+        "fullName": "Ground Into Double Play",
+        "definition": "When a player hits a ground ball that results in more than one out",
+        "shortLabel": "GIDP"
+      },
+      "goFo": {
+        "fullName": "Groundout to Air Out Ratio",
+        "definition": "",
+        "shortLabel": "GOFO"
+      },
+      "goAo": {
+        "fullName": "Groundout to Air Out Ratio",
+        "definition": "",
+        "shortLabel": "GO/AO"
+      },
+      "xbh": {
+        "fullName": "Extra Base Hits",
+        "definition": "Total hits that were not singles",
+        "shortLabel": "XBH"
+      },
+      "tb": {
+        "fullName": "Total Bases",
+        "definition": "The total number of bases gained by a batter through his hits",
+        "shortLabel": "TB"
+      },
+      "babip": {
+        "fullName": "Batting Average on Balls in Play",
+        "definition": "Batting average on balls hit into the field of play, excluding outcomes like home runs and strikeouts",
+        "shortLabel": "BABIP"
+      },
+      "iso": {
+        "fullName": "Isolated Power",
+        "definition": "A hitter power metric measuring extra bases per at bat",
+        "shortLabel": "ISO"
+      },
+      "abHr": {
+        "fullName": "At Bats per Home Run",
+        "definition": "",
+        "shortLabel": "ABHR"
+      },
+      "bbK": {
+        "fullName": "Walk to Strikeout Rate",
+        "definition": "",
+        "shortLabel": "BBK"
+      },
+      "bbPct": {
+        "fullName": "Walk Percentage",
+        "definition": "The rate at which a batter walks in plate appearances",
+        "shortLabel": "BB%"
+      },
+      "kPct": {
+        "fullName": "Strikeout Percentage",
+        "definition": "The rate at which a batter strikes out in plate appearances",
+        "shortLabel": "K%"
+      },
+      "fip": {
+        "fullName": "Fielding Independent Pitching",
+        "definition": "An ERA-like metric based on outcomes mostly controlled by pitchers: HR, BB, HBP, and SO",
+        "shortLabel": "FIP"
+      },
+      "eraPlus": {
+        "fullName": "ERA+",
+        "definition": "ERA normalized to league and park context where 100 is league average",
+        "shortLabel": "ERA+"
+      },
+      "inn": {
+        "fullName": "Innings (Fielding)",
+        "definition": "Total innings played on defense at a given position",
+        "shortLabel": "INN"
+      },
+      "tc": {
+        "fullName": "Total Chances",
+        "definition": "Total defensive opportunities (putouts + assists + errors)",
+        "shortLabel": "TC"
+      },
+      "po": {
+        "fullName": "Putouts",
+        "definition": "A fielder is credited with a putout when he records an out directly",
+        "shortLabel": "PO"
+      },
+      "a": {
+        "fullName": "Assists",
+        "definition": "Credited to a fielder who throws or deflects a ball leading to a putout",
+        "shortLabel": "A"
+      },
+      "e": {
+        "fullName": "Errors",
+        "definition": "Charged when a fielder misplays a ball, allowing a runner or batter to advance",
+        "shortLabel": "E"
+      },
+      "dp": {
+        "fullName": "Double Plays",
+        "definition": "A defensive play resulting in two offensive players being put out",
+        "shortLabel": "DP"
+      },
+      "pb": {
+        "fullName": "Passed Balls",
+        "definition": "Charged to the catcher when a legally pitched ball should have been handled with ordinary effort but gets away and allows advancement",
+        "shortLabel": "PB"
+      },
+      "catcherCs": {
+        "fullName": "Caught Stealing (Catcher)",
+        "definition": "Runners thrown out by the catcher while attempting to steal",
+        "shortLabel": "CS"
+      },
+      "tcPct": {
+        "fullName": "Fielding Percentage",
+        "definition": "Rate at which a fielder records outs without an error.",
+        "shortLabel": "TC%"
+      },
+      "sb": {
+        "fullName": "Stolen Bases",
+        "definition": "A runner advances a base unaided by a hit, error, or other advancing event",
+        "shortLabel": "SB"
+      },
+      "cs": {
+        "fullName": "Caught Stealing",
+        "definition": "A runner is put out while attempting to steal a base",
+        "shortLabel": "CS"
+      },
+      "avg": {
+        "fullName": "Batting Average",
+        "definition": "The rate of hits per at bat",
+        "shortLabel": "AVG"
+      },
+      "obp": {
+        "fullName": "On-Base Percentage",
+        "definition": "The rate at which a batter reaches base in plate appearances",
+        "shortLabel": "OBP"
+      },
+      "slg": {
+        "fullName": "Slugging Percentage",
+        "definition": "The rate of total bases per at bat",
+        "shortLabel": "SLG"
+      },
+      "ops": {
+        "fullName": "On-Base Plus Slugging",
+        "definition": "The sum of on-base percentage and slugging percentage",
+        "shortLabel": "OPS"
+      },
+      "opsPlus": {
+        "fullName": "OPS+",
+        "definition": "OPS normalized to league and park context where 100 is league average",
+        "shortLabel": "OPS+"
+      },
+      "bipPct": {
+        "fullName": "Balls in Play Percentage",
+        "definition": "Share of plate appearances that end with a ball in play",
+        "shortLabel": "BIP%"
+      }
+    }
+  },
+  "versionCheck": {
+    "title": "Update available",
+    "intro": "A new version has been published.",
+    "currentVersionLabel": "Current version:",
+    "latestVersionLabel": "Latest version:",
+    "updateContentHeading": "What's new:",
+    "refreshHintLine1": "Click \"Refresh now\" to load the new version.",
+    "refreshHintLine2": "You can click \"Later\" to save your work first, then refresh the page manually.",
+    "confirmRefresh": "Refresh now",
+    "cancelLater": "Later"
+  },
+  "nav": {
+    "home": "Home",
+    "events": "Events",
+    "teams": "Teams",
+    "starPlayers": "Star Players",
+    "news": "News",
+    "stats": "Stats",
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "System",
+    "adminEntry": "Admin / Login",
+    "portalLoginEntry": "Sign in / Register",
+    "adminDashboard": "Open admin",
+    "logout": "Log out",
+    "logoutSuccess": "Signed out",
+    "userMenu": "Account menu",
+    "expandMenu": "Expand menu",
+    "prevSlide": "Previous",
+    "nextSlide": "Next",
+    "slideIndex": "Slide {n}",
+    "feedback": "Feedback"
+  },
+  "portalFeedback": {
+    "drawerTitle": "Feedback",
+    "typeLabel": "Type",
+    "typeSuggestion": "Suggestion",
+    "typeBug": "Bug / issue",
+    "typeContent": "Content error",
+    "typeAccount": "Account & sign-in",
+    "typeOther": "Other",
+    "titleLabel": "Title (optional)",
+    "titlePlaceholder": "One short line (optional)",
+    "contentLabel": "Details",
+    "contentPlaceholder": "Describe what happened and what you expected. For bugs, add steps to reproduce and the page or menu path.",
+    "contactTypeLabel": "How to reach you",
+    "contactPhone": "Phone",
+    "contactEmail": "Email",
+    "contactQq": "QQ",
+    "contactWechat": "WeChat",
+    "contactOther": "Other",
+    "contactValueLabel": "Contact",
+    "contactValuePlaceholder": "Helps us reply",
+    "contactRequiredGuest": "If you are not signed in, please leave contact details so we can reply.",
+    "captchaLabel": "Captcha",
+    "captchaDragPrompt": "Drag the slider to complete the puzzle",
+    "captchaDragSliderAria": "Drag the slider to verify",
+    "captchaVerifyOk": "Verified",
+    "captchaRefresh": "Refresh",
+    "captchaRefreshIn": "Refresh available in {n}s",
+    "getCaptcha": "Get captcha",
+    "submitTab": "Submit",
+    "myTab": "My feedback",
+    "submit": "Submit",
+    "submitOk": "Thanks — we have received your feedback.",
+    "historyEmpty": "No feedback yet",
+    "guestHistoryHint": "You are viewing guest feedback history stored only in this browser. Clearing browser data, changing devices, or switching browsers will remove these records.",
+    "appendLimitHint": "This feedback has reached the append limit (3) in the pending stage. Please wait for processing or create a new feedback item.",
+    "statusPending": "Pending",
+    "statusReplied": "Replied",
+    "statusClosed": "Closed",
+    "replyLabel": "Reply",
+    "ruleType": "Please choose a type",
+    "ruleContent": "Please enter details",
+    "ruleReservedMarker": "Your text must not contain reserved timeline markers (e.g. \"--- 用户补充（\"). Remove them and try again.",
+    "ruleCaptcha": "Please complete the captcha",
+    "ruleContactType": "Please choose a contact type",
+    "ruleContactValue": "Please enter your contact",
+    "ruleContactPhone": "Please enter a valid mobile number",
+    "ruleContactEmail": "Please enter a common email address",
+    "continueModeTip": "You are in append mode (new content will be appended to the original feedback after submit).",
+    "switchToNew": "Switch to new feedback",
+    "continueAppend": "Append more",
+    "guestSubmitActor": "Guest submitted",
+    "userSubmitActor": "User submitted",
+    "guestAppendActor": "Guest appended",
+    "userAppendActor": "User appended",
+    "handlerFallback": "Handler",
+    "captchaAlt": "captcha",
+    "guideTitle": "Submit feedback here",
+    "guideDesc": "Share suggestions, bug reports, or content issues. Track replies under My feedback.",
+    "guideConfirm": "Got it"
+  },
+  "platformDocs": {
+    "backToPortal": "Back to portal home",
+    "refreshListHint": "Click to refresh the list",
+    "empty": "No platform documents yet."
+  },
+  "route": {
+    "home": "Home",
+    "news": "News",
+    "platformDocs": "Documents",
+    "articleDetail": "Article",
+    "newsDetail": "News Detail",
+    "noticeDetail": "Notice",
+    "events": "Events",
+    "eventGames": "Schedule & Results",
+    "gameDetail": "Game Detail",
+    "teams": "Teams",
+    "starPlayers": "Star Players",
+    "teamDetail": "Team Detail",
+    "playerDetail": "Player Detail",
+    "stats": "Stats",
+    "stadiumDetail": "Stadium",
+    "announcementDoc": "Notice",
+    "notFound": "Not found",
+    "serviceUnavailable": "Service unavailable"
+  },
+  "stadiumDetail": {
+    "notFound": "Stadium not found or removed.",
+    "address": "Address",
+    "contactPhone": "Phone",
+    "mapTitle": "Map",
+    "noCoords": "No coordinates; map preview unavailable.",
+    "factsTitle": "Facility",
+    "level": "Class",
+    "operating": "Status",
+    "capacityTotal": "Capacity (approx.)",
+    "seating": "Seats",
+    "distLeft": "Left field",
+    "distCenter": "Center field",
+    "distRight": "Right field",
+    "turf": "Turf",
+    "roof": "Roof",
+    "largeScreen": "Video board",
+    "screenYes": "Yes",
+    "screenNo": "No",
+    "screenUnknown": "—",
+    "homeTeams": "Home clubs",
+    "introTitle": "Overview",
+    "transportTitle": "Getting here",
+    "layoutTitle": "Seating map",
+    "layoutEmpty": "No seating map yet. Upload one in admin.",
+    "coverAlt": "Stadium photo",
+    "stadiumInfoTitle": "Stadium info",
+    "milestonesTitle": "Important dates",
+    "constructionEra": "Construction period",
+    "openedOn": "Opened",
+    "enums": {
+      "level": {
+        "A": "Class A (pro / international)",
+        "B": "Class B (pro)",
+        "C": "Class C (amateur / regional)"
+      },
+      "operating": {
+        "PLANNED": "Planned",
+        "IN_USE": "In use",
+        "RENOVATION": "Under renovation",
+        "CLOSED": "Closed"
+      },
+      "turf": {
+        "NATURAL": "Natural grass",
+        "ARTIFICIAL": "Artificial turf"
+      },
+      "roof": {
+        "OPEN": "Open",
+        "RETRACTABLE": "Retractable roof",
+        "DOME": "Dome / fixed roof"
+      }
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "hint": "The address may be incorrect, or the page may have been removed.",
+    "titleNetwork": "Could not load",
+    "hintNetwork": "Check your connection and try again.",
+    "backHome": "Back to home",
+    "retry": "Retry"
+  },
+  "serviceUnavailable": {
+    "title": "Service temporarily unavailable",
+    "hint": "The backend could not be reached or the tenant check API returned an error (e.g. during restart). Please try again; this does not mean the page does not exist.",
+    "backHome": "Back to home",
+    "retry": "Retry"
+  },
+  "home": {
+    "eventsTitle": "Events",
+    "teamsTitle": "Teams",
+    "newsTitle": "News",
+    "newsTitleEn": "latest",
+    "more": "More >",
+    "eventStart": "Start",
+    "eventEnd": "End",
+    "homeStadium": "Home",
+    "readMore": "Read more",
+    "noNews": "No news",
+    "noEvents": "No events",
+    "noTeams": "No teams",
+    "promoAdAlt": "Advertising",
+    "promoTicketAlt": "Tickets"
+  },
+  "teams": {
+    "title": "Teams",
+    "noTeams": "No teams",
+    "homeStadium": "Home"
+  },
+  "starPlayers": {
+    "title": "Star Players",
+    "subtitle": "Quick Top 10 by fan-favorite single metrics.",
+    "allYears": "All years",
+    "allSeasons": "All seasons",
+    "loadFailed": "Failed to load star player rankings",
+    "metricGroup": {
+      "batting": "Batting",
+      "pitching": "Pitching"
+    },
+    "metrics": {
+      "era": "ERA",
+      "avg": "Batting average",
+      "w": "Wins",
+      "h": "Hits",
+      "sv": "Saves",
+      "hr": "Home runs",
+      "hld": "Holds",
+      "rbi": "RBI",
+      "so": "Strikeouts",
+      "sb": "Stolen bases"
+    },
+    "metricDesc": {
+      "avg": "Batting",
+      "hr": "Batting",
+      "rbi": "Batting",
+      "so": "Pitching",
+      "w": "Pitching",
+      "era": "Pitching"
+    },
+    "valueLabels": {
+      "pitchSo": "Pitching SO"
+    },
+    "awards": {
+      "yearPlaceholder": "Year",
+      "tabBatting": "Batting awards",
+      "tabPitching": "Pitching awards",
+      "tabGoldGlove": "Gold Glove",
+      "tabBestTen": "Best Nine",
+      "tabOthers": "Other awards",
+      "empty": "No award data yet",
+      "colAward": "Award",
+      "colWinner": "Winner",
+      "colTeam": "Team",
+      "colPosition": "Position",
+      "colValue": "Stat"
+    }
+  },
+  "events": {
+    "title": "Events",
+    "noEvents": "No events",
+    "noEventsOrGames": "No events or games",
+    "noGames": "No games",
+    "allEvents": "All events",
+    "scheduleAndResult": "Schedule & Results",
+    "viewDefault": "Card view",
+    "viewList": "Table view",
+    "viewCalendar": "Calendar view",
+    "scheduleTable": "Schedule",
+    "filterGameStatus": "Game status",
+    "filterGameMode": "Game mode",
+    "downloadSchedulePdf": "Download schedule (PDF)",
+    "downloadSchedulePdfSuccess": "Schedule PDF downloaded",
+    "downloadSchedulePdfFail": "Could not generate the PDF. Please try again later.",
+    "pdfColDate": "Date",
+    "pdfColGameNo": "Game",
+    "pdfColVenue": "Venue",
+    "pdfColTime": "Time",
+    "pdfColTeams": "Teams",
+    "pdfColScore": "Score",
+    "pdfUndated": "Date TBD",
+    "pdfSheetTagline": "Schedule",
+    "eventStatus": {
+      "draft": "Not started",
+      "published": "Published",
+      "ended": "Ended",
+      "ongoing": "Ongoing"
+    }
+  },
+  "eventGames": {
+    "title": "Schedule & Results",
+    "noGames": "No games",
+    "gameNumber": "Game {n}",
+    "vs": "VS",
+    "viewDetail": "Detail",
+    "viewGameDetail": "View game details",
+    "scheduled": "Scheduled",
+    "live": "Live",
+    "finished": "Final",
+    "status": {
+      "scheduled": "Scheduled",
+      "live": "Live",
+      "final": "Final",
+      "postponed": "Postponed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "gameDetail": {
+    "vs": "VS",
+    "score": "Score",
+    "batting": "Batting",
+    "pitching": "Pitching",
+    "fielding": "Fielding",
+    "back": "Back",
+    "fieldSettings": "Field settings",
+    "gameNotFound": "Game not found",
+    "fieldTips": {
+      "batter": {
+        "pa": "Plate appearances (PA).",
+        "ab": "Official at bats (AB).",
+        "r": "Runs scored.",
+        "h": "Hits.",
+        "doubles": "Doubles (2B).",
+        "triples": "Triples (3B).",
+        "hr": "Home runs (includes inside-the-park HR).",
+        "shSf": "Sacrifice hits plus sacrifice flies (SH+SF).",
+        "rbi": "Runs batted in (RBI).",
+        "bbHp": "Walks plus hit by pitch (combined BB+HBP).",
+        "so": "Strikeouts.",
+        "sb": "Stolen bases.",
+        "cs": "Caught stealing.",
+        "e": "Errors.",
+        "avg": "Batting average (H/AB).",
+        "obp": "On-base percentage (approx. (H+BB+HBP)/PA on this page).",
+        "slg": "Slugging percentage (TB/AB).",
+        "ops": "On-base plus slugging (OBP+SLG)."
+      },
+      "pitcher": {
+        "ip": "Innings pitched.",
+        "pitchR": "Runs allowed.",
+        "er": "Earned runs.",
+        "pitchH": "Hits allowed.",
+        "pitchBbHp": "Walks plus hit by pitch (BB+HBP).",
+        "pitchSo": "Strikeouts recorded.",
+        "pitchHr": "Home runs allowed (over the fence).",
+        "pitchInsideParkHr": "Inside-the-park home runs (IPHR).",
+        "pitAb": "Batters faced minus walks, IBB, and HBP (not batter AB).",
+        "pitE": "Fielding errors on this pitcher’s batting-stat line for the game.",
+        "np": "Total pitches thrown.",
+        "pitchPa": "Plate appearances faced.",
+        "pitchBf": "Batters faced (BF).",
+        "pitchBb": "Base on balls (walks).",
+        "pitchIbb": "Intentional walks.",
+        "pitchHbp": "Hit by pitch.",
+        "wp": "Wild pitches.",
+        "bk": "Balks.",
+        "go": "Ground-ball outs.",
+        "fo": "Fly-ball outs.",
+        "gs": "Game started flag (0=no, 1=yes).",
+        "w": "Win credited flag (0=no, 1=yes).",
+        "l": "Loss charged flag (0=no, 1=yes).",
+        "sv": "Save recorded flag (0=no, 1=yes).",
+        "svo": "Save opportunities.",
+        "hld": "Hold.",
+        "cg": "Complete game flag (0=no, 1=yes).",
+        "pg": "Perfect game flag (0=no, 1=yes).",
+        "era": "Earned run average (ER×9/IP)."
+      }
+    }
+  },
+  "news": {
+    "title": "News",
+    "viewCount": "{n} views",
+    "noNews": "No news",
+    "back": "Back",
+    "categoryAll": "All",
+    "categoryNews": "News",
+    "categoryAnnouncement": "Announcement",
+    "categoryNotice": "Notice",
+    "categoryPublicity": "Publicity"
+  },
+  "stats": {
+    "title": "Stats",
+    "batting": "Batting",
+    "pitching": "Pitching",
+    "fielding": "Fielding",
+    "noData": "No data",
+    "rank": "Rank",
+    "player": "Player",
+    "team": "Team",
+    "position": "Pos",
+    "number": "No.",
+    "allTeams": "All teams",
+    "allYears": "All years",
+    "allSeasons": "All seasons",
+    "filterPlayerName": "Filter by player name",
+    "filterPosition": "Filter by position",
+    "allPositions": "All positions",
+    "filterHomeAway": "Filter by home/away",
+    "allHomeAway": "All home/away",
+    "home": "Home",
+    "away": "Away",
+    "scopeGameDetail": "Game Detail Data",
+    "scopePlayer": "Player Data",
+    "scopeTeam": "Team Data",
+    "gameModeAll": "All",
+    "gameModeBaseball": "Baseball",
+    "gameModeSoftball": "Softball",
+    "tabStandings": "Standings",
+    "tabPitching": "Pitching",
+    "tabBatting": "Batting",
+    "tabFielding": "Fielding",
+    "columnAdjust": "Column settings",
+    "columnSettingsTitle": "Column settings",
+    "resetDisplayColumns": "Reset to default",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveSuccess": "Saved locally",
+    "scrollTableLeft": "Scroll left for more columns",
+    "scrollTableRight": "Scroll right for more columns",
+    "tableViewHint": "To review data that is not fully visible on screen, hold the middle mouse button and move within the table area, or click the table area first and then use the arrow keys",
+    "tableViewHintShort": "Scroll the table horizontally to see more columns",
+    "streakWins": "{n}W streak",
+    "streakLosses": "{n}L streak",
+    "streakDraws": "{n} ties in a row",
+    "winRateStandingsTip": "Wins divided by games played (draws count in the denominator, not as wins)",
+    "standingsRecentHeaderTip": "Per team W–D–L over its latest finished games (up to 10; actual count varies by team). Small sample when under 10 games—use with caution",
+    "qualificationTitle": "Qualification",
+    "battingQualification": "Plate appearances must reach team scheduled games × {coeff} (rounded up). Scheduled games are ranking-eligible fixtures only (playoffs/ranking games excluded when not marked for ranking). Player profile stats are not affected.",
+    "battingQualificationWithExample": "Plate appearances must reach team scheduled games × {coeff} (rounded up). Ranking-eligible fixtures only. Under current filters, max scheduled games is {games}; e.g. at least {minPa} PA required. Player profile stats are not affected.",
+    "pitchingQualification": "Innings pitched must reach team scheduled games × 1 IP per game. Ranking-eligible fixtures only. Player profile stats are not affected.",
+    "pitchingQualificationWithExample": "Innings pitched must reach team scheduled games × 1 IP per game. Ranking-eligible fixtures only. Under current filters, max scheduled games is {games}; e.g. at least {minIp} IP required. Player profile stats are not affected.",
+    "col": {
+      "rank": "Rank",
+      "team": "Team",
+      "player": "Player",
+      "nameColumn": "Name",
+      "win": "W",
+      "draw": "D",
+      "loss": "L",
+      "gb": "GB",
+      "runDiff": "RD",
+      "streak": "Streak",
+      "recentRecord": "Last",
+      "winRate": "Win%",
+      "points": "Points",
+      "gp": "GP",
+      "gs": "GS",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "W",
+      "l": "L",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "IP",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "PA",
+      "pitchBf": "BF",
+      "np": "NP",
+      "ab": "AB",
+      "h": "H",
+      "hr": "HR",
+      "iphr": "IPHR",
+      "pitchInsideParkHr": "IPHR",
+      "bb": "BB",
+      "ibb": "IBB",
+      "hbp": "HBP",
+      "so": "SO",
+      "wp": "WP",
+      "bk": "BK",
+      "r": "R",
+      "er": "ER",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "GO/FO",
+      "rbi": "RBI",
+      "oneB": "1B",
+      "twoB": "2B",
+      "threeB": "3B",
+      "tb": "TB",
+      "sb": "SB",
+      "obp": "OBP",
+      "slg": "SLG",
+      "avg": "AVG",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "CS",
+      "sbPct": "SB%",
+      "ops": "OPS",
+      "ssi": "SSI",
+      "pos": "POS",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "E",
+      "inn": "INN",
+      "dp": "DP",
+      "pb": "PB",
+      "catcherCs": "CS",
+      "tcPct": "TC%"
+    },
+    "colEn": {
+      "rank": "Rank",
+      "team": "Team",
+      "player": "Player",
+      "nameColumn": "Name",
+      "win": "W",
+      "draw": "D",
+      "loss": "L",
+      "gb": "GB",
+      "runDiff": "RD",
+      "streak": "STRK",
+      "recentRecord": "LAST",
+      "winRate": "Win%",
+      "points": "PTS",
+      "gp": "GP",
+      "gs": "GS",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "W",
+      "l": "L",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "IP",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "PA",
+      "pitchBf": "BF",
+      "np": "NP",
+      "ab": "AB",
+      "h": "H",
+      "hr": "HR",
+      "iphr": "IPHR",
+      "pitchInsideParkHr": "IPHR",
+      "bb": "BB",
+      "ibb": "IBB",
+      "hbp": "HBP",
+      "so": "SO",
+      "wp": "WP",
+      "bk": "BK",
+      "r": "R",
+      "er": "ER",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "GO/FO",
+      "rbi": "RBI",
+      "oneB": "1B",
+      "twoB": "2B",
+      "threeB": "3B",
+      "tb": "TB",
+      "sb": "SB",
+      "obp": "OBP",
+      "slg": "SLG",
+      "avg": "AVG",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "CS",
+      "sbPct": "SB%",
+      "ops": "OPS",
+      "ssi": "SSI",
+      "pos": "POS",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "E",
+      "inn": "INN",
+      "dp": "DP",
+      "pb": "PB",
+      "catcherCs": "CS",
+      "tcPct": "TC%"
+    }
+  },
+  "player": {
+    "profile": "Profile",
+    "intro": "Intro",
+    "team": "Team",
+    "verified": {
+      "claimedTip": "This player profile has been claimed and verified by its owner",
+      "teamTip": "Platform-verified team",
+      "leagueTip": "Platform-verified league"
+    },
+    "claim": {
+      "prompt": "Is this you? Claim this player profile to manage your own data",
+      "action": "Claim this player",
+      "submitted": "Claim request submitted, pending team manager or platform review",
+      "failed": "Failed to submit claim request"
+    },
+    "stats": "Stats",
+    "dimensionCareer": "Career",
+    "dimensionBySeason": "By Season",
+    "dimensionGameLog": "Game Log",
+    "noSeasonData": "No season data",
+    "noStatsForGameMode": "No stats for this game mode",
+    "noGameLog": "No game log",
+    "detail": "Detail",
+    "statDrill": {
+      "titleSuffix": "Drill-down (by game)",
+      "colDate": "Date",
+      "colEvent": "Event",
+      "colTeam": "Team",
+      "colScore": "Score",
+      "colSide": "Side",
+      "colValue": "Value",
+      "sideHome": "Home",
+      "sideAway": "Away",
+      "viewGame": "Game",
+      "empty": "No games",
+      "noMetric": "This stat cannot be drilled down by game",
+      "loadError": "Failed to load"
+    },
+    "date": "Date",
+    "event": "Event",
+    "score": "Score",
+    "battingShort": "Bat",
+    "pitchingShort": "Pit",
+    "fieldingShort": "Fld",
+    "statCardBatting": "Batting",
+    "statCardPitching": "Pitching",
+    "statCardFielding": "Fielding",
+    "careerBat": {
+      "gp": "Games played",
+      "pa": "Plate appearances",
+      "ab": "At bats",
+      "avg": "Batting average",
+      "obp": "On-base percentage",
+      "slg": "Slugging percentage",
+      "ops": "OPS",
+      "h": "Hits",
+      "singles": "Singles",
+      "doubles": "Doubles",
+      "triples": "Triples",
+      "hr": "Home runs",
+      "iphr": "Inside-the-park HR",
+      "shSf": "Sacrifice hits + flies",
+      "tb": "Total bases",
+      "rbi": "Runs batted in",
+      "r": "Runs scored",
+      "sb": "Stolen bases",
+      "cs": "Caught stealing",
+      "bbHp": "Walks + HBP",
+      "so": "Strikeouts"
+    },
+    "careerPitch": {
+      "gp": "Games played",
+      "ip": "Innings pitched",
+      "era": "Earned run average",
+      "whip": "WHIP",
+      "pitchBf": "Batters faced (BF)",
+      "pitchAb": "At bats against (BF − BB − IBB − HBP)",
+      "ggComplete": "Complete games (GG)",
+      "pgShutout": "Shutouts (PG)",
+      "pitchH": "Hits allowed",
+      "pitchHr": "Home runs allowed",
+      "pitchInsideParkHr": "Inside-the-park home runs (IPHR)",
+      "bbHp": "Walks + HBP allowed",
+      "so": "Strikeouts",
+      "wp": "Wild pitches",
+      "bk": "Balks"
+    },
+    "careerFld": {
+      "gp": "Games played",
+      "inn": "Innings in the field (INN)",
+      "tc": "Total chances",
+      "po": "Putouts",
+      "a": "Assists",
+      "e": "Errors",
+      "tcPct": "Fielding percentage",
+      "pb": "Passed balls (catcher)",
+      "catcherCs": "Caught stealing"
+    },
+    "seasonBlock": "{season} · {event}",
+    "seasonEventColumn": "Season / event",
+    "seasonTeamColumn": "Team",
+    "seasonColTip": {
+      "seasonEvent": "Season year and event aggregated in this row",
+      "teamNames": "Teams the player was with; trades may list multiple",
+      "gp": "Games played",
+      "pa": "Plate appearances",
+      "ab": "At bats",
+      "avg": "Batting average, hits ÷ at bats",
+      "obp": "On-base percentage",
+      "slg": "Slugging percentage",
+      "ops": "On-base plus slugging",
+      "h": "Hits",
+      "singles": "Singles",
+      "doubles": "Doubles",
+      "triples": "Triples",
+      "hr": "Home runs",
+      "insideParkHr": "Inside-the-park home run",
+      "shSf": "Sac bunts plus sacrifice flies",
+      "tb": "Total bases",
+      "rbi": "Runs batted in",
+      "r": "Runs scored",
+      "sb": "Stolen bases",
+      "cs": "Caught stealing",
+      "bb": "Bases on balls",
+      "bbHp": "Walks, intentional walks, and hit by pitch",
+      "batSo": "Strikeouts",
+      "ip": "Innings pitched",
+      "era": "Earned run average",
+      "whip": "Walks and hits per inning",
+      "pitchBf": "Batters faced",
+      "pitchAb": "Resulting at bats, batters faced minus walks, IBB, HBP",
+      "ggComplete": "Complete game",
+      "pgShutout": "Shutout",
+      "pitchH": "Hits allowed",
+      "pitchHr": "Home runs allowed over the fence, not inside-the-park",
+      "pitchInsideParkHr": "Inside-the-park home runs (IPHR)",
+      "pitK": "Strikeouts",
+      "pitBB": "Walks allowed",
+      "pitchBbHp": "Walks, intentional walks, and hit by pitch",
+      "wp": "Wild pitch",
+      "bk": "Balk",
+      "inn": "Innings in the field, same style as IP",
+      "tc": "Total chances",
+      "po": "Putouts",
+      "a": "Assists",
+      "e": "Errors",
+      "tcPct": "Fielding percentage",
+      "fldPb": "Passed ball",
+      "fldCatcherCs": "Runners caught stealing",
+      "pitchR": "Runs allowed",
+      "w": "Wins",
+      "l": "Losses",
+      "sv": "Saves",
+      "svo": "Save opportunities",
+      "gs": "Games started",
+      "cg": "Complete games",
+      "er": "Earned runs",
+      "pitchBb": "Walks allowed",
+      "pitchHbp": "Hit by pitch",
+      "dp": "Double play"
+    },
+    "gameLogColTip": {
+      "date": "Game date.",
+      "event": "Event this game belongs to.",
+      "team": "Team this player’s stats are credited to for this game.",
+      "score": "Final score (home - away).",
+      "batting": "Batting line summary for this game (e.g. H-AB, RBI, HR).",
+      "pitching": "Pitching line summary (IP, ER, W/L).",
+      "fielding": "Fielding summary (chances, errors).",
+      "detail": "Open full game box score / detail."
+    },
+    "unnamedEvent": "Unnamed",
+    "shareCard": {
+      "generateButton": "Share player card",
+      "dialogTitle": "Share player card",
+      "orientationPortrait": "Portrait 4:5",
+      "orientationLandscape": "Landscape 16:9",
+      "bgImage": "Background image",
+      "bgImageNth": "Background {n}",
+      "subjectAvatar": "Player photo",
+      "photoEdit": "Framing",
+      "photoFit": "Image display",
+      "photoFitCover": "Crop to fill",
+      "photoFitContain": "Fit entire",
+      "composeUndo": "Undo",
+      "composeRedo": "Redo",
+      "photoEditHint": "In Compose, tap the background or player layer to drag; pinch with two fingers to zoom; use the mouse wheel on desktop.",
+      "pickLayerForZoom": "Tap the background or player layer first, then zoom.",
+      "photoFocusX": "Horizontal",
+      "photoFocusY": "Vertical",
+      "photoScale": "Zoom",
+      "composePreview": "Framing preview",
+      "tabCompose": "Compose",
+      "tabPreview": "Preview",
+      "previewEmpty": "No preview to show. If generation failed, go back to Compose and try Preview again.",
+      "cardColors": "Card colors",
+      "frameBorderColor": "Frame border",
+      "numberColor": "Jersey number",
+      "cardFillColor": "Card fill",
+      "dataScope": "Data scope",
+      "statPickLabel": "Card stats (pick 6)",
+      "scopeCareer": "Career",
+      "roleBatting": "Batting",
+      "rolePitching": "Pitching",
+      "roleFielding": "Fielding",
+      "captureScale": "Export scale",
+      "captureScaleHint": "Higher is sharper but slower",
+      "scale1": "Standard (1×)",
+      "scale15": "Better (1.5×)",
+      "scale2": "HD (2×)",
+      "generatePreview": "Generate preview",
+      "regeneratePreview": "Regenerate preview",
+      "download": "Download image",
+      "copyImage": "Copy image",
+      "copySuccess": "Copied to clipboard",
+      "copyFailed": "Copy failed. Try download or check browser permissions.",
+      "copyNotSupported": "Copying images to the clipboard is not supported in this environment",
+      "previewTitle": "Preview (click to zoom)",
+      "previewDirty": "Compose settings changed. Regenerate preview to see the result.",
+      "statBatting": {
+        "avg": {
+          "native": "Batting average",
+          "abbr": "AVG"
+        },
+        "obp": {
+          "native": "On-base percentage",
+          "abbr": "OBP"
+        },
+        "slg": {
+          "native": "Slugging percentage",
+          "abbr": "SLG"
+        },
+        "ops": {
+          "native": "On-base + slugging",
+          "abbr": "OPS"
+        },
+        "h": {
+          "native": "Hits",
+          "abbr": "H"
+        },
+        "hr": {
+          "native": "Home runs",
+          "abbr": "HR"
+        },
+        "rbi": {
+          "native": "Runs batted in",
+          "abbr": "RBI"
+        },
+        "r": {
+          "native": "Runs",
+          "abbr": "R"
+        },
+        "sb": {
+          "native": "Stolen bases",
+          "abbr": "SB"
+        },
+        "so": {
+          "native": "Strikeouts",
+          "abbr": "SO"
+        },
+        "doubles": {
+          "native": "Doubles",
+          "abbr": "2B"
+        },
+        "triples": {
+          "native": "Triples",
+          "abbr": "3B"
+        },
+        "pa": {
+          "native": "Plate appearances",
+          "abbr": "PA"
+        },
+        "ab": {
+          "native": "At-bats",
+          "abbr": "AB"
+        },
+        "bb": {
+          "native": "Walks",
+          "abbr": "BB"
+        }
+      },
+      "statPitching": {
+        "era": {
+          "native": "Earned run average",
+          "abbr": "ERA"
+        },
+        "whip": {
+          "native": "Walks + hits / inning",
+          "abbr": "WHIP"
+        },
+        "ip": {
+          "native": "Innings pitched",
+          "abbr": "IP"
+        },
+        "pitchSo": {
+          "native": "Strikeouts",
+          "abbr": "SO"
+        },
+        "w": {
+          "native": "Wins",
+          "abbr": "W"
+        },
+        "sv": {
+          "native": "Saves",
+          "abbr": "SV"
+        },
+        "l": {
+          "native": "Losses",
+          "abbr": "L"
+        },
+        "hld": {
+          "native": "Holds",
+          "abbr": "HLD"
+        },
+        "np": {
+          "native": "Pitches thrown",
+          "abbr": "NP"
+        },
+        "er": {
+          "native": "Earned runs",
+          "abbr": "ER"
+        },
+        "pitchH": {
+          "native": "Hits allowed",
+          "abbr": "H"
+        },
+        "pitchBb": {
+          "native": "Walks allowed",
+          "abbr": "BB"
+        },
+        "gs": {
+          "native": "Games started",
+          "abbr": "GS"
+        },
+        "pitchPa": {
+          "native": "Batters faced (PA)",
+          "abbr": "PA"
+        },
+        "pitchBf": {
+          "native": "Batters faced (BF)",
+          "abbr": "BF"
+        }
+      },
+      "statFielding": {
+        "gp": {
+          "native": "Games played",
+          "abbr": "G"
+        },
+        "inn": {
+          "native": "Innings fielded",
+          "abbr": "INN"
+        },
+        "tc": {
+          "native": "Total chances",
+          "abbr": "TC"
+        },
+        "po": {
+          "native": "Putouts",
+          "abbr": "PO"
+        },
+        "a": {
+          "native": "Assists",
+          "abbr": "A"
+        },
+        "e": {
+          "native": "Errors",
+          "abbr": "E"
+        },
+        "tcPct": {
+          "native": "Fielding percentage",
+          "abbr": "FLD%"
+        },
+        "pb": {
+          "native": "Passed balls",
+          "abbr": "PB"
+        },
+        "catcherCs": {
+          "native": "Caught stealing",
+          "abbr": "CS"
+        }
+      },
+      "noStats": "No stats available for a share card yet",
+      "exportFailed": "Export failed. Try again later."
+    },
+    "meta": {
+      "positionLine": "Position: {v}",
+      "batThrowLine": "{v}",
+      "heightLine": "Height: {v}",
+      "weightLine": "Weight: {v}",
+      "ageLine": "Age: {v}"
+    },
+    "hand": {
+      "L": "Left",
+      "R": "Right",
+      "B": "Switch"
+    },
+    "batThrow": {
+      "throwsBats": "Throws {thr} · Bats {bat}",
+      "throwsOnly": "Throws {thr}",
+      "batsOnly": "Bats {bat}"
+    },
+    "position": {
+      "P": "Pitcher",
+      "C": "Catcher",
+      "1B": "First baseman",
+      "2B": "Second baseman",
+      "3B": "Third baseman",
+      "SS": "Shortstop",
+      "LF": "Left fielder",
+      "CF": "Center fielder",
+      "RF": "Right fielder",
+      "DH": "Designated hitter",
+      "PH": "Pinch hitter",
+      "PR": "Pinch runner",
+      "OF": "Outfielder",
+      "IF": "Infielder"
+    },
+    "unit": {
+      "cmSuffix": " cm",
+      "kgSuffix": " kg"
+    },
+    "bio": {
+      "fullName": "Full name",
+      "nickname": "Nickname",
+      "born": "Born",
+      "draft": "Draft",
+      "education": "Education",
+      "joinDate": "Joined",
+      "debut": "Pro debut"
+    }
+  },
+  "teamDetail": {
+    "roster": "Roster",
+    "coaches": "Coaches",
+    "players": "Players",
+    "playerList": "Player list",
+    "noCoach": "No coaches",
+    "noPlayer": "No players",
+    "schedule": "Schedule",
+    "noSchedule": "No schedule",
+    "data": "Data",
+    "coachGroup": "Coaches",
+    "tabBatting": "Batting",
+    "tabPitching": "Pitching",
+    "tabFielding": "Fielding",
+    "city": "City",
+    "stadium": "Home stadium",
+    "contactPerson": "Contact",
+    "contactPhone": "Phone",
+    "contactEmail": "Email",
+    "nameColumn": "Name",
+    "rosterGroupPitcher": "Pitchers",
+    "rosterGroupCatcher": "Catchers",
+    "rosterGroupInfield": "Infield",
+    "rosterGroupOutfield": "Outfield",
+    "rosterGroupOther": "Other",
+    "rosterUncategorized": "Uncategorized",
+    "coachPositionCoach": "Coach",
+    "coachPositionHeadCoach": "Head coach"
+  },
+  "noticeDetail": {
+    "attachment": "Attachment"
+  },
+  "fieldSettings": {
+    "title": "Field settings",
+    "sectionNumberControl": "Number format",
+    "sectionFieldControl": "Field control",
+    "rateDisplayStyle": "Rate display style",
+    "rateStyleDot": ".xxx",
+    "rateStyleLeadingZero": "0.xxx",
+    "trailingZeros": "Trailing zeros",
+    "keep": "Keep",
+    "noKeep": "Hide",
+    "decimalPlaces": "Decimal places",
+    "twoPlaces": "2 places",
+    "threePlaces": "3 places",
+    "batter": "Batter",
+    "pitcher": "Pitcher",
+    "hintDrag": "Check to show, drag to reorder",
+    "hintMinVisible": "Keep at least {batterMin} batter stat columns and {pitcherMin} pitcher stat columns visible (excluding the fixed name column).",
+    "minVisibleUncheckReject": "Keep at least {n} columns visible; cannot hide more.",
+    "minVisibleSaveBatter": "Show at least {n} batter stat columns before saving.",
+    "minVisibleSavePitcher": "Show at least {n} pitcher stat columns before saving.",
+    "show": "Show",
+    "showColumnToggleHint": "Click: select all if not all checked; clear all if all checked. Saving still requires the minimum columns above.",
+    "field": "Field",
+    "desc": "Description",
+    "gameDetailColDesc": {
+      "batter": {
+        "pa": "Plate appearances (includes walks, HBP, etc. not counted as AB)",
+        "ab": "At bats",
+        "r": "Runs scored",
+        "h": "Hits",
+        "doubles": "Doubles",
+        "triples": "Triples",
+        "hr": "Home runs",
+        "shSf": "Sacrifice hits (SH + SF)",
+        "rbi": "Runs batted in",
+        "bbHp": "Walks + hit by pitch",
+        "so": "Strikeouts",
+        "sb": "Stolen bases",
+        "cs": "Caught stealing",
+        "e": "Errors",
+        "avg": "Batting average",
+        "obp": "On-base percentage",
+        "slg": "Slugging percentage",
+        "ops": "On-base plus slugging"
+      },
+      "pitcher": {
+        "ip": "Innings pitched",
+        "pitchR": "Runs allowed",
+        "er": "Earned runs",
+        "pitchH": "Hits allowed",
+        "pitchBbHp": "Walks + HBP",
+        "pitchSo": "Strikeouts",
+        "pitchHr": "Home runs allowed",
+        "pitchInsideParkHr": "Inside-the-park home runs (IPHR)",
+        "pitAb": "Approx. batters faced minus walks/IBB/HBP",
+        "pitE": "Fielding errors for this player in the game (if tracked)",
+        "np": "Pitch count",
+        "pitchPa": "Plate appearances against",
+        "pitchBf": "Batters faced",
+        "pitchBb": "Base on balls",
+        "pitchIbb": "Intentional walks",
+        "pitchHbp": "Hit by pitch",
+        "wp": "Wild pitches",
+        "bk": "Balks",
+        "go": "Ground-ball outs",
+        "fo": "Fly-ball outs",
+        "gs": "Games started (stat)",
+        "w": "Wins",
+        "l": "Losses",
+        "sv": "Saves",
+        "svo": "Save opportunities",
+        "hld": "Holds",
+        "cg": "Complete games",
+        "pg": "Perfect games",
+        "era": "Earned run average"
+      }
+    },
+    "resetDefault": "Reset",
+    "save": "Save",
+    "guideTitle": "Adjust visible data fields here",
+    "guideDesc": "Includes field visibility, decimal places, and rate display style.",
+    "guideConfirm": "Got it",
+    "pageHint": "Columns & format"
+  },
+  "adminLogin": {
+    "backHome": "Back to home",
+    "usernamePlaceholder": "Username",
+    "passwordPlaceholder": "Password",
+    "login": "Sign in",
+    "captchaPlaceholder": "Captcha",
+    "captchaClickPromptFallback": "Click the target shape in the captcha image",
+    "refreshCaptcha": "Refresh captcha",
+    "getCaptcha": "Get captcha",
+    "verifyOk": "Verified",
+    "verifyFailClick": "Verification failed. Please refresh and try again.",
+    "captchaAlt": "Captcha",
+    "captchaTitleInput": "Double-click to refresh; get a new code below the image (5 characters)",
+    "captchaTitleClick": "Click targets in order (3 steps). If verification fails, refresh captcha and try again",
+    "captchaTitleDrag": "Drag the slider to align the piece with the gap. If verification fails, refresh captcha and try again",
+    "captchaClickPromptTpl": "Click: {item}",
+    "captchaClickItemTpl": "{color} {size} {shape}",
+    "captchaClickItemTplQualified": "the {qualifier} {item}",
+    "captchaClickSeqTpl": "First click {first}, then {second}",
+    "captchaClickSeqTplMulti": "Click in order: {items}",
+    "captchaClickStep": "Step {current}/{total}",
+    "ruleUsername": "Please enter username",
+    "rulePassword": "Please enter password",
+    "ruleCaptchaCode": "Please enter captcha",
+    "ruleCaptchaClick": "Complete the click captcha first",
+    "captchaDragPrompt": "Drag the slider to complete the puzzle",
+    "captchaDragSliderAria": "Drag to complete captcha",
+    "verifyFailDrag": "Verification failed. Please refresh and try again.",
+    "ruleCaptchaDrag": "Complete the slider captcha first",
+    "errBadCredentials": "Invalid username or password",
+    "errCaptchaGeneric": "Verification failed. Please refresh and try again.",
+    "errCaptchaExpiredRefresh": "Captcha expired. Please refresh and try again.",
+    "errForbidden": "Account is disabled",
+    "errNotFound": "Login API not found; ensure java-server is running",
+    "errNetwork": "Cannot reach server; ensure java-server is running",
+    "errGeneric": "Load failed",
+    "captchaOptionsFailed": "Could not load captcha settings: {detail}",
+    "captchaImageFailed": "Could not load captcha image: {detail}",
+    "pageTitle": "Admin sign in - {site}",
+    "reasonExpired": "Session expired, please sign in again",
+    "reasonInvalidToken": "Invalid session, please sign in again",
+    "reasonNeedLogin": "Please sign in"
+  },
+  "captcha": {
+    "colors": {
+      "red": "red",
+      "blue": "blue",
+      "green": "green"
+    },
+    "shapes": {
+      "circle": "circle",
+      "square": "square",
+      "triangle": "triangle"
+    },
+    "sizes": {
+      "small": "small",
+      "large": "large"
+    },
+    "qualifiers": {
+      "leftmost": "leftmost",
+      "rightmost": "rightmost",
+      "topmost": "topmost",
+      "bottommost": "bottommost"
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Load failed",
+    "retry": "Retry",
+    "back": "Back",
+    "backTop": "Back to top",
+    "confirm": "OK",
+    "cancel": "Cancel"
+  }
+}
