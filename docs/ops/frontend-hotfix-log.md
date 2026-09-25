@@ -29,8 +29,8 @@
 
 | # | 日期 | Issue/PR | 改动文件（webapps 内） | 功能点（简述） | 影响页面/模块 | 目标批次 | 并入证据（批次验收引用） | 状态 |
 |---|---|---|---|---|---|---|---|---|
-| H10 | 2026-09-24 | Issue #75（本 PR 分支 `fix/livegame-undo-relink`） | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 撤销/重做恢复末尾按 id 重挂（relink）在垒跑者与阵容对象（`runners[1..3]`/`mvp`/`svp`/`flow.runner`），修复「撤销后跑者回本垒 R（及 SB/CS）丢统计」；恢复时同时清空待第三出局扣分登记 `Jl()` | 管理端 LiveGame（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8/H9 同轨） | 已并入 v1.0/dev（本 PR）；产物待 B5 对照重建 |
-| H9 | 2026-09-24 | Issue #71 / PR #72 | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 本垒出局原因子菜单 + 强迫进垒确认去掉「违规」（LiveGame 实时录入） | 管理端 LiveGame（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8 同轨） | 已并入 v1.0/dev（PR #72）；产物待 B5 对照重建 |
+| H10 | 2026-09-24 | Issue #75（本 PR 分支 `fix/livegame-undo-relink`） | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 撤销/重做恢复末尾按 id 重挂（relink）在垒跑者与阵容对象（`runners[1..3]`/`mvp`/`svp`/`flow.runner`），修复「撤销后跑者回本垒 R（及 SB/CS）丢统计」；恢复时同时清空待第三出局扣分登记 `Jl()` | 管理端 LiveGame（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8/H9 同轨） | 已并入 v1.1/dev（本 PR）；产物待 B5 对照重建 |
+| H9 | 2026-09-24 | Issue #71 / PR #72 | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 本垒出局原因子菜单 + 强迫进垒确认去掉「违规」（LiveGame 实时录入） | 管理端 LiveGame（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8 同轨） | 已并入 v1.1/dev（PR #72）；产物待 B5 对照重建 |
 | H8 | 2026-09-24 | Issue #67（本 PR 分支 `fix/livegame-lineup-pitcher-sentinel-id`） | `bs-ball/assets/LiveGameLineup-CRlH9wMS.js` + 同路徑 `.js.gz` | 「確認先發陣容」頁先發投手下拉預設顯示哨兵值 `-10000`：初始化改只認「已填球員且位置為 P」的列（複用既有空槽判斷子 `K`），不再把合成槽位 id 寫進模型；未選時回落 placeholder 與「須指定後才可開始比賽」提示。附帶修好「假 P 列遮蔽真投手」 | 管理端 → 確認先發陣容（`LiveGameLineup` chunk） | B5 LiveGame 批次（與 H6 同軌） | （待並入） |
 
 ### 登记步骤（每次热修必做）
