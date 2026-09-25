@@ -1,0 +1,1625 @@
+{
+  "glossary": {
+    "formula": {
+      "ip": "十進制度數局＝出局/3，記法：整局+0.0/0.1/0.2",
+      "inn": "同投球局（出局/3）記法"
+    },
+    "term": {
+      "pa": {
+        "fullName": "打席",
+        "definition": "球员完成打席的次数",
+        "shortLabel": "打席"
+      },
+      "gp": {
+        "fullName": "出场场次",
+        "definition": "球员出赛（上场）过的比赛场次",
+        "shortLabel": "場次"
+      },
+      "g": {
+        "fullName": "出场",
+        "definition": "投手至少投出一球即记为出场一场",
+        "shortLabel": "出賽"
+      },
+      "ab": {
+        "fullName": "打数",
+        "definition": "不包含保送、触身球、牺牲打、妨碍上垒等结果的打席次数",
+        "shortLabel": "打數"
+      },
+      "oneB": {
+        "fullName": "一垒安打",
+        "definition": "打者凭安打安全上到一垒",
+        "shortLabel": "一安"
+      },
+      "r": {
+        "fullName": "得分",
+        "definition": "跑者安全返回本垒并完成得分",
+        "shortLabel": "得分"
+      },
+      "h": {
+        "fullName": "安打",
+        "definition": "打者击出界内球并安全上垒，且非失误或野手选择所致",
+        "shortLabel": "安打"
+      },
+      "pitchH": {
+        "fullName": "被安打",
+        "definition": "投手被击出的安打数",
+        "shortLabel": "被安打"
+      },
+      "twoB": {
+        "fullName": "二垒安打",
+        "definition": "打者凭安打安全上到二垒",
+        "shortLabel": "二安"
+      },
+      "threeB": {
+        "fullName": "三垒安打",
+        "definition": "打者凭安打安全上到三垒",
+        "shortLabel": "三安"
+      },
+      "hr": {
+        "fullName": "全垒打",
+        "definition": "打者击球后依序通过一二三垒并回本垒得分，过程中未被刺杀且非因守备失误受益",
+        "shortLabel": "全壘打"
+      },
+      "iphr": {
+        "fullName": "場內全壘打",
+        "definition": "球未飛越全壘打牆仍跑回本壘得分",
+        "shortLabel": "場內全壘打"
+      },
+      "pitchHr": {
+        "fullName": "被全垒打",
+        "definition": "投手被击出的全垒打数",
+        "shortLabel": "被全壘打"
+      },
+      "pitchInsideParkHr": {
+        "fullName": "被場內全壘打",
+        "definition": "投手被擊出的場內全壘打次數",
+        "shortLabel": "被場內全壘打"
+      },
+      "rbi": {
+        "fullName": "打点",
+        "definition": "因打者该次打席行为而带回的得分",
+        "shortLabel": "打點"
+      },
+      "bb": {
+        "fullName": "保送",
+        "definition": "投手四坏球或故意保送，打者被判上一垒",
+        "shortLabel": "保送"
+      },
+      "pitchBb": {
+        "fullName": "投手保送",
+        "definition": "投手给予打者的保送次数",
+        "shortLabel": "保送"
+      },
+      "ibb": {
+        "fullName": "故意四坏",
+        "definition": "打者被故意保送的次数",
+        "shortLabel": "故四"
+      },
+      "hbp": {
+        "fullName": "触身球",
+        "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
+        "shortLabel": "觸身"
+      },
+      "hb": {
+        "fullName": "触身球（投手）",
+        "definition": "投手投球击中未尝试挥棒的打者",
+        "shortLabel": "HB"
+      },
+      "so": {
+        "fullName": "三振",
+        "definition": "打者在一个打席中被判三次好球而出局",
+        "shortLabel": "三振"
+      },
+      "pitchSo": {
+        "fullName": "夺三振",
+        "definition": "投手让打者累积三好球（挥空或目送）而出局",
+        "shortLabel": "奪三振"
+      },
+      "w": {
+        "fullName": "胜投",
+        "definition": "球队取得并保持领先时对应的投手可记胜投（依官方记分规则裁定）",
+        "shortLabel": "勝場"
+      },
+      "l": {
+        "fullName": "败投",
+        "definition": "球队失去且未再夺回领先时对应投手记为败投",
+        "shortLabel": "敗場"
+      },
+      "gs": {
+        "fullName": "先发场次",
+        "definition": "该投手作为球队首位登板投手的场次",
+        "shortLabel": "先發"
+      },
+      "cg": {
+        "fullName": "完投",
+        "definition": "先发投手从开局投到比赛结束且中途未被替换",
+        "shortLabel": "完投"
+      },
+      "pg": {
+        "fullName": "完封",
+        "definition": "投手完投且未失分",
+        "shortLabel": "PG"
+      },
+      "sho": {
+        "fullName": "完封",
+        "definition": "投手完投且未失分",
+        "shortLabel": "完封"
+      },
+      "sv": {
+        "fullName": "救援成功",
+        "definition": "后援投手在符合救援条件下守住胜利所记的成绩",
+        "shortLabel": "救援成功"
+      },
+      "svo": {
+        "fullName": "救援机会",
+        "definition": "投手登板时具备可获得救援成功条件的次数",
+        "shortLabel": "救援機會"
+      },
+      "ip": {
+        "fullName": "投球局数",
+        "definition": "投手在场时制造出局数除以 3；.1 代表 1/3 局，.2 代表 2/3 局",
+        "shortLabel": "投球局數"
+      },
+      "tbf": {
+        "fullName": "面对打者总数",
+        "definition": "投手面对打者的总人次",
+        "shortLabel": "TBF"
+      },
+      "bf": {
+        "fullName": "面对打者",
+        "definition": "投手面对打者的总人次",
+        "shortLabel": "BF"
+      },
+      "pitchBf": {
+        "fullName": "面对打者",
+        "definition": "投手面对打者的总人次",
+        "shortLabel": "打席"
+      },
+      "np": {
+        "fullName": "投球数",
+        "definition": "投手投出的总球数",
+        "shortLabel": "投球數"
+      },
+      "pIp": {
+        "fullName": "每局用球数",
+        "definition": "投手每局平均投球数",
+        "shortLabel": "PIP"
+      },
+      "qs": {
+        "fullName": "优质先发",
+        "definition": "先发投手投满至少 6 局且自责分不超过 3 分",
+        "shortLabel": "QS"
+      },
+      "gf": {
+        "fullName": "终结出赛",
+        "definition": "投手作为球队该场最后登板投手（且非先发）时记一场",
+        "shortLabel": "GF"
+      },
+      "pitchR": {
+        "fullName": "失分",
+        "definition": "投手失分总数（含自责与非自责）",
+        "shortLabel": "失分"
+      },
+      "er": {
+        "fullName": "自责分",
+        "definition": "投手应负责任的失分",
+        "shortLabel": "自責"
+      },
+      "era": {
+        "fullName": "自责分率",
+        "definition": "投手每九局平均自责分",
+        "shortLabel": "自責分率"
+      },
+      "whip": {
+        "fullName": "每局被上垒率",
+        "definition": "每投一局平均被保送与被安打总和",
+        "shortLabel": "每局被上壘率"
+      },
+      "so9": {
+        "fullName": "每九局三振",
+        "definition": "投手每九局平均三振数",
+        "shortLabel": "K9值"
+      },
+      "bb9": {
+        "fullName": "每九局保送",
+        "definition": "投手每九局平均保送数",
+        "shortLabel": "B9值"
+      },
+      "h9": {
+        "fullName": "每九局被安打",
+        "definition": "投手每九局平均被安打数",
+        "shortLabel": "H9值"
+      },
+      "kBb": {
+        "fullName": "三振保送比",
+        "definition": "投手三振次数与保送次数的比值",
+        "shortLabel": "保送三振比"
+      },
+      "avgAgainst": {
+        "fullName": "被打击率",
+        "definition": "对手面对该投手时的打击率",
+        "shortLabel": "被打擊率"
+      },
+      "sbAllowed": {
+        "fullName": "被盗垒",
+        "definition": "投手在场时被跑者盗垒成功的总次数",
+        "shortLabel": "SBALLOWED"
+      },
+      "csAllowed": {
+        "fullName": "盗垒刺杀",
+        "definition": "投手在场时对方跑者盗垒被刺杀总次数",
+        "shortLabel": "CSALLOWED"
+      },
+      "pk": {
+        "fullName": "牵制出局",
+        "definition": "投手牵制传球配合守备员将离垒跑者刺杀出局",
+        "shortLabel": "PK"
+      },
+      "sh": {
+        "fullName": "牺牲触击",
+        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "shortLabel": "SH"
+      },
+      "sac": {
+        "fullName": "牺牲触击",
+        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "shortLabel": "SAC"
+      },
+      "sf": {
+        "fullName": "高飞牺牲打",
+        "definition": "打者击出被接杀的高飞球并使跑者得分",
+        "shortLabel": "SF"
+      },
+      "gdp": {
+        "fullName": "滚地造成双杀",
+        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "shortLabel": "GDP"
+      },
+      "gidp": {
+        "fullName": "滚地造成双杀",
+        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "shortLabel": "GIDP"
+      },
+      "goFo": {
+        "fullName": "滚地出局 / 飞球出局比",
+        "definition": "打者滚地出局与飞球出局的比值",
+        "shortLabel": "GOFO"
+      },
+      "goAo": {
+        "fullName": "滚地出局 / 飞球出局比",
+        "definition": "打者滚地出局与飞球出局的比值",
+        "shortLabel": "滾飛出局比"
+      },
+      "xbh": {
+        "fullName": "长打数",
+        "definition": "除一垒安打外的安打总数",
+        "shortLabel": "長打數"
+      },
+      "tb": {
+        "fullName": "垒打数",
+        "definition": "打者通过安打累计获得的总垒包数",
+        "shortLabel": "壘打數"
+      },
+      "babip": {
+        "fullName": "场内球打击率",
+        "definition": "仅统计进入场内的击球结果，排除全垒打与三振后的打击率指标",
+        "shortLabel": "BABIP"
+      },
+      "iso": {
+        "fullName": "纯长打率",
+        "definition": "衡量打者每打数产生额外垒包能力的长打火力指标",
+        "shortLabel": "ISO"
+      },
+      "abHr": {
+        "fullName": "每轰打数",
+        "definition": "打者平均每击出一支全垒打所需的打数",
+        "shortLabel": "ABHR"
+      },
+      "bbK": {
+        "fullName": "保送/三振比",
+        "definition": "打者保送次数与三振次数的比值",
+        "shortLabel": "BBK"
+      },
+      "bbPct": {
+        "fullName": "保送率",
+        "definition": "打者在打席中获得保送的比例",
+        "shortLabel": "BB%"
+      },
+      "kPct": {
+        "fullName": "三振率",
+        "definition": "打者在打席中被三振的比例",
+        "shortLabel": "K%"
+      },
+      "fip": {
+        "fullName": "独立防御率",
+        "definition": "以投手可较稳定主导的结果（全垒打、保送、触身、三振）估算失分能力",
+        "shortLabel": "FIP"
+      },
+      "eraPlus": {
+        "fullName": "调整后防御率",
+        "definition": "校正联盟与球场环境后的防御率指标，100 为联盟平均",
+        "shortLabel": "ERA+"
+      },
+      "inn": {
+        "fullName": "守备局数",
+        "definition": "球员在对应守位完成防守的总局数",
+        "shortLabel": "守備局數"
+      },
+      "tc": {
+        "fullName": "守备机会",
+        "definition": "总守备机会数（接杀 + 助杀 + 失误）",
+        "shortLabel": "守備機會"
+      },
+      "po": {
+        "fullName": "接杀",
+        "definition": "守备员直接完成出局时记一接杀",
+        "shortLabel": "接殺"
+      },
+      "a": {
+        "fullName": "助杀",
+        "definition": "守备员传球或处理球并协助完成出局时记一助杀",
+        "shortLabel": "助殺"
+      },
+      "e": {
+        "fullName": "失误",
+        "definition": "守备员处理球失当，导致打者或跑者额外推进时记失误",
+        "shortLabel": "失誤"
+      },
+      "dp": {
+        "fullName": "双杀",
+        "definition": "守备方在同一连贯守备中完成两人出局",
+        "shortLabel": "雙殺"
+      },
+      "pb": {
+        "fullName": "捕逸",
+        "definition": "應可由捕手以一般守備處理的合法投球漏接，並造成打者或跑者推進",
+        "shortLabel": "捕逸"
+      },
+      "catcherCs": {
+        "fullName": "盜壘阻殺",
+        "definition": "捕手對企圖盜壘的跑者完成刺殺出局的次數",
+        "shortLabel": "阻殺"
+      },
+      "tcPct": {
+        "fullName": "守备率",
+        "definition": "守备员在守备机会中不发生失误的比率",
+        "shortLabel": "守備率"
+      },
+      "sb": {
+        "fullName": "盗垒",
+        "definition": "跑者在非安打、失误等情形下，自行成功推进一个垒包",
+        "shortLabel": "盜壘"
+      },
+      "cs": {
+        "fullName": "盗垒失败",
+        "definition": "跑者尝试盗垒时在到达下一垒前被刺杀出局",
+        "shortLabel": "盜失"
+      },
+      "avg": {
+        "fullName": "打击率",
+        "definition": "每打数获得安打的比率",
+        "shortLabel": "打擊率"
+      },
+      "obp": {
+        "fullName": "上垒率",
+        "definition": "打者在打席中成功上垒的比率",
+        "shortLabel": "上壘率"
+      },
+      "slg": {
+        "fullName": "长打率",
+        "definition": "每打数可获得的平均垒打数",
+        "shortLabel": "長打率"
+      },
+      "ops": {
+        "fullName": "攻击指数",
+        "definition": "上垒率与长打率之和",
+        "shortLabel": "攻擊指數"
+      },
+      "opsPlus": {
+        "fullName": "调整后 OPS",
+        "definition": "校正联盟与球场环境后的 OPS 指标，100 为联盟平均",
+        "shortLabel": "OPS+"
+      },
+      "bipPct": {
+        "fullName": "场内球比例",
+        "definition": "打席结果为场内击球（非三振、保送、触身等）的比例",
+        "shortLabel": "BIP%"
+      }
+    }
+  },
+  "versionCheck": {
+    "title": "版本更新提示",
+    "intro": "偵測到新版本已發佈。",
+    "currentVersionLabel": "目前版本：",
+    "latestVersionLabel": "最新版本：",
+    "updateContentHeading": "新版內容：",
+    "refreshHintLine1": "點擊「立即重新整理」後將載入新版本頁面。",
+    "refreshHintLine2": "可「稍後」先儲存資料，再手動重新整理頁面。",
+    "confirmRefresh": "立即重新整理",
+    "cancelLater": "稍後"
+  },
+  "nav": {
+    "home": "首頁",
+    "events": "賽事一覽",
+    "teams": "聯盟球隊",
+    "starPlayers": "明星球員",
+    "news": "資訊公告",
+    "stats": "數據排行",
+    "language": "切換語言",
+    "theme": "切換主題",
+    "themeLight": "淺色",
+    "themeDark": "深色",
+    "themeAuto": "自動",
+    "adminEntry": "管理後台 / 登入",
+    "adminDashboard": "進入管理後台",
+    "logout": "登出",
+    "logoutSuccess": "已登出",
+    "userMenu": "帳號選單",
+    "expandMenu": "展開選單",
+    "prevSlide": "上一張",
+    "nextSlide": "下一張",
+    "slideIndex": "第 {n} 屏",
+    "feedback": "意見回饋"
+  },
+  "portalFeedback": {
+    "drawerTitle": "意見回饋",
+    "typeLabel": "回饋類型",
+    "typeSuggestion": "功能建議",
+    "typeBug": "Bug / 故障",
+    "typeContent": "內容錯誤",
+    "typeAccount": "帳號與登入",
+    "typeOther": "其他",
+    "titleLabel": "標題",
+    "titlePlaceholder": "一句話概括，可不填",
+    "contentLabel": "詳細描述",
+    "contentPlaceholder": "請盡量寫明：現象、期望結果；若是 Bug 請寫重現步驟；並註明相關頁面或選單路徑。",
+    "contactTypeLabel": "聯絡方式類型",
+    "contactPhone": "手機",
+    "contactEmail": "電子郵件",
+    "contactQq": "QQ",
+    "contactWechat": "微信",
+    "contactOther": "其他",
+    "contactValueLabel": "聯絡方式",
+    "contactValuePlaceholder": "便於我們回覆您",
+    "contactRequiredGuest": "未登入時請填寫聯絡方式，便於我們回覆。",
+    "captchaLabel": "驗證碼",
+    "captchaDragPrompt": "拖動滑塊完成拼圖",
+    "captchaDragSliderAria": "拖動滑塊完成拼圖驗證",
+    "captchaVerifyOk": "驗證通過",
+    "captchaRefresh": "換一張",
+    "captchaRefreshIn": "{n}s 後可刷新驗證碼",
+    "getCaptcha": "取得驗證碼",
+    "submitTab": "送出回饋",
+    "myTab": "我的回饋",
+    "submit": "送出回饋",
+    "submitOk": "感謝您的回饋，我們已收到。",
+    "historyEmpty": "暫無回饋記錄",
+    "guestHistoryHint": "目前為遊客回饋記錄，僅保存在本機瀏覽器；清除快取、切換裝置或更換瀏覽器後記錄將消失。",
+    "appendLimitHint": "目前回饋在待處理階段已達補充上限（3次），請等待處理結果或新建回饋。",
+    "statusPending": "待處理",
+    "statusReplied": "已回覆",
+    "statusClosed": "已關閉",
+    "replyLabel": "營運回覆",
+    "ruleType": "請選擇回饋類型",
+    "ruleContent": "請填寫詳細描述",
+    "ruleReservedMarker": "內容不得包含系統分段用的保留標記（請勿貼上時間軸裡的分隔行），請刪除後重試",
+    "ruleCaptcha": "請完成驗證碼",
+    "ruleContactType": "請選擇聯絡方式類型",
+    "ruleContactValue": "請填寫聯絡方式",
+    "ruleContactPhone": "請輸入有效的手機號碼",
+    "ruleContactEmail": "請輸入常用的電子郵箱",
+    "continueModeTip": "目前是「繼續補充」模式（送出後將附加到原回饋）",
+    "switchToNew": "改為新回饋",
+    "continueAppend": "繼續補充",
+    "guestSubmitActor": "遊客提交",
+    "userSubmitActor": "用戶提交",
+    "guestAppendActor": "遊客補充",
+    "userAppendActor": "用戶補充",
+    "handlerFallback": "處理人",
+    "captchaAlt": "驗證碼",
+    "guideTitle": "在這裡提交意見回饋",
+    "guideDesc": "可回饋功能建議、Bug 與內容問題；提交後可在「我的回饋」查看處理進展。",
+    "guideConfirm": "知道了"
+  },
+  "platformDocs": {
+    "backToPortal": "返回門戶首頁",
+    "refreshListHint": "點擊刷新列表",
+    "empty": "暫無平台文件。"
+  },
+  "route": {
+    "home": "首頁",
+    "news": "資訊公告",
+    "platformDocs": "平台文件",
+    "articleDetail": "文章詳情",
+    "newsDetail": "資訊詳情",
+    "noticeDetail": "公告詳情",
+    "events": "賽事一覽",
+    "eventGames": "賽程與結果",
+    "gameDetail": "比賽詳情",
+    "teams": "聯盟球隊",
+    "starPlayers": "明星球員",
+    "teamDetail": "球隊詳情",
+    "playerDetail": "球員詳情",
+    "stats": "數據排行",
+    "stadiumDetail": "球場介紹",
+    "announcementDoc": "公告詳情",
+    "notFound": "頁面不存在",
+    "serviceUnavailable": "服務暫不可用"
+  },
+  "stadiumDetail": {
+    "notFound": "球場不存在或已刪除",
+    "address": "地址",
+    "contactPhone": "電話",
+    "mapTitle": "位置地圖",
+    "noCoords": "暫無座標，無法在地圖上標示。",
+    "factsTitle": "場內資訊",
+    "level": "球場級別",
+    "operating": "營運狀態",
+    "capacityTotal": "容納人數（約）",
+    "seating": "座席數",
+    "distLeft": "左外野",
+    "distCenter": "中外野",
+    "distRight": "右外野",
+    "turf": "草皮",
+    "roof": "屋頂",
+    "largeScreen": "大螢幕",
+    "screenYes": "有",
+    "screenNo": "無",
+    "screenUnknown": "未填寫",
+    "homeTeams": "主場球隊",
+    "introTitle": "球場簡介",
+    "transportTitle": "交通資訊",
+    "layoutTitle": "球場布局",
+    "layoutEmpty": "暫無布局圖，可在後台上傳。",
+    "coverAlt": "球場介紹圖",
+    "stadiumInfoTitle": "球場資訊",
+    "milestonesTitle": "重要日期",
+    "constructionEra": "興建年代",
+    "openedOn": "開放日期",
+    "enums": {
+      "level": {
+        "A": "A級（職棒/國際賽）",
+        "B": "B級（職棒）",
+        "C": "C級（業餘/地區）"
+      },
+      "operating": {
+        "PLANNED": "籌建中",
+        "IN_USE": "使用中",
+        "RENOVATION": "整建中",
+        "CLOSED": "停用"
+      },
+      "turf": {
+        "NATURAL": "天然草",
+        "ARTIFICIAL": "人工草"
+      },
+      "roof": {
+        "OPEN": "開放式",
+        "RETRACTABLE": "可開闔",
+        "DOME": "室內（天幕）"
+      }
+    }
+  },
+  "notFound": {
+    "title": "頁面不存在",
+    "hint": "您造訪的網址可能不正確，或頁面已移除。",
+    "titleNetwork": "暫時無法載入",
+    "hintNetwork": "請檢查網路連線後重試。",
+    "backHome": "返回首頁",
+    "retry": "重試"
+  },
+  "serviceUnavailable": {
+    "title": "服務暫不可用",
+    "hint": "無法連上後端或校驗介面異常（例如服務重啟中）。請稍後再試；這不代表您造訪的頁面不存在。",
+    "backHome": "返回首頁",
+    "retry": "重試"
+  },
+  "home": {
+    "eventsTitle": "賽事一覽",
+    "teamsTitle": "聯盟球隊",
+    "newsTitle": "資訊公告",
+    "newsTitleEn": "news",
+    "more": "查看更多 >",
+    "eventStart": "開始",
+    "eventEnd": "結束",
+    "homeStadium": "主場",
+    "readMore": "閱讀全文",
+    "noNews": "暫無資訊",
+    "noEvents": "暫無賽事",
+    "noTeams": "暫無球隊",
+    "promoAdAlt": "廣告",
+    "promoTicketAlt": "購票"
+  },
+  "teams": {
+    "title": "聯盟球隊",
+    "noTeams": "暫無球隊",
+    "homeStadium": "主場"
+  },
+  "starPlayers": {
+    "title": "明星球員",
+    "subtitle": "聚焦熱門單項，快速查看本季 Top 10。",
+    "allYears": "全部年份",
+    "allSeasons": "全部賽季",
+    "loadFailed": "載入明星球員排行榜失敗",
+    "metricGroup": {
+      "batting": "打擊",
+      "pitching": "投球"
+    },
+    "metrics": {
+      "era": "防禦率",
+      "avg": "打擊率",
+      "w": "勝投",
+      "h": "安打",
+      "sv": "救援成功",
+      "hr": "全壘打",
+      "hld": "中繼成功",
+      "rbi": "打點",
+      "so": "奪三振",
+      "sb": "盜壘成功"
+    },
+    "metricDesc": {
+      "avg": "打擊",
+      "hr": "打擊",
+      "rbi": "打擊",
+      "so": "投球",
+      "w": "投球",
+      "era": "投球"
+    },
+    "valueLabels": {
+      "pitchSo": "投球三振"
+    },
+    "awards": {
+      "yearPlaceholder": "選擇年份",
+      "tabBatting": "打擊獎項",
+      "tabPitching": "投手獎項",
+      "tabGoldGlove": "金手獎項",
+      "tabBestTen": "最佳十人獎",
+      "tabOthers": "其他獎項",
+      "empty": "暫無獎項資料",
+      "colAward": "獎項",
+      "colWinner": "得主",
+      "colTeam": "球隊",
+      "colPosition": "守位",
+      "colValue": "數據"
+    }
+  },
+  "events": {
+    "title": "賽事一覽",
+    "noEvents": "暫無賽事",
+    "noEventsOrGames": "暫無賽事或比賽",
+    "noGames": "暫無比賽",
+    "allEvents": "全部賽事",
+    "scheduleAndResult": "賽程與結果",
+    "viewDefault": "卡片視圖",
+    "viewList": "表格視圖",
+    "viewCalendar": "月曆視圖",
+    "scheduleTable": "賽程表",
+    "filterGameStatus": "比賽狀態",
+    "filterGameMode": "全部比賽模式",
+    "downloadSchedulePdf": "下載賽程表",
+    "downloadSchedulePdfSuccess": "賽程表已下載",
+    "downloadSchedulePdfFail": "賽程表產生失敗，請稍後再試",
+    "pdfColDate": "日期",
+    "pdfColGameNo": "場次",
+    "pdfColVenue": "場地",
+    "pdfColTime": "時間",
+    "pdfColTeams": "隊伍",
+    "pdfColScore": "比分",
+    "pdfUndated": "未指定日期",
+    "pdfSheetTagline": "賽程表",
+    "eventStatus": {
+      "draft": "未開始",
+      "published": "已發布",
+      "ended": "已結束",
+      "ongoing": "進行中"
+    }
+  },
+  "eventGames": {
+    "title": "賽程與結果",
+    "noGames": "暫無比賽",
+    "gameNumber": "第 {n} 場",
+    "vs": "VS",
+    "viewDetail": "查看詳情",
+    "viewGameDetail": "查看比賽詳情",
+    "scheduled": "未開賽",
+    "live": "進行中",
+    "finished": "已結束",
+    "status": {
+      "scheduled": "未開始",
+      "live": "進行中",
+      "final": "已結束",
+      "postponed": "延期",
+      "cancelled": "取消"
+    }
+  },
+  "gameDetail": {
+    "vs": "VS",
+    "score": "比分",
+    "batting": "進攻",
+    "pitching": "投球",
+    "fielding": "防守",
+    "back": "返回",
+    "fieldSettings": "數據項調整",
+    "gameNotFound": "未找到比賽",
+    "fieldTips": {
+      "batter": {
+        "pa": "打席（Plate Appearances）",
+        "ab": "打數（At Bats）",
+        "r": "得分（Runs）",
+        "h": "安打（Hits）",
+        "doubles": "二壘安打（Doubles）",
+        "triples": "三壘安打（Triples）",
+        "hr": "全壘打（含場內全壘打）",
+        "shSf": "犧牲觸擊+犧牲高飛（SH+SF）",
+        "rbi": "打點（Runs Batted In）",
+        "bbHp": "保送+死球（BB+HBP 的合併項）",
+        "so": "三振（Strikeouts）",
+        "sb": "盜壘（Stolen Bases）",
+        "cs": "盜失（Caught Stealing）",
+        "e": "失誤（Errors）",
+        "avg": "打擊率（H/AB）",
+        "obp": "上壘率（本頁以 (H+保送+HP)/PA 近似）",
+        "slg": "長打率（TB/AB）",
+        "ops": "攻擊指數（OBP+SLG）"
+      },
+      "pitcher": {
+        "ip": "投球局數（Innings Pitched）",
+        "pitchR": "失分（Runs Allowed）",
+        "er": "自責分（Earned Runs）",
+        "pitchH": "被安打（Hits Allowed）",
+        "pitchBbHp": "保送+死球（BB+HBP）",
+        "pitchSo": "奪三振（Strikeouts）",
+        "pitchHr": "被牆外全壘打（Home Runs Allowed）",
+        "pitchInsideParkHr": "被場內全壘打（Inside-the-park HR）",
+        "pitAb": "對手打數（BF−保送−IBB−HBP；非打者 AB）",
+        "pitE": "該投手本場打者數據的失誤",
+        "np": "投球數",
+        "pitchPa": "面對打席（PA）",
+        "pitchBf": "面對打者總人次（BF）",
+        "pitchBb": "保送",
+        "pitchIbb": "故意保送",
+        "pitchHbp": "死球（HBP）",
+        "wp": "暴投",
+        "bk": "投手犯規",
+        "go": "地滾出局",
+        "fo": "高飛出局",
+        "gs": "是否本場為先發投手（不是為 0，是為 1）",
+        "w": "是否本場記為勝投（不是為 0，是為 1）",
+        "l": "是否本場記為敗投（不是為 0，是為 1）",
+        "sv": "是否本場記為救援成功（不是為 0，是為 1）",
+        "svo": "救援機會",
+        "hld": "中繼成功",
+        "cg": "是否本場完投（不是為 0，是為 1）",
+        "pg": "是否本場為完美比賽（不是為 0，是為 1）",
+        "era": "自責分率（ER×9/IP）"
+      }
+    }
+  },
+  "news": {
+    "title": "資訊公告",
+    "viewCount": "{n} 次瀏覽",
+    "noNews": "暫無資訊",
+    "back": "返回",
+    "categoryAll": "全部",
+    "categoryNews": "資訊",
+    "categoryAnnouncement": "公告",
+    "categoryNotice": "通知",
+    "categoryPublicity": "公示"
+  },
+  "stats": {
+    "title": "數據排行",
+    "batting": "打擊",
+    "pitching": "投球",
+    "fielding": "防守",
+    "noData": "暫無數據",
+    "rank": "排名",
+    "player": "球員",
+    "team": "球隊",
+    "position": "位置",
+    "number": "背號",
+    "allTeams": "全部球隊",
+    "allYears": "全部年份",
+    "allSeasons": "全部賽季",
+    "filterPlayerName": "依球員姓名篩選",
+    "filterPosition": "依位置篩選",
+    "allPositions": "全部位置",
+    "filterHomeAway": "依主客場篩選",
+    "allHomeAway": "全部主客場",
+    "home": "主場",
+    "away": "客場",
+    "scopeGameDetail": "比賽詳情數據",
+    "scopePlayer": "球員數據",
+    "scopeTeam": "球隊數據",
+    "gameModeAll": "全部",
+    "gameModeBaseball": "棒球",
+    "gameModeSoftball": "壘球",
+    "tabStandings": "球隊積分榜",
+    "tabPitching": "投球榜",
+    "tabBatting": "進攻榜",
+    "tabFielding": "防守榜",
+    "columnAdjust": "數據項調整",
+    "columnSettingsTitle": "數據項調整",
+    "resetDisplayColumns": "恢復預設",
+    "cancel": "取消",
+    "save": "保存",
+    "saveSuccess": "已保存到本地",
+    "scrollTableLeft": "向左檢視更多欄",
+    "scrollTableRight": "向右檢視更多欄",
+    "tableViewHint": "查閱螢幕顯示不全的資料時，可在表格區域內按住滑鼠中鍵移動方向，或先點擊表格區域再按方向鍵操作",
+    "tableViewHintShort": "滑動表格以檢視更多資料",
+    "streakWins": "{n}連勝",
+    "streakLosses": "{n}連敗",
+    "streakDraws": "{n}連和",
+    "winRateStandingsTip": "勝場數 ÷ 已賽場次（和局計入總場次，不計入勝場）",
+    "standingsRecentHeaderTip": "各隊取最近已完賽樣本（至多 10 場，實際場次數因隊而異）的勝-和-負；未滿 10 場時樣本較小，僅供參考",
+    "qualificationTitle": "上榜條件",
+    "battingQualification": "打席數須達到「球隊應賽場次 × {coeff}」（無條件進位）。應賽場次為計入排行的賽程場數（未勾選「計入排行」的比賽如季後賽/排名賽等除外）。個人數據頁不受此條件影響。",
+    "battingQualificationWithExample": "打席數須達到「球隊應賽場次 × {coeff}」（無條件進位）。應賽場次為計入排行的賽程場數（未勾選「計入排行」的比賽如季後賽/排名賽等除外）。當前篩選下應賽場次最多 {games} 場，例如需至少 {minPa} 打席。個人數據頁不受此條件影響。",
+    "pitchingQualification": "投球局數須達到「球隊應賽場次 × 每場 1 局」。應賽場次為計入排行的賽程場數（未勾選「計入排行」的比賽如季後賽/排名賽等除外）。個人數據頁不受此條件影響。",
+    "pitchingQualificationWithExample": "投球局數須達到「球隊應賽場次 × 每場 1 局」。應賽場次為計入排行的賽程場數（未勾選「計入排行」的比賽如季後賽/排名賽等除外）。當前篩選下應賽場次最多 {games} 場，例如需至少 {minIp} 局。個人數據頁不受此條件影響。",
+    "col": {
+      "rank": "排名",
+      "team": "球隊",
+      "player": "球員",
+      "nameColumn": "姓名",
+      "win": "勝",
+      "draw": "和",
+      "loss": "負",
+      "gb": "勝差",
+      "runDiff": "分差",
+      "streak": "走勢",
+      "recentRecord": "近況",
+      "winRate": "勝率",
+      "points": "積分",
+      "gp": "場次",
+      "gs": "先發",
+      "svo": "救援機會",
+      "cg": "完投",
+      "pg": "完美比賽",
+      "w": "勝場",
+      "l": "敗場",
+      "sv": "救援成功",
+      "hld": "中繼成功",
+      "ip": "投球局數",
+      "whip": "每局被上壘率",
+      "era": "自責分率",
+      "pa": "打席",
+      "pitchBf": "打席",
+      "np": "投球數",
+      "ab": "打數",
+      "h": "安打",
+      "hr": "全壘打",
+      "iphr": "場內全壘打",
+      "pitchInsideParkHr": "被場內全壘打",
+      "bb": "保送",
+      "ibb": "故意四壞",
+      "hbp": "死球",
+      "so": "三振",
+      "wp": "暴投",
+      "bk": "投手犯規",
+      "r": "得分",
+      "er": "自責分",
+      "go": "地滾出局",
+      "fo": "高飛球出局",
+      "goFo": "滾飛出局比",
+      "rbi": "打點",
+      "oneB": "一安",
+      "twoB": "二安",
+      "threeB": "三安",
+      "tb": "壘打數",
+      "sb": "盜壘",
+      "obp": "上壘率",
+      "slg": "長打率",
+      "avg": "打擊率",
+      "gdp": "雙殺打",
+      "sh": "犧短",
+      "sf": "犧飛",
+      "cs": "盜失",
+      "sbPct": "偷壘成功率",
+      "ops": "攻擊指數",
+      "ssi": "銀棒數",
+      "pos": "位置",
+      "tc": "守備機會",
+      "po": "接殺",
+      "a": "助殺",
+      "e": "失誤",
+      "inn": "守備局數",
+      "dp": "雙殺",
+      "pb": "捕逸",
+      "catcherCs": "盜壘阻殺",
+      "tcPct": "守備率"
+    },
+    "colEn": {
+      "rank": "Rank",
+      "team": "Team",
+      "player": "Player",
+      "nameColumn": "Name",
+      "win": "W",
+      "draw": "D",
+      "loss": "L",
+      "gb": "GB",
+      "runDiff": "RD",
+      "streak": "STRK",
+      "recentRecord": "LAST",
+      "winRate": "Win%",
+      "points": "PTS",
+      "gp": "GP",
+      "gs": "GS",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "W",
+      "l": "L",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "IP",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "PA",
+      "pitchBf": "BF",
+      "np": "NP",
+      "ab": "AB",
+      "h": "H",
+      "hr": "HR",
+      "iphr": "IPHR",
+      "pitchInsideParkHr": "IPHR",
+      "bb": "BB",
+      "ibb": "IBB",
+      "hbp": "HBP",
+      "so": "SO",
+      "wp": "WP",
+      "bk": "BK",
+      "r": "R",
+      "er": "ER",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "GO/FO",
+      "rbi": "RBI",
+      "oneB": "1B",
+      "twoB": "2B",
+      "threeB": "3B",
+      "tb": "TB",
+      "sb": "SB",
+      "obp": "OBP",
+      "slg": "SLG",
+      "avg": "AVG",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "CS",
+      "sbPct": "SB%",
+      "ops": "OPS",
+      "ssi": "SSI",
+      "pos": "POS",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "E",
+      "inn": "INN",
+      "dp": "DP",
+      "pb": "PB",
+      "catcherCs": "CS",
+      "tcPct": "TC%"
+    }
+  },
+  "player": {
+    "profile": "球員資料",
+    "intro": "簡介",
+    "team": "所屬球隊",
+    "verified": {
+      "claimedTip": "該球員資料已被本人認證認領",
+      "teamTip": "平台認證球隊",
+      "leagueTip": "平台認證聯盟"
+    },
+    "claim": {
+      "prompt": "這是你嗎？認領該球員資料後即可管理本人數據",
+      "action": "認領該球員",
+      "submitted": "認領申請已提交，請等待球隊負責人或平台審核",
+      "failed": "認領申請提交失敗"
+    },
+    "stats": "數據統計",
+    "dimensionCareer": "生涯",
+    "dimensionBySeason": "按賽季",
+    "dimensionGameLog": "比賽日誌",
+    "noSeasonData": "暫無按賽事數據",
+    "noStatsForGameMode": "該模式下暫無比賽數據",
+    "noGameLog": "暫無比賽記錄",
+    "detail": "詳情",
+    "statDrill": {
+      "titleSuffix": "數據鑽取（按場）",
+      "colDate": "日期",
+      "colEvent": "賽事",
+      "colTeam": "球隊",
+      "colScore": "比分",
+      "colSide": "主客",
+      "colValue": "本場值",
+      "sideHome": "主場",
+      "sideAway": "客場",
+      "viewGame": "比賽詳情",
+      "empty": "無場次記錄",
+      "noMetric": "該項暫不支援按場鑽取",
+      "loadError": "載入失敗"
+    },
+    "date": "日期",
+    "event": "賽事",
+    "score": "比分",
+    "battingShort": "進攻",
+    "pitchingShort": "投球",
+    "fieldingShort": "防守",
+    "statCardBatting": "進攻數據 Batting",
+    "statCardPitching": "投球數據 Pitching",
+    "statCardFielding": "防守數據 Fielding",
+    "careerBat": {
+      "gp": "出場場次",
+      "pa": "輪擊次數",
+      "ab": "打數",
+      "avg": "打擊率",
+      "obp": "上壘率",
+      "slg": "長打率",
+      "ops": "攻擊指數",
+      "h": "安打",
+      "singles": "一壘安打",
+      "doubles": "二壘打",
+      "triples": "三壘打",
+      "hr": "全壘打",
+      "iphr": "場內全壘打",
+      "shSf": "犧牲觸擊+犧牲高飛",
+      "tb": "壘打數",
+      "rbi": "打點",
+      "r": "得分",
+      "sb": "盜壘",
+      "cs": "盜失",
+      "bbHp": "保送+觸身",
+      "so": "三振"
+    },
+    "careerPitch": {
+      "gp": "出場場次",
+      "ip": "局數",
+      "era": "責失分率",
+      "whip": "每局被上壘率",
+      "pitchBf": "輪擊數",
+      "pitchAb": "自由擊球數",
+      "ggComplete": "完投",
+      "pgShutout": "完封",
+      "pitchH": "被安打",
+      "pitchHr": "被全壘打",
+      "pitchInsideParkHr": "被場內全壘打",
+      "bbHp": "保送+觸身",
+      "so": "三振",
+      "wp": "暴投",
+      "bk": "投手犯規"
+    },
+    "careerFld": {
+      "gp": "出場場次",
+      "inn": "守備局數",
+      "tc": "守備機會",
+      "po": "刺殺",
+      "a": "助殺",
+      "e": "失誤",
+      "tcPct": "防守率",
+      "pb": "捕逸",
+      "catcherCs": "盜壘阻殺"
+    },
+    "seasonBlock": "{season} · {event}",
+    "seasonEventColumn": "賽季 · 賽事",
+    "seasonTeamColumn": "球隊",
+    "seasonColTip": {
+      "seasonEvent": "該列所匯總的賽季年及賽事",
+      "teamNames": "該賽季／賽事下該球員曾代表的球隊，轉隊等可能多隊",
+      "gp": "出場場次",
+      "pa": "打席、保送等計次的輪擊",
+      "ab": "打數",
+      "avg": "打擊率，安打÷打數",
+      "obp": "上壘率",
+      "slg": "長打率",
+      "ops": "攻擊指數",
+      "h": "安打數",
+      "singles": "一壘安打數",
+      "doubles": "二壘安打數",
+      "triples": "三壘安打數",
+      "hr": "全壘打數",
+      "insideParkHr": "場內全壘打",
+      "shSf": "犧牲短打與犧牲高飛合計",
+      "tb": "壘打數",
+      "rbi": "打點",
+      "r": "得分",
+      "sb": "盜壘成功",
+      "cs": "盜失",
+      "bb": "四壞球保送",
+      "bbHp": "四壞、故意與觸身球次數合計",
+      "batSo": "三振",
+      "ip": "投球局數",
+      "era": "責失分率",
+      "whip": "每局被上壘率",
+      "pitchBf": "面對打者總人次",
+      "pitchAb": "自由打數，由面對打者人次扣除四壞、故意與觸身",
+      "ggComplete": "完投",
+      "pgShutout": "完封",
+      "pitchH": "被安打",
+      "pitchHr": "被牆外全壘打，不含球場內全壘打",
+      "pitchInsideParkHr": "被場內全壘打",
+      "pitK": "奪三振",
+      "pitBB": "四壞球保送",
+      "pitchBbHp": "四壞、故意與觸身球等合計",
+      "wp": "暴投",
+      "bk": "投手犯規",
+      "inn": "守備局數，記法同投球局數",
+      "tc": "守備機會",
+      "po": "刺殺",
+      "a": "助殺",
+      "e": "失誤",
+      "tcPct": "守備率",
+      "fldPb": "捕手漏接",
+      "fldCatcherCs": "盜壘阻殺",
+      "pitchR": "投手失分",
+      "w": "勝投",
+      "l": "敗投",
+      "sv": "救援成功",
+      "svo": "救援機會",
+      "gs": "先發出場",
+      "cg": "完投場數",
+      "er": "自責分",
+      "pitchBb": "四壞球保送",
+      "pitchHbp": "觸身球",
+      "dp": "雙殺"
+    },
+    "gameLogColTip": {
+      "date": "比賽日期。",
+      "event": "該場所屬賽事名稱。",
+      "team": "該場球員資料所對應的代表球隊。",
+      "score": "本場比分（主隊得分 - 客隊得分）。",
+      "batting": "該場進攻資料摘要（如安打-打數、打點、全壘打等）。",
+      "pitching": "該場投球資料摘要（局數、責失分、勝敗投等）。",
+      "fielding": "該場防守資料摘要（守備機會、失誤等）。",
+      "detail": "前往該場比賽詳情頁。"
+    },
+    "unnamedEvent": "未命名賽事",
+    "shareCard": {
+      "generateButton": "分享球員卡片",
+      "dialogTitle": "分享球員卡片",
+      "orientationPortrait": "直式 4:5",
+      "orientationLandscape": "橫式 16:9",
+      "bgImage": "背景圖片",
+      "bgImageNth": "背景圖 {n}",
+      "subjectAvatar": "球員頭像",
+      "photoEdit": "構圖編輯",
+      "photoFit": "圖片顯示",
+      "photoFitCover": "裁切鋪滿",
+      "photoFitContain": "完整顯示",
+      "composeUndo": "復原",
+      "composeRedo": "重做",
+      "photoEditHint": "在「構圖」分頁內點選背景或人物圖層後拖曳移動；雙指捏合縮放；電腦可用滾輪縮放。",
+      "pickLayerForZoom": "請先點選背景或人物圖層，再縮放",
+      "photoFocusX": "水平位置",
+      "photoFocusY": "垂直位置",
+      "photoScale": "縮放",
+      "composePreview": "構圖預覽",
+      "tabCompose": "構圖",
+      "tabPreview": "預覽",
+      "previewEmpty": "暫無可顯示的預覽。若剛產生失敗，請回到「構圖」檢查後再切換到本分頁。",
+      "cardColors": "卡片顏色",
+      "frameBorderColor": "邊框顏色",
+      "numberColor": "背號顏色",
+      "cardFillColor": "卡片底色",
+      "dataScope": "資料範圍",
+      "statPickLabel": "卡片資料（選 6 項）",
+      "scopeCareer": "生涯累計",
+      "roleBatting": "打擊",
+      "rolePitching": "投球",
+      "roleFielding": "防守",
+      "captureScale": "匯出清晰度",
+      "captureScaleHint": "越高越清晰，產生也會較慢",
+      "scale1": "標準 (1×)",
+      "scale15": "較佳 (1.5×)",
+      "scale2": "高畫質 (2×)",
+      "generatePreview": "產生預覽",
+      "regeneratePreview": "重新產生預覽",
+      "download": "下載圖片",
+      "copyImage": "複製圖片",
+      "copySuccess": "已複製到剪貼簿",
+      "copyFailed": "複製失敗，請改以下載或檢查瀏覽器權限",
+      "copyNotSupported": "目前環境不支援複製圖片到剪貼簿",
+      "previewTitle": "預覽（可點擊放大）",
+      "previewDirty": "構圖已變更，請重新預覽查看效果。",
+      "statBatting": {
+        "avg": {
+          "native": "打擊率",
+          "abbr": "AVG"
+        },
+        "obp": {
+          "native": "上壘率",
+          "abbr": "OBP"
+        },
+        "slg": {
+          "native": "長打率",
+          "abbr": "SLG"
+        },
+        "ops": {
+          "native": "攻擊指數",
+          "abbr": "OPS"
+        },
+        "h": {
+          "native": "安打",
+          "abbr": "H"
+        },
+        "hr": {
+          "native": "全壘打",
+          "abbr": "HR"
+        },
+        "rbi": {
+          "native": "打點",
+          "abbr": "RBI"
+        },
+        "r": {
+          "native": "得分",
+          "abbr": "R"
+        },
+        "sb": {
+          "native": "盜壘",
+          "abbr": "SB"
+        },
+        "so": {
+          "native": "三振",
+          "abbr": "SO"
+        },
+        "doubles": {
+          "native": "二壘安打",
+          "abbr": "2B"
+        },
+        "triples": {
+          "native": "三壘安打",
+          "abbr": "3B"
+        },
+        "pa": {
+          "native": "打席",
+          "abbr": "PA"
+        },
+        "ab": {
+          "native": "打數",
+          "abbr": "AB"
+        },
+        "bb": {
+          "native": "保送",
+          "abbr": "BB"
+        }
+      },
+      "statPitching": {
+        "era": {
+          "native": "防禦率",
+          "abbr": "ERA"
+        },
+        "whip": {
+          "native": "每局被上壘",
+          "abbr": "WHIP"
+        },
+        "ip": {
+          "native": "局數",
+          "abbr": "IP"
+        },
+        "pitchSo": {
+          "native": "奪三振",
+          "abbr": "SO"
+        },
+        "w": {
+          "native": "勝投",
+          "abbr": "W"
+        },
+        "sv": {
+          "native": "救援成功",
+          "abbr": "SV"
+        },
+        "l": {
+          "native": "敗投",
+          "abbr": "L"
+        },
+        "hld": {
+          "native": "中繼成功",
+          "abbr": "HLD"
+        },
+        "np": {
+          "native": "用球數",
+          "abbr": "NP"
+        },
+        "er": {
+          "native": "自責分",
+          "abbr": "ER"
+        },
+        "pitchH": {
+          "native": "被安打",
+          "abbr": "H"
+        },
+        "pitchBb": {
+          "native": "保送",
+          "abbr": "BB"
+        },
+        "gs": {
+          "native": "先發",
+          "abbr": "GS"
+        },
+        "pitchPa": {
+          "native": "對打席",
+          "abbr": "PA"
+        },
+        "pitchBf": {
+          "native": "對打者",
+          "abbr": "BF"
+        }
+      },
+      "statFielding": {
+        "gp": {
+          "native": "出賽",
+          "abbr": "G"
+        },
+        "inn": {
+          "native": "守備局數",
+          "abbr": "INN"
+        },
+        "tc": {
+          "native": "守備機會",
+          "abbr": "TC"
+        },
+        "po": {
+          "native": "刺殺",
+          "abbr": "PO"
+        },
+        "a": {
+          "native": "助殺",
+          "abbr": "A"
+        },
+        "e": {
+          "native": "失誤",
+          "abbr": "E"
+        },
+        "tcPct": {
+          "native": "守備率",
+          "abbr": "FLD%"
+        },
+        "pb": {
+          "native": "捕逸",
+          "abbr": "PB"
+        },
+        "catcherCs": {
+          "native": "阻殺盜壘",
+          "abbr": "CS"
+        }
+      },
+      "noStats": "目前暫無可用於產生卡片的資料",
+      "exportFailed": "產生失敗，請稍後再試"
+    },
+    "meta": {
+      "positionLine": "位置：{v}",
+      "batThrowLine": "投打習慣：{v}",
+      "heightLine": "身高：{v}",
+      "weightLine": "體重：{v}",
+      "ageLine": "年齡：{v}歲"
+    },
+    "hand": {
+      "L": "左",
+      "R": "右",
+      "B": "左右開弓"
+    },
+    "handThrowBat": {
+      "L": "左",
+      "R": "右",
+      "B": "左右"
+    },
+    "position": {
+      "P": "投手",
+      "C": "捕手",
+      "1B": "一壘手",
+      "2B": "二壘手",
+      "3B": "三壘手",
+      "SS": "游擊手",
+      "LF": "左外野手",
+      "CF": "中外野手",
+      "RF": "右外野手",
+      "DH": "指定打擊",
+      "PH": "代打",
+      "PR": "代跑",
+      "OF": "外野手",
+      "IF": "內野手"
+    },
+    "unit": {
+      "cmSuffix": " cm",
+      "kgSuffix": " kg"
+    },
+    "bio": {
+      "fullName": "全名",
+      "nickname": "暱稱",
+      "born": "出生",
+      "draft": "選秀",
+      "education": "學歷",
+      "joinDate": "加入日期",
+      "debut": "職業首秀"
+    }
+  },
+  "teamDetail": {
+    "roster": "陣容",
+    "coaches": "教練",
+    "players": "球員",
+    "playerList": "球員名單",
+    "noCoach": "暫無教練",
+    "noPlayer": "暫無球員",
+    "schedule": "賽程",
+    "noSchedule": "暫無賽程",
+    "data": "數據",
+    "coachGroup": "教練組",
+    "tabBatting": "進攻數據",
+    "tabPitching": "投球數據",
+    "tabFielding": "防守數據",
+    "city": "城市",
+    "stadium": "主場",
+    "contactPerson": "聯絡人",
+    "contactPhone": "電話",
+    "contactEmail": "郵箱",
+    "nameColumn": "姓名",
+    "rosterGroupPitcher": "投手",
+    "rosterGroupCatcher": "捕手",
+    "rosterGroupInfield": "內野手",
+    "rosterGroupOutfield": "外野手",
+    "rosterGroupOther": "其他",
+    "rosterUncategorized": "未分類",
+    "coachPositionCoach": "教練",
+    "coachPositionHeadCoach": "總教練"
+  },
+  "noticeDetail": {
+    "attachment": "附件"
+  },
+  "fieldSettings": {
+    "title": "數據項調整",
+    "sectionNumberControl": "數值控制",
+    "sectionFieldControl": "欄位控制",
+    "rateDisplayStyle": "率類顯示風格",
+    "rateStyleDot": ".xxx",
+    "rateStyleLeadingZero": "0.xxx",
+    "trailingZeros": "小數尾隨零",
+    "keep": "保留",
+    "noKeep": "不保留",
+    "decimalPlaces": "小數點位",
+    "twoPlaces": "保留兩位",
+    "threePlaces": "保留三位",
+    "batter": "打者",
+    "pitcher": "投手",
+    "hintDrag": "勾選控制顯示，拖曳調整順序",
+    "hintMinVisible": "打者與投手統計欄（不含左側名稱欄）分別至少保留 {batterMin} 欄、{pitcherMin} 欄。",
+    "minVisibleUncheckReject": "至少需保留 {n} 欄顯示，無法再取消。",
+    "minVisibleSaveBatter": "打者統計至少需保留 {n} 欄，請調整後再儲存。",
+    "minVisibleSavePitcher": "投手統計至少需保留 {n} 欄，請調整後再儲存。",
+    "show": "顯示",
+    "showColumnToggleHint": "點擊：未全選則全選；已全部勾選則全部取消。儲存時須符合上方最少欄數。",
+    "field": "欄位",
+    "desc": "說明",
+    "gameDetailColDesc": {
+      "batter": {
+        "pa": "打席：面對投手上場次數（含四壞、觸身等不計入打數者）",
+        "ab": "打數",
+        "r": "得分",
+        "h": "安打",
+        "doubles": "二壘安打",
+        "triples": "三壘安打",
+        "hr": "全壘打",
+        "shSf": "犧牲打：短打+高飛犧牲打合計",
+        "rbi": "打點",
+        "bbHp": "四壞球 + 觸身球",
+        "so": "三振",
+        "sb": "盜壘成功",
+        "cs": "盜壘失敗（被抓）",
+        "e": "失誤",
+        "avg": "打擊率",
+        "obp": "上壘率",
+        "slg": "長打率",
+        "ops": "攻擊指數（上壘率 + 長打率）"
+      },
+      "pitcher": {
+        "ip": "投球局數",
+        "pitchR": "失分（含非自責）",
+        "er": "自責分",
+        "pitchH": "被安打",
+        "pitchBbHp": "保送 + 觸身",
+        "pitchSo": "三振",
+        "pitchHr": "被全壘打",
+        "pitchInsideParkHr": "被場內全壘打",
+        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HP）",
+        "pitE": "同場該員守備失誤數（與統計源一致）",
+        "np": "投球數",
+        "pitchPa": "對局打席",
+        "pitchBf": "對局打者（Batters Faced）",
+        "pitchBb": "四壞保送",
+        "pitchIbb": "故意保送",
+        "pitchHbp": "觸身球",
+        "wp": "暴投",
+        "bk": "投手犯規",
+        "go": "滾地球出局",
+        "fo": "飛球出局",
+        "gs": "先發場次（統計項）",
+        "w": "勝投",
+        "l": "敗投",
+        "sv": "救援成功",
+        "svo": "救援機會",
+        "hld": "中繼成功",
+        "cg": "完投",
+        "pg": "完全比賽",
+        "era": "防禦率"
+      }
+    },
+    "resetDefault": "恢復預設",
+    "save": "儲存",
+    "guideTitle": "可在這裡調整數據項顯示",
+    "guideDesc": "包括顯示欄位、保留小數位、比率樣式等。",
+    "guideConfirm": "知道了",
+    "pageHint": "欄位顯示與格式"
+  },
+  "adminLogin": {
+    "backHome": "返回首頁",
+    "usernamePlaceholder": "用戶名",
+    "passwordPlaceholder": "密碼",
+    "login": "登入",
+    "captchaPlaceholder": "驗證碼",
+    "captchaClickPromptFallback": "請點擊驗證碼圖片中的目標圖形",
+    "refreshCaptcha": "刷新驗證碼",
+    "getCaptcha": "取得驗證碼",
+    "verifyOk": "驗證通過",
+    "verifyFailClick": "驗證失敗，請刷新後重試。",
+    "captchaAlt": "驗證碼",
+    "captchaTitleInput": "雙擊可刷新；圖片下方可換一張驗證碼（5 位字元）",
+    "captchaTitleClick": "請依提示順序點擊目標圖形（共 3 步）；如失敗需刷新驗證碼後再試",
+    "captchaTitleDrag": "請拖曳滑塊對齊上方缺口；如失敗需刷新驗證碼後再試",
+    "captchaClickPromptTpl": "請點擊：{item}",
+    "captchaClickItemTpl": "{color}{size}{shape}",
+    "captchaClickItemTplQualified": "{qualifier}的{item}",
+    "captchaClickSeqTpl": "請先點「{first}」，再點「{second}」",
+    "captchaClickSeqTplMulti": "請按順序點擊：{items}",
+    "captchaClickStep": "第 {current}/{total} 步",
+    "ruleUsername": "請輸入用戶名",
+    "rulePassword": "請輸入密碼",
+    "ruleCaptchaCode": "請輸入驗證碼",
+    "ruleCaptchaClick": "請先完成點選驗證碼",
+    "captchaDragPrompt": "拖曳滑塊完成拼圖",
+    "captchaDragSliderAria": "拖曳以完成拼圖驗證",
+    "verifyFailDrag": "驗證失敗，請刷新後重試。",
+    "ruleCaptchaDrag": "請先完成拖曳驗證",
+    "errBadCredentials": "用戶名或密碼錯誤",
+    "errCaptchaGeneric": "驗證失敗，請刷新後重試。",
+    "errCaptchaExpiredRefresh": "驗證碼已失效，請刷新後重試。",
+    "errForbidden": "帳號已停用",
+    "errNotFound": "登入介面不存在，請確認已啟動後端服務（java-server）",
+    "errNetwork": "無法連線服務，請確認已啟動後端服務（java-server）",
+    "errGeneric": "載入失敗",
+    "captchaOptionsFailed": "驗證碼設定載入失敗：{detail}",
+    "captchaImageFailed": "驗證碼圖片載入失敗：{detail}",
+    "pageTitle": "後台登入 - {site}",
+    "reasonExpired": "登入已過期，請重新登入",
+    "reasonInvalidToken": "登入資訊無效，請重新登入",
+    "reasonNeedLogin": "請先登入"
+  },
+  "captcha": {
+    "colors": {
+      "red": "紅色",
+      "blue": "藍色",
+      "green": "綠色"
+    },
+    "shapes": {
+      "circle": "圓形",
+      "square": "方形",
+      "triangle": "三角形"
+    },
+    "sizes": {
+      "small": "小號",
+      "large": "大號"
+    },
+    "qualifiers": {
+      "leftmost": "最左側",
+      "rightmost": "最右側",
+      "topmost": "最上方",
+      "bottommost": "最下方"
+    }
+  },
+  "common": {
+    "loading": "載入中…",
+    "error": "載入失敗",
+    "retry": "重試",
+    "back": "返回",
+    "backTop": "返回頂部",
+    "confirm": "確定",
+    "cancel": "取消"
+  }
+}

@@ -3,12 +3,18 @@
     <h1 class="placeholder-page__title">BS Ball</h1>
     <p class="placeholder-page__status">前端重建中</p>
     <p class="placeholder-page__hint">
-      当前页面尚未迁移（B0 工程化阶段），将在后续批次按契约逐步开放。
+      该页面尚未迁移（计划组件：{{ plannedComponent || '—' }}），将在后续批次按契约逐步开放。
     </p>
+    <p class="placeholder-page__path">{{ route.fullPath }}</p>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const plannedComponent = computed(() => route.meta.plannedComponent || '');
 </script>
 
 <style scoped>
@@ -36,5 +42,11 @@
   margin: 0;
   font-size: 14px;
   color: var(--el-text-color-secondary, #909399);
+}
+
+.placeholder-page__path {
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder, #a8abb2);
 }
 </style>
