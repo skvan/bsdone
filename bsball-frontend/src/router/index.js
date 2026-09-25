@@ -12,6 +12,11 @@ import Register from '../views/auth/Register.js';
 import ForgotPassword from '../views/auth/ForgotPassword.js';
 import PlayerClaimInvite from '../views/auth/PlayerClaimInvite.js';
 import Login from '../views/auth/Login.js';
+import Users from '../views/admin/Users.js';
+import Roles from '../views/admin/Roles.js';
+import Menus from '../views/admin/Menus.js';
+import Apis from '../views/admin/Apis.js';
+import Dict from '../views/admin/Dict.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -26,9 +31,7 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
   ...ph(plannedComponent, { requiresAuth: true, ...extra })
 });
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
+const routes = [
     { path: '/', name: 'PortalHome', ...ph('Home') },
     {
       path: '/docs',
@@ -72,11 +75,11 @@ const router = createRouter({
           children: [
             { path: '', redirect: { name: 'AdminDashboard' } },
             adminChild('dashboard', 'AdminDashboard', 'Dashboard'),
-            adminChild('users', 'AdminUsers', 'Users'),
-            adminChild('roles', 'AdminRoles', 'Roles'),
-            adminChild('menus', 'AdminMenus', 'Menus'),
-            adminChild('apis', 'AdminApis', 'Apis'),
-            adminChild('dict', 'AdminDict', 'Dict'),
+            { path: 'users', name: 'AdminUsers', component: Users },
+            { path: 'roles', name: 'AdminRoles', component: Roles },
+            { path: 'menus', name: 'AdminMenus', component: Menus },
+            { path: 'apis', name: 'AdminApis', component: Apis },
+            { path: 'dict', name: 'AdminDict', component: Dict },
             adminChild('announcements', 'AdminAnnouncements', 'Announcements'),
             adminChild('articles', 'AdminArticles', 'Content'),
             adminChild('articles/new', 'AdminArticlesNew', 'ContentEdit'),
@@ -127,10 +130,11 @@ const router = createRouter({
       ]
     },
     { path: '/:pathMatch(.*)*', name: 'NotFoundCatchAll', redirect: '/404' }
-  ]
-});
+];
 
 // 回填原版 meta 标题（页面标题/标签页标题/面包屑末级）
+// 必须在 createRouter 之前执行：matcher 对路由记录做浅拷贝，meta 若原本为 undefined，
+// 在 createRouter 之后补 meta 不会反映到运行时 route.meta（B1-c 冒烟曾因 CSS 文本假阳性未暴露）
 function applyLegacyMeta(records) {
   for (const record of records || []) {
     if (record.name) {
@@ -141,7 +145,12 @@ function applyLegacyMeta(records) {
     if (record.children) applyLegacyMeta(record.children);
   }
 }
-applyLegacyMeta(router.options.routes);
+applyLegacyMeta(routes);
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes
+});
 
 installRouterGuards(router);
 
