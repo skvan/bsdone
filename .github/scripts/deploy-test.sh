@@ -4,7 +4,7 @@
 # ---------------------------------------------------------------------
 # Baseline: .qoder/deploy-dev.sh (local emergency channel) + CI preflight.
 # Replaces ONLY test-env resources (production is never touched):
-#   1. /usr/local/java-server-test/bsball-server.jar  <- dev build (v1.0/dev)
+#   1. /usr/local/java-server-test/bsball-server.jar  <- dev build (v1.1/dev)
 #   2. /usr/local/webapps-test/                       <- dev frontend
 #   3. restarts the java-server-test unit
 #
@@ -183,7 +183,7 @@ systemctl show java-server-test -p MainPID -p ActiveEnterTimestamp -p NRestarts
 
 echo
 echo "===== TEST DEPLOY COMPLETE ====="
-echo "deployed : v1.0/dev jar + webapps  (stamp $STAMP)"
+echo "deployed : v1.1/dev jar + webapps  (stamp $STAMP)"
 echo "backup   : $BAK_DIR"
 echo "manual rollback (only if ever needed):"
 echo "  systemctl stop java-server-test"
