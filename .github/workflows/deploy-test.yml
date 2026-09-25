@@ -1,5 +1,5 @@
 # TEST-environment semi-auto deployment (per design doc 2026-09-17 §4):
-#   - push to v1.0/dev  -> build + package + archive artifacts ONLY (no server access)
+#   - push to v1.1/dev  -> build + package + archive artifacts ONLY (no server access)
 #   - workflow_dispatch -> build + deploy to the test env (java-server-test, port 8081)
 #
 # Deploy chain: SSH (key from secrets.TEST_SSH_KEY, host key pinned via vars.TEST_SSH_KNOWN_HOST)
@@ -11,7 +11,7 @@ name: Deploy Test (semi-auto)
 
 on:
   push:
-    branches: ['v1.0/dev']
+    branches: ['v1.1/dev']
   workflow_dispatch:
 
 permissions:
@@ -75,7 +75,7 @@ jobs:
   deploy:
     name: Deploy to TEST (manual only)
     needs: build
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/v1.0/dev'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/v1.1/dev'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: test
