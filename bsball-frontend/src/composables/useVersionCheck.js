@@ -24,7 +24,7 @@ const RELOAD_ACK_TTL_MS = 1800 * 1000;
 const DISPLAY_TIMEZONE = 'Asia/Shanghai';
 
 // 运行版本构建标识（编译产物中的内联常量；与 version.json 对比判定是否提示）
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const APP_BUILD_TIME = '2026-07-01T14:33:17.536+08:00';
 
 function normalizeVersionPayload(payload) {

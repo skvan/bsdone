@@ -7,6 +7,22 @@ import { createRouter, createWebHistory } from 'vue-router';
 import PlaceholderView from '../views/placeholder/PlaceholderView.vue';
 import TenantShell from '../layouts/TenantShell.vue';
 import AdminLayout from '../components/admin/AdminLayout.js';
+import AccountLogin from '../views/auth/AccountLogin.js';
+import Register from '../views/auth/Register.js';
+import ForgotPassword from '../views/auth/ForgotPassword.js';
+import PlayerClaimInvite from '../views/auth/PlayerClaimInvite.js';
+import Login from '../views/auth/Login.js';
+import Users from '../views/admin/Users.js';
+import Roles from '../views/admin/Roles.js';
+import Menus from '../views/admin/Menus.js';
+import Apis from '../views/admin/Apis.js';
+import Dict from '../views/admin/Dict.js';
+import Announcements from '../views/admin/Announcements.js';
+import Content from '../views/admin/Content.js';
+import ContentEdit from '../views/admin/ContentEdit.js';
+import Resources from '../views/admin/Resources.js';
+import MediaIcons from '../views/admin/MediaIcons.js';
+import MediaGallery from '../views/admin/MediaGallery.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -21,9 +37,7 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
   ...ph(plannedComponent, { requiresAuth: true, ...extra })
 });
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
+const routes = [
     { path: '/', name: 'PortalHome', ...ph('Home') },
     {
       path: '/docs',
@@ -54,11 +68,11 @@ const router = createRouter({
         { path: 'stats', name: 'PortalStats', ...ph('Stats') },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', ...ph('AnnouncementDoc') },
         { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
-        { path: 'account/login', name: 'PortalAccountLogin', ...ph('AccountLogin') },
-        { path: 'account/register', name: 'PortalRegister', ...ph('Register') },
-        { path: 'account/forgot-password', name: 'PortalForgotPassword', ...ph('ForgotPassword') },
-        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', ...ph('PlayerClaimInvite') },
-        { path: 'admin/login', name: 'AdminLogin', ...ph('Login', { requiresAuth: false }) },
+        { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
+        { path: 'account/register', name: 'PortalRegister', component: Register },
+        { path: 'account/forgot-password', name: 'PortalForgotPassword', component: ForgotPassword },
+        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite },
+        { path: 'admin/login', name: 'AdminLogin', component: Login, meta: { requiresAuth: false } },
         {
           path: 'admin',
           name: 'AdminRoot',
@@ -67,22 +81,22 @@ const router = createRouter({
           children: [
             { path: '', redirect: { name: 'AdminDashboard' } },
             adminChild('dashboard', 'AdminDashboard', 'Dashboard'),
-            adminChild('users', 'AdminUsers', 'Users'),
-            adminChild('roles', 'AdminRoles', 'Roles'),
-            adminChild('menus', 'AdminMenus', 'Menus'),
-            adminChild('apis', 'AdminApis', 'Apis'),
-            adminChild('dict', 'AdminDict', 'Dict'),
-            adminChild('announcements', 'AdminAnnouncements', 'Announcements'),
-            adminChild('articles', 'AdminArticles', 'Content'),
-            adminChild('articles/new', 'AdminArticlesNew', 'ContentEdit'),
-            adminChild('articles/:id/edit', 'AdminArticlesEdit', 'ContentEdit'),
-            adminChild('content', 'AdminContent', 'Content'),
-            adminChild('content/new', 'AdminContentNew', 'ContentEdit'),
-            adminChild('content/:id/edit', 'AdminContentEdit', 'ContentEdit'),
+            { path: 'users', name: 'AdminUsers', component: Users },
+            { path: 'roles', name: 'AdminRoles', component: Roles },
+            { path: 'menus', name: 'AdminMenus', component: Menus },
+            { path: 'apis', name: 'AdminApis', component: Apis },
+            { path: 'dict', name: 'AdminDict', component: Dict },
+            { path: 'announcements', name: 'AdminAnnouncements', component: Announcements },
+            { path: 'articles', name: 'AdminArticles', component: Content },
+            { path: 'articles/new', name: 'AdminArticlesNew', component: ContentEdit },
+            { path: 'articles/:id/edit', name: 'AdminArticlesEdit', component: ContentEdit },
+            { path: 'content', name: 'AdminContent', component: Content },
+            { path: 'content/new', name: 'AdminContentNew', component: ContentEdit },
+            { path: 'content/:id/edit', name: 'AdminContentEdit', component: ContentEdit },
             adminChild('config', 'AdminConfig', 'AppConfig'),
-            adminChild('resources', 'AdminResources', 'Resources'),
-            adminChild('media-icons', 'AdminMediaIcons', 'MediaIcons'),
-            adminChild('media-gallery', 'AdminMediaGallery', 'MediaGallery'),
+            { path: 'resources', name: 'AdminResources', component: Resources },
+            { path: 'media-icons', name: 'AdminMediaIcons', component: MediaIcons },
+            { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
             adminChild('login-logs', 'AdminLoginLogs', 'LoginLogs'),
             adminChild('operation-logs', 'AdminOperationLogs', 'OperationLogs'),
             adminChild('tenants', 'AdminTenants', 'Tenants'),
@@ -122,10 +136,11 @@ const router = createRouter({
       ]
     },
     { path: '/:pathMatch(.*)*', name: 'NotFoundCatchAll', redirect: '/404' }
-  ]
-});
+];
 
 // 回填原版 meta 标题（页面标题/标签页标题/面包屑末级）
+// 必须在 createRouter 之前执行：matcher 对路由记录做浅拷贝，meta 若原本为 undefined，
+// 在 createRouter 之后补 meta 不会反映到运行时 route.meta（B1-c 冒烟曾因 CSS 文本假阳性未暴露）
 function applyLegacyMeta(records) {
   for (const record of records || []) {
     if (record.name) {
@@ -136,7 +151,12 @@ function applyLegacyMeta(records) {
     if (record.children) applyLegacyMeta(record.children);
   }
 }
-applyLegacyMeta(router.options.routes);
+applyLegacyMeta(routes);
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes
+});
 
 installRouterGuards(router);
 

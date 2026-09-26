@@ -1,7 +1,7 @@
 {
   "name": "bsball-frontend",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,8 +12,11 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
     "dayjs": "^1.11.13",
     "element-plus": "^2.9.0",
+    "md-editor-v3": "^7.0.0",
     "pinia": "^2.2.6",
     "sortablejs": "^1.15.6",
     "vue": "^3.5.0",

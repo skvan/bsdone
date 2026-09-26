@@ -154,5 +154,17 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     return '/bs-ball/'.replace(/\/+$/, '') + '/' + (url.startsWith('/') ? url.slice(1) : url);
   }
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl };
+  // 应用站点图标（faviconIco 优先，否则默认 logo；对应编译产物 applyFavicon）
+  function applyFavicon() {
+    const href = resolveAssetUrl(config.value?.faviconIco || '/bs-ball-logo.png');
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  }
+
+  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon };
 });
