@@ -23,6 +23,12 @@ import ContentEdit from '../views/admin/ContentEdit.js';
 import Resources from '../views/admin/Resources.js';
 import MediaIcons from '../views/admin/MediaIcons.js';
 import MediaGallery from '../views/admin/MediaGallery.js';
+import LoginLogs from '../views/admin/LoginLogs.js';
+import OperationLogs from '../views/admin/OperationLogs.js';
+import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js';
+import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
+import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
+import IpLocationCache from '../views/admin/IpLocationCache.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -97,18 +103,18 @@ const routes = [
             { path: 'resources', name: 'AdminResources', component: Resources },
             { path: 'media-icons', name: 'AdminMediaIcons', component: MediaIcons },
             { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
-            adminChild('login-logs', 'AdminLoginLogs', 'LoginLogs'),
-            adminChild('operation-logs', 'AdminOperationLogs', 'OperationLogs'),
+            { path: 'login-logs', name: 'AdminLoginLogs', component: LoginLogs },
+            { path: 'operation-logs', name: 'AdminOperationLogs', component: OperationLogs },
             adminChild('tenants', 'AdminTenants', 'Tenants'),
             adminChild('monitor/data', 'AdminMonitorData', 'DataMonitor'),
             adminChild('monitor/server', 'AdminMonitorServer', 'ServerMonitor'),
             adminChild('monitor/cache', 'AdminMonitorCache', 'CacheMonitor'),
             adminChild('monitor/cache-list', 'AdminMonitorCacheList', 'CacheList'),
-            adminChild('monitor/portal-devtools-report', 'AdminMonitorPortalDevtoolsReport', 'PortalDevtoolsReportList'),
-            adminChild('monitor/portal-visit-hit', 'AdminMonitorPortalVisitHit', 'PortalVisitHitList'),
-            adminChild('monitor/portal-feedback', 'AdminMonitorPortalFeedback', 'PortalFeedbackList'),
+            { path: 'monitor/portal-devtools-report', name: 'AdminMonitorPortalDevtoolsReport', component: PortalDevtoolsReportList },
+            { path: 'monitor/portal-visit-hit', name: 'AdminMonitorPortalVisitHit', component: PortalVisitHitList },
+            { path: 'monitor/portal-feedback', name: 'AdminMonitorPortalFeedback', component: PortalFeedbackList },
             adminChild('monitor/ip-access-policy', 'AdminMonitorIpAccessPolicy', 'IpAccessPolicy'),
-            adminChild('ip-location-cache', 'AdminIpLocationCache', 'IpLocationCache'),
+            { path: 'ip-location-cache', name: 'AdminIpLocationCache', component: IpLocationCache },
             adminChild('leagues', 'AdminLeagues', 'Leagues'),
             adminChild('stadiums/distribution', 'AdminStadiumDistribution', 'StadiumDistribution'),
             adminChild('stadiums', 'AdminStadiums', 'Stadiums'),
