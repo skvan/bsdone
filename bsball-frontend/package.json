@@ -16,6 +16,7 @@
     "@wangeditor/editor-for-vue": "^5.1.12",
     "dayjs": "^1.11.13",
     "element-plus": "^2.9.0",
+    "leaflet": "^1.9.4",
     "md-editor-v3": "^7.0.0",
     "pinia": "^2.2.6",
     "sortablejs": "^1.15.6",

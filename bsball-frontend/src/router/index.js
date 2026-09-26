@@ -31,6 +31,9 @@ import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
 import Tenants from '../views/admin/Tenants.js';
 import IpAccessPolicy from '../views/admin/IpAccessPolicy.js';
+import Leagues from '../views/admin/Leagues.js';
+import Stadiums from '../views/admin/Stadiums.js';
+import StadiumDistribution from '../views/admin/StadiumDistribution.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -117,9 +120,9 @@ const routes = [
             { path: 'monitor/portal-feedback', name: 'AdminMonitorPortalFeedback', component: PortalFeedbackList },
             { path: 'monitor/ip-access-policy', name: 'AdminMonitorIpAccessPolicy', component: IpAccessPolicy },
             { path: 'ip-location-cache', name: 'AdminIpLocationCache', component: IpLocationCache },
-            adminChild('leagues', 'AdminLeagues', 'Leagues'),
-            adminChild('stadiums/distribution', 'AdminStadiumDistribution', 'StadiumDistribution'),
-            adminChild('stadiums', 'AdminStadiums', 'Stadiums'),
+            { path: 'leagues', name: 'AdminLeagues', component: Leagues },
+            { path: 'stadiums/distribution', name: 'AdminStadiumDistribution', component: StadiumDistribution },
+            { path: 'stadiums', name: 'AdminStadiums', component: Stadiums },
             adminChild('teams', 'AdminTeams', 'Teams'),
             adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
             adminChild('coaches', 'AdminCoaches', 'Coaches'),
