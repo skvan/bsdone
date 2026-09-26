@@ -38,6 +38,7 @@ import Teams from '../views/admin/Teams.js';
 import Coaches from '../views/admin/Coaches.js';
 import PlayerList from '../views/admin/PlayerList.js';
 import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
+import PlayerDetail from '../views/admin/PlayerDetail.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -131,7 +132,7 @@ const routes = [
             adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
             { path: 'coaches', name: 'AdminCoaches', component: Coaches },
             { path: 'players', name: 'AdminPlayerList', component: PlayerList },
-            adminChild('players/:id', 'AdminPlayerDetail', 'PlayerDetail'),
+            { path: 'players/:id', name: 'AdminPlayerDetail', component: PlayerDetail },
             { path: 'player-claims', name: 'AdminPlayerClaimReview', component: PlayerClaimReview },
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             adminChild('events', 'AdminEvents', 'Events'),
