@@ -2,11 +2,17 @@
 # ("Run workflow" button) after typing the confirmation word.
 #
 # What it does:
-#   1. builds bsball-server jar from the CURRENT main commit (tests included)
-#   2. uploads jar + scripts/deploy-prod.sh to the server staging dir
+#   1. builds bsball-server jar from the CURRENT commit (tests included)
+#   2. packs bsball_project/webapps (frontend) and uploads it, together with
+#      the jar + scripts/deploy-prod.sh, to the server staging dir
 #   3. runs the deploy script on the server: safety gate -> backup ->
 #      atomic jar swap -> restart java-server -> health check ->
-#      automatic rollback on failure
+#      frontend (STEP 4, from the staged package) -> automatic rollback on failure
+#
+# NOTE: the frontend package is ALWAYS staged, so a production deploy keeps the
+#       served frontend in sync with the deployed ref (fixes the case where the
+#       footer/version or LiveGame assets stayed on an older build because no
+#       frontend package had been uploaded manually).
 #
 # Required repository secrets: PROD_HOST, PROD_USER, PROD_SSH_KEY
 name: Deploy Production (manual)
@@ -25,7 +31,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy backend to production
+    name: Build and deploy (jar + frontend) to production
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -129,6 +135,54 @@ jobs:
             exit 1
           fi
           echo "chunked upload verified OK"
+
+      - name: Pack frontend package (bsball_project/webapps)
+        run: |
+          set -e
+          tar -C bsball_project -czf /tmp/webapps-prod.tar.gz webapps
+          if ! tar -tzf /tmp/webapps-prod.tar.gz | grep -q '^webapps/'; then
+            echo "::error::frontend package lacks a top-level webapps/ root"
+            exit 1
+          fi
+          echo "== frontend package =="
+          ls -l /tmp/webapps-prod.tar.gz
+          md5sum /tmp/webapps-prod.tar.gz
+          echo "files: $(tar -tzf /tmp/webapps-prod.tar.gz | wc -l)"
+
+      - name: Upload frontend package to staging (retries)
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          set -e
+          STAGE=/root/deploy-prod/staging
+          PKG=/tmp/webapps-prod.tar.gz
+          KEY=$HOME/.ssh/id_deploy
+          TARGET="$PROD_USER@$PROD_HOST"
+          SCP_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=15"
+          LOCAL_MD5=$(md5sum "$PKG" | cut -d' ' -f1)
+          echo "local frontend package md5: $LOCAL_MD5"
+          ok=0
+          for t in 1 2 3 4 5; do
+            if scp -i "$KEY" $SCP_OPTS "$PKG" "$TARGET:$STAGE/webapps-prod.tar.gz.new"; then
+              echo "frontend scp ok (attempt $t)"
+              ok=1
+              break
+            fi
+            echo "  retry $t for frontend package ..."
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::frontend package upload failed after 5 attempts"
+            exit 1
+          fi
+          REMOTE_MD5=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "md5sum $STAGE/webapps-prod.tar.gz.new | cut -d' ' -f1")
+          echo "remote frontend package md5: $REMOTE_MD5"
+          if [ "$REMOTE_MD5" != "$LOCAL_MD5" ]; then
+            echo "::error::frontend package md5 mismatch (local=$LOCAL_MD5 remote=$REMOTE_MD5)"
+            exit 1
+          fi
+          echo "frontend package staged OK"
 
       - name: Deploy on server (safety gate -> swap -> restart -> health -> rollback)
         env:
