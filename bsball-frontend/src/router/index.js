@@ -36,6 +36,8 @@ import Stadiums from '../views/admin/Stadiums.js';
 import StadiumDistribution from '../views/admin/StadiumDistribution.js';
 import Teams from '../views/admin/Teams.js';
 import Coaches from '../views/admin/Coaches.js';
+import PlayerList from '../views/admin/PlayerList.js';
+import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -128,10 +130,10 @@ const routes = [
             { path: 'teams', name: 'AdminTeams', component: Teams },
             adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
             { path: 'coaches', name: 'AdminCoaches', component: Coaches },
-            adminChild('players', 'AdminPlayerList', 'PlayerList'),
+            { path: 'players', name: 'AdminPlayerList', component: PlayerList },
             adminChild('players/:id', 'AdminPlayerDetail', 'PlayerDetail'),
-            adminChild('player-claims', 'AdminPlayerClaimReview', 'PlayerClaimReview'),
-            adminChild('teams/:id/players', 'AdminTeamPlayers', 'PlayerList'),
+            { path: 'player-claims', name: 'AdminPlayerClaimReview', component: PlayerClaimReview },
+            { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             adminChild('events', 'AdminEvents', 'Events'),
             adminChild('events/:eventId/bracket', 'AdminEventBracket', 'EventBracket'),
             adminChild('events/:eventId/games', 'AdminGames', 'Games'),
