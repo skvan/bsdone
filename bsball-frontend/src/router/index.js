@@ -34,6 +34,8 @@ import IpAccessPolicy from '../views/admin/IpAccessPolicy.js';
 import Leagues from '../views/admin/Leagues.js';
 import Stadiums from '../views/admin/Stadiums.js';
 import StadiumDistribution from '../views/admin/StadiumDistribution.js';
+import Teams from '../views/admin/Teams.js';
+import Coaches from '../views/admin/Coaches.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -123,9 +125,9 @@ const routes = [
             { path: 'leagues', name: 'AdminLeagues', component: Leagues },
             { path: 'stadiums/distribution', name: 'AdminStadiumDistribution', component: StadiumDistribution },
             { path: 'stadiums', name: 'AdminStadiums', component: Stadiums },
-            adminChild('teams', 'AdminTeams', 'Teams'),
+            { path: 'teams', name: 'AdminTeams', component: Teams },
             adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
-            adminChild('coaches', 'AdminCoaches', 'Coaches'),
+            { path: 'coaches', name: 'AdminCoaches', component: Coaches },
             adminChild('players', 'AdminPlayerList', 'PlayerList'),
             adminChild('players/:id', 'AdminPlayerDetail', 'PlayerDetail'),
             adminChild('player-claims', 'AdminPlayerClaimReview', 'PlayerClaimReview'),
