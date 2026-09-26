@@ -29,6 +29,8 @@ import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
+import Tenants from '../views/admin/Tenants.js';
+import IpAccessPolicy from '../views/admin/IpAccessPolicy.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -105,7 +107,7 @@ const routes = [
             { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
             { path: 'login-logs', name: 'AdminLoginLogs', component: LoginLogs },
             { path: 'operation-logs', name: 'AdminOperationLogs', component: OperationLogs },
-            adminChild('tenants', 'AdminTenants', 'Tenants'),
+            { path: 'tenants', name: 'AdminTenants', component: Tenants },
             adminChild('monitor/data', 'AdminMonitorData', 'DataMonitor'),
             adminChild('monitor/server', 'AdminMonitorServer', 'ServerMonitor'),
             adminChild('monitor/cache', 'AdminMonitorCache', 'CacheMonitor'),
@@ -113,7 +115,7 @@ const routes = [
             { path: 'monitor/portal-devtools-report', name: 'AdminMonitorPortalDevtoolsReport', component: PortalDevtoolsReportList },
             { path: 'monitor/portal-visit-hit', name: 'AdminMonitorPortalVisitHit', component: PortalVisitHitList },
             { path: 'monitor/portal-feedback', name: 'AdminMonitorPortalFeedback', component: PortalFeedbackList },
-            adminChild('monitor/ip-access-policy', 'AdminMonitorIpAccessPolicy', 'IpAccessPolicy'),
+            { path: 'monitor/ip-access-policy', name: 'AdminMonitorIpAccessPolicy', component: IpAccessPolicy },
             { path: 'ip-location-cache', name: 'AdminIpLocationCache', component: IpLocationCache },
             adminChild('leagues', 'AdminLeagues', 'Leagues'),
             adminChild('stadiums/distribution', 'AdminStadiumDistribution', 'StadiumDistribution'),
