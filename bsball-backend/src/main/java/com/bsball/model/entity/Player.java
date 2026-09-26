@@ -18,12 +18,14 @@
 package com.bsball.model.entity;
 
 import com.bsball.common.json.PositionsJsonUtil;
+import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.entity.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +102,9 @@ extends BaseEntity {
     private @Size(max=2000, message="\u7b80\u4ecb\u4e0d\u80fd\u8d85\u8fc72000\u5b57") String intro;
     @Comment(value="\u6392\u5e8f")
     private Integer sort = 0;
+    // 非持久化：球队经历（简历式多段），仅用于接口输出，由 PlayerTeamService 填充
+    @Transient
+    private List<PlayerTeamEntryDto> teamEntries;
 
     @JsonIgnore
     public String getPositions() {
@@ -393,6 +398,14 @@ extends BaseEntity {
     @Generated
     public void setSort(Integer sort) {
         this.sort = sort;
+    }
+
+    public List<PlayerTeamEntryDto> getTeamEntries() {
+        return this.teamEntries;
+    }
+
+    public void setTeamEntries(List<PlayerTeamEntryDto> teamEntries) {
+        this.teamEntries = teamEntries;
     }
 
     @Generated

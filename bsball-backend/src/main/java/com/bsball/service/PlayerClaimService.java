@@ -43,6 +43,7 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
 import com.bsball.model.entity.PlayerClaimInvite;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.SysUser;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
@@ -91,6 +92,7 @@ public class PlayerClaimService {
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
     private final SysUserRepository sysUserRepository;
+    private final PlayerTeamService playerTeamService;
 
     @Transactional
     public PlayerClaim submitClaim(Long userId, Long playerId, String remark, Long inviteId) {
@@ -279,7 +281,7 @@ public class PlayerClaimService {
         Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "\u7403\u961f\u4e0d\u5b58\u5728"));
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-            if (!teamId.equals(p.getTeamId())) {
+            if (!this.playerTeamService.isCurrentlyInTeam(p.getId(), teamId)) {
                 throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u8be5\u7403\u961f");
             }
             if (p.getUserId() != null) {
@@ -338,7 +340,7 @@ public class PlayerClaimService {
             throw new BusinessException(400, "\u8bf7\u6307\u5b9a\u8981\u8ba4\u9886\u7684\u7403\u5458");
         }
         Player player = (Player)this.playerRepository.findById(targetPlayerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-        if (!invite.getTeamId().equals(player.getTeamId())) {
+        if (!this.playerTeamService.isCurrentlyInTeam(player.getId(), invite.getTeamId())) {
             throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u9080\u8bf7\u7403\u961f");
         }
         PlayerClaim claim = this.submitClaim(userId, targetPlayerId, remark, invite.getId());
@@ -384,10 +386,19 @@ public class PlayerClaimService {
             return false;
         }
         Player player = this.playerRepository.findById(claim.getPlayerId()).orElse(null);
-        if (player == null || player.getTeamId() == null) {
+        if (player == null) {
             return false;
         }
-        return this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(player.getTeamId(), reviewerId, "active");
+        return this.managesAnyCurrentTeamOf(player, reviewerId);
+    }
+
+    private boolean managesAnyCurrentTeamOf(Player player, Long userId) {
+        for (Long teamId : this.playerTeamService.currentTeamIds(player.getId())) {
+            if (this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(teamId, userId, "active")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
@@ -400,11 +411,13 @@ public class PlayerClaimService {
     }
 
     private String resolveReviewerType(Player player) {
-        if (player.getTeamId() == null) {
-            return "platform_admin";
+        for (Long teamId : this.playerTeamService.currentTeamIds(player.getId())) {
+            List<TeamManager> managers = this.teamManagerRepository.findByTeamIdAndStatusAndDeletedAtIsNull(teamId, "active");
+            if (!managers.isEmpty()) {
+                return "team_manager";
+            }
         }
-        List<TeamManager> managers = this.teamManagerRepository.findByTeamIdAndStatusAndDeletedAtIsNull(player.getTeamId(), "active");
-        return managers.isEmpty() ? "platform_admin" : "team_manager";
+        return "platform_admin";
     }
 
     private PlayerClaimInvite requireActiveInvite(String token) {
@@ -424,22 +437,22 @@ public class PlayerClaimService {
     }
 
     private Subquery<Long> subqueryPlayerIdsForTeams(CriteriaBuilder cb, CriteriaQuery<?> q, List<Long> teamIds) {
+        Subquery<Long> sq = q.subquery(Long.class);
+        Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
+        sq.select((Expression)entry.get("playerId"));
         if (teamIds == null || teamIds.isEmpty()) {
-            Subquery sq = q.subquery(Long.class);
-            Root p = sq.from(Player.class);
-            sq.select((Expression)p.get("id"));
             sq.where((Expression)cb.disjunction());
             return sq;
         }
-        Subquery sq = q.subquery(Long.class);
-        Root p = sq.from(Player.class);
-        sq.select((Expression)p.get("id"));
-        sq.where((Expression)cb.and((Expression)p.get("teamId").in(teamIds), (Expression)cb.isNull((Expression)p.get("deletedAt"))));
+        sq.where((Expression)cb.and(
+                entry.get("teamId").in(teamIds),
+                cb.isTrue(entry.get("current")),
+                cb.isNull((Expression)entry.get("deletedAt"))));
         return sq;
     }
 
     @Generated
-    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository) {
+    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService) {
         this.accountProperties = accountProperties;
         this.apiPermissionService = apiPermissionService;
         this.playerClaimRepository = playerClaimRepository;
@@ -448,6 +461,7 @@ public class PlayerClaimService {
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.sysUserRepository = sysUserRepository;
+        this.playerTeamService = playerTeamService;
     }
 }
 

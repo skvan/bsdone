@@ -50,13 +50,17 @@ import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.DataScopeService;
 import com.bsball.service.PersonnelHistoryRecorder;
 import com.bsball.service.StatsService;
 import com.bsball.service.TenantQueryPolicyService;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -92,6 +96,8 @@ public class PlayerService {
     private final DataScopeService dataScopeService;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final PlayerTeamService playerTeamService;
+    private final PlayerTeamRepository playerTeamRepository;
     private static final int PLAYER_BG_IMAGES_MAX = 5;
 
     public List<PlayerOptionDto> listForSelect() {
@@ -118,7 +124,7 @@ public class PlayerService {
         if (!scope.isUnrestrictedInTenant() && !scope.getTeamIds().contains(teamId)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u961f\u7684\u7403\u5458");
         }
-        List<Object[]> rows = this.playerRepository.findTeamPlayerOptionFields(tid, teamId);
+        List<Object[]> rows = this.playerTeamRepository.findTeamPlayerOptionFields(tid, teamId);
         ArrayList<TeamPlayerOptionDto> out = new ArrayList<TeamPlayerOptionDto>(rows.size());
         for (Object[] r : rows) {
             Long id = r[0] != null ? Long.valueOf(((Number)r[0]).longValue()) : null;
@@ -148,32 +154,46 @@ public class PlayerService {
             return PageResult.of((List)List.of(), (long)0L);
         }
         if (ids != null && !ids.isEmpty()) {
-            List<Player> list = this.playerRepository.findByDeletedAtIsNullAndIdIn(ids).stream().filter(p -> global || Objects.equals(p.getTenantId(), tid)).filter(p -> scope.isUnrestrictedInTenant() || p.getTeamId() != null && p.getTeamId() != 0L && scope.getTeamIds().contains(p.getTeamId()) || p.getTeamId() == null || p.getTeamId() == 0L).toList();
+            List<Player> rows = this.playerRepository.findByDeletedAtIsNullAndIdIn(ids);
+            List<Player> list;
+            if (global) {
+                list = rows;
+            } else {
+                List<Player> tenantRows = rows.stream().filter(p -> Objects.equals(p.getTenantId(), tid)).toList();
+                if (scope.isUnrestrictedInTenant()) {
+                    list = tenantRows;
+                } else {
+                    Map<Long, Set<Long>> currentTeams = this.playerTeamService.currentTeamIdsByPlayerIds(tenantRows.stream().map(Player::getId).toList());
+                    list = tenantRows.stream().filter(p -> this.visibleInScope(scope, currentTeams.get(p.getId()))).toList();
+                }
+            }
+            this.playerTeamService.attachEntries(list);
             return PageResult.of((List)list, (long)list.size());
         }
         boolean hasFilter = keyword != null && !keyword.isBlank() || number != null && !number.isBlank() || position != null && !position.isBlank() || throwHand != null && !throwHand.isBlank() || batHand != null && !batHand.isBlank() || status != null && !status.isBlank() || joinDateFrom != null && !joinDateFrom.isBlank() || joinDateTo != null && !joinDateTo.isBlank() || teamId != null;
         Pageable p2 = this.buildPageable(page, pageSize, sortProp, sortOrder);
         Specification spec = this.buildListSpec(teamId, keyword, number, position, throwHand, batHand, status, joinDateFrom, joinDateTo, tid, scope, hasFilter, global);
         Page result = this.playerRepository.findAll(spec, p2);
-        return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
+        List<Player> content = result.getContent();
+        this.playerTeamService.attachEntries(content);
+        return PageResult.of((List)content, (long)result.getTotalElements());
     }
 
     private Specification<Player> buildListSpec(Long teamId, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo, long tid, EffectiveDataScope scope, boolean applyExtraFilters, boolean global) {
         return (root, q, cb) -> {
-            boolean freeAgentOnly;
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             if (!global) {
                 preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
             }
-            boolean bl = freeAgentOnly = teamId != null && teamId == 0L;
+            boolean freeAgentOnly = teamId != null && teamId == 0L;
             if (!(global || scope.isUnrestrictedInTenant() || freeAgentOnly)) {
-                preds.add(root.get("teamId").in((Collection)scope.getTeamIds()));
+                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, scope.getTeamIds(), null)));
             }
             if (teamId != null && teamId != 0L) {
-                preds.add(cb.equal((Expression)root.get("teamId"), (Object)teamId));
+                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId)));
             } else if (freeAgentOnly) {
-                preds.add(cb.or((Expression)cb.isNull((Expression)root.get("teamId")), (Expression)cb.equal((Expression)root.get("teamId"), (Object)0L)));
+                preds.add(cb.not(cb.exists(this.currentTeamSubquery(cb, q, root, null, null))));
             }
             if (applyExtraFilters) {
                 if (keyword != null && !keyword.isBlank()) {
@@ -181,10 +201,10 @@ public class PlayerService {
                     preds.add(cb.or(new Predicate[]{cb.like(cb.lower((Expression)root.get("name")), k), cb.like(cb.lower((Expression)root.get("nickname")), k), cb.like(cb.lower((Expression)root.get("shortName")), k)}));
                 }
                 if (number != null && !number.isBlank()) {
-                    preds.add(cb.like((Expression)root.get("number"), "%" + number + "%"));
+                    preds.add(this.entryFieldExists(cb, q, root, "number", "%" + number + "%"));
                 }
                 if (position != null && !position.isBlank()) {
-                    preds.add(cb.like((Expression)root.get("positions"), "%\"" + position + "\"%"));
+                    preds.add(this.entryFieldExists(cb, q, root, "positions", "%\"" + position + "\"%"));
                 }
                 if (throwHand != null && !throwHand.isBlank()) {
                     preds.add(cb.equal((Expression)root.get("throwHand"), (Object)throwHand));
@@ -214,6 +234,51 @@ public class PlayerService {
         };
     }
 
+    private Subquery<Long> currentTeamSubquery(CriteriaBuilder cb, CriteriaQuery<?> q, Root<Player> root, Collection<Long> teamIds, Long teamId) {
+        Subquery<Long> sq = q.subquery(Long.class);
+        Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
+        sq.select((Expression)entry.get("id"));
+        ArrayList<Predicate> conditions = new ArrayList<Predicate>();
+        conditions.add(cb.isNull((Expression)entry.get("deletedAt")));
+        conditions.add(cb.equal(entry.get("playerId"), root.get("id")));
+        conditions.add(cb.isTrue(entry.get("current")));
+        if (teamId != null) {
+            conditions.add(cb.equal(entry.get("teamId"), (Object)teamId));
+        }
+        if (teamIds != null) {
+            if (teamIds.isEmpty()) {
+                conditions.add(cb.disjunction());
+            } else {
+                conditions.add(entry.get("teamId").in((Collection)teamIds));
+            }
+        }
+        sq.where((Expression)cb.and(conditions.toArray(new Predicate[0])));
+        return sq;
+    }
+
+    private Predicate entryFieldExists(CriteriaBuilder cb, CriteriaQuery<?> q, Root<Player> root, String field, String pattern) {
+        Subquery<Long> sq = q.subquery(Long.class);
+        Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
+        sq.select((Expression)entry.get("id"));
+        sq.where((Expression)cb.and(
+                cb.isNull((Expression)entry.get("deletedAt")),
+                cb.equal(entry.get("playerId"), root.get("id")),
+                cb.like(entry.get(field).as(String.class), pattern)));
+        return cb.exists(sq);
+    }
+
+    private boolean visibleInScope(EffectiveDataScope scope, Set<Long> currentTeamIds) {
+        if (currentTeamIds == null || currentTeamIds.isEmpty()) {
+            return true;
+        }
+        for (Long teamId : currentTeamIds) {
+            if (scope.getTeamIds().contains(teamId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Player get(Long id) {
         Player p = this.playerRepository.findById(id).orElse(null);
         if (p == null || p.getDeletedAt() != null) {
@@ -224,9 +289,10 @@ public class PlayerService {
             return null;
         }
         EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!(scope.isUnrestrictedInTenant() || p.getTeamId() != null && scope.getTeamIds().contains(p.getTeamId()))) {
+        if (!(scope.isUnrestrictedInTenant() || this.playerTeamService.countCurrentEntriesInTeams(p.getId(), scope.getTeamIds()) > 0L)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u5458");
         }
+        this.playerTeamService.attachEntries(p);
         return p;
     }
 
@@ -276,6 +342,7 @@ public class PlayerService {
         return this.statsService.drillDownFielding(id, metric, page, pageSize, eventId, season, gameMode);
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public Player create(Player entity) {
         if (entity.getName() != null) {
             String n = entity.getName().trim();
@@ -285,8 +352,16 @@ public class PlayerService {
         this.validateTeamId(entity.getTeamId());
         PlayerService.normalizeBlankStringsToNull((Player)entity);
         PlayerService.normalizePlayerBackgroundFields((Player)entity);
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(entity, entity.getTeamEntries(), entity.getTeamEntries() != null);
+        this.playerTeamService.applyMirror(entity, plan);
         Player saved = (Player)this.playerRepository.save(entity);
-        this.personnelHistoryRecorder.afterPlayerCreate(saved);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            saved = (Player)this.playerRepository.save(saved);
+        }
+        this.playerTeamService.attachEntries(saved);
         return saved;
     }
 
@@ -302,6 +377,7 @@ public class PlayerService {
         return this.playerRepository.countActiveByTenantIdAndFullName(tid, n) > 0L;
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public Player update(Long id, Player entity) {
         Player existing = this.playerRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
@@ -322,8 +398,17 @@ public class PlayerService {
         PlayerService.normalizeBlankStringsToNull((Player)entity);
         PlayerService.normalizePlayerBackgroundFields((Player)entity);
         Player before = PersonnelHistoryRecorder.snapshotPlayer((Player)existing);
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(entity, entity.getTeamEntries(), entity.getTeamEntries() != null);
+        this.playerTeamService.applyMirror(entity, plan);
         Player saved = (Player)this.playerRepository.save(entity);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
         this.personnelHistoryRecorder.afterPlayerUpdate(before, saved);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            saved = (Player)this.playerRepository.save(saved);
+        }
+        this.playerTeamService.attachEntries(saved);
         return saved;
     }
 
@@ -520,15 +605,17 @@ public class PlayerService {
                 if (overwrite) {
                     p.setId(existing.getId());
                     p.setCreatedAt(existing.getCreatedAt());
-                    this.playerRepository.save(p);
+                    Player savedOverwrite = (Player)this.playerRepository.save(p);
+                    this.playerTeamService.syncLegacyEntry(savedOverwrite);
                     ++updated;
                     continue;
                 }
                 ++skipped;
                 continue;
             }
-            this.playerRepository.save(p);
-            existingByKey.put(this.dupKey(p), p);
+            Player savedNew = (Player)this.playerRepository.save(p);
+            this.playerTeamService.syncLegacyEntry(savedNew);
+            existingByKey.put(this.dupKey(savedNew), savedNew);
             ++created;
         }
         return Map.of("created",created, "updated",updated, "skipped", (Object)skipped);
@@ -549,12 +636,14 @@ public class PlayerService {
     }
 
     @Generated
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, StatsService statsService, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
+        this.playerTeamRepository = playerTeamRepository;
         this.statsService = statsService;
         this.dataScopeService = dataScopeService;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
+        this.playerTeamService = playerTeamService;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
 }
