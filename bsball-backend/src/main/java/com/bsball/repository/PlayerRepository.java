@@ -58,8 +58,5 @@ JpaSpecificationExecutor<Player> {
 
     @Query(value="select count(p) from Player p where p.deletedAt is null and p.tenantId = :tenantId and trim(p.name) = :name and p.id <> :excludeId")
     public long countActiveByTenantIdAndFullNameExcludingId(@Param(value="tenantId") long var1, @Param(value="name") String var3, @Param(value="excludeId") long var4);
-
-    @Query(value="select p.id, p.name, p.number, p.positions, p.batHand, p.throwHand, p.status from Player p where p.deletedAt is null and p.tenantId = :tid and p.teamId = :teamId order by coalesce(p.sort, 0) asc, p.id asc")
-    public List<Object[]> findTeamPlayerOptionFields(@Param(value="tid") long var1, @Param(value="teamId") long var3);
 }
 

@@ -30,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.Generated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,15 +64,17 @@ public class PersonnelHistoryRecorder {
         return "active".equalsIgnoreCase(status.trim());
     }
 
-    private void persist(HistoryRecord r) {
+    private HistoryRecord persist(HistoryRecord r) {
         try {
-            this.historyRecordRepository.save(r);
+            HistoryRecord saved = (HistoryRecord)this.historyRecordRepository.save(r);
             if (log.isDebugEnabled()) {
                 log.debug("\u6cbf\u9769\u81ea\u52a8\u8bb0\u5f55\u5df2\u5199\u5165: type={} targetType={} targetId={}", new Object[]{r.getType(), r.getTargetType(), r.getTargetId()});
             }
+            return saved;
         }
         catch (Exception e) {
             log.warn("\u6cbf\u9769\u81ea\u52a8\u8bb0\u5f55\u5199\u5165\u5931\u8d25: type={} targetType={} targetId={} \u2014 {}", new Object[]{r.getType(), r.getTargetType(), r.getTargetId(), e.toString(), e});
+            return null;
         }
     }
 
@@ -95,21 +99,57 @@ public class PersonnelHistoryRecorder {
         return r;
     }
 
-    public void afterPlayerCreate(Player saved) {
-        if (saved == null || saved.getId() == null) {
-            return;
+    /**
+     * 记录球员“当前球队”集合的流转：
+     * 恰好 1→1 记 transfer；否则新增记 join、移除记 leave（每队一条）。
+     *
+     * @return 最新 join/transfer 记录 ID（无则 null），供调用方回写 player.currentJoinRecordId
+     */
+    public Long recordPlayerTeamTransitions(Player player, Set<Long> oldCurrentTeamIds, Set<Long> newCurrentTeamIds) {
+        if (player == null || player.getId() == null || player.getTenantId() == null) {
+            return null;
         }
-        Long tid = saved.getTenantId();
-        if (tid == null) {
-            return;
+        Set<Long> oldSet = oldCurrentTeamIds == null ? Set.of() : oldCurrentTeamIds;
+        Set<Long> newSet = newCurrentTeamIds == null ? Set.of() : newCurrentTeamIds;
+        if (oldSet.equals(newSet)) {
+            return null;
         }
-        Long team = PersonnelHistoryRecorder.normTeam((Long)saved.getTeamId());
-        if (team != null) {
-            HistoryRecord r = this.baseEvent("player", saved.getId().longValue(), tid.longValue(), "join");
+        long pid = player.getId();
+        long tid = player.getTenantId();
+        if (oldSet.size() == 1 && newSet.size() == 1) {
+            Long from = oldSet.iterator().next();
+            Long to = newSet.iterator().next();
+            HistoryRecord r = this.baseEvent("player", pid, tid, "transfer");
             r.setRelatedObjectType("team");
-            r.setRelatedObjectId(team);
+            r.setRelatedObjectId(to);
+            LinkedHashMap<String, Object> payload = new LinkedHashMap<String, Object>();
+            payload.put("fromTeamId", from);
+            payload.put("toTeamId", to);
+            r.setChangePayloadJson(this.jsonPayload(payload));
+            HistoryRecord saved = this.persist(r);
+            return saved == null ? null : saved.getId();
+        }
+        Long latestJoinRecordId = null;
+        TreeSet<Long> added = new TreeSet<Long>(newSet);
+        added.removeAll(oldSet);
+        for (Long teamId : added) {
+            HistoryRecord r = this.baseEvent("player", pid, tid, "join");
+            r.setRelatedObjectType("team");
+            r.setRelatedObjectId(teamId);
+            HistoryRecord saved = this.persist(r);
+            if (saved != null) {
+                latestJoinRecordId = saved.getId();
+            }
+        }
+        TreeSet<Long> removed = new TreeSet<Long>(oldSet);
+        removed.removeAll(newSet);
+        for (Long teamId : removed) {
+            HistoryRecord r = this.baseEvent("player", pid, tid, "leave");
+            r.setRelatedObjectType("team");
+            r.setRelatedObjectId(teamId);
             this.persist(r);
         }
+        return latestJoinRecordId;
     }
 
     public void afterPlayerUpdate(Player before, Player after) {
@@ -134,28 +174,6 @@ public class PersonnelHistoryRecorder {
                 r.setRelatedObjectId(oldTeam);
             }
             this.persist(r);
-        }
-        if (!Objects.equals(oldTeam, newTeam)) {
-            if (oldTeam == null && newTeam != null) {
-                r = this.baseEvent("player", pid, tid, "join");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(newTeam);
-                this.persist(r);
-            } else if (oldTeam != null && newTeam == null) {
-                r = this.baseEvent("player", pid, tid, "leave");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(oldTeam);
-                this.persist(r);
-            } else if (oldTeam != null) {
-                r = this.baseEvent("player", pid, tid, "transfer");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(newTeam);
-                payload = new LinkedHashMap<>();
-                payload.put("fromTeamId", oldTeam);
-                payload.put("toTeamId", newTeam);
-                r.setChangePayloadJson(this.jsonPayload(payload));
-                this.persist(r);
-            }
         }
         if (PersonnelHistoryRecorder.playerProfileFieldsChanged((Player)before, (Player)after)) {
             r = this.baseEvent("player", pid, tid, "profile_update");
