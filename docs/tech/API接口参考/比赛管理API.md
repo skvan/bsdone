@@ -269,6 +269,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:107-111`
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
+  - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
 - DELETE /game/delete/{id}
   - 作用：删除比赛（软删除）

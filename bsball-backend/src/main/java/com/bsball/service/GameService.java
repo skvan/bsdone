@@ -444,12 +444,10 @@ public class GameService {
             if (g.getGameday() != null) {
                 game.setGameday(g.getGameday());
             }
-            if (g.getGameNumber() != null) {
-                game.setGameNumber(g.getGameNumber());
-            }
-            if (g.getVenue() != null) {
-                game.setVenue(g.getVenue());
-            }
+            // 場次/場地允許清空（issue #28）：與同方法內的 stadiumId 一致採無條件寫入；
+            // 前端在清空下拉/輸入時會省略該鍵，後端收到 null 即視為清空。
+            game.setGameNumber(g.getGameNumber());
+            game.setVenue(g.getVenue());
             if (g.getStadiumId() != null) {
                 this.assertStadiumBelongsToTenant(g.getStadiumId(), game.getTenantId().longValue());
             }
