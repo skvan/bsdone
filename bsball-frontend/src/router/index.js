@@ -39,6 +39,8 @@ import Coaches from '../views/admin/Coaches.js';
 import PlayerList from '../views/admin/PlayerList.js';
 import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import PlayerDetail from '../views/admin/PlayerDetail.js';
+import Events from '../views/admin/Events.js';
+import EventBracket from '../views/admin/EventBracket.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -135,8 +137,8 @@ const routes = [
             { path: 'players/:id', name: 'AdminPlayerDetail', component: PlayerDetail },
             { path: 'player-claims', name: 'AdminPlayerClaimReview', component: PlayerClaimReview },
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
-            adminChild('events', 'AdminEvents', 'Events'),
-            adminChild('events/:eventId/bracket', 'AdminEventBracket', 'EventBracket'),
+            { path: 'events', name: 'AdminEvents', component: Events },
+            { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
             adminChild('events/:eventId/games', 'AdminGames', 'Games'),
             adminChild('events/:eventId/games/new', 'AdminGameNew', 'Games'),
             adminChild('events/:eventId/games/:gameId/edit', 'AdminGameEdit', 'Games'),

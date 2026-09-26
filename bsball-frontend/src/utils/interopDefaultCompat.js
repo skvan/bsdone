@@ -9,11 +9,17 @@ export function interopDefaultCompat(mod, forceDefault) {
 }
 
 // rolldown CJS 模块工厂等价（导出 i）：执行工厂函数并返回其 exports
+// CJS 模块工厂（rolldown-runtime 的 r/i 语义）——返回 lazy getter：调用时才执行工厂并缓存 exports
 export function requireCjsModule(factory) {
-  const cache = factory.__cachedExports;
-  if (cache) return cache;
-  const mod = { exports: {} };
-  factory(mod.exports, mod);
-  factory.__cachedExports = mod.exports;
-  return mod.exports;
+  let executed = false;
+  let exportsCache;
+  return function () {
+    if (!executed) {
+      const mod = { exports: {} };
+      factory(mod.exports, mod);
+      exportsCache = mod.exports;
+      executed = true;
+    }
+    return exportsCache;
+  };
 }
