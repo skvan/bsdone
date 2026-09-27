@@ -1,5 +1,8 @@
 // 实时观赛场地布局工具（liveGameFieldLayout-DJuYzcav）——行为保真移植，正文逐字保留短名
-// 注：B5-a 仅映射引用方所需导出；B5-b 扩展时按需补充 names
+// 逐字对应：wt/E/Dt/Kt/M/it/Xt/zt/qt/Yt/Ut/ct/Ct=文案与坐标常量、
+//   K=buildPitchBlocks、A=parseHeaderLine、g=composeLineText、Zt=sortByPositionOrder、Vt=buildFieldLayout、
+//   Ht=countPitchLines、I=getLineTail、Ft=extractPitchLines、Ot=isMetaLine、F=getLineHead、W=groupLinesIntoBlocks、
+//   Mt=normalizeLineList、Gt=getFinalCount、jt=PITCHER_BALL_POSITION
 
 import{ normalizePositionCode as N } from './starterFieldingValidation.js';
 var Z=/\s*·\s*坐标\(\d+,\s*\d+\)/g;
@@ -676,6 +679,19 @@ function qt(e,t){
 }
 
 export {
+  wt as appendTextSuffix,
+  E as parseBatterLine,
+  Dt as isBattingOrderLine,
+  Kt as BASE_COORDS,
+  M as buildRunnerAdvanceText,
+  it as buildOutsSummary,
+  Xt as POSITION_INDEX_MAP,
+  zt as HOME_PLATE_POSITION,
+  qt as getFieldingConfig,
+  Yt as getPositionOptions,
+  Ut as FIELDER_COORDS,
+  ct as normalizePlayText,
+  Ct as formatCountText,
   K as buildPitchBlocks,
   A as parseHeaderLine,
   g as composeLineText,
