@@ -3,6 +3,9 @@
 import dayjs from 'dayjs';
 import updateLocale from 'dayjs/plugin/updateLocale';
 import 'dayjs/locale/zh-cn';
+import { formatDateDot } from './formatDate';
+
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 
 let dayjsPluginReady = false;
 
@@ -33,6 +36,30 @@ export function formatMonthDayWithWeek(value) {
 // 入口 chunk hr —— dayjs 简体中文 locale 对象（调用即取）
 export function getDayjsZhCnLocale() {
   return dayjs.locale('zh-cn');
+}
+
+// 入口 chunk wa —— 纯日期格式：Y.MM.DD (周X)（非法返 '-'）
+export function formatDateOnly(value) {
+  if (value == null || value === '') return '-';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${WEEKDAY_LABELS[date.getDay()]})`;
+}
+
+// 入口 chunk Qn —— 智能日期：零时刻→纯日期；否则日期时间（非法返 '-'）
+export function formatSmartDateTime(value) {
+  if (value == null || value === '') return '-';
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return formatDateOnly(new Date(text + 'T12:00:00'));
+  }
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '-';
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const seconds = date.getSeconds();
+  const millis = date.getMilliseconds();
+  return hours === 0 && minutes === 0 && seconds === 0 && millis === 0 ? formatDateOnly(date) : formatDateDot(date);
 }
 
 // 入口 chunk ct(SP) —— dayjs 的 CJS 工厂（产物中 H() 返回 module.exports=dayjs）
