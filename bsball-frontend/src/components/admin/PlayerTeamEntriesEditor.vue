@@ -29,8 +29,6 @@
           <el-select
             v-model="seg.positions"
             multiple
-            collapse-tags
-            collapse-tags-tooltip
             filterable
             placeholder="可多选"
             style="width: 100%"
