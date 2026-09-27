@@ -204,7 +204,7 @@ var Dt=["#409EFF","#0d6efd","#1677ff","#67C23A","#E6A23C","#F56C6C","#626aef","#
     
   }
   ,emits:["update:modelValue"],setup(B){
-    const w="1.0.0",D="2026-07-01T14:33:17.536+08:00",A="3.5.38",p="2.14.2",C="8.0.13",y=f(()=>{
+    const w="1.1.1",D="2026-09-26T17:12:54.722+08:00",A="3.5.38",p="2.14.2",C="8.0.13",y=f(()=>{
       const m=new Date(D);
       if(Number.isNaN(m.getTime()))return D;
       const e=V=>String(V).padStart(2,"0");
