@@ -4312,11 +4312,11 @@ function uu(u,f,l=[]){
     const K=F.get(S);
     N.push(K?ga(3,S,K):ga(3,S,"safe"))
   }
-  if(_)if(u>=3){
+  if(_)if(u>=2){
     const K=F.get(_);
     N.push(K?ga(2,_,K):ga(2,_,"safe"))
   }
-  else u>=2&&N.push(Bs(2,_,"三垒"));
+  else N.push(Bs(2,_,"三垒"));
   if(o)if(u>=3){
     const K=F.get(o);
     N.push(K?ga(1,o,K):ga(1,o,"safe"))
@@ -6737,7 +6737,7 @@ var sg={
     const vn=$(()=>({
       1:xn(Qi(1)),2:xn(Qi(2)),3:xn(Qi(3))
     }
-    )),Xr=$(()=>X.value.reduce((e,t)=>e+(t.stats.batting.h??0),0)),Yr=$(()=>q.value.reduce((e,t)=>e+(t.stats.batting.h??0),0)),Kr=$(()=>X.value.reduce((e,t)=>e+(t.stats.fielding.e??0),0)),zr=$(()=>q.value.reduce((e,t)=>e+(t.stats.fielding.e??0),0)),Ja=$(()=>{
+    )),Xr=$(()=>[...new Map([...X.value,...ae.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Yr=$(()=>[...new Map([...q.value,...ye.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Kr=$(()=>[...new Map([...X.value,...ae.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),zr=$(()=>[...new Map([...q.value,...ye.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),Ja=$(()=>{
       if(!lt.value)return null;
       const e=l.inning-1;
       return l.isTop?{
@@ -7499,10 +7499,10 @@ var sg={
     function de(e){
       try{
         Ne.value.splice(0);
-        const t=Wl(),a=JSON.stringify(q.value)+"|"+JSON.stringify(X.value)+"|"+JSON.stringify(ye.value)+"|"+JSON.stringify(ae.value),s=dn()?.stats?.pitching?.np??-1,r=a.length+"|"+a.slice(0,50)+"|np="+s;
+        const t=Wl(),a=JSON.stringify(q.value)+"|"+JSON.stringify(X.value)+"|"+JSON.stringify(ye.value)+"|"+JSON.stringify(ae.value),s=dn()?.stats?.pitching?.np??-1,r=a+"|np="+s;
         let p;
         r===oo&&zl!==null?p=zl:(zl=Yl(),p=zl,oo=r);
-        const g=[...ke.value],m=JSON.stringify(Me.value),y=m.length+"|"+m.slice(0,50);
+        const g=[...ke.value],m=JSON.stringify(Me.value),y=m;
         let b;
         y===uo&&ql!==null?b=ql:(ql=Kl(),b=ql,uo=y);
         const w={

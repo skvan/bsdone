@@ -587,7 +587,7 @@ var Ta={
       immediate:!0
     }
     );
-    const Vt=I(()=>D.value.reduce((e,t)=>e+(t.stats.batting.h??0),0)),$t=I(()=>E.value.reduce((e,t)=>e+(t.stats.batting.h??0),0)),xt=I(()=>D.value.reduce((e,t)=>e+(t.stats.fielding?.e??0),0)),Wt=I(()=>E.value.reduce((e,t)=>e+(t.stats.fielding?.e??0),0));
+    const Vt=I(()=>[...new Map([...D.value,...de.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),$t=I(()=>[...new Map([...E.value,...he.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),xt=I(()=>[...new Map([...D.value,...de.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding?.e??0),0)),Wt=I(()=>[...new Map([...E.value,...he.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding?.e??0),0));
     function ht(e,t){
       const a=[...e];
       for(;
