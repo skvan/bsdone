@@ -166,5 +166,9 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     link.href = href;
   }
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon };
+  // 门户首页区块排序/隐藏（编译产物顶层透传，消费者：Home 页；空值兜底对齐产物 ge(void 0) 返回空列表）
+  const portalHomeSectionOrder = computed(() => config.value?.portalHomeSectionOrder ?? []);
+  const portalHomeSectionHidden = computed(() => config.value?.portalHomeSectionHidden ?? null);
+
+  return { config, siteName, portalHomeSectionOrder, portalHomeSectionHidden, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon };
 });

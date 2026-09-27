@@ -20,7 +20,7 @@ import { useAnnouncementNotifications as ta } from '../../composables/useAnnounc
 import { useTenantRouter as aa } from '../../composables/useTenantRouter';
 import la from './PortalDragCaptcha.js';
 import { DEFAULT_AVATAR_SVG_PATH as Ze } from '../../utils/placeholderAssets';
-import { defaultPortalYearQuery as et } from '../../utils/portalYearQuery';
+import { getDefaultYearQuery as et } from '../../utils/portalYearQuery';
 import { markPortalFeedbackGuideSeen as Kt } from '../../utils/portalGuide';
 import { isPortalFeedbackGuideSeen as Qe } from '../../utils/portalGuide';
 import { usePortalThemeStore as jt } from '../../stores/portalTheme';

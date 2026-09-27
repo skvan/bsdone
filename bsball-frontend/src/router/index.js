@@ -26,6 +26,10 @@ import MediaGallery from '../views/admin/MediaGallery.js';
 import LoginLogs from '../views/admin/LoginLogs.js';
 import OperationLogs from '../views/admin/OperationLogs.js';
 import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js';
+import Home from '../views/portal/Home.js';
+import News from '../views/portal/News.js';
+import NoticeDetail from '../views/portal/NoticeDetail.js';
+import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
@@ -56,7 +60,7 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 });
 
 const routes = [
-    { path: '/', name: 'PortalHome', ...ph('Home') },
+    { path: '/', name: 'PortalHome', component: Home },
     {
       path: '/docs',
       name: 'PlatformDocsIndex',
@@ -73,8 +77,8 @@ const routes = [
       component: TenantShell,
       children: [
         { path: '', name: 'TenantIndex', redirect: { name: 'PortalHome' } },
-        { path: 'article', name: 'PortalArticleList', ...ph('News') },
-        { path: 'article/:id', name: 'PortalArticleDetail', ...ph('NoticeDetail') },
+        { path: 'article', name: 'PortalArticleList', component: News },
+        { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
         { path: 'events', name: 'PortalEvents', ...ph('Events') },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
         { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', ...ph('GameDetail') },
@@ -84,7 +88,7 @@ const routes = [
         { path: 'stadiums/:id', name: 'PortalStadiumDetail', ...ph('StadiumDetail') },
         { path: 'players/:id', name: 'PortalPlayerDetail', ...ph('PlayerDetail') },
         { path: 'stats', name: 'PortalStats', ...ph('Stats') },
-        { path: 'docs/:id', name: 'PortalAnnouncementDoc', ...ph('AnnouncementDoc') },
+        { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
         { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
         { path: 'account/register', name: 'PortalRegister', component: Register },
