@@ -31,6 +31,10 @@ import News from '../views/portal/News.js';
 import NoticeDetail from '../views/portal/NoticeDetail.js';
 import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
 import PortalEvents from '../views/portal/PortalEvents.js';
+import PortalTeams from '../views/portal/PortalTeams.js';
+import PortalTeamDetail from '../views/portal/PortalTeamDetail.js';
+import StarPlayers from '../views/portal/StarPlayers.js';
+import PortalPlayerDetail from '../views/portal/PortalPlayerDetail.js';
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
@@ -83,11 +87,11 @@ const routes = [
         { path: 'events', name: 'PortalEvents', component: PortalEvents },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
         { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', ...ph('GameDetail') },
-        { path: 'teams', name: 'PortalTeams', ...ph('Teams') },
-        { path: 'star-players', name: 'PortalStarPlayers', ...ph('StarPlayers') },
-        { path: 'teams/:id', name: 'PortalTeamDetail', ...ph('TeamDetail') },
+        { path: 'teams', name: 'PortalTeams', component: PortalTeams },
+        { path: 'star-players', name: 'PortalStarPlayers', component: StarPlayers },
+        { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
         { path: 'stadiums/:id', name: 'PortalStadiumDetail', ...ph('StadiumDetail') },
-        { path: 'players/:id', name: 'PortalPlayerDetail', ...ph('PlayerDetail') },
+        { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
         { path: 'stats', name: 'PortalStats', ...ph('Stats') },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
         { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },

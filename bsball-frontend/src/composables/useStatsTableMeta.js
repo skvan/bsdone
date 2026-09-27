@@ -290,3 +290,28 @@ export function useStatsTableMeta() {
 
 // 供外部（如门户统计页）复用：手动重载与草稿复位
 export { le as reloadStatsTableMeta, an as resetStatsTableDrafts };
+
+// —— B4-p3：入口模块级符号导出（PortalStatsColumnSettingsDrawer 与 ll 共享作用域；原 bundle 中同模块级）——
+// 逐字对应入口 chunk 的 nl（草稿快照）
+function nl() {
+  Ee.value = x.value == null ? null : [...x.value];
+  dt.value = [...ot.value];
+  Oe.value = W.value == null ? null : [...W.value];
+  ut.value = [...rt.value];
+  Re.value = U.value == null ? null : [...U.value];
+  pt.value = [...nt.value];
+  Fe.value = Y.value == null ? null : [...Y.value];
+  mt.value = [...lt.value];
+  Ge.value = K.value == null ? null : [...K.value];
+  ht.value = [...st.value];
+  Me.value = $.value == null ? null : [...$.value];
+  ft.value = [...ct.value];
+  bt.value = aa.value;
+  gt.value = ia.value;
+  vt.value = oa.value;
+}
+export { qa, Qa, Za, ci, an, nl, ol };
+export {
+  $t, Ua, zt, Ya, jt, Ka, qt, $a, Qt, za, Zt, ja,
+  ae, te, ie, re, oe, ne
+};
