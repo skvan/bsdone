@@ -34,6 +34,7 @@
 | H9 | 2026-09-24 | Issue #71 / PR #72 | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 本垒出局原因子菜单 + 强迫进垒确认去掉「违规」（LiveGame 实时录入） | 管理端 LiveGame（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8 同轨） | 已并入 v1.1/dev（PR #72）；产物待 B5 对照重建 |
 | H8 | 2026-09-24 | Issue #67（本 PR 分支 `fix/livegame-lineup-pitcher-sentinel-id`） | `bs-ball/assets/LiveGameLineup-CRlH9wMS.js` + 同路徑 `.js.gz` | 「確認先發陣容」頁先發投手下拉預設顯示哨兵值 `-10000`：初始化改只認「已填球員且位置為 P」的列（複用既有空槽判斷子 `K`），不再把合成槽位 id 寫進模型；未選時回落 placeholder 與「須指定後才可開始比賽」提示。附帶修好「假 P 列遮蔽真投手」 | 管理端 → 確認先發陣容（`LiveGameLineup` chunk） | B5 LiveGame 批次（與 H6 同軌） | （待並入） |
 | H13 | 2026-09-26 | Issue #94 / PR #95（分支 `fix/livewatch-pitcher-dup`） | `bs-ball/assets/LiveGameWatch-BpPdtrjK.js` + 同路径 `.js.gz` | 实时观赛 Pitchers 表「投手兼打者」双行重复、Totals 双倍叠加：观赛页行构建（`buildLiveWatchPlayerStats`）对打序中位置为 P 的球员把打击行的 `isPitcher` 误标为 1（应恒为 0），与投手行双双被 Pitchers 表（仅按 `isPitcher` 过滤）收录；修复=打击行 `isPitcher` 恒 0（`C=B?.isPitcher??0`），与「一人两列」模型对齐 | 管理端 → 实时观赛（`LiveGameWatch` chunk） | B5 LiveGame 批次（与 H6/H8/H9/H10 同轨） | 已并入 v1.1/dev（PR #95，2026-09-26 合并）；产物待 B5 对照重建 |
+| H14 | 2026-09-27 | Issue #106（子 #110/#111；分支 `fix/issue-106-livegame-pitcher-ip`） | `bs-ball/assets/LiveGame-Bjdd5Cir.js` + 同路径 `.js.gz` | 实时观赛「投手 IP」两处缺陷：① 快照统计集合漏收「仅守备投手」→ 观赛页显示 0（`kf()` 补齐）；② 出局 IP 归属错误（`dn()` 解析优先级）+ 换局首个出局缺「已累计」（`jr()` 兜底） | 管理端 → 实时录入 / 实时观赛（`LiveGame` chunk） | B5 LiveGame 批次（与 H6/H8/H9/H10/H13 同轨） | 待并入 v1.1/dev（本 PR）；产物待 B5 对照重建 |
 
 ### 登记步骤（每次热修必做）
 
