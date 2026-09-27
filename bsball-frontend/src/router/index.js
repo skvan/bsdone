@@ -57,6 +57,8 @@ import EventBracket from '../views/admin/EventBracket.js';
 import LiveGameLineup from '../views/admin/LiveGameLineup.js';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
+import Games from '../views/admin/Games.js';
+import GameDetail from '../views/admin/GameDetail.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -155,13 +157,13 @@ const routes = [
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             { path: 'events', name: 'AdminEvents', component: Events },
             { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
-            adminChild('events/:eventId/games', 'AdminGames', 'Games'),
-            adminChild('events/:eventId/games/new', 'AdminGameNew', 'Games'),
-            adminChild('events/:eventId/games/:gameId/edit', 'AdminGameEdit', 'Games'),
+            { path: 'events/:eventId/games', name: 'AdminGames', component: Games },
+            { path: 'events/:eventId/games/new', name: 'AdminGameNew', component: Games },
+            { path: 'events/:eventId/games/:gameId/edit', name: 'AdminGameEdit', component: Games },
             { path: 'events/:eventId/games/:gameId/live', name: 'AdminGameLiveResume', component: LiveGame },
             { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineup },
             { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
-            adminChild('events/:eventId/games/:gameId', 'AdminGameDetail', 'GameDetail'),
+            { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
             { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
             adminChild('history-records', 'AdminHistoryRecords', 'HistoryRecordList'),
             adminChild('highlight-moments', 'AdminHighlightMoments', 'HighlightMomentList')
