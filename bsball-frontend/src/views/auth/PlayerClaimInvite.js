@@ -6,7 +6,7 @@ import { useI18n as q } from 'vue-i18n';
 import { useRoute as z } from 'vue-router';
 import { resolveTenantCodeFromRoute as H } from '../../utils/tenantRoute';
 import { useAuthStore as $ } from '../../stores/auth';
-import { formatDateDot as j } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as j } from '../../utils/dateExtras';
 import { exportSfc as F } from '../../utils/exportSfc';
 import { accountApi as N } from '../../api/account';
 import '../../styles/legacy/auth-player-claim-invite.css';

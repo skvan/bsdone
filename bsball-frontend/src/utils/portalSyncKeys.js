@@ -4,3 +4,6 @@ export {
   PORTAL_STATS_PAGE_SIZE_SYNC_EVENT as STATS_PAGE_SIZE_SYNC_KEY,
   PORTAL_FIELD_SETTINGS_GUIDE_SYNC_EVENT as FIELD_SETTINGS_GUIDE_SYNC_KEY
 } from '../composables/usePortalStorageBridge';
+
+// display-settings 同步事件（入口 chunk $r）：bridge 无派发链，直接使用编译产物字面量
+export const DISPLAY_SETTINGS_SYNC_KEY = 'bsball-portal-display-settings-sync';

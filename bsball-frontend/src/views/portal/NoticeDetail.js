@@ -7,7 +7,7 @@ import { useI18n as Oe } from 'vue-i18n';
 import { useRoute as je } from 'vue-router';
 import { fetchData as Ge } from '../../api/request';
 import { incrementArticleView as Ve } from '../../api/request';
-import { formatDateDot as We } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as We } from '../../utils/dateExtras';
 import { useAppConfigStore as Xe } from '../../stores/appConfig';
 import { exportSfc as Fe } from '../../utils/exportSfc';
 import { stripProvinceSuffix as Ue } from '../../utils/regionDisplay';

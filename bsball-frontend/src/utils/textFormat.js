@@ -5,3 +5,8 @@ export function truncateString(value, maxLength) {
   const chars = [...text];
   return chars.length <= maxLength ? text : chars.slice(0, maxLength).join('') + '…';
 }
+
+// 空值保护字符串（入口 chunk el）——null/空串返回空串，其余 String 化
+export function toSafeString(value) {
+  return value == null || value === '' ? '' : String(value);
+}

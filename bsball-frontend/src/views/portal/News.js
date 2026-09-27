@@ -5,7 +5,7 @@ import { ElIcon as U, ElSkeleton as F, ElEmpty as M, ElSkeletonItem as j } from 
 import { Document as G } from '@element-plus/icons-vue';
 import { useI18n as H } from 'vue-i18n';
 import { resolveAssetUrl as P } from '../../api/request';
-import { formatDateDot as W } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as W } from '../../utils/dateExtras';
 import { useAppConfigStore as q } from '../../stores/appConfig';
 import { exportSfc as J } from '../../utils/exportSfc';
 import { articleApi as K } from '../../api/system';

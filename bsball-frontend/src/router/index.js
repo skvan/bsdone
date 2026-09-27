@@ -36,6 +36,9 @@ import PortalTeamDetail from '../views/portal/PortalTeamDetail.js';
 import StarPlayers from '../views/portal/StarPlayers.js';
 import PortalPlayerDetail from '../views/portal/PortalPlayerDetail.js';
 import PortalStats from '../views/portal/PortalStats.js';
+import PortalGameDetail from '../views/portal/PortalGameDetail.js';
+import PortalStadiumDetail from '../views/portal/PortalStadiumDetail.js';
+import PortalAccountProfile from '../views/portal/PortalAccountProfile.js';
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
@@ -87,15 +90,15 @@ const routes = [
         { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
         { path: 'events', name: 'PortalEvents', component: PortalEvents },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
-        { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', ...ph('GameDetail') },
+        { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', component: PortalGameDetail },
         { path: 'teams', name: 'PortalTeams', component: PortalTeams },
         { path: 'star-players', name: 'PortalStarPlayers', component: StarPlayers },
         { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
-        { path: 'stadiums/:id', name: 'PortalStadiumDetail', ...ph('StadiumDetail') },
+        { path: 'stadiums/:id', name: 'PortalStadiumDetail', component: PortalStadiumDetail },
         { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
         { path: 'stats', name: 'PortalStats', component: PortalStats },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
-        { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
+        { path: 'account/profile', name: 'PortalAccountProfile', component: PortalAccountProfile },
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
         { path: 'account/register', name: 'PortalRegister', component: Register },
         { path: 'account/forgot-password', name: 'PortalForgotPassword', component: ForgotPassword },
