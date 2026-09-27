@@ -62,6 +62,21 @@ export function formatSmartDateTime(value) {
   return hours === 0 && minutes === 0 && seconds === 0 && millis === 0 ? formatDateOnly(date) : formatDateDot(date);
 }
 
+// 入口 chunk Xn —— 'MM.DD 周X'（非法返 '—'）
+export function formatMonthDayWeekCn(value) {
+  if (value == null || value === '') return '—';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? '—' : `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} 周${WEEKDAY_LABELS[date.getDay()]}`;
+}
+
+// 入口 chunk Jn —— 'MM-DD'（非法返 '—'）
+export function formatMonthDayDash(value) {
+  if (value == null || value === '') return '—';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 // 入口 chunk ct(SP) —— dayjs 的 CJS 工厂（产物中 H() 返回 module.exports=dayjs）
 // 产物 setup 会 extend(updateLocale 插件) + updateLocale('zh-cn',{weekStart:1}) + locale('zh-cn')；
 // 此处预扩展官方插件保证等价（幂等）
