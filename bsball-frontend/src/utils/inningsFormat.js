@@ -32,7 +32,12 @@ export function totalInningsPitched(list) {
   return outsToInnings(list.reduce((sum, value) => sum + inningsToOuts(value), 0));
 }
 
-// IP 显示格式化（出局↔局数换算 + toFixed(1) 去尾零；入口 chunk 导出 li）
+// 出局数 → 局数小数（入口 chunk al：ta(e)/3）
+export function inningsToDecimal(value) {
+  return inningsToOuts(value) / 3;
+}
+
+// IP 显示格式化（出局→局数换算 + toFixed(1) 去尾零；入口 chunk 导出 li）
 export function formatInningsPitched(value) {
   if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0) return '0';
   const outs = inningsToOuts(Number(value));

@@ -54,6 +54,8 @@ import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
+import LiveGameLineup from '../views/admin/LiveGameLineup.js';
+import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -156,10 +158,10 @@ const routes = [
             adminChild('events/:eventId/games/new', 'AdminGameNew', 'Games'),
             adminChild('events/:eventId/games/:gameId/edit', 'AdminGameEdit', 'Games'),
             adminChild('events/:eventId/games/:gameId/live', 'AdminGameLiveResume', 'LiveGame'),
-            adminChild('events/:eventId/games/:gameId/lineup', 'AdminGameLiveLineupGame', 'LiveGameLineup'),
-            adminChild('events/:eventId/games/:gameId/watch', 'AdminGameLiveWatch', 'LiveGameWatch'),
+            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineup },
+            { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
             adminChild('events/:eventId/games/:gameId', 'AdminGameDetail', 'GameDetail'),
-            adminChild('events/:eventId/games/live', 'AdminGameLiveLineup', 'LiveGameLineup'),
+            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
             adminChild('history-records', 'AdminHistoryRecords', 'HistoryRecordList'),
             adminChild('highlight-moments', 'AdminHighlightMoments', 'HighlightMomentList')
           ]
