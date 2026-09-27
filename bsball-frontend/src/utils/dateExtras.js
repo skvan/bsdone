@@ -102,3 +102,27 @@ export function formatGameStatusLabel(t, value) {
   const translated = t(i18nKey);
   return translated !== i18nKey ? translated : key in GAME_STATUS_FALLBACK ? GAME_STATUS_FALLBACK[key] : String(value);
 }
+
+// —— B4-p5：点分日期时间（入口 chunk 的 Qr/xe/wa/Zr，含中文星期）——
+const WEEKDAY_SHORT_CN = ['日', '一', '二', '三', '四', '五', '六'];
+function formatWeekdayShortCn(date) {
+  return `(${WEEKDAY_SHORT_CN[date.getDay()]})`;
+}
+// 与 formatDateOnly 同源（入口 wa）——保留别名导出供生成件引用，避免双份实现
+function formatDateDotWithWeek(value) {
+  return formatDateOnly(value);
+}
+export { formatDateDotWithWeek };
+export function formatDateTimeDotWithWeek(value) {
+  if (value == null || value === '') return '-';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')} ${formatWeekdayShortCn(date)}`;
+}
+// 入口 chunk zn：'YYYY-MM-DD HH:MM'（非法返 '-'）——GameDetailContent 时间区间跨天分支用
+export function formatDateTimeYmd(value) {
+  if (value == null || value === '') return '-';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}

@@ -7,7 +7,7 @@ import { useI18n as kt } from 'vue-i18n';
 import { useRouter as gt } from 'vue-router';
 import { resolveAssetUrl as Z } from '../../api/request';
 import { formatSmartDateTime as Ae } from '../../utils/dateExtras';
-import { formatDateDot as Le } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as Le } from '../../utils/dateExtras';
 import { filterBannerItems as Ce } from '../../utils/bannerItems';
 import { useAppConfigStore as xt } from '../../stores/appConfig';
 import { bannerItemKey as Ie } from '../../utils/bannerItems';
