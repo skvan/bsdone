@@ -2,6 +2,11 @@
 #   - push to v1.1/dev  -> build + package + archive artifacts ONLY (no server access)
 #   - workflow_dispatch -> build + deploy to the test env (java-server-test, port 8081)
 #
+# NOTE (2026-09-27): the frontend package is now BUILT from the new project
+#   (bsball-frontend: npm ci + npm run package) instead of tarring the legacy
+#   bsball_project/webapps directory. The output keeps the same top-level
+#   webapps/ layout, so deploy-test.sh on the server is unchanged.
+#
 # Deploy chain: SSH (key from secrets.TEST_SSH_KEY, host key pinned via vars.TEST_SSH_KNOWN_HOST)
 #   -> upload (chunked / parallel / retries, md5 verified on both ends)
 #   -> run .github/scripts/deploy-test.sh on the server:
@@ -44,11 +49,21 @@ jobs:
           echo "== jar md5 =="
           md5sum target/bsball-server-1.0.0.jar
 
-      - name: Package frontend tarball
+      - name: Set up Node.js (new frontend build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: bsball-frontend/package-lock.json
+
+      - name: Build new frontend (bsball-frontend) and package webapps tarball
         run: |
-          tar -czf webapps-dev.tar.gz -C bsball_project webapps
+          cd bsball-frontend
+          npm ci --no-audit --no-fund
+          npm run package
+          cp dist/webapps-dev.tar.gz ../webapps-dev.tar.gz
           echo "== tarball md5 =="
-          md5sum webapps-dev.tar.gz
+          md5sum ../webapps-dev.tar.gz
 
       - name: Write build info
         run: |
