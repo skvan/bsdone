@@ -179,7 +179,7 @@ export function saveValueControlSettings(settings) {
   } catch {}
 }
 
-function writeFieldSettings(state) {
+export function writeFieldSettings(state) {
   try {
     if (typeof window === 'undefined') return;
     const payload = { v: FIELD_SETTINGS_VERSION, ...state };
