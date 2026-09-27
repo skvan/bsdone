@@ -1607,15 +1607,6 @@ var $n={
             "content-position":"left"
           }
           ,{
-            default:n(()=>[s("球队经历",-1)]),_:1
-          }
-          ),t(Pte,{
-            entries:l.teamEntries,teams:Le.value
-          }
-          ,null,8,["entries","teams"]),t(Ca,{
-            "content-position":"left"
-          }
-          ,{
             default:n(()=>[...e[60]||(e[60]=[s("形象",-1)])]),_:1
           }
           ),t(me,{
@@ -1978,7 +1969,16 @@ var $n={
             }
             ,null,8,["modelValue","rows"])]),_:1
           }
-          )]),_:1
+          ),t(Ca,{
+            "content-position":"left"
+          }
+          ,{
+            default:n(()=>[s("球队经历",-1)]),_:1
+          }
+          ),t(Pte,{
+            entries:l.teamEntries,teams:Le.value
+          }
+          ,null,8,["entries","teams"])]),_:1
         }
         ,8,["model","label-position","label-width","class"])]),_:1
       }
