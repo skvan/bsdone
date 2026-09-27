@@ -3,16 +3,18 @@
 #
 # What it does:
 #   1. builds bsball-server jar from the CURRENT commit (tests included)
-#   2. packs bsball_project/webapps (frontend) and uploads it, together with
-#      the jar + scripts/deploy-prod.sh, to the server staging dir
+#   2. builds the new frontend (bsball-frontend: npm ci + npm run package) and
+#      packs it as the webapps tarball, uploaded together with the jar +
+#      scripts/deploy-prod.sh to the server staging dir
 #   3. runs the deploy script on the server: safety gate -> backup ->
 #      atomic jar swap -> restart java-server -> health check ->
 #      frontend (STEP 4, from the staged package) -> automatic rollback on failure
 #
-# NOTE: the frontend package is ALWAYS staged, so a production deploy keeps the
-#       served frontend in sync with the deployed ref (fixes the case where the
-#       footer/version or LiveGame assets stayed on an older build because no
-#       frontend package had been uploaded manually).
+# NOTE: the frontend package is ALWAYS staged and is now BUILT from the new
+#       project (bsball-frontend) instead of the legacy bsball_project/webapps
+#       directory: a production deploy therefore switches the served admin UI
+#       to the rebuilt app. Confirm rebuild/switchover readiness (rollback
+#       toggle tracked in issue #105) before running.
 #
 # Required repository secrets: PROD_HOST, PROD_USER, PROD_SSH_KEY
 name: Deploy Production (manual)
@@ -136,10 +138,20 @@ jobs:
           fi
           echo "chunked upload verified OK"
 
-      - name: Pack frontend package (bsball_project/webapps)
+      - name: Set up Node.js (new frontend build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: bsball-frontend/package-lock.json
+
+      - name: Build new frontend (bsball-frontend) and pack webapps tarball
         run: |
           set -e
-          tar -C bsball_project -czf /tmp/webapps-prod.tar.gz webapps
+          cd bsball-frontend
+          npm ci --no-audit --no-fund
+          npm run package
+          cp dist/webapps-dev.tar.gz /tmp/webapps-prod.tar.gz
           if ! tar -tzf /tmp/webapps-prod.tar.gz | grep -q '^webapps/'; then
             echo "::error::frontend package lacks a top-level webapps/ root"
             exit 1
