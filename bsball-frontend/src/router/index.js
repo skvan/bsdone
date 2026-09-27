@@ -35,6 +35,7 @@ import PortalTeams from '../views/portal/PortalTeams.js';
 import PortalTeamDetail from '../views/portal/PortalTeamDetail.js';
 import StarPlayers from '../views/portal/StarPlayers.js';
 import PortalPlayerDetail from '../views/portal/PortalPlayerDetail.js';
+import PortalStats from '../views/portal/PortalStats.js';
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
@@ -92,7 +93,7 @@ const routes = [
         { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
         { path: 'stadiums/:id', name: 'PortalStadiumDetail', ...ph('StadiumDetail') },
         { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
-        { path: 'stats', name: 'PortalStats', ...ph('Stats') },
+        { path: 'stats', name: 'PortalStats', component: PortalStats },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
         { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
