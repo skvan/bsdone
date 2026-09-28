@@ -64,6 +64,21 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
+    @DisplayName("同一 play 可將承繼跑者與新投手責任分開統計")
+    void keepsInheritedAndCurrentPitcherTotalsSeparate() {
+        EarnedRunPlay play = play(1, 1, 0, 0, false,
+                ScoringRunner.normal(11, 101),
+                ScoringRunner.normal(12, 202));
+
+        EarnedRunReconstructionResult result = engine.reconstruct(List.of(play));
+
+        assertEquals(1, result.pitcherTotals().get(101L).runs());
+        assertEquals(1, result.pitcherTotals().get(202L).runs());
+        assertEquals(1, result.pitcherTotals().get(101L).earnedRuns());
+        assertEquals(1, result.pitcherTotals().get(202L).earnedRuns());
+    }
+
+    @Test
     @DisplayName("改判尚未完成时得分保持待覆核")
     void keepsRunPendingWhileRulingIsPending() {
         EarnedRunPlay play = play(1, 1, 0, 1, true, ScoringRunner.normal(11, 101));
