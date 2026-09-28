@@ -952,6 +952,8 @@ var Bu=Yc("liveGame",()=>{
       if(!player?.stats?.pitching)continue;
       const old=previous[pitcherId]??{};
       player.stats.pitching.er=Math.max(0,(player.stats.pitching.er??0)+Number(total.earnedRuns??0)-Number(old.earnedRuns??0));
+      player.stats.pitching.unearnedR=Math.max(0,(player.stats.pitching.unearnedR??0)+Number(total.unearnedRuns??0)-Number(old.unearnedRuns??0));
+      player.stats.pitching.pendingR=Math.max(0,(player.stats.pitching.pendingR??0)+Number(total.pendingRuns??0)-Number(old.pendingRuns??0));
     }
     earnedRunHalfTotals.value[key]=structuredClone(totals);
   }
@@ -994,7 +996,7 @@ var Bu=Yc("liveGame",()=>{
         }
         
       }
-      ),lineup:pe,hitSprayQueue:structuredClone(O.hitSprayQueue),log:wn.value.length>0?structuredClone(wn.value.slice(-12)):void 0,atBatSummaries:ln.value.length>0?structuredClone(ln.value.slice(-12)):void 0,playEvents:pn.value.length>0?structuredClone(pn.value):void 0,lastAction:G
+      ),lineup:pe,hitSprayQueue:structuredClone(O.hitSprayQueue),log:wn.value.length>0?structuredClone(wn.value.slice(-12)):void 0,atBatSummaries:ln.value.length>0?structuredClone(ln.value.slice(-12)):void 0,playEvents:pn.value.length>0?structuredClone(pn.value):void 0,earnedRunHalfTotals:structuredClone(earnedRunHalfTotals.value),lastAction:G
     }
     
   }
@@ -1019,7 +1021,7 @@ var Bu=Yc("liveGame",()=>{
       };
       O.runners&&(O.runners[1]=t(O.runners[1]),O.runners[2]=t(O.runners[2]),O.runners[3]=t(O.runners[3])),O.mvp=t(O.mvp),O.svp=t(O.svp),O.flow&&O.flow.runner&&(O.flow.runner=t(O.flow.runner))
     }
-    )(),G.hitSprayQueue&&(O.hitSprayQueue=structuredClone(G.hitSprayQueue)),G.log&&(wn.value=structuredClone(G.log)),G.atBatSummaries&&(ln.value=structuredClone(G.atBatSummaries)),G.playEvents&&(pn.value=structuredClone(G.playEvents)),Jl()
+    )(),G.hitSprayQueue&&(O.hitSprayQueue=structuredClone(G.hitSprayQueue)),G.log&&(wn.value=structuredClone(G.log)),G.atBatSummaries&&(ln.value=structuredClone(G.atBatSummaries)),G.playEvents&&(pn.value=structuredClone(G.playEvents)),earnedRunHalfTotals.value=structuredClone(G.earnedRunHalfTotals??{}),Jl()
   }
   function pl(){
     if(Ue.value.length===0)return;
@@ -7123,7 +7125,7 @@ var sg={
             }
             
           }
-          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(pn.value)),playerStatsById:kf(),...t?{
+          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(pn.value)),earnedRunHalfTotals:JSON.parse(JSON.stringify(earnedRunHalfTotals.value)),playerStatsById:kf(),...t?{
             undoHistory:An($e.value),redoHistory:An(Ne.value)
           }
           :{
