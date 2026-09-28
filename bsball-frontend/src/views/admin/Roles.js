@@ -4,7 +4,7 @@ import { ElRadioGroup as Al, ElInputNumber as El, ElDialog as Nl, ElDrawer as Ml
 import { nextTick as C, withModifiers as Ll, createElementBlock as E, defineComponent as xl, createTextVNode as u, computed as h, toDisplayString as b, createElementVNode as f, unref as c, mergeProps as zl, createBlock as k, ref as r, createVNode as t, withDirectives as Pe, openBlock as m, withCtx as n, Fragment as Ue, withKeys as de, watch as Re, onMounted as Ql, renderList as Zl, reactive as pe, createCommentVNode as V } from 'vue';
 import { useMediaQuery as Xl } from '../../composables/useMediaQuery';
 import { useAuthStore as et } from '../../stores/auth';
-import { formatDateTime as Fe } from '../../utils/formatDate';
+import { formatDateYmd as Fe } from '../../utils/dateExtras';
 import { useSettingsStore as lt } from '../../stores/settings';
 import { exportSfc as tt } from '../../utils/exportSfc';
 import { tenantApi as at } from '../../api/system';

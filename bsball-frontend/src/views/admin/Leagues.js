@@ -1,9 +1,9 @@
 // Leagues —— 行为保真移植自编译产物 Leagues-BIaLS4-C（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { nextTick as oe, withModifiers as ne, createElementBlock as ie, defineComponent as de, createTextVNode as s, computed as ue, toDisplayString as B, createElementVNode as x, unref as d, mergeProps as me, createBlock as D, ref as f, createVNode as t, withDirectives as fe, openBlock as C, withCtx as a, withKeys as _e, onMounted as ye, KeepAlive as Ve, reactive as E, createCommentVNode as Ee } from 'vue';
-import { ElInputNumber as se, ElDialog as re, ElTableColumn as pe, ElInput as ce, ElFormItem as ge, ElMessage as v, ElTable as ve, ElButton as be, ElCard as we, ElMessageBox as ke, ElSwitch as Se, ElForm as Ce } from 'element-plus';
+import { nextTick as oe, withModifiers as ne, createElementBlock as ie, defineComponent as de, createTextVNode as s, computed as ue, toDisplayString as B, createElementVNode as x, unref as d, mergeProps as me, createBlock as D, ref as f, createVNode as t, withDirectives as fe, openBlock as C, withCtx as a, withKeys as _e, onMounted as ye, reactive as E, createCommentVNode as Ee } from 'vue';
+import { ElInputNumber as se, ElDialog as re, ElTableColumn as pe, ElInput as ce, ElFormItem as ge, ElMessage as v, ElTable as ve, ElButton as be, ElCard as we, ElMessageBox as ke, vLoading as Ve, ElSwitch as Se, ElForm as Ce } from 'element-plus';
 import { useMediaQuery as xe } from '../../composables/useMediaQuery';
-import { formatDateTime as Le } from '../../utils/formatDate';
+import { formatDateYmd as Le } from '../../utils/dateExtras';
 import { useSettingsStore as Te } from '../../stores/settings';
 import { exportSfc as Me } from '../../utils/exportSfc';
 import { leagueApi as k } from '../../api/business';

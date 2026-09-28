@@ -1,10 +1,10 @@
 // Content —— 行为保真移植自编译产物 Content-BDvZ_SPW（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { withModifiers as ne, createElementBlock as S, defineComponent as oe, createTextVNode as s, computed as _, toDisplayString as p, createElementVNode as P, unref as u, mergeProps as le, createBlock as w, ref as v, createVNode as a, withDirectives as ie, openBlock as c, withCtx as t, withKeys as ue, onMounted as fe, KeepAlive as ve, reactive as L, createCommentVNode as be } from 'vue';
-import { ElTableColumn as se, ElInput as re, ElFormItem as de, ElMessage as z, ElTable as pe, ElButton as ce, ElCard as me, ElMessageBox as ge, ElTag as _e, ElForm as we } from 'element-plus';
+import { withModifiers as ne, createElementBlock as S, defineComponent as oe, createTextVNode as s, computed as _, toDisplayString as p, createElementVNode as P, unref as u, mergeProps as le, createBlock as w, ref as v, createVNode as a, withDirectives as ie, openBlock as c, withCtx as t, withKeys as ue, onMounted as fe, reactive as L, createCommentVNode as be } from 'vue';
+import { ElTableColumn as se, ElInput as re, ElFormItem as de, ElMessage as z, ElTable as pe, ElButton as ce, ElCard as me, ElMessageBox as ge, ElTag as _e, vLoading as ve, ElForm as we } from 'element-plus';
 import { useRouter as he, useRoute as Ce } from 'vue-router';
 import { useMediaQuery as ye } from '../../composables/useMediaQuery';
-import { formatDateTime as B } from '../../utils/formatDate';
+import { formatDateYmd as B } from '../../utils/dateExtras';
 import { useSettingsStore as ke } from '../../stores/settings';
 import { exportSfc as Se } from '../../utils/exportSfc';
 import { dictTypeApi as Te } from '../../api/system';

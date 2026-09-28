@@ -1,7 +1,7 @@
 // EventBracket —— 行为保真移植自编译产物 EventBracket-DvdCIoBY（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { ElRadioGroup as L, ElRadioButton as O, ElEmpty as P, ElCard as $, ElAlert as F } from 'element-plus';
-import { createElementBlock as y, defineComponent as D, createTextVNode as c, computed as v, toDisplayString as w, createElementVNode as _, createBlock as d, ref as u, createVNode as m, withDirectives as T, openBlock as l, withCtx as s, watch as U, onMounted as j, KeepAlive as z, createCommentVNode as S } from 'vue';
+import { ElRadioGroup as L, ElRadioButton as O, ElEmpty as P, ElCard as $, vLoading as z, ElAlert as F } from 'element-plus';
+import { createElementBlock as y, defineComponent as D, createTextVNode as c, computed as v, toDisplayString as w, createElementVNode as _, createBlock as d, ref as u, createVNode as m, withDirectives as T, openBlock as l, withCtx as s, watch as U, onMounted as j, createCommentVNode as S } from 'vue';
 import { useRoute as H } from 'vue-router';
 import { fetchAllPages as K } from '../../api/request';
 import { exportSfc as Q } from '../../utils/exportSfc';

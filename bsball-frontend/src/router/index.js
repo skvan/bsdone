@@ -65,6 +65,11 @@ import DataMonitor from '../views/admin/DataMonitor.js';
 import ServerMonitor from '../views/admin/ServerMonitor.js';
 import CacheMonitor from '../views/admin/CacheMonitor.js';
 import CacheList from '../views/admin/CacheList.js';
+import Dashboard from '../views/admin/Dashboard.js';
+import AppConfig from '../views/admin/AppConfig.js';
+import LineupTemplates from '../views/admin/LineupTemplates.js';
+import HistoryRecordList from '../views/admin/HistoryRecordList.js';
+import HighlightMomentList from '../views/admin/HighlightMomentList.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -124,7 +129,7 @@ const routes = [
           meta: { requiresAuth: true },
           children: [
             { path: '', redirect: { name: 'AdminDashboard' } },
-            adminChild('dashboard', 'AdminDashboard', 'Dashboard'),
+            { path: 'dashboard', name: 'AdminDashboard', component: Dashboard },
             { path: 'users', name: 'AdminUsers', component: Users },
             { path: 'roles', name: 'AdminRoles', component: Roles },
             { path: 'menus', name: 'AdminMenus', component: Menus },
@@ -137,7 +142,7 @@ const routes = [
             { path: 'content', name: 'AdminContent', component: Content },
             { path: 'content/new', name: 'AdminContentNew', component: ContentEdit },
             { path: 'content/:id/edit', name: 'AdminContentEdit', component: ContentEdit },
-            adminChild('config', 'AdminConfig', 'AppConfig'),
+            { path: 'config', name: 'AdminConfig', component: AppConfig },
             { path: 'resources', name: 'AdminResources', component: Resources },
             { path: 'media-icons', name: 'AdminMediaIcons', component: MediaIcons },
             { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
@@ -157,7 +162,7 @@ const routes = [
             { path: 'stadiums/distribution', name: 'AdminStadiumDistribution', component: StadiumDistribution },
             { path: 'stadiums', name: 'AdminStadiums', component: Stadiums },
             { path: 'teams', name: 'AdminTeams', component: Teams },
-            adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
+            { path: 'lineup-templates', name: 'AdminLineupTemplates', component: LineupTemplates },
             { path: 'coaches', name: 'AdminCoaches', component: Coaches },
             { path: 'players', name: 'AdminPlayerList', component: PlayerList },
             { path: 'players/:id', name: 'AdminPlayerDetail', component: PlayerDetail },
@@ -173,8 +178,8 @@ const routes = [
             { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
             { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
             { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
-            adminChild('history-records', 'AdminHistoryRecords', 'HistoryRecordList'),
-            adminChild('highlight-moments', 'AdminHighlightMoments', 'HighlightMomentList')
+            { path: 'history-records', name: 'AdminHistoryRecords', component: HistoryRecordList },
+            { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList }
           ]
         }
       ]
