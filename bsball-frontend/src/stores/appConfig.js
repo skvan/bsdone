@@ -1,12 +1,15 @@
 // 站点配置 —— 默认值与缓存键移植自编译产物入口 chunk（appConfig store）
-// 说明：footerText 默认值保持与编译产物逐字一致（仍含 "By aDz"）。
-// 注意：静态页（webapps/index.html、portal.html）已按 PR #41 移除 aDz 署名——新工程是否同步移除待产品确认。
+// 说明：footer 默认值原与编译产物逐字一致（含 "By aDz"，见 H4）；按产品确认已移除 aDz 署名，
+//       改用品牌文案（对齐静态页 PR #41/#146），门户页脚附构建版本号（VITE_APP_VERSION）。
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { get } from '../api/request';
 import { currentTenantCodeFromUrl, DEFAULT_TENANT_CODE } from '../utils/tenantRoute';
 
 export const APP_CONFIG_CACHE_PREFIX = 'bs-ball-app-config';
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '';
+const FOOTER_BRAND = '© 2026 广州康胜体育棒球 · BSD · Baseball & Softball Database';
 
 export const DEFAULT_APP_CONFIG = {
   siteName: 'BS Ball',
@@ -15,8 +18,8 @@ export const DEFAULT_APP_CONFIG = {
   adminLogoUrl: '/bs-ball-logo.png',
   adminTitle: '棒垒球管理系统',
   faviconIco: '',
-  footerTextPortal: '<p>赛事与数据展示</p><p>© 2026 棒垒球管理系统 By aDz.</p>',
-  footerTextAdmin: '<p>© 2026 棒垒球管理系统 By aDz.</p>',
+  footerTextPortal: `<p>${FOOTER_BRAND}${APP_VERSION ? ' · v' + APP_VERSION : ''}</p>`,
+  footerTextAdmin: `<p>${FOOTER_BRAND}</p>`,
   showFooterPortal: true,
   showFooterAdmin: false,
   authCaptchaEnabled: true,
