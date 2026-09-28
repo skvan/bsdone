@@ -59,6 +59,12 @@ import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
 import Games from '../views/admin/Games.js';
 import GameDetail from '../views/admin/GameDetail.js';
+import PlatformDocsShell from '../views/portal/PlatformDocsShell.js';
+import PlatformDocsList from '../views/portal/PlatformDocsList.js';
+import DataMonitor from '../views/admin/DataMonitor.js';
+import ServerMonitor from '../views/admin/ServerMonitor.js';
+import CacheMonitor from '../views/admin/CacheMonitor.js';
+import CacheList from '../views/admin/CacheList.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -77,9 +83,11 @@ const routes = [
     { path: '/', name: 'PortalHome', component: Home },
     {
       path: '/docs',
-      name: 'PlatformDocsIndex',
-      ...ph('PlatformDocsShell'),
-      children: [{ path: ':id', name: 'PlatformArticleDetail', ...ph('NoticeDetail') }]
+      component: PlatformDocsShell,
+      children: [
+        { path: '', name: 'PlatformDocsIndex', component: PlatformDocsList },
+        { path: ':id', name: 'PlatformArticleDetail', component: NoticeDetail }
+      ]
     },
     { path: '/404', name: 'NotFound', ...ph('NotFound') },
     { path: '/service-unavailable', name: 'ServiceUnavailable', ...ph('ServiceUnavailable') },
@@ -136,10 +144,10 @@ const routes = [
             { path: 'login-logs', name: 'AdminLoginLogs', component: LoginLogs },
             { path: 'operation-logs', name: 'AdminOperationLogs', component: OperationLogs },
             { path: 'tenants', name: 'AdminTenants', component: Tenants },
-            adminChild('monitor/data', 'AdminMonitorData', 'DataMonitor'),
-            adminChild('monitor/server', 'AdminMonitorServer', 'ServerMonitor'),
-            adminChild('monitor/cache', 'AdminMonitorCache', 'CacheMonitor'),
-            adminChild('monitor/cache-list', 'AdminMonitorCacheList', 'CacheList'),
+            { path: 'monitor/data', name: 'AdminMonitorData', component: DataMonitor },
+            { path: 'monitor/server', name: 'AdminMonitorServer', component: ServerMonitor },
+            { path: 'monitor/cache', name: 'AdminMonitorCache', component: CacheMonitor },
+            { path: 'monitor/cache-list', name: 'AdminMonitorCacheList', component: CacheList },
             { path: 'monitor/portal-devtools-report', name: 'AdminMonitorPortalDevtoolsReport', component: PortalDevtoolsReportList },
             { path: 'monitor/portal-visit-hit', name: 'AdminMonitorPortalVisitHit', component: PortalVisitHitList },
             { path: 'monitor/portal-feedback', name: 'AdminMonitorPortalFeedback', component: PortalFeedbackList },
