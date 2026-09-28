@@ -5,7 +5,7 @@ import { withModifiers as Oe, createElementBlock as A, defineComponent as Ye, cr
 import { useMediaQuery as ua } from '../../composables/useMediaQuery';
 import { useAuthStore as pa } from '../../stores/auth';
 import { resolveAssetUrl as ae } from '../../api/request';
-import { formatDateTime as te } from '../../utils/formatDate';
+import { formatDateYmd as te } from '../../utils/dateExtras';
 import { useSettingsStore as fa } from '../../stores/settings';
 import { exportSfc as ca } from '../../utils/exportSfc';
 import { tenantApi as ga } from '../../api/system';
