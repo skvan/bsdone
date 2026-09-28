@@ -1,9 +1,22 @@
 // 账户与认证 API —— 行为与端点移植自编译产物 account chunk（B0 契约）
 import { get, post, put } from './request';
 
-// 认证 API（编译产物 authApi：管理台租户切换/当前用户/改密）
+// 认证 API（编译产物 authApi：登录/验证码/租户切换/当前用户/改密）
 export const authApi = {
   me: () => get('/api/auth/me'),
+  // 管理台/门户登录（Login.js / AccountLogin.js）
+  login: (data) => post('/api/auth/login', data),
+  // 验证码配置与图片（验证码关闭时后端返回 enabled=false）
+  captchaOptions: (params) => {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return get(`/api/auth/captcha/options${qs}`);
+  },
+  captchaImage: (params) => {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return get(`/api/auth/captcha/image${qs}`);
+  },
+  // 点选验证码校验（门户登录页）
+  verifyClickCaptcha: (data) => post('/api/auth/captcha/verify-click', data),
   switchTenant: (tenantId) => post('/api/auth/switch-tenant', { tenantId }),
   changePassword: (data) => post('/api/auth/change-password', data),
   // 拖拽验证码校验（PortalDragCaptcha 使用）

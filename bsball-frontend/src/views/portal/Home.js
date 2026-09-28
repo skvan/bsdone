@@ -1,13 +1,14 @@
 // Home —— 行为保真移植自编译产物 Home-tIruTPFU（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { nextTick as Se, withModifiers as ce, createElementBlock as i, normalizeStyle as ue, defineComponent as st, createTextVNode as A, computed as g, toDisplayString as c, createElementVNode as a, unref as t, normalizeClass as Q, vShow as rt, createBlock as z, ref as f, createVNode as s, defineAsyncComponent as it, withDirectives as dt, openBlock as o, withCtx as d, Fragment as x, resolveComponent as mt, watch as Me, onMounted as ht, renderList as b, onBeforeUnmount as ft, createCommentVNode as _, defineAsyncComponent as N } from 'vue';
+import { nextTick as Se, withModifiers as ce, createElementBlock as i, normalizeStyle as ue, defineComponent as st, createTextVNode as A, computed as g, toDisplayString as c, createElementVNode as a, unref as t, normalizeClass as Q, vShow as rt, createBlock as z, ref as f, createVNode as s, defineAsyncComponent as it, withDirectives as dt, openBlock as o, withCtx as d, Fragment as x, resolveComponent as mt, watch as Me, onMounted as ht, renderList as b, onBeforeUnmount as ft, createCommentVNode as _ } from 'vue';
 import { DataLine as ot, ArrowRight as lt, Calendar as vt, Trophy as _t, ArrowLeft as wt, Document as Y } from '@element-plus/icons-vue';
 import { ElIcon as nt, ElSkeleton as ct, ElEmpty as ut, ElTag as pt, ElSkeletonItem as yt } from 'element-plus';
 import { useI18n as kt } from 'vue-i18n';
 import { useRouter as gt } from 'vue-router';
 import { resolveAssetUrl as Z } from '../../api/request';
+import { vitePreload as N } from '../../utils/vitePreload';
 import { formatSmartDateTime as Ae } from '../../utils/dateExtras';
-import { formatDateDot as Le } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as Le } from '../../utils/dateExtras';
 import { filterBannerItems as Ce } from '../../utils/bannerItems';
 import { useAppConfigStore as xt } from '../../stores/appConfig';
 import { bannerItemKey as Ie } from '../../utils/bannerItems';

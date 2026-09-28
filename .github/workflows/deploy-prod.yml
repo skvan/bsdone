@@ -1,20 +1,12 @@
 # Manual production deployment - triggered ONLY via the Actions tab
-# ("Run workflow" button) after typing the confirmation word.
+# ("Run workflow" button) after entering the release version number.
 #
 # What it does:
-#   1. builds bsball-server jar from the CURRENT commit (tests included)
-#   2. builds the new frontend (bsball-frontend: npm ci + npm run package) and
-#      packs it as the webapps tarball, uploaded together with the jar +
-#      scripts/deploy-prod.sh to the server staging dir
+#   1. builds bsball-server jar from the CURRENT main commit (tests included)
+#   2. uploads jar + scripts/deploy-prod.sh to the server staging dir
 #   3. runs the deploy script on the server: safety gate -> backup ->
 #      atomic jar swap -> restart java-server -> health check ->
-#      frontend (STEP 4, from the staged package) -> automatic rollback on failure
-#
-# NOTE: the frontend package is ALWAYS staged and is now BUILT from the new
-#       project (bsball-frontend) instead of the legacy bsball_project/webapps
-#       directory: a production deploy therefore switches the served admin UI
-#       to the rebuilt app. Confirm rebuild/switchover readiness (rollback
-#       toggle tracked in issue #105) before running.
+#      automatic rollback on failure
 #
 # Required repository secrets: PROD_HOST, PROD_USER, PROD_SSH_KEY
 name: Deploy Production (manual)
@@ -22,8 +14,8 @@ name: Deploy Production (manual)
 on:
   workflow_dispatch:
     inputs:
-      confirm:
-        description: 'Type DEPLOY to confirm (this restarts the production service)'
+      version:
+        description: '本次发布版本号（如 1.1.2，不带 v 前缀）。必填：留版本记录并作为防误触门槛；仅作用于后端 jar（生产前端产物不经本 workflow）'
         required: true
         type: string
 
@@ -33,17 +25,10 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy (jar + frontend) to production
+    name: Build and deploy backend to production
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Confirm guard
-        run: |
-          if [ "${{ inputs.confirm }}" != "DEPLOY" ]; then
-            echo "::error::confirmation input must be exactly DEPLOY - aborting"
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -55,9 +40,25 @@ jobs:
           cache: 'maven'
 
       - name: Build backend jar (tests included)
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           cd bsball-backend
-          mvn clean package --batch-mode
+          if [ -z "$RELEASE_VERSION" ]; then
+            echo "::error::version input is required for production deploys - aborting"
+            exit 1
+          fi
+          if [[ "$RELEASE_VERSION" =~ [[:cntrl:]] || "$RELEASE_VERSION" == *'"'* ]]; then
+            echo "::error::version contains control characters or double quotes - aborting"
+            exit 1
+          fi
+          if [[ "$RELEASE_VERSION" == v* ]]; then
+            echo "::warning::version starts with 'v'; prefer bare version like 1.1.2"
+          fi
+          echo "release version override: $RELEASE_VERSION"
+          mvn clean package --batch-mode -Dapp.release.version="$RELEASE_VERSION"
+          echo "== app.release-version written into jar (must equal input) =="
+          unzip -p target/bsball-server-1.0.0.jar BOOT-INF/classes/application.yml | grep -F "release-version: \"$RELEASE_VERSION\"" || { echo "::error::release-version mismatch in jar"; exit 1; }
           echo "== jar md5 =="
           md5sum target/bsball-server-1.0.0.jar
 
@@ -137,64 +138,6 @@ jobs:
             exit 1
           fi
           echo "chunked upload verified OK"
-
-      - name: Set up Node.js (new frontend build)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: bsball-frontend/package-lock.json
-
-      - name: Build new frontend (bsball-frontend) and pack webapps tarball
-        run: |
-          set -e
-          cd bsball-frontend
-          npm ci --no-audit --no-fund
-          npm run package
-          cp dist/webapps-dev.tar.gz /tmp/webapps-prod.tar.gz
-          if ! tar -tzf /tmp/webapps-prod.tar.gz | grep -q '^webapps/'; then
-            echo "::error::frontend package lacks a top-level webapps/ root"
-            exit 1
-          fi
-          echo "== frontend package =="
-          ls -l /tmp/webapps-prod.tar.gz
-          md5sum /tmp/webapps-prod.tar.gz
-          echo "files: $(tar -tzf /tmp/webapps-prod.tar.gz | wc -l)"
-
-      - name: Upload frontend package to staging (retries)
-        env:
-          PROD_HOST: ${{ secrets.PROD_HOST }}
-          PROD_USER: ${{ secrets.PROD_USER }}
-        run: |
-          set -e
-          STAGE=/root/deploy-prod/staging
-          PKG=/tmp/webapps-prod.tar.gz
-          KEY=$HOME/.ssh/id_deploy
-          TARGET="$PROD_USER@$PROD_HOST"
-          SCP_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=15"
-          LOCAL_MD5=$(md5sum "$PKG" | cut -d' ' -f1)
-          echo "local frontend package md5: $LOCAL_MD5"
-          ok=0
-          for t in 1 2 3 4 5; do
-            if scp -i "$KEY" $SCP_OPTS "$PKG" "$TARGET:$STAGE/webapps-prod.tar.gz.new"; then
-              echo "frontend scp ok (attempt $t)"
-              ok=1
-              break
-            fi
-            echo "  retry $t for frontend package ..."
-            sleep 5
-          done
-          if [ "$ok" != "1" ]; then
-            echo "::error::frontend package upload failed after 5 attempts"
-            exit 1
-          fi
-          REMOTE_MD5=$(ssh -i "$KEY" $SCP_OPTS "$TARGET" "md5sum $STAGE/webapps-prod.tar.gz.new | cut -d' ' -f1")
-          echo "remote frontend package md5: $REMOTE_MD5"
-          if [ "$REMOTE_MD5" != "$LOCAL_MD5" ]; then
-            echo "::error::frontend package md5 mismatch (local=$LOCAL_MD5 remote=$REMOTE_MD5)"
-            exit 1
-          fi
-          echo "frontend package staged OK"
 
       - name: Deploy on server (safety gate -> swap -> restart -> health -> rollback)
         env:

@@ -1,10 +1,10 @@
 // PlayerClaimReview —— 行为保真移植自编译产物 PlayerClaimReview-Dn1pLlfl（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { withModifiers as X, createElementBlock as k, defineComponent as Z, createTextVNode as p, computed as ee, toDisplayString as s, createElementVNode as x, unref as l, mergeProps as ae, createBlock as le, ref as f, createVNode as a, withDirectives as re, openBlock as b, withCtx as t, Fragment as pe, withKeys as ue, onMounted as ve, KeepAlive as ye, reactive as A } from 'vue';
-import { ElDialog as Y, ElTableColumn as te, ElInput as ie, ElFormItem as oe, ElMessage as R, ElTable as ne, ElOption as se, ElButton as de, ElCard as me, ElSelect as ce, ElTag as we, ElForm as _e } from 'element-plus';
+import { withModifiers as X, createElementBlock as k, defineComponent as Z, createTextVNode as p, computed as ee, toDisplayString as s, createElementVNode as x, unref as l, mergeProps as ae, createBlock as le, ref as f, createVNode as a, withDirectives as re, openBlock as b, withCtx as t, Fragment as pe, withKeys as ue, onMounted as ve, reactive as A } from 'vue';
+import { ElDialog as Y, ElTableColumn as te, ElInput as ie, ElFormItem as oe, ElMessage as R, ElTable as ne, ElOption as se, ElButton as de, ElCard as me, ElSelect as ce, ElTag as we, vLoading as ye, ElForm as _e } from 'element-plus';
 import { useI18n as ge } from 'vue-i18n';
 import { useMediaQuery as fe } from '../../composables/useMediaQuery';
-import { formatDateTime as Ce } from '../../utils/formatDate';
+import { formatDateYmd as Ce } from '../../utils/dateExtras';
 import { useSettingsStore as be } from '../../stores/settings';
 import { exportSfc as Re } from '../../utils/exportSfc';
 import { accountApi as j } from '../../api/account';

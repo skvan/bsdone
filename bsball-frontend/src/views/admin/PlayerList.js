@@ -1,12 +1,14 @@
 // PlayerList —— 行为保真移植自编译产物 PlayerList-qW20Eiqf（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, ElTooltip as pn, ElForm as yn } from 'element-plus';
-import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, KeepAlive as gn, reactive as oa, createCommentVNode as H } from 'vue';
+// 2026-09-27 issue #29 改造：基本信息/球队经历分块 + 简历式多段经历编辑器与多队展示。
+// 本页已脱离编译产物逐字对照（设计变更页），后续以本文件为准维护；重跑生成器须保留本改造。
+import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, vLoading as gn, ElTooltip as pn, ElForm as yn } from 'element-plus';
+import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, reactive as oa, createCommentVNode as H } from 'vue';
 import { ArrowDown as Ll, ArrowUp as Al, MoreFilled as cn } from '@element-plus/icons-vue';
 import { useRouter as _n, useRoute as hn } from 'vue-router';
 import { useMediaQuery as bn } from '../../composables/useMediaQuery';
 import { resolveAssetUrl as ve } from '../../api/request';
-import { formatDateTime as ct } from '../../utils/formatDate';
+import { formatDateYmd as ct } from '../../utils/dateExtras';
 import { useSettingsStore as wn } from '../../stores/settings';
 import { exportSfc as kn } from '../../utils/exportSfc';
 import { resourceApi as In } from '../../api/system';
@@ -37,6 +39,7 @@ import { normalizeObjectFit as _t } from '../../utils/playerBackground';
 import { BACKGROUND_DEVICES as ht } from '../../utils/playerBackground';
 import { compactBackgroundSettings as Hn } from '../../utils/playerBackground';
 import '../../styles/legacy/player-list.css';
+import Pte from '../../components/admin/PlayerTeamEntriesEditor.vue';
 function Nn(){
   const Be=v([]);
   function xe(le){
@@ -299,6 +302,17 @@ var $n={
       const e=ga(a.teamId);
       return e==null?"自由球员":de.value[e]?.name??`ID:${e}（无效）`
     }
+    function Zc(){
+      return{
+        teamId:null,number:"",positions:[],current:!0
+      }
+      
+    }
+    function Jc(a){
+      const e=(Array.isArray(a?.teamEntries)?a.teamEntries:[]).filter(u=>u&&u.current),u=e.map(i=>i.teamName||de.value[i.teamId]?.name||i.teamId).filter(Boolean);
+      if(u.length)return u.length>2?`${u[0]} 等 ${u.length} 队`:u.join(" / ");
+      return a?.teamId?(de.value[a.teamId]?.name??a.teamId):"自由球员"
+    }
     function Na(){
       const a=Ae.value;
       if(a==null||!(a>0)){
@@ -335,9 +349,6 @@ var $n={
     const $t={
       name:[{
         required:!0,message:"请输入姓名",trigger:"blur"
-      }
-      ],number:[{
-        required:!0,message:"请输入背号",trigger:"blur"
       }
       ]
     };
@@ -412,7 +423,7 @@ var $n={
       
     }
     const l=oa({
-      name:"",shortName:"",nickname:"",teamId:void 0,number:void 0,positions:[],throwHand:"",batHand:"",birthDate:"",birthPlace:"",height:"",weight:"",avatar:"",bgImages:[],bgFocusBundle:{
+      name:"",shortName:"",nickname:"",teamId:void 0,number:void 0,positions:[],teamEntries:[],throwHand:"",batHand:"",birthDate:"",birthPlace:"",height:"",weight:"",avatar:"",bgImages:[],bgFocusBundle:{
         devices:{
           
         }
@@ -464,7 +475,12 @@ var $n={
       const e=a;
       l.positions=e?.positions?.length?[...e.positions]:e?.position?[e.position]:[],l.throwHand=a?.throwHand??a?.hand??"",l.batHand=a?.batHand??a?.hand??"",l.birthDate=a?.birthDate??"",l.birthPlace=a?.birthPlace??"",l.height=a?.height??"",l.weight=a?.weight??"",l.avatar=a?.avatar??"",l.bgImages=An(a).slice(0,ee);
       const u=Ln(a?.bgFocusConfig);
-      l.bgFocusBundle.devices=u.devices,l.bgFocusBundle.perImage=u.perImage,l.contactPhone=a?.contactPhone??"",l.contactEmail=a?.contactEmail??"",l.draft=a?.draft??"",l.debut=a?.debut??"",l.education=a?.education??a?.college??"",l.status=a?.status??"active",l.intro=a?.intro??"",ce.value=a?.id??null,De.value=!0,Oe(()=>ge.value?.clearValidate())
+      l.bgFocusBundle.devices=u.devices,l.bgFocusBundle.perImage=u.perImage,l.contactPhone=a?.contactPhone??"",l.contactEmail=a?.contactEmail??"",l.draft=a?.draft??"",l.debut=a?.debut??"",l.education=a?.education??a?.college??"",l.status=a?.status??"active",l.intro=a?.intro??"";
+      const eu=Array.isArray(a?.teamEntries)?a.teamEntries:[];
+      l.teamEntries=eu.length?eu.map(te=>({
+        id:te.id??null,teamId:te.teamId??null,number:te.number!=null?String(te.number):"",positions:Array.isArray(te.positions)?[...te.positions]:[],current:!!te.current
+      }
+      )):a?[]:[Zc()],ce.value=a?.id??null,De.value=!0,Oe(()=>ge.value?.clearValidate())
     }
     const M=v(!1),Ne=v(!1),te=v(null),k=v(""),he=v(null),$a=v(null),B=v("desktop"),x=v(0),S=v(0),ya=v(470),_a=v(Math.round(470/wt)),j=v(1),F=v(1),W=v(0),X=v(0),I=v({
       
@@ -942,14 +958,31 @@ var $n={
       ,l.bgFocusBundle.perImage={
         
       }
-      ,l.contactPhone="",l.contactEmail="",l.draft="",l.debut="",l.education="",l.status="active",l.intro="",ge.value?.clearValidate()
+      ,l.contactPhone="",l.contactEmail="",l.draft="",l.debut="",l.education="",l.status="active",l.intro="";
+      const eu=l.teamEntries?.[0]?.teamId??null;
+      l.teamEntries=[{
+        teamId:eu,number:"",positions:[],current:!0
+      }
+      ],ge.value?.clearValidate()
     }
     function it(){
       const a=Hn(l.bgFocusBundle),e=a&&typeof a=="object"&&!Array.isArray(a)&&Object.keys(a).length>0?a:void 0,u={
         ...l
       };
+      const eg=new Set(),tg=(Array.isArray(l.teamEntries)?l.teamEntries:[]).filter(ce2=>ce2&&ce2.teamId!=null&&ce2.teamId!=="").map(ce2=>{
+        const te2=Number(ce2.teamId);
+        if(!Number.isFinite(te2)||te2<=0)throw new Error("球队经历存在无效球队，请重新选择");
+        if(eg.has(te2))throw new Error("球队经历存在重复球队，请先删除重复段");
+        eg.add(te2);
+        const ne2=ce2.number!=null?String(ce2.number).trim():"";
+        return{
+          teamId:te2,number:ne2||null,positions:Array.isArray(ce2.positions)?[...ce2.positions]:[],current:!!ce2.current
+        }
+        
+      }
+      );
       return delete u.bgFocusBundle,{
-        ...u,teamId:l.teamId==null?null:l.teamId,positions:l.positions,shortName:l.shortName||void 0,nickname:l.nickname||void 0,throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthPlace:l.birthPlace||void 0,avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:e,contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0
+        ...u,teamId:l.teamId==null?null:l.teamId,positions:l.positions,shortName:l.shortName||void 0,nickname:l.nickname||void 0,throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthPlace:l.birthPlace||void 0,avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:e,contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0,teamEntries:tg
       }
       
     }
@@ -1114,7 +1147,7 @@ var $n={
       ),window.addEventListener("mouseup",lt,{
         passive:!0
       }
-      ),Le.value=await Bn.selectOptions()??[];
+      ),Le.value=(await Bn.selectOptions())?.data??[];
       const a=se.query.teamId;
       if(a){
         const u=Number(a);
@@ -1401,7 +1434,10 @@ var $n={
               default:n(({
                 row:h
               }
-              )=>[s(V(h.teamId?de.value[h.teamId]?.name??h.teamId:"自由球员"),1)]),_:1
+              )=>[f("span",{
+                class:"team-cell",title:Jc(h)
+              }
+              ,V(Jc(h)),1)]),_:1
             }
             ),t(P,{
               label:"位置","min-width":"100"
@@ -1522,24 +1558,6 @@ var $n={
           ,{
             default:n(()=>[...e[59]||(e[59]=[s("基本资料",-1)])]),_:1
           }
-          ),t(c,{
-            label:"所属球队"
-          }
-          ,{
-            default:n(()=>[t(C,{
-              modelValue:l.teamId,"onUpdate:modelValue":e[13]||(e[13]=o=>l.teamId=o),placeholder:"可选，不选即为自由球员",clearable:"",style:{
-                width:"100%"
-              }
-              
-            }
-            ,{
-              default:n(()=>[(m(!0),b(q,null,ie(Le.value,o=>(m(),R(d,{
-                key:o.id,label:o.name,value:o.id
-              }
-              ,null,8,["label","value"]))),128))]),_:1
-            }
-            ,8,["modelValue"])]),_:1
-          }
           ),t(me,{
             gutter:16
           }
@@ -1556,48 +1574,6 @@ var $n={
                   modelValue:l.name,"onUpdate:modelValue":e[14]||(e[14]=o=>l.name=o),placeholder:"",clearable:""
                 }
                 ,null,8,["modelValue"]),He.value?(m(),b("div",Gn,"正在检查是否与已有球员重名…")):Se.value?(m(),b("div",Qn,V(Se.value),1)):H("",!0)]),_:1
-              }
-              )]),_:1
-            }
-            ),t(U,{
-              xs:24,md:8
-            }
-            ,{
-              default:n(()=>[t(c,{
-                label:"背号",prop:"number"
-              }
-              ,{
-                default:n(()=>[t(_,{
-                  "model-value":l.number,placeholder:"如 00、1、01",style:{
-                    width:"100%"
-                  }
-                  ,maxlength:"4","onUpdate:modelValue":e[15]||(e[15]=o=>l.number=(o??"").replace(/\D/g,""))
-                }
-                ,null,8,["model-value"])]),_:1
-              }
-              )]),_:1
-            }
-            ),t(U,{
-              xs:24,md:8
-            }
-            ,{
-              default:n(()=>[t(c,{
-                label:"位置",prop:"positions"
-              }
-              ,{
-                default:n(()=>[t(C,{
-                  modelValue:l.positions,"onUpdate:modelValue":e[16]||(e[16]=o=>l.positions=o),placeholder:"可多选",style:{
-                    width:"100%"
-                  }
-                  ,multiple:"","collapse-tags":"","collapse-tags-tooltip":"",filterable:""
-                }
-                ,{
-                  default:n(()=>[(m(!0),b(q,null,ie(g(qe),o=>(m(),R(d,{
-                    key:o,label:g(Ma)(o),value:o
-                  }
-                  ,null,8,["label","value"]))),128))]),_:1
-                }
-                ,8,["modelValue"])]),_:1
               }
               )]),_:1
             }
@@ -1993,7 +1969,16 @@ var $n={
             }
             ,null,8,["modelValue","rows"])]),_:1
           }
-          )]),_:1
+          ),t(Ca,{
+            "content-position":"left"
+          }
+          ,{
+            default:n(()=>[s("球队经历",-1)]),_:1
+          }
+          ),t(Pte,{
+            entries:l.teamEntries,teams:Le.value
+          }
+          ,null,8,["entries","teams"])]),_:1
         }
         ,8,["model","label-position","label-width","class"])]),_:1
       }

@@ -4,7 +4,7 @@ import { createElementBlock as n, defineComponent as y, createTextVNode as v, to
 import { ElSkeleton as h, ElEmpty as g, ElButton as B } from 'element-plus';
 import { useRoute as b } from 'vue-router';
 import { fetchData as w } from '../../api/request';
-import { formatDateDot as x } from '../../utils/formatDate';
+import { formatDateTimeDotWithWeek as x } from '../../utils/dateExtras';
 import { exportSfc as A } from '../../utils/exportSfc';
 import { useDetailLoad as C } from '../../composables/useDetailLoad';
 import '../../styles/legacy/announcement-doc.css';

@@ -101,6 +101,17 @@
 6. **验收**：开发完成后把卡片拖到「待确认」并 @ 提需求的人；提需求的人在生产验证通过后拖入「已完成」
 7. **发布**：负责人把 `v1.1/dev` 合并回 `main` 并打 Tag
 
+### AI 辅助开发的四步铁律（强制）
+
+1. **探索与规划**：用 **superpowers** / **feature-dev** 插件先出方案，不直接写代码；
+2. **方案确认**：经负责人确认后再开工编码；
+3. **完成后评审**：对本地改动先用 **code-simplifier** 自检、再按 **PR review** 评审；
+4. **评审通过再提交**：评审通过后提交并推送 **feature 分支**、创建 PR（禁止直接推 `main` / `v*/dev`）。
+
+留痕：方案确认与评审结论以 Issue / PR 评论为准。详见 `AGENTS.md` → 「开发流程（强制）」。
+
+> 未确认方案不得开工；未评审不得提交。
+
 ### 分支与环境对应关系
 
 | 分支 | 环境 | 说明 |
@@ -111,7 +122,7 @@
 
 ### 测试环境部署（半自动，2026-09-23 起）
 
-- **推送即构建（不部署）**：合并进 `v1.1/dev` 后，Actions 自动构建测试部署包（后端 jar + **新前端包：由 `bsball-frontend` 现场执行 `npm ci` + `npm run package` 生成同构 webapps 包**，保留 14 天），不会触碰服务器；
+- **推送即构建（不部署）**：合并进 `v1.1/dev` 后，Actions 自动构建测试部署包（后端 jar + 前端包，保留 14 天），不会触碰服务器；
 - **手动确认部署**：需要发布到测试环境时，打开仓库 **Actions** 页 →「Deploy Test (semi-auto)」→ **Run workflow**（分支选 `v1.1/dev`）→ 自动完成 上传 → 部署 → 健康检查；
 - **安全网**：部署包含安全断言（环境变量绑定 / 端口 / 库名）、自动备份、120 秒健康检查与**失败自动回滚**、生产零影响对照；
 - 结果与取证：Actions 运行页的 Step Summary（commit、双文件 MD5、health、备份路径）。
@@ -172,9 +183,9 @@
 | 目录 | 前端源码位于 `bsball-frontend/`（Vite + Vue 3 + Element Plus） |
 | 分支 | 每批一个功能分支：`feature/frontend-rebuild-b{批次号}`，从 `v1.1/dev` 切出，PR 合并回 `v1.1/dev` |
 | 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
-| 打包 | 已集成进部署流水线：deploy-test / deploy-prod 均在 GitHub Runner 执行 `npm ci` + `npm run package` 生成 `webapps-dev.tar.gz`（同构 webapps 包，保留 portal.html 等静态资源、用新工程 dist 替换 bs-ball 产物；禁止在服务器构建）；本地执行仅用于自查 |
+| 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
 | 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 两套部署流水线均已集成新前端构建（见上「打包」）；生产切换走「Deploy Production (manual)」，**切换时点由负责人掌握（未就绪先不触发生产部署）**；用户回退按钮见 issue #105；失败可秒级回滚；未迁移页面显示占位 |
+| 发布 | 生产在切换前保持旧版不动；切换走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 -Dapp.release.version 注入后端 jar）；**测试环境双轨并行**：旧版 /bs-ball/ + 重建版 /bs-ball-next/（部署流水线已集成重建版构建与双轨打包；用户回退按钮见 issue #105）；失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
 ### 与并行开发的共存规则（强制）

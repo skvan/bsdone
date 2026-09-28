@@ -2,11 +2,6 @@
 #   - push to v1.1/dev  -> build + package + archive artifacts ONLY (no server access)
 #   - workflow_dispatch -> build + deploy to the test env (java-server-test, port 8081)
 #
-# NOTE (2026-09-27): the frontend package is now BUILT from the new project
-#   (bsball-frontend: npm ci + npm run package) instead of tarring the legacy
-#   bsball_project/webapps directory. The output keeps the same top-level
-#   webapps/ layout, so deploy-test.sh on the server is unchanged.
-#
 # Deploy chain: SSH (key from secrets.TEST_SSH_KEY, host key pinned via vars.TEST_SSH_KNOWN_HOST)
 #   -> upload (chunked / parallel / retries, md5 verified on both ends)
 #   -> run .github/scripts/deploy-test.sh on the server:
@@ -18,6 +13,11 @@ on:
   push:
     branches: ['v1.1/dev']
   workflow_dispatch:
+    inputs:
+      version:
+        description: '可选：本次发布版本号（如 1.1.2，不带 v 前缀）；留空沿用仓库基线版本'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -43,32 +43,78 @@ jobs:
           cache: 'maven'
 
       - name: Build backend jar (tests included)
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           cd bsball-backend
-          mvn clean package --batch-mode
+          if [ -n "$RELEASE_VERSION" ]; then
+            if [[ "$RELEASE_VERSION" =~ [[:cntrl:]] || "$RELEASE_VERSION" == *'"'* ]]; then
+              echo "::error::version contains control characters or double quotes - aborting"
+              exit 1
+            fi
+            if [[ "$RELEASE_VERSION" == v* ]]; then
+              echo "::warning::version starts with 'v'; prefer bare version like 1.1.2"
+            fi
+            echo "release version override: $RELEASE_VERSION"
+            mvn clean package --batch-mode -Dapp.release.version="$RELEASE_VERSION"
+          else
+            mvn clean package --batch-mode
+          fi
+          echo "== app.release-version written into jar =="
+          if [ -n "$RELEASE_VERSION" ]; then
+            unzip -p target/bsball-server-1.0.0.jar BOOT-INF/classes/application.yml | grep -F "release-version: \"$RELEASE_VERSION\"" || { echo "::error::release-version mismatch in jar"; exit 1; }
+          else
+            unzip -p target/bsball-server-1.0.0.jar BOOT-INF/classes/application.yml | grep 'release-version'
+          fi
           echo "== jar md5 =="
           md5sum target/bsball-server-1.0.0.jar
 
-      - name: Set up Node.js (new frontend build)
+      - name: Apply release version to frontend bundle
+        if: ${{ inputs.version != '' }}
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node bsball_project/scripts/apply-release-version.mjs --version "$RELEASE_VERSION"
+
+      - name: Set up Node.js (rebuilt frontend build)
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: bsball-frontend/package-lock.json
 
-      - name: Build new frontend (bsball-frontend) and package webapps tarball
+      - name: Build rebuilt frontend (bs-ball-next, dual-track) and pack webapps tarball
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
+          set -e
+          export APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
           cd bsball-frontend
           npm ci --no-audit --no-fund
-          npm run package
+          if [ -n "$RELEASE_VERSION" ]; then
+            export APP_VERSION="$RELEASE_VERSION"
+          fi
+          npx vite build --base=/bs-ball-next/
+          if [ -n "$RELEASE_VERSION" ]; then
+            node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$APP_BUILD_TIME"
+          else
+            node scripts/package-webapps.mjs --next --build-time="$APP_BUILD_TIME"
+          fi
           cp dist/webapps-dev.tar.gz ../webapps-dev.tar.gz
+          echo "== tarball structure check (dual-track) =="
+          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html; do
+            tar -tzf ../webapps-dev.tar.gz | grep -qx "$entry" || { echo "::error::missing $entry in tarball"; exit 1; }
+          done
+          echo "tarball structure OK"
           echo "== tarball md5 =="
           md5sum ../webapps-dev.tar.gz
 
       - name: Write build info
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           {
             echo "commit=$(git rev-parse HEAD)"
+            echo "release_version=$RELEASE_VERSION"
             echo "run_id=${{ github.run_id }}"
             echo "run_attempt=${{ github.run_attempt }}"
             echo "jar_md5=$(md5sum bsball-backend/target/bsball-server-1.0.0.jar | cut -d' ' -f1)"

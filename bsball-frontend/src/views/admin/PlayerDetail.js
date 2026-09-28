@@ -15,7 +15,19 @@ var C={
     const m=A(),e=s(null),t=s(null),i=E;
     return k(async()=>{
       const r=Number(m.params.id),a=await B.get(r);
-      e.value=a??null,a?.teamId?t.value=await D.get(a.teamId)??null:t.value=null
+      e.value=a??null;
+      const ent=(Array.isArray(a?.teamEntries)?a.teamEntries:[]).filter(vd=>vd&&vd.current),tnm=ent.map(vd=>vd.teamName).filter(Boolean);
+      if(ent.length){
+        const bse=await D.get(ent[0].teamId)??null;
+        t.value=bse?(tnm.length>1?{
+          ...bse,name:tnm.join(" / ")
+        }
+        :bse):(tnm.length?{
+          id:ent[0].teamId,name:tnm.join(" / ")
+        }
+        :null)
+      }
+      else t.value=a?.teamId?await D.get(a.teamId)??null:null
     }
     ),(r,a)=>{
       const p=y,_=g;

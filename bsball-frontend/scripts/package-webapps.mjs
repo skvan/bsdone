@@ -10,8 +10,9 @@
 //   4) 输出 webapps-dev.tar.gz 到 dist/ 下（--legacy 默认输出 webapps-dev-legacy.tar.gz）。
 //
 // 用法：
-//   npm run package          # vite build + 组装打包（正式产物）
-//   npm run package:legacy   # 等价重打包（部署链路验证用）
+//   npm run package          # vite build + 组装打包（新版部署到 bs-ball/，历史行为）
+//   npm run build:next       # vite build --base=/bs-ball-next/ + 组装（新版→bs-ball-next/，旧版留 bs-ball/，Issue #105）
+//   npm run package:legacy   # 等值重打包（部署链路验证用）
 //   node scripts/package-webapps.mjs --out=custom.tar.gz
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,9 +29,15 @@ const STAGE_WEBAPPS = path.join(STAGE_ROOT, 'webapps');
 
 const args = process.argv.slice(2);
 const legacy = args.includes('--legacy');
+const next = args.includes('--next');
 const outArg = args.find((a) => a.startsWith('--out='));
 const outName = outArg ? outArg.slice('--out='.length) : legacy ? 'webapps-dev-legacy.tar.gz' : 'webapps-dev.tar.gz';
 const OUT_TAR = path.join(DIST_DIR, outName);
+// 发布版本/构建时间覆盖（Issue #123/#113）：--version 优先于 package.json；--build-time 与 vite 构建注入保持一致
+const verArg = args.find((a) => a.startsWith('--version='));
+const versionOverride = verArg ? verArg.slice('--version='.length).trim() : '';
+const btArg = args.find((a) => a.startsWith('--build-time='));
+const buildTimeOverride = btArg ? btArg.slice('--build-time='.length).trim() : '';
 
 const log = (...m) => console.log('[package-webapps]', ...m);
 const fail = (msg) => {
@@ -50,9 +57,12 @@ fs.mkdirSync(STAGE_ROOT, { recursive: true });
 fs.cpSync(WEBAPPS_SRC, STAGE_WEBAPPS, { recursive: true });
 log('底包复制完成 →', path.relative(FRONTEND_DIR, STAGE_WEBAPPS));
 
-const bsBall = path.join(STAGE_WEBAPPS, 'bs-ball');
+const targetDirName = next ? 'bs-ball-next' : 'bs-ball';
+const targetBase = next ? '/bs-ball-next/' : '/bs-ball/';
+if (next) fs.mkdirSync(path.join(STAGE_WEBAPPS, 'bs-ball-next'), { recursive: true });
+const bsBall = path.join(STAGE_WEBAPPS, targetDirName);
 
-// ---------- 2) 替换 bs-ball 构建产物 / 或等价保留 ----------
+// ---------- 2) 替换构建产物 / 或等价保留（--next → bs-ball-next/，旧版留 bs-ball/，Issue #105）----------
 if (!legacy) {
   fs.rmSync(path.join(bsBall, 'assets'), { recursive: true, force: true });
   for (const f of ['index.html', 'index.html.gz']) {
@@ -68,21 +78,18 @@ if (!legacy) {
   const pad = (n, l = 2) => String(n).padStart(l, '0');
   const off = -d.getTimezoneOffset();
   const sign = off >= 0 ? '+' : '-';
-  const buildTime =
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}` +
-    `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
+  const buildTime = buildTimeOverride || `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` + `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}` + `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
   const versionJson = {
-    version: pkg.version || '1.0.0',
+    version: versionOverride || pkg.version || '1.0.0',
     buildTime,
-    baseUrl: '/bs-ball/',
+    baseUrl: targetBase,
     promptUpdate: false,
     updateContent: '修复已知问题。'
   };
   fs.writeFileSync(path.join(bsBall, 'version.json'), JSON.stringify(versionJson, null, 2) + '\n', 'utf8');
   // 删除旧的预压缩副本：nginx gzip_static 会优先命中 .gz，不删会发旧版 version.json
   fs.rmSync(path.join(bsBall, 'version.json.gz'), { force: true });
-  log('已替换 bs-ball/index.html + assets/（来自 dist/）；version.json buildTime =', buildTime);
+  log('已替换 ' + targetDirName + '/index.html + assets/（来自 dist/）；version.json buildTime =', buildTime);
 } else {
   log('legacy 模式：不替换（等值重打包，页面零变化）');
 }
@@ -97,10 +104,10 @@ const list = spawnSync('tar', ['-tzf', OUT_TAR], { encoding: 'utf8' });
 if (list.status !== 0) fail('tar -t 校验失败');
 // 注意：Windows tar 输出为 CRLF，需按 \r?\n 拆分并剔除尾部 \r
 const files = list.stdout.split(/\r?\n/).map((s) => s.replace(/\r$/, '')).filter(Boolean);
-const hasIndex = files.includes('webapps/bs-ball/index.html');
-const hasVersion = files.includes('webapps/bs-ball/version.json');
+const hasIndex = files.includes('webapps/' + targetDirName + '/index.html');
+const hasVersion = files.includes('webapps/' + targetDirName + '/version.json');
 const hasPortal = files.includes('webapps/portal.html');
-const assetCount = files.filter((f) => f.startsWith('webapps/bs-ball/assets/')).length;
+const assetCount = files.filter((f) => f.startsWith('webapps/' + targetDirName + '/assets/')).length;
 if (!hasIndex || !hasVersion || !hasPortal) {
   fail(
     `打包校验未通过（index.html=${hasIndex} version.json=${hasVersion} portal.html=${hasPortal}；条目=${files.length}）`
