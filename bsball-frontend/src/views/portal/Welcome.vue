@@ -20,10 +20,6 @@
           <span class="welcome__card-desc">赛事管理 · 数据录入 · 系统配置</span>
         </button>
       </div>
-
-      <div class="welcome__links">
-        <a class="welcome__link" :href="legacyUrl">切换到旧版</a>
-      </div>
     </main>
 
     <footer v-if="footerText" class="welcome__footer" v-html="footerText"></footer>
@@ -48,7 +44,6 @@ const logoUrl = computed(() => config.config && config.config.logoUrl ? config.c
 const footerText = computed(() => (config.config && config.config.showFooterPortal !== false ? config.footerTextPortal : '') || '');
 
 const portalPath = '/' + DEFAULT_TENANT_CODE + '/';
-const legacyUrl = import.meta.env.BASE_URL.replace(/\/$/, '').replace(/-next$/, '') + '/'; // /bs-ball/（旧版原位）
 
 function goPortal() { location.href = portalPath; }
 function goAdmin() { location.href = portalPath + 'admin'; }
@@ -117,8 +112,5 @@ function goAdmin() { location.href = portalPath + 'admin'; }
 .welcome__card-icon { font-size: 30px; }
 .welcome__card-name { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
 .welcome__card-desc { font-size: 12px; color: rgba(255, 255, 255, .6); }
-.welcome__links { display: flex; gap: 20px; }
-.welcome__link { color: rgba(255, 255, 255, .55); font-size: 13px; text-decoration: none; }
-.welcome__link:hover { color: #fff; text-decoration: underline; }
 .welcome__footer { position: relative; z-index: 1; text-align: center; padding: 18px 16px; font-size: 13px; color: rgba(255, 255, 255, .65); background: rgba(0, 0, 0, .22); }
 </style>
