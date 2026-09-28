@@ -5734,7 +5734,7 @@ var sg={
       p&&(ue(p),g==="safe"?(p.stats.batting.r=(p.stats.batting.r??0)+1,ls(1,{
         runner:p,batter:a,rbiDelta:1,pitcher:s??void 0,erDelta:1
       }
-      ),s?.stats?.pitching&&(s.stats.pitching.er=(s.stats.pitching.er??0)+1),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,D(`野选推进得分 · ${p.name} (#${p.number??"-"}) — Safe`)):(Bt(Gt(p,"野选本垒出局")),m=1,D(`野选推进 · ${p.name} (#${p.number??"-"}) ${g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"} — 未得分`))),ni(a,e.outsToAdd);
+      ),addLivePitcherEarnedRuns(s),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,D(`野选推进得分 · ${p.name} (#${p.number??"-"}) — Safe`)):(Bt(Gt(p,"野选本垒出局")),m=1,D(`野选推进 · ${p.name} (#${p.number??"-"}) ${g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"} — 未得分`))),ni(a,e.outsToAdd);
       const y=Math.max(0,e.outsToAdd-m),b=e.playType==="FC"?"野选出局":e.playType==="DP"?"双杀出局":"三杀出局";
       os(y,Gt(a,b),b,{
         pbp:!1
@@ -5985,7 +5985,7 @@ var sg={
         t>=1&&t<=3?m(bn(t,e.name??"跑者",t)):m(`跑者 ${e.name??"跑者"} 留在垒上`),Qa(!1);
         return
       }
-      t>0&&(l.runners[t]=null),a===4?(Ct(1),e.stats.batting.r=(e.stats.batting.r??0)+1,p?.stats?.pitching&&(p.stats.pitching.er=(p.stats.pitching.er??0)+1),t>=1&&t<=3?m(bn(t,e.name??"跑者",4)):m(`${e.name??"跑者"} 回本垒得分`)):(l.runners[a]&&ds(a),l.runners[a]=e,t>=1&&t<=3?m(bn(t,e.name??"跑者",a)):m(`${e.name??"跑者"} 进${{1:"一垒",2:"二垒",3:"三垒"}[a]??""}`)),Qa(!1)
+      t>0&&(l.runners[t]=null),a===4?(Ct(1),e.stats.batting.r=(e.stats.batting.r??0)+1,addLivePitcherEarnedRuns(p),t>=1&&t<=3?m(bn(t,e.name??"跑者",4)):m(`${e.name??"跑者"} 回本垒得分`)):(l.runners[a]&&ds(a),l.runners[a]=e,t>=1&&t<=3?m(bn(t,e.name??"跑者",a)):m(`${e.name??"跑者"} 进${{1:"一垒",2:"二垒",3:"三垒"}[a]??""}`)),Qa(!1)
     }
     function fr(e){
       const t=[];
@@ -8576,7 +8576,7 @@ var sg={
       ,g=s.id??s.name??"?",m=e<4&&l.runners[e]?fr(e):[];
       de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt(),t.advanceFeReasonId!=="safe_same_err"&&r?.stats?.fielding&&(r.stats.fielding.e=(r.stats.fielding.e??0)+1);
       const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y),w=Se.value;
-      a>0&&(l.runners[a]=null),e===4?(Ct(1),s.stats.batting.r=(s.stats.batting.r??0)+1,w?.stats?.pitching&&(w.stats.pitching.er=(w.stats.pitching.er??0)+1),D(`${b}，${s.name} 进本垒得分`,t.advanceFeReasonCn)):(l.runners[e]&&ds(e),l.runners[e]=s,D(`${b}，${s.name} 进${p[e]}`,t.advanceFeReasonCn)),Ge([...m,{
+      a>0&&(l.runners[a]=null),e===4?(Ct(1),s.stats.batting.r=(s.stats.batting.r??0)+1,addLivePitcherEarnedRuns(w),D(`${b}，${s.name} 进本垒得分`,t.advanceFeReasonCn)):(l.runners[e]&&ds(e),l.runners[e]=s,D(`${b}，${s.name} 进${p[e]}`,t.advanceFeReasonCn)),Ge([...m,{
         playerId:g,from:a,to:e
       }
       ]),Qa(!1)
