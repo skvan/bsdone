@@ -41,6 +41,7 @@
 | H18 | 2026-09-28 | Issue #105（分支 `feature/frontend-rebuild-105`） | `bs-ball/index.html` + 同路径 `.gz` | 双轨切换专项：旧版页注入「返回新版」兜底按钮（→ `/bs-ball-next/`）并重生成 .gz（防 nginx gzip_static 返回陈旧副本）；重建版经 `npm run build:next` 产出至 `bs-ball-next/` | 旧版归档轨道（不并入重建工程） | 已完成（本次 PR） |
 | H19 | 2026-09-28 | Issue #123（分支 `feature/issue-123-release-version`） | 未改产物本体（版本应用机制变更，覆盖 `webapps/bs-ball/**` 与根静态页） | 版本应用机制上线（#117 根治）：①后端 `app.release-version` 改 Maven 资源过滤（`-Dapp.release.version` 注入，基线 1.1.1）+ `PortalSettingsApi` 对页脚 `footerTextPortal`/`footerTextAdmin` 做 `{{version}}` 占位符替换（含单测）；②部署 workflow 新增 `version` 输入，测试环境打包前经 `apply-release-version.mjs` 把版本统一应用到前端产物（version.json/编译产物硬编码/静态页，含 .gz 同步与严格断言防漏改） | 版本号治理 | 已完成（本次 PR；下次发布起生效） |
 | H20 | 2026-09-28 | Issue #123（分支 `feature/release-1.2.0`） | `bs-ball/version.json` + `bs-ball/assets/*.js`（6 处语义锚点）+ `index.html`/`portal.html` 及同路径 `.gz` | 版本前进 **1.2.0**：按 `apply-release-version.mjs` 语义锚点统一更新旧版产物与静态页版本（10 规则命中 / 7 文件 / 6 个 .gz 同步重生成）；配合重建版双轨上线（/bs-ball-next/，旧版 /bs-ball/ 保留可回退） | 版本号治理 / 双轨上线批次 | 已完成（本次 PR） |
+| H21 | 2026-09-28 | Issue #105（分支 `feature/dual-track-entry-buttons`） | `webapps/index.html`、`webapps/portal.html`（+ 同名 `.gz` 同步），`inject-legacy-button.mjs` 扩展 | 双轨入口补全：官网入口页与门户静态页注入「进入新版」悬浮按钮（→ `/bs-ball-next/`，与管理台入口同款样式）；脚本扩展为三页幂等注入且 `.gz` 基行尾对齐 git 索引（修复 CRLF 窗缺陷，含修正 index.html.gz 陈旧内容） | 双轨并行期入口体验 | 已完成（本次 PR） |
 
 ### 登记步骤（每次热修必做）
 
