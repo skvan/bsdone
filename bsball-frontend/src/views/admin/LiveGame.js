@@ -937,10 +937,23 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),earnedRunHalfTotals=x({});
   function addLivePitcherEarnedRuns(pitcher, runs=1){
     if(!pitcher?.stats?.pitching||runs<=0)return;
-    pitcher.stats.pitching.er=(pitcher.stats.pitching.er??0)+runs;
+    pitcher.stats.pitching.pitchR=(pitcher.stats.pitching.pitchR??0)+runs;
+  }
+  function applyEarnedRunTotals(event, result){
+    const totals=result?.pitcherTotals??{};
+    const key=`${event.inning}:${event.half}`;
+    const previous=earnedRunHalfTotals.value[key]??{};
+    const players=[...Te.value,...Ie.value,...I.value,...le.value];
+    for(const [pitcherId,total] of Object.entries(totals)){
+      const player=players.find((candidate)=>Number(candidate?.id)===Number(pitcherId));
+      if(!player?.stats?.pitching)continue;
+      const old=previous[pitcherId]??{};
+      player.stats.pitching.er=Math.max(0,(player.stats.pitching.er??0)+Number(total.earnedRuns??0)-Number(old.earnedRuns??0));
+    }
+    earnedRunHalfTotals.value[key]=structuredClone(totals);
   }
   function Cn(){
     O.inning=1,O.isTop=!0,O.outs=0,O.halfInningOuts=[],O.balls=0,O.strikes=0,O.runners={
@@ -6965,6 +6978,7 @@ var sg={
       try{
         const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
         earnedRunReconstruction.value=result?.data??result??null;
+        applyEarnedRunTotals(event,earnedRunReconstruction.value);
       }catch(error){
         console.warn('[LiveGame] earned-run reconstruction pending',error);
       }
