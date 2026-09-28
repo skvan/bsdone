@@ -1,11 +1,12 @@
 {
   "name": "bsball-frontend",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:next": "vite build --base=/bs-ball-next/ && node scripts/package-webapps.mjs --next",
     "package": "vite build && node scripts/package-webapps.mjs",
     "package:legacy": "node scripts/package-webapps.mjs --legacy",
     "preview:legacy": "vite --config vite.legacy-preview.config.js"

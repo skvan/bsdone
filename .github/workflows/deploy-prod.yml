@@ -1,5 +1,5 @@
 # Manual production deployment - triggered ONLY via the Actions tab
-# ("Run workflow" button) after typing the confirmation word.
+# ("Run workflow" button) after entering the release version number.
 #
 # What it does:
 #   1. builds bsball-server jar from the CURRENT main commit (tests included)
@@ -14,8 +14,8 @@ name: Deploy Production (manual)
 on:
   workflow_dispatch:
     inputs:
-      confirm:
-        description: 'Type DEPLOY to confirm (this restarts the production service)'
+      version:
+        description: '本次发布版本号（如 1.1.2，不带 v 前缀）。必填：留版本记录并作为防误触门槛；仅作用于后端 jar（生产前端产物不经本 workflow）'
         required: true
         type: string
 
@@ -29,13 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Confirm guard
-        run: |
-          if [ "${{ inputs.confirm }}" != "DEPLOY" ]; then
-            echo "::error::confirmation input must be exactly DEPLOY - aborting"
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -47,9 +40,25 @@ jobs:
           cache: 'maven'
 
       - name: Build backend jar (tests included)
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           cd bsball-backend
-          mvn clean package --batch-mode
+          if [ -z "$RELEASE_VERSION" ]; then
+            echo "::error::version input is required for production deploys - aborting"
+            exit 1
+          fi
+          if [[ "$RELEASE_VERSION" =~ [[:cntrl:]] || "$RELEASE_VERSION" == *'"'* ]]; then
+            echo "::error::version contains control characters or double quotes - aborting"
+            exit 1
+          fi
+          if [[ "$RELEASE_VERSION" == v* ]]; then
+            echo "::warning::version starts with 'v'; prefer bare version like 1.1.2"
+          fi
+          echo "release version override: $RELEASE_VERSION"
+          mvn clean package --batch-mode -Dapp.release.version="$RELEASE_VERSION"
+          echo "== app.release-version written into jar (must equal input) =="
+          unzip -p target/bsball-server-1.0.0.jar BOOT-INF/classes/application.yml | grep -F "release-version: \"$RELEASE_VERSION\"" || { echo "::error::release-version mismatch in jar"; exit 1; }
           echo "== jar md5 =="
           md5sum target/bsball-server-1.0.0.jar
 

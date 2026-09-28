@@ -30,8 +30,8 @@ export const DEFAULT_APP_CONFIG = {
   portalFooterText: '',
   portalLayoutWidthMode: 'boxed',
   portalContentMaxWidth: 1440,
-  portalHomeSectionOrder: undefined,
-  portalHomeSectionHidden: undefined,
+  portalHomeSectionOrder: ['carousel', 'nav', 'promo', 'events', 'teams', 'news'],
+  portalHomeSectionHidden: [],
   portalPromoAdImageUrl: '',
   portalPromoTicketImageUrl: '',
   portalPromoAdSlides: [],
@@ -166,5 +166,37 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     link.href = href;
   }
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon };
+  // 门户首页区块排序/隐藏（编译产物顶层透传，消费者：Home/AppConfig；默认值对齐产物 ge(void 0) / ve(void 0)）
+  const portalHomeSectionOrder = computed(() => config.value?.portalHomeSectionOrder ?? []);
+  const portalHomeSectionHidden = computed(() => config.value?.portalHomeSectionHidden ?? []);
+
+  // 与编译产物 store 对齐的直通字段（AppConfig 等消费者的配置读取；带默认值兜底）
+  const PASS_THROUGH_KEYS = [
+    'adminLogoUrl', 'adminTitle', 'authCaptchaEnabled', 'authCaptchaType', 'authCaptchaRandomTypes', 'faviconIco',
+    'footerTextAdmin', 'footerTextPortal', 'logoUrl', 'portalContentMaxWidth',
+    'portalDevtoolsGuard', 'portalDevtoolsGuardCopyrightNotice', 'portalDevtoolsGuardDebuggerTrap', 'portalDevtoolsGuardOverlay',
+    'portalFooterBg', 'portalFooterText', 'portalHeaderBg', 'portalHeaderMode', 'portalHeaderText', 'portalLayoutWidthMode',
+    'portalPromoAdSlides', 'portalPromoTicketSlides', 'publicViewCount', 'showFooterAdmin', 'showFooterPortal', 'siteTitle'
+  ];
+  const passThrough = {};
+  for (const key of PASS_THROUGH_KEYS) {
+    passThrough[key] = computed(() => config.value?.[key] ?? DEFAULT_APP_CONFIG[key]);
+  }
+
+  // 恢复默认（编译产物 resetToDefault）
+  function resetToDefault() {
+    config.value = { ...DEFAULT_APP_CONFIG };
+  }
+
+  // 合并服务端设置（编译产物 mergePortalSettingsFromServer：白名单净化后浅合并）
+  function mergePortalSettingsFromServer(raw) {
+    config.value = { ...config.value, ...(sanitizeConfig(raw) || {}) };
+  }
+
+  // 局部更新（编译产物 update：保存后回写 store）
+  function update(partial) {
+    config.value = { ...config.value, ...(partial || {}) };
+  }
+
+  return { config, siteName, portalHomeSectionOrder, portalHomeSectionHidden, ...passThrough, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon, resetToDefault, mergePortalSettingsFromServer, update };
 });

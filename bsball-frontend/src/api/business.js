@@ -31,7 +31,7 @@ export const stadiumApi = {
 
 export const teamApi = {
   list: (params) => fetchList('/api/team/list', params),
-  selectOptions: () => get('/api/team/select-options'),
+  selectOptions: () => get('/api/team/select-options').then((r) => r?.data ?? []),
   get: (id) => get(`/api/team/${id}`),
   create: (data) => post('/api/team/create', data),
   update: (id, data) => put(`/api/team/update/${id}`, data),
@@ -62,7 +62,7 @@ export const highlightMomentApi = {
 
 export const coachApi = {
   list: (params) => fetchList('/api/coach/list', params),
-  selectOptions: () => get('/api/coach/select-options'),
+  selectOptions: () => get('/api/coach/select-options').then((r) => r?.data ?? []),
   get: (id) => get(`/api/coach/${id}`),
   create: (data) => post('/api/coach/create', data),
   update: (id, data) => put(`/api/coach/update/${id}`, data),
@@ -70,8 +70,8 @@ export const coachApi = {
 };
 
 export const playerApi = {
-  selectOptions: () => get('/api/player/select-options'),
-  teamOptions: (teamId) => get(`/api/player/team-options?teamId=${encodeURIComponent(String(teamId))}`),
+  selectOptions: () => get('/api/player/select-options').then((r) => r?.data ?? []),
+  teamOptions: (teamId) => get(`/api/player/team-options?teamId=${encodeURIComponent(String(teamId))}`).then((r) => r?.data ?? []),
   list: (params) => {
     const query = { ...params };
     if (query.teamId === undefined || query.teamId === null || query.teamId === '') delete query.teamId;

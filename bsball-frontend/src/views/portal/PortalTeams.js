@@ -1,0 +1,151 @@
+// PortalTeams —— 行为保真移植自编译产物 Teams-BmxpLTb4（recon-gen-b3.mjs 生成，勿手改）
+// 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
+import { createElementBlock as s, defineComponent as C, toDisplayString as i, createElementVNode as c, unref as n, createBlock as v, ref as h, createVNode as d, openBlock as r, withCtx as k, Fragment as y, resolveComponent as A, onMounted as b, renderList as f, createCommentVNode as o } from 'vue';
+import { ElSkeleton as L, ElEmpty as M, ElSkeletonItem as U } from 'element-plus';
+import { useI18n as V } from 'vue-i18n';
+import { resolveAssetUrl as g } from '../../api/request';
+import { exportSfc as j } from '../../utils/exportSfc';
+import { teamApi as z } from '../../api/business';
+import { useTenantRouter as D } from '../../composables/useTenantRouter';
+import { onTeamLogoError as E } from '../../utils/placeholderAssets';
+import { DEFAULT_TEAM_SVG_PATH as F } from '../../utils/placeholderAssets';
+import '../../styles/legacy/portal-teams.css';
+var G={
+  class:"portal-teams"
+}
+,R={
+  key:0,class:"teams-grid teams-grid--skeleton","aria-busy":"true"
+}
+,$={
+  class:"teams-sk-inner"
+}
+,W={
+  key:1,class:"teams-grid"
+}
+,q={
+  class:"card-inner"
+}
+,H={
+  class:"logo-wrap"
+}
+,J=["src","alt"],K={
+  class:"team-card-title"
+}
+,O=["src","alt"],Q={
+  key:1,class:"meta"
+}
+,X={
+  key:2,class:"meta meta-row"
+}
+,Y={
+  key:0
+}
+,Z={
+  key:1,class:"sep"
+}
+,tt={
+  key:2
+}
+,et={
+  key:3,class:"desc"
+}
+,at={
+  key:4,class:"contact"
+}
+,rt=C({
+  __name:"Teams",setup(st){
+    const{
+      t:p
+    }
+    =V(),{
+      portalPath:x
+    }
+    =D(),_=h([]),w=F,u=h(!1);
+    function m(e,a){
+      return!e||e.length<=a?e:e.slice(0,a)+"…"
+    }
+    function T(e){
+      const a=[];
+      return e.contactPerson&&a.push(e.contactPerson),e.contactPhone&&a.push(e.contactPhone),e.contactEmail&&a.push(e.contactEmail),m(a.join(" · "),40)
+    }
+    b(async()=>{
+      u.value=!0;
+      try{
+        const{
+          list:e
+        }
+        =await z.list({
+          page:1,pageSize:100,showInPortal:1
+        }
+        );
+        _.value=(e??[]).slice().sort((a,l)=>(a.id||0)-(l.id||0))
+      }
+      catch(e){
+        console.error("[PortalTeams] 加载失败",e),_.value=[]
+      }
+      finally{
+        u.value=!1
+      }
+      
+    }
+    );
+    function P(e){
+      const a=e.target;
+      a&&(a.style.display="none")
+    }
+    return(e,a)=>{
+      const l=U,I=L,B=A("router-link"),N=M;
+      return r(),s("div",G,[u.value?(r(),s("div",R,[(r(),s(y,null,f(8,t=>c("div",{
+        key:"tm-sk-"+t,class:"team-card team-card--skeleton"
+      }
+      ,[d(I,{
+        animated:"",throttle:0
+      }
+      ,{
+        template:k(()=>[c("div",$,[d(l,{
+          variant:"rect",class:"teams-sk-logo"
+        }
+        ),d(l,{
+          variant:"text",style:{
+            width:"68%",height:"16px","margin-top":"12px"
+          }
+          
+        }
+        ),d(l,{
+          variant:"text",style:{
+            width:"44%",height:"13px","margin-top":"8px"
+          }
+          
+        }
+        ),d(l,{
+          variant:"text",style:{
+            width:"88%",height:"12px","margin-top":"10px"
+          }
+          
+        }
+        )])]),_:1
+      }
+      )])),64))])):(r(),s("div",W,[(r(!0),s(y,null,f(_.value,t=>(r(),v(B,{
+        key:t.id,to:n(x)(`teams/${t.id}`),class:"team-card portal-card-link"
+      }
+      ,{
+        default:k(()=>[c("div",q,[c("div",H,[c("img",{
+          src:n(g)(t.logo)||n(w),alt:t.name,onError:a[0]||(a[0]=(...S)=>n(E)&&n(E)(...S))
+        }
+        ,null,40,J)]),c("h3",K,i(t.name),1),t.wordmark?(r(),s("img",{
+          key:0,src:n(g)(t.wordmark),alt:`${t.name} 文字Logo`,class:"card-wordmark",onError:P
+        }
+        ,null,40,O)):o("",!0),t.shortName&&t.shortName!==t.name?(r(),s("p",Q,i(t.shortName),1)):o("",!0),t.city||t.stadium?(r(),s("p",X,[t.city?(r(),s("span",Y,i(t.city),1)):o("",!0),t.city&&t.stadium?(r(),s("span",Z," · ")):o("",!0),t.stadium?(r(),s("span",tt,i(n(p)("teams.homeStadium"))+"："+i(t.stadium),1)):o("",!0)])):o("",!0),t.description?(r(),s("p",et,i(m(t.description,60)),1)):o("",!0),t.contactPerson||t.contactPhone||t.contactEmail?(r(),s("p",at,i(T(t)),1)):o("",!0)])]),_:2
+      }
+      ,1032,["to"]))),128))])),!u.value&&_.value.length===0?(r(),v(N,{
+        key:2,description:n(p)("teams.noTeams")
+      }
+      ,null,8,["description"])):o("",!0)])
+    }
+    
+  }
+  
+}
+),vt=j(rt,[["__scopeId","data-v-f19b4997"]]);
+
+export default vt;

@@ -2,13 +2,13 @@
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
 // 2026-09-27 issue #29 改造：基本信息/球队经历分块 + 简历式多段经历编辑器与多队展示。
 // 本页已脱离编译产物逐字对照（设计变更页），后续以本文件为准维护；重跑生成器须保留本改造。
-import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, ElTooltip as pn, ElForm as yn } from 'element-plus';
-import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, KeepAlive as gn, reactive as oa, createCommentVNode as H } from 'vue';
+import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, vLoading as gn, ElTooltip as pn, ElForm as yn } from 'element-plus';
+import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, reactive as oa, createCommentVNode as H } from 'vue';
 import { ArrowDown as Ll, ArrowUp as Al, MoreFilled as cn } from '@element-plus/icons-vue';
 import { useRouter as _n, useRoute as hn } from 'vue-router';
 import { useMediaQuery as bn } from '../../composables/useMediaQuery';
 import { resolveAssetUrl as ve } from '../../api/request';
-import { formatDateTime as ct } from '../../utils/formatDate';
+import { formatDateYmd as ct } from '../../utils/dateExtras';
 import { useSettingsStore as wn } from '../../stores/settings';
 import { exportSfc as kn } from '../../utils/exportSfc';
 import { resourceApi as In } from '../../api/system';
