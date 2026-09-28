@@ -6506,7 +6506,7 @@ var sg={
         if(A){
           Ct(1),ue(A),A.stats.batting.r=(A.stats.batting.r??0)+1;
           const T=Se.value;
-          T?.stats?.pitching&&(T.stats.pitching.er=(T.stats.pitching.er??0)+1)
+          addLivePitcherEarnedRuns(T)
         }
         
       }
@@ -8606,7 +8606,7 @@ var sg={
       if(a===4){
         Ct(1),t.stats.batting.r=(t.stats.batting.r??0)+1;
         const s=Se.value;
-        s?.stats?.pitching&&(s.stats.pitching.er=(s.stats.pitching.er??0)+1)
+        addLivePitcherEarnedRuns(s)
       }
       else l.runners[a]&&ds(a),l.runners[a]=t
     }
