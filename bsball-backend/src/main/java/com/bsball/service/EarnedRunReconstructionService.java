@@ -78,11 +78,15 @@ public class EarnedRunReconstructionService {
         Map<Long, int[]> deltas = new HashMap<>();
         for (EarnedRunDecisionEntity decision : oldDecisions) {
             addDelta(deltas, decision.getResponsiblePitcherId(), -1,
-                    "EARNED".equals(decision.getEarnedStatus()) ? -1 : 0);
+                    "EARNED".equals(decision.getEarnedStatus()) ? -1 : 0,
+                    "UNEARNED".equals(decision.getEarnedStatus()) ? -1 : 0,
+                    "PENDING".equals(decision.getEarnedStatus()) ? -1 : 0);
         }
         for (EarnedRunDecision decision : newDecisions) {
             addDelta(deltas, decision.responsiblePitcherId(), 1,
-                    decision.status() == EarnedRunStatus.EARNED ? 1 : 0);
+                    decision.status() == EarnedRunStatus.EARNED ? 1 : 0,
+                    decision.status() == EarnedRunStatus.UNEARNED ? 1 : 0,
+                    decision.status() == EarnedRunStatus.PENDING ? 1 : 0);
         }
         if (deltas.isEmpty()) {
             return;
@@ -106,14 +110,24 @@ public class EarnedRunReconstructionService {
             int[] delta = entry.getValue();
             stat.setPitchR(Math.max(0, valueOrZero(stat.getPitchR()) + delta[0]));
             stat.setEr(Math.max(0, valueOrZero(stat.getEr()) + delta[1]));
+            stat.setUnearnedR(Math.max(0, valueOrZero(stat.getUnearnedR()) + delta[2]));
+            stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + delta[3]));
             gamePlayerStatRepository.save(stat);
         }
     }
 
-    private void addDelta(Map<Long, int[]> deltas, Long pitcherId, int runDelta, int earnedDelta) {
-        int[] value = deltas.computeIfAbsent(pitcherId, ignored -> new int[2]);
+    private void addDelta(
+            Map<Long, int[]> deltas,
+            Long pitcherId,
+            int runDelta,
+            int earnedDelta,
+            int unearnedDelta,
+            int pendingDelta) {
+        int[] value = deltas.computeIfAbsent(pitcherId, ignored -> new int[4]);
         value[0] += runDelta;
         value[1] += earnedDelta;
+        value[2] += unearnedDelta;
+        value[3] += pendingDelta;
     }
 
     private int valueOrZero(Integer value) {

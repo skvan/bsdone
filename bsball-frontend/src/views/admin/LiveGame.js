@@ -6079,7 +6079,7 @@ var sg={
           ab:0,r:0,h:0,rbi:0,bb:0,hbp:0,so:0,so_swing:0,so_looking:0,sf:0,sh:0,sb:0,cs:0,doubles:0,triples:0,hr:0
         }
         ,pitching:{
-          ip:0,np:0,pitchH:0,er:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
+          ip:0,np:0,pitchH:0,er:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
         }
         ,fielding:{
           po:0,a:0,e:0

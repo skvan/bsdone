@@ -129,6 +129,12 @@ extends BaseEntity {
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
     @Column(columnDefinition="integer")
+    @Comment(value="非自責分")
+    private Integer unearnedR;
+    @Column(columnDefinition="integer")
+    @Comment(value="待判定失分")
+    private Integer pendingR;
+    @Column(columnDefinition="integer")
     @Comment(value="\u81ea\u8d23\u5206")
     private Integer er;
     @Column(columnDefinition="integer")
@@ -416,6 +422,14 @@ extends BaseEntity {
     @Generated
     public Integer getEarnedR() {
         return this.earnedR;
+    }
+
+    public Integer getUnearnedR() {
+        return this.unearnedR;
+    }
+
+    public Integer getPendingR() {
+        return this.pendingR;
     }
 
     @Generated
@@ -771,6 +785,14 @@ extends BaseEntity {
     @Generated
     public void setEarnedR(Integer earnedR) {
         this.earnedR = earnedR;
+    }
+
+    public void setUnearnedR(Integer unearnedR) {
+        this.unearnedR = unearnedR;
+    }
+
+    public void setPendingR(Integer pendingR) {
+        this.pendingR = pendingR;
     }
 
     @Generated
