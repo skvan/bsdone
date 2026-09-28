@@ -241,7 +241,7 @@ var be={
       }
       catch{
         h.value={
-          version:__APP_VERSION__,buildTime:__APP_BUILD_TIME__,baseUrl:import.meta.env.BASE_URL
+          version:import.meta.env.VITE_APP_VERSION,buildTime:import.meta.env.VITE_APP_BUILD_TIME||"",baseUrl:import.meta.env.BASE_URL
         }
         
       }

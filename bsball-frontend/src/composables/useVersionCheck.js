@@ -23,9 +23,9 @@ export const RELOAD_ACK_KEY = 'bs-ball-version-reload-ack';
 const RELOAD_ACK_TTL_MS = 1800 * 1000;
 const DISPLAY_TIMEZONE = 'Asia/Shanghai';
 
-// 运行版构建标识（构建时注入；与 version.json 对比判定是否提示）
-const APP_VERSION = __APP_VERSION__;
-const APP_BUILD_TIME = __APP_BUILD_TIME__;
+// 运行版构建标识（.env VITE_ 注入；CI 部署时以环境变量覆盖；与 version.json 对比判定是否提示）
+const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+const APP_BUILD_TIME = import.meta.env.VITE_APP_BUILD_TIME || '';
 
 function normalizeVersionPayload(payload) {
   return {

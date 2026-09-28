@@ -20,7 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <!-- 发布版本基线：Maven 资源过滤写入 application.yml 的 app.release-version；CI 部署可用 -Dapp.release.version=... 覆盖（留空则沿用此基线）。Issue #123 -->
-        <app.release.version>1.1.1</app.release.version>
+        <app.release.version>1.2.0</app.release.version>
         <mybatis-spring-boot.version>4.0.1</mybatis-spring-boot.version>
         <druid-spring-boot4.version>1.2.28</druid-spring-boot4.version>
         <jjwt.version>0.13.0</jjwt.version>

@@ -349,7 +349,7 @@ var oa={
       if(await P.value?.validate().catch(()=>!1)){
         ne.value=!0;
         try{
-          const e=U.value,a=__APP_VERSION__,r=i.contactValue.trim();
+          const e=U.value,a=import.meta.env.VITE_APP_VERSION,r=i.contactValue.trim();
           await Ue.submit({
             feedbackId:O.value,feedbackType:i.feedbackType,title:i.title.trim()||void 0,content:i.content.trim(),contactType:r?i.contactType:void 0,contactValue:r||void 0,captchaId:X.value?i.captchaId:void 0,captchaVerifyToken:X.value?i.captchaVerifyToken.trim():void 0,clientVersion:a,pagePath:S.fullPath||void 0
           }

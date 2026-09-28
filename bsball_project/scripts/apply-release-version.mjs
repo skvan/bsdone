@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
@@ -39,6 +40,24 @@ if (/[\x00-\x1F\x7F\u2028\u2029]/.test(version)) {
 
 const escJs = (v) => v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 const escHtml = (v) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// git 索引行尾表（.gz 基行尾必须对齐“CI 检出行尾”=索引行尾）：
+// i/lf → LF、i/crlf → CRLF、其它（-text 等）→ 原样。
+// 背景：本地 autocrlf=true 作业区为 CRLF，若 .gz 直接用工作区字节生成，
+// 在 Linux CI（LF 检出）下 zcat|cmp 会判 stale（2026-09-28 实测教训）。
+const indexEol = new Map();
+try {
+  const out = execFileSync('git', ['ls-files', '--eol', '--', 'bsball_project/webapps'], { cwd: repoRoot, encoding: 'utf8' });
+  for (const line of out.split('\n')) {
+    const parts = line.split(/\t+/);
+    if (parts.length < 2) continue;
+    const iField = parts[0].trim().split(/\s+/)[0];
+    if (!iField.startsWith('i/')) continue;
+    const v = iField.slice(2);
+    indexEol.set(parts[1].trim(), v === 'lf' ? 'lf' : v === 'crlf' ? 'crlf' : 'other');
+  }
+} catch { /* git 不可用：全部按 other（原样）处理 */ }
+console.log('[apply-release-version] 索引行尾表: ' + indexEol.size + ' 项');
 
 // 规则：捕获组固定为 [前缀, 值, 可选后缀]；scope=目标文件类型；perFile=要求"每个目标文件各命中一次"（html）
 const RULES = [
@@ -74,6 +93,7 @@ const targets = [
 const hits = new Map(RULES.map((r) => [r.name, 0]));
 const perFileHits = new Map();
 const changedFiles = [];
+const gzEolStat = {};
 let gzSynced = 0;
 
 for (const t of targets) {
@@ -92,8 +112,14 @@ for (const t of targets) {
       fs.writeFileSync(t.file, text, 'utf8');
       const gzPath = t.file + '.gz';
       if (fs.existsSync(gzPath)) {
-        fs.writeFileSync(gzPath, zlib.gzipSync(fs.readFileSync(t.file), { level: 9 }));
+        const rel = path.relative(repoRoot, t.file).split(path.sep).join('/');
+        const eol = indexEol.get(rel) || 'other';
+        let gzBase = text;
+        if (eol === 'lf') gzBase = text.replace(/\r\n/g, '\n');
+        else if (eol === 'crlf') gzBase = text.replace(/\r?\n/g, '\r\n');
+        fs.writeFileSync(gzPath, zlib.gzipSync(Buffer.from(gzBase, 'utf8'), { level: 9 }));
         gzSynced += 1;
+        gzEolStat[eol] = (gzEolStat[eol] || 0) + 1;
       }
     }
   }
@@ -128,6 +154,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('[apply-release-version] 变更文件 ' + changedFiles.length + ' 个' + (DRY ? '' : '（.gz 同步 ' + gzSynced + ' 个）') + ':');
+console.log('[apply-release-version] 变更文件 ' + changedFiles.length + ' 个' + (DRY ? '' : '（.gz 同步 ' + gzSynced + ' 个；基行尾 ' + JSON.stringify(gzEolStat) + '）') + ':');
 for (const f of changedFiles) console.log('  - ' + f);
 console.log('[apply-release-version] OK');

@@ -204,7 +204,7 @@ var Dt=["#409EFF","#0d6efd","#1677ff","#67C23A","#E6A23C","#F56C6C","#626aef","#
     
   }
   ,emits:["update:modelValue"],setup(B){
-    const w=__APP_VERSION__,D=__APP_BUILD_TIME__,A="3.5.38",p="2.14.2",C="8.0.13",y=f(()=>{
+    const w=import.meta.env.VITE_APP_VERSION,D=import.meta.env.VITE_APP_BUILD_TIME||"",A="3.5.38",p="2.14.2",C="8.0.13",y=f(()=>{
       const m=new Date(D);
       if(Number.isNaN(m.getTime()))return D;
       const e=V=>String(V).padStart(2,"0");
