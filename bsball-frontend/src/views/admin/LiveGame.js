@@ -16,7 +16,7 @@ import { fetchAllStadiums as Jc } from '../../api/business';
 import { fetchPlayersByTeam as Qc } from '../../api/business';
 import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
-import { createLivePlayEvent } from '../../domain/earnedRun/livePlayEvent';
+import { createLivePlayEvent, toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
 import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -6955,7 +6955,18 @@ var sg={
       const E={
         id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
       };
-      Me.value.push(w),pn.value.push(E),ve.value=null,i.value=null
+      Me.value.push(w),pn.value.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
+    }
+    async function syncEarnedRunHalfInning(event){
+      const gameId=Number(R.value);
+      if(!gameId||!event)return;
+      const plays=pn.value.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
+      if(!plays.length)return;
+      try{
+        await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+      }catch(error){
+        console.warn('[LiveGame] earned-run reconstruction pending',error);
+      }
     }
     const es=new WeakMap;
     function ua(e){
