@@ -4334,7 +4334,7 @@ function pu(u,f,l){
   R++){
     if(l.runners[3]&&l.runners[3]!==H){
       const N=l.runners[3],M=f[S++]??"safe";
-      if(l.ensureBatting(N),M==="safe")l.addScore(1),o.stats.batting.rbi=(o.stats.batting.rbi??0)+1,N.stats.batting.r=(N.stats.batting.r??0)+1,_?.stats?.pitching&&(_.stats.pitching.er=(_.stats.pitching.er??0)+1),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
+      if(l.ensureBatting(N),M==="safe")l.addScore(1),l.creditRBI!==!1&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1),N.stats.batting.r=(N.stats.batting.r??0)+1,_?.stats?.pitching&&(_.stats.pitching.er=(_.stats.pitching.er??0)+1),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
       else if(M==="noscore")H=N,l.addLog(`不进垒 · ${N.name} (#${N.number??"-"}) — 退回三垒`);
       else{
         l.handleOut();
@@ -5773,7 +5773,7 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
       ,p=e.playType==="H1"||e.playType==="H2"||e.playType==="H3"?uu(e.bases,r,t):null;
-      pu(e.bases,t,{
+      pu(e.bases,t,{creditRBI:e.playType!=="E",
         runners:l.runners,batter:a,pitcher:s,addScore:Ct,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
       }
       ),fn.value||Ge(Gn(e.bases,r,a,t));
@@ -7696,13 +7696,13 @@ var sg={
     function Qa(e){
       l.isGameEnd||e&&(l.inning>=yn&&!l.isTop&&o.home.score===o.away.score&&D("进入延长局"),Af())
     }
-    function Ql(e){
+    function Ql(e,r=!0){
       const t=be.value;
       ue(t);
       const a={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
-      pu(e,qv(e,l.runners).map(()=>"safe"),{
+      pu(e,qv(e,l.runners).map(()=>"safe"),{creditRBI:r,
         runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
       }
       ),Ge(Gn(e,a,t))
@@ -9070,7 +9070,7 @@ var sg={
       }
       else if(e==="SH")bo(r),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m);
       else if(e==="E"){
-        Ql(1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+        Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const b of t){
           const w=Vt(b);
           w?.stats?.fielding&&(w.stats.fielding.e=(w.stats.fielding.e??0)+1)
@@ -9087,7 +9087,7 @@ var sg={
           return
         }
         if(fc_choice==="0"){
-          Ql(1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+          Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
           for(const fc_b of t){
             const fc_w=Vt(fc_b);
             fc_w?.stats?.fielding&&(fc_w.stats.fielding.e=(fc_w.stats.fielding.e??0)+1)
