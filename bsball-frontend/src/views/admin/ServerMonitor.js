@@ -241,7 +241,7 @@ var be={
       }
       catch{
         h.value={
-          version:"1.1.1",buildTime:"2026-09-26T17:12:54.722+08:00",baseUrl:"/bs-ball/"
+          version:__APP_VERSION__,buildTime:__APP_BUILD_TIME__,baseUrl:import.meta.env.BASE_URL
         }
         
       }

@@ -185,7 +185,7 @@
 | 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
 | 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
 | 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 生产在切换前保持旧版不动；切换走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 -Dapp.release.version 注入后端 jar）+ 前端包（失败可秒级回滚）；未迁移页面显示占位 |
+| 发布 | 生产在切换前保持旧版不动；切换走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 -Dapp.release.version 注入后端 jar）；**测试环境双轨并行**：旧版 /bs-ball/ + 重建版 /bs-ball-next/（部署流水线已集成重建版构建与双轨打包；用户回退按钮见 issue #105）；失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
 ### 与并行开发的共存规则（强制）

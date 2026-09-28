@@ -75,11 +75,38 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: node bsball_project/scripts/apply-release-version.mjs --version "$RELEASE_VERSION"
 
-      - name: Package frontend tarball
+      - name: Set up Node.js (rebuilt frontend build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: bsball-frontend/package-lock.json
+
+      - name: Build rebuilt frontend (bs-ball-next, dual-track) and pack webapps tarball
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          tar -czf webapps-dev.tar.gz -C bsball_project webapps
+          set -e
+          export APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+          cd bsball-frontend
+          npm ci --no-audit --no-fund
+          if [ -n "$RELEASE_VERSION" ]; then
+            export APP_VERSION="$RELEASE_VERSION"
+          fi
+          npx vite build --base=/bs-ball-next/
+          if [ -n "$RELEASE_VERSION" ]; then
+            node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$APP_BUILD_TIME"
+          else
+            node scripts/package-webapps.mjs --next --build-time="$APP_BUILD_TIME"
+          fi
+          cp dist/webapps-dev.tar.gz ../webapps-dev.tar.gz
+          echo "== tarball structure check (dual-track) =="
+          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html; do
+            tar -tzf ../webapps-dev.tar.gz | grep -qx "$entry" || { echo "::error::missing $entry in tarball"; exit 1; }
+          done
+          echo "tarball structure OK"
           echo "== tarball md5 =="
-          md5sum webapps-dev.tar.gz
+          md5sum ../webapps-dev.tar.gz
 
       - name: Write build info
         env:

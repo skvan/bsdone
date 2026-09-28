@@ -33,6 +33,11 @@ const next = args.includes('--next');
 const outArg = args.find((a) => a.startsWith('--out='));
 const outName = outArg ? outArg.slice('--out='.length) : legacy ? 'webapps-dev-legacy.tar.gz' : 'webapps-dev.tar.gz';
 const OUT_TAR = path.join(DIST_DIR, outName);
+// 发布版本/构建时间覆盖（Issue #123/#113）：--version 优先于 package.json；--build-time 与 vite 构建注入保持一致
+const verArg = args.find((a) => a.startsWith('--version='));
+const versionOverride = verArg ? verArg.slice('--version='.length).trim() : '';
+const btArg = args.find((a) => a.startsWith('--build-time='));
+const buildTimeOverride = btArg ? btArg.slice('--build-time='.length).trim() : '';
 
 const log = (...m) => console.log('[package-webapps]', ...m);
 const fail = (msg) => {
@@ -73,12 +78,9 @@ if (!legacy) {
   const pad = (n, l = 2) => String(n).padStart(l, '0');
   const off = -d.getTimezoneOffset();
   const sign = off >= 0 ? '+' : '-';
-  const buildTime =
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}` +
-    `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
+  const buildTime = buildTimeOverride || `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` + `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}` + `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
   const versionJson = {
-    version: pkg.version || '1.0.0',
+    version: versionOverride || pkg.version || '1.0.0',
     buildTime,
     baseUrl: targetBase,
     promptUpdate: false,
