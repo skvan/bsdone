@@ -75,6 +75,9 @@ class GameServiceSaveResultTest {
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
 
+    @Mock
+    private EarnedRunReconstructionService earnedRunReconstructionService;
+
     private GameService gameService;
 
     /** setUp 中由 findById 回傳的既有比賽（供欄位級斷言） */
@@ -83,7 +86,8 @@ class GameServiceSaveResultTest {
     @BeforeEach
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
-                stadiumRepository, dataScopeService, tenantQueryPolicyService);
+                stadiumRepository, dataScopeService, tenantQueryPolicyService,
+                earnedRunReconstructionService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();

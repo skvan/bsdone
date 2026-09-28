@@ -189,6 +189,7 @@ export const gameApi = {
   update: (id, data) => put(`/api/game/update/${id}`, data),
   delete: (id) => del(`/api/game/delete/${id}`),
   saveLive: (id, data) => post(`/api/game/${id}/save-live`, data),
+  reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
   getLiveSnapshot: async (id) => {
     const { data } = await fetchResult(`/api/game/${id}/live-snapshot?_t=${Date.now()}`);
     return data?.snapshotJson ?? '';
