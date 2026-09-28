@@ -902,5 +902,24 @@
   window.addEventListener('scroll', updateDotNav, { passive: true });
   updateDotNav();
 </script>
+<script>
+(function () {
+  function mount() {
+    if (document.getElementById('frontend-switch-fallback')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'frontend-switch-fallback';
+    btn.textContent = '进入新版';
+    btn.title = '进入新版前端（重建版 /bs-ball-next/）';
+    btn.style.cssText = 'position:fixed;right:16px;top:16px;z-index:1900;padding:6px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.35);background:rgba(15,32,58,.82);color:#fff;font-size:12px;line-height:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:.72';
+    btn.addEventListener('mouseenter', function () { btn.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', function () { btn.style.opacity = '.72'; });
+    btn.addEventListener('click', function () { location.href = '/bs-ball-next/'; });
+    document.body.appendChild(btn);
+  }
+  if (document.body) mount();
+  else document.addEventListener('DOMContentLoaded', mount, { once: true });
+})();
+</script>
 </body>
 </html>
