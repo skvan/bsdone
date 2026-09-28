@@ -5773,8 +5773,8 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
       ,p=e.playType==="H1"||e.playType==="H2"||e.playType==="H3"?uu(e.bases,r,t):null;
-      pu(e.bases,t,{creditRBI:e.playType!=="E",
-        runners:l.runners,batter:a,pitcher:s,addScore:Ct,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
+      pu(e.bases,t,{
+        creditRBI:e.playType!=="E",runners:l.runners,batter:a,pitcher:s,addScore:Ct,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
       }
       ),fn.value||Ge(Gn(e.bases,r,a,t));
       const g=w=>au(w,{
@@ -7702,8 +7702,8 @@ var sg={
       const a={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
-      pu(e,qv(e,l.runners).map(()=>"safe"),{creditRBI:r,
-        runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
+      pu(e,qv(e,l.runners).map(()=>"safe"),{
+        creditRBI:r,runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
       }
       ),Ge(Gn(e,a,t))
     }
