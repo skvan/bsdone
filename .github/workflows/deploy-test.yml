@@ -87,17 +87,17 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           set -e
-          export APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+          export VITE_APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
           cd bsball-frontend
           npm ci --no-audit --no-fund
           if [ -n "$RELEASE_VERSION" ]; then
-            export APP_VERSION="$RELEASE_VERSION"
+            export VITE_APP_VERSION="$RELEASE_VERSION"
           fi
           npx vite build --base=/bs-ball-next/
           if [ -n "$RELEASE_VERSION" ]; then
-            node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$APP_BUILD_TIME"
+            node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$VITE_APP_BUILD_TIME"
           else
-            node scripts/package-webapps.mjs --next --build-time="$APP_BUILD_TIME"
+            node scripts/package-webapps.mjs --next --build-time="$VITE_APP_BUILD_TIME"
           fi
           cp dist/webapps-dev.tar.gz ../webapps-dev.tar.gz
           echo "== tarball structure check (dual-track) =="
