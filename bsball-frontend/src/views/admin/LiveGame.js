@@ -9035,7 +9035,7 @@ var sg={
           }
           r.stats.batting.r=(r.stats.batting.r??0)+1
         }
-        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.hr=(r.stats.batting.hr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchHr=(p.stats.pitching.pitchHr??0)+1),Ct(b),p?.stats?.pitching&&(p.stats.pitching.er=(p.stats.pitching.er??0)+b),g="HR",m=y(`${r.name}: ${hn("HR",b)}`),D(m),s("HR",b)
+        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.hr=(r.stats.batting.hr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchHr=(p.stats.pitching.pitchHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="HR",m=y(`${r.name}: ${hn("HR",b)}`),D(m),s("HR",b)
       }
       else if(e==="IPHR"){
         const b=Ut()+1;
@@ -9052,7 +9052,7 @@ var sg={
           }
           r.stats.batting.r=(r.stats.batting.r??0)+1
         }
-        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),Ct(b),p?.stats?.pitching&&(p.stats.pitching.er=(p.stats.pitching.er??0)+b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}`),D(m)
+        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}`),D(m)
       }
       else if(e==="BB"){
         const b=ei();
@@ -9071,7 +9071,7 @@ var sg={
           ue(w),w.stats.batting.r=(w.stats.batting.r??0)+1,ls(1,{
             runner:w,batter:r,rbiDelta:1,pitcher:p??void 0,erDelta:1
           }
-          ),p?.stats?.pitching&&(p.stats.pitching.er=(p.stats.pitching.er??0)+1),r.stats.batting.rbi=(r.stats.batting.rbi??0)+1,l.runners[3]=null
+          ),addLivePitcherEarnedRuns(p),r.stats.batting.rbi=(r.stats.batting.rbi??0)+1,l.runners[3]=null
         }
         Ge(b),l.outs++,Ipy(),r.stats.batting.sf=(r.stats.batting.sf??0)+1,Dn(t),g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}`,m=Rt(m)
       }
@@ -9119,7 +9119,7 @@ var sg={
             1:r,2:null,3:null
           }
           ,fc_moves=[];
-          fc_base!==3&&fc_old[3]&&(fc_forced[3]?(Ct(1),fc_old[3].stats.batting.r=(fc_old[3].stats.batting.r??0)+1,Se.value?.stats?.pitching&&(Se.value.stats.pitching.er=(Se.value.stats.pitching.er??0)+1),fc_moves.push({
+          fc_base!==3&&fc_old[3]&&(fc_forced[3]?(Ct(1),fc_old[3].stats.batting.r=(fc_old[3].stats.batting.r??0)+1,addLivePitcherEarnedRuns(Se.value),fc_moves.push({
             playerId:fc_old[3].id??fc_old[3].name??"?",from:3,to:4
           }
           )):fc_new[3]=fc_old[3]);
