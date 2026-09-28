@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -27,10 +26,16 @@ import org.springframework.stereotype.Service;
  * 球员镜像字段（teamId/number/positions = 主注册）回写与接口输出填充。
  */
 @Service
-@RequiredArgsConstructor
 public class PlayerTeamService {
     private final PlayerTeamRepository playerTeamRepository;
     private final TeamRepository teamRepository;
+
+    public PlayerTeamService(
+            PlayerTeamRepository playerTeamRepository,
+            TeamRepository teamRepository) {
+        this.playerTeamRepository = playerTeamRepository;
+        this.teamRepository = teamRepository;
+    }
 
     /** 同步计划：待新增/更新/软删的经历 + 主注册 + 变更前后“当前球队”集合 */
     public record PlayerTeamSyncPlan(
