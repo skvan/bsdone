@@ -937,7 +937,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null);
   function addLivePitcherEarnedRuns(pitcher, runs=1){
     if(!pitcher?.stats?.pitching||runs<=0)return;
     pitcher.stats.pitching.er=(pitcher.stats.pitching.er??0)+runs;
@@ -6963,7 +6963,8 @@ var sg={
       const plays=pn.value.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
       if(!plays.length)return;
       try{
-        await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+        const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+        earnedRunReconstruction.value=result?.data??result??null;
       }catch(error){
         console.warn('[LiveGame] earned-run reconstruction pending',error);
       }
