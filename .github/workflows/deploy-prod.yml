@@ -18,6 +18,10 @@ on:
         description: 'Type DEPLOY to confirm (this restarts the production service)'
         required: true
         type: string
+      version:
+        description: '可选：本次发布版本号（如 1.1.2，不带 v 前缀）；留空沿用仓库基线版本。仅作用于后端 jar（生产前端产物不经本 workflow）'
+        required: false
+        type: string
 
 concurrency:
   group: deploy-prod
@@ -47,9 +51,18 @@ jobs:
           cache: 'maven'
 
       - name: Build backend jar (tests included)
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           cd bsball-backend
-          mvn clean package --batch-mode
+          if [ -n "$RELEASE_VERSION" ]; then
+            echo "release version override: $RELEASE_VERSION"
+            mvn clean package --batch-mode -Dapp.release.version="$RELEASE_VERSION"
+          else
+            mvn clean package --batch-mode
+          fi
+          echo "== app.release-version written into jar =="
+          unzip -p target/bsball-server-1.0.0.jar BOOT-INF/classes/application.yml | grep 'release-version'
           echo "== jar md5 =="
           md5sum target/bsball-server-1.0.0.jar
 

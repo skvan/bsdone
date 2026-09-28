@@ -21,6 +21,7 @@ import com.bsball.service.SysConfigService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.Generated;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value={"/portal/settings"})
 public class PortalSettingsApi {
     private final SysConfigService sysConfigService;
+
+    @Value(value="${app.release-version:}")
+    private String releaseVersion;
 
     @GetMapping
     public Result<Map<String, Object>> get() {
@@ -46,9 +50,16 @@ public class PortalSettingsApi {
             out.put(key, cfg.get(key));
         }
         Object ftObj = cfg.get("footerTextPortal");
-        String mergedFooter = PortalSettingsApi.mergeFooterPortalHtml((String)(ftObj != null ? String.valueOf(ftObj) : ""), (String)((cpObj = cfg.get("copyrightPortal")) != null ? String.valueOf(cpObj) : null));
+        String mergedFooter = PortalSettingsApi.mergeFooterPortalHtml((String)PortalSettingsApi.applyVersionPlaceholder((String)(ftObj != null ? String.valueOf(ftObj) : ""), this.releaseVersion), (String)((cpObj = cfg.get("copyrightPortal")) != null ? String.valueOf(cpObj) : null));
         if (!mergedFooter.isEmpty()) {
             out.put("footerTextPortal", mergedFooter);
+        }
+        Object ftaObj = cfg.get("footerTextAdmin");
+        if (ftaObj != null) {
+            String fta = PortalSettingsApi.applyVersionPlaceholder(String.valueOf(ftaObj), this.releaseVersion);
+            if (!fta.trim().isEmpty()) {
+                out.put("footerTextAdmin", fta);
+            }
         }
         boolean showPv = true;
         Object v2 = v = out.containsKey("publicViewCount") ? out.get("publicViewCount") : cfg.get("publicViewCount");
@@ -108,6 +119,17 @@ public class PortalSettingsApi {
             return "";
         }
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    static String applyVersionPlaceholder(String text, String version) {
+        if (text == null || text.isEmpty()) {
+            return text == null ? "" : text;
+        }
+        String v = version != null ? version.trim() : "";
+        if (v.isEmpty() || v.contains("@") || !text.contains("{{version}}")) {
+            return text;
+        }
+        return text.replace("{{version}}", PortalSettingsApi.escapeHtml(v));
     }
 
     @Generated
