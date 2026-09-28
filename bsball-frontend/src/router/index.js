@@ -27,6 +27,8 @@ import LoginLogs from '../views/admin/LoginLogs.js';
 import OperationLogs from '../views/admin/OperationLogs.js';
 import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js';
 import Home from '../views/portal/Home.js';
+import Welcome from '../views/portal/Welcome.vue';
+import PortalLayout from '../components/portal/PortalLayout.js';
 import News from '../views/portal/News.js';
 import NoticeDetail from '../views/portal/NoticeDetail.js';
 import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
@@ -85,7 +87,10 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 });
 
 const routes = [
-    { path: '/', name: 'PortalHome', component: Home },
+    // 新版展示/入口页（无门户外壳）：品牌展示 + 门户/管理台入口（Issue #105 双轨体验对齐）
+    { path: '/welcome', name: 'PortalWelcome', component: Welcome },
+    // 根路径默认落地 welcome
+    { path: '/', redirect: '/welcome' },
     {
       path: '/docs',
       component: PlatformDocsShell,
@@ -103,8 +108,14 @@ const routes = [
       name: 'TenantShell',
       component: TenantShell,
       children: [
-        { path: '', name: 'TenantIndex', redirect: { name: 'PortalHome' } },
-        { path: 'article', name: 'PortalArticleList', component: News },
+        // 门户外壳（PortalLayout：页头导航/页脚/主题）包裹所有门户页面——与旧版编译产物结构对齐
+        {
+          path: '',
+          name: 'PortalLayoutShell',
+          component: PortalLayout,
+          children: [
+            { path: '', name: 'PortalHome', component: Home },
+            { path: 'article', name: 'PortalArticleList', component: News },
         { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
         { path: 'events', name: 'PortalEvents', component: PortalEvents },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
@@ -120,7 +131,9 @@ const routes = [
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
         { path: 'account/register', name: 'PortalRegister', component: Register },
         { path: 'account/forgot-password', name: 'PortalForgotPassword', component: ForgotPassword },
-        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite },
+        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite }
+          ]
+        },
         { path: 'admin/login', name: 'AdminLogin', component: Login, meta: { requiresAuth: false } },
         {
           path: 'admin',
