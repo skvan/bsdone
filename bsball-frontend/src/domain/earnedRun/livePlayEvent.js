@@ -6,7 +6,7 @@ export function createLivePlayEvent(input = {}) {
   const scoringRunners = (input.scoringRunners ?? []).map((runner) => ({
     runnerId: positiveId(runner.runnerId),
     responsiblePitcherId: positiveId(runner.responsiblePitcherId ?? pitcherId),
-    origin: RUNNER_ORIGINS.has(runner.origin) ? runner.origin : 'NORMAL',
+    origin: inferRunnerOrigin(runner.origin, input.resultCode),
     overrideStatus: PENDING_RULINGS.has(runner.overrideStatus)
       ? 'PENDING'
       : runner.overrideStatus ?? null,
@@ -45,6 +45,14 @@ export function toEarnedRunPlay(event) {
     rulingPending: event.rulingPending,
     scoringRunners: event.scoringRunners
   };
+}
+
+export function inferRunnerOrigin(explicitOrigin, resultCode) {
+  if (RUNNER_ORIGINS.has(explicitOrigin)) return explicitOrigin;
+  const code = String(resultCode ?? '').toUpperCase();
+  if (code === 'TIE_BREAK' || code === 'TBR') return 'TIE_BREAK';
+  if (/^E(?:[0-9]+)?$/.test(code) || code.startsWith('ERROR')) return 'ERROR';
+  return 'NORMAL';
 }
 
 function normalizeBases(bases = {}) {
