@@ -30,9 +30,11 @@
 // Welcome —— 新版展示/入口页（Issue #105 双轨体验对齐：宣传展示 + 入口选择）
 // 品牌信息来自站点配置（appConfig store，/portal/settings）；无门户外壳，独立设计。
 import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAppConfigStore } from '../../stores/appConfig';
 import { DEFAULT_TENANT_CODE } from '../../utils/tenantRoute';
 
+const router = useRouter();
 const config = useAppConfigStore();
 onMounted(() => {
   if (!config.config || !config.config.siteName) config.load().catch(() => {});
@@ -43,10 +45,13 @@ const siteTitle = computed(() => config.siteTitle || '棒垒球赛事平台');
 const logoUrl = computed(() => config.config && config.config.logoUrl ? config.config.logoUrl : '');
 const footerText = computed(() => (config.config && config.config.showFooterPortal !== false ? config.footerTextPortal : '') || '');
 
-const portalPath = '/' + DEFAULT_TENANT_CODE + '/';
+// 入口目标按命名路由解析（href 自动携带部署 base：dev=/bs-ball/、线上=/bs-ball-next/）；
+// 不可硬编码 '/租户码/'：剥离 base 后即根路由 '/'，会被 redirect /welcome 拦截（原地打转）或落到旧版
+const portalHref = router.resolve({ name: 'PortalHome', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
+const adminHref = router.resolve({ name: 'AdminRoot', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
 
-function goPortal() { location.href = portalPath; }
-function goAdmin() { location.href = portalPath + 'admin'; }
+function goPortal() { location.href = portalHref; }
+function goAdmin() { location.href = adminHref; }
 </script>
 
 <style scoped>
