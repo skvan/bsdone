@@ -4,20 +4,21 @@
     <main class="welcome__inner">
       <div class="welcome__brand">
         <img v-if="logoUrl" :src="logoUrl" class="welcome__logo" alt="logo" />
-        <h1 class="welcome__title">{{ siteName }}</h1>
-        <p class="welcome__subtitle">{{ siteTitle }}</p>
+        <div class="welcome__badge"><span class="welcome__badge-dot"></span>国内领先 · 专业级棒垒球 SaaS 平台</div>
+        <h1 class="welcome__title">选择您的<em>入口</em></h1>
+        <p class="welcome__subtitle">了解平台功能，或直接进入数据系统</p>
       </div>
 
       <div class="welcome__cards">
+        <button type="button" class="welcome__card welcome__card--intro" @click="goIntro">
+          <span class="welcome__card-icon">📋</span>
+          <span class="welcome__card-name">系统介绍</span>
+          <span class="welcome__card-desc">了解平台功能、定价方案与应用场景</span>
+        </button>
         <button type="button" class="welcome__card welcome__card--portal" @click="goPortal">
           <span class="welcome__card-icon">⚾</span>
-          <span class="welcome__card-name">浏览门户</span>
-          <span class="welcome__card-desc">赛事资讯 · 球队球员 · 数据统计</span>
-        </button>
-        <button type="button" class="welcome__card welcome__card--admin" @click="goAdmin">
-          <span class="welcome__card-icon">🗂</span>
-          <span class="welcome__card-name">进入管理台</span>
-          <span class="welcome__card-desc">赛事管理 · 数据录入 · 系统配置</span>
+          <span class="welcome__card-name">进入门户</span>
+          <span class="welcome__card-desc">查看赛事数据、球队排名与球员统计</span>
         </button>
       </div>
     </main>
@@ -27,7 +28,8 @@
 </template>
 
 <script setup>
-// Welcome —— 新版展示/入口页（Issue #105 双轨体验对齐：宣传展示 + 入口选择）
+// Welcome —— 新版展示/入口页（Issue #105 双轨体验对齐；入口选择与旧版入口页对齐：
+// 「系统介绍」→ 官网介绍页 /index.html、「进入门户」→ 门户首页）
 // 品牌信息来自站点配置（appConfig store，/portal/settings）；无门户外壳，独立设计。
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -40,18 +42,18 @@ onMounted(() => {
   if (!config.config || !config.config.siteName) config.load().catch(() => {});
 });
 
-const siteName = computed(() => config.siteName || 'BS Ball');
-const siteTitle = computed(() => config.siteTitle || '棒垒球赛事平台');
-const logoUrl = computed(() => config.config && config.config.logoUrl ? config.config.logoUrl : '');
+// logo 走与门户页头一致的资源解析（resolveAssetUrl：相对路径补 /bs-ball/ 前缀；测试环境实证
+// /bs-ball-logo.png 直用 404、/bs-ball/bs-ball-logo.png 200，H25 修复）
+const logoUrl = computed(() => (config.config && config.config.logoUrl ? config.resolveAssetUrl(config.config.logoUrl) : ''));
 const footerText = computed(() => (config.config && config.config.showFooterPortal !== false ? config.footerTextPortal : '') || '');
 
-// 入口目标按命名路由解析（href 自动携带部署 base：dev=/bs-ball/、线上=/bs-ball-next/）；
+// 门户目标按命名路由解析（href 自动携带部署 base：dev=/bs-ball/、线上=/bs-ball-next/）；
 // 不可硬编码 '/租户码/'：剥离 base 后即根路由 '/'，会被 redirect /welcome 拦截（原地打转）或落到旧版
 const portalHref = router.resolve({ name: 'PortalHome', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
-const adminHref = router.resolve({ name: 'AdminRoot', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
 
+// 系统介绍页 = 域名根静态官网（非 SPA 路由；部署环境下为 /index.html；本地 dev 无此静态页属预期）
+function goIntro() { location.href = '/index.html'; }
 function goPortal() { location.href = portalHref; }
-function goAdmin() { location.href = adminHref; }
 </script>
 
 <style scoped>
@@ -89,6 +91,20 @@ function goAdmin() { location.href = adminHref; }
 }
 .welcome__brand { text-align: center; }
 .welcome__logo { height: 72px; margin-bottom: 18px; }
+.welcome__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, .85);
+}
+.welcome__badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #e3b23c; box-shadow: 0 0 8px rgba(227, 178, 60, .8); }
 .welcome__title {
   margin: 0;
   font-size: 44px;
@@ -98,6 +114,7 @@ function goAdmin() { location.href = adminHref; }
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+.welcome__title em { font-style: normal; color: #e3b23c; -webkit-text-fill-color: #e3b23c; }
 .welcome__subtitle { margin: 14px 0 0; font-size: 16px; color: rgba(255, 255, 255, .72); letter-spacing: 1px; }
 .welcome__cards { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
 .welcome__card {
