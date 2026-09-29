@@ -902,8 +902,18 @@
   window.addEventListener('scroll', updateDotNav, { passive: true });
   updateDotNav();
 </script>
+
 <script>
+/* frontend-switch-mapped-v2：页面级版本映射（H27）——旧版→新版按当前路径互换；
+   特例：旧版介绍页(/index.html) → 新版介绍页；旧版首页(/bs-ball/、/bs-ball) → 新版门户首页 */
 (function () {
+  function newTarget() {
+    var p = window.location.pathname || '/';
+    if (p === '/index.html') return '/bs-ball-next/intro';
+    if (p === '/bs-ball' || p === '/bs-ball/') return '/bs-ball-next/bs-ball/';
+    if (p.indexOf('/bs-ball/') === 0) return '/bs-ball-next' + p.slice('/bs-ball'.length);
+    return '/bs-ball-next/';
+  }
   function mount() {
     if (document.getElementById('frontend-switch-fallback')) return;
     var btn = document.createElement('button');
@@ -914,7 +924,7 @@
     btn.style.cssText = 'position:fixed;right:16px;top:16px;z-index:1900;padding:6px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.35);background:rgba(15,32,58,.82);color:#fff;font-size:12px;line-height:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:.72';
     btn.addEventListener('mouseenter', function () { btn.style.opacity = '1'; });
     btn.addEventListener('mouseleave', function () { btn.style.opacity = '.72'; });
-    btn.addEventListener('click', function () { location.href = '/bs-ball-next/'; });
+    btn.addEventListener('click', function () { location.href = newTarget(); });
     document.body.appendChild(btn);
   }
   if (document.body) mount();

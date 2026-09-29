@@ -12,6 +12,19 @@ export const LEGACY_URL = '/bs-ball/';
 const BTN_ID = 'frontend-switch-fallback';
 const TITLE = '遇到问题时切回旧版前端（原有版本）';
 
+// 页面级版本映射（H27）：新版→旧版按当前路径前缀互换（两版路由同构）；
+// 特例：入口页 → 旧版首页；介绍页 → 旧版介绍页；根路径兜底旧版首页。
+// dev（base=/bs-ball/）下映射等价自指（本地无旧版），属预期限制。
+export function legacyTarget() {
+  const base = ((import.meta.env && import.meta.env.BASE_URL) || '/bs-ball/').replace(/\/+$/, '');
+  let p = (typeof location !== 'undefined' && location.pathname) || '/';
+  if (base && base !== '/' && p.startsWith(base)) p = p.slice(base.length) || '/';
+  p = p.replace(/\/+$/, '') || '/';
+  if (p === '/welcome') return '/bs-ball/';
+  if (p === '/intro') return '/index.html';
+  return '/bs-ball' + (p === '/' ? '/' : p);
+}
+
 function makeButton(className, text) {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -21,7 +34,7 @@ function makeButton(className, text) {
   if (className) btn.className = className;
   btn.style.cursor = 'pointer';
   btn.addEventListener('click', () => {
-    location.href = LEGACY_URL;
+    location.href = legacyTarget();
   });
   return btn;
 }
@@ -79,6 +92,28 @@ function placeIntoHeader() {
       'vertical-align:middle'
     ].join(';');
     avatar.parentElement.insertBefore(btn, avatar);
+    if (existing) existing.remove();
+    return true;
+  }
+  // 介绍页（H27）：并入顶部导航列表（避免悬浮按钮遮挡页头「立即咨询」CTA）
+  const introNav = document.querySelector('.intro-page .nav-links');
+  if (introNav) {
+    const li = document.createElement('li');
+    const btn = makeButton('', '切回旧版');
+    btn.dataset.placement = 'header';
+    btn.style.cssText = [
+      'cursor:pointer',
+      'padding:8px 16px',
+      'border-radius:8px',
+      'border:1px solid rgba(255,255,255,.25)',
+      'background:rgba(255,255,255,.08)',
+      'color:rgba(255,255,255,.85)',
+      'font-size:14px',
+      'font-weight:500',
+      'line-height:20px'
+    ].join(';');
+    li.appendChild(btn);
+    introNav.appendChild(li);
     if (existing) existing.remove();
     return true;
   }

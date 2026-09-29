@@ -1,8 +1,9 @@
-// inject-legacy-button.mjs — 为旧版各页面注入「新版入口」悬浮按钮（Issue #105 / 2026-09-28 扩展）
-// 架构：旧版原位 /bs-ball/；重建版部署于 /bs-ball-next/。本脚本幂等地对两个旧版页面注入：
-//   - webapps/bs-ball/index.html（管理台 SPA 入口）：按钮「返回新版」
-//   - webapps/index.html（官网入口页）：按钮「进入新版」
-// 注：webapps/portal.html 已改为「直通新版」页（H25，访问域名即自动进入 /bs-ball-next/），不再注入按钮。
+// inject-legacy-button.mjs — 为旧版各页面注入「新版入口」悬浮按钮（Issue #105 扩展；H27 改页面级映射）
+// 架构：旧版原位 /bs-ball/；重建版 /bs-ball-next/。按钮点击时按当前路径映射到新版对应页（两版路由同构，见注入块 newTarget）：
+//   - webapps/bs-ball/index.html（旧版 SPA 外壳，覆盖全部旧版页面）：按钮「返回新版」
+//   - webapps/index.html（旧版系统介绍页）：按钮「进入新版」→ /bs-ball-next/intro
+// 注：webapps/portal.html 已改为「直通新版」页（H25），不再注入按钮。
+// 注入块含标记 frontend-switch-mapped-v2；旧版（固定 /bs-ball-next/）块会被自动替换。
 // 并对同名 .gz 重新生成（nginx gzip_static 优先命中 .gz，必须同步）：
 //   gz 基行尾对齐 git 索引（i/lf→LF、i/crlf→CRLF、-text→原样），
 //   否则 Linux CI（LF 检出）的 zcat|cmp 门禁会判 stale（2026-09-28 实测教训）。
@@ -41,7 +42,16 @@ for (const t of TARGETS) {
     continue;
   }
   const btnScript = `<script>
+/* frontend-switch-mapped-v2：页面级版本映射（H27）——旧版→新版按当前路径互换；
+   特例：旧版介绍页(/index.html) → 新版介绍页；旧版首页(/bs-ball/、/bs-ball) → 新版门户首页 */
 (function () {
+  function newTarget() {
+    var p = window.location.pathname || '/';
+    if (p === '/index.html') return '/bs-ball-next/intro';
+    if (p === '/bs-ball' || p === '/bs-ball/') return '/bs-ball-next/bs-ball/';
+    if (p.indexOf('/bs-ball/') === 0) return '/bs-ball-next' + p.slice('/bs-ball'.length);
+    return '/bs-ball-next/';
+  }
   function mount() {
     if (document.getElementById('frontend-switch-fallback')) return;
     var btn = document.createElement('button');
@@ -52,7 +62,7 @@ for (const t of TARGETS) {
     btn.style.cssText = 'position:fixed;right:16px;top:16px;z-index:1900;padding:6px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.35);background:rgba(15,32,58,.82);color:#fff;font-size:12px;line-height:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:.72';
     btn.addEventListener('mouseenter', function () { btn.style.opacity = '1'; });
     btn.addEventListener('mouseleave', function () { btn.style.opacity = '.72'; });
-    btn.addEventListener('click', function () { location.href = '/bs-ball-next/'; });
+    btn.addEventListener('click', function () { location.href = newTarget(); });
     document.body.appendChild(btn);
   }
   if (document.body) mount();
@@ -61,16 +71,22 @@ for (const t of TARGETS) {
 </script>
 `;
   let html = fs.readFileSync(file, 'utf8');
-  if (html.includes('frontend-switch-fallback')) {
-    console.log(t.rel + '：按钮已存在，跳过注入');
+  if (html.includes('frontend-switch-mapped-v2')) {
+    console.log(t.rel + '：已是最新映射版注入（v2），跳过');
   } else {
+    // 替换旧版固定指向 /bs-ball-next/ 的注入块
+    const oldBlock = /<script>\s*\(function \(\) \{\s*function mount\(\) \{[\s\S]*?frontend-switch-fallback[\s\S]*?\}\)\(\);\s*<\/script>/;
+    if (oldBlock.test(html)) {
+      html = html.replace(oldBlock, '');
+      console.log(t.rel + '：已移除旧注入块（固定指向）');
+    }
     if (!html.includes('</body>')) {
       console.error(t.rel + '：未找到 </body>，跳过注入');
       continue;
     }
     html = html.replace('</body>', btnScript + '</body>');
     fs.writeFileSync(file, html, 'utf8');
-    console.log(t.rel + '：已注入「' + t.text + '」按钮 → /bs-ball-next/');
+    console.log(t.rel + '：已注入映射版「' + t.text + '」按钮（按当前页映射 → 新版对应页）');
   }
   // .gz 同步（存在才处理；基行尾对齐索引）
   const gzPath = file + '.gz';

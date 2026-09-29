@@ -28,6 +28,7 @@ import OperationLogs from '../views/admin/OperationLogs.js';
 import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js';
 import Home from '../views/portal/Home.js';
 import Welcome from '../views/portal/Welcome.vue';
+import Intro from '../views/portal/Intro.vue';
 import PortalLayout from '../components/portal/PortalLayout.js';
 import News from '../views/portal/News.js';
 import NoticeDetail from '../views/portal/NoticeDetail.js';
@@ -89,6 +90,8 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 const routes = [
     // 新版展示/入口页（无门户外壳）：品牌展示 + 门户/管理台入口（Issue #105 双轨体验对齐）
     { path: '/welcome', name: 'PortalWelcome', component: Welcome },
+    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡与旧版介绍页「进入新版」均指此页）
+    { path: '/intro', name: 'PortalIntro', component: Intro, meta: { title: '系统介绍' } },
     // 根路径默认落地 welcome
     { path: '/', redirect: '/welcome' },
     {
