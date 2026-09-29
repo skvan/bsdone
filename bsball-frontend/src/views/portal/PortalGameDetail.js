@@ -5,7 +5,7 @@ import { ElIcon as xe, ElPopover as We, ElEmpty as Ke, ElButton as Xe, ElBadge a
 import { Setting as $e } from '@element-plus/icons-vue';
 import { useI18n as at } from 'vue-i18n';
 import { useRoute as it } from 'vue-router';
-import { fetchData as de } from '../../api/request';
+import { fetchResult as de } from '../../api/request';
 import { fetchList as $ } from '../../api/request';
 import { DISPLAY_SETTINGS_SYNC_KEY as ce } from '../../utils/portalSyncKeys';
 import { isPortalGuideDismissed as ve } from '../../utils/portalGuide';

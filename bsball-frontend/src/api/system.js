@@ -1,12 +1,12 @@
 // 系统管理 API —— 行为与端点移植自编译产物 system chunk（B0 契约）
-import { get, post, put, del, fetchList, fetchListResult, rewriteUrl, isSuccessCode } from './request';
+import { getData, post, put, del, fetchList, fetchListResult, rewriteUrl, isSuccessCode } from './request';
 import { resolveToken } from './tokenStorage';
 
 const BASE = '/api/sys';
 
 export const userApi = {
   list: (params) => fetchList(`${BASE}/user/list`, params),
-  get: (id) => get(`${BASE}/user/${id}`),
+  get: (id) => getData(`${BASE}/user/${id}`),
   create: (data) => post(`${BASE}/user/create`, data),
   update: (id, data) => put(`${BASE}/user/update/${id}`, data),
   delete: (id) => del(`${BASE}/user/delete/${id}`)
@@ -15,14 +15,14 @@ export const userApi = {
 export const roleApi = {
   list: (params) => fetchList(`${BASE}/role/list`, params),
   assignOptions: (params) => fetchList(`${BASE}/role/assign-options`, params),
-  get: (id) => get(`${BASE}/role/${id}`),
+  get: (id) => getData(`${BASE}/role/${id}`),
   create: (data) => post(`${BASE}/role/create`, data),
   update: (id, data) => put(`${BASE}/role/update/${id}`, data),
   delete: (id) => del(`${BASE}/role/delete/${id}`)
 };
 
 export const menuApi = {
-  list: () => get(`${BASE}/menu/list`),
+  list: () => getData(`${BASE}/menu/list`),
   create: (data) => post(`${BASE}/menu/create`, data),
   update: (id, data) => put(`${BASE}/menu/update/${id}`, data),
   delete: (id) => del(`${BASE}/menu/delete/${id}`)
@@ -30,8 +30,8 @@ export const menuApi = {
 
 export const apiResourceApi = {
   list: (params) => fetchList(`${BASE}/api/list`, params),
-  all: () => get(`${BASE}/api/all`),
-  get: (id) => get(`${BASE}/api/${id}`),
+  all: () => getData(`${BASE}/api/all`),
+  get: (id) => getData(`${BASE}/api/${id}`),
   create: (data) => post(`${BASE}/api/create`, data),
   update: (id, data) => put(`${BASE}/api/update/${id}`, data),
   delete: (id) => del(`${BASE}/api/delete/${id}`)
@@ -54,7 +54,7 @@ export const dictDataApi = {
 export const articleApi = {
   platformList: (params) => fetchList(`${BASE}/article/platform/list`, params),
   list: (params) => fetchList(`${BASE}/article/list`, params),
-  get: (id) => get(`${BASE}/article/${id}`),
+  get: (id) => getData(`${BASE}/article/${id}`),
   create: (data) => post(`${BASE}/article/create`, data),
   update: (id, data) => put(`${BASE}/article/update/${id}`, data),
   delete: (id) => del(`${BASE}/article/delete/${id}`)
@@ -62,7 +62,7 @@ export const articleApi = {
 
 export const noticeApi = {
   list: (params) => fetchList(`${BASE}/notice/list`, params),
-  get: (id) => get(`${BASE}/notice/${id}`),
+  get: (id) => getData(`${BASE}/notice/${id}`),
   create: (data) => post(`${BASE}/notice/create`, data),
   update: (id, data) => put(`${BASE}/notice/update/${id}`, data),
   delete: (id) => del(`${BASE}/notice/delete/${id}`),
@@ -80,7 +80,7 @@ export const resourceApi = {
 
 export const mediaIconApi = {
   list: (params) => fetchList(`${BASE}/media-icon/list`, params),
-  get: (id) => get(`${BASE}/media-icon/${id}`),
+  get: (id) => getData(`${BASE}/media-icon/${id}`),
   create: (data) => post(`${BASE}/media-icon/create`, data),
   update: (id, data) => put(`${BASE}/media-icon/update/${id}`, data),
   delete: (id) => del(`${BASE}/media-icon/delete/${id}`)
@@ -88,7 +88,7 @@ export const mediaIconApi = {
 
 export const mediaGalleryApi = {
   list: (params) => fetchList(`${BASE}/media-gallery/list`, params),
-  get: (id) => get(`${BASE}/media-gallery/${id}`),
+  get: (id) => getData(`${BASE}/media-gallery/${id}`),
   create: (data) => post(`${BASE}/media-gallery/create`, data),
   update: (id, data) => put(`${BASE}/media-gallery/update/${id}`, data),
   delete: (id) => del(`${BASE}/media-gallery/delete/${id}`)
@@ -111,7 +111,7 @@ export const portalMonitorApi = {
 
 export const ipLocationCacheApi = {
   page: (params) => fetchList(`${BASE}/ip-location-cache/page`, params),
-  lbsProviders: () => get(`${BASE}/ip-location-cache/lbs-providers`).then((data) => data ?? []),
+  lbsProviders: () => getData(`${BASE}/ip-location-cache/lbs-providers`).then((data) => data ?? []),
   refresh: (ip, provider) => {
     const query = new URLSearchParams({ ip });
     if (provider != null && provider !== '') query.set('provider', provider);
@@ -125,7 +125,7 @@ function tenantQuery(tenantId) {
 
 export const ipAccessPolicyApi = {
   getPolicy: (tenantId) =>
-    get(`${BASE}/ip-access-policy${tenantQuery(tenantId)}`).then(
+    getData(`${BASE}/ip-access-policy${tenantQuery(tenantId)}`).then(
       (data) => data ?? { mode: 'off', bypassPaths: '', trustXForwardedFor: true, ipAccessFilterEnabled: true }
     ),
   savePolicy: (data, tenantId) => put(`${BASE}/ip-access-policy${tenantQuery(tenantId)}`, data),
@@ -136,17 +136,17 @@ export const ipAccessPolicyApi = {
 };
 
 export const monitorApi = {
-  getDatasourceUrl: () => get(`${BASE}/monitor/datasource/url`).then((data) => data ?? { url: '', tip: '' }),
-  getServerInfo: () => get(`${BASE}/monitor/server`).then((data) => data ?? {}),
-  getCacheInfo: () => get(`${BASE}/monitor/cache`).then((data) => data ?? {}),
+  getDatasourceUrl: () => getData(`${BASE}/monitor/datasource/url`).then((data) => data ?? { url: '', tip: '' }),
+  getServerInfo: () => getData(`${BASE}/monitor/server`).then((data) => data ?? {}),
+  getCacheInfo: () => getData(`${BASE}/monitor/cache`).then((data) => data ?? {}),
   getCacheKeys: (cacheName, pattern, limit) => {
     const query = new URLSearchParams({ cacheName });
     if (pattern != null && pattern !== '') query.set('pattern', pattern);
     if (limit != null && limit > 0) query.set('limit', String(limit));
-    return get(`${BASE}/monitor/cache/keys?${query}`).then((data) => data ?? { keys: [], total: 0 });
+    return getData(`${BASE}/monitor/cache/keys?${query}`).then((data) => data ?? { keys: [], total: 0 });
   },
   getCacheValue: (cacheName, key) =>
-    get(`${BASE}/monitor/cache/value?cacheName=${encodeURIComponent(cacheName)}&key=${encodeURIComponent(key)}`).then(
+    getData(`${BASE}/monitor/cache/value?cacheName=${encodeURIComponent(cacheName)}&key=${encodeURIComponent(key)}`).then(
       (data) => data ?? { cacheName: '', key: '', value: '', message: '' }
     ),
   removeCacheKey: (cacheName, key) =>
@@ -156,11 +156,11 @@ export const monitorApi = {
 
 export const tenantApi = {
   list: (params) => fetchList(`${BASE}/tenant/list`, params),
-  get: (id) => get(`${BASE}/tenant/${id}`),
+  get: (id) => getData(`${BASE}/tenant/${id}`),
   create: (data) => post(`${BASE}/tenant/create`, data),
   update: (id, data) => put(`${BASE}/tenant/update/${id}`, data),
   delete: (id) => del(`${BASE}/tenant/delete/${id}`),
-  scopeOptions: (tenantId) => get(`${BASE}/tenant/scope-options?tenantId=${tenantId}`)
+  scopeOptions: (tenantId) => getData(`${BASE}/tenant/scope-options?tenantId=${tenantId}`)
 };
 
 // 资源上传（multipart，单独走 fetch）

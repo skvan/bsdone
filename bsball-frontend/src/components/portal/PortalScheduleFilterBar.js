@@ -12,7 +12,7 @@ import { loadPrintExport as Ce } from '../../utils/printExport';
 import { loadJsPdf as Te } from '../../utils/printExport';
 import { exportSfc as J } from '../../utils/exportSfc';
 import { onTeamLogoError as q } from '../../utils/placeholderAssets';
-import { formatGameStatusLabel as Ee } from '../../utils/dateExtras';
+import { formatGameStatusLabel as Ee, formatMonthDayWeekTimeCn as ke, formatMonthDayWeekCn as Se } from '../../utils/dateExtras';
 import { EventScheduleSubTableA as Ie } from '../../components/admin/EventScheduleListTable.js';
 import { EventScheduleListTableItem as Ne } from '../../components/admin/EventScheduleListTable.js';
 import { EventScheduleRowTable as Oe } from '../../components/admin/EventScheduleListTable.js';

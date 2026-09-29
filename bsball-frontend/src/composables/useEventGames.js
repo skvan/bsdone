@@ -1,6 +1,6 @@
 // 门户赛事数据组合式 —— 行为移植自编译产物 useEventGames chunk（逐字）
 import { computed, ref, onMounted } from 'vue';
-import { fetchData, fetchAllPages } from '../api/request';
+import { fetchResult, fetchAllPages } from '../api/request';
 
 // 从赛事/比赛记录提取年份（入口 S）
 export function getEventYear(item) {
@@ -31,7 +31,7 @@ export function useEventGames() {
     try {
       const [gamesRes, teamsRes, eventsRes] = await Promise.all([
         fetchAllPages('/api/game/list', {}),
-        fetchData('/api/team/select-options'),
+        fetchResult('/api/team/select-options'),
         fetchAllPages('/api/event/list', {})
       ]);
       if (gamesRes.error) throw new Error(gamesRes.error);

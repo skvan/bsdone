@@ -69,7 +69,15 @@ export function formatMonthDayWeekCn(value) {
   return Number.isNaN(date.getTime()) ? '—' : `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} 周${WEEKDAY_LABELS[date.getDay()]}`;
 }
 
-// 入口 chunk Jn —— 'MM-DD'（非法返 '—'）
+// 入口 chunk Jn —— 'MM.DD 周X HH:mm'（非法返 '—'）——PortalScheduleFilterBar 卡片时间列用（H30 补）
+export function formatMonthDayWeekTimeCn(value) {
+  if (value == null || value === '') return '—';
+  const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} 周${WEEKDAY_LABELS[date.getDay()]} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+// 'MM-DD'（非法返 '—'）——[H30 勘误]原注释误标为「入口 chunk Jn」，实际入口 Jn = formatMonthDayWeekTimeCn（「MM.DD 周X HH:mm」）；本函数当前零引用
 export function formatMonthDayDash(value) {
   if (value == null || value === '') return '—';
   const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;

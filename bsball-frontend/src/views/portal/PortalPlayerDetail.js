@@ -5,7 +5,7 @@ import { ElSkeleton as M, ElMessage as w, ElEmpty as $, ElButton as z } from 'el
 import { useI18n as U } from 'vue-i18n';
 import { useRouter as q, useRoute as F } from 'vue-router';
 import { useAuthStore as H } from '../../stores/auth';
-import { fetchData as y } from '../../api/request';
+import { fetchResult as y } from '../../api/request';
 import { exportSfc as j } from '../../utils/exportSfc';
 import { accountApi as J } from '../../api/account';
 import { useTenantRouter as K } from '../../composables/useTenantRouter';

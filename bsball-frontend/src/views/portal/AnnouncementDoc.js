@@ -3,7 +3,7 @@
 import { createElementBlock as n, defineComponent as y, createTextVNode as v, toDisplayString as s, createElementVNode as _, unref as e, createBlock as c, createVNode as E, openBlock as r, withCtx as m, createCommentVNode as D } from 'vue';
 import { ElSkeleton as h, ElEmpty as g, ElButton as B } from 'element-plus';
 import { useRoute as b } from 'vue-router';
-import { fetchData as w } from '../../api/request';
+import { fetchResult as w } from '../../api/request';
 import { formatDateTimeDotWithWeek as x } from '../../utils/dateExtras';
 import { exportSfc as A } from '../../utils/exportSfc';
 import { useDetailLoad as C } from '../../composables/useDetailLoad';
