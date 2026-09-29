@@ -5,8 +5,9 @@
 .live-game-lineup-page .el-select-dropdown__wrap{max-height:420px!important}
 
 .el-select-dropdown__wrap{max-height:420px!important}
-.admin-aside-mix{width:143px!important;--el-aside-width:143px!important;position:relative!important}
-.admin-aside-mix::after{content:"";position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;background:transparent;z-index:9999;transition:background .2s}
+/* H31：侧栏宽度改由「侧边栏宽度」设置驱动（拖拽/滑块），不再钉死 143px */
+.admin-aside-mix{position:relative!important}
+.admin-aside-mix::after{content:"";position:absolute;right:10px;top:0;bottom:0;width:8px;cursor:col-resize;background:transparent;z-index:9999;transition:background .2s}
 .admin-aside-mix:hover::after{background:rgba(64,158,255,.2)}
 .admin-aside-mix.resizing::after{background:rgba(64,158,255,.4)}
 
