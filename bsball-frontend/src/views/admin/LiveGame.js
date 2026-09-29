@@ -937,6 +937,10 @@ var Bu=Yc("liveGame",()=>{
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
   ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]);
+  function addLivePitcherEarnedRuns(pitcher, runs=1){
+    if(!pitcher?.stats?.pitching||runs<=0)return;
+    pitcher.stats.pitching.er=(pitcher.stats.pitching.er??0)+runs;
+  }
   function Cn(){
     O.inning=1,O.isTop=!0,O.outs=0,O.halfInningOuts=[],O.balls=0,O.strikes=0,O.runners={
       1:null,2:null,3:null
@@ -4334,7 +4338,7 @@ function pu(u,f,l){
   R++){
     if(l.runners[3]&&l.runners[3]!==H){
       const N=l.runners[3],M=f[S++]??"safe";
-      if(l.ensureBatting(N),M==="safe")l.addScore(1),l.creditRBI!==!1&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1),N.stats.batting.r=(N.stats.batting.r??0)+1,_?.stats?.pitching&&(_.stats.pitching.er=(_.stats.pitching.er??0)+1),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
+      if(l.ensureBatting(N),M==="safe")l.addScore(1),l.creditRBI!==!1&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
       else if(M==="noscore")H=N,l.addLog(`不进垒 · ${N.name} (#${N.number??"-"}) — 退回三垒`);
       else{
         l.handleOut();
@@ -4403,7 +4407,7 @@ function cu(u,f){
   const o=f.pitcher,_=f.runners;
   if(_[1]&&_[2]&&_[3]){
     const S=_[3],R=u[0]??"safe";
-    if(f.ensureBatting(S),R==="safe")f.addScore(1),l.stats.batting.rbi=(l.stats.batting.rbi??0)+1,S.stats.batting.r=(S.stats.batting.r??0)+1,o?.stats?.pitching&&(o.stats.pitching.er=(o.stats.pitching.er??0)+1);
+    if(f.ensureBatting(S),R==="safe")f.addScore(1),l.stats.batting.rbi=(l.stats.batting.rbi??0)+1,S.stats.batting.r=(S.stats.batting.r??0)+1,addLivePitcherEarnedRuns(o);
     else{
       f.handleOut();
       const F=R==="out_int"?"妨碍守备出局 (Int.)":R==="out_force"?"封杀出局 (FO)":R==="out_tag"?"触杀出局 (TO)":R==="viol"?"跑垒违规 (Viol.)":"本垒出局 (Out)";
@@ -7968,7 +7972,7 @@ var sg={
         ls(1,{
           runner:a,batter:s?e.batter:void 0,rbiDelta:s?1:void 0,pitcher:t??void 0,erDelta:1
         }
-        ),t?.stats?.pitching&&(t.stats.pitching.er=(t.stats.pitching.er??0)+1),s&&e.batter?.stats?.batting&&(e.batter.stats.batting.rbi=(e.batter.stats.batting.rbi??0)+1),l.runners[3]=null
+        ),addLivePitcherEarnedRuns(t),s&&e.batter?.stats?.batting&&(e.batter.stats.batting.rbi=(e.batter.stats.batting.rbi??0)+1),l.runners[3]=null
       }
       l.runners[2]&&(l.runners[3]=l.runners[2],l.runners[2]=null),l.runners[1]&&(l.runners[2]=l.runners[1],l.runners[1]=null)
     }
