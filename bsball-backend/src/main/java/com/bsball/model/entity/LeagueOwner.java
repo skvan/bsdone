@@ -1,6 +1,7 @@
 package com.bsball.model.entity;
 
 import com.bsball.model.entity.BaseEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Generated;
@@ -15,14 +16,19 @@ extends BaseEntity {
     public static final String STATUS_INACTIVE = "inactive";
     public static final String GRANT_SELF_CREATE = "SELF_CREATE";
     public static final String GRANT_ADMIN_ASSIGN = "ADMIN_ASSIGN";
+    @Column(nullable = false)
     @Comment(value="租户ID")
     private Long tenantId;
+    @Column(nullable = false)
     @Comment(value="联盟ID")
     private Long leagueId;
+    @Column(nullable = false)
     @Comment(value="主办方用户ID")
     private Long userId;
+    @Column(nullable = false, length = 16)
     @Comment(value="状态: active | inactive")
     private String status = STATUS_ACTIVE;
+    @Column(nullable = false, length = 32)
     @Comment(value="授予来源: SELF_CREATE | ADMIN_ASSIGN")
     private String grantSource = GRANT_ADMIN_ASSIGN;
 

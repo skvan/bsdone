@@ -12,5 +12,5 @@ extends JpaRepository<LeagueOwner, Long> {
 
     public List<LeagueOwner> findByLeagueIdAndDeletedAtIsNull(Long leagueId);
 
-    public boolean existsByLeagueIdAndUserIdAndStatusAndDeletedAtIsNull(Long leagueId, Long userId, String status);
+    public boolean existsByLeagueIdAndUserIdAndDeletedAtIsNull(Long leagueId, Long userId);
 }
