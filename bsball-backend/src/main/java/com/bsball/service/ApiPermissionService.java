@@ -38,6 +38,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -137,6 +138,22 @@ public class ApiPermissionService {
         }
         List<SysRole> roles = this.sysRoleRepository.findAllById(roleIds);
         return roles.stream().anyMatch(r -> "tenant_admin".equals(r.getCode()));
+    }
+
+    /**
+     * 判定用户是否拥有给定角色码中的任意一个。
+     * 用于「新增账号类型只扩展一个 Provider」之外的轻量角色判定场景。
+     */
+    public boolean hasAnyRoleCode(Long userId, String... codes) {
+        if (userId == null || codes == null || codes.length == 0) {
+            return false;
+        }
+        List<Long> roleIds = this.getRoleIdsByUserId(userId);
+        if (roleIds.isEmpty()) {
+            return false;
+        }
+        Set<String> wanted = new HashSet<>(Arrays.asList(codes));
+        return this.sysRoleRepository.findAllById(roleIds).stream().anyMatch(r -> r.getCode() != null && wanted.contains(r.getCode()));
     }
 
     public boolean canUserAccessApi(Long userId, String requestPath, String method) {
