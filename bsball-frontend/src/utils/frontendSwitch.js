@@ -95,25 +95,30 @@ function placeIntoHeader() {
     if (existing) existing.remove();
     return true;
   }
-  // 介绍页（H27）：并入顶部导航列表（避免悬浮按钮遮挡页头「立即咨询」CTA）
-  const introNav = document.querySelector('.intro-page .nav-links');
-  if (introNav) {
-    const li = document.createElement('li');
+  // 介绍页（H27/H28）：插入导航条右侧（.nav-inner 内、☰ 之前）——
+  // 桌面在导航条右端、移动端在 ☰ 左侧，全视口常显且不遮挡 CTA/菜单键；
+  // 不可放入 .nav-links（≤640px 随折叠菜单隐藏，H28 用户反馈修复）
+  const introBar = document.querySelector('.intro-page .nav-inner');
+  if (introBar) {
     const btn = makeButton('', '切回旧版');
     btn.dataset.placement = 'header';
     btn.style.cssText = [
       'cursor:pointer',
-      'padding:8px 16px',
-      'border-radius:8px',
-      'border:1px solid rgba(255,255,255,.25)',
+      'padding:6px 14px',
+      'border-radius:18px',
+      'border:1px solid rgba(255,255,255,.35)',
       'background:rgba(255,255,255,.08)',
       'color:rgba(255,255,255,.85)',
-      'font-size:14px',
+      'font-size:13px',
       'font-weight:500',
-      'line-height:20px'
+      'line-height:20px',
+      'margin-left:16px',
+      'margin-right:8px',
+      'flex-shrink:0'
     ].join(';');
-    li.appendChild(btn);
-    introNav.appendChild(li);
+    const toggle = introBar.querySelector('.nav-toggle');
+    if (toggle) introBar.insertBefore(btn, toggle);
+    else introBar.appendChild(btn);
     if (existing) existing.remove();
     return true;
   }
