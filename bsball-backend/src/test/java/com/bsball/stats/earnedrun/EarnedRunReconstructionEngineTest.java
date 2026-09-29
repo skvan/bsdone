@@ -137,6 +137,36 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
+    @DisplayName("暴傳失誤推進造成的得分，應在失誤延長半局時判為非自責分")
+    void marksErrorAdvanceRunUnearnedAfterReconstructedThirdOut() {
+        List<EarnedRunPlay> plays = List.of(
+                play(1, 1, 1, 1, false),
+                play(2, 2, 0, 1, false),
+                play(3, 3, 1, 1, false),
+                play(4, 4, 0, 0, false, ScoringRunner.normal(31, 101)));
+
+        EarnedRunDecision decision = engine.reconstruct(plays).decisions().get(0);
+
+        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
+        assertEquals(UnearnedRunReason.ERROR_EXTENDED_INNING, decision.reason());
+    }
+
+    @Test
+    @DisplayName("換投後承繼跑者與新投手得分，應分別歸屬責任投手")
+    void separatesInheritedRunnerFromNewPitcherRun() {
+        EarnedRunPlay play = play(1, 1, 0, 0, false,
+                ScoringRunner.normal(41, 101),
+                ScoringRunner.normal(42, 202));
+
+        EarnedRunReconstructionResult result = engine.reconstruct(List.of(play));
+
+        assertEquals(1, result.pitcherTotals().get(101L).runs());
+        assertEquals(1, result.pitcherTotals().get(202L).runs());
+        assertEquals(1, result.pitcherTotals().get(101L).earnedRuns());
+        assertEquals(1, result.pitcherTotals().get(202L).earnedRuns());
+    }
+
+    @Test
     @DisplayName("人工覆核可明确指定非自责原因")
     void acceptsAuditableManualOverride() {
         ScoringRunner runner = new ScoringRunner(
