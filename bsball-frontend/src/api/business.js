@@ -129,6 +129,11 @@ export async function fetchPlayersByTeam(teamId) {
         if (list.length >= (total ?? 0) || rows.length < 100) break;
         page += 1;
       }
+      // H32：背号严格归属球队注册段（按 teamId+current 从 teamEntries 映射；无全局值回退）
+      for (const item of list) {
+        const entry = (item.teamEntries ?? []).find((e) => Number(e.teamId) === Number(teamId) && e.current);
+        item.number = entry ? entry.number ?? null : null;
+      }
       playersByTeamCache.set(teamId, { data: list, ts: Date.now() });
       return list;
     })();
