@@ -29,7 +29,7 @@
 
 <script setup>
 // Welcome —— 新版展示/入口页（Issue #105 双轨体验对齐；入口选择与旧版入口页对齐：
-// 「系统介绍」→ 官网介绍页 /index.html、「进入门户」→ 门户首页）
+// 「系统介绍」→ 新版系统介绍页 /intro、「进入门户」→ 门户首页）
 // 品牌信息来自站点配置（appConfig store，/portal/settings）；无门户外壳，独立设计。
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -51,8 +51,8 @@ const footerText = computed(() => (config.config && config.config.showFooterPort
 // 不可硬编码 '/租户码/'：剥离 base 后即根路由 '/'，会被 redirect /welcome 拦截（原地打转）或落到旧版
 const portalHref = router.resolve({ name: 'PortalHome', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
 
-// 系统介绍页 = 域名根静态官网（非 SPA 路由；部署环境下为 /index.html；本地 dev 无此静态页属预期）
-function goIntro() { location.href = '/index.html'; }
+// 系统介绍页 = 新版系统介绍页（H27 起为本版 SPA 页面；旧版静态官网 /index.html 保留给旧轨）
+function goIntro() { location.href = router.resolve({ name: 'PortalIntro' }).href; }
 function goPortal() { location.href = portalHref; }
 </script>
 
