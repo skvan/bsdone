@@ -8,6 +8,8 @@
  *  - 语义铁律：门户角色（member / team_manager / league_organizer）无归属即空域，绝不回退不受限；
  *    legacy strict 仅影响「遗留自定义角色账号」；超管 / 租户管理员租户内不受限。
  *
+ * 本类为统一范围中枢，新代码一律使用本类；遗留 DataScopeService 将随迁移逐步退场。
+ *
  * 设计细化（本任务引入）：
  *  Caffeine 缓存的是与请求无关的核心范围 ScopeCore（不含 guestLikeRead 请求级标志），
  *  resolve 每次按当前请求现装 EffectiveScope。原因：guestLikeRead 是请求级标志
@@ -43,7 +45,7 @@ import org.springframework.stereotype.Service;
 public class AccountScopeService {
 
     private static final Set<Long> EMPTY = Set.of();
-    private static final ThreadLocal<Map<Long, EffectiveScope>> REQ_CACHE = ThreadLocal.withInitial(HashMap::new);
+    private static final ThreadLocal<Map<String, EffectiveScope>> REQ_CACHE = ThreadLocal.withInitial(HashMap::new);
 
     private final ApiPermissionService apiPermissionService;
     private final TenantProperties tenantProperties;
@@ -62,8 +64,9 @@ public class AccountScopeService {
     }
 
     public EffectiveScope resolveCurrent() {
-        Long tid = CurrentUserHolder.getTenantId() == null ? Long.valueOf(0L) : CurrentUserHolder.getTenantId();
-        return resolve(CurrentUserHolder.get(), tid.longValue());
+        Long tenantId = CurrentUserHolder.getTenantId();
+        long tid = tenantId == null ? 0L : tenantId.longValue();
+        return resolve(CurrentUserHolder.get(), tid);
     }
 
     public EffectiveScope resolve(Long userId, long tenantId) {
@@ -71,17 +74,18 @@ public class AccountScopeService {
         if (userId == null) {
             return EffectiveScope.restricted(guestLike, EMPTY, EMPTY);
         }
-        Map<Long, EffectiveScope> req = REQ_CACHE.get();
-        EffectiveScope cached = req.get(userId);
+        String cacheKey = userId + "#" + tenantId;
+        Map<String, EffectiveScope> req = REQ_CACHE.get();
+        EffectiveScope cached = req.get(cacheKey);
         if (cached != null) {
             return cached;
         }
         // 设计细化：Caffeine 缓存“与请求无关”的核心范围（ScopeCore，不含 guestLikeRead 请求级标志），
         // 每次请求装配 EffectiveScope 时再注入当前请求的 guestLike —— 避免首个请求的标志被 30s 缓存跨请求复用。
-        ScopeCore core = this.scopeCache.get(userId + "#" + tenantId, k -> resolveCore(userId, tenantId));
+        ScopeCore core = this.scopeCache.get(cacheKey, k -> resolveCore(userId, tenantId));
         EffectiveScope out = core.unrestricted() ? EffectiveScope.unrestricted()
                 : EffectiveScope.restricted(guestLike, core.leagueIds(), core.teamIds());
-        req.put(userId, out);
+        req.put(cacheKey, out);
         return out;
     }
 
