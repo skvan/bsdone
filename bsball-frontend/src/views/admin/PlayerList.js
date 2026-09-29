@@ -1147,7 +1147,7 @@ var $n={
       ),window.addEventListener("mouseup",lt,{
         passive:!0
       }
-      ),Le.value=(await Bn.selectOptions())?.data??[];
+      ),Le.value=await Bn.selectOptions()??[];
       const a=se.query.teamId;
       if(a){
         const u=Number(a);
