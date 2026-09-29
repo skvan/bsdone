@@ -3,6 +3,7 @@ package com.bsball.service;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.stats.earnedrun.UnearnedRunReason;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.GamePlayerStatRepository;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,50 @@ public class EarnedRunReconstructionService {
         persistReconstruction(tenantId, gameId, inning, half, operatorId, plays, result);
         applyPitcherStatDeltas(tenantId, gameId, oldDecisions, result.decisions());
         return result;
+    }
+
+    @Transactional
+    public EarnedRunDecisionEntity overrideDecision(
+            long tenantId, long gameId, long decisionId, long operatorId,
+            String earnedStatus, String unearnedReason) {
+        if (tenantId <= 0 || gameId <= 0 || decisionId <= 0 || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, decision and operator must be positive");
+        }
+        EarnedRunStatus next = EarnedRunStatus.valueOf(Objects.requireNonNull(earnedStatus).toUpperCase());
+        if (next == EarnedRunStatus.PENDING) {
+            throw new IllegalArgumentException("Manual review must resolve PENDING to EARNED or UNEARNED");
+        }
+        if (next == EarnedRunStatus.UNEARNED && (unearnedReason == null || unearnedReason.isBlank())) {
+            throw new IllegalArgumentException("UNEARNED requires an unearned reason");
+        }
+        EarnedRunDecisionEntity entity = decisionRepository
+                .findByIdAndTenantIdAndGameId(decisionId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("Earned-run decision not found"));
+        EarnedRunStatus previous = EarnedRunStatus.valueOf(entity.getEarnedStatus());
+        if (previous != next) {
+            adjustPitcherStat(tenantId, gameId, entity.getResponsiblePitcherId(), previous, -1);
+            adjustPitcherStat(tenantId, gameId, entity.getResponsiblePitcherId(), next, 1);
+        }
+        entity.setEarnedStatus(next.name());
+        entity.setUnearnedReason(next == EarnedRunStatus.UNEARNED ? unearnedReason : null);
+        entity.setOverriddenBy(operatorId);
+        entity.setOverriddenAt(LocalDateTime.now());
+        return decisionRepository.save(entity);
+    }
+
+    private void adjustPitcherStat(long tenantId, long gameId, long pitcherId,
+            EarnedRunStatus status, int direction) {
+        GamePlayerStat stat = gamePlayerStatRepository.findByGameId(gameId).stream()
+                .filter(row -> Objects.equals(row.getTenantId(), tenantId))
+                .filter(row -> Objects.equals(row.getPlayerId(), pitcherId))
+                .filter(row -> Integer.valueOf(1).equals(row.getIsPitcher()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Missing pitcher stat row for responsible pitcher " + pitcherId));
+        stat.setPitchR(Math.max(0, valueOrZero(stat.getPitchR()) + direction));
+        if (status == EarnedRunStatus.EARNED) stat.setEr(Math.max(0, valueOrZero(stat.getEr()) + direction));
+        if (status == EarnedRunStatus.UNEARNED) stat.setUnearnedR(Math.max(0, valueOrZero(stat.getUnearnedR()) + direction));
+        if (status == EarnedRunStatus.PENDING) stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + direction));
+        gamePlayerStatRepository.save(stat);
     }
 
     private List<EarnedRunDecisionEntity> findExistingDecisions(

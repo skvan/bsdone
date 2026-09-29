@@ -46,11 +46,13 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.BaseEntity;
 import com.bsball.model.entity.Event;
+import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.Stadium;
@@ -364,6 +366,31 @@ public class GameService {
                 request.getHalf(),
                 operatorId,
                 request.getPlays());
+    }
+
+    /** Resolves a pending earned-run decision and records the reviewing operator. */
+    @Transactional
+    public EarnedRunDecisionEntity overrideEarnedRunDecision(
+            Long gameId, Long decisionId, EarnedRunDecisionOverrideRequest request) {
+        if (request == null || request.getEarnedStatus() == null) {
+            throw new BusinessException(400, "缺少自責分覆核結果");
+        }
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
+            throw new BusinessException(404, "比賽不存在");
+        }
+        this.assertGameWritable(game);
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登入");
+        }
+        try {
+            return this.earnedRunReconstructionService.overrideDecision(
+                    game.getTenantId(), gameId, decisionId, operatorId,
+                    request.getEarnedStatus(), request.getUnearnedReason());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
     }
 
     @Transactional(rollbackFor={Exception.class})

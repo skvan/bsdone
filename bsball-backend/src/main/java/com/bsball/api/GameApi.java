@@ -31,11 +31,13 @@ import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.model.dto.GameResponseDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
+import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.service.GamePlayerStatService;
 import com.bsball.service.GameService;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
@@ -117,6 +119,14 @@ public class GameApi {
             @PathVariable Long id,
             @RequestBody EarnedRunHalfInningRequest body) {
         return Result.ok(this.gameService.reconstructEarnedRuns(id, body));
+    }
+
+    @PutMapping(value={"/{id}/earned-runs/decisions/{decisionId}"})
+    public Result<EarnedRunDecisionEntity> overrideEarnedRunDecision(
+            @PathVariable Long id,
+            @PathVariable Long decisionId,
+            @RequestBody EarnedRunDecisionOverrideRequest body) {
+        return Result.ok(this.gameService.overrideEarnedRunDecision(id, decisionId, body));
     }
 
     @PostMapping(value={"/{id}/save-result"})
