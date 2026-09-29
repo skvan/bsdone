@@ -1,0 +1,23 @@
+name: Earned run tests
+
+on:
+  push:
+    branches:
+      - feature/issue-149-earned-run-engine
+  pull_request:
+
+jobs:
+  backend-earned-run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bsball-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Run earned-run tests
+        run: mvn -B -Dtest=EarnedRunReconstructionEngineTest,EarnedRunReconstructionServiceTest test

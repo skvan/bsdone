@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, 'v*/dev', 'feature/**']
   pull_request:
@@ -76,6 +77,41 @@ jobs:
             fi
           done <<< "${{ steps.changed.outputs.files }}"
           exit "$FAIL"
+
+  live-game-e2e:
+    name: LiveGame browser E2E
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.LIVEGAME_E2E_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: bsball-frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: bsball-frontend
+        run: npm ci
+      - name: Install Playwright browser
+        working-directory: bsball-frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run LiveGame E2E
+        working-directory: bsball-frontend
+        env:
+          E2E_BASE_URL: ${{ vars.E2E_BASE_URL }}
+          E2E_TENANT: ${{ secrets.E2E_TENANT }}
+          E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_EVENT_ID: ${{ secrets.E2E_EVENT_ID }}
+          E2E_GAME_ID: ${{ secrets.E2E_GAME_ID }}
+        run: npm run test:e2e
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-game-playwright-report
+          path: bsball-frontend/test-results
 
       - name: Verify .gz twins decode to their JS
         if: steps.changed.outputs.files != ''

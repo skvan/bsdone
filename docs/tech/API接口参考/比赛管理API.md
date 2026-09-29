@@ -267,6 +267,12 @@ EventService --> EventRepository
 - POST /game/{id}/save-live
   - 作用：更新比赛实时比分与部分统计
   - 参考：`GameApi.java:107-111`
+- POST /game/{id}/earned-runs/reconstruct
+  - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
+  - 请求：`inning`、`half`（`top`/`bottom`）及按 `sequence` 严格递增的完整 `plays` 列表
+  - 注意：该接口不是增量追加；判决待定时应传 `rulingPending=true`，结果会保留为 `PENDING`
+  - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR` 与 `er`，重放不会重复累计
+  - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新

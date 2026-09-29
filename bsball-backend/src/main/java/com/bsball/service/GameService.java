@@ -46,10 +46,13 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
+import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.BaseEntity;
 import com.bsball.model.entity.Event;
+import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.Stadium;
@@ -57,6 +60,7 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
+import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.DataScopeService;
 import com.bsball.service.TenantQueryPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -94,6 +98,7 @@ public class GameService {
     private final StadiumRepository stadiumRepository;
     private final DataScopeService dataScopeService;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final EarnedRunReconstructionService earnedRunReconstructionService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
         boolean hasFilter;
@@ -335,6 +340,56 @@ public class GameService {
                 this.applyPartToStat(newStat, part, gameId, statTid);
                 this.gamePlayerStatRepository.save(newStat);
             }
+        }
+    }
+
+    /** Reconstructs and stores all earned-run decisions for one half-inning. */
+    @Transactional
+    public EarnedRunReconstructionResult reconstructEarnedRuns(
+            Long gameId, EarnedRunHalfInningRequest request) {
+        if (request == null || request.getInning() == null || request.getPlays() == null) {
+            throw new BusinessException(400, "缺少自责分重建资料");
+        }
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
+            throw new BusinessException(404, "比赛不存在");
+        }
+        this.assertGameWritable(game);
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        return this.earnedRunReconstructionService.replaceHalfInning(
+                game.getTenantId(),
+                gameId,
+                request.getInning(),
+                request.getHalf(),
+                operatorId,
+                request.getPlays());
+    }
+
+    /** Resolves a pending earned-run decision and records the reviewing operator. */
+    @Transactional
+    public EarnedRunDecisionEntity overrideEarnedRunDecision(
+            Long gameId, Long decisionId, EarnedRunDecisionOverrideRequest request) {
+        if (request == null || request.getEarnedStatus() == null) {
+            throw new BusinessException(400, "缺少自責分覆核結果");
+        }
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
+            throw new BusinessException(404, "比賽不存在");
+        }
+        this.assertGameWritable(game);
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登入");
+        }
+        try {
+            return this.earnedRunReconstructionService.overrideDecision(
+                    game.getTenantId(), gameId, decisionId, operatorId,
+                    request.getEarnedStatus(), request.getUnearnedReason());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
         }
     }
 
@@ -801,13 +856,14 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.eventRepository = eventRepository;
         this.stadiumRepository = stadiumRepository;
         this.dataScopeService = dataScopeService;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.earnedRunReconstructionService = earnedRunReconstructionService;
     }
 }
 
