@@ -101,6 +101,42 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
+    @DisplayName("捕逸造成的得分保留非自責原因")
+    void marksPassedBallRunUnearned() {
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, ScoringRunner.passedBall(11, 101))))
+                .decisions().get(0);
+
+        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
+        assertEquals(UnearnedRunReason.PASSED_BALL, decision.reason());
+    }
+
+    @Test
+    @DisplayName("妨礙造成的得分保留非自責原因")
+    void marksInterferenceRunUnearned() {
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, ScoringRunner.interference(11, 101))))
+                .decisions().get(0);
+
+        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
+        assertEquals(UnearnedRunReason.INTERFERENCE, decision.reason());
+    }
+
+    @Test
+    @DisplayName("暴投、犧牲打與野手選擇不應自動一律判為非自責分")
+    void keepsNormalPitchingSequencesEarned() {
+        List<EarnedRunPlay> plays = List.of(
+                play(1, 1, 0, 0, false),
+                play(2, 2, 0, 0, false, ScoringRunner.normal(11, 101)),
+                play(3, 3, 0, 0, false, ScoringRunner.normal(12, 101)));
+
+        List<EarnedRunDecision> decisions = engine.reconstruct(plays).decisions();
+
+        assertEquals(EarnedRunStatus.EARNED, decisions.get(0).status());
+        assertEquals(EarnedRunStatus.EARNED, decisions.get(1).status());
+    }
+
+    @Test
     @DisplayName("人工覆核可明确指定非自责原因")
     void acceptsAuditableManualOverride() {
         ScoringRunner runner = new ScoringRunner(

@@ -1,4 +1,4 @@
-const RUNNER_ORIGINS = new Set(['NORMAL', 'ERROR', 'TIE_BREAK']);
+const RUNNER_ORIGINS = new Set(['NORMAL', 'ERROR', 'TIE_BREAK', 'PASSED_BALL', 'INTERFERENCE']);
 const PENDING_RULINGS = new Set(['PENDING', 'UNKNOWN']);
 
 export function createLivePlayEvent(input = {}) {
@@ -52,6 +52,8 @@ export function inferRunnerOrigin(explicitOrigin, resultCode) {
   const code = String(resultCode ?? '').toUpperCase();
   if (code === 'TIE_BREAK' || code === 'TBR') return 'TIE_BREAK';
   if (/^E(?:[0-9]+)?$/.test(code) || code.startsWith('ERROR')) return 'ERROR';
+  if (code === 'PB' || code === 'PASSED_BALL' || code === 'CATCHER_ERROR') return 'PASSED_BALL';
+  if (code === 'INTERFERENCE' || code === 'INT') return 'INTERFERENCE';
   return 'NORMAL';
 }
 

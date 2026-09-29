@@ -33,4 +33,12 @@ public record ScoringRunner(
     public static ScoringRunner tieBreak(long runnerId, long responsiblePitcherId) {
         return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.TIE_BREAK, null, null);
     }
+
+    public static ScoringRunner passedBall(long runnerId, long responsiblePitcherId) {
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.PASSED_BALL, null, null);
+    }
+
+    public static ScoringRunner interference(long runnerId, long responsiblePitcherId) {
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.INTERFERENCE, null, null);
+    }
 }
