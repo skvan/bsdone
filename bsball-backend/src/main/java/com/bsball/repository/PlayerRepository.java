@@ -18,6 +18,7 @@ import com.bsball.model.dto.PlayerOptionDto;
 import com.bsball.model.entity.Player;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,6 +36,8 @@ JpaSpecificationExecutor<Player> {
     public List<Player> findByDeletedAtIsNull();
 
     public List<Player> findByDeletedAtIsNullAndIdIn(List<Long> var1);
+
+    public Optional<Player> findFirstByUserIdAndDeletedAtIsNull(Long userId);
 
     @Query(value="select new com.bsball.model.dto.PlayerOptionDto(p.id, p.name, p.number, p.teamId) from Player p where p.deletedAt is null order by coalesce(p.sort, 0) asc, p.id asc")
     public List<PlayerOptionDto> findAllForSelect();
