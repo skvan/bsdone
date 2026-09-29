@@ -1049,7 +1049,7 @@ var Sl={
       ,d=["2B","3B","HR","IPHR"],v=(y,f)=>f>1?`${y}(${f})`:y;
       for(const y of e){
         if(y._totals)continue;
-        const f=c.playersMap[y.playerId]?.name??`#${y.playerId}`,a=Number(y.doubles)||0,o=Number(y.triples)||0,x=Number(y.hr)||0,X=Number(y.insideParkHr)||0;
+        const f=pm(y)?.name??`#${y.playerId}`,a=Number(y.doubles)||0,o=Number(y.triples)||0,x=Number(y.hr)||0,X=Number(y.insideParkHr)||0;
         a>0&&l["2B"].push(v(f,a)),o>0&&l["3B"].push(v(f,o)),x>0&&l.HR.push(v(f,x)),X>0&&l.IPHR.push(v(f,X))
       }
       for(const y of d){
@@ -1162,21 +1162,25 @@ var Sl={
       flush:"post",immediate:!0
     }
     );
+    // H33：playersMap 复合键（teamId:playerId）优先、单键兜底——背号/信息严格按队（键约定见 utils/teamPlayersMap.js）
+    function pm(e){
+      const t=e&&e.teamId!=null?c.playersMap[e.teamId+":"+e.playerId]:void 0;
+      return t??(e?c.playersMap[e.playerId]:void 0)
+    }
     function ll(e){
       const t=c.playersMap[e];
       return t?.name||t?.shortName||`#${e}`
     }
-    function rl(e){
-      return xa(c.playersMap[e]?.number)
-    }
+    // 号码严格走复合键（单键非「按队映射」，不参与号码回退；口径：按队映射优先→行内快照）
     function j(e){
-      const t=e.number;
-      return t!=null&&t!==""?xa(t)||t:rl(e.playerId)
+      const t=e&&e.teamId!=null?c.playersMap[e.teamId+":"+e.playerId]:void 0;
+      const l=t?.number,n=l!=null&&l!==""?l:e.number;
+      return n!=null&&n!==""?xa(n)||n:""
     }
     function na(e){
       const t=e.throwHand;
       if(t==="L"||t==="R"||t==="B")return t;
-      const l=c.playersMap[e.playerId],d=l?.throwHand??l?.hand;
+      const l=pm(e),d=l?.throwHand??l?.hand;
       return d==="L"||d==="R"||d==="B"?d:""
     }
     function oa(e){

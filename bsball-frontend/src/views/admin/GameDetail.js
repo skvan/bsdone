@@ -11,6 +11,8 @@ import { gameStatsApi as ze } from '../../api/business';
 import { playerApi as ee } from '../../api/business';
 import { gameApi as Ue } from '../../api/business';
 import { teamApi as ae } from '../../api/business';
+import { fetchPlayersByTeam } from '../../api/business';
+import { buildTeamPlayersMap, addTeamEntryPlayers } from '../../utils/teamPlayersMap';
 import Ze from '../../components/admin/GameDetailContent.js';
 import { readFieldSettings as Ge } from '../../utils/gameDetailFieldSettingsStorage';
 import { writeFieldSettings as xe } from '../../utils/gameDetailFieldSettingsStorage';
@@ -539,31 +541,15 @@ var Ne={
         o.value=!1;
         return
       }
-      const[b,k,U]=await Promise.all([ze.listByGame(O.value),w.value?ee.list({
-        teamId:u.homeTeamId,pageSize:50
-      }
-      ):Promise.resolve({
-        list:[]
-      }
-      ),w.value?ee.list({
-        teamId:u.awayTeamId,pageSize:50
-      }
-      ):Promise.resolve({
-        list:[]
-      }
-      )]);
+      const[b,k,U]=await Promise.all([ze.listByGame(O.value),u.homeTeamId?fetchPlayersByTeam(u.homeTeamId):Promise.resolve([]),u.awayTeamId?fetchPlayersByTeam(u.awayTeamId):Promise.resolve([])]);
       R.value=b.list??[];
       const Z=u.homeTeamId,s=u.awayTeamId,[e,d]=await Promise.all([Z?ae.get(Z):Promise.resolve(null),s?ae.get(s):Promise.resolve(null)]);
       W.value=[e,d].filter(Boolean);
-      const g=k.list??[],y=U.list??[];
-      let c=Object.fromEntries([...g,...y].map(_=>[_.id,_]));
+      // H33：playersMap 复合键（teamId:playerId）+ 单键兼容；补集按注册段生成按队副本
+      const c=buildTeamPlayersMap(k??[],Z,U??[],s);
       const h=[...new Set(R.value.map(_=>_.playerId).filter(_=>!c[_]))];
       if(h.length){
-        const _=(await ee.listByIds(h)).list??[];
-        for(const B of _)B?.id&&(c={
-          ...c,[B.id]:B
-        }
-        )
+        addTeamEntryPlayers(c,(await ee.listByIds(h)).list??[])
       }
       F.value=c,o.value=!1
     }
