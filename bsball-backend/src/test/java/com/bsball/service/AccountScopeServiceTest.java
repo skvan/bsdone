@@ -50,8 +50,7 @@ class AccountScopeServiceTest {
     @Mock
     private ApiPermissionService apiPermissionService;
 
-    @Mock
-    private TenantProperties tenantProperties;
+    private final TenantProperties tenantProperties = new TenantProperties();
 
     @Mock
     private SysDataScopeRepository sysDataScopeRepository;
@@ -59,15 +58,22 @@ class AccountScopeServiceTest {
     @Mock
     private TeamRepository teamRepository;
 
+    private AccountScopeService service;
+
     @BeforeEach
     void setUp() {
-        // GuestPublicApiHolder / REQ_CACHE 均为 ThreadLocal，用例起点必须清空
+        // GuestPublicApiHolder 为 ThreadLocal，用例起点必须清空；strict 值按用例默认非严格重置
         GuestPublicApiHolder.clear();
+        tenantProperties.setStrictDataScope(false);
     }
 
     @AfterEach
     void tearDown() {
+        // GuestPublicApiHolder 与 REQ_CACHE 均为 ThreadLocal，用例结束显式清理，避免跨用例污染
         GuestPublicApiHolder.clear();
+        if (service != null) {
+            service.clearRequestScopeCache();
+        }
     }
 
     // ------------------------------------------------------------------ 用例 1
@@ -76,7 +82,7 @@ class AccountScopeServiceTest {
     @DisplayName("匿名（userId=null）：门户只读放行，绝不授予管理权")
     void anonymous_returnsGuestLikeReadOnly() {
         GuestPublicApiHolder.setGuestLikeRead(true);
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(null, TENANT_ID);
 
@@ -95,7 +101,7 @@ class AccountScopeServiceTest {
     @DisplayName("超级管理员：租户内不受限")
     void superAdmin_isUnrestricted() {
         when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(true);
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -103,6 +109,7 @@ class AccountScopeServiceTest {
         assertFalse(s.isManageEmpty());
         assertTrue(s.canManageLeague(1L));
         assertTrue(s.canManageTeam(1L));
+        verifyNoInteractions(sysDataScopeRepository, teamRepository);
     }
 
     // ------------------------------------------------------------------ 用例 3
@@ -112,12 +119,13 @@ class AccountScopeServiceTest {
     void tenantAdmin_isUnrestricted() {
         when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
         when(apiPermissionService.isTenantAdmin(USER_ID)).thenReturn(true);
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
         assertTrue(s.isUnrestrictedInTenant());
         assertFalse(s.isManageEmpty());
+        verifyNoInteractions(sysDataScopeRepository, teamRepository);
     }
 
     // ------------------------------------------------------------------ 用例 4
@@ -126,7 +134,7 @@ class AccountScopeServiceTest {
     @DisplayName("球队管理员：仅可管理自有球队（100 放行 / 101 拒绝）")
     void teamManager_withRelation_managesOwnTeams() {
         givenPortalAccountWithoutLegacyRows();
-        AccountScopeService service = newService(teamProvider(100L));
+        newService(teamProvider(100L));
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -142,7 +150,7 @@ class AccountScopeServiceTest {
     @DisplayName("主办方：仅可管理自有联盟，且不注入球队")
     void organizer_withLeagueRelation_managesOnlyOwnedLeague() {
         givenPortalAccountWithoutLegacyRows();
-        AccountScopeService service = newService(leagueProvider(10L));
+        newService(leagueProvider(10L));
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -160,7 +168,7 @@ class AccountScopeServiceTest {
     @DisplayName("门户角色无归属：返回空域（绝不回退不受限）")
     void portalWithoutRelations_getsEmptyScope() {
         givenPortalAccountWithoutLegacyRows();
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -177,7 +185,7 @@ class AccountScopeServiceTest {
     void member_guestLikeRead_canReadButNotManage() {
         givenPortalAccountWithoutLegacyRows();
         GuestPublicApiHolder.setGuestLikeRead(true);
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -194,7 +202,7 @@ class AccountScopeServiceTest {
     @DisplayName("球员身份：仅标记不注入集合，管理域为空")
     void playerIdentity_doesNotGrantManage() {
         givenPortalAccountWithoutLegacyRows();
-        AccountScopeService service = newService(identityOnlyProvider());
+        newService(identityOnlyProvider());
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -215,7 +223,7 @@ class AccountScopeServiceTest {
                         leagueScope(10L, SysDataScope.EXP_INCLUDE_DESCENDANTS),
                         teamScope(200L)));
         when(teamRepository.findIdsByLeagueIdAndTenantId(10L, TENANT_ID)).thenReturn(List.of(100L, 101L));
-        AccountScopeService service = newService();
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -232,14 +240,9 @@ class AccountScopeServiceTest {
     @Test
     @DisplayName("遗留自定义角色、无行、非严格：租户内不受限")
     void legacyCustomAccount_noRows_strictFalse_isUnrestricted() {
-        when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
-        when(apiPermissionService.isTenantAdmin(USER_ID)).thenReturn(false);
-        when(sysDataScopeRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(USER_ID, TENANT_ID))
-                .thenReturn(List.of());
-        when(apiPermissionService.hasAnyRoleCode(USER_ID, "member", "team_manager", "league_organizer"))
-                .thenReturn(false);
-        when(tenantProperties.isStrictDataScope()).thenReturn(false);
-        AccountScopeService service = newService();
+        givenLegacyCustomAccountNoRows();
+        tenantProperties.setStrictDataScope(false);
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -252,14 +255,9 @@ class AccountScopeServiceTest {
     @Test
     @DisplayName("遗留自定义角色、无行、严格：返回空域")
     void legacyCustomAccount_noRows_strictTrue_isEmpty() {
-        when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
-        when(apiPermissionService.isTenantAdmin(USER_ID)).thenReturn(false);
-        when(sysDataScopeRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(USER_ID, TENANT_ID))
-                .thenReturn(List.of());
-        when(apiPermissionService.hasAnyRoleCode(USER_ID, "member", "team_manager", "league_organizer"))
-                .thenReturn(false);
-        when(tenantProperties.isStrictDataScope()).thenReturn(true);
-        AccountScopeService service = newService();
+        givenLegacyCustomAccountNoRows();
+        tenantProperties.setStrictDataScope(true);
+        newService();
 
         EffectiveScope s = service.resolve(USER_ID, TENANT_ID);
 
@@ -281,7 +279,7 @@ class AccountScopeServiceTest {
             ((ScopeResolutionContext) inv.getArgument(0)).addTeam(teamId[0]);
             return null;
         }).when(provider).contribute(any(ScopeResolutionContext.class));
-        AccountScopeService service = newService(provider);
+        newService(provider);
 
         EffectiveScope first = service.resolve(USER_ID, TENANT_ID);
         assertTrue(first.canManageTeam(100L));
@@ -307,12 +305,22 @@ class AccountScopeServiceTest {
 
     /** 构造被测服务：@Generated 构造器 + 手动初始化缓存（不启动 Spring）。 */
     private AccountScopeService newService(ScopeRelationProvider... providers) {
-        AccountScopeService service = new AccountScopeService(
+        service = new AccountScopeService(
                 apiPermissionService, tenantProperties, List.of(providers),
                 sysDataScopeRepository, teamRepository);
         service.initScopeCache();
         service.clearRequestScopeCache();
         return service;
+    }
+
+    /** 遗留自定义账号基础桩：非超管 / 非租管、无遗留行、非门户角色。 */
+    private void givenLegacyCustomAccountNoRows() {
+        when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(USER_ID)).thenReturn(false);
+        when(sysDataScopeRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(USER_ID, TENANT_ID))
+                .thenReturn(List.of());
+        when(apiPermissionService.hasAnyRoleCode(USER_ID, "member", "team_manager", "league_organizer"))
+                .thenReturn(false);
     }
 
     /** 门户角色账号基础桩：非超管 / 非租管、无遗留行、具门户角色。 */

@@ -2,7 +2,7 @@
  * 账号权限重构（批次 1）：球队管理员关系提供者（TeamManagerRelationProvider）。
  *
  * 职责：
- *  - 若当前账号在 bs_team_manager 中关联了任意 active 球队，则判定本 Provider 适用于该账号；
+ *  - 若当前账号在 bs_team_manager 中于当前租户内关联了任意 active 球队，则判定本 Provider 适用于该账号；
  *  - 适用时把其管理的球队 ID 注入上下文（teamIds）。
  *
  * 契约（T1.4）：
@@ -24,7 +24,7 @@ public class TeamManagerRelationProvider implements ScopeRelationProvider {
 
     private final TeamManagerRepository teamManagerRepository;
 
-    /** 该 Provider 是否适用于当前账号（按 TeamManager 关系数据判定）。 */
+    /** 该 Provider 是否适用于当前账号（按 TeamManager 关系数据、限定本租户判定）。 */
     @Override
     public boolean supports(ScopeResolutionContext ctx) {
         return ctx.getUserId() != null

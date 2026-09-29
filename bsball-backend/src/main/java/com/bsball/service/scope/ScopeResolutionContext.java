@@ -6,6 +6,9 @@
  *    联盟 / 球队 ID 集合，由 ScopeRelationProvider 各实现按关系数据向其注入（contribute）；
  *  - 集合「按设计可写」：addLeague / addTeam 供 Provider 注入与兼容分支展开使用，
  *    故本类不提供不可变包装，也不要在此添加此类改动；
+ *  - 注入契约：注入一律走 addLeague / addTeam（内置 null 守卫）；请勿直接对 getLeagueIds() /
+ *    getTeamIds() 的返回集合做 add / addAll 注入，以免绕过守卫导致下游 EffectiveScope 的
+ *    Set.copyOf 因 null 元素抛 NPE；
  *  - 最终不可变性由消费端 EffectiveScope 保证：其构造器对集合做 Set.copyOf 防御性拷贝，
  *    对外以不可变视图暴露。可变工作台 → 不可变结果，职责分明。
  *
