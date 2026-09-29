@@ -19,6 +19,8 @@ extends JpaRepository<TeamManager, Long> {
 
     public List<TeamManager> findByUserIdAndStatusAndDeletedAtIsNull(Long var1, String var2);
 
+    public List<TeamManager> findByUserIdAndTenantIdAndStatusAndDeletedAtIsNull(Long userId, Long tenantId, String status);
+
     public Optional<TeamManager> findByTeamIdAndUserIdAndDeletedAtIsNull(Long var1, Long var2);
 
     public boolean existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(Long var1, Long var2, String var3);

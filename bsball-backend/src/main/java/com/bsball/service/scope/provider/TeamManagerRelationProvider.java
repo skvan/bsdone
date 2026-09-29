@@ -22,22 +22,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class TeamManagerRelationProvider implements ScopeRelationProvider {
 
-    private static final String STATUS_ACTIVE = "active";
-
     private final TeamManagerRepository teamManagerRepository;
 
     /** 该 Provider 是否适用于当前账号（按 TeamManager 关系数据判定）。 */
     @Override
     public boolean supports(ScopeResolutionContext ctx) {
         return ctx.getUserId() != null
-                && !teamManagerRepository.findByUserIdAndStatusAndDeletedAtIsNull(ctx.getUserId(), STATUS_ACTIVE).isEmpty();
+                && !teamManagerRepository
+                        .findByUserIdAndTenantIdAndStatusAndDeletedAtIsNull(
+                                ctx.getUserId(), ctx.getTenantId(), TeamManager.STATUS_ACTIVE)
+                        .isEmpty();
     }
 
     /** 注入当前账号管理的球队 ID。 */
     @Override
     public void contribute(ScopeResolutionContext ctx) {
-        List<TeamManager> managers =
-                teamManagerRepository.findByUserIdAndStatusAndDeletedAtIsNull(ctx.getUserId(), STATUS_ACTIVE);
+        List<TeamManager> managers = teamManagerRepository.findByUserIdAndTenantIdAndStatusAndDeletedAtIsNull(
+                ctx.getUserId(), ctx.getTenantId(), TeamManager.STATUS_ACTIVE);
         for (TeamManager tm : managers) {
             ctx.addTeam(tm.getTeamId());
         }

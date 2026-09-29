@@ -23,8 +23,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class LeagueOwnerRelationProvider implements ScopeRelationProvider {
 
-    private static final String STATUS_ACTIVE = "active";
-
     private final LeagueOwnerRepository leagueOwnerRepository;
 
     /** 该 Provider 是否适用于当前账号（按 LeagueOwner 关系数据、限定本租户判定）。 */
@@ -32,14 +30,14 @@ public class LeagueOwnerRelationProvider implements ScopeRelationProvider {
     public boolean supports(ScopeResolutionContext ctx) {
         return ctx.getUserId() != null
                 && !leagueOwnerRepository.findByUserIdAndTenantIdAndStatusAndDeletedAtIsNull(
-                        ctx.getUserId(), ctx.getTenantId(), STATUS_ACTIVE).isEmpty();
+                        ctx.getUserId(), ctx.getTenantId(), LeagueOwner.STATUS_ACTIVE).isEmpty();
     }
 
     /** 注入当前账号主办的联盟 ID（不注入 teamIds）。 */
     @Override
     public void contribute(ScopeResolutionContext ctx) {
         List<LeagueOwner> owners = leagueOwnerRepository.findByUserIdAndTenantIdAndStatusAndDeletedAtIsNull(
-                ctx.getUserId(), ctx.getTenantId(), STATUS_ACTIVE);
+                ctx.getUserId(), ctx.getTenantId(), LeagueOwner.STATUS_ACTIVE);
         for (LeagueOwner lo : owners) {
             ctx.addLeague(lo.getLeagueId());
         }
