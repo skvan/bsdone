@@ -167,6 +167,32 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
+    @DisplayName("野手選擇、犧牲飛球與犧牲觸擊的正常得分應維持自責分")
+    void keepsFielderChoiceAndSacrificeRunsEarned() {
+        List<EarnedRunPlay> plays = List.of(
+                play(1, 1, 1, 1, false), // FC
+                play(2, 2, 1, 1, false, ScoringRunner.normal(51, 101)), // SF
+                play(3, 3, 1, 1, false, ScoringRunner.normal(52, 101))); // SH
+
+        List<EarnedRunDecision> decisions = engine.reconstruct(plays).decisions();
+
+        assertEquals(2, decisions.size());
+        assertEquals(EarnedRunStatus.EARNED, decisions.get(0).status());
+        assertEquals(EarnedRunStatus.EARNED, decisions.get(1).status());
+    }
+
+    @Test
+    @DisplayName("第三好球捕逸造成的得分，應保留捕逸的非自責原因")
+    void marksDroppedThirdStrikeRunUnearned() {
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false,
+                        ScoringRunner.passedBall(61, 101)))).decisions().get(0);
+
+        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
+        assertEquals(UnearnedRunReason.PASSED_BALL, decision.reason());
+    }
+
+    @Test
     @DisplayName("人工覆核可明确指定非自责原因")
     void acceptsAuditableManualOverride() {
         ScoringRunner runner = new ScoringRunner(
