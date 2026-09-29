@@ -61,6 +61,9 @@ public final class EarnedRunReconstructionEngine {
         if (runner.origin() == RunnerOrigin.PASSED_BALL) {
             return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.PASSED_BALL);
         }
+        if (runner.origin() == RunnerOrigin.WILD_PITCH) {
+            return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.WILD_PITCH);
+        }
         if (runner.origin() == RunnerOrigin.INTERFERENCE) {
             return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.INTERFERENCE);
         }

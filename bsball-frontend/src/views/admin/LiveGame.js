@@ -6972,19 +6972,23 @@ var sg={
       };
       Me.value.push(w),pn.value.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
     }
-    async function syncEarnedRunHalfInning(event){
-      const gameId=Number(R.value);
-      if(!gameId||!event)return;
-      const plays=pn.value.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
-      if(!plays.length)return;
-      try{
-        const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
-        earnedRunReconstruction.value=result?.data??result??null;
-        applyEarnedRunTotals(event,earnedRunReconstruction.value);
-      }catch(error){
-        console.warn('[LiveGame] earned-run reconstruction pending',error);
-      }
+    function syncEarnedRunHalfInning(event){
+      earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
+        const gameId=Number(R.value);
+        if(!gameId||!event)return;
+        const plays=pn.value.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
+        if(!plays.length)return;
+        try{
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+          earnedRunReconstruction.value=result?.data??result??null;
+          applyEarnedRunTotals(event,earnedRunReconstruction.value);
+        }catch(error){
+          console.warn('[LiveGame] earned-run reconstruction pending',error);
+        }
+      });
+      return earnedRunSyncPending;
     }
+    let earnedRunSyncPending=Promise.resolve();
     const es=new WeakMap;
     function ua(e){
       nt()||requestAnimationFrame(()=>{
@@ -9361,7 +9365,7 @@ var sg={
       const t=!!e?.throwOnError;
       he.value=!0;
       try{
-        await co();
+        await co(),await earnedRunSyncPending;
         const a=g=>{
           let m=g.length-1;
           for(;

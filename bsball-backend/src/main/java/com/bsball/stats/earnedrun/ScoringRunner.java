@@ -38,6 +38,10 @@ public record ScoringRunner(
         return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.PASSED_BALL, null, null);
     }
 
+    public static ScoringRunner wildPitch(long runnerId, long responsiblePitcherId) {
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.WILD_PITCH, null, null);
+    }
+
     public static ScoringRunner interference(long runnerId, long responsiblePitcherId) {
         return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.INTERFERENCE, null, null);
     }

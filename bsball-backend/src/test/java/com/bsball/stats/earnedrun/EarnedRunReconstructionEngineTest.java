@@ -112,6 +112,17 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
+    @DisplayName("暴投與捕逸使用不同的非自責原因")
+    void distinguishesWildPitchFromPassedBall() {
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, ScoringRunner.wildPitch(11, 101))))
+                .decisions().get(0);
+
+        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
+        assertEquals(UnearnedRunReason.WILD_PITCH, decision.reason());
+    }
+
+    @Test
     @DisplayName("妨礙造成的得分保留非自責原因")
     void marksInterferenceRunUnearned() {
         EarnedRunDecision decision = engine.reconstruct(List.of(
