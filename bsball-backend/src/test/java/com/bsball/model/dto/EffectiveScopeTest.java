@@ -42,6 +42,28 @@ class EffectiveScopeTest {
         EffectiveScope s = EffectiveScope.unrestricted();
         assertTrue(s.canManageLeague(9L));
         assertTrue(s.canManageTeam(9L));
+        assertTrue(s.canReadLeague(9L));
+        assertTrue(s.canReadTeam(9L));
         assertFalse(s.isManageEmpty());
+    }
+
+    @Test
+    @DisplayName("外部集合后续变更不影响已构造实例（防御性拷贝）")
+    void externalMutation_doesNotAffectConstructedScope() {
+        java.util.Set<Long> ids = new java.util.HashSet<>(java.util.Set.of(10L));
+        EffectiveScope s = EffectiveScope.restricted(false, ids, java.util.Set.of());
+        ids.add(11L);
+        assertFalse(s.canManageLeague(11L));
+        assertTrue(s.canManageLeague(10L));
+    }
+
+    @Test
+    @DisplayName("empty 工厂：管理域为空且不放行")
+    void empty_isEmptyAndDenyManage() {
+        EffectiveScope s = EffectiveScope.empty();
+        assertTrue(s.isManageEmpty());
+        assertFalse(s.canManageLeague(1L));
+        assertFalse(s.canManageTeam(1L));
+        assertFalse(s.isUnrestrictedInTenant());
     }
 }

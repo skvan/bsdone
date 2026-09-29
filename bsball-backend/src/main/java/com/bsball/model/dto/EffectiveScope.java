@@ -7,6 +7,7 @@
  *  - isManageEmpty 用于“管理域为空 ⇒ 空页 / 403”判定。
  *
  * 不可变值对象：构造后字段不再变化，集合以不可变视图对外暴露。
+ * 本类为 EffectiveDataScope（遗留）的读写双语义替代版，后者将随迁移逐步退场，新代码一律使用本类。
  */
 package com.bsball.model.dto;
 
@@ -30,8 +31,8 @@ public final class EffectiveScope {
     private EffectiveScope(boolean guestLikeRead, boolean unrestrictedInTenant, Set<Long> leagueIds, Set<Long> teamIds) {
         this.guestLikeRead = guestLikeRead;
         this.unrestrictedInTenant = unrestrictedInTenant;
-        this.leagueIds = leagueIds == null ? Set.of() : leagueIds;
-        this.teamIds = teamIds == null ? Set.of() : teamIds;
+        this.leagueIds = leagueIds == null ? Set.of() : Set.copyOf(leagueIds);
+        this.teamIds = teamIds == null ? Set.of() : Set.copyOf(teamIds);
     }
 
     /** 租户内不受限（超管 / 租户管理员）：读写全放行。 */
@@ -44,7 +45,7 @@ public final class EffectiveScope {
         return new EffectiveScope(guestLikeRead, false, leagueIds, teamIds);
     }
 
-    /** 空范围：什么都不放行（管理域为空）。 */
+    /** 空范围：什么都不放行（管理域为空）。等价于 restricted(false, Set.of(), Set.of())，仅表达意图差异。 */
     public static EffectiveScope empty() {
         return new EffectiveScope(false, false, Set.of(), Set.of());
     }
