@@ -35,6 +35,7 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.core.GuestPublicApiHolder;
 import com.bsball.core.ResolvedTenantHolder;
 import com.bsball.model.entity.SysTenant;
+import com.bsball.service.AccountScopeService;
 import com.bsball.service.ApiPermissionService;
 import com.bsball.service.JwtService;
 import com.bsball.service.TenantResolutionService;
@@ -69,6 +70,7 @@ implements Filter {
     private final JwtService jwtService;
     private final TenantProperties tenantProperties;
     private final TenantResolutionService tenantResolutionService;
+    private final AccountScopeService accountScopeService;
     @Value(value="${app.api.guest-check.enabled:true}")
     private boolean enabled;
     @Value(value="${app.api.guest-whitelist:/auth/login,/auth/captcha,/health,/files,/portal/feedback}")
@@ -183,6 +185,7 @@ implements Filter {
             CurrentUserHolder.clear();
             GuestPublicApiHolder.clear();
             ApiPermissionService.clearRequestCache();
+            this.accountScopeService.clearRequestScopeCache();
         }
     }
 
@@ -313,12 +316,13 @@ implements Filter {
     }
 
     @Generated
-    public ApiPermissionFilter(ApiPermissionService apiPermissionService, ObjectMapper objectMapper, JwtService jwtService, TenantProperties tenantProperties, TenantResolutionService tenantResolutionService) {
+    public ApiPermissionFilter(ApiPermissionService apiPermissionService, ObjectMapper objectMapper, JwtService jwtService, TenantProperties tenantProperties, TenantResolutionService tenantResolutionService, AccountScopeService accountScopeService) {
         this.apiPermissionService = apiPermissionService;
         this.objectMapper = objectMapper;
         this.jwtService = jwtService;
         this.tenantProperties = tenantProperties;
         this.tenantResolutionService = tenantResolutionService;
+        this.accountScopeService = accountScopeService;
     }
 }
 
