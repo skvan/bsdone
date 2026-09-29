@@ -6,15 +6,18 @@ CREATE TABLE IF NOT EXISTS bs_league_owner (
     league_id    BIGINT NOT NULL,
     user_id      BIGINT NOT NULL,
     status       VARCHAR(16) NOT NULL DEFAULT 'active',
-    grant_source VARCHAR(32) DEFAULT 'ADMIN_ASSIGN',
-    created_by   BIGINT, created_at TIMESTAMP,
-    updated_by   BIGINT, updated_at TIMESTAMP,
+    grant_source VARCHAR(32) NOT NULL DEFAULT 'ADMIN_ASSIGN',
+    created_by   BIGINT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by   BIGINT, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_by   BIGINT, deleted_at TIMESTAMP
 );
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bs_league_owner_league_user ON bs_league_owner (league_id, user_id);
-CREATE INDEX IF NOT EXISTS ix_bs_league_owner_tenant_user ON bs_league_owner (tenant_id, user_id);
-CREATE INDEX IF NOT EXISTS ix_bs_league_owner_league_status ON bs_league_owner (league_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_bs_league_owner_league_user ON bs_league_owner (league_id, user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_bs_league_owner_tenant_user ON bs_league_owner (tenant_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_bs_league_owner_league_status ON bs_league_owner (league_id, status);
 COMMENT ON TABLE  bs_league_owner IS '联盟主办方归属关系';
+COMMENT ON COLUMN bs_league_owner.tenant_id IS '租户ID';
+COMMENT ON COLUMN bs_league_owner.league_id IS '联盟ID';
+COMMENT ON COLUMN bs_league_owner.user_id IS '用户ID';
 COMMENT ON COLUMN bs_league_owner.grant_source IS 'SELF_CREATE | ADMIN_ASSIGN';
 COMMENT ON COLUMN bs_league_owner.status IS 'active | inactive';
 
