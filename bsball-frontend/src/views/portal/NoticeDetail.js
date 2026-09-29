@@ -5,7 +5,7 @@ import { ElImageViewer as Be, ElIcon as qe, ElSkeleton as De, ElEmpty as He, ElB
 import { TopRight as Ze } from '@element-plus/icons-vue';
 import { useI18n as Oe } from 'vue-i18n';
 import { useRoute as je } from 'vue-router';
-import { fetchData as Ge } from '../../api/request';
+import { fetchResult as Ge } from '../../api/request';
 import { incrementArticleView as Ve } from '../../api/request';
 import { formatDateTimeDotWithWeek as We } from '../../utils/dateExtras';
 import { useAppConfigStore as Xe } from '../../stores/appConfig';

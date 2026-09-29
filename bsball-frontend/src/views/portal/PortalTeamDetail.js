@@ -5,7 +5,7 @@ import { nextTick as j, withModifiers as oa, createElementBlock as d, normalizeS
 import { Download as ra, Setting as hl } from '@element-plus/icons-vue';
 import { useI18n as Ll } from 'vue-i18n';
 import { useRouter as Al, useRoute as Rl } from 'vue-router';
-import { fetchData as Dt } from '../../api/request';
+import { fetchResult as Dt } from '../../api/request';
 import { fetchList as xl } from '../../api/request';
 import { fetchAllPages as zl } from '../../api/request';
 import { resolveAssetUrl as X } from '../../api/request';

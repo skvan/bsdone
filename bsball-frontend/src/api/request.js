@@ -362,6 +362,19 @@ export const patch = (url, data, headers) => request(url, { method: 'PATCH', bod
 export const put = (url, data) => request(url, { method: 'PUT', body: JSON.stringify(data) });
 export const del = (url) => request(url, { method: 'DELETE' });
 
+// 实体 GET（旧版 request 层 mt 语义，H30）：解包 data ?? null、自动拼接 params、失败 toast 后返回 null（不 reject）
+export async function getData(url, params) {
+  const full = params && Object.keys(params).length ? withQuery(url, params) : url;
+  try {
+    return (await get(full)).data ?? null;
+  } catch (e) {
+    if (!isAuthSessionError(e) && !(e instanceof ApiBizError && e.apiCode === 404)) {
+      ElMessage.error(e?.message ?? '加载失败');
+    }
+    return null;
+  }
+}
+
 // ---------- 列表/详情辅助 ----------
 function withQuery(url, params) {
   if (!params || !Object.keys(params).length) return url;
@@ -383,18 +396,6 @@ export async function fetchList(url, params) {
     if (isAuthSessionError(e)) return { list: [], total: 0 };
     ElMessage.error(e?.message ?? '加载失败');
     return { list: [], total: 0 };
-  }
-}
-
-// 详情（静默鉴权错误与 404；其他错误 toast）
-export async function fetchData(url, params) {
-  try {
-    return (await get(withQuery(url, params))).data ?? null;
-  } catch (e) {
-    if (!isAuthSessionError(e) && !(e instanceof ApiBizError && e.apiCode === 404)) {
-      ElMessage.error(e?.message ?? '加载失败');
-    }
-    return null;
   }
 }
 
