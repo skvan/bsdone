@@ -52,10 +52,10 @@ function serveCompiledStatic() {
           return next()
         }
 
-        // 根路径 -> 入口页（webapps/portal.html，QUEST 生成）
-        // 入口页里的「系统介绍」按钮链接到 /index.html 官网营销首页
-        // 「进入数据库」按钮链接到 /bs-ball/bs-ball 数据系统
-        // /portal -> 入口页（保留兼容）
+        // 根路径 -> webapps/portal.html（H25 起为「直通页」：meta refresh + JS 自动跳转 /bs-ball-next/；
+        // 旧「选择您的入口」页职能由新版 welcome 页承接——见 docs/ops/frontend-hotfix-log.md H25）
+        // 本对照预览（3001）下 /bs-ball-next/ 不存在，跳转将回落到旧版目录，仅供本机参照
+        // /portal -> 同页（保留兼容）
         if (url === '/' || url === '/portal') {
           const portalPage = path.join(webappsRoot, 'portal.html')
           res.writeHead(200, { 'Content-Type': MIME_TYPES['.html'] })

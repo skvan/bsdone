@@ -59,7 +59,7 @@ try {
 } catch { /* git 不可用：全部按 other（原样）处理 */ }
 console.log('[apply-release-version] 索引行尾表: ' + indexEol.size + ' 项');
 
-// 规则：捕获组固定为 [前缀, 值, 可选后缀]；scope=目标文件类型；perFile=要求"每个目标文件各命中一次"（html）
+// 规则：捕获组为 [前缀, 值]（2 组）或 [前缀, 值, 后缀]（3 组）；scope=目标文件类型；perFile=要求"每个目标文件各命中一次"（html）
 const RULES = [
   { name: 'appVersion（设备/环境上报）', scope: 'js', re: /(appVersion:")([^"]*)(")/g },
   { name: 'console 前端构建版本', scope: 'js', re: /(const e=")([^"]*)(";console\.log\("%c)/g },
@@ -103,7 +103,9 @@ for (const t of targets) {
     text = text.replace(rule.re, (m, a, b, c) => {
       hits.set(rule.name, hits.get(rule.name) + 1);
       perFileHits.set(rule.name + '|' + t.file, (perFileHits.get(rule.name + '|' + t.file) || 0) + 1);
-      return a + t.esc(version) + (c === undefined ? '' : c);
+      // 回调第 4 参 c：3 捕获组规则=第三组（字符串后缀，保留）；2 捕获组规则=匹配 offset（number，
+      // 必须忽略——否则会被当后缀拼接导致版本号粘连序号，如 v1.2.035551，2026-09-28 测试环境实证）
+      return a + t.esc(version) + (typeof c === 'string' ? c : '');
     });
   });
   if (text !== original) {

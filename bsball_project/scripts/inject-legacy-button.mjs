@@ -1,8 +1,8 @@
 // inject-legacy-button.mjs — 为旧版各页面注入「新版入口」悬浮按钮（Issue #105 / 2026-09-28 扩展）
-// 架构：旧版原位 /bs-ball/；重建版部署于 /bs-ball-next/。本脚本幂等地对三个旧版页面注入：
+// 架构：旧版原位 /bs-ball/；重建版部署于 /bs-ball-next/。本脚本幂等地对两个旧版页面注入：
 //   - webapps/bs-ball/index.html（管理台 SPA 入口）：按钮「返回新版」
 //   - webapps/index.html（官网入口页）：按钮「进入新版」
-//   - webapps/portal.html（门户静态页）：按钮「进入新版」
+// 注：webapps/portal.html 已改为「直通新版」页（H25，访问域名即自动进入 /bs-ball-next/），不再注入按钮。
 // 并对同名 .gz 重新生成（nginx gzip_static 优先命中 .gz，必须同步）：
 //   gz 基行尾对齐 git 索引（i/lf→LF、i/crlf→CRLF、-text→原样），
 //   否则 Linux CI（LF 检出）的 zcat|cmp 门禁会判 stale（2026-09-28 实测教训）。
@@ -17,8 +17,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 
 const TARGETS = [
   { rel: 'bsball_project/webapps/bs-ball/index.html', text: '返回新版', title: '返回新版前端（重建版）' },
-  { rel: 'bsball_project/webapps/index.html', text: '进入新版', title: '进入新版前端（重建版 /bs-ball-next/）' },
-  { rel: 'bsball_project/webapps/portal.html', text: '进入新版', title: '进入新版前端（重建版 /bs-ball-next/）' }
+  { rel: 'bsball_project/webapps/index.html', text: '进入新版', title: '进入新版前端（重建版 /bs-ball-next/）' }
 ];
 
 // git 索引行尾表（gz 基行尾对齐用）
