@@ -8,6 +8,7 @@ import { eventApi as va } from '../../api/business';
 import { fetchPlayersByTeam as Le } from '../../api/business';
 import { gameApi as yt } from '../../api/business';
 import { teamApi as St } from '../../api/business';
+import { buildTeamPlayersMap } from '../../utils/teamPlayersMap';
 import fa from '../../components/admin/GameDetailContent.js';
 import { readFieldSettings as kt } from '../../utils/gameDetailFieldSettingsStorage';
 import { DEFAULT_PITCHER_FIELDS as _a } from '../../utils/gameDetailFieldSettingsStorage';
@@ -806,7 +807,7 @@ var Ta={
           };
           r(e,a),r(t,l)
         }
-        He.value=Object.fromEntries([...be.value.map(r=>[Number(r.id),r]),...me.value.map(r=>[Number(r.id),r])])
+        He.value=buildTeamPlayersMap(a,j.value,l,z.value)
       }
       catch{
         
@@ -992,7 +993,7 @@ var Ta={
         De.value=[a,l].filter(Boolean),Ee.value=a?.name??"主队",Te.value=l?.name??"客队";
         try{
           const[r,d]=await Promise.all([Le(t.homeTeamId),Le(t.awayTeamId)]);
-          be.value=r,me.value=d,He.value=Object.fromEntries([...r.map(m=>[Number(m.id),m]),...d.map(m=>[Number(m.id),m])])
+          be.value=r,me.value=d,He.value=buildTeamPlayersMap(r,t.homeTeamId,d,t.awayTeamId)
         }
         catch{
           

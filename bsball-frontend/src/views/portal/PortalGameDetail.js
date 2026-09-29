@@ -15,6 +15,8 @@ import { markPortalGuideSeen as lt } from '../../utils/portalGuide';
 import { exportSfc as nt } from '../../utils/exportSfc';
 import { playerApi as rt } from '../../api/business';
 import { teamApi as fe } from '../../api/business';
+import { fetchPlayersByTeam } from '../../api/business';
+import { buildTeamPlayersMap, addTeamEntryPlayers } from '../../utils/teamPlayersMap';
 import { useTenantRouter as ot } from '../../composables/useTenantRouter';
 import ut from '../../components/admin/GameDetailContent.js';
 import { buildInitialFieldSettings as pe } from '../../utils/gameDetailFieldSettingsStorage';
@@ -202,20 +204,15 @@ var _t={
       const[C,H,z,Y]=await Promise.all([$(`/api/game/${e}/stats`,{
         
       }
-      ),de(`/api/event/${t.eventId}`),$("/api/player/list",{
-        teamId:t.homeTeamId,pageSize:50
-      }
-      ),$("/api/player/list",{
-        teamId:t.awayTeamId,pageSize:50
-      }
-      )]);
+      ),de(`/api/event/${t.eventId}`),t.homeTeamId?fetchPlayersByTeam(t.homeTeamId):Promise.resolve([]),t.awayTeamId?fetchPlayersByTeam(t.awayTeamId):Promise.resolve([])]);
       B.value=C.list;
       const G=t.homeTeamId,R=t.awayTeamId,[Oe,Ue]=await Promise.all([G?fe.get(G):Promise.resolve(null),R?fe.get(R):Promise.resolve(null)]);
       K.value=[Oe,Ue].filter(Boolean),j.value=H.data?.name??"";
-      const Ve=z.list,He=Y.list,x=Object.fromEntries([...Ve,...He].map(u=>[u.id,u])),re=[...new Set(B.value.map(u=>u.playerId))].filter(u=>!x[u]);
+      // H33：playersMap 复合键（teamId:playerId）+ 单键兼容；补集按注册段生成按队副本
+      const x=buildTeamPlayersMap(z??[],G,Y??[],R);
+      const re=[...new Set(B.value.map(u=>u.playerId))].filter(u=>!x[u]);
       if(re.length){
-        const u=(await rt.listByIds(re))?.list??[];
-        for(const Z of u)Z?.id&&(x[Z.id]=Z)
+        addTeamEntryPlayers(x,(await rt.listByIds(re))?.list??[])
       }
       return X.value=x,t
     }
