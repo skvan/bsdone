@@ -11,6 +11,12 @@
  *
  * 与 EffectiveScope（批次 1）配合：本类只读其 leagueIds / teamIds 与 unrestrictedInTenant 语义，
  * 不涉及 guestLikeRead（门户只读放行由读路径另行处理）。
+ *
+ * 消费范式（三项约定，务必遵守）：
+ *  - null ⇒ 跳过过滤谓词（不限制/宽读，勿当空集处理）；
+ *  - 空集 ⇒ 直接短路返回空页（勿再查库）；
+ *  - 非空 ⇒ 作为 IN 集合使用。
+ * 返回值顺序不保证：仅供 IN 过滤 / contains 判定使用，勿依赖顺序。
  */
 package com.bsball.service.query;
 
@@ -74,6 +80,6 @@ public class ScopeQuerySupport {
         if (s.getLeagueIds().isEmpty()) {
             return List.of();
         }
-        return this.eventRepository.findIdsByLeagueIdInAndTenantId(s.getLeagueIds(), tenantId);
+        return List.copyOf(this.eventRepository.findIdsByLeagueIdInAndTenantId(s.getLeagueIds(), tenantId));
     }
 }

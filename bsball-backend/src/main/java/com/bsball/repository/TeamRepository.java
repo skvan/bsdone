@@ -52,6 +52,7 @@ extends JpaRepository<Team, Long> {
     @Query(value="select t.id from Team t where t.leagueId = :leagueId and t.tenantId = :tenantId")
     public List<Long> findIdsByLeagueIdAndTenantId(@Param(value="leagueId") Long var1, @Param(value="tenantId") Long var2);
 
+    /** 集合版：过滤软删（deletedAt is null）与租户；与单值版 findIdsByLeagueIdAndTenantId（不过滤软删）语义不同。 */
     @Query(value="select t.id from Team t where t.deletedAt is null and t.tenantId = :tenantId and t.leagueId in :leagueIds")
     public List<Long> findIdsByLeagueIdInAndTenantId(@Param(value="leagueIds") Collection<Long> var1, @Param(value="tenantId") Long var2);
 
