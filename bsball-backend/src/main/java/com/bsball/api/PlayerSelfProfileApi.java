@@ -15,6 +15,7 @@ import com.bsball.exception.UnauthorizedException;
 import com.bsball.model.entity.Player;
 import com.bsball.service.JwtService;
 import com.bsball.service.PlayerService;
+import jakarta.validation.Valid;
 import java.util.Map;
 import lombok.Generated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,15 +40,15 @@ public class PlayerSelfProfileApi {
     }
 
     @PostMapping(value={"/player-profile"})
-    public Result<Player> createSelfProfile(@RequestHeader(value="Authorization", required=false) String auth, @RequestBody Player draft) {
+    public Result<Player> createSelfProfile(@RequestHeader(value="Authorization", required=false) String auth, @RequestBody @Valid Player draft) {
         Long userId = this.requireUserId(auth);
         return Result.ok(this.playerService.createSelfProfile(userId, draft));
     }
 
     @PutMapping(value={"/player-profile/{playerId}"})
     public Result<Player> updateSelfProfile(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long playerId, @RequestBody Map<String, Object> body) {
-        Long userId = this.requireUserId(auth);
-        return Result.ok(this.playerService.updateSelfProfile(userId, playerId, body));
+        this.requireUserId(auth);
+        return Result.ok(this.playerService.updateSelfProfile(playerId, body));
     }
 
     private Long requireUserId(String auth) {
