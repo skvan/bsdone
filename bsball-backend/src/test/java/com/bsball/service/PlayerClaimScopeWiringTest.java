@@ -208,7 +208,11 @@ class PlayerClaimScopeWiringTest {
         Path<Object> playerIdPath = mock(Path.class);
         when(query.subquery(Long.class)).thenReturn(sq);
         when(sq.from(PlayerTeam.class)).thenReturn(entry);
-        // 同一 CriteriaBuilder 树会对 get(...) 传入多种属性名，改用 lenient 避免严格桩参数不匹配误报
+        // M-1：曾尝试改严格桩，但被测方法在同一 CriteriaBuilder 树上对同一 get(...) 以多个属性名求值，
+        // Mockito strict-stubs 会把「请求其他属性名」判为桩参数不匹配（PotentialStubbingProblem，实跑报错）：
+        //   - root.get(...)：代码请求 status / deletedAt / reviewerType，与桩 root.get("playerId") 不匹配；
+        //   - entry.get(...)：代码请求 playerId / current / deletedAt，与桩 entry.get("teamId") 不匹配。
+        // 故仅这两处 get(...) 桩保留 lenient（有明确不匹配参数，非「以防万一」）；其余桩（subquery/from 等）保持严格。
         lenient().when(entry.get("teamId")).thenReturn(teamIdPath);
         lenient().when(root.get("playerId")).thenReturn(playerIdPath);
 

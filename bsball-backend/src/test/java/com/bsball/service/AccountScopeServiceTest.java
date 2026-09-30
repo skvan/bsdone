@@ -30,8 +30,10 @@ import com.bsball.repository.SysDataScopeRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.scope.ScopeRelationProvider;
 import com.bsball.service.scope.ScopeResolutionContext;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountScopeService：账号有效范围解析矩阵")
@@ -353,11 +356,21 @@ class AccountScopeServiceTest {
         }).when(provider).contribute(any(ScopeResolutionContext.class));
         newService(provider);
 
+        // I-1 提速（仅测试侧，不改生产代码）：TTL 经反射注入以缩短用例。
+        // 生产默认 app.scope.cache-ttl-sec=30s，且 initScopeCache() 内 Math.max(5, ttl) 有 5s 下限钳制，
+        // 故单靠反射注入 scopeCacheTtlSec=1 仍会被抬回 5s。这里先注入配置项（表意真值）并重建缓存，
+        // 再直接替换为 1s 到期缓存，使本用例真正提速；仍是真实 Caffeine expireAfterWrite，
+        // 确保「到期自动重算」语义不退化。
+        ReflectionTestUtils.setField(service, "scopeCacheTtlSec", 1);
+        service.initScopeCache();
+        ReflectionTestUtils.setField(service, "scopeCache", Caffeine.newBuilder()
+                .expireAfterWrite(1, TimeUnit.SECONDS).maximumSize(20_000L).build());
+
         assertTrue(service.resolve(USER_ID, TENANT_ID).canManageTeam(100L));
 
         teamId[0] = 200L; // 关系变更，且不做任何驱逐
-        // 手动构造时 scopeCacheTtlSec 默认 0 → initScopeCache 取 Math.max(5, 0) = 5 秒
-        long deadline = System.currentTimeMillis() + 9000L;
+        // 轮询收紧：sleep 200ms→100ms；deadline 9000ms→4000ms（1s TTL 下足够，失败时最多阻塞 4s）
+        long deadline = System.currentTimeMillis() + 4000L;
         EffectiveScope after = null;
         while (System.currentTimeMillis() < deadline) {
             service.clearRequestScopeCache();
@@ -365,7 +378,7 @@ class AccountScopeServiceTest {
             if (after.canManageTeam(200L)) {
                 break;
             }
-            Thread.sleep(200L);
+            Thread.sleep(100L);
         }
         assertTrue(after != null && after.canManageTeam(200L), "TTL 到期后应自动重算出新范围");
         assertFalse(after.canManageTeam(100L));

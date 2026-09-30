@@ -109,6 +109,15 @@ class ScopeQuerySupportTest {
     }
 
     @Test
+    @DisplayName("可见球队：manage + 租户内不受限 → null 宽读，不查库")
+    void visibleTeamIds_manageUnrestricted_isNull() {
+        ScopeContextHolder.setManage(true);
+
+        assertNull(support.visibleTeamIds(EffectiveScope.unrestricted(), TENANT_ID));
+        verifyNoInteractions(teamRepository);
+    }
+
+    @Test
     @DisplayName("可见球队：manage + 受限空集 → 空集且不查库（空集不查库）")
     void visibleTeamIds_manageRestrictedEmpty_noQuery() {
         ScopeContextHolder.setManage(true);
@@ -152,6 +161,15 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(false);
 
         assertNull(support.visibleEventIds(EffectiveScope.restricted(false, Set.of(10L), Set.of()), TENANT_ID));
+        verifyNoInteractions(eventRepository);
+    }
+
+    @Test
+    @DisplayName("可见赛事：manage + 租户内不受限 → null 宽读，不查库")
+    void visibleEventIds_manageUnrestricted_isNull() {
+        ScopeContextHolder.setManage(true);
+
+        assertNull(support.visibleEventIds(EffectiveScope.unrestricted(), TENANT_ID));
         verifyNoInteractions(eventRepository);
     }
 

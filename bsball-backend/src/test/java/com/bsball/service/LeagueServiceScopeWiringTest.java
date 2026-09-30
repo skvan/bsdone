@@ -9,6 +9,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -202,6 +203,49 @@ class LeagueServiceScopeWiringTest {
         assertEquals("无权修改该联盟", ex.getMessage());
         verify(resourceGuard, never()).assertCanManageLeague(any());
         verify(leagueRepository, never()).save(any());
+    }
+
+    // ------------------------------------------------------------------ 写：delete
+
+    @Test
+    @DisplayName("delete 他联盟：ResourceGuard 403（越权写）")
+    void delete_otherLeague_guardForbidden() {
+        when(leagueRepository.findById(11L)).thenReturn(Optional.of(league(11L, TENANT_ID)));
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        doThrow(new BusinessException(403, "无权管理该联盟")).when(resourceGuard).assertCanManageLeague(11L);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.delete(11L));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权管理该联盟", ex.getMessage());
+        verify(resourceGuard).assertCanManageLeague(11L);
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("delete 跨租户：租户校验先行 403，守卫不被触达")
+    void delete_crossTenant_forbiddenBeforeGuard() {
+        when(leagueRepository.findById(11L)).thenReturn(Optional.of(league(11L, OTHER_TENANT)));
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.delete(11L));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权删除该联盟", ex.getMessage());
+        verify(resourceGuard, never()).assertCanManageLeague(any());
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("delete 本联盟：守卫放行并落库（接线到 guard + 软删）")
+    void delete_ownLeague_guardCalledAndSoftDeleted() {
+        League existing = league(10L, TENANT_ID);
+        when(leagueRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+
+        service.delete(10L);
+
+        verify(resourceGuard).assertCanManageLeague(10L);
+        verify(leagueRepository).save(existing);
+        assertNotNull(existing.getDeletedAt());
     }
 
     private static League league(long id, long tenantId) {

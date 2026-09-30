@@ -17,6 +17,7 @@ package com.bsball.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -532,10 +533,15 @@ class ResourceGuardTest {
     @Test
     @DisplayName("guest-like 只读放行：仅读语义，绝不授予任何写（空集仍 403）")
     void guestLikeRead_onlyReads_neverWrites() {
-        when(accountScopeService.resolveCurrent())
-                .thenReturn(EffectiveScope.restricted(true, Set.of(), Set.of()));
+        // guest 读标志仅授予读语义：读放行，但不参与写判定
+        EffectiveScope scope = EffectiveScope.restricted(true, Set.of(), Set.of());
+        when(accountScopeService.resolveCurrent()).thenReturn(scope);
 
-        // guest 读标志不参与写判定：管理集合为空 → 写一律 403
+        // 读侧：guest 只读放行（管理集合为空亦可读）
+        assertTrue(scope.canReadLeague(10L));
+        assertTrue(scope.canReadTeam(100L));
+
+        // 写侧：guest 读标志不参与写判定：管理集合为空 → 写一律 403
         assertEquals(403, assertThrows(BusinessException.class,
                 () -> guard.assertCanManageLeague(10L)).getCode());
         assertEquals(403, assertThrows(BusinessException.class,
