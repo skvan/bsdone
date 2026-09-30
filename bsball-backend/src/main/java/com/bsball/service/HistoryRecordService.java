@@ -29,19 +29,19 @@ package com.bsball.service;
 
 import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
-import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.HistoryRecordRepository;
 import com.bsball.repository.TeamRepository;
-import com.bsball.service.DataScopeService;
+import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.service.TenantQueryPolicyService;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import lombok.Generated;
@@ -56,14 +56,17 @@ import org.springframework.stereotype.Service;
 public class HistoryRecordService {
     private final HistoryRecordRepository historyRecordRepository;
     private final TeamRepository teamRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
     public PageResult<HistoryRecord> list(Integer page, Integer pageSize, String sortProp, String sortOrder, String targetType, Long targetId, String relatedObjectType, Long relatedObjectId, String type, String recordType, String dateFrom, String dateTo) {
         boolean global = this.tenantQueryPolicyService.isGlobalQueryMode();
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && scope.getLeagueIds().isEmpty() && scope.getTeamIds().isEmpty()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && visibleTeamIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
@@ -100,6 +103,13 @@ public class HistoryRecordService {
                     preds.add(cb.lessThanOrEqualTo((Expression)root.get("changeDate"), (Comparable)((Object)dateTo)));
                 }
             }
+            if (visibleTeamIds != null) {
+                Predicate asRelatedObject = cb.and(cb.equal((Expression)root.get("relatedObjectType"), (Object)"team"),
+                        root.get("relatedObjectId").in((Collection)visibleTeamIds));
+                Predicate asTarget = cb.and(cb.equal((Expression)root.get("targetType"), (Object)"team"),
+                        root.get("targetId").in((Collection)visibleTeamIds));
+                preds.add(cb.or(asRelatedObject, asTarget));
+            }
             return cb.and(preds.toArray(new Predicate[0]));
         };
         Page result = this.historyRecordRepository.findAll((Specification)spec, p);
@@ -116,6 +126,7 @@ public class HistoryRecordService {
             if (!Objects.equals(team.getTenantId(), tid)) {
                 throw new BusinessException(400, "\u7403\u961f\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
             }
+            this.resourceGuard.assertCanManageTeam(team.getId());
             entity.setTenantId(team.getTenantId());
         } else {
             entity.setTenantId(Long.valueOf(tid));
@@ -134,10 +145,12 @@ public class HistoryRecordService {
     }
 
     @Generated
-    public HistoryRecordService(HistoryRecordRepository historyRecordRepository, TeamRepository teamRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public HistoryRecordService(HistoryRecordRepository historyRecordRepository, TeamRepository teamRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService) {
         this.historyRecordRepository = historyRecordRepository;
         this.teamRepository = teamRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
 }
