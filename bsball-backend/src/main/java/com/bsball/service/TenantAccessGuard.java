@@ -105,12 +105,6 @@ public class TenantAccessGuard {
         }
     }
 
-    public void evictAll() {
-        if (this.tenantActiveCache != null) {
-            this.tenantActiveCache.invalidateAll();
-        }
-    }
-
     /**
      * 码通路决策：无码 → ALLOW（不干预回退链）；
      * 带码但不可用（解析不到/软删/停用）→ 404「租户不存在」（终态，调用方须直接拒绝、不再回退）。

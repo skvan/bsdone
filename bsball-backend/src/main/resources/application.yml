@@ -195,6 +195,8 @@ app:
     default-id: ${APP_TENANT_DEFAULT_ID:1}
     # 按租户 code 解析行的短期缓存（秒），合并 Filter/Controller 链内重复查询
     code-cache-ttl-sec: ${APP_TENANT_CODE_CACHE_TTL_SEC:60}
+    # 租户可用性判定（TenantAccessGuard）缓存（秒）；退租/续租/新建/改码显式失效，此为兜底 TTL
+    access-cache-ttl-sec: ${APP_TENANT_ACCESS_CACHE_TTL_SEC:60}
     # 用户在某租户下无数据范围行时：true=严格按空范围；false=视为不限制（见 DataScopeService）
     strict-data-scope: ${APP_TENANT_STRICT_DATA_SCOPE:false}
     # 子域租户：如 tenant.example.com 从子域解析租户编码（需配 base-host）

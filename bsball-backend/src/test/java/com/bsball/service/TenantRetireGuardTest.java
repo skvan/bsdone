@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.config.TenantProperties;
 import com.bsball.exception.BusinessException;
+import com.bsball.exception.UnauthorizedException;
 import com.bsball.model.entity.SysOperationLog;
 import com.bsball.model.entity.SysTenant;
 import com.bsball.model.entity.SysUser;
@@ -80,6 +82,8 @@ class TenantRetireGuardTest {
     @Mock
     private OperationLogAsyncService operationLogAsyncService;
     @Mock
+    private IpLocationCacheService ipLocationCacheService;
+    @Mock
     private LeagueRepository leagueRepository;
     @Mock
     private TeamRepository teamRepository;
@@ -97,7 +101,7 @@ class TenantRetireGuardTest {
                 sysUserTenantRepository, sysTenantRepository, tenantAccessGuard);
         tenantManageService = new SysTenantManageService(apiPermissionService, sysTenantRepository,
                 leagueRepository, teamRepository, tenantAccessGuard, tenantResolutionService,
-                operationLogAsyncService);
+                operationLogAsyncService, sysUserRepository, ipLocationCacheService);
     }
 
     // ---------------------------------------------------------------- 登录/切换封禁
@@ -178,6 +182,25 @@ class TenantRetireGuardTest {
 
         assertEquals(403, ex.getCode());
         assertEquals("无权切换到该租户", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("登录：非成员 + 停用租户 → 401（归属优先，不暴露停运）")
+    void login_nonMemberDisabledTenant_membershipFirst401() {
+        when(sysUserRepository.findByUsernameAndDeletedAtIsNull("coach")).thenReturn(Optional.of(user(USER_ID, 1)));
+        when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
+        // 仅归属其它租户 → 对请求租户 TENANT_ID 非成员
+        when(sysUserTenantRepository.findByUserIdAndDeletedAtIsNull(USER_ID))
+                .thenReturn(List.of(userTenant(USER_ID, 99L)));
+        // 目标租户已停用（停运信息不该被读取/暴露）
+        lenient().when(sysTenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant(TENANT_ID, 0, null)));
+
+        // UnauthorizedException 由 GlobalExceptionHandler 映射为 401
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                () -> authService.login("coach", "pwd", TENANT_ID));
+
+        assertEquals("用户名或密码错误", ex.getMessage());
+        verify(sysTenantRepository, never()).findById(TENANT_ID);
     }
 
     // ---------------------------------------------------------------- 三类请求级校验（纯函数）
@@ -312,6 +335,55 @@ class TenantRetireGuardTest {
 
         verifyNoInteractions(operationLogAsyncService);
         verifyNoInteractions(tenantResolutionService);
+    }
+
+    // ---------------------------------------------------------------- 新建/改码缓存失效（I2）
+
+    @Test
+    @DisplayName("管理新建：保存后失效码缓存与可用性缓存（消除新建后按码解析 404/负缓存窗口）")
+    void create_evictsCodeAndAccessCaches() {
+        when(apiPermissionService.isSuperAdmin(OPERATOR_ID)).thenReturn(true);
+        when(sysTenantRepository.existsByCodeAndDeletedAtIsNull("newcode")).thenReturn(false);
+        when(sysTenantRepository.save(any(SysTenant.class))).thenAnswer(inv -> {
+            SysTenant t = inv.getArgument(0);
+            t.setId(88L);
+            return t;
+        });
+
+        // 预置守卫负缓存：库中尚无该租户 → 判定不可用
+        assertThrows(BusinessException.class, () -> tenantAccessGuard.requireActive(88L));
+
+        SysTenant body = new SysTenant();
+        body.setCode("newcode");
+        body.setName("新租户");
+        SysTenant saved = tenantManageService.create(OPERATOR_ID, body);
+        assertEquals(Long.valueOf(88L), saved.getId());
+
+        // 码缓存失效（负缓存窗口消除）
+        verify(tenantResolutionService).evictTenantByCode("newcode");
+
+        // 守卫缓存防御性失效：库出现该启用租户后，下次判定即刻放行（未失效则命中旧 false）
+        when(sysTenantRepository.findById(88L)).thenReturn(Optional.of(tenant(88L, 1, null)));
+        tenantAccessGuard.requireActive(88L);
+    }
+
+    @Test
+    @DisplayName("管理改码：旧/新 code 缓存均失效；无状态变更不落留痕")
+    void update_codeChange_evictsBothCodes() {
+        when(apiPermissionService.isSuperAdmin(OPERATOR_ID)).thenReturn(true);
+        SysTenant existing = tenant(TENANT_ID, 1, null);
+        when(sysTenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(sysTenantRepository.existsByCodeAndDeletedAtIsNullAndIdNot("t10-new", TENANT_ID)).thenReturn(false);
+        when(sysTenantRepository.save(any(SysTenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SysTenant body = new SysTenant();
+        body.setCode("t10-new");
+        tenantManageService.update(OPERATOR_ID, TENANT_ID, body);
+
+        verify(tenantResolutionService).evictTenantByCode("t10");
+        verify(tenantResolutionService).evictTenantByCode("t10-new");
+        // status 未变 → 不落退租/续租留痕
+        verifyNoInteractions(operationLogAsyncService);
     }
 
     // ---------------------------------------------------------------- helpers
