@@ -762,6 +762,7 @@ implements CommandLineRunner {
         HashSet<String> pathSet = new HashSet<String>(menuPaths);
         HashSet<String> permSet = new HashSet<String>(permissions);
         HashSet<Long> seedIds = new HashSet<Long>();
+        /* path/permission 须与菜单种子逐字一致（精确匹配，大小写敏感）。 */
         for (SysMenu m : all) {
             if (m.getId() == null) continue;
             if (m.getPath() != null && pathSet.contains(m.getPath())) {
@@ -820,13 +821,25 @@ implements CommandLineRunner {
         }
     }
 
-    /* member：仅自助端点（本人档案 /account/*、本人认领、门户公开能力 /portal/*）。 */
+    /*
+     * 认领审核面判定：/account/player-claims/:id/approve|reject。
+     * 设计意图（§8.2）：球员认领审核授予球队管理员 + 管理员，会员不授——
+     * 故 member 谓词显式排除之；tm/lo 谓词显式包含之（见 isApiAllowedForTeamManager）。
+     */
+    private static boolean isPlayerClaimReviewPath(String p) {
+        return p != null && p.startsWith("/account/player-claims/") && (p.endsWith("/approve") || p.endsWith("/reject"));
+    }
+
+    /* member：仅自助端点（本人档案 /account/*、门户公开能力 /portal/*）；显式排除认领审核面（会员不授审核）。 */
     private static boolean isApiAllowedForMember(SysApi a) {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
             return false;
         }
-        return p.startsWith("/account/") || p.startsWith("/player-claim/") || p.startsWith("/portal/");
+        if (InitDataRunner.isPlayerClaimReviewPath(p)) {
+            return false;
+        }
+        return p.startsWith("/account/") || p.startsWith("/portal/");
     }
 
     /* team_manager：member 集 + 阵容模板 + 球员只读（/player/list、/player/team-options）+ /team/ 前缀（排除 /team/delete，不授删除）。 */
@@ -834,6 +847,10 @@ implements CommandLineRunner {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
             return false;
+        }
+        /* 认领审核面：授予球队管理员/赛事主办方（勿随 member 排除而丢失）——须置于 member 判定之前。 */
+        if (InitDataRunner.isPlayerClaimReviewPath(p)) {
+            return true;
         }
         if (InitDataRunner.isApiAllowedForMember(a)) {
             return true;

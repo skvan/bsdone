@@ -92,6 +92,8 @@ class InitDataRunnerPortalRoleBindingTest {
     private InitDataRunner runner;
     private final Map<Long, List<SysRoleMenu>> roleMenus = new HashMap<>();
     private final Map<Long, List<SysRoleApi>> roleApis = new HashMap<>();
+    private final List<SysMenu> menuStore = new ArrayList<>();
+    private final List<SysApi> apiStore = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -101,9 +103,24 @@ class InitDataRunnerPortalRoleBindingTest {
 
         roleMenus.clear();
         roleApis.clear();
+        menuStore.clear();
+        menuStore.addAll(fixtureMenus());
+        apiStore.clear();
+        apiStore.addAll(fixtureApis());
 
-        lenient().when(sysMenuRepository.findAll()).thenReturn(fixtureMenus());
-        lenient().when(sysApiRepository.findAll()).thenReturn(fixtureApis());
+        lenient().when(sysMenuRepository.findAll()).thenAnswer(inv -> new ArrayList<>(menuStore));
+        lenient().when(sysMenuRepository.save(any(SysMenu.class))).thenAnswer(inv -> {
+            SysMenu m = inv.getArgument(0);
+            menuStore.add(m);
+            return m;
+        });
+        lenient().when(sysMenuRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(sysApiRepository.findAll()).thenAnswer(inv -> new ArrayList<>(apiStore));
+        lenient().when(sysApiRepository.save(any(SysApi.class))).thenAnswer(inv -> {
+            SysApi a = inv.getArgument(0);
+            apiStore.add(a);
+            return a;
+        });
         lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("team_manager"))
                 .thenReturn(Optional.of(role(TEAM_MANAGER_ROLE_ID, "team_manager")));
         lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("league_organizer"))
@@ -146,16 +163,11 @@ class InitDataRunnerPortalRoleBindingTest {
     void teamManagerKeyBindings() throws Exception {
         invokeBindings();
 
-        Set<Long> tmMenus = menuIdsOf(TEAM_MANAGER_ROLE_ID);
-        assertTrue(tmMenus.containsAll(Set.of(1L, 2L, 3L, 4L, 5L, 8L, 9L, 10L, 11L)),
-                "team_manager 应含 /business、/admin/teams、/admin/players、/admin/player-claims、/admin/lineup-templates 及对应按钮");
+        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 8L, 9L, 10L, 11L), menuIdsOf(TEAM_MANAGER_ROLE_ID),
+                "team_manager 精确菜单/id 集：/business、/admin/teams、/admin/players、/admin/player-claims、/admin/lineup-templates 及对应按钮");
 
-        Set<Long> tmApis = apiIdsOf(TEAM_MANAGER_ROLE_ID);
-        assertTrue(tmApis.containsAll(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 10L, 17L)),
-                "team_manager 应含 member 自助集 + /player/list + /player/team-options + /team/*（非删除）+ 阵容模板");
-        assertFalse(tmApis.contains(9L), "team_manager 不得获 /team/delete");
-        assertFalse(tmApis.contains(11L), "team_manager 不得获 /league/list");
-        assertFalse(tmApis.contains(18L), "team_manager 不得获 /player/create");
+        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 10L, 17L, 19L, 20L), apiIdsOf(TEAM_MANAGER_ROLE_ID),
+                "team_manager 精确 API/id 集：member 自助集 + /player/list + /player/team-options + /team/*（非删除）+ 阵容模板 + 认领审核面；不含 /team/delete、/league/list、/player/create");
     }
 
     @Test
@@ -173,15 +185,52 @@ class InitDataRunnerPortalRoleBindingTest {
     void leagueOrganizerExcludesSensitive() throws Exception {
         invokeBindings();
 
-        Set<Long> menus = menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID);
-        assertTrue(menus.containsAll(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L)),
-                "league_organizer 应含 team_manager 菜单集 + /admin/leagues、/admin/events 及赛事按钮");
+        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L), menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID),
+                "league_organizer 精确菜单/id 集：team_manager 菜单集 + /admin/leagues、/admin/events 及赛事按钮");
 
-        Set<Long> apis = apiIdsOf(LEAGUE_ORGANIZER_ROLE_ID);
-        assertTrue(apis.containsAll(Set.of(11L, 12L, 15L, 16L)), "league_organizer 应含 /league/*、/event/*、/game/*");
-        assertFalse(apis.contains(9L), "league_organizer 不得获 /team/delete");
-        assertFalse(apis.contains(13L), "league_organizer 不得获 /league/:id/owners");
-        assertFalse(apis.contains(14L), "league_organizer 不得获 /league/create-request/*");
+        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 10L, 11L, 12L, 15L, 16L, 17L, 19L, 20L),
+                apiIdsOf(LEAGUE_ORGANIZER_ROLE_ID),
+                "league_organizer 精确 API/id 集：含 /league/*、/event/*、/game/* 与认领审核面；不含 /team/delete、/league/:id/owners、/league/create-request/*");
+    }
+
+    @Test
+    @DisplayName("review-path 谓词：member 不含认领审核面，team_manager / league_organizer 含")
+    void playerClaimReviewPathBinding() throws Exception {
+        invokeBindings();
+
+        Set<Long> memberApis = apiIdsOf(MEMBER_ROLE_ID);
+        assertFalse(memberApis.contains(19L), "member 不得获 POST /account/player-claims/:id/approve");
+        assertFalse(memberApis.contains(20L), "member 不得获 POST /account/player-claims/:id/reject");
+
+        assertTrue(apiIdsOf(TEAM_MANAGER_ROLE_ID).containsAll(Set.of(19L, 20L)), "team_manager 应获认领审核面");
+        assertTrue(apiIdsOf(LEAGUE_ORGANIZER_ROLE_ID).containsAll(Set.of(19L, 20L)), "league_organizer 应获认领审核面");
+    }
+
+    @Test
+    @DisplayName("端点种子：ensurePortalProvisionApisIfNeeded 首次补录，第二次零 insert（计数不变）")
+    void portalProvisionApisIdempotent() throws Exception {
+        invokePortalProvisionApis();
+        int afterFirst = apiStore.size();
+        assertTrue(afterFirst > 20, "首次调用应补录门户建联盟端点");
+        assertTrue(apiStore.stream().anyMatch(a -> "/league/:id/owner/assign".equals(a.getPath())),
+                "应补录 /league/:id/owner/assign");
+
+        invokePortalProvisionApis();
+        assertEquals(afterFirst, apiStore.size(), "第二次调用不得新增 sys_api（幂等判存）");
+    }
+
+    @Test
+    @DisplayName("按钮种子：6 条新按钮（球员增删改导入/建联盟/认领审核）各落库一次")
+    void portalButtonSeedsInserted() throws Exception {
+        invokeButtonSeeds();
+
+        Map<String, Long> counts = menuStore.stream()
+                .filter(m -> m.getPermission() != null)
+                .collect(Collectors.groupingBy(SysMenu::getPermission, Collectors.counting()));
+        for (String perm : List.of("business:player:create", "business:player:edit", "business:player:delete",
+                "business:player:import", "business:league:create", "business:claim:review")) {
+            assertEquals(1L, counts.getOrDefault(perm, 0L).longValue(), "应补插按钮且仅一次：" + perm);
+        }
     }
 
     // ---- helpers ----
@@ -190,6 +239,18 @@ class InitDataRunnerPortalRoleBindingTest {
         Method m = InitDataRunner.class.getDeclaredMethod("ensurePortalRoleBindingsIfNeeded", long.class);
         m.setAccessible(true);
         m.invoke(runner, OP_ID);
+    }
+
+    private void invokePortalProvisionApis() throws Exception {
+        Method m = InitDataRunner.class.getDeclaredMethod("ensurePortalProvisionApisIfNeeded");
+        m.setAccessible(true);
+        m.invoke(runner);
+    }
+
+    private void invokeButtonSeeds() throws Exception {
+        Method m = InitDataRunner.class.getDeclaredMethod("ensureMenuDirectoryTypesAndDefaultButtons");
+        m.setAccessible(true);
+        m.invoke(runner);
     }
 
     private int totalMenus() {
@@ -269,6 +330,8 @@ class InitDataRunnerPortalRoleBindingTest {
         list.add(api(16L, "/game/create", "POST"));
         list.add(api(17L, "/portal/feedback/submit", "POST"));
         list.add(api(18L, "/player/create", "POST"));
+        list.add(api(19L, "/account/player-claims/:id/approve", "POST"));
+        list.add(api(20L, "/account/player-claims/:id/reject", "POST"));
         return list;
     }
 }
