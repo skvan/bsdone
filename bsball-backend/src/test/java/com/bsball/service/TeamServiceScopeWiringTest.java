@@ -71,13 +71,20 @@ class TeamServiceScopeWiringTest {
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
 
+    @Mock
+    private com.bsball.repository.TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private ApiPermissionService apiPermissionService;
+
     private TeamService service;
 
     @BeforeEach
     void setUp() {
         CurrentUserHolder.clear();
         service = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService);
+                resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
+                apiPermissionService);
     }
 
     @AfterEach

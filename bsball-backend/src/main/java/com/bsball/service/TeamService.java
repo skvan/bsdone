@@ -33,7 +33,9 @@ import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.TeamOptionDto;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Team;
+import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
@@ -46,6 +48,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -59,6 +63,8 @@ public class TeamService {
     private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final TeamManagerRepository teamManagerRepository;
+    private final ApiPermissionService apiPermissionService;
 
     public PageResult<Team> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -115,6 +121,16 @@ public class TeamService {
         return t;
     }
 
+    /**
+     * 门户自助创建球队即授职（批次 3a，Task 3.5）：保存球队后，若当前登录用户为门户账号
+     * （非超管 / 非租管），则把其落为球队负责人（bs_team_manager 落 active 行，幂等），
+     * 并失效其范围缓存（后置提交）。带联盟归属（leagueId != null）时先校验其对该联盟的管理权；
+     * 超管 / 租管 / 未登录（uid == null）不落 team_manager。
+     *
+     * <p>事务性：整体 {@code @Transactional}（对齐批 3 自助创建链路），联盟守卫 / 关系落库异常时
+     * 整体回滚，不会遗留 orphan 球队。
+     */
+    @Transactional(rollbackFor={Exception.class})
     public Team create(Team entity) {
         TeamService.normalizeBlankStringsToNull((Team)entity);
         long tid = this.tenantQueryPolicyService.requiredTenantId();
@@ -128,7 +144,26 @@ public class TeamService {
                 throw new BusinessException(400, "\u8054\u76df\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
             }
         }
-        return (Team)this.teamRepository.save(entity);
+        Team saved = (Team)this.teamRepository.save(entity);
+        Long uid = CurrentUserHolder.get();
+        if (uid != null && !this.apiPermissionService.isSuperAdmin(uid) && !this.apiPermissionService.isTenantAdmin(uid)) {
+            if (saved.getLeagueId() != null) {
+                this.resourceGuard.assertCanManageLeague(saved.getLeagueId());
+            }
+            if (this.teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(saved.getId(), uid).isEmpty()) {
+                LocalDateTime now = LocalDateTime.now();
+                TeamManager tm = new TeamManager();
+                tm.setTenantId(saved.getTenantId());
+                tm.setTeamId(saved.getId());
+                tm.setUserId(uid);
+                tm.setStatus(TeamManager.STATUS_ACTIVE);
+                tm.setCreatedAt(now);
+                tm.setUpdatedAt(now);
+                this.teamManagerRepository.save(tm);
+            }
+            this.evictAfterCommit(uid);
+        }
+        return saved;
     }
 
     public Team update(Long id, Team entity) {
@@ -218,6 +253,20 @@ public class TeamService {
         }
     }
 
+    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免授权被并发读回填（对齐批 2 / 3a 惯例）。 */
+    private void evictAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    TeamService.this.accountScopeService.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.accountScopeService.evictUserScopeCache(userId);
+        }
+    }
+
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         int p = page != null && page > 0 ? page : 1;
         int ps = PaginationSupport.resolvePageSize((Integer)pageSize);
@@ -229,7 +278,7 @@ public class TeamService {
     }
 
     @Generated
-    public TeamService(TeamRepository teamRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public TeamService(TeamRepository teamRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, TeamManagerRepository teamManagerRepository, ApiPermissionService apiPermissionService) {
         this.teamRepository = teamRepository;
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
@@ -237,6 +286,8 @@ public class TeamService {
         this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.teamManagerRepository = teamManagerRepository;
+        this.apiPermissionService = apiPermissionService;
     }
 }
 
