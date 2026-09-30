@@ -43,7 +43,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.common.json.PositionsJsonUtil;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerOptionDto;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
@@ -55,7 +55,7 @@ import com.bsball.model.entity.Team;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
-import com.bsball.service.DataScopeService;
+import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.service.PersonnelHistoryRecorder;
 import com.bsball.service.StatsService;
 import com.bsball.service.TenantQueryPolicyService;
@@ -93,7 +93,9 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
     private final StatsService statsService;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final PlayerTeamService playerTeamService;
@@ -105,14 +107,15 @@ public class PlayerService {
             return this.playerRepository.findAllForSelect();
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds == null) {
             return this.playerRepository.findAllForSelectByTenantId(tid);
         }
-        if (scope.getTeamIds().isEmpty()) {
+        if (visibleTeamIds.isEmpty()) {
             return List.of();
         }
-        return this.playerRepository.findAllForSelectByTenantIdAndTeamIdIn(tid, (Collection)scope.getTeamIds());
+        return this.playerRepository.findAllForSelectByTenantIdAndTeamIdIn(tid, visibleTeamIds);
     }
 
     public List<TeamPlayerOptionDto> listTeamPlayerOptions(long teamId) {
@@ -120,8 +123,9 @@ public class PlayerService {
             throw new BusinessException(400, "\u5fc5\u987b\u4f20\u5165\u7403\u961f ID\uff08teamId\uff09");
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.getTeamIds().contains(teamId)) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && !visibleTeamIds.contains(teamId)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u961f\u7684\u7403\u5458");
         }
         List<Object[]> rows = this.playerTeamRepository.findTeamPlayerOptionFields(tid, teamId);
@@ -146,11 +150,12 @@ public class PlayerService {
     public PageResult<Player> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long teamId, List<Long> ids, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo) {
         boolean global = this.tenantQueryPolicyService.isGlobalQueryMode();
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!global && !scope.isUnrestrictedInTenant() && scope.getTeamIds().isEmpty()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (!global && visibleTeamIds != null && visibleTeamIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
-        if (!(global || scope.isUnrestrictedInTenant() || teamId == null || teamId == 0L || scope.getTeamIds().contains(teamId))) {
+        if (!(global || visibleTeamIds == null || teamId == null || teamId == 0L || visibleTeamIds.contains(teamId))) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         if (ids != null && !ids.isEmpty()) {
@@ -160,11 +165,11 @@ public class PlayerService {
                 list = rows;
             } else {
                 List<Player> tenantRows = rows.stream().filter(p -> Objects.equals(p.getTenantId(), tid)).toList();
-                if (scope.isUnrestrictedInTenant()) {
+                if (visibleTeamIds == null) {
                     list = tenantRows;
                 } else {
                     Map<Long, Set<Long>> currentTeams = this.playerTeamService.currentTeamIdsByPlayerIds(tenantRows.stream().map(Player::getId).toList());
-                    list = tenantRows.stream().filter(p -> this.visibleInScope(scope, currentTeams.get(p.getId()))).toList();
+                    list = tenantRows.stream().filter(p -> this.visibleInScope(visibleTeamIds, currentTeams.get(p.getId()))).toList();
                 }
             }
             this.playerTeamService.attachEntries(list);
@@ -172,14 +177,14 @@ public class PlayerService {
         }
         boolean hasFilter = keyword != null && !keyword.isBlank() || number != null && !number.isBlank() || position != null && !position.isBlank() || throwHand != null && !throwHand.isBlank() || batHand != null && !batHand.isBlank() || status != null && !status.isBlank() || joinDateFrom != null && !joinDateFrom.isBlank() || joinDateTo != null && !joinDateTo.isBlank() || teamId != null;
         Pageable p2 = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        Specification spec = this.buildListSpec(teamId, keyword, number, position, throwHand, batHand, status, joinDateFrom, joinDateTo, tid, scope, hasFilter, global);
+        Specification spec = this.buildListSpec(teamId, keyword, number, position, throwHand, batHand, status, joinDateFrom, joinDateTo, tid, visibleTeamIds, hasFilter, global);
         Page result = this.playerRepository.findAll(spec, p2);
         List<Player> content = result.getContent();
         this.playerTeamService.attachEntries(content);
         return PageResult.of((List)content, (long)result.getTotalElements());
     }
 
-    private Specification<Player> buildListSpec(Long teamId, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo, long tid, EffectiveDataScope scope, boolean applyExtraFilters, boolean global) {
+    private Specification<Player> buildListSpec(Long teamId, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo, long tid, List<Long> visibleTeamIds, boolean applyExtraFilters, boolean global) {
         return (root, q, cb) -> {
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
@@ -187,8 +192,8 @@ public class PlayerService {
                 preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
             }
             boolean freeAgentOnly = teamId != null && teamId == 0L;
-            if (!(global || scope.isUnrestrictedInTenant() || freeAgentOnly)) {
-                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, scope.getTeamIds(), null)));
+            if (!(global || visibleTeamIds == null || freeAgentOnly)) {
+                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, visibleTeamIds, null)));
             }
             if (teamId != null && teamId != 0L) {
                 preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId)));
@@ -267,12 +272,12 @@ public class PlayerService {
         return cb.exists(sq);
     }
 
-    private boolean visibleInScope(EffectiveDataScope scope, Set<Long> currentTeamIds) {
+    private boolean visibleInScope(Collection<Long> visibleTeamIds, Set<Long> currentTeamIds) {
         if (currentTeamIds == null || currentTeamIds.isEmpty()) {
             return true;
         }
         for (Long teamId : currentTeamIds) {
-            if (scope.getTeamIds().contains(teamId)) {
+            if (visibleTeamIds.contains(teamId)) {
                 return true;
             }
         }
@@ -288,8 +293,9 @@ public class PlayerService {
         if (!Objects.equals(p.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!(scope.isUnrestrictedInTenant() || this.playerTeamService.countCurrentEntriesInTeams(p.getId(), scope.getTeamIds()) > 0L)) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && this.playerTeamService.countCurrentEntriesInTeams(p.getId(), visibleTeamIds) == 0L) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u5458");
         }
         this.playerTeamService.attachEntries(p);
@@ -387,6 +393,7 @@ public class PlayerService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u7403\u5458");
         }
+        this.resourceGuard.assertCanEditPlayerProfile(id, ResourceGuard.PlayerEditChannel.ROSTER);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
         entity.setId(id);
@@ -524,6 +531,7 @@ public class PlayerService {
         if (!Objects.equals(existing.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u7403\u5458");
         }
+        this.resourceGuard.assertCanEditPlayerProfile(id, ResourceGuard.PlayerEditChannel.ROSTER);
         Long uid = CurrentUserHolder.get();
         LocalDateTime now = LocalDateTime.now();
         existing.setDeletedAt(now);
@@ -545,6 +553,7 @@ public class PlayerService {
         LocalDateTime now = LocalDateTime.now();
         List<Player> toSoftDelete = this.playerRepository.findAllById(validIds).stream().filter(p -> Objects.equals(p.getTenantId(), tid)).filter(p -> p.getDeletedAt() == null).toList();
         for (Player p2 : toSoftDelete) {
+            this.resourceGuard.assertCanEditPlayerProfile(p2.getId(), ResourceGuard.PlayerEditChannel.ROSTER);
             p2.setDeletedAt(now);
             p2.setDeletedBy(uid);
         }
@@ -636,12 +645,14 @@ public class PlayerService {
     }
 
     @Generated
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.playerTeamRepository = playerTeamRepository;
         this.statsService = statsService;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.playerTeamService = playerTeamService;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
