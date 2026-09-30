@@ -37,6 +37,7 @@ public class UserDataScopeManageService {
     private final ApiPermissionService apiPermissionService;
     private final SysDataScopeRepository sysDataScopeRepository;
     private final SysUserTenantRepository sysUserTenantRepository;
+    private final AccountScopeService accountScopeService;
 
     public List<SysDataScope> list(long operatorUserId, long targetUserId, long tenantId) {
         this.requireScopeAccess(operatorUserId, targetUserId, tenantId);
@@ -53,6 +54,7 @@ public class UserDataScopeManageService {
             throw new BusinessException(400, "\u8be5\u7528\u6237\u4e0d\u5c5e\u4e8e\u6b64\u79df\u6237");
         }
         this.sysDataScopeRepository.deleteByUserIdAndTenantId(Long.valueOf(targetUserId), Long.valueOf(tenantId));
+        this.accountScopeService.evictUserScopeCache(Long.valueOf(targetUserId));
         if (items == null || items.isEmpty()) {
             return;
         }
@@ -126,10 +128,11 @@ public class UserDataScopeManageService {
     }
 
     @Generated
-    public UserDataScopeManageService(ApiPermissionService apiPermissionService, SysDataScopeRepository sysDataScopeRepository, SysUserTenantRepository sysUserTenantRepository) {
+    public UserDataScopeManageService(ApiPermissionService apiPermissionService, SysDataScopeRepository sysDataScopeRepository, SysUserTenantRepository sysUserTenantRepository, AccountScopeService accountScopeService) {
         this.apiPermissionService = apiPermissionService;
         this.sysDataScopeRepository = sysDataScopeRepository;
         this.sysUserTenantRepository = sysUserTenantRepository;
+        this.accountScopeService = accountScopeService;
     }
 }
 

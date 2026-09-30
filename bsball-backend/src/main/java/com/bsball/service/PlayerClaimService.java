@@ -262,6 +262,7 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
+        this.accountScopeService.evictUserScopeCache(claim.getUserId());
         return claim;
     }
 
