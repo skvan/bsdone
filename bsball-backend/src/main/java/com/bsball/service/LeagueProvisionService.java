@@ -58,10 +58,20 @@ public class LeagueProvisionService {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         boolean needApproval = this.sysConfigService.getBoolean(tid, CONFIG_REQUIRE_APPROVAL, true);
         if (needApproval) {
+            // 终审修复（#154）：待审分支补名称校验，与直建路径（LeagueService.createInternalForTenant）同口径，
+            // 避免缺名/空白时 bs_league_create_request.name NOT NULL 违约落 500；
+            // 空/空白 → 400「联盟名称不能为空」；超 200（列定义 length=200）→ 400「联盟名称过长」。
+            String name = payload == null || payload.getName() == null ? "" : payload.getName().trim();
+            if (name.isEmpty()) {
+                throw new BusinessException(400, "联盟名称不能为空");
+            }
+            if (name.length() > 200) {
+                throw new BusinessException(400, "联盟名称过长");
+            }
             LeagueCreateRequest req = new LeagueCreateRequest();
             req.setTenantId(Long.valueOf(tid));
             req.setApplicantUserId(userId);
-            req.setName(payload == null ? null : payload.getName());
+            req.setName(name);
             req.setNameEn(payload == null ? null : payload.getNameEn());
             req.setDescription(payload == null ? null : payload.getDescription());
             req.setStatus(LeagueCreateRequest.STATUS_PENDING);

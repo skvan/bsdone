@@ -131,6 +131,48 @@ class LeagueProvisionServiceTest {
         verify(leagueCreateRequestRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("submitOrCreate 需审核 name=null：400「联盟名称不能为空」且不落申请行")
+    void submitOrCreate_needApproval_nameNull_badRequest() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(10L);
+        when(sysConfigService.getBoolean(10L, LeagueProvisionService.CONFIG_REQUIRE_APPROVAL, true)).thenReturn(true);
+        League payload = new League();
+        payload.setName(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.submitOrCreate(7L, payload));
+        assertEquals(400, ex.getCode());
+        assertEquals("联盟名称不能为空", ex.getMessage());
+        verify(leagueCreateRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("submitOrCreate 需审核 name=空白串：400「联盟名称不能为空」且不落申请行")
+    void submitOrCreate_needApproval_blankName_badRequest() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(10L);
+        when(sysConfigService.getBoolean(10L, LeagueProvisionService.CONFIG_REQUIRE_APPROVAL, true)).thenReturn(true);
+        League payload = new League();
+        payload.setName("   ");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.submitOrCreate(7L, payload));
+        assertEquals(400, ex.getCode());
+        assertEquals("联盟名称不能为空", ex.getMessage());
+        verify(leagueCreateRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("submitOrCreate 需审核 name 超 200：400「联盟名称过长」且不落申请行")
+    void submitOrCreate_needApproval_nameTooLong_badRequest() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(10L);
+        when(sysConfigService.getBoolean(10L, LeagueProvisionService.CONFIG_REQUIRE_APPROVAL, true)).thenReturn(true);
+        League payload = new League();
+        payload.setName("x".repeat(201));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.submitOrCreate(7L, payload));
+        assertEquals(400, ex.getCode());
+        assertEquals("联盟名称过长", ex.getMessage());
+        verify(leagueCreateRequestRepository, never()).save(any());
+    }
+
     // ------------------------------------------------------------- approve
 
     @Test
