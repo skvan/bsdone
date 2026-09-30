@@ -47,6 +47,16 @@ extends BaseEntity {
     private List<Long> menuIds;
     @Transient
     private List<Long> apiIds;
+    /*
+     * 展示/标记用（不落库、不参与 equals/hashCode）：
+     *  - platform=true 表示平台级（tenant_id NULL）全局共享角色，租管只读；
+     *  - hasTenantOverride=true 表示当前租户对该平台门户角色已启用目录覆盖。
+     * 用于批 4 前端 UI 区分「全局行只读 / 覆盖可配」。
+     */
+    @Transient
+    private Boolean platform;
+    @Transient
+    private Boolean hasTenantOverride;
 
     @Generated
     public SysRole() {
@@ -93,6 +103,16 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatform() {
+        return this.platform;
+    }
+
+    @Generated
+    public Boolean getHasTenantOverride() {
+        return this.hasTenantOverride;
+    }
+
+    @Generated
     public void setName(String name) {
         this.name = name;
     }
@@ -130,6 +150,16 @@ extends BaseEntity {
     @Generated
     public void setApiIds(List<Long> apiIds) {
         this.apiIds = apiIds;
+    }
+
+    @Generated
+    public void setPlatform(Boolean platform) {
+        this.platform = platform;
+    }
+
+    @Generated
+    public void setHasTenantOverride(Boolean hasTenantOverride) {
+        this.hasTenantOverride = hasTenantOverride;
     }
 
     @Generated

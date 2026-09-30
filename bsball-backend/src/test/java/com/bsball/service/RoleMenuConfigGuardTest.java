@@ -23,9 +23,12 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysMenu;
 import com.bsball.model.entity.SysRole;
+import com.bsball.model.entity.SysRoleApi;
 import com.bsball.model.entity.SysRoleMenu;
+import com.bsball.repository.SysApiRepository;
 import com.bsball.repository.SysMenuRepository;
 import com.bsball.repository.SysRoleApiRepository;
 import com.bsball.repository.SysRoleMenuRepository;
@@ -56,6 +59,8 @@ class RoleMenuConfigGuardTest {
     private static final long ROLE_ID = 500L;
     private static final long BUSINESS_MENU_ID = 100L;
     private static final long PLATFORM_MENU_ID = 200L;
+    private static final long BUSINESS_API_ID = 300L;
+    private static final long PLATFORM_API_ID = 400L;
 
     @Mock
     private ApiPermissionService apiPermissionService;
@@ -73,6 +78,10 @@ class RoleMenuConfigGuardTest {
     private SysTenantRepository sysTenantRepository;
     @Mock
     private SysMenuRepository sysMenuRepository;
+    @Mock
+    private SysApiRepository sysApiRepository;
+    @Mock
+    private TenantRoleConfigService tenantRoleConfigService;
 
     private SysRoleService service;
 
@@ -81,7 +90,7 @@ class RoleMenuConfigGuardTest {
         CurrentUserHolder.clear();
         service = new SysRoleService(apiPermissionService, menuExpansionHelper, sysRoleRepository,
                 sysRoleMenuRepository, sysRoleApiRepository, sysUserRoleRepository, sysTenantRepository,
-                sysMenuRepository);
+                sysMenuRepository, sysApiRepository, tenantRoleConfigService);
     }
 
     @AfterEach
@@ -238,6 +247,53 @@ class RoleMenuConfigGuardTest {
         verify(apiPermissionService).clearUserRoleCache();
     }
 
+    // ------------------------------------------------------------ apiIds 越权防护（T3.15b）
+
+    @Test
+    @DisplayName("apiIds 防护：租户管理员绑定平台级接口（/sys/tenant/*）→ 403「无权授予平台级接口」")
+    void tenantAdminGrantsPlatformApi_forbidden() {
+        stubTenantAdmin();
+        SysRole existing = role(ROLE_ID, "team_admin", TENANT_ID);
+        when(sysRoleRepository.findById(ROLE_ID)).thenReturn(Optional.of(existing));
+        when(sysApiRepository.findAll()).thenReturn(apis());
+
+        SysRole body = new SysRole();
+        body.setApiIds(new ArrayList<>(List.of(PLATFORM_API_ID)));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.update(OPERATOR_ID, ROLE_ID, body));
+
+        assertEquals(403, ex.getCode());
+        assertEquals("无权授予平台级接口", ex.getMessage());
+        verify(sysRoleApiRepository, never()).saveAll(any());
+        verify(sysRoleApiRepository, never()).deleteByRoleId(any());
+    }
+
+    @Test
+    @DisplayName("apiIds 防护：租户管理员绑定业务接口 → 通过且落库")
+    void tenantAdminGrantsBusinessApi_persists() {
+        stubTenantAdmin();
+        SysRole existing = role(ROLE_ID, "team_admin", TENANT_ID);
+        when(sysRoleRepository.findById(ROLE_ID)).thenReturn(Optional.of(existing));
+        when(sysApiRepository.findAll()).thenReturn(apis());
+        when(sysRoleMenuRepository.findByRoleIdIn(any())).thenReturn(List.of());
+        List<SysRoleApi> saved = new ArrayList<>();
+        when(sysRoleApiRepository.saveAll(any())).thenAnswer(inv -> {
+            Iterable<SysRoleApi> arg = inv.getArgument(0);
+            arg.forEach(saved::add);
+            return arg;
+        });
+        when(sysRoleRepository.save(any(SysRole.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SysRole body = new SysRole();
+        body.setApiIds(new ArrayList<>(List.of(BUSINESS_API_ID)));
+        SysRole result = service.update(OPERATOR_ID, ROLE_ID, body);
+
+        assertNotNull(result);
+        assertTrue(saved.stream().anyMatch(ra -> Objects.equals(ra.getApiId(), BUSINESS_API_ID)),
+                "业务接口应落库到 role_api");
+        verify(apiPermissionService).clearUserRoleCache();
+    }
+
     // ------------------------------------------------------------ helpers
 
     private void stubTenantAdmin() {
@@ -263,5 +319,17 @@ class RoleMenuConfigGuardTest {
 
     private static List<SysMenu> menus() {
         return List.of(menu(BUSINESS_MENU_ID, "/admin/teams"), menu(PLATFORM_MENU_ID, "/admin/tenants"));
+    }
+
+    private static SysApi api(long id, String path, String method) {
+        SysApi a = new SysApi();
+        a.setId(id);
+        a.setPath(path);
+        a.setMethod(method);
+        return a;
+    }
+
+    private static List<SysApi> apis() {
+        return List.of(api(BUSINESS_API_ID, "/sys/user/list", "GET"), api(PLATFORM_API_ID, "/sys/tenant/page", "GET"));
     }
 }

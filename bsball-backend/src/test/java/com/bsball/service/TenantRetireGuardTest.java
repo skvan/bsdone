@@ -33,7 +33,6 @@ import com.bsball.model.entity.SysUser;
 import com.bsball.model.entity.SysUserTenant;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.SysMenuRepository;
-import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysTenantRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.SysUserRoleRepository;
@@ -68,7 +67,7 @@ class TenantRetireGuardTest {
     @Mock
     private SysUserRoleRepository sysUserRoleRepository;
     @Mock
-    private SysRoleMenuRepository sysRoleMenuRepository;
+    private TenantRoleConfigService tenantRoleConfigService;
     @Mock
     private SysMenuRepository sysMenuRepository;
     @Mock
@@ -97,7 +96,7 @@ class TenantRetireGuardTest {
         tenantAccessGuard = new TenantAccessGuard(sysTenantRepository);
         tenantAccessGuard.initTenantAccessCache();
         authService = new AuthService(apiPermissionService, jwtService, tenantProperties,
-                sysUserRepository, sysUserRoleRepository, sysRoleMenuRepository, sysMenuRepository,
+                sysUserRepository, sysUserRoleRepository, tenantRoleConfigService, sysMenuRepository,
                 sysUserTenantRepository, sysTenantRepository, tenantAccessGuard);
         tenantManageService = new SysTenantManageService(apiPermissionService, sysTenantRepository,
                 leagueRepository, teamRepository, tenantAccessGuard, tenantResolutionService,

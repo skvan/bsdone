@@ -23,14 +23,13 @@
  */
 package com.bsball.service;
 
+import com.bsball.core.CurrentUserHolder;
 import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysMenuApi;
 import com.bsball.model.entity.SysRole;
-import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.repository.SysApiRepository;
 import com.bsball.repository.SysMenuApiRepository;
 import com.bsball.repository.SysRoleApiRepository;
-import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysRoleRepository;
 import com.bsball.repository.SysUserRoleRepository;
 import com.bsball.service.ApiPermissionService;
@@ -45,7 +44,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -64,10 +62,10 @@ public class ApiPermissionService {
     private static final ThreadLocal<Map<Long, List<Long>>> USER_ROLE_IDS_REQ_CACHE = ThreadLocal.withInitial(HashMap::new);
     private final SysRoleRepository sysRoleRepository;
     private final SysRoleApiRepository sysRoleApiRepository;
-    private final SysRoleMenuRepository sysRoleMenuRepository;
     private final SysMenuApiRepository sysMenuApiRepository;
     private final SysApiRepository sysApiRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
+    private final TenantRoleConfigService tenantRoleConfigService;
     @Value(value="${server.servlet.context-path:}")
     private String contextPath;
     @Value(value="${app.api-permission.guest-cache-ttl-sec:60}")
@@ -179,9 +177,9 @@ public class ApiPermissionService {
             return Set.of();
         }
         Set<Long> out = this.sysRoleApiRepository.findByRoleIdIn(roleIds).stream().map(ra -> ra.getApiId()).collect(HashSet::new, Set::add, Set::addAll);
-        List<Long> rawMenuIds = this.sysRoleMenuRepository.findByRoleIdIn(roleIds).stream().map(SysRoleMenu::getMenuId).filter(Objects::nonNull).distinct().toList();
-        if (!rawMenuIds.isEmpty()) {
-            for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(rawMenuIds)) {
+        Set<Long> effectiveMenuIds = this.tenantRoleConfigService.resolveEffectiveMenuIds(CurrentUserHolder.getTenantId(), roleIds);
+        if (!effectiveMenuIds.isEmpty()) {
+            for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(new ArrayList<>(effectiveMenuIds))) {
                 if (ma.getApiId() == null) continue;
                 out.add(ma.getApiId());
             }
@@ -290,13 +288,13 @@ public class ApiPermissionService {
     }
 
     @Generated
-    public ApiPermissionService(SysRoleRepository sysRoleRepository, SysRoleApiRepository sysRoleApiRepository, SysRoleMenuRepository sysRoleMenuRepository, SysMenuApiRepository sysMenuApiRepository, SysApiRepository sysApiRepository, SysUserRoleRepository sysUserRoleRepository) {
+    public ApiPermissionService(SysRoleRepository sysRoleRepository, SysRoleApiRepository sysRoleApiRepository, SysMenuApiRepository sysMenuApiRepository, SysApiRepository sysApiRepository, SysUserRoleRepository sysUserRoleRepository, TenantRoleConfigService tenantRoleConfigService) {
         this.sysRoleRepository = sysRoleRepository;
         this.sysRoleApiRepository = sysRoleApiRepository;
-        this.sysRoleMenuRepository = sysRoleMenuRepository;
         this.sysMenuApiRepository = sysMenuApiRepository;
         this.sysApiRepository = sysApiRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
+        this.tenantRoleConfigService = tenantRoleConfigService;
     }
 
     private record GuestPermissionSnapshot(List<SysApi> allApis, Set<Long> guestApiIds) {

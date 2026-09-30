@@ -30,12 +30,10 @@ import com.bsball.config.TenantProperties;
 import com.bsball.exception.BusinessException;
 import com.bsball.exception.UnauthorizedException;
 import com.bsball.model.entity.SysMenu;
-import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.model.entity.SysTenant;
 import com.bsball.model.entity.SysUser;
 import com.bsball.model.entity.SysUserTenant;
 import com.bsball.repository.SysMenuRepository;
-import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysTenantRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.SysUserRoleRepository;
@@ -62,7 +60,7 @@ public class AuthService {
     private final TenantProperties tenantProperties;
     private final SysUserRepository sysUserRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
-    private final SysRoleMenuRepository sysRoleMenuRepository;
+    private final TenantRoleConfigService tenantRoleConfigService;
     private final SysMenuRepository sysMenuRepository;
     private final SysUserTenantRepository sysUserTenantRepository;
     private final SysTenantRepository sysTenantRepository;
@@ -221,8 +219,7 @@ public class AuthService {
     private Map<String, Object> toAuthUser(SysUser user, Long currentTenantId) {
         List<Long> roleIds = this.sysUserRoleRepository.findByUserId(user.getId()).stream().map(ur -> ur.getRoleId()).sorted().collect(Collectors.toList());
         List<Long> roleIdsForMenu = roleIds.isEmpty() ? List.of() : roleIds;
-        List<SysRoleMenu> rms = this.sysRoleMenuRepository.findByRoleIdIn(roleIdsForMenu);
-        Set<Long> menuIds = rms.stream().map(SysRoleMenu::getMenuId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> menuIds = this.tenantRoleConfigService.resolveEffectiveMenuIds(currentTenantId, roleIdsForMenu);
         List<String> menuPaths = List.of();
         List<String> perms = List.of();
         if (!menuIds.isEmpty()) {
@@ -271,13 +268,13 @@ public class AuthService {
     }
 
     @Generated
-    public AuthService(ApiPermissionService apiPermissionService, JwtService jwtService, TenantProperties tenantProperties, SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysMenuRepository sysMenuRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository, TenantAccessGuard tenantAccessGuard) {
+    public AuthService(ApiPermissionService apiPermissionService, JwtService jwtService, TenantProperties tenantProperties, SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, TenantRoleConfigService tenantRoleConfigService, SysMenuRepository sysMenuRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository, TenantAccessGuard tenantAccessGuard) {
         this.apiPermissionService = apiPermissionService;
         this.jwtService = jwtService;
         this.tenantProperties = tenantProperties;
         this.sysUserRepository = sysUserRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
-        this.sysRoleMenuRepository = sysRoleMenuRepository;
+        this.tenantRoleConfigService = tenantRoleConfigService;
         this.sysMenuRepository = sysMenuRepository;
         this.sysUserTenantRepository = sysUserTenantRepository;
         this.sysTenantRepository = sysTenantRepository;

@@ -26,6 +26,9 @@ import com.bsball.common.Result;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.model.entity.SysRole;
 import com.bsball.service.SysRoleService;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import lombok.Generated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -100,6 +103,68 @@ public class SysRoleApi {
         }
         this.sysRoleService.delete(uid, id);
         return Result.ok(Map.of());
+    }
+
+    /* ----------------------------- 租户级目录覆盖（spec §8.6 / T3.15b） ----------------------------- */
+
+    @GetMapping(value={"/tenant-config"})
+    public Result<Map<String, Object>> getTenantConfig(@RequestParam(required=false) Long tenantId, @RequestParam Long roleId) {
+        Long uid = CurrentUserHolder.get();
+        if (uid == null) {
+            return Result.fail((int)401, "\u8bf7\u5148\u767b\u5f55");
+        }
+        return Result.ok(this.sysRoleService.getTenantConfig(uid, tenantId, roleId));
+    }
+
+    @PutMapping(value={"/tenant-config"})
+    public Result<Map<String, Object>> saveTenantConfig(@RequestBody Map<String, Object> body) {
+        Long uid = CurrentUserHolder.get();
+        if (uid == null) {
+            return Result.fail((int)401, "\u8bf7\u5148\u767b\u5f55");
+        }
+        Long roleId = SysRoleApi.asLong(body.get("roleId"));
+        Long tenantId = SysRoleApi.asLong(body.get("tenantId"));
+        List<Long> menuIds = SysRoleApi.asLongList(body.get("menuIds"));
+        return Result.ok(this.sysRoleService.saveTenantConfig(uid, tenantId, roleId, menuIds));
+    }
+
+    @DeleteMapping(value={"/tenant-config"})
+    public Result<Object> clearTenantConfig(@RequestParam(required=false) Long tenantId, @RequestParam Long roleId) {
+        Long uid = CurrentUserHolder.get();
+        if (uid == null) {
+            return Result.fail((int)401, "\u8bf7\u5148\u767b\u5f55");
+        }
+        this.sysRoleService.clearTenantConfig(uid, tenantId, roleId);
+        return Result.ok(Map.of());
+    }
+
+    private static Long asLong(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof Number) {
+            return Long.valueOf(((Number)v).longValue());
+        }
+        try {
+            return Long.valueOf(v.toString().trim());
+        }
+        catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static List<Long> asLongList(Object v) {
+        if (v instanceof Collection) {
+            ArrayList<Long> out = new ArrayList<Long>();
+            for (Object o : (Collection)v) {
+                Long l = SysRoleApi.asLong(o);
+                if (l != null) {
+                    out.add(l);
+                }
+            }
+            return out;
+        }
+        return List.of();
     }
 
     @Generated
