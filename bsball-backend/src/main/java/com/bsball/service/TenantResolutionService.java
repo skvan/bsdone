@@ -59,6 +59,17 @@ public class TenantResolutionService {
         return (Optional)this.tenantByCodeCache.get(key, k -> this.sysTenantRepository.findByCodeIgnoreCaseAndDeletedAtIsNull(lookup));
     }
 
+    /**
+     * 失效指定租户编码的缓存（退租/续租后保证码解析即时反映启停状态）。
+     * 缓存 key 为小写编码，与 findTenantByCodeCached 保持一致。
+     */
+    public void evictTenantByCode(String code) {
+        if (this.tenantByCodeCache == null || !StringUtils.hasText((String)code)) {
+            return;
+        }
+        this.tenantByCodeCache.invalidate(code.trim().toLowerCase(Locale.ROOT));
+    }
+
     public Long resolve(HttpServletRequest req) {
         if (req == null) {
             return null;

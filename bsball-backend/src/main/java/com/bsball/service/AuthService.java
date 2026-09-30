@@ -66,6 +66,7 @@ public class AuthService {
     private final SysMenuRepository sysMenuRepository;
     private final SysUserTenantRepository sysUserTenantRepository;
     private final SysTenantRepository sysTenantRepository;
+    private final TenantAccessGuard tenantAccessGuard;
     private static final Pattern PHONE_LOGIN_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
     public Map<String, Object> login(String username, String password, Long requestedTenantId) {
@@ -100,6 +101,7 @@ public class AuthService {
             if (!inRequested) {
                 throw new UnauthorizedException("\u7528\u6237\u540d\u6216\u5bc6\u7801\u9519\u8bef");
             }
+            this.tenantAccessGuard.requireActive(requestedTenantId);
             tenantId = requestedTenantId;
         } else {
             throw new UnauthorizedException("\u7528\u6237\u540d\u6216\u5bc6\u7801\u9519\u8bef");
@@ -132,6 +134,7 @@ public class AuthService {
             if (!inRequested) {
                 throw new UnauthorizedException("\u65e0\u6743\u767b\u5f55\u8be5\u79df\u6237");
             }
+            this.tenantAccessGuard.requireActive(requestedTenantId);
             tenantId = requestedTenantId;
         } else {
             throw new UnauthorizedException("\u8bf7\u6307\u5b9a\u79df\u6237");
@@ -162,8 +165,11 @@ public class AuthService {
             if (target.isEmpty() || ((SysTenant)target.get()).getDeletedAt() != null || !((SysTenant)target.get()).isActive()) {
                 throw new BusinessException(403, "\u65e0\u6743\u5207\u6362\u5230\u8be5\u79df\u6237");
             }
-        } else if (!this.sysUserTenantRepository.existsByUserIdAndTenantIdAndDeletedAtIsNull(userId, newTenantId)) {
-            throw new BusinessException(403, "\u65e0\u6743\u5207\u6362\u5230\u8be5\u79df\u6237");
+        } else {
+            if (!this.sysUserTenantRepository.existsByUserIdAndTenantIdAndDeletedAtIsNull(userId, newTenantId)) {
+                throw new BusinessException(403, "\u65e0\u6743\u5207\u6362\u5230\u8be5\u79df\u6237");
+            }
+            this.tenantAccessGuard.requireActive(newTenantId);
         }
         String token = this.jwtService.createToken(userId, newTenantId);
         return Map.of("token",token, "user",this.toAuthUser(user, newTenantId));
@@ -265,7 +271,7 @@ public class AuthService {
     }
 
     @Generated
-    public AuthService(ApiPermissionService apiPermissionService, JwtService jwtService, TenantProperties tenantProperties, SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysMenuRepository sysMenuRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository) {
+    public AuthService(ApiPermissionService apiPermissionService, JwtService jwtService, TenantProperties tenantProperties, SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysMenuRepository sysMenuRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository, TenantAccessGuard tenantAccessGuard) {
         this.apiPermissionService = apiPermissionService;
         this.jwtService = jwtService;
         this.tenantProperties = tenantProperties;
@@ -275,6 +281,7 @@ public class AuthService {
         this.sysMenuRepository = sysMenuRepository;
         this.sysUserTenantRepository = sysUserTenantRepository;
         this.sysTenantRepository = sysTenantRepository;
+        this.tenantAccessGuard = tenantAccessGuard;
     }
 }
 

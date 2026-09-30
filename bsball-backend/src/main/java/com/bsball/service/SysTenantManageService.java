@@ -29,6 +29,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.SysTenant;
+import com.bsball.model.entity.SysOperationLog;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.LeagueRepository;
@@ -43,6 +44,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.Generated;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -57,6 +60,11 @@ public class SysTenantManageService {
     private final SysTenantRepository sysTenantRepository;
     private final LeagueRepository leagueRepository;
     private final TeamRepository teamRepository;
+    private final TenantAccessGuard tenantAccessGuard;
+    private final TenantResolutionService tenantResolutionService;
+    private final OperationLogAsyncService operationLogAsyncService;
+    @Generated
+    private static final Logger log = LoggerFactory.getLogger(SysTenantManageService.class);
 
     public PageResult<SysTenant> list(long operatorUserId, Integer page, Integer pageSize, String keyword) {
         Page result;
@@ -116,6 +124,8 @@ public class SysTenantManageService {
         if (existing == null || existing.getDeletedAt() != null) {
             throw new BusinessException(404, "\u79df\u6237\u4e0d\u5b58\u5728");
         }
+        Integer statusBefore = existing.getStatus();
+        String reason = entity.getDescription();
         if (entity.getName() != null && !entity.getName().isBlank()) {
             existing.setName(entity.getName().trim());
         }
@@ -138,7 +148,9 @@ public class SysTenantManageService {
         }
         existing.setLeaseStartDate(entity.getLeaseStartDate());
         existing.setLeaseEndDate(entity.getLeaseEndDate());
-        return (SysTenant)this.sysTenantRepository.save(existing);
+        SysTenant saved = (SysTenant)this.sysTenantRepository.save(existing);
+        this.applyTenantStatusSideEffects(operatorUserId, saved, statusBefore, reason);
+        return saved;
     }
 
     @Transactional
@@ -188,6 +200,44 @@ public class SysTenantManageService {
         return out;
     }
 
+    /**
+     * 退租(1→0)/续租(0→1)侧效：失效可用性缓存 + 码缓存，并按现状审计机制留痕（操作者/时间/原因）。
+     */
+    private void applyTenantStatusSideEffects(long operatorUserId, SysTenant tenant, Integer statusBefore, String reason) {
+        Integer statusAfter = tenant.getStatus();
+        boolean retired = SysTenantManageService.isStatus(statusBefore, 1) && SysTenantManageService.isStatus(statusAfter, 0);
+        boolean renewed = SysTenantManageService.isStatus(statusBefore, 0) && SysTenantManageService.isStatus(statusAfter, 1);
+        if (!retired && !renewed) {
+            return;
+        }
+        this.tenantAccessGuard.evict(tenant.getId());
+        this.tenantResolutionService.evictTenantByCode(tenant.getCode());
+        this.recordTenantStatusChange(operatorUserId, tenant, retired, reason);
+    }
+
+    private static boolean isStatus(Integer status, int expected) {
+        return status != null && status == expected;
+    }
+
+    /** 接入现状操作审计（SysOperationLog + OperationLogAsyncService），记录退租/续租操作者、时间与原因。 */
+    private void recordTenantStatusChange(long operatorUserId, SysTenant tenant, boolean retired, String reason) {
+        try {
+            SysOperationLog entry = new SysOperationLog();
+            entry.setTenantId(tenant.getId());
+            entry.setUserId(Long.valueOf(operatorUserId));
+            entry.setModule("\u79df\u6237\u7ba1\u7406");
+            entry.setAction(retired ? "\u9000\u79df" : "\u7eed\u79df");
+            entry.setTargetType("tenant");
+            entry.setTargetId(tenant.getId());
+            entry.setDescription(reason != null && !reason.isBlank() ? reason.trim() : (retired ? "\u79df\u6237\u5df2\u505c\u6b62\u8fd0\u8425" : "\u79df\u6237\u5df2\u6062\u590d\u8fd0\u8425"));
+            entry.setCreatedAt(LocalDateTime.now());
+            this.operationLogAsyncService.saveAsync(entry);
+        }
+        catch (Exception e) {
+            log.debug("\u79df\u6237\u542f\u505c\u7559\u75d5\u5931\u8d25: {}", (Object)e.getMessage());
+        }
+    }
+
     private void requireSuperAdmin(long userId) {
         if (!this.apiPermissionService.isSuperAdmin(Long.valueOf(userId))) {
             throw new BusinessException(403, "\u4ec5\u8d85\u7ea7\u7ba1\u7406\u5458\u53ef\u64cd\u4f5c\u79df\u6237");
@@ -195,11 +245,14 @@ public class SysTenantManageService {
     }
 
     @Generated
-    public SysTenantManageService(ApiPermissionService apiPermissionService, SysTenantRepository sysTenantRepository, LeagueRepository leagueRepository, TeamRepository teamRepository) {
+    public SysTenantManageService(ApiPermissionService apiPermissionService, SysTenantRepository sysTenantRepository, LeagueRepository leagueRepository, TeamRepository teamRepository, TenantAccessGuard tenantAccessGuard, TenantResolutionService tenantResolutionService, OperationLogAsyncService operationLogAsyncService) {
         this.apiPermissionService = apiPermissionService;
         this.sysTenantRepository = sysTenantRepository;
         this.leagueRepository = leagueRepository;
         this.teamRepository = teamRepository;
+        this.tenantAccessGuard = tenantAccessGuard;
+        this.tenantResolutionService = tenantResolutionService;
+        this.operationLogAsyncService = operationLogAsyncService;
     }
 }
 

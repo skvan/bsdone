@@ -83,7 +83,7 @@ public class SysTenantApi {
         ArrayList out = new ArrayList();
         for (SysUserTenant ut : uts) {
             SysTenant t = this.sysTenantRepository.findById(ut.getTenantId()).orElse(null);
-            if (t == null || t.getDeletedAt() != null) continue;
+            if (t == null || t.getDeletedAt() != null || !t.isActive()) continue;
             HashMap<String, Object> row = new HashMap<String, Object>();
             row.put("id", t.getId());
             row.put("name", t.getName());

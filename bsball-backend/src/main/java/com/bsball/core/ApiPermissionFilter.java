@@ -38,6 +38,7 @@ import com.bsball.model.entity.SysTenant;
 import com.bsball.service.AccountScopeService;
 import com.bsball.service.ApiPermissionService;
 import com.bsball.service.JwtService;
+import com.bsball.service.TenantAccessGuard;
 import com.bsball.service.TenantResolutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.Filter;
@@ -71,6 +72,7 @@ implements Filter {
     private final TenantProperties tenantProperties;
     private final TenantResolutionService tenantResolutionService;
     private final AccountScopeService accountScopeService;
+    private final TenantAccessGuard tenantAccessGuard;
     @Value(value="${app.api.guest-check.enabled:true}")
     private boolean enabled;
     @Value(value="${app.api.guest-whitelist:/auth/login,/auth/captcha,/health,/files,/portal/feedback}")
@@ -110,7 +112,7 @@ implements Filter {
         }
         String pathNormPre = this.stripContextPath(req.getRequestURI() != null ? req.getRequestURI() : "");
         String pathForEarly = ApiPermissionFilter.normalizePath((String)pathNormPre);
-        if (!pathForEarly.startsWith("/portal/tenant/check") && this.rejectIfInactiveTenantCodeHeader(req, res)) {
+        if (!pathForEarly.startsWith("/portal/tenant/check") && this.rejectIfUnusableTenantCodeHeader(req, res)) {
             return;
         }
         Long userId = tokenAuth.userId();
@@ -120,6 +122,9 @@ implements Filter {
             res.setContentType("application/json");
             res.setCharacterEncoding(StandardCharsets.UTF_8.name());
             res.getWriter().write("{\"code\":401,\"msg\":\"\u767b\u5f55\u6001\u7f3a\u5c11\u79df\u6237\u4fe1\u606f\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55\"}");
+            return;
+        }
+        if (this.rejectIfUnusableRequestTenant(req, res, tokenAuth, userId)) {
             return;
         }
         long tenantId = this.resolveEffectiveTenantId(req, tokenAuth, userId, pathForEarly, req.getMethod());
@@ -277,21 +282,58 @@ implements Filter {
         return "GET".equals(m) || "HEAD".equals(m) || "OPTIONS".equals(m);
     }
 
-    private boolean rejectIfInactiveTenantCodeHeader(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    /*
+     * 批次3b T3.12：码通路封禁与回退链收口。
+     * 带 X-Tenant-Code 但租户不可用（解析不到/软删/停用）→ 终态拒绝 404「租户不存在」，
+     * 直接返回、不进入 resolveEffectiveTenantId 回退链（不再回落到默认租户）。
+     * 决策抽取为纯函数 TenantAccessGuard.decideCodeHeader，便于单测。
+     */
+    private boolean rejectIfUnusableTenantCodeHeader(HttpServletRequest req, HttpServletResponse res) throws IOException {
         String code = req.getHeader("X-Tenant-Code");
-        if (code == null || code.isBlank()) {
+        Optional<SysTenant> resolved = code == null || code.isBlank() ? Optional.empty() : this.tenantResolutionService.findTenantByCodeCached(code.trim());
+        TenantAccessGuard.Decision decision = TenantAccessGuard.decideCodeHeader(code, resolved);
+        if (!decision.rejected()) {
             return false;
         }
-        Optional opt = this.tenantResolutionService.findTenantByCodeCached(code.trim());
-        if (opt.isEmpty() || ((SysTenant)opt.get()).isActive()) {
-            return false;
+        this.writeTenantReject(req, res, decision);
+        return true;
+    }
+
+    /*
+     * 批次3b T3.12：请求级启停封禁。
+     *  - X-Tenant-Id 头通路：补启停校验（不可用 → 403「租户已停止运营」）；
+     *  - JWT 回退租户（token.tenantId 非 0）：每请求补启停校验（存量会话立即失效）；
+     *  - 超管（isSuperAdmin）豁免 ID 头与 JWT 校验，保证平台方归档查看可用；
+     *    全局 token（tenant=0）本就不触发 JWT 校验。
+     * 判定抽取为纯函数 TenantAccessGuard.decideStrictTenant，便于单测。
+     */
+    private boolean rejectIfUnusableRequestTenant(HttpServletRequest req, HttpServletResponse res, JwtService.TokenAuth tokenAuth, Long userId) throws IOException {
+        boolean superAdmin = userId != null && this.apiPermissionService.isSuperAdmin(userId);
+        Long headerTenantId = ApiPermissionFilter.parseXTenantId(req);
+        if (headerTenantId != null) {
+            TenantAccessGuard.Decision decision = TenantAccessGuard.decideStrictTenant(superAdmin, this.tenantAccessGuard.isActive(headerTenantId));
+            if (decision.rejected()) {
+                this.writeTenantReject(req, res, decision);
+                return true;
+            }
         }
+        Long jwtTenantId = tokenAuth.tenantId();
+        if (jwtTenantId != null && jwtTenantId != 0L) {
+            TenantAccessGuard.Decision decision = TenantAccessGuard.decideStrictTenant(superAdmin, this.tenantAccessGuard.isActive(jwtTenantId));
+            if (decision.rejected()) {
+                this.writeTenantReject(req, res, decision);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void writeTenantReject(HttpServletRequest req, HttpServletResponse res, TenantAccessGuard.Decision decision) throws IOException {
         ApiPermissionFilter.applyCorsHeaders((HttpServletRequest)req, (HttpServletResponse)res);
-        res.setStatus(HttpStatus.FORBIDDEN.value());
+        res.setStatus(decision.code());
         res.setContentType("application/json");
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        res.getWriter().write(this.objectMapper.writeValueAsString((Object)Result.fail((int)403, "\u79df\u6237\u5df2\u505c\u7528")));
-        return true;
+        res.getWriter().write(this.objectMapper.writeValueAsString((Object)Result.fail(decision.code(), decision.msg())));
     }
 
     private static Long parseXTenantId(HttpServletRequest req) {
@@ -319,13 +361,14 @@ implements Filter {
     }
 
     @Generated
-    public ApiPermissionFilter(ApiPermissionService apiPermissionService, ObjectMapper objectMapper, JwtService jwtService, TenantProperties tenantProperties, TenantResolutionService tenantResolutionService, AccountScopeService accountScopeService) {
+    public ApiPermissionFilter(ApiPermissionService apiPermissionService, ObjectMapper objectMapper, JwtService jwtService, TenantProperties tenantProperties, TenantResolutionService tenantResolutionService, AccountScopeService accountScopeService, TenantAccessGuard tenantAccessGuard) {
         this.apiPermissionService = apiPermissionService;
         this.objectMapper = objectMapper;
         this.jwtService = jwtService;
         this.tenantProperties = tenantProperties;
         this.tenantResolutionService = tenantResolutionService;
         this.accountScopeService = accountScopeService;
+        this.tenantAccessGuard = tenantAccessGuard;
     }
 }
 
