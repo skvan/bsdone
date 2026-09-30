@@ -17,6 +17,7 @@ import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
+import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
@@ -76,13 +77,17 @@ class PlayerServiceTeamSyncTest {
     @Mock
     private PlayerClaimRepository playerClaimRepository;
 
+    @Mock
+    private GamePlayerStatRepository gamePlayerStatRepository;
+
     private PlayerService service;
 
     @BeforeEach
     void setUp() {
         service = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
                 accountScopeService, scopeQuerySupport, resourceGuard, personnelHistoryRecorder,
-                playerTeamService, tenantQueryPolicyService, sysConfigService, playerClaimRepository);
+                playerTeamService, tenantQueryPolicyService, sysConfigService, playerClaimRepository,
+                gamePlayerStatRepository);
     }
 
     @Test

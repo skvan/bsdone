@@ -21,6 +21,7 @@ import com.bsball.model.entity.Coach;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.HistoryRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -150,6 +151,33 @@ public class PersonnelHistoryRecorder {
             this.persist(r);
         }
         return latestJoinRecordId;
+    }
+
+    /**
+     * 记录一条球队经历被移除（软删）的审计事件：eventType=profile_update、target=player、
+     * relatedObject=team；变更载荷含 changedFields=[teamEntries.removed] 与移除前值（teamId/number/positions/current）。
+     *
+     * @param playerId 球员档案 ID
+     * @param tenantId 租户 ID
+     * @param removed  被移除的球队经历行
+     */
+    public void recordPlayerTeamEntryRemoval(Long playerId, Long tenantId, PlayerTeam removed) {
+        if (playerId == null || tenantId == null || removed == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("player", playerId, tenantId, "profile_update");
+        r.setRelatedObjectType("team");
+        r.setRelatedObjectId(removed.getTeamId());
+        LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
+        beforeMap.put("teamId", removed.getTeamId());
+        beforeMap.put("number", removed.getNumber());
+        beforeMap.put("positions", removed.getPositionsList());
+        beforeMap.put("current", Boolean.TRUE.equals(removed.getCurrent()));
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+        payload.put("changedFields", List.of("teamEntries.removed"));
+        payload.put("before", beforeMap);
+        r.setChangePayloadJson(this.jsonPayload(payload));
+        this.persist(r);
     }
 
     public void afterPlayerUpdate(Player before, Player after) {

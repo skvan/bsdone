@@ -45,11 +45,13 @@ import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerOptionDto;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
+import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
+import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
@@ -69,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,6 +103,7 @@ public class PlayerService {
     private final PlayerTeamRepository playerTeamRepository;
     private final SysConfigService sysConfigService;
     private final PlayerClaimRepository playerClaimRepository;
+    private final GamePlayerStatRepository gamePlayerStatRepository;
     private static final int PLAYER_BG_IMAGES_MAX = 5;
 
     /** 本人档案（SELF 通道）可编辑字段白名单；白名单外的键一律忽略。 */
@@ -412,6 +416,7 @@ public class PlayerService {
         PlayerService.normalizePlayerBackgroundFields((Player)entity);
         Player before = PersonnelHistoryRecorder.snapshotPlayer((Player)existing);
         PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(entity, entity.getTeamEntries(), entity.getTeamEntries() != null);
+        this.assertEntriesDeletable(id, plan.toDelete());
         this.playerTeamService.applyMirror(entity, plan);
         Player saved = (Player)this.playerRepository.save(entity);
         this.playerTeamService.persistPlan(saved.getId(), plan);
@@ -420,6 +425,9 @@ public class PlayerService {
         if (joinRecordId != null) {
             saved.setCurrentJoinRecordId(joinRecordId);
             saved = (Player)this.playerRepository.save(saved);
+        }
+        for (PlayerTeam removedEntry : plan.toDelete()) {
+            this.personnelHistoryRecorder.recordPlayerTeamEntryRemoval(saved.getId(), saved.getTenantId(), removedEntry);
         }
         this.playerTeamService.attachEntries(saved);
         return saved;
@@ -501,6 +509,13 @@ public class PlayerService {
         if (p.getDeletedAt() != null) {
             throw new BusinessException(404, "球员不存在");
         }
+        // 经历（teamEntries）自助白名单：仅当显式提供 List 时才进入；
+        // 与既有经历逐条比对，先校验后落库（违规 403 发生在任何写之前）。
+        List<PlayerTeamEntryDto> incomingEntries = null;
+        if (body != null && body.get("teamEntries") instanceof List) {
+            incomingEntries = PlayerService.parseSelfTeamEntries(body.get("teamEntries"));
+            this.validateSelfTeamEntriesMutation(p, incomingEntries);
+        }
         if (body != null) {
             for (Map.Entry<String, Object> e : body.entrySet()) {
                 if (!SELF_EDITABLE.contains(e.getKey())) continue;
@@ -509,7 +524,143 @@ public class PlayerService {
         }
         PlayerService.normalizeBlankStringsToNull(p);
         PlayerService.normalizePlayerBackgroundFields(p);
-        return this.playerRepository.save(p);
+        if (incomingEntries == null) {
+            // 兼容 3a：body 无 teamEntries 时行为完全不变，仅按白名单编辑字段。
+            return this.playerRepository.save(p);
+        }
+        // 自助经历流水线：plan → 删除守卫（先校验）→ 镜像 → 落库 → 保存计划 → 沿革 → 回写 → 删除审计。
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(p, incomingEntries, true);
+        this.assertEntriesDeletable(playerId, plan.toDelete());
+        this.playerTeamService.applyMirror(p, plan);
+        Player saved = this.playerRepository.save(p);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            saved = this.playerRepository.save(saved);
+        }
+        for (PlayerTeam removedEntry : plan.toDelete()) {
+            this.personnelHistoryRecorder.recordPlayerTeamEntryRemoval(saved.getId(), saved.getTenantId(), removedEntry);
+        }
+        return saved;
+    }
+
+    /**
+     * 删除守卫（管理端与自助两路径共用）：对“将被删除”的经历逐条校验；
+     * 若该“球员+球队”已有有效比赛记录（口径与统计一致），抛 400 阻断删除，改为引导“取消当前球队”。
+     */
+    private void assertEntriesDeletable(Long playerId, List<PlayerTeam> toDelete) {
+        if (toDelete == null || toDelete.isEmpty()) {
+            return;
+        }
+        for (PlayerTeam entry : toDelete) {
+            long count = this.gamePlayerStatRepository.countValidByPlayerIdAndTeamId(playerId, entry.getTeamId());
+            if (count > 0L) {
+                throw new BusinessException(400, "该经历已参加 " + count + " 场比赛，不可删除；离队请取消当前球队");
+            }
+        }
+    }
+
+    /**
+     * 自助经历变更白名单：仅放行 ① 本人经历 current true→false；② 删除无比赛记录经历（守卫另处）。
+     * 新增行 / 复活 / current→true / 改 number / 改 positions 一律 403 并给出明确指引。
+     */
+    private void validateSelfTeamEntriesMutation(Player p, List<PlayerTeamEntryDto> incoming) {
+        List<PlayerTeam> existing = this.playerTeamRepository
+                .findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(p.getId());
+        LinkedHashMap<Long, PlayerTeam> existingByTeam = new LinkedHashMap<>();
+        for (PlayerTeam e : existing) {
+            existingByTeam.put(e.getTeamId(), e);
+        }
+        for (PlayerTeamEntryDto dto : incoming) {
+            Long teamId = dto.teamId();
+            if (teamId == null || teamId <= 0L) {
+                throw new BusinessException(400, "球队经历缺少有效球队 ID（teamId）");
+            }
+            PlayerTeam current = existingByTeam.get(teamId);
+            if (current == null) {
+                boolean revived = this.playerTeamRepository
+                        .findFirstByPlayerIdAndTeamIdAndDeletedAtIsNotNullOrderByIdDesc(p.getId(), teamId)
+                        .isPresent();
+                throw new BusinessException(403, revived ? "重新入队请通过球队邀请" : "新增球队经历请通过球队邀请");
+            }
+            boolean wantCurrent = dto.current() != null && dto.current();
+            if (wantCurrent && !Boolean.TRUE.equals(current.getCurrent())) {
+                throw new BusinessException(403, "重新入队请通过球队邀请");
+            }
+            String newNumber = dto.number() == null || dto.number().isBlank() ? null : dto.number().trim();
+            if (!Objects.equals(current.getNumber(), newNumber)) {
+                throw new BusinessException(403, "背号/守位请通过球队管理");
+            }
+            List<String> newPositions = dto.positions() == null ? List.of() : dto.positions();
+            if (!Objects.equals(current.getPositionsList(), newPositions)) {
+                throw new BusinessException(403, "背号/守位请通过球队管理");
+            }
+        }
+    }
+
+    /** 解析自助请求体中的 teamEntries（List<Map>）为经历 DTO 列表；非数组结构 → 400。 */
+    private static List<PlayerTeamEntryDto> parseSelfTeamEntries(Object raw) {
+        if (!(raw instanceof List<?> list)) {
+            throw new BusinessException(400, "球队经历格式不正确");
+        }
+        ArrayList<PlayerTeamEntryDto> out = new ArrayList<>(list.size());
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> m)) {
+                throw new BusinessException(400, "球队经历格式不正确");
+            }
+            out.add(new PlayerTeamEntryDto(
+                    PlayerService.asLong(m.get("id")),
+                    PlayerService.asLong(m.get("teamId")),
+                    m.get("teamName") == null ? null : String.valueOf(m.get("teamName")),
+                    m.get("number") == null ? null : String.valueOf(m.get("number")),
+                    PlayerService.asStringList(m.get("positions")),
+                    PlayerService.asBoolean(m.get("current")),
+                    PlayerService.asInteger(m.get("sort"))));
+        }
+        return out;
+    }
+
+    private static Long asLong(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.longValue();
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty()) return null;
+        try {
+            return Long.valueOf(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Integer asInteger(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.intValue();
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty()) return null;
+        try {
+            return Integer.valueOf(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Boolean asBoolean(Object v) {
+        if (v == null) return null;
+        if (v instanceof Boolean b) return b;
+        String s = String.valueOf(v).trim();
+        return s.isEmpty() ? null : Boolean.valueOf(s);
+    }
+
+    private static List<String> asStringList(Object v) {
+        if (!(v instanceof List<?> raw)) {
+            return null;
+        }
+        ArrayList<String> out = new ArrayList<>(raw.size());
+        for (Object o : raw) {
+            if (o != null) out.add(String.valueOf(o));
+        }
+        return out;
     }
 
     /** 按白名单键将请求体原始值适配到 Player 字段（组图 / JSON 字段走既有 JSON/归一化工具）。 */
@@ -836,7 +987,7 @@ public class PlayerService {
     }
 
     @Generated
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService, SysConfigService sysConfigService, PlayerClaimRepository playerClaimRepository) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService, SysConfigService sysConfigService, PlayerClaimRepository playerClaimRepository, GamePlayerStatRepository gamePlayerStatRepository) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.playerTeamRepository = playerTeamRepository;
@@ -849,6 +1000,7 @@ public class PlayerService {
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.sysConfigService = sysConfigService;
         this.playerClaimRepository = playerClaimRepository;
+        this.gamePlayerStatRepository = gamePlayerStatRepository;
     }
 }
 
