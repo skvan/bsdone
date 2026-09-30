@@ -489,7 +489,7 @@
         FROM bs_game_player_stat s
         JOIN bs_game g ON s.game_id = g.id
         JOIN bs_event e ON g.event_id = e.id
-        JOIN bs_team t ON s.team_id = t.id AND t.deleted_at IS NULL
+        JOIN bs_team t ON s.team_id = t.id
         WHERE COALESCE(s.is_pitcher, 0) = 0
         <include refid="gameFilter"/>
         <include refid="teamLeaderFilter"/>
@@ -553,7 +553,7 @@
         FROM bs_game_player_stat s
         JOIN bs_game g ON s.game_id = g.id
         JOIN bs_event e ON g.event_id = e.id
-        JOIN bs_team t ON s.team_id = t.id AND t.deleted_at IS NULL
+        JOIN bs_team t ON s.team_id = t.id
         WHERE s.is_pitcher = 1
         <include refid="gameFilter"/>
         <include refid="teamLeaderFilter"/>
@@ -599,7 +599,7 @@
         FROM bs_game_player_stat s
         JOIN bs_game g ON s.game_id = g.id
         JOIN bs_event e ON g.event_id = e.id
-        JOIN bs_team t ON s.team_id = t.id AND t.deleted_at IS NULL
+        JOIN bs_team t ON s.team_id = t.id
         WHERE s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
         <include refid="gameFilter"/>
         <include refid="teamLeaderFilter"/>

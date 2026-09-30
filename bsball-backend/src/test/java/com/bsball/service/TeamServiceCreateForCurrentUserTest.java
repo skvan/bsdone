@@ -28,6 +28,9 @@ import com.bsball.model.entity.League;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.GameRepository;
+import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -77,6 +80,18 @@ class TeamServiceCreateForCurrentUserTest {
     @Mock
     private ApiPermissionService apiPermissionService;
 
+    @Mock
+    private GameRepository gameRepository;
+
+    @Mock
+    private PlayerTeamRepository playerTeamRepository;
+
+    @Mock
+    private PlayerRepository playerRepository;
+
+    @Mock
+    private PlayerTeamService playerTeamService;
+
     private TeamService service;
 
     @BeforeEach
@@ -84,7 +99,7 @@ class TeamServiceCreateForCurrentUserTest {
         CurrentUserHolder.clear();
         service = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
-                apiPermissionService);
+                apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);
     }
 
     @AfterEach

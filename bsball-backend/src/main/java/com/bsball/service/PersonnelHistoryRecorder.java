@@ -353,6 +353,20 @@ public class PersonnelHistoryRecorder {
         return !Objects.equals(PersonnelHistoryRecorder.str(a.getName()), PersonnelHistoryRecorder.str(b.getName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getNameEn()), PersonnelHistoryRecorder.str((String)b.getNameEn())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getShortName()), PersonnelHistoryRecorder.str((String)b.getShortName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getLogo()), PersonnelHistoryRecorder.str((String)b.getLogo()));
     }
 
+    /**
+     * 记录球队解散事件（spec §6.7）：eventType={@code dissolved}、targetType={@code team}、targetId=球队ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param dissolved 已软删（解散）的球队实体
+     */
+    public void afterTeamDissolve(Team dissolved) {
+        if (dissolved == null || dissolved.getId() == null || dissolved.getTenantId() == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", dissolved.getId().longValue(), dissolved.getTenantId().longValue(), "dissolved");
+        this.persist(r);
+    }
+
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {
         LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
         LinkedHashMap<String, Object> afterMap = new LinkedHashMap<>();

@@ -57,5 +57,13 @@ extends JpaRepository<Team, Long> {
     public List<Long> findIdsByLeagueIdInAndTenantId(@Param(value="leagueIds") Collection<Long> var1, @Param(value="tenantId") Long var2);
 
     public List<Team> findByTenantIdAndDeletedAtIsNullOrderBySortAscIdAsc(Long var1);
+
+    /**
+     * 含已解散（不过滤 deletedAt）的名称查询：供积分榜与历史展示解析“曾出现过”的球队名，
+     * 并携带 deletedAt 供调用方判定“已解散”标记。与“可选集合”选择器查询（一律带 deletedAt is null）语义不同，
+     * 解散球队仍可解析名字（spec §6.7 历史口径：队名解析允许解析已解散球队名）。
+     */
+    @Query(value="select t from Team t where t.id in :ids")
+    public List<Team> findByIdInIncludingDissolved(@Param(value="ids") Collection<Long> var1);
 }
 
