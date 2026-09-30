@@ -6,12 +6,10 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.HistoryRecord
  *  com.bsball.model.entity.Team
  *  com.bsball.repository.HistoryRecordRepository
  *  com.bsball.repository.TeamRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.HistoryRecordService
  *  com.bsball.service.TenantQueryPolicyService
  *  jakarta.persistence.criteria.Expression

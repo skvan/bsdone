@@ -7,7 +7,6 @@
  *  com.bsball.common.json.PositionsJsonUtil
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.PlayerGameLogEntryDTO
  *  com.bsball.model.dto.PlayerOptionDto
  *  com.bsball.model.dto.PlayerStatsByEventDTO
@@ -17,7 +16,6 @@
  *  com.bsball.model.entity.Team
  *  com.bsball.repository.PlayerRepository
  *  com.bsball.repository.TeamRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.PlayerService
  *  com.bsball.service.StatsService
@@ -65,7 +63,6 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;

@@ -117,10 +117,10 @@ public class AccountScopeService {
         List<SysDataScope> rows = sysDataScopeRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(ctx.getUserId(), Long.valueOf(ctx.getTenantId()));
         if (rows.isEmpty()) return false;
         for (SysDataScope row : rows) {
-            if ("TEAM".equals(row.getScopeType())) { ctx.addTeam(row.getRefId()); continue; }
-            if (!"LEAGUE".equals(row.getScopeType())) continue;
+            if (SysDataScope.TYPE_TEAM.equals(row.getScopeType())) { ctx.addTeam(row.getRefId()); continue; }
+            if (!SysDataScope.TYPE_LEAGUE.equals(row.getScopeType())) continue;
             ctx.addLeague(row.getRefId());
-            if ("INCLUDE_DESCENDANTS".equals(row.getExpansion())) {
+            if (SysDataScope.EXP_INCLUDE_DESCENDANTS.equals(row.getExpansion())) {
                 ctx.getTeamIds().addAll(teamRepository.findIdsByLeagueIdAndTenantId(row.getRefId(), Long.valueOf(ctx.getTenantId())));
             }
         }

@@ -6,7 +6,6 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.GameSaveLiveDTO
  *  com.bsball.model.dto.GameSaveLiveDTO$GamePlayerStatPart
  *  com.bsball.model.dto.GameSaveLiveDTO$GameUpdatePart
@@ -22,7 +21,6 @@
  *  com.bsball.repository.GamePlayerStatRepository
  *  com.bsball.repository.GameRepository
  *  com.bsball.repository.StadiumRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.GameService
  *  com.bsball.service.TenantQueryPolicyService
  *  com.fasterxml.jackson.core.JsonProcessingException
@@ -66,7 +64,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,7 +73,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -105,8 +101,8 @@ public class GameService {
         Long tid = this.tenantQueryPolicyService.tenantIdOrNullForQuery();
         long scopeTid = this.tenantQueryPolicyService.requiredTenantId();
         EffectiveScope scope = this.accountScopeService.resolveCurrent();
-        List<Long> allowedEventIds = this.scopeQuerySupport.visibleEventIds(scope, scopeTid);
-        if (allowedEventIds != null && allowedEventIds.isEmpty()) {
+        List<Long> visibleEventIds = this.scopeQuerySupport.visibleEventIds(scope, scopeTid);
+        if (visibleEventIds != null && visibleEventIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
@@ -118,8 +114,8 @@ public class GameService {
                 if (tid != null) {
                     preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
                 }
-                if (allowedEventIds != null) {
-                    preds.add(root.get("eventId").in((Collection)allowedEventIds));
+                if (visibleEventIds != null) {
+                    preds.add(root.get("eventId").in((Collection)visibleEventIds));
                 }
                 if (teamId != null) {
                     preds.add(cb.or((Expression)cb.equal((Expression)root.get("homeTeamId"), (Object)teamId), (Expression)cb.equal((Expression)root.get("awayTeamId"), (Object)teamId)));
@@ -135,8 +131,8 @@ public class GameService {
             if (tid != null) {
                 preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
             }
-            if (allowedEventIds != null) {
-                preds.add(root.get("eventId").in((Collection)allowedEventIds));
+            if (visibleEventIds != null) {
+                preds.add(root.get("eventId").in((Collection)visibleEventIds));
             }
             if (teamId != null) {
                 preds.add(cb.or((Expression)cb.equal((Expression)root.get("homeTeamId"), (Object)teamId), (Expression)cb.equal((Expression)root.get("awayTeamId"), (Object)teamId)));

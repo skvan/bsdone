@@ -6,12 +6,10 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.Event
  *  com.bsball.model.entity.League
  *  com.bsball.repository.EventRepository
  *  com.bsball.repository.LeagueRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.EventService
  *  com.bsball.service.TenantQueryPolicyService
  *  lombok.Generated

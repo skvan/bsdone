@@ -6,7 +6,6 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.TeamLineupTemplateCopyFromGameDto
  *  com.bsball.model.dto.TeamLineupTemplateJsonPayload
  *  com.bsball.model.dto.TeamLineupTemplateSaveDto
@@ -18,7 +17,6 @@
  *  com.bsball.repository.GamePlayerStatRepository
  *  com.bsball.repository.GameRepository
  *  com.bsball.repository.TeamLineupTemplateRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.TeamLineupTemplateService
  *  com.bsball.service.TeamLineupTemplateService$ExtractedLineupFromGame
  *  com.bsball.service.TeamService

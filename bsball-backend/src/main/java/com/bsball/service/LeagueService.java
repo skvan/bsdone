@@ -6,10 +6,8 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.League
  *  com.bsball.repository.LeagueRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.LeagueService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.TenantQueryPolicyService
