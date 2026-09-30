@@ -68,6 +68,7 @@ public class CoachService {
     private final CoachRepository coachRepository;
     private final TeamRepository teamRepository;
     private final DataScopeService dataScopeService;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
@@ -158,6 +159,7 @@ public class CoachService {
         CoachService.normalizeCoachTeamId((Coach)entity);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
+        this.resourceGuard.assertCanManageTeam(entity.getTeamId());
         Coach saved = (Coach)this.coachRepository.save(entity);
         this.personnelHistoryRecorder.afterCoachCreate(saved);
         return saved;
@@ -172,6 +174,7 @@ public class CoachService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u6559\u7ec3");
         }
+        this.resourceGuard.assertCanManageTeam(existing.getTeamId());
         CoachService.normalizeCoachTeamId((Coach)entity);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
@@ -192,6 +195,7 @@ public class CoachService {
         if (!Objects.equals(existing.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u6559\u7ec3");
         }
+        this.resourceGuard.assertCanManageTeam(existing.getTeamId());
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.coachRepository.save(existing);
@@ -240,10 +244,11 @@ public class CoachService {
     }
 
     @Generated
-    public CoachService(CoachRepository coachRepository, TeamRepository teamRepository, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public CoachService(CoachRepository coachRepository, TeamRepository teamRepository, DataScopeService dataScopeService, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
         this.coachRepository = coachRepository;
         this.teamRepository = teamRepository;
         this.dataScopeService = dataScopeService;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
