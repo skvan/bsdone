@@ -39,6 +39,8 @@ JpaSpecificationExecutor<Player> {
 
     public Optional<Player> findFirstByUserIdAndDeletedAtIsNull(Long userId);
 
+    public List<Player> findByNameAndBirthDateAndTenantIdAndDeletedAtIsNull(String name, String birthDate, Long tenantId);
+
     @Query(value="select new com.bsball.model.dto.PlayerOptionDto(p.id, p.name, p.number, p.teamId) from Player p where p.deletedAt is null order by coalesce(p.sort, 0) asc, p.id asc")
     public List<PlayerOptionDto> findAllForSelect();
 
