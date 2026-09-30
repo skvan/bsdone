@@ -28,8 +28,6 @@ import java.util.Objects;
 import lombok.Generated;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -56,7 +54,7 @@ public class UserDataScopeManageService {
             throw new BusinessException(400, "\u8be5\u7528\u6237\u4e0d\u5c5e\u4e8e\u6b64\u79df\u6237");
         }
         this.sysDataScopeRepository.deleteByUserIdAndTenantId(Long.valueOf(targetUserId), Long.valueOf(tenantId));
-        this.evictAfterCommit(Long.valueOf(targetUserId));
+        this.accountScopeService.evictUserScopeCacheAfterCommit(Long.valueOf(targetUserId));
         if (items == null || items.isEmpty()) {
             return;
         }
@@ -90,20 +88,6 @@ public class UserDataScopeManageService {
             save.add(row);
         }
         this.sysDataScopeRepository.saveAll(save);
-    }
-
-    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免配置期间并发读回填。 */
-    private void evictAfterCommit(Long userId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    UserDataScopeManageService.this.accountScopeService.evictUserScopeCache(userId);
-                }
-            });
-        } else {
-            this.accountScopeService.evictUserScopeCache(userId);
-        }
     }
 
     private static String stringVal(Object o) {

@@ -5,9 +5,9 @@
  * 并后置失效范围缓存；带联盟归属（leagueId != null）时先校验 assertCanManageLeague（失败 403 冒泡，
  * 不落关系）；超管 / 租管 / 未登录（uid == null）→ 不落 team_manager、不 evict。
  *
- * evict 语义：create 整体 @Transactional，evict 走 evictAfterCommit。单测无事务上下文，
- * isSynchronizationActive()==false → 即时 evictUserScopeCache（故直接断言调用）；afterCommit 分支
- * 的真实回滚 / 提交时序由 T3.9 端到端测试覆盖。
+ * evict 语义：create 整体 @Transactional，evict 经 accountScopeService.evictUserScopeCacheAfterCommit 后置提交。
+ * 本测试用 mock AccountScopeService 仅验证「接线调用」；无事务立即失效 / 提交后失效 / 回滚不失效的真实
+ * 语义由 AccountScopeServiceTest 直接覆盖（I1 盲区补齐）。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；TeamService 手工 new（@Generated 构造器）。
  */
@@ -111,7 +111,7 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(PORTAL_UID, tm.getUserId());
         assertEquals(TeamManager.STATUS_ACTIVE, tm.getStatus());
         verify(resourceGuard, never()).assertCanManageLeague(any());
-        verify(accountScopeService).evictUserScopeCache(PORTAL_UID);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
     }
 
     @Test
@@ -131,7 +131,7 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(TEAM_ID, tm.getTeamId());
         assertEquals(PORTAL_UID, tm.getUserId());
         assertEquals(TeamManager.STATUS_ACTIVE, tm.getStatus());
-        verify(accountScopeService).evictUserScopeCache(PORTAL_UID);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
     }
 
     @Test
@@ -147,15 +147,16 @@ class TeamServiceCreateForCurrentUserTest {
 
         assertEquals(403, ex.getCode());
         verify(teamManagerRepository, never()).save(any());
-        verify(accountScopeService, never()).evictUserScopeCache(any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
     }
 
     @Test
-    @DisplayName("门户用户建队（已有 team_manager 行）→ 幂等不重复落库但仍 evict")
+    @DisplayName("防御分支桩测：门户用户建队已有 team_manager 行 → 不重复落库但仍 evict")
     void create_portalUser_existingManager_idempotentNoSaveButEvicts() {
         CurrentUserHolder.set(PORTAL_UID, TENANT_ID);
         stubPortalUser();
         stubTeamSaved();
+        // 防御分支桩测：create 路径球队为新 id 判存必空，此处刻意构造「已存在」以覆盖防御分支。
         when(teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(TEAM_ID, PORTAL_UID))
                 .thenReturn(Optional.of(new TeamManager()));
 
@@ -163,7 +164,7 @@ class TeamServiceCreateForCurrentUserTest {
 
         assertEquals(TEAM_ID, out.getId());
         verify(teamManagerRepository, never()).save(any());
-        verify(accountScopeService).evictUserScopeCache(PORTAL_UID);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
     }
 
     // ------------------------------------------------------------ 管理员 / 匿名：跳过授职
@@ -179,7 +180,7 @@ class TeamServiceCreateForCurrentUserTest {
 
         assertEquals(TEAM_ID, out.getId());
         verifyNoInteractions(teamManagerRepository);
-        verify(accountScopeService, never()).evictUserScopeCache(any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
         verify(resourceGuard, never()).assertCanManageLeague(any());
     }
 
@@ -195,7 +196,8 @@ class TeamServiceCreateForCurrentUserTest {
 
         assertEquals(TEAM_ID, out.getId());
         verifyNoInteractions(teamManagerRepository);
-        verify(accountScopeService, never()).evictUserScopeCache(any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
+        verify(resourceGuard, never()).assertCanManageLeague(any());
     }
 
     @Test
@@ -209,7 +211,7 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(TEAM_ID, out.getId());
         verifyNoInteractions(apiPermissionService);
         verifyNoInteractions(teamManagerRepository);
-        verify(accountScopeService, never()).evictUserScopeCache(any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
     }
 
     // ------------------------------------------------------------- helpers

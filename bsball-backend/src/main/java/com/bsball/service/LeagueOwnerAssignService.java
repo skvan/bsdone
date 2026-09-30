@@ -6,7 +6,7 @@
  *  - assignInternal：内部 / 程序化指派（不校验 operator），幂等插入 + 失效该用户范围缓存；
  *  - assign / revoke / handover：管理端操作，先校验 operator 为超管 / 租户管理员；
  *  - 失效语义：关系变更（assignInternal / revokeInternal）内部统一 evict 相关用户的 AccountScopeService
- *    范围缓存，并后置到事务提交后（evictAfterCommit，对齐批 2 PlayerClaimService 惯例）；调用方不再重复 evict。
+ *    范围缓存，并后置到事务提交后（evictUserScopeCacheAfterCommit，对齐批 2 PlayerClaimService 惯例）；调用方不再重复 evict。
  *
  * 语义铁律（对齐 spec §6.1）：
  *  - 存量联盟无归属行 = 平台代管；管理员可后补指派（不做数据回填）；
@@ -27,8 +27,6 @@ import java.util.List;
 import lombok.Generated;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LeagueOwnerAssignService {
@@ -50,7 +48,7 @@ public class LeagueOwnerAssignService {
         //  DataIntegrityViolation 会被标记 rollback-only 而不可行；后续以幂等 upsert / 重试或独立事务边界硬化。
         if (this.leagueOwnerRepository.existsByLeagueIdAndUserIdAndDeletedAtIsNull(leagueId, userId)) {
             // 幂等 no-op：不重复插入，但仍失效缓存（保证缓存与库一致）。
-            this.evictAfterCommit(userId);
+            this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
             return null;
         }
         LeagueOwner owner = new LeagueOwner();
@@ -60,7 +58,7 @@ public class LeagueOwnerAssignService {
         owner.setStatus(LeagueOwner.STATUS_ACTIVE);
         owner.setGrantSource(source == null ? LeagueOwner.GRANT_ADMIN_ASSIGN : source);
         LeagueOwner saved = this.leagueOwnerRepository.save(owner);
-        this.evictAfterCommit(userId);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
         return saved;
     }
 
@@ -125,21 +123,7 @@ public class LeagueOwnerAssignService {
                 this.leagueOwnerRepository.save(owner);
             }
         }
-        this.evictAfterCommit(userId);
-    }
-
-    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤权 / 指派被并发读回填（对齐 PlayerClaimService）。 */
-    private void evictAfterCommit(Long userId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    LeagueOwnerAssignService.this.accountScopeService.evictUserScopeCache(userId);
-                }
-            });
-        } else {
-            this.accountScopeService.evictUserScopeCache(userId);
-        }
+        this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
     }
 
     /** operator 校验：须为超管 / 租户管理员，否则 403（未登录 401）。 */

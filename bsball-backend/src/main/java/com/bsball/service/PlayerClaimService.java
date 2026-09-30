@@ -78,8 +78,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -266,7 +264,7 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
-        this.evictAfterCommit(claim.getUserId());
+        this.accountScopeService.evictUserScopeCacheAfterCommit(claim.getUserId());
         return claim;
     }
 
@@ -385,20 +383,6 @@ public class PlayerClaimService {
         }
         this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
-    }
-
-    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤销类路径被并发读回填。 */
-    private void evictAfterCommit(Long userId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    PlayerClaimService.this.accountScopeService.evictUserScopeCache(userId);
-                }
-            });
-        } else {
-            this.accountScopeService.evictUserScopeCache(userId);
-        }
     }
 
     private void requireTeamManagerOrAdmin(Long userId, Long teamId) {

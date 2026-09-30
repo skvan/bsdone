@@ -127,7 +127,7 @@ class LeagueProvisionServiceTest {
         assertEquals(Boolean.FALSE, out.get("pending"));
         assertEquals(88L, ((Number) out.get("id")).longValue());
         verify(leagueOwnerAssignService).assignInternal(7L, 10L, 88L, LeagueOwner.GRANT_SELF_CREATE);
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
         verify(leagueCreateRequestRepository, never()).save(any());
     }
 
@@ -159,7 +159,7 @@ class LeagueProvisionServiceTest {
         assertEquals(1L, req.getReviewedBy());
         assertNotNull(req.getReviewedAt());
         verify(leagueOwnerAssignService).assignInternal(7L, 10L, 88L, LeagueOwner.GRANT_SELF_CREATE);
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
     }
 
     @Test
@@ -182,7 +182,7 @@ class LeagueProvisionServiceTest {
         verify(leagueService, never()).createInternal(any());
         // owner 亦落申请租户 10 → league.tenant == owner.tenant == 申请 tenant
         verify(leagueOwnerAssignService).assignInternal(7L, 10L, 88L, LeagueOwner.GRANT_SELF_CREATE);
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
     }
 
     @Test

@@ -11,7 +11,7 @@
  *  - 写路径一律落 reviewedBy / reviewedAt；approve / reject 对「不存在 / 已处理（非 pending）」统一 404；
  *  - 审核者权限：仅超管 / 租户管理员（ApiPermissionService），否则 403；租户管理员限本租户（超管放行）；
  *  - 关系变更（assignInternal 内部已 evict）+ 本服务对申请人再 evict，双保险失效范围缓存；
- *    本服务 evict 一律后置到事务提交后（evictAfterCommit，对齐批 2 PlayerClaimService 惯例）。
+ *    本服务 evict 一律后置到事务提交后（evictUserScopeCacheAfterCommit，对齐批 2 PlayerClaimService 惯例）。
  *
  * 循环依赖说明：本服务需调用 LeagueService.createInternal；而 LeagueService.createForCurrentUser
  * 又需调用本服务的 submitOrCreate，形成 LeagueService ⇄ LeagueProvisionService 环。
@@ -35,8 +35,6 @@ import lombok.Generated;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LeagueProvisionService {
@@ -73,7 +71,7 @@ public class LeagueProvisionService {
         League created = this.leagueService.createInternal(payload);
         this.leagueOwnerAssignService.assignInternal(userId, Long.valueOf(tid), created.getId(),
                 LeagueOwner.GRANT_SELF_CREATE);
-        this.evictAfterCommit(userId);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
         return Map.of("pending", false, "id", created.getId());
     }
 
@@ -98,7 +96,7 @@ public class LeagueProvisionService {
         req.setReviewedBy(reviewerId);
         req.setReviewedAt(LocalDateTime.now());
         this.leagueCreateRequestRepository.save(req);
-        this.evictAfterCommit(req.getApplicantUserId());
+        this.accountScopeService.evictUserScopeCacheAfterCommit(req.getApplicantUserId());
         return created;
     }
 
@@ -162,20 +160,6 @@ public class LeagueProvisionService {
             }
         }
         return req;
-    }
-
-    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免审批/直建被并发读回填（对齐 PlayerClaimService）。 */
-    private void evictAfterCommit(Long userId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    LeagueProvisionService.this.accountScopeService.evictUserScopeCache(userId);
-                }
-            });
-        } else {
-            this.accountScopeService.evictUserScopeCache(userId);
-        }
     }
 
     @Generated

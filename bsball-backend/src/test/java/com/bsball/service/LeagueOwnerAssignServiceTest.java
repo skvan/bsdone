@@ -8,7 +8,8 @@
  *  - handover：from == to → no-op（M2）；from 无 active 行 = 纯指派；
  *  - listOwners（I2）：守卫 401/403、跨租户 403、超管跨租户放行、DTO 字段集精确。
  *
- * evict 后置：单测无活动事务 → evictAfterCommit 走「即时」分支，可直接 verify accountScopeService。
+ * evict 后置：经 accountScopeService.evictUserScopeCacheAfterCommit（后置提交）；本测试验证接线调用，
+ * 提交/回滚即时性由 AccountScopeServiceTest 覆盖。
  */
 package com.bsball.service;
 
@@ -101,7 +102,7 @@ class LeagueOwnerAssignServiceTest {
         assertEquals(7L, entity.getUserId());
         assertEquals(LeagueOwner.STATUS_ACTIVE, entity.getStatus());
         assertEquals(LeagueOwner.GRANT_SELF_CREATE, entity.getGrantSource());
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
     }
 
     @Test
@@ -113,7 +114,7 @@ class LeagueOwnerAssignServiceTest {
 
         assertNull(result);
         verify(leagueOwnerRepository, never()).save(any());
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
     }
 
     @Test
@@ -180,7 +181,7 @@ class LeagueOwnerAssignServiceTest {
         assertNotNull(active.getDeletedAt());
         assertEquals(1L, active.getDeletedBy());
         verify(leagueOwnerRepository).save(active);
-        verify(accountScopeService).evictUserScopeCache(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
     }
 
     @Test
@@ -238,8 +239,8 @@ class LeagueOwnerAssignServiceTest {
         ArgumentCaptor<LeagueOwner> captor = ArgumentCaptor.forClass(LeagueOwner.class);
         verify(leagueOwnerRepository).save(captor.capture());
         assertEquals(8L, captor.getValue().getUserId());
-        verify(accountScopeService).evictUserScopeCache(7L);
-        verify(accountScopeService).evictUserScopeCache(8L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(8L);
     }
 
     @Test
@@ -261,8 +262,8 @@ class LeagueOwnerAssignServiceTest {
         ArgumentCaptor<LeagueOwner> captor = ArgumentCaptor.forClass(LeagueOwner.class);
         verify(leagueOwnerRepository, org.mockito.Mockito.times(2)).save(captor.capture());
         assertEquals(8L, captor.getAllValues().get(1).getUserId());
-        verify(accountScopeService).evictUserScopeCache(7L);
-        verify(accountScopeService).evictUserScopeCache(8L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(7L);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(8L);
     }
 
     // ------------------------------------------------------------- listOwners（I2）
