@@ -156,6 +156,8 @@ public class PersonnelHistoryRecorder {
     /**
      * 记录一条球队经历被移除（软删）的审计事件：eventType=profile_update、target=player、
      * relatedObject=team；变更载荷含 changedFields=[teamEntries.removed] 与移除前值（teamId/number/positions/current）。
+     * <p>本 payload 形态（{@code changedFields:["teamEntries.removed"]} + {@code before}{teamId,number,positions,current}、
+     * relatedObject=team）为 spec §6.6 / T3.10 定义的<b>有意形态</b>，非通用档案差分（无 after）；勿按 wrapProfilePayload 改写。
      *
      * @param playerId 球员档案 ID
      * @param tenantId 租户 ID

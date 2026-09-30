@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.repository.HistoryRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -187,6 +188,33 @@ class PersonnelHistoryRecorderTest {
         assertEquals(2, saved.size());
         assertEquals("retire", saved.get(0).getType());
         assertEquals("profile_update", saved.get(1).getType());
+    }
+
+    @Test
+    @DisplayName("经历移除审计：payload 为有意形态（changedFields=[teamEntries.removed] + before 快照，relatedObject=team）")
+    void recordPlayerTeamEntryRemoval_writesIntentPayload() throws Exception {
+        List<HistoryRecord> saved = captureSaves();
+        PlayerTeam removed = new PlayerTeam();
+        removed.setTeamId(6L);
+        removed.setNumber("8");
+        removed.setPositionsList(List.of("P", "C"));
+        removed.setCurrent(false);
+
+        recorder.recordPlayerTeamEntryRemoval(1L, 9L, removed);
+
+        assertEquals(1, saved.size());
+        HistoryRecord r = saved.get(0);
+        assertEquals("profile_update", r.getType());
+        assertEquals("player", r.getTargetType());
+        assertEquals("team", r.getRelatedObjectType());
+        assertEquals(6L, r.getRelatedObjectId().longValue());
+        Map<?, ?> payload = new ObjectMapper().readValue(r.getChangePayloadJson(), Map.class);
+        assertEquals(List.of("teamEntries.removed"), payload.get("changedFields"));
+        Map<?, ?> before = (Map<?, ?>) payload.get("before");
+        assertEquals(6, ((Number) before.get("teamId")).intValue());
+        assertEquals("8", before.get("number"));
+        assertEquals(List.of("P", "C"), before.get("positions"));
+        assertEquals(Boolean.FALSE, before.get("current"));
     }
 
     private List<HistoryRecord> captureSaves() {

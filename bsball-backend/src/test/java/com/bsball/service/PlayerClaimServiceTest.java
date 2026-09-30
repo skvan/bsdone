@@ -18,8 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,10 +34,12 @@ import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
 import com.bsball.model.entity.PlayerClaimInvite;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.PlayerClaimInviteRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
@@ -99,6 +106,9 @@ class PlayerClaimServiceTest {
     @Mock
     private PersonnelHistoryRecorder personnelHistoryRecorder;
 
+    @Mock
+    private PlayerTeamRepository playerTeamRepository;
+
     private PlayerClaimService service;
 
     @BeforeEach
@@ -106,7 +116,7 @@ class PlayerClaimServiceTest {
         service = new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
                 playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
                 sysUserRepository, playerTeamService, accountScopeService, resourceGuard, playerService,
-                personnelHistoryRecorder);
+                personnelHistoryRecorder, playerTeamRepository);
     }
 
     // ------------------------------------------------------------------ Step1：createInvite
@@ -320,6 +330,101 @@ class PlayerClaimServiceTest {
     }
 
     @Test
+    @DisplayName("I-1① 存量档案（A/B 两队经历）凭邀请入 C 队 → A/B 经历保留、C 置 current=true、沿革 ∅→{C}")
+    void claimOrRegisterViaInvite_existingProfileWithOtherEntries_joinAppendsPreservingExisting() {
+        PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
+        when(playerClaimInviteRepository.findByTokenAndDeletedAtIsNull("tok")).thenReturn(Optional.of(invite));
+        Player existing = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(CLAIMANT_ID)).thenReturn(Optional.of(existing));
+        // 存量档案：A(11)/B(12) 两队经历，均非当前
+        PlayerTeam a = entry(21L, 11L, "7", false, 0);
+        PlayerTeam b = entry(22L, 12L, "8", false, 1);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(PLAYER_ID))
+                .thenReturn(List.of(a, b));
+        when(teamRepository.findById(11L)).thenReturn(Optional.of(team(11L, TENANT_ID)));
+        when(teamRepository.findById(12L)).thenReturn(Optional.of(team(12L, TENANT_ID)));
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(personnelHistoryRecorder.recordPlayerTeamTransitions(any(), any(), any())).thenReturn(55L);
+        // 真实 plan 服务：toDelete 由追加语义自然为空（非桩造），捕获入参 desired 与真实 plan
+        PlayerTeamService realSync = spy(new PlayerTeamService(playerTeamRepository, teamRepository));
+        doReturn(Set.of()).when(realSync).currentTeamIds(PLAYER_ID); // 不在受邀队
+        PlayerClaimService svc = newService(realSync);
+        Object[] holders = new Object[2];
+        doAnswer(inv -> {
+            holders[0] = inv.getArgument(1);
+            PlayerTeamService.PlayerTeamSyncPlan p = (PlayerTeamService.PlayerTeamSyncPlan) inv.callRealMethod();
+            holders[1] = p;
+            return p;
+        }).when(realSync).plan(any(), any(), anyBoolean());
+
+        Map<String, Object> out = svc.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null);
+
+        assertEquals("registered", out.get("mode"));
+        assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
+        List<PlayerTeamEntryDto> desired = (List<PlayerTeamEntryDto>) holders[0];
+        PlayerTeamService.PlayerTeamSyncPlan plan = (PlayerTeamService.PlayerTeamSyncPlan) holders[1];
+        // A/B 经历保留：desired 含三队，且 toDelete 为空（无静默软删）
+        assertEquals(3, desired.size());
+        assertTrue(plan.toDelete().isEmpty(), "追加语义下 toDelete 应为空");
+        assertEquals(TEAM_ID, entryOf(desired, TEAM_ID).teamId().longValue());
+        assertEquals(Boolean.TRUE, entryOf(desired, TEAM_ID).current());
+        assertEquals(Boolean.FALSE, entryOf(desired, 11L).current());
+        assertEquals(Boolean.FALSE, entryOf(desired, 12L).current());
+        assertEquals("7", entryOf(desired, 11L).number());
+        assertEquals("8", entryOf(desired, 12L).number());
+        // 落库：不得静默软删任一存量经历；A/B 原行未被覆写
+        ArgumentCaptor<PlayerTeam> savedCaptor = ArgumentCaptor.forClass(PlayerTeam.class);
+        verify(playerTeamRepository, atLeastOnce()).save(savedCaptor.capture());
+        assertTrue(savedCaptor.getAllValues().stream().allMatch(t -> t.getDeletedAt() == null),
+                "不得静默软删任何存量经历");
+        verify(playerTeamRepository, never()).save(a);
+        verify(playerTeamRepository, never()).save(b);
+        // 沿革 ∅→{C}（before=原有 current 集合，A/B 非当前）
+        verify(personnelHistoryRecorder).recordPlayerTeamTransitions(existing, Set.of(), Set.of(TEAM_ID));
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+        assertEquals(1, invite.getUsedCount());
+    }
+
+    @Test
+    @DisplayName("I-1② 受邀队已在经历中（非 current）→ 仅置 current=true 且无删除")
+    void claimOrRegisterViaInvite_invitedTeamAlreadyPresentNonCurrent_flipsCurrentNoDelete() {
+        PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
+        when(playerClaimInviteRepository.findByTokenAndDeletedAtIsNull("tok")).thenReturn(Optional.of(invite));
+        Player existing = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(CLAIMANT_ID)).thenReturn(Optional.of(existing));
+        // 受邀队(5)已在经历中但非 current；另一队(12)非 current
+        PlayerTeam a = entry(21L, TEAM_ID, "7", false, 0);
+        PlayerTeam b = entry(22L, 12L, "8", false, 1);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(PLAYER_ID))
+                .thenReturn(List.of(a, b));
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        when(teamRepository.findById(12L)).thenReturn(Optional.of(team(12L, TENANT_ID)));
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(personnelHistoryRecorder.recordPlayerTeamTransitions(any(), any(), any())).thenReturn(66L);
+        PlayerTeamService realSync = spy(new PlayerTeamService(playerTeamRepository, teamRepository));
+        doReturn(Set.of()).when(realSync).currentTeamIds(PLAYER_ID);
+        PlayerClaimService svc = newService(realSync);
+        Object[] holders = new Object[2];
+        doAnswer(inv -> {
+            holders[0] = inv.getArgument(1);
+            PlayerTeamService.PlayerTeamSyncPlan p = (PlayerTeamService.PlayerTeamSyncPlan) inv.callRealMethod();
+            holders[1] = p;
+            return p;
+        }).when(realSync).plan(any(), any(), anyBoolean());
+
+        svc.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null);
+
+        List<PlayerTeamEntryDto> desired = (List<PlayerTeamEntryDto>) holders[0];
+        PlayerTeamService.PlayerTeamSyncPlan plan = (PlayerTeamService.PlayerTeamSyncPlan) holders[1];
+        assertEquals(2, desired.size());
+        assertEquals(Boolean.TRUE, entryOf(desired, TEAM_ID).current());
+        assertEquals(Boolean.FALSE, entryOf(desired, 12L).current());
+        assertTrue(plan.toDelete().isEmpty());
+        verify(personnelHistoryRecorder).recordPlayerTeamTransitions(existing, Set.of(), Set.of(TEAM_ID));
+    }
+
+    @Test
     @DisplayName("⑧ 幂等早返回（已在受邀队）→ 不消费令牌（usedCount 不变）")
     void claimOrRegisterViaInvite_idempotentEarlyReturn_doesNotConsumeInvite() {
         PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
@@ -360,6 +465,29 @@ class PlayerClaimServiceTest {
         p.setTenantId(tenantId);
         p.setUserId(userId);
         return p;
+    }
+
+    private PlayerClaimService newService(PlayerTeamService sync) {
+        return new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
+                playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
+                sysUserRepository, sync, accountScopeService, resourceGuard, playerService,
+                personnelHistoryRecorder, playerTeamRepository);
+    }
+
+    private static PlayerTeamEntryDto entryOf(List<PlayerTeamEntryDto> list, long teamId) {
+        return list.stream().filter(e -> e.teamId() != null && e.teamId() == teamId).findFirst().orElseThrow();
+    }
+
+    private static PlayerTeam entry(Long id, Long teamId, String number, boolean current, int sort) {
+        PlayerTeam e = new PlayerTeam();
+        e.setId(id);
+        e.setPlayerId(PLAYER_ID);
+        e.setTeamId(teamId);
+        e.setTenantId(TENANT_ID);
+        e.setNumber(number);
+        e.setCurrent(current);
+        e.setSort(sort);
+        return e;
     }
 
     private static Team team(long id, Long tenantId) {

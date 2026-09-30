@@ -72,6 +72,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -512,7 +513,8 @@ public class PlayerService {
         // 经历（teamEntries）自助白名单：仅当显式提供 List 时才进入；
         // 与既有经历逐条比对，先校验后落库（违规 403 发生在任何写之前）。
         List<PlayerTeamEntryDto> incomingEntries = null;
-        if (body != null && body.get("teamEntries") instanceof List) {
+        if (body != null && body.containsKey("teamEntries")) {
+            // M-2：显式提供 teamEntries 即进入解析（非 List 由 parseSelfTeamEntries 抛 400），消除旧 instanceof 死分支/静默忽略。
             incomingEntries = PlayerService.parseSelfTeamEntries(body.get("teamEntries"));
             this.validateSelfTeamEntriesMutation(p, incomingEntries);
         }
@@ -546,10 +548,10 @@ public class PlayerService {
     }
 
     /**
-     * 删除守卫（管理端与自助两路径共用）：对“将被删除”的经历逐条校验；
+     * 删除守卫（管理端与自助两路径共用，亦供邀请入队防御性复用）：对“将被删除”的经历逐条校验；
      * 若该“球员+球队”已有有效比赛记录（口径与统计一致），抛 400 阻断删除，改为引导“取消当前球队”。
      */
-    private void assertEntriesDeletable(Long playerId, List<PlayerTeam> toDelete) {
+    void assertEntriesDeletable(Long playerId, List<PlayerTeam> toDelete) {
         if (toDelete == null || toDelete.isEmpty()) {
             return;
         }
@@ -572,10 +574,15 @@ public class PlayerService {
         for (PlayerTeam e : existing) {
             existingByTeam.put(e.getTeamId(), e);
         }
+        // M-1：自去重——incoming 重复 teamId 直接 400（与 plan 端文案对齐），消除 400/403 漂移。
+        LinkedHashSet<Long> seen = new LinkedHashSet<>();
         for (PlayerTeamEntryDto dto : incoming) {
             Long teamId = dto.teamId();
             if (teamId == null || teamId <= 0L) {
                 throw new BusinessException(400, "球队经历缺少有效球队 ID（teamId）");
+            }
+            if (!seen.add(teamId)) {
+                throw new BusinessException(400, "球队经历存在重复球队：ID " + teamId);
             }
             PlayerTeam current = existingByTeam.get(teamId);
             if (current == null) {
@@ -645,11 +652,19 @@ public class PlayerService {
         }
     }
 
+    /**
+     * M-3：current 取值严格化——Boolean 原样；Number 明确 {@code intValue()!=0}；字符串仅接受 true/false
+     * （忽略大小写 + trim）；其余（含 "1" 等）抛 400，消除 {@code Boolean.valueOf("1") == false} 的静默降级。
+     */
     private static Boolean asBoolean(Object v) {
         if (v == null) return null;
         if (v instanceof Boolean b) return b;
+        if (v instanceof Number n) return n.intValue() != 0;
         String s = String.valueOf(v).trim();
-        return s.isEmpty() ? null : Boolean.valueOf(s);
+        if (s.isEmpty()) return null;
+        if ("true".equalsIgnoreCase(s)) return Boolean.TRUE;
+        if ("false".equalsIgnoreCase(s)) return Boolean.FALSE;
+        throw new BusinessException(400, "字段取值非法：current");
     }
 
     private static List<String> asStringList(Object v) {

@@ -36,6 +36,7 @@ import com.bsball.model.entity.PlayerTeam;
 import com.bsball.repository.PlayerClaimInviteRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
@@ -108,6 +109,9 @@ class PlayerClaimScopeWiringTest {
     @Mock
     private PersonnelHistoryRecorder personnelHistoryRecorder;
 
+    @Mock
+    private PlayerTeamRepository playerTeamRepository;
+
     private PlayerClaimService service;
 
     @BeforeEach
@@ -115,7 +119,7 @@ class PlayerClaimScopeWiringTest {
         service = new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
                 playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
                 sysUserRepository, playerTeamService, accountScopeService, resourceGuard, playerService,
-                personnelHistoryRecorder);
+                personnelHistoryRecorder, playerTeamRepository);
     }
 
     // ------------------------------------------------------------------ 写：approve

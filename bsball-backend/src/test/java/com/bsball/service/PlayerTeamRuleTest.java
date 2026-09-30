@@ -306,6 +306,123 @@ class PlayerTeamRuleTest {
         verify(gamePlayerStatRepository, never()).countValidByPlayerIdAndTeamId(any(), any());
     }
 
+    @Test
+    @DisplayName("自助：incoming 重复 teamId → 400（M-1 自去重，与 plan 端文案对齐，消除 400/403 漂移）")
+    void self_duplicateTeamId_rejected400() {
+        Player p = player(PLAYER_ID, TENANT);
+        PlayerTeam e = entry(11L, 5L, "7", true, 0);
+        e.setPositionsList(List.of("C"));
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(PLAYER_ID))
+                .thenReturn(List.of(e));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", List.of(entryMap(5L, "7", List.of("C"), true),
+                entryMap(5L, "7", List.of("C"), true)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("重复球队"));
+        verify(playerRepository, never()).save(any(Player.class));
+        verify(playerTeamService, never()).plan(any(), any(), eq(true));
+    }
+
+    @Test
+    @DisplayName("自助：incoming 缺 teamId → 400")
+    void self_missingTeamId_rejected400() {
+        Player p = player(PLAYER_ID, TENANT);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("teamId", null);
+        item.put("current", false);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", List.of(item));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("teamId"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("自助：incoming 非 Map 元素 → 400（M-2 解析入口不再静默忽略）")
+    void self_nonMapElement_rejected400() {
+        Player p = player(PLAYER_ID, TENANT);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", List.of("not-a-map"));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("格式不正确"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("自助：teamEntries 非数组 → 400（M-2 containsKey 后解析，消除死分支/静默忽略）")
+    void self_teamEntriesNotList_rejected400() {
+        Player p = player(PLAYER_ID, TENANT);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", "oops");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("格式不正确"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("自助：current 传字符串 \"1\" → 400（M-3 严格化，消除静默降级为 false）")
+    void self_currentInvalidString_rejected400() {
+        Player p = player(PLAYER_ID, TENANT);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("teamId", 5L);
+        item.put("current", "1");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", List.of(item));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("current"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("自助：current 传数字 1 → M-3 语义解析为 true（非当前经历勾回 → 403 重新入队）")
+    void self_currentNumericOne_parsedAsTrue() {
+        Player p = player(PLAYER_ID, TENANT);
+        PlayerTeam e = entry(11L, 5L, "7", false, 0);
+        e.setPositionsList(List.of("C"));
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(PLAYER_ID))
+                .thenReturn(List.of(e));
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("teamId", 5L);
+        item.put("number", "7");
+        item.put("positions", List.of("C"));
+        item.put("current", 1);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("teamEntries", List.of(item));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateSelfProfile(PLAYER_ID, body));
+
+        assertEquals(403, ex.getCode());
+        assertTrue(ex.getMessage().contains("重新入队"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
     // ------------------------------------------------------------------ 管理端路径
 
     @Test
