@@ -454,13 +454,9 @@ var xa={
     );
     function $e(t){
       const e="/bs-ball/";
-      return`${e.endsWith("/")?e:`${
-        e
-      }
-      /`}geo/datav-bound/${
-        t
-      }
-      _full.json`}function it(t,e){const a=t?.items??[];if(!a.length)return null;const v=a.map((y,x)=>({it:y,idx:x}));return v.sort((y,x)=>{const M=Number(y.it.distinctCityBuckets??0),h=Number(x.it.distinctCityBuckets??0);if(h!==M)return h-M;const r=e==="uv"?y.it.uv:y.it.pv,m=e==="uv"?x.it.uv:x.it.pv;return m!==r?m-r:y.idx-x.idx}),v[0]?.it.name?.trim()||null}const ae=k("quick"),de=k("d14"),B=k(null),F=k(null),lt=$(()=>ua(new Date));function Me(t){return re(t).getTime()>re(new Date).getTime()}function ze(){const t=ae.value==="quick"?(()=>{const e=va(de.value);return e.mode==="days"?{days:e.days}:{from:e.from,to:e.to}})():ca(B.value&&F.value?[B.value,F.value]:null);return P.user?.superAdmin&&P.noTenantLimit&&(t.tenantId=0),t}function nt(){se()}function Re(){if(ae.value!=="custom"||!B.value||!F.value)return;const t=re(new Date);let e=re(B.value),a=re(F.value);e.getTime()>t.getTime()&&(e=t),a.getTime()>t.getTime()&&(a=t),e.getTime()>a.getTime()?(B.value=a,F.value=e):(B.value=e,F.value=a),se()}ke(ae,t=>{if(t==="custom"){const[e,a]=da(de.value);B.value=e,F.value=a}se()});const Z=k("uv"),he=k(null),T=k(null),A=k("bar"),L=k(null),G=k(!1),W=k("");function Te(t){return(t?.items??[]).some(e=>(e.pv??0)>0||(e.uv??0)>0)}const ve=$(()=>Te(L.value)),ye=k(null),ge=k(null),be=k(null),q=k(null),Ve=k(""),ce=k(""),oe=k(""),pe=k(!1);let j=null,E=null,b=null,Ee=!1;function Ue(t,e){if(e<=0)return"#e0e7ff";const a=Math.min(1,Math.max(0,t/e));return`rgb(${
+      // H35：旧产物为单行模板；移植美化时 `}` 与 `_full.json` 之间混入换行缩进，
+      // 在模板字面量中属字符串内容 → URL 变 .../100000%20%20%20%20%20%20_full.json 致 404（地图边界加载失败）
+      return`${e.endsWith("/")?e:`${e}/`}geo/datav-bound/${t}_full.json`}function it(t,e){const a=t?.items??[];if(!a.length)return null;const v=a.map((y,x)=>({it:y,idx:x}));return v.sort((y,x)=>{const M=Number(y.it.distinctCityBuckets??0),h=Number(x.it.distinctCityBuckets??0);if(h!==M)return h-M;const r=e==="uv"?y.it.uv:y.it.pv,m=e==="uv"?x.it.uv:x.it.pv;return m!==r?m-r:y.idx-x.idx}),v[0]?.it.name?.trim()||null}const ae=k("quick"),de=k("d14"),B=k(null),F=k(null),lt=$(()=>ua(new Date));function Me(t){return re(t).getTime()>re(new Date).getTime()}function ze(){const t=ae.value==="quick"?(()=>{const e=va(de.value);return e.mode==="days"?{days:e.days}:{from:e.from,to:e.to}})():ca(B.value&&F.value?[B.value,F.value]:null);return P.user?.superAdmin&&P.noTenantLimit&&(t.tenantId=0),t}function nt(){se()}function Re(){if(ae.value!=="custom"||!B.value||!F.value)return;const t=re(new Date);let e=re(B.value),a=re(F.value);e.getTime()>t.getTime()&&(e=t),a.getTime()>t.getTime()&&(a=t),e.getTime()>a.getTime()?(B.value=a,F.value=e):(B.value=e,F.value=a),se()}ke(ae,t=>{if(t==="custom"){const[e,a]=da(de.value);B.value=e,F.value=a}se()});const Z=k("uv"),he=k(null),T=k(null),A=k("bar"),L=k(null),G=k(!1),W=k("");function Te(t){return(t?.items??[]).some(e=>(e.pv??0)>0||(e.uv??0)>0)}const ve=$(()=>Te(L.value)),ye=k(null),ge=k(null),be=k(null),q=k(null),Ve=k(""),ce=k(""),oe=k(""),pe=k(!1);let j=null,E=null,b=null,Ee=!1;function Ue(t,e){if(e<=0)return"#e0e7ff";const a=Math.min(1,Math.max(0,t/e));return`rgb(${
         Math.round(224+-175*a)
       }
       ,${
