@@ -346,24 +346,22 @@ public class PlayerClaimService {
      * 凭邀请接受：
      * <ul>
      *   <li>{@code targetPlayerId}（邀请绑定球员 或 入参 playerId）非空 → 原认领关联语义（经 {@link #submitClaim} 落一条待审 PlayerClaim）；</li>
-     *   <li>{@code targetPlayerId} 为空且 {@code draft} 非空 → 自助建档（复用 {@link PlayerService#createSelfProfile} 校验链）
+     *   <li>{@code targetPlayerId} 为空 且 该用户已有档案 → 已在受邀队则幂等早返回；否则直接以存量档案入队
+     *       （不调 {@link PlayerService#createSelfProfile}、不需 {@code draft}）；</li>
+     *   <li>{@code targetPlayerId} 为空 且 该用户无档案 → 需 {@code draft} 非空，自助建档（复用 {@link PlayerService#createSelfProfile} 校验链）
      *       并写 player_team 入队（{@code current=true}）+ 镜像回写 + join 沿革 + currentJoinRecordId 回写；</li>
-     *   <li>两者皆无 → 400。</li>
+     *   <li>无目标球员且无档案且无草稿 → 400。</li>
      * </ul>
-     * token 维持单次/限次 + 有效期（现状机制）；重复接受幂等（已在队者不重复建档/入队）。
+     * token 维持单次/限次 + 有效期；仅在真正发生写入的路径消费（建档+入队 / 存量入队 / 认领落库），幂等早返回不消费。
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> claimOrRegisterViaInvite(Long userId, String token, Long playerId, Player draft) {
         PlayerClaimInvite invite = this.requireActiveInvite(token);
         Long targetPlayerId = invite.getPlayerId() != null ? invite.getPlayerId() : playerId;
-        Map<String, Object> out;
         if (targetPlayerId != null) {
-            out = this.claimViaInviteForPlayer(userId, invite, targetPlayerId);
-        } else {
-            out = this.registerAndJoinViaInvite(userId, invite, draft);
+            return this.claimViaInviteForPlayer(userId, invite, targetPlayerId);
         }
-        this.consumeInvite(invite);
-        return out;
+        return this.registerAndJoinViaInvite(userId, invite, draft);
     }
 
     /** 原认领关联语义：保留租户一致性（跨租户拒绝）与「已认领」校验（由 submitClaim 兜底）。 */
@@ -373,6 +371,8 @@ public class PlayerClaimService {
             throw new BusinessException(400, "球员与邀请球队不属于同一租户");
         }
         PlayerClaim claim = this.submitClaim(userId, targetPlayerId, null, invite.getId());
+        // 认领落库属写入路径 → 消费邀请（幂等早返回等无写入路径不消费）。
+        this.consumeInvite(invite);
         LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
         out.put("mode", "claim");
         out.put("claimId", claim.getId());
@@ -382,22 +382,36 @@ public class PlayerClaimService {
     }
 
     /**
-     * 自助建档 + 入队：复用自助建档校验链建档，随后按邀请球队写 current=true 经历
-     * （镜像回写 / join 沿革 / currentJoinRecordId 回写与 admin create() 同一口径）。
-     * 幂等：若该用户已有档案且已在邀请球队，直接返回成功且不重复建档/入队。
+     * 邀请入队（两条路径，均复用 {@link #applyInviteJoin} 落库）：
+     * <ul>
+     *   <li>存量档案（{@code existing != null}）：已在受邀队 → 幂等早返回（无写入、不消费令牌）；
+     *       否则直接以存量档案入队（不建档、不需 draft）；</li>
+     *   <li>无档案（{@code existing == null}）：需 draft 非空，自助建档后入队。</li>
+     * </ul>
      */
     private Map<String, Object> registerAndJoinViaInvite(Long userId, PlayerClaimInvite invite, Player draft) {
+        Long teamId = invite.getTeamId();
+        Player existing = this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
+        if (existing != null) {
+            if (this.playerTeamService.currentTeamIds(existing.getId()).contains(teamId)) {
+                // 幂等早返回：已在受邀队，无写入 → 不消费令牌。
+                return this.joinResult(existing.getId(), teamId);
+            }
+            // 存量档案直接入队（不调 createSelfProfile、不需 draft）。
+            this.applyInviteJoin(existing, teamId);
+            this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+            this.consumeInvite(invite);
+            return this.joinResult(existing.getId(), teamId);
+        }
         if (draft == null) {
             throw new BusinessException(400, "请指定要认领的球员或提供建档信息");
         }
-        Long teamId = invite.getTeamId();
-        Player existing = this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
-        if (existing != null && this.playerTeamService.currentTeamIds(existing.getId()).contains(teamId)) {
-            return this.joinResult(existing.getId(), teamId);
-        }
+        // TODO(批3b硬化)：并发双击可能双建档（bs_player.user_id 无唯一约束）；见
+        // PlayerService.createSelfProfile 的 ux_bs_player_user_active 唯一索引硬化，本轮不改约束。
         Player created = this.playerService.createSelfProfile(userId, draft);
         this.applyInviteJoin(created, teamId);
         this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+        this.consumeInvite(invite);
         return this.joinResult(created.getId(), teamId);
     }
 

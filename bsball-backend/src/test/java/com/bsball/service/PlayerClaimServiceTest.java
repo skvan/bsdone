@@ -6,7 +6,10 @@
  *  ② 无档案者凭邀请 + 草稿 → createSelfProfile 被调 + 入队落库（current=true / 镜像 / join 沿革 / currentJoinRecordId）；
  *  ③ 重复接受 → 幂等（不重复建档 / 不重复入队）；
  *  ④ 已有档案（playerId 非空）→ 原认领关联语义（落一条待审 PlayerClaim）；
- *  ⑤ playerId 非空但跨租户 → 拒绝。
+ *  ⑤ playerId 非空但跨租户 → 拒绝；
+ *  ⑥ 无目标球员且无档案且无草稿 → 400；
+ *  ⑦ 存量档案（不在受邀队）凭开放邀请 → 直接入队（不建档，固化 I-2 新语义）；
+ *  ⑧ 幂等早返回不消费令牌（usedCount 不变）。
  */
 package com.bsball.service;
 
@@ -188,6 +191,9 @@ class PlayerClaimServiceTest {
         assertEquals(77L, created.getCurrentJoinRecordId());
         // 入队后失效范围缓存
         verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+        // 写入路径（建档+入队）→ 消费邀请：usedCount +1
+        assertEquals(1, invite.getUsedCount());
+        verify(playerClaimInviteRepository).save(invite);
     }
 
     @Test
@@ -256,6 +262,81 @@ class PlayerClaimServiceTest {
         assertEquals(400, ex.getCode());
         assertTrue(ex.getMessage().contains("不属于同一租户"));
         verify(playerClaimRepository, never()).save(any(PlayerClaim.class));
+        // 校验失败早抛，无写入 → 不消费令牌
+        assertEquals(0, invite.getUsedCount());
+    }
+
+    @Test
+    @DisplayName("⑥ targetPlayerId 与 draft 均空 → 400 请指定要认领的球员或提供建档信息")
+    void claimOrRegisterViaInvite_noTargetNoDraft_rejected() {
+        PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
+        when(playerClaimInviteRepository.findByTokenAndDeletedAtIsNull("tok")).thenReturn(Optional.of(invite));
+        when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(CLAIMANT_ID)).thenReturn(Optional.empty());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("请指定要认领的球员或提供建档信息"));
+        verify(playerService, never()).createSelfProfile(any(), any());
+        // 抛错前无写入 → 不消费令牌
+        assertEquals(0, invite.getUsedCount());
+    }
+
+    @Test
+    @DisplayName("⑦ 存量档案（不在受邀队）凭开放邀请 → 直接入队（applyInviteJoin 生效、不建档）")
+    void claimOrRegisterViaInvite_existingProfileNotInTeam_joinsExistingProfile() {
+        PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
+        when(playerClaimInviteRepository.findByTokenAndDeletedAtIsNull("tok")).thenReturn(Optional.of(invite));
+        Player existing = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(CLAIMANT_ID)).thenReturn(Optional.of(existing));
+        when(playerTeamService.currentTeamIds(PLAYER_ID)).thenReturn(Set.of()); // 不在受邀队
+        PlayerTeamService.PlayerTeamSyncPlan plan = new PlayerTeamService.PlayerTeamSyncPlan(
+                List.of(), List.of(), List.of(), null, Set.of(), Set.of(TEAM_ID), List.of());
+        when(playerTeamService.plan(any(), any(), eq(true))).thenReturn(plan);
+        when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(personnelHistoryRecorder.recordPlayerTeamTransitions(any(), any(), any())).thenReturn(88L);
+
+        Map<String, Object> out = service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null);
+
+        assertEquals("registered", out.get("mode"));
+        assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
+        assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
+        // 存量档案直接入队：绝不建档
+        verify(playerService, never()).createSelfProfile(any(), any());
+        // 入队落库：plan(current=true) + 镜像 + persistPlan + join 沿革 + currentJoinRecordId
+        ArgumentCaptor<List<PlayerTeamEntryDto>> entriesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(playerTeamService).plan(eq(existing), entriesCaptor.capture(), eq(true));
+        assertEquals(TEAM_ID, entriesCaptor.getValue().get(0).teamId().longValue());
+        assertEquals(Boolean.TRUE, entriesCaptor.getValue().get(0).current());
+        verify(playerTeamService).applyMirror(existing, plan);
+        verify(playerTeamService).persistPlan(PLAYER_ID, plan);
+        verify(personnelHistoryRecorder).recordPlayerTeamTransitions(existing, Set.of(), Set.of(TEAM_ID));
+        assertEquals(88L, existing.getCurrentJoinRecordId());
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+        // 写入路径（存量入队）→ 消费邀请
+        assertEquals(1, invite.getUsedCount());
+        verify(playerClaimInviteRepository).save(invite);
+    }
+
+    @Test
+    @DisplayName("⑧ 幂等早返回（已在受邀队）→ 不消费令牌（usedCount 不变）")
+    void claimOrRegisterViaInvite_idempotentEarlyReturn_doesNotConsumeInvite() {
+        PlayerClaimInvite invite = activeInvite(TEAM_ID, null, 10);
+        when(playerClaimInviteRepository.findByTokenAndDeletedAtIsNull("tok")).thenReturn(Optional.of(invite));
+        Player existing = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(CLAIMANT_ID)).thenReturn(Optional.of(existing));
+        when(playerTeamService.currentTeamIds(PLAYER_ID)).thenReturn(Set.of(TEAM_ID));
+
+        Map<String, Object> out = service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, new Player());
+
+        assertEquals("registered", out.get("mode"));
+        assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
+        // 无写入 → 不消费令牌、不落库邀请
+        assertEquals(0, invite.getUsedCount());
+        verify(playerClaimInviteRepository, never()).save(any(PlayerClaimInvite.class));
+        verify(playerService, never()).createSelfProfile(any(), any());
+        verify(playerTeamService, never()).plan(any(), any(), eq(true));
     }
 
     // ------------------------------------------------------------------ 辅助
