@@ -32,6 +32,7 @@ import com.bsball.repository.LeagueRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,8 @@ public class LeagueService {
     private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final LeagueProvisionService leagueProvisionService;
+    private final ApiPermissionService apiPermissionService;
 
     public PageResult<League> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -91,6 +94,24 @@ public class LeagueService {
 
     public League create(League entity) {
         return this.createInternal(entity);
+    }
+
+    /**
+     * 门户自助建联盟入口（批次 3a，Task 3.3）：按当前登录用户角色分派。
+     * 门户角色（member / team_manager / league_organizer）且非超管 / 租管 → 走审批链路
+     * （LeagueProvisionService.submitOrCreate，按租户开关落申请或直建）；
+     * 其余（超管 / 租管 / 未登录 / 无门户角色）→ 直建并返回。
+     */
+    public Map<String, Object> createForCurrentUser(League body) {
+        Long uid = CurrentUserHolder.get();
+        if (uid != null
+                && !this.apiPermissionService.isSuperAdmin(uid)
+                && !this.apiPermissionService.isTenantAdmin(uid)
+                && this.apiPermissionService.hasAnyRoleCode(uid, "member", "team_manager", "league_organizer")) {
+            return this.leagueProvisionService.submitOrCreate(uid, body);
+        }
+        League created = this.createInternal(body);
+        return Map.of("pending", false, "id", created.getId());
     }
 
     /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）。 */
@@ -164,13 +185,15 @@ public class LeagueService {
     }
 
     @Generated
-    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, LeagueProvisionService leagueProvisionService, ApiPermissionService apiPermissionService) {
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
         this.scopeQuerySupport = scopeQuerySupport;
         this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.leagueProvisionService = leagueProvisionService;
+        this.apiPermissionService = apiPermissionService;
     }
 }
 
