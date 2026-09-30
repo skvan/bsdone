@@ -4,9 +4,12 @@
  * 职责：为写路径提供统一的数据级 403 / 404 判定，供 T2.4 十项服务接线消费。
  *  - 语义铁律：只认「租户内不受限 ∪ 集合命中」，绝不读 guest 读标志（读语义不参与写判定）；
  *  - 全部拒绝均抛 BusinessException(403, "...")（文案逐字对齐 spec §5.5 表）；
- *  - 找不到目标实体抛 BusinessException(404, "球员不存在")；
  *  - 资源 → 维度映射：联盟=leagueIds；赛事=事件所属联盟；比赛=经赛事所属联盟；
  *    球队=teamIds；球员=TEAM（当前经历）或 SELF（本人 userId）；认领=当前球队 ∈ teamIds。
+ *
+ * 错误边界（有意设计）：
+ *  - 赛事 / 比赛链路：对「不存在 / 缺联盟 / 越权」统一 403（隐藏存在性；文案不区分原因，排障依赖日志上下文）；
+ *  - 球员档案 / 认领链路：对「球员不存在」（含 playerId 为空）返回 404（文案逐字「球员不存在」）。
  *
  * 本类为批次 2 范围护栏的一部分，批次 3 规则（如更细粒度写保护）由后续任务扩展，
  * 本任务不预埋任何批次 3 语义。
@@ -56,6 +59,7 @@ public class ResourceGuard {
     public void assertCanManageEvent(Long eventId) {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
+        if (eventId == null) throw new BusinessException(403, "无权管理该赛事");
         Event ev = eventRepository.findById(eventId).orElse(null);
         if (ev == null || ev.getLeagueId() == null || !s.canManageLeague(ev.getLeagueId())) throw new BusinessException(403, "无权管理该赛事");
     }
@@ -64,6 +68,7 @@ public class ResourceGuard {
     public void assertCanManageGame(Long gameId) {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
+        if (gameId == null) throw new BusinessException(403, "无权管理该比赛");
         Game g = gameRepository.findById(gameId).orElse(null);
         if (g == null || g.getEventId() == null) throw new BusinessException(403, "无权管理该比赛");
         Event ev = eventRepository.findById(g.getEventId()).orElse(null);
@@ -72,7 +77,8 @@ public class ResourceGuard {
 
     /**
      * 球员档案（增删）写保护：仅租户内不受限放行；球队账号一律禁止增删球员档案。
-     * 参数 teamId 暂未参与判定（签名供调用方对齐，保留以便后续按球队细分）。
+     * <p><b>注意：当前对该参数不做任何校验</b>——任意受限身份一律 403；
+     * 参数仅为调用方签名对齐预留。
      */
     public void assertCanManagePlayerRoster(Long teamId) {
         EffectiveScope s = accountScopeService.resolveCurrent();
@@ -86,10 +92,12 @@ public class ResourceGuard {
     public void assertCanEditPlayerProfile(Long playerId, PlayerEditChannel channel) {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
+        if (playerId == null) throw new BusinessException(404, "球员不存在");
         Player p = playerRepository.findById(playerId).orElse(null);
         if (p == null) throw new BusinessException(404, "球员不存在");
         if (channel == PlayerEditChannel.SELF) {
-            if (CurrentUserHolder.get() != null && CurrentUserHolder.get().equals(p.getUserId())) return;
+            Long uid = CurrentUserHolder.get();
+            if (uid != null && uid.equals(p.getUserId())) return;
             throw new BusinessException(403, "只能编辑本人档案");
         }
         for (Long teamId : playerTeamService.currentTeamIds(playerId)) {
@@ -102,8 +110,10 @@ public class ResourceGuard {
     public void assertCanReviewClaim(PlayerClaim claim) {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
-        if (claim == null || !"team_manager".equals(claim.getReviewerType())) throw new BusinessException(403, "无权审核该认领");
-        Player p = playerRepository.findById(claim.getPlayerId()).orElse(null);
+        if (claim == null || !PlayerClaim.REVIEWER_TEAM_MANAGER.equals(claim.getReviewerType())) throw new BusinessException(403, "无权审核该认领");
+        Long pid = claim.getPlayerId();
+        if (pid == null) throw new BusinessException(404, "球员不存在");
+        Player p = playerRepository.findById(pid).orElse(null);
         if (p == null) throw new BusinessException(404, "球员不存在");
         for (Long teamId : playerTeamService.currentTeamIds(p.getId())) {
             if (s.canManageTeam(teamId)) return;
