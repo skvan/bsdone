@@ -367,6 +367,8 @@ public class PlayerService {
         }
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
+        // 批次 3b（spec §6.9）：代建守卫——受限身份仅可为本队（team_manager）/ 本联盟域内球队（league_organizer）代建未认领球员。
+        this.resourceGuard.assertCanCreateUnclaimedPlayer(entity.getTeamId());
         PlayerService.normalizeBlankStringsToNull((Player)entity);
         PlayerService.normalizePlayerBackgroundFields((Player)entity);
         PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(entity, entity.getTeamEntries(), entity.getTeamEntries() != null);
@@ -966,6 +968,8 @@ public class PlayerService {
                 continue;
             }
             this.applyTenantFromTeam(p);
+            // 批次 3b（spec §6.9）：逐行代建守卫——受限身份仅可为本队 / 本联盟域内球队代建（越权整体 403 并事务回滚）。
+            this.resourceGuard.assertCanCreateUnclaimedPlayer(p.getTeamId());
             Player existing = (Player)existingByKey.get(this.dupKey(p));
             if (existing != null) {
                 if (overwrite) {

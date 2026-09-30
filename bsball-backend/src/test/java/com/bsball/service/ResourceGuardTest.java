@@ -1,16 +1,16 @@
 /*
- * 账号权限重构（批次 2）：统一写保护组件 ResourceGuard 的单测（TDD 先行）。
+ * 账号权限重构（批次 2 / 批次 3b）：统一写保护组件 ResourceGuard 的单测。
  *
- * 覆盖语义（对照 spec §5.5）：
+ * 覆盖语义（对照 spec §5.5 与 §6.9）：
  *  - 每个守卫：不受限（超管 / 租管）直接放行 + 受限越权 403；
- *  - assertCanEditPlayerProfile：SELF（本人放行 / 他人 403）与 ROSTER（当前队命中放行 / 未命中 403）；
+ *  - assertCanStewardOrManageTeam（批次 3b）：本队命中 / 无主且归属联盟命中放行；有主只读 403；
+ *  - assertCanCreateUnclaimedPlayer（批次 3b）：本队命中 / 域内球队（联盟所属）放行；无队 / 他队 / 域外 403；
+ *  - assertCanEditPlayerProfile：SELF（本人放行 / 他人 403）与 ROSTER（已认领上级只读 403；未认领域内可写）；
  *  - assertCanReviewClaim：reviewerType 不符 / 球队命中 / 未命中 分支；
- *  - 403 文案逐字一致（见 spec §5.5 表）。
+ *  - 403 / 404 文案逐字一致（见 spec §5.5 / §6.9）。
  *
  * 风格参照 AccountScopeServiceTest：外部依赖一律 Mockito mock，不启动 Spring、不连库；
  * 被测 guard 手工 new（@Generated 构造器注入），CurrentUserHolder 为 ThreadLocal 需逐用例清理。
- *
- * 完整越权矩阵留待 T2.5，本测试不过度扩张。
  */
 package com.bsball.service;
 
@@ -28,9 +28,13 @@ import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
+import com.bsball.model.entity.Team;
+import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.TeamManagerRepository;
+import com.bsball.repository.TeamRepository;
 import com.bsball.service.ResourceGuard.PlayerEditChannel;
 import java.util.Optional;
 import java.util.Set;
@@ -61,6 +65,12 @@ class ResourceGuardTest {
     @Mock
     private PlayerTeamService playerTeamService;
 
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private TeamManagerRepository teamManagerRepository;
+
     private ResourceGuard guard;
 
     @BeforeEach
@@ -68,7 +78,7 @@ class ResourceGuardTest {
         // CurrentUserHolder 为 ThreadLocal，用例起点必须清空（与 AccountScopeServiceTest 基线对齐）
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
-                playerTeamService);
+                playerTeamService, teamRepository, teamManagerRepository);
     }
 
     @AfterEach
@@ -144,6 +154,108 @@ class ResourceGuardTest {
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> guard.assertCanManageTeam(100L)); // 联盟派生≠可管理
+        assertEquals(403, ex.getCode());
+    }
+
+    // ------------------------------------------------------------------ assertCanStewardOrManageTeam（批次 3b）
+
+    @Test
+    @DisplayName("接管/代管守卫：不受限直接放行（不查库）")
+    void steward_unrestricted_passes() {
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
+
+        assertDoesNotThrow(() -> guard.assertCanStewardOrManageTeam(999L));
+        verifyNoInteractions(teamRepository, teamManagerRepository);
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：本队命中放行（不查库）")
+    void steward_ownTeam_passes() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
+
+        assertDoesNotThrow(() -> guard.assertCanStewardOrManageTeam(100L));
+        verifyNoInteractions(teamRepository, teamManagerRepository);
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：受限且 teamId 为 null → 403（不查库）")
+    void steward_nullId_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanStewardOrManageTeam(null));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权管理该球队", ex.getMessage());
+        verifyNoInteractions(teamRepository, teamManagerRepository);
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：球队不存在 → 403（不查负责人）")
+    void steward_teamNotFound_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.empty());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanStewardOrManageTeam(101L));
+        assertEquals(403, ex.getCode());
+        verifyNoInteractions(teamManagerRepository);
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：球队有主（active 负责人存在）→ 联盟只读 403")
+    void steward_teamHasManager_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(101L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(true);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanStewardOrManageTeam(101L));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权管理该球队", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：球队无主且归属联盟命中 → 联盟放行")
+    void steward_noManager_leagueDomain_passes() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(101L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
+
+        assertDoesNotThrow(() -> guard.assertCanStewardOrManageTeam(101L));
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：球队无主但未归属联盟 → 403")
+    void steward_noManager_nullLeague_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, null)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(101L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanStewardOrManageTeam(101L));
+        assertEquals(403, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("接管/代管守卫：球队无主但归属他方联盟 → 403")
+    void steward_noManager_otherLeague_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, 20L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(101L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanStewardOrManageTeam(101L));
         assertEquals(403, ex.getCode());
     }
 
@@ -275,27 +387,86 @@ class ResourceGuardTest {
         verifyNoInteractions(gameRepository, eventRepository);
     }
 
-    // ------------------------------------------------------------------ assertCanManagePlayerRoster
+    // ------------------------------------------------------------------ assertCanCreateUnclaimedPlayer（批次 3b）
 
     @Test
-    @DisplayName("球员档案守卫：不受限放行")
-    void roster_unrestricted_passes() {
+    @DisplayName("代建守卫：不受限放行（不查库）")
+    void createPlayer_unrestricted_passes() {
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
 
-        assertDoesNotThrow(() -> guard.assertCanManagePlayerRoster(100L));
+        assertDoesNotThrow(() -> guard.assertCanCreateUnclaimedPlayer(100L));
+        verifyNoInteractions(teamRepository);
     }
 
     @Test
-    @DisplayName("球员档案守卫：球队管理员亦不可增删球员档案 → 403")
-    void teamManager_cannotManagePlayerRoster() {
-        // scope: teamIds=[100]，但仍禁止增删球员档案
+    @DisplayName("代建守卫：球队管理员本队放行（不查库）")
+    void createPlayer_ownTeam_passes() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
 
+        assertDoesNotThrow(() -> guard.assertCanCreateUnclaimedPlayer(100L));
+        verifyNoInteractions(teamRepository);
+    }
+
+    @Test
+    @DisplayName("代建守卫：联盟管理员域内球队放行（球队归属联盟命中）")
+    void createPlayer_leagueDomainTeam_passes() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, 10L)));
+
+        assertDoesNotThrow(() -> guard.assertCanCreateUnclaimedPlayer(100L));
+    }
+
+    @Test
+    @DisplayName("代建守卫：联盟管理员域外球队 → 403")
+    void createPlayer_leagueOutsideDomain_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, 20L)));
+
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> guard.assertCanManagePlayerRoster(100L));
+                () -> guard.assertCanCreateUnclaimedPlayer(101L));
         assertEquals(403, ex.getCode());
-        assertEquals("球队账号不可增删球员档案", ex.getMessage());
+        assertEquals("无权代建该球员", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("代建守卫：球队管理员他队 → 403")
+    void createPlayer_otherTeam_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
+        when(teamRepository.findById(101L)).thenReturn(Optional.of(team(101L, 20L)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanCreateUnclaimedPlayer(101L));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权代建该球员", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("代建守卫：受限且 teamId 为 null → 403（不查库）")
+    void createPlayer_nullTeam_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanCreateUnclaimedPlayer(null));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权代建该球员", ex.getMessage());
+        verifyNoInteractions(teamRepository);
+    }
+
+    @Test
+    @DisplayName("代建守卫：球队不存在 → 403")
+    void createPlayer_teamNotFound_forbidden() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(101L)).thenReturn(Optional.empty());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanCreateUnclaimedPlayer(101L));
+        assertEquals(403, ex.getCode());
     }
 
     // ------------------------------------------------------------------ assertCanEditPlayerProfile
@@ -361,23 +532,50 @@ class ResourceGuardTest {
     }
 
     @Test
-    @DisplayName("编辑档案守卫：ROSTER 当前队命中放行")
-    void editPlayer_roster_teamHit_passes() {
+    @DisplayName("编辑档案守卫：ROSTER 已认领 → 上级只读 403（不查经历球队）")
+    void editPlayer_roster_claimedPlayer_forbidden() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
         when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
+        assertEquals(403, ex.getCode());
+        assertEquals("球队/联盟不可直接修改已认领球员信息", ex.getMessage());
+        verifyNoInteractions(playerTeamService);
+    }
+
+    @Test
+    @DisplayName("编辑档案守卫：ROSTER 未认领本队命中放行")
+    void editPlayer_roster_teamHit_passes() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, null)));
         when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(200L, 100L));
 
         assertDoesNotThrow(() -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
     }
 
     @Test
-    @DisplayName("编辑档案守卫：ROSTER 当前队未命中 → 403「无权修改该球员的赛务信息」")
+    @DisplayName("编辑档案守卫：ROSTER 未认领且归属联盟命中放行")
+    void editPlayer_roster_leagueDomain_passes() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, null)));
+        when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(100L));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, 10L)));
+
+        assertDoesNotThrow(() -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
+    }
+
+    @Test
+    @DisplayName("编辑档案守卫：ROSTER 未认领当前队未命中 → 403「无权修改该球员的赛务信息」")
     void editPlayer_roster_teamMiss_forbidden() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
-        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, null)));
         when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(200L));
+        when(teamRepository.findById(200L)).thenReturn(Optional.of(team(200L, 30L)));
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
@@ -386,11 +584,11 @@ class ResourceGuardTest {
     }
 
     @Test
-    @DisplayName("编辑档案守卫：ROSTER 当前队为空集 → 403（空集不静默放行）")
+    @DisplayName("编辑档案守卫：ROSTER 未认领当前队为空集 → 403（空集不静默放行）")
     void editPlayer_roster_emptyTeams_forbidden() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
-        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, null)));
         when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of());
 
         BusinessException ex = assertThrows(BusinessException.class,
@@ -495,7 +693,7 @@ class ResourceGuardTest {
     // ------------------------------------------------------------------ 空域 / 只读放行（§12.2 矩阵：写侧）
 
     @Test
-    @DisplayName("空域账号：联盟/球队/赛事/比赛/档案写一律 403")
+    @DisplayName("空域账号：联盟/球队/赛事/比赛/代建写一律 403")
     void emptyScope_allWritePath_forbidden() {
         // 门户角色无归属 → 空域（manage 集合为空，绝不放行任何写）
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.empty());
@@ -512,16 +710,16 @@ class ResourceGuardTest {
         assertEquals(403, assertThrows(BusinessException.class,
                 () -> guard.assertCanManageGame(7L)).getCode());
         assertEquals(403, assertThrows(BusinessException.class,
-                () -> guard.assertCanManagePlayerRoster(100L)).getCode());
+                () -> guard.assertCanCreateUnclaimedPlayer(100L)).getCode());
         // 空域下不触碰球员档案相关依赖
         verifyNoInteractions(playerRepository, playerTeamService);
     }
 
     @Test
-    @DisplayName("空域账号：ROSTER 通道编辑球员赛务信息 → 403（球队未命中）")
+    @DisplayName("空域账号：ROSTER 通道编辑未认领球员赛务信息 → 403（球队未命中）")
     void emptyScope_rosterEdit_forbidden() {
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.empty());
-        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, null)));
         when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(200L));
 
         BusinessException ex = assertThrows(BusinessException.class,
@@ -547,19 +745,20 @@ class ResourceGuardTest {
         assertEquals(403, assertThrows(BusinessException.class,
                 () -> guard.assertCanManageTeam(100L)).getCode());
         assertEquals(403, assertThrows(BusinessException.class,
-                () -> guard.assertCanManagePlayerRoster(100L)).getCode());
+                () -> guard.assertCanCreateUnclaimedPlayer(100L)).getCode());
     }
 
     @Test
-    @DisplayName("主办方（仅联盟）：不可增删球员档案 → 403")
-    void organizer_cannotManagePlayerRoster() {
+    @DisplayName("主办方（仅联盟）：域外球队代建 → 403")
+    void organizer_createOutsideLeagueDomain_forbidden() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, 20L)));
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> guard.assertCanManagePlayerRoster(100L));
+                () -> guard.assertCanCreateUnclaimedPlayer(100L));
         assertEquals(403, ex.getCode());
-        assertEquals("球队账号不可增删球员档案", ex.getMessage());
+        assertEquals("无权代建该球员", ex.getMessage());
     }
 
     // ------------------------------------------------------------------ 辅助
@@ -590,5 +789,12 @@ class ResourceGuardTest {
         c.setPlayerId(playerId);
         c.setReviewerType(PlayerClaim.REVIEWER_TEAM_MANAGER);
         return c;
+    }
+
+    private static Team team(Long id, Long leagueId) {
+        Team t = new Team();
+        t.setId(id);
+        t.setLeagueId(leagueId);
+        return t;
     }
 }

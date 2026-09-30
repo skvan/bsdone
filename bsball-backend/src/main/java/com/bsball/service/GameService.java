@@ -171,7 +171,8 @@ public class GameService {
         }
         EffectiveScope scope = this.accountScopeService.resolveCurrent();
         List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
-        if (visibleLeagueIds != null && ev.getLeagueId() != null && !visibleLeagueIds.contains(ev.getLeagueId())) {
+        // 批次 3b（前置⑤）：管理上下文 + 受限身份下，leagueId 为 null 亦拒绝（与 list 收窄口径一致）；非管理上下文（宽读）不变。
+        if (visibleLeagueIds != null && (ev.getLeagueId() == null || !visibleLeagueIds.contains(ev.getLeagueId()))) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
         }
         return g;
@@ -451,12 +452,18 @@ public class GameService {
         if (game == null) {
             return;
         }
+        // 批次 3b（前置④）：守卫前移——位内任何 set/save 之前，基于「原域」判定（防跳域搬运）。
+        this.assertGameWritable(game);
         if (dto != null && dto.getStats() != null && !Boolean.TRUE.equals(game.getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
         }
         if (dto.getGame() != null) {
             SaveGameResultDTO.GamePart g = dto.getGame();
             if (g.getEventId() != null) {
+                if (!g.getEventId().equals(game.getEventId())) {
+                    // 改 eventId：原域已在 assertGameWritable 校验；此处再校验目标域可管理，禁跨域搬运。
+                    this.resourceGuard.assertCanManageEvent(g.getEventId());
+                }
                 game.setEventId(g.getEventId());
             }
             if (g.getHomeTeamId() != null) {
@@ -548,7 +555,6 @@ public class GameService {
             }
             this.gameRepository.save(game);
         }
-        this.assertGameWritable(game);
         Long statTenantId = game.getTenantId();
         if (dto.getStats() != null) {
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);

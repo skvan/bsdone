@@ -24,5 +24,8 @@ extends JpaRepository<TeamManager, Long> {
     public Optional<TeamManager> findByTeamIdAndUserIdAndDeletedAtIsNull(Long var1, Long var2);
 
     public boolean existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(Long var1, Long var2, String var3);
+
+    /** 球队是否存在指定状态的 active 负责人（批次 3b，spec §6.9 有主/无主判定）。 */
+    public boolean existsByTeamIdAndStatusAndDeletedAtIsNull(Long var1, String var2);
 }
 

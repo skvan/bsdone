@@ -69,6 +69,12 @@ public class TeamApi {
         return Result.ok(Map.of("id",created.getId()));
     }
 
+    @PostMapping(value={"/batch-create"})
+    public Result<Map<String, Object>> batchCreate(@RequestBody List<Team> body) {
+        List<Team> created = this.teamService.batchCreate(body);
+        return Result.ok(Map.of("created", created.size(), "ids", created.stream().map(Team::getId).toList()));
+    }
+
     @PutMapping(value={"/update/{id}"})
     public Result<Object> update(@PathVariable Long id, @RequestBody @Valid Team body) {
         this.teamService.update(id, body);

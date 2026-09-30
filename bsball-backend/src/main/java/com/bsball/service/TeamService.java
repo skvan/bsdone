@@ -176,6 +176,43 @@ public class TeamService {
         return saved;
     }
 
+    /**
+     * 球队批量代建（批次 3b，Task 3.13 / spec §6.9）：联盟管理员挂本联盟（初始无主，不自动授职）。
+     * <p>规则：非管理员调用者每行 leagueId 必须 ∈ 自有联盟集合（越权 403）；逐行租户/联盟校验对齐
+     * {@link #create(Team)}；<b>建后不写 bs_team_manager</b>（不授职）；整体 {@code @Transactional}，任一行异常全量回滚。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public List<Team> batchCreate(List<Team> items) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        Long uid = CurrentUserHolder.get();
+        boolean admin = uid != null
+                && (this.apiPermissionService.isSuperAdmin(uid) || this.apiPermissionService.isTenantAdmin(uid));
+        ArrayList<Team> saved = new ArrayList<Team>(items.size());
+        for (Team entity : items) {
+            TeamService.normalizeBlankStringsToNull((Team)entity);
+            entity.setId(null);
+            entity.setTenantId(Long.valueOf(tid));
+            if (entity.getLeagueId() != null) {
+                League league = this.leagueRepository.findById(entity.getLeagueId()).orElse(null);
+                if (league == null || league.getDeletedAt() != null) {
+                    throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728");
+                }
+                if (!Objects.equals(league.getTenantId(), tid)) {
+                    throw new BusinessException(400, "\u8054\u76df\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
+                }
+            }
+            // 非管理员：每行必须挂自有联盟（leagueId 非空且 ∈ 自有联盟集合），否则 403。
+            if (!admin) {
+                this.resourceGuard.assertCanManageLeague(entity.getLeagueId());
+            }
+            saved.add((Team)this.teamRepository.save(entity));
+        }
+        return saved;
+    }
+
     public Team update(Long id, Team entity) {
         Team existing = this.teamRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
@@ -185,7 +222,7 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u7403\u961f");
         }
-        this.resourceGuard.assertCanManageTeam(id);
+        this.resourceGuard.assertCanStewardOrManageTeam(id);
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
@@ -222,7 +259,7 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u7403\u961f");
         }
-        this.resourceGuard.assertCanManageTeam(id);
+        this.resourceGuard.assertCanStewardOrManageTeam(id);
         if (this.gameRepository.countPendingGamesByTeamId(id) > 0L) {
             throw new BusinessException(400, "\u5b58\u5728\u672a\u5f00\u6253\u7684\u6bd4\u8d5b\uff0c\u8bf7\u5148\u5904\u7406\u8d5b\u7a0b");
         }
