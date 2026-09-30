@@ -40,6 +40,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.Generated;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AccountScopeService {
@@ -131,6 +133,20 @@ public class AccountScopeService {
         if (userId == null || this.scopeCache == null) return;
         String prefix = userId + "#";
         this.scopeCache.asMap().keySet().removeIf(k -> k.startsWith(prefix));
+    }
+
+    /** 范围缓存失效（后置到事务提交后）；无事务时立即失效。 */
+    public void evictUserScopeCacheAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    AccountScopeService.this.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.evictUserScopeCache(userId);
+        }
     }
 
     public void clearRequestScopeCache() { REQ_CACHE.remove(); }

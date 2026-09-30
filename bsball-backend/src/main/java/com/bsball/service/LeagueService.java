@@ -32,6 +32,7 @@ import com.bsball.repository.LeagueRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,8 @@ public class LeagueService {
     private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final LeagueProvisionService leagueProvisionService;
+    private final ApiPermissionService apiPermissionService;
 
     public PageResult<League> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -93,17 +96,43 @@ public class LeagueService {
         return this.createInternal(entity);
     }
 
-    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）。 */
+    /**
+     * 门户自助建联盟入口（批次 3a，Task 3.3）：按当前登录用户角色分派。
+     * 门户角色（member / team_manager / league_organizer）且非超管 / 租管 → 走审批链路
+     * （LeagueProvisionService.submitOrCreate，按租户开关落申请或直建）；
+     * 其余（超管 / 租管 / 未登录 / 无门户角色）→ 直建并返回。
+     */
+    public Map<String, Object> createForCurrentUser(League body) {
+        Long uid = CurrentUserHolder.get();
+        if (uid != null
+                && !this.apiPermissionService.isSuperAdmin(uid)
+                && !this.apiPermissionService.isTenantAdmin(uid)
+                && this.apiPermissionService.hasAnyRoleCode(uid, "member", "team_manager", "league_organizer")) {
+            return this.leagueProvisionService.submitOrCreate(uid, body);
+        }
+        League created = this.createInternal(body);
+        return Map.of("pending", false, "id", created.getId());
+    }
+
+    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）：租户取自当前请求上下文。 */
     public League createInternal(League entity) {
-        String name;
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        entity.setTenantId(Long.valueOf(tid));
-        String string = name = entity.getName() == null ? "" : entity.getName().trim();
+        return this.createInternalForTenant(entity, tid);
+    }
+
+    /**
+     * 指定租户建联盟（批次 3a 评审修复 I1）：供跨租户审批（LeagueProvisionService.approve）复用，
+     * 确保联盟落库租户 == 申请租户，而非审核者上下文租户（超管全局 token 下上下文租户为 0）。
+     * createInternal 保持原语义（上下文租户）；本方法仅新增显式租户入参，不改变原路径行为。
+     */
+    public League createInternalForTenant(League entity, long tenantId) {
+        entity.setTenantId(Long.valueOf(tenantId));
+        String name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
         }
         entity.setName(name);
-        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tid), name)) {
+        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tenantId), name)) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u5df2\u5b58\u5728");
         }
         return (League)this.leagueRepository.save(entity);
@@ -164,13 +193,15 @@ public class LeagueService {
     }
 
     @Generated
-    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, LeagueProvisionService leagueProvisionService, ApiPermissionService apiPermissionService) {
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
         this.scopeQuerySupport = scopeQuerySupport;
         this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.leagueProvisionService = leagueProvisionService;
+        this.apiPermissionService = apiPermissionService;
     }
 }
 

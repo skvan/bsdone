@@ -42,6 +42,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountScopeService：账号有效范围解析矩阵")
@@ -76,6 +78,10 @@ class AccountScopeServiceTest {
         GuestPublicApiHolder.clear();
         if (service != null) {
             service.clearRequestScopeCache();
+        }
+        // TransactionSynchronizationManager 亦为 ThreadLocal：clearSynchronization 在非活动态会抛错，故先判活后再兜底清理，防串测
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
@@ -382,6 +388,109 @@ class AccountScopeServiceTest {
         }
         assertTrue(after != null && after.canManageTeam(200L), "TTL 到期后应自动重算出新范围");
         assertFalse(after.canManageTeam(100L));
+    }
+
+    // ------------------------------------------------------------------ 用例 15
+
+    @Test
+    @DisplayName("evictUserScopeCacheAfterCommit：事务中后置到提交后才失效（I1）")
+    void evictUserScopeCacheAfterCommit_inTransaction_defersUntilCommit() {
+        givenPortalAccountWithoutLegacyRows();
+        long[] teamId = {100L};
+        ScopeRelationProvider provider = mock(ScopeRelationProvider.class);
+        when(provider.supports(any(ScopeResolutionContext.class))).thenReturn(true);
+        doAnswer(inv -> {
+            ((ScopeResolutionContext) inv.getArgument(0)).addTeam(teamId[0]);
+            return null;
+        }).when(provider).contribute(any(ScopeResolutionContext.class));
+        newService(provider);
+
+        // 先 resolve 填缓存（100）
+        assertTrue(service.resolve(USER_ID, TENANT_ID).canManageTeam(100L));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            teamId[0] = 200L; // 关系变更
+            service.evictUserScopeCacheAfterCommit(USER_ID);
+
+            // 尚未提交：缓存未失效，仍返回旧值
+            service.clearRequestScopeCache();
+            EffectiveScope stillOld = service.resolve(USER_ID, TENANT_ID);
+            assertTrue(stillOld.canManageTeam(100L));
+            assertFalse(stillOld.canManageTeam(200L));
+
+            // 手动触发提交回调 → 缓存失效，重算出新值
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            service.clearRequestScopeCache();
+            EffectiveScope recomputed = service.resolve(USER_ID, TENANT_ID);
+            assertTrue(recomputed.canManageTeam(200L));
+            assertFalse(recomputed.canManageTeam(100L));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    // ------------------------------------------------------------------ 用例 16
+
+    @Test
+    @DisplayName("evictUserScopeCacheAfterCommit：无事务立即失效")
+    void evictUserScopeCacheAfterCommit_noTransaction_evictsImmediately() {
+        givenPortalAccountWithoutLegacyRows();
+        long[] teamId = {100L};
+        ScopeRelationProvider provider = mock(ScopeRelationProvider.class);
+        when(provider.supports(any(ScopeResolutionContext.class))).thenReturn(true);
+        doAnswer(inv -> {
+            ((ScopeResolutionContext) inv.getArgument(0)).addTeam(teamId[0]);
+            return null;
+        }).when(provider).contribute(any(ScopeResolutionContext.class));
+        newService(provider);
+
+        assertTrue(service.resolve(USER_ID, TENANT_ID).canManageTeam(100L));
+
+        teamId[0] = 200L; // 关系变更
+        service.evictUserScopeCacheAfterCommit(USER_ID); // 无事务 → 立即失效
+
+        service.clearRequestScopeCache();
+        EffectiveScope recomputed = service.resolve(USER_ID, TENANT_ID);
+        assertTrue(recomputed.canManageTeam(200L));
+        assertFalse(recomputed.canManageTeam(100L));
+    }
+
+    // ------------------------------------------------------------------ 用例 17
+
+    @Test
+    @DisplayName("evictUserScopeCacheAfterCommit：事务回滚不失效")
+    void evictUserScopeCacheAfterCommit_rollback_notEvicted() {
+        givenPortalAccountWithoutLegacyRows();
+        long[] teamId = {100L};
+        ScopeRelationProvider provider = mock(ScopeRelationProvider.class);
+        when(provider.supports(any(ScopeResolutionContext.class))).thenReturn(true);
+        doAnswer(inv -> {
+            ((ScopeResolutionContext) inv.getArgument(0)).addTeam(teamId[0]);
+            return null;
+        }).when(provider).contribute(any(ScopeResolutionContext.class));
+        newService(provider);
+
+        assertTrue(service.resolve(USER_ID, TENANT_ID).canManageTeam(100L));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            teamId[0] = 200L; // 关系变更
+            service.evictUserScopeCacheAfterCommit(USER_ID);
+
+            // 回滚：仅 afterCompletion(ROLLED_BACK)，不触发 afterCommit → 不失效
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+            service.clearRequestScopeCache();
+            EffectiveScope stillOld = service.resolve(USER_ID, TENANT_ID);
+            assertTrue(stillOld.canManageTeam(100L));
+            assertFalse(stillOld.canManageTeam(200L));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     // ------------------------------------------------------------------ 辅助

@@ -29,6 +29,7 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.List;
@@ -71,13 +72,20 @@ class TeamServiceScopeWiringTest {
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
 
+    @Mock
+    private TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private ApiPermissionService apiPermissionService;
+
     private TeamService service;
 
     @BeforeEach
     void setUp() {
         CurrentUserHolder.clear();
         service = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService);
+                resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
+                apiPermissionService);
     }
 
     @AfterEach

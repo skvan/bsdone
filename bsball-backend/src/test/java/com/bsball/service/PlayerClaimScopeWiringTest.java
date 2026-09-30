@@ -3,7 +3,7 @@
  *
  * 目的（对照 spec §12.2 越权矩阵与写保护接线）：
  *  - approve：ResourceGuard.assertCanReviewClaim 为唯一授权判定；通过后回写球员归属，
- *    并在事务提交后（单测无事务 → 立即）驱逐被认领账号的范围缓存（认领后权限即时变更）；
+ *    并经 accountScopeService.evictUserScopeCacheAfterCommit 后置驱逐被认领账号的范围缓存（认领后权限即时变更）；
  *  - approve / reject：守卫 403 时一律不落库、不驱逐缓存（越权写不产生副作用）；
  *  - pendingForReviewer：空域（无归属球队）→ Specification 走 disjunction（库里即空页）；
  *    team_manager（有归属球队）→ 追加 team_manager 过滤 + 「球员在当前队」子查询；
@@ -102,13 +102,20 @@ class PlayerClaimScopeWiringTest {
     @Mock
     private ResourceGuard resourceGuard;
 
+    @Mock
+    private PlayerService playerService;
+
+    @Mock
+    private PersonnelHistoryRecorder personnelHistoryRecorder;
+
     private PlayerClaimService service;
 
     @BeforeEach
     void setUp() {
         service = new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
                 playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
-                sysUserRepository, playerTeamService, accountScopeService, resourceGuard);
+                sysUserRepository, playerTeamService, accountScopeService, resourceGuard, playerService,
+                personnelHistoryRecorder);
     }
 
     // ------------------------------------------------------------------ 写：approve
@@ -128,8 +135,8 @@ class PlayerClaimScopeWiringTest {
         assertEquals("approved", result.getStatus());
         assertEquals(CLAIMANT_ID, p.getUserId().longValue());
         verify(resourceGuard).assertCanReviewClaim(claim);
-        // 认领后：被认领账号范围缓存即时失效（单测无事务 → 立即 evict）
-        verify(accountScopeService).evictUserScopeCache(CLAIMANT_ID);
+        // 认领后：经 accountScopeService 后置失效被认领账号范围缓存（此处验证接线调用）
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
     }
 
     @Test
@@ -147,7 +154,7 @@ class PlayerClaimScopeWiringTest {
         assertEquals("无权审核该认领", ex.getMessage());
         verify(playerClaimRepository, never()).save(any(PlayerClaim.class));
         verifyNoInteractions(playerRepository);
-        verify(accountScopeService, never()).evictUserScopeCache(any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
     }
 
     // ------------------------------------------------------------------ 写：reject

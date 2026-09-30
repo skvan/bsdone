@@ -50,6 +50,7 @@ import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
+import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
@@ -97,7 +98,15 @@ public class PlayerService {
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final PlayerTeamService playerTeamService;
     private final PlayerTeamRepository playerTeamRepository;
+    private final SysConfigService sysConfigService;
+    private final PlayerClaimRepository playerClaimRepository;
     private static final int PLAYER_BG_IMAGES_MAX = 5;
+
+    /** 本人档案（SELF 通道）可编辑字段白名单；白名单外的键一律忽略。 */
+    private static final Set<String> SELF_EDITABLE = Set.of(
+            "height", "weight", "throwHand", "batHand", "avatar", "bgImage", "bgImages", "bgFocusConfig",
+            "nickname", "nameEn", "birthDate", "birthPlace", "education", "intro", "contactPhone", "contactEmail",
+            "draft", "debut", "name", "positions");
 
     public List<PlayerOptionDto> listForSelect() {
         if (this.tenantQueryPolicyService.isGlobalQueryMode()) {
@@ -416,6 +425,191 @@ public class PlayerService {
         return saved;
     }
 
+    /**
+     * 取本人（SELF）关联的球员档案；无关联时返回 {@code null}。
+     *
+     * @param userId 当前登录用户 ID
+     * @return 本人档案或 {@code null}
+     */
+    public Player getSelfProfile(Long userId) {
+        return this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
+    }
+
+    /**
+     * 自助建档：为当前用户创建一份归属自身的球员档案。
+     * <p>依次校验：租户开关、是否已有本人档案、是否已认领球员、同租户内同名同生日去重；
+     * 通过后置入 tenantId/userId/status 并落库。
+     *
+     * @param userId 当前登录用户 ID
+     * @param draft  档案草稿（由控制器反序列化）
+     * @return 落库后的球员档案
+     */
+    @Transactional(rollbackFor={Exception.class})
+    public Player createSelfProfile(Long userId, Player draft) {
+        // TODO(批3b硬化)：并发双击可能双建档（bs_player.user_id 无唯一约束）；随唯一索引 ux_bs_player_user_active 迁移硬化。
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        if (!this.sysConfigService.getBoolean(tid, "portalPlayerSelfCreateEnabled", true)) {
+            throw new BusinessException(400, "自助建档未开放");
+        }
+        if (this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).isPresent()) {
+            throw new BusinessException(400, "您已有关联的球员档案");
+        }
+        if (this.playerClaimRepository.existsByUserIdAndStatusAndDeletedAtIsNull(userId, "approved")) {
+            throw new BusinessException(400, "您已认领球员，不能重复建档");
+        }
+        if (draft.getName() != null && draft.getBirthDate() != null
+                && !this.playerRepository.findByNameAndBirthDateAndTenantIdAndDeletedAtIsNull(
+                        draft.getName(), draft.getBirthDate(), tid).isEmpty()) {
+            throw new BusinessException(400, "存在同名同生日的球员档案，请改用认领流程");
+        }
+        draft.setTenantId(tid);
+        draft.setUserId(userId);
+        draft.setStatus("active");
+        // 对齐 admin create() 做法：裁剪客户端可注入字段——
+        // 置空 id 以防注入走 update 语义；显式置空 ROSTER 语义字段（自助建档未入队，
+        // 编号/镜像/经历由 T3.7/T3.10 入队流产生）。
+        draft.setId(null);
+        draft.setTeamId(null);
+        draft.setNumber(null);
+        draft.setCurrentJoinRecordId(null);
+        draft.setSort(null);
+        draft.setDeletedAt(null);
+        draft.setDeletedBy(null);
+        // 复用与 updateSelfProfile/admin create 同一归一化链（create() 的
+        // applyTenantFromTeam/validateTeamId 面向有队场景，自助建档无队，跳过）。
+        PlayerService.normalizeBlankStringsToNull(draft);
+        PlayerService.normalizePlayerBackgroundFields(draft);
+        return this.playerRepository.save(draft);
+    }
+
+    /**
+     * 本人档案编辑（SELF 通道）：先经写保护守卫，再按 {@link #SELF_EDITABLE} 白名单逐字段适配；
+     * 白名单外的键一律忽略；组图 / JSON 字段复用既有归一化链。
+     *
+     * <p>身份以写保护守卫（{@link ResourceGuard#assertCanEditPlayerProfile}，基于
+     * {@code CurrentUserHolder} 的当前登录用户）为准，方法不再接收 userId 形参。
+     *
+     * @param playerId 目标球员档案 ID
+     * @param body     请求体（仅白名单键生效）
+     * @return 落库后的球员档案
+     */
+    @Transactional(rollbackFor={Exception.class})
+    public Player updateSelfProfile(Long playerId, Map<String, Object> body) {
+        this.resourceGuard.assertCanEditPlayerProfile(playerId, ResourceGuard.PlayerEditChannel.SELF);
+        Player p = this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+        // 与 GET 返 null 一致：软删档案不可编辑。
+        if (p.getDeletedAt() != null) {
+            throw new BusinessException(404, "球员不存在");
+        }
+        if (body != null) {
+            for (Map.Entry<String, Object> e : body.entrySet()) {
+                if (!SELF_EDITABLE.contains(e.getKey())) continue;
+                this.applySelfEditableField(p, e.getKey(), e.getValue());
+            }
+        }
+        PlayerService.normalizeBlankStringsToNull(p);
+        PlayerService.normalizePlayerBackgroundFields(p);
+        return this.playerRepository.save(p);
+    }
+
+    /** 按白名单键将请求体原始值适配到 Player 字段（组图 / JSON 字段走既有 JSON/归一化工具）。 */
+    private void applySelfEditableField(Player p, String key, Object value) {
+        switch (key) {
+            case "height" -> PlayerService.applyScalarText(value, p::setHeight);
+            case "weight" -> PlayerService.applyScalarText(value, p::setWeight);
+            case "throwHand" -> PlayerService.applyScalarText(value, p::setThrowHand);
+            case "batHand" -> PlayerService.applyScalarText(value, p::setBatHand);
+            case "avatar" -> PlayerService.applyScalarText(value, p::setAvatar);
+            case "bgImage" -> PlayerService.applyScalarText(value, p::setBgImage);
+            case "nickname" -> PlayerService.applyScalarText(value, p::setNickname);
+            case "nameEn" -> PlayerService.applyScalarText(value, p::setNameEn);
+            case "birthDate" -> PlayerService.applyScalarText(value, p::setBirthDate);
+            case "birthPlace" -> PlayerService.applyScalarText(value, p::setBirthPlace);
+            case "education" -> PlayerService.applyScalarText(value, p::setEducation);
+            case "intro" -> PlayerService.applyScalarText(value, p::setIntro);
+            case "contactPhone" -> PlayerService.applyScalarText(value, p::setContactPhone);
+            case "contactEmail" -> PlayerService.applyScalarText(value, p::setContactEmail);
+            case "draft" -> PlayerService.applyScalarText(value, p::setDraft);
+            case "debut" -> PlayerService.applyScalarText(value, p::setDebut);
+            case "name" -> PlayerService.applyScalarText(value, p::setName);
+            case "positions" -> p.setPositions(PlayerService.asPositionsStorage(value));
+            case "bgImages" -> p.setBgImages(PlayerService.asTextList(value));
+            case "bgFocusConfig" -> p.setBgFocusConfig(PlayerService.asTextObjectMap(value));
+            default -> { }
+        }
+    }
+    
+    /**
+     * 标量字段写入：值经 {@link #asText} 适配后写入 setter。
+     * <p>M-2：对象/数组等“非标量”值传入标量字段时跳过该键（保持原值），
+     * 避免写入 {@code String.valueOf(map)} 之类的坏值。
+     */
+    private static void applyScalarText(Object value, java.util.function.Consumer<String> setter) {
+        if (PlayerService.isNonScalar(value)) {
+            return;
+        }
+        setter.accept(PlayerService.asText(value));
+    }
+    
+    /** 非标量判定：Map / 集合 / 数组等结构值，不可写入标量字段。 */
+    private static boolean isNonScalar(Object v) {
+        return v instanceof Map || v instanceof Collection || v != null && v.getClass().isArray();
+    }
+    
+    /**
+     * 标量文本转换（{@code null} 透传以支持清空）；非标量由 {@link #applyScalarText} 提前跳过，
+     * 此处对非标量返回 {@code null} 兜底，确保绝不产出坏值。
+     */
+    private static String asText(Object v) {
+        return v == null || PlayerService.isNonScalar(v) ? null : String.valueOf(v);
+    }
+
+    private static List<String> asTextList(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof List<?> raw) {
+            ArrayList<String> out = new ArrayList<String>();
+            for (Object o : raw) {
+                if (o != null) out.add(String.valueOf(o));
+            }
+            return out;
+        }
+        if (v instanceof String s) {
+            List<String> parsed = PositionsJsonUtil.parseList(s);
+            if (!parsed.isEmpty()) {
+                return parsed;
+            }
+            return s.isBlank() ? List.of() : List.of(s);
+        }
+        return List.of(String.valueOf(v));
+    }
+
+    private static Map<String, Object> asTextObjectMap(Object v) {
+        if (!(v instanceof Map<?, ?> raw)) {
+            return null;
+        }
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        for (Map.Entry<?, ?> e : raw.entrySet()) {
+            out.put(String.valueOf(e.getKey()), e.getValue());
+        }
+        return out;
+    }
+
+    private static String asPositionsStorage(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof List<?> raw) {
+            ArrayList<String> out = new ArrayList<String>();
+            for (Object o : raw) {
+                if (o != null) out.add(String.valueOf(o));
+            }
+            return PositionsJsonUtil.toStorage(out);
+        }
+        return String.valueOf(v);
+    }
+
     private static void normalizeBlankStringsToNull(Player p) {
         if (p == null) {
             return;
@@ -642,7 +836,7 @@ public class PlayerService {
     }
 
     @Generated
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, PlayerTeamRepository playerTeamRepository, StatsService statsService, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamService playerTeamService, TenantQueryPolicyService tenantQueryPolicyService, SysConfigService sysConfigService, PlayerClaimRepository playerClaimRepository) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.playerTeamRepository = playerTeamRepository;
@@ -653,6 +847,8 @@ public class PlayerService {
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.playerTeamService = playerTeamService;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.sysConfigService = sysConfigService;
+        this.playerClaimRepository = playerClaimRepository;
     }
 }
 

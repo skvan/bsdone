@@ -40,6 +40,7 @@ package com.bsball.service;
 import com.bsball.common.PageResult;
 import com.bsball.config.AccountProperties;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
 import com.bsball.model.entity.PlayerClaimInvite;
@@ -67,8 +68,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -78,8 +81,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -97,6 +98,8 @@ public class PlayerClaimService {
     private final PlayerTeamService playerTeamService;
     private final AccountScopeService accountScopeService;
     private final ResourceGuard resourceGuard;
+    private final PlayerService playerService;
+    private final PersonnelHistoryRecorder personnelHistoryRecorder;
 
     @Transactional
     public PlayerClaim submitClaim(Long userId, Long playerId, String remark, Long inviteId) {
@@ -266,7 +269,7 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
-        this.evictAfterCommit(claim.getUserId());
+        this.accountScopeService.evictUserScopeCacheAfterCommit(claim.getUserId());
         return claim;
     }
 
@@ -285,14 +288,15 @@ public class PlayerClaimService {
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
         this.requireTeamManagerOrAdmin(creatorId, teamId);
-        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "\u7403\u961f\u4e0d\u5b58\u5728"));
+        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
         if (playerId != null) {
-            Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-            if (!this.playerTeamService.isCurrentlyInTeam(p.getId(), teamId)) {
-                throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u8be5\u7403\u961f");
+            Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+            // 保留租户一致性：删除 isCurrentlyInTeam 硬校验后，仍需保证受邀球员与球队同租户。
+            if (!Objects.equals(p.getTenantId(), team.getTenantId())) {
+                throw new BusinessException(400, "球员与球队不属于同一租户");
             }
             if (p.getUserId() != null) {
-                throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
+                throw new BusinessException(400, "该球员已被认领");
             }
         }
         int hours = expireHours != null && expireHours > 0 ? expireHours.intValue() : this.accountProperties.getInviteDefaultExpireHours();
@@ -338,26 +342,111 @@ public class PlayerClaimService {
         return out;
     }
 
-    @Transactional
-    public PlayerClaim claimViaInvite(Long userId, String token, Long playerId, String remark) {
-        Long targetPlayerId;
+    /**
+     * 凭邀请接受：
+     * <ul>
+     *   <li>{@code targetPlayerId}（邀请绑定球员 或 入参 playerId）非空 → 原认领关联语义（经 {@link #submitClaim} 落一条待审 PlayerClaim）；</li>
+     *   <li>{@code targetPlayerId} 为空 且 该用户已有档案 → 已在受邀队则幂等早返回；否则直接以存量档案入队
+     *       （不调 {@link PlayerService#createSelfProfile}、不需 {@code draft}）；</li>
+     *   <li>{@code targetPlayerId} 为空 且 该用户无档案 → 需 {@code draft} 非空，自助建档（复用 {@link PlayerService#createSelfProfile} 校验链）
+     *       并写 player_team 入队（{@code current=true}）+ 镜像回写 + join 沿革 + currentJoinRecordId 回写；</li>
+     *   <li>无目标球员且无档案且无草稿 → 400。</li>
+     * </ul>
+     * token 维持单次/限次 + 有效期；仅在真正发生写入的路径消费（建档+入队 / 存量入队 / 认领落库），幂等早返回不消费。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> claimOrRegisterViaInvite(Long userId, String token, Long playerId, Player draft) {
         PlayerClaimInvite invite = this.requireActiveInvite(token);
-        Long l = targetPlayerId = invite.getPlayerId() != null ? invite.getPlayerId() : playerId;
-        if (targetPlayerId == null) {
-            throw new BusinessException(400, "\u8bf7\u6307\u5b9a\u8981\u8ba4\u9886\u7684\u7403\u5458");
+        Long targetPlayerId = invite.getPlayerId() != null ? invite.getPlayerId() : playerId;
+        if (targetPlayerId != null) {
+            return this.claimViaInviteForPlayer(userId, invite, targetPlayerId);
         }
-        Player player = (Player)this.playerRepository.findById(targetPlayerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-        if (!this.playerTeamService.isCurrentlyInTeam(player.getId(), invite.getTeamId())) {
-            throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u9080\u8bf7\u7403\u961f");
+        return this.registerAndJoinViaInvite(userId, invite, draft);
+    }
+
+    /** 原认领关联语义：保留租户一致性（跨租户拒绝）与「已认领」校验（由 submitClaim 兜底）。 */
+    private Map<String, Object> claimViaInviteForPlayer(Long userId, PlayerClaimInvite invite, Long targetPlayerId) {
+        Player player = (Player)this.playerRepository.findById(targetPlayerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+        if (!Objects.equals(player.getTenantId(), invite.getTenantId())) {
+            throw new BusinessException(400, "球员与邀请球队不属于同一租户");
         }
-        PlayerClaim claim = this.submitClaim(userId, targetPlayerId, remark, invite.getId());
+        PlayerClaim claim = this.submitClaim(userId, targetPlayerId, null, invite.getId());
+        // 认领落库属写入路径 → 消费邀请（幂等早返回等无写入路径不消费）。
+        this.consumeInvite(invite);
+        LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("mode", "claim");
+        out.put("claimId", claim.getId());
+        out.put("playerId", claim.getPlayerId());
+        out.put("status", claim.getStatus());
+        return out;
+    }
+
+    /**
+     * 邀请入队（两条路径，均复用 {@link #applyInviteJoin} 落库）：
+     * <ul>
+     *   <li>存量档案（{@code existing != null}）：已在受邀队 → 幂等早返回（无写入、不消费令牌）；
+     *       否则直接以存量档案入队（不建档、不需 draft）；</li>
+     *   <li>无档案（{@code existing == null}）：需 draft 非空，自助建档后入队。</li>
+     * </ul>
+     */
+    private Map<String, Object> registerAndJoinViaInvite(Long userId, PlayerClaimInvite invite, Player draft) {
+        Long teamId = invite.getTeamId();
+        Player existing = this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
+        if (existing != null) {
+            if (this.playerTeamService.currentTeamIds(existing.getId()).contains(teamId)) {
+                // 幂等早返回：已在受邀队，无写入 → 不消费令牌。
+                return this.joinResult(existing.getId(), teamId);
+            }
+            // 存量档案直接入队（不调 createSelfProfile、不需 draft）。
+            this.applyInviteJoin(existing, teamId);
+            this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+            this.consumeInvite(invite);
+            return this.joinResult(existing.getId(), teamId);
+        }
+        if (draft == null) {
+            throw new BusinessException(400, "请指定要认领的球员或提供建档信息");
+        }
+        // TODO(批3b硬化)：并发双击可能双建档（bs_player.user_id 无唯一约束）；见
+        // PlayerService.createSelfProfile 的 ux_bs_player_user_active 唯一索引硬化，本轮不改约束。
+        Player created = this.playerService.createSelfProfile(userId, draft);
+        this.applyInviteJoin(created, teamId);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+        this.consumeInvite(invite);
+        return this.joinResult(created.getId(), teamId);
+    }
+
+    /** 入队落库：写 current=true 经历 + 镜像 + join 沿革，并回写 currentJoinRecordId（对齐 PlayerService.create）。 */
+    private void applyInviteJoin(Player player, Long teamId) {
+        List<PlayerTeamEntryDto> entries = List.of(
+                new PlayerTeamEntryDto(null, teamId, null, null, null, Boolean.TRUE, null));
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(player, entries, true);
+        this.playerTeamService.applyMirror(player, plan);
+        Player saved = (Player)this.playerRepository.save(player);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(
+                saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            this.playerRepository.save(saved);
+        }
+    }
+
+    private Map<String, Object> joinResult(Long playerId, Long teamId) {
+        LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("mode", "registered");
+        out.put("playerId", playerId);
+        out.put("teamId", teamId);
+        return out;
+    }
+
+    /** 消费邀请：计数 +1，达上限置 expired（现状机制）。 */
+    private void consumeInvite(PlayerClaimInvite invite) {
         invite.setUsedCount(Integer.valueOf(invite.getUsedCount() + 1));
         if (invite.getUsedCount() >= invite.getMaxUses()) {
             invite.setStatus("expired");
         }
         invite.setUpdatedAt(LocalDateTime.now());
         this.playerClaimInviteRepository.save(invite);
-        return claim;
     }
 
     private void ensureSingleLeagueSingleTeam(Long userId, Player target) {
@@ -385,20 +474,6 @@ public class PlayerClaimService {
         }
         this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
-    }
-
-    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤销类路径被并发读回填。 */
-    private void evictAfterCommit(Long userId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    PlayerClaimService.this.accountScopeService.evictUserScopeCache(userId);
-                }
-            });
-        } else {
-            this.accountScopeService.evictUserScopeCache(userId);
-        }
     }
 
     private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
@@ -452,7 +527,7 @@ public class PlayerClaimService {
     }
 
     @Generated
-    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard) {
+    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard, PlayerService playerService, PersonnelHistoryRecorder personnelHistoryRecorder) {
         this.accountProperties = accountProperties;
         this.apiPermissionService = apiPermissionService;
         this.playerClaimRepository = playerClaimRepository;
@@ -464,6 +539,8 @@ public class PlayerClaimService {
         this.playerTeamService = playerTeamService;
         this.accountScopeService = accountScopeService;
         this.resourceGuard = resourceGuard;
+        this.playerService = playerService;
+        this.personnelHistoryRecorder = personnelHistoryRecorder;
     }
 }
 

@@ -66,13 +66,19 @@ class LeagueServiceScopeWiringTest {
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
 
+    @Mock
+    private LeagueProvisionService leagueProvisionService;
+
+    @Mock
+    private ApiPermissionService apiPermissionService;
+
     private LeagueService service;
 
     @BeforeEach
     void setUp() {
         CurrentUserHolder.clear();
         service = new LeagueService(leagueRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                personnelHistoryRecorder, tenantQueryPolicyService);
+                personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService);
     }
 
     @AfterEach
