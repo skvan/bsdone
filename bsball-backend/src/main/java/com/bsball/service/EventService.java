@@ -29,15 +29,13 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.League;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.LeagueRepository;
-import com.bsball.service.DataScopeService;
-import com.bsball.service.TenantQueryPolicyService;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import lombok.Generated;
@@ -52,7 +50,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class EventService {
     private final EventRepository eventRepository;
     private final LeagueRepository leagueRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
     public PageResult<Event> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
@@ -64,14 +64,15 @@ public class EventService {
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
-            result = this.eventRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && visibleLeagueIds.isEmpty()) {
+            return PageResult.of((List)List.of(), (long)0L);
+        }
+        if (visibleLeagueIds != null) {
+            result = this.eventRepository.findByTenantIdAndLeagueIdInAndDeletedAtIsNull(Long.valueOf(tid), visibleLeagueIds, p);
         } else {
-            if (scope.getLeagueIds().isEmpty()) {
-                return PageResult.of((List)List.of(), (long)0L);
-            }
-            result = this.eventRepository.findByTenantIdAndLeagueIdInAndDeletedAtIsNull(Long.valueOf(tid), (Collection)scope.getLeagueIds(), p);
+            result = this.eventRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
         }
         return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
     }
@@ -85,8 +86,9 @@ public class EventService {
         if (!Objects.equals(entity.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && entity.getLeagueId() != null && !scope.canReadLeague(entity.getLeagueId().longValue())) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && entity.getLeagueId() != null && !visibleLeagueIds.contains(entity.getLeagueId())) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8d5b\u4e8b");
         }
         return entity;
@@ -99,10 +101,7 @@ public class EventService {
             if (league == null || league.getDeletedAt() != null || !Objects.equals(league.getTenantId(), tid)) {
                 throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
             }
-            EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-            if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(entity.getLeagueId().longValue())) {
-                throw new BusinessException(403, "\u65e0\u6743\u5728\u8be5\u8054\u76df\u4e0b\u521b\u5efa\u8d5b\u4e8b");
-            }
+            this.resourceGuard.assertCanManageLeague(entity.getLeagueId());
         }
         entity.setTenantId(Long.valueOf(tid));
         return (Event)this.eventRepository.save(entity);
@@ -123,14 +122,9 @@ public class EventService {
         if (!(leagueId == null || (league = (League)this.leagueRepository.findById(leagueId).orElse(null)) != null && league.getDeletedAt() == null && Objects.equals(league.getTenantId(), tid))) {
             throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant()) {
-            boolean newOk;
-            boolean oldOk = existing.getLeagueId() == null || scope.canReadLeague(existing.getLeagueId().longValue());
-            boolean bl = newOk = leagueId == null || scope.canReadLeague(leagueId.longValue());
-            if (!oldOk || !newOk) {
-                throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u8d5b\u4e8b");
-            }
+        this.resourceGuard.assertCanManageEvent(id);
+        if (leagueId != null && !leagueId.equals(existing.getLeagueId())) {
+            this.resourceGuard.assertCanManageLeague(leagueId);
         }
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
@@ -148,10 +142,7 @@ public class EventService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8d5b\u4e8b");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && existing.getLeagueId() != null && !scope.canReadLeague(existing.getLeagueId().longValue())) {
-            throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8d5b\u4e8b");
-        }
+        this.resourceGuard.assertCanManageEvent(id);
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.eventRepository.save(existing);
@@ -168,10 +159,12 @@ public class EventService {
     }
 
     @Generated
-    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService) {
         this.eventRepository = eventRepository;
         this.leagueRepository = leagueRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
 }
