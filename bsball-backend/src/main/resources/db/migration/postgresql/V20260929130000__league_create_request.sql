@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS bs_league_create_request (
     updated_by BIGINT, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_by BIGINT, deleted_at TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS ix_bs_league_create_request_tenant_status ON bs_league_create_request (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_bs_league_create_request_tenant_status ON bs_league_create_request (tenant_id, status);
 COMMENT ON TABLE  bs_league_create_request IS '联盟创建申请（门户自助，默认需平台审核）';
 COMMENT ON COLUMN bs_league_create_request.tenant_id IS '租户ID';
 COMMENT ON COLUMN bs_league_create_request.applicant_user_id IS '申请人用户ID';
