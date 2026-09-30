@@ -178,6 +178,7 @@ public class CoachService {
         CoachService.normalizeCoachTeamId((Coach)entity);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
+        this.resourceGuard.assertCanManageTeam(entity.getTeamId());
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         Coach before = PersonnelHistoryRecorder.snapshotCoach((Coach)existing);

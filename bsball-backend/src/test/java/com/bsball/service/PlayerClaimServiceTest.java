@@ -140,7 +140,7 @@ class PlayerClaimServiceTest {
 
     @Test
     @DisplayName("审核：审核守卫通过 → 认领通过并回写球员归属")
-    void approve_reviewerManagesSecondaryCurrentTeam_succeeds() {
+    void approve_reviewGuardPasses_succeeds() {
         PlayerClaim claim = new PlayerClaim();
         claim.setId(9L);
         claim.setPlayerId(1L);

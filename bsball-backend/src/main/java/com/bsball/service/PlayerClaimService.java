@@ -78,6 +78,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -158,7 +160,9 @@ public class PlayerClaimService {
             preds.add(cb.equal((Expression)root.get("status"), "pending"));
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             if (superAdmin || tenantAdmin) {
-                preds.add(cb.or((Expression)cb.equal((Expression)root.get("reviewerType"), "platform_admin"), (Expression)cb.and((Expression)cb.equal((Expression)root.get("reviewerType"), "team_manager"), (Expression)root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}))));
+                // 管理员列表仅呈平台认领；team_manager 认领由球队管理员的范围内列表呈现；
+                // 管理员仍可按 id 审任意认领（守卫对 unrestricted 直通）。
+                preds.add(cb.equal((Expression)root.get("reviewerType"), "platform_admin"));
             } else if (!managedTeamIds.isEmpty()) {
                 preds.add(cb.equal((Expression)root.get("reviewerType"), "team_manager"));
                 preds.add(root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}));
@@ -262,7 +266,7 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
-        this.accountScopeService.evictUserScopeCache(claim.getUserId());
+        this.evictAfterCommit(claim.getUserId());
         return claim;
     }
 
@@ -370,6 +374,10 @@ public class PlayerClaimService {
         }
     }
 
+    /**
+     * 校验认领可审：授权主体恒为 CurrentUserHolder（经范围中枢/守卫判定）；本方法不含 reviewerId 入参，
+     * reviewerId 由调用方在落库时留痕，不参与判定。
+     */
     private PlayerClaim requireClaimForReview(Long claimId) {
         PlayerClaim claim = (PlayerClaim)this.playerClaimRepository.findByIdAndDeletedAtIsNull(claimId).orElseThrow(() -> new BusinessException(404, "\u7533\u8bf7\u4e0d\u5b58\u5728"));
         if (!"pending".equals(claim.getStatus())) {
@@ -377,6 +385,20 @@ public class PlayerClaimService {
         }
         this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
+    }
+
+    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤销类路径被并发读回填。 */
+    private void evictAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    PlayerClaimService.this.accountScopeService.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.accountScopeService.evictUserScopeCache(userId);
+        }
     }
 
     private void requireTeamManagerOrAdmin(Long userId, Long teamId) {

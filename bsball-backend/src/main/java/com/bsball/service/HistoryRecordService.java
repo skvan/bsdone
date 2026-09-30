@@ -131,6 +131,9 @@ public class HistoryRecordService {
         } else {
             entity.setTenantId(Long.valueOf(tid));
         }
+        if ("team".equals(entity.getTargetType()) && entity.getTargetId() != null && entity.getTargetId() > 0L) {
+            this.resourceGuard.assertCanManageTeam(entity.getTargetId());
+        }
         return (HistoryRecord)this.historyRecordRepository.save(entity);
     }
 
