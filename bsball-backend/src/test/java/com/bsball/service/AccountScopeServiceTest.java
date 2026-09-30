@@ -301,6 +301,76 @@ class AccountScopeServiceTest {
         assertFalse(recomputed.canManageTeam(100L));
     }
 
+    // ------------------------------------------------------------------ 用例 13
+
+    @Test
+    @DisplayName("指派/认领后驱逐缓存：空域账号即时获得管理权（无需等待 TTL）")
+    void evictOnClaim_grantsManageImmediately() {
+        givenPortalAccountWithoutLegacyRows();
+        // 可变桩：认领前无归属（空域），认领后注入 teamId=100
+        long[] teamId = {0L};
+        ScopeRelationProvider provider = mock(ScopeRelationProvider.class);
+        when(provider.supports(any(ScopeResolutionContext.class))).thenReturn(true);
+        doAnswer(inv -> {
+            long t = teamId[0];
+            if (t != 0L) {
+                ((ScopeResolutionContext) inv.getArgument(0)).addTeam(t);
+            }
+            return null;
+        }).when(provider).contribute(any(ScopeResolutionContext.class));
+        newService(provider);
+
+        EffectiveScope before = service.resolve(USER_ID, TENANT_ID);
+        assertTrue(before.isManageEmpty());
+        assertFalse(before.canManageTeam(100L));
+
+        // 认领通过：关系建立
+        teamId[0] = 100L;
+        // 未驱逐前，新请求仍读到缓存的旧核心范围 → 仍旧空域
+        service.clearRequestScopeCache();
+        assertTrue(service.resolve(USER_ID, TENANT_ID).isManageEmpty());
+
+        // 驱逐用户范围缓存 + 新请求 → 即时生效
+        service.evictUserScopeCache(USER_ID);
+        service.clearRequestScopeCache();
+        EffectiveScope after = service.resolve(USER_ID, TENANT_ID);
+        assertTrue(after.canManageTeam(100L));
+        assertFalse(after.isManageEmpty());
+    }
+
+    // ------------------------------------------------------------------ 用例 14
+
+    @Test
+    @DisplayName("缓存 TTL 到期：无需驱逐即自动重算（Caffeine expireAfterWrite 兜底）")
+    void cacheTtlExpiry_recomputesWithoutEvict() throws InterruptedException {
+        givenPortalAccountWithoutLegacyRows();
+        long[] teamId = {100L};
+        ScopeRelationProvider provider = mock(ScopeRelationProvider.class);
+        when(provider.supports(any(ScopeResolutionContext.class))).thenReturn(true);
+        doAnswer(inv -> {
+            ((ScopeResolutionContext) inv.getArgument(0)).addTeam(teamId[0]);
+            return null;
+        }).when(provider).contribute(any(ScopeResolutionContext.class));
+        newService(provider);
+
+        assertTrue(service.resolve(USER_ID, TENANT_ID).canManageTeam(100L));
+
+        teamId[0] = 200L; // 关系变更，且不做任何驱逐
+        // 手动构造时 scopeCacheTtlSec 默认 0 → initScopeCache 取 Math.max(5, 0) = 5 秒
+        long deadline = System.currentTimeMillis() + 9000L;
+        EffectiveScope after = null;
+        while (System.currentTimeMillis() < deadline) {
+            service.clearRequestScopeCache();
+            after = service.resolve(USER_ID, TENANT_ID);
+            if (after.canManageTeam(200L)) {
+                break;
+            }
+            Thread.sleep(200L);
+        }
+        assertTrue(after != null && after.canManageTeam(200L), "TTL 到期后应自动重算出新范围");
+        assertFalse(after.canManageTeam(100L));
+    }
+
     // ------------------------------------------------------------------ 辅助
 
     /** 构造被测服务：@Generated 构造器 + 手动初始化缓存（不启动 Spring）。 */

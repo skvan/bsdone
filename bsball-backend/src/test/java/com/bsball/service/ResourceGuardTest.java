@@ -491,6 +491,71 @@ class ResourceGuardTest {
         verifyNoInteractions(playerRepository, playerTeamService);
     }
 
+    // ------------------------------------------------------------------ 空域 / 只读放行（§12.2 矩阵：写侧）
+
+    @Test
+    @DisplayName("空域账号：联盟/球队/赛事/比赛/档案写一律 403")
+    void emptyScope_allWritePath_forbidden() {
+        // 门户角色无归属 → 空域（manage 集合为空，绝不放行任何写）
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.empty());
+        // 赛事/比赛链路：资源不存在亦统一 403（隐藏存在性）
+        when(eventRepository.findById(5L)).thenReturn(Optional.empty());
+        when(gameRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageLeague(10L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageTeam(100L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageEvent(5L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageGame(7L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManagePlayerRoster(100L)).getCode());
+        // 空域下不触碰球员档案相关依赖
+        verifyNoInteractions(playerRepository, playerTeamService);
+    }
+
+    @Test
+    @DisplayName("空域账号：ROSTER 通道编辑球员赛务信息 → 403（球队未命中）")
+    void emptyScope_rosterEdit_forbidden() {
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.empty());
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
+        when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(200L));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权修改该球员的赛务信息", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("guest-like 只读放行：仅读语义，绝不授予任何写（空集仍 403）")
+    void guestLikeRead_onlyReads_neverWrites() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(true, Set.of(), Set.of()));
+
+        // guest 读标志不参与写判定：管理集合为空 → 写一律 403
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageLeague(10L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManageTeam(100L)).getCode());
+        assertEquals(403, assertThrows(BusinessException.class,
+                () -> guard.assertCanManagePlayerRoster(100L)).getCode());
+    }
+
+    @Test
+    @DisplayName("主办方（仅联盟）：不可增删球员档案 → 403")
+    void organizer_cannotManagePlayerRoster() {
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanManagePlayerRoster(100L));
+        assertEquals(403, ex.getCode());
+        assertEquals("球队账号不可增删球员档案", ex.getMessage());
+    }
+
     // ------------------------------------------------------------------ 辅助
 
     private static Event event(Long id, Long leagueId) {
