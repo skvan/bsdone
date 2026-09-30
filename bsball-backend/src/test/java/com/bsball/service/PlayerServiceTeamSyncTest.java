@@ -12,7 +12,6 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.common.PageResult;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
 import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Player;
@@ -22,6 +21,7 @@ import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.PlayerTeamService.PlayerTeamSyncPlan;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,7 +52,13 @@ class PlayerServiceTeamSyncTest {
     private StatsService statsService;
 
     @Mock
-    private DataScopeService dataScopeService;
+    private AccountScopeService accountScopeService;
+
+    @Mock
+    private ScopeQuerySupport scopeQuerySupport;
+
+    @Mock
+    private ResourceGuard resourceGuard;
 
     @Mock
     private PersonnelHistoryRecorder personnelHistoryRecorder;
@@ -68,7 +74,8 @@ class PlayerServiceTeamSyncTest {
     @BeforeEach
     void setUp() {
         service = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
-                dataScopeService, personnelHistoryRecorder, playerTeamService, tenantQueryPolicyService);
+                accountScopeService, scopeQuerySupport, resourceGuard, personnelHistoryRecorder,
+                playerTeamService, tenantQueryPolicyService);
     }
 
     @Test
@@ -144,8 +151,8 @@ class PlayerServiceTeamSyncTest {
         Player p = player(1L, TENANT);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(dataScopeService.resolve(any(), eq(TENANT))).thenReturn(EffectiveDataScope.restricted(Set.of(), Set.of(5L)));
-        when(playerTeamService.countCurrentEntriesInTeams(1L, Set.of(5L))).thenReturn(0L);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(List.of(5L));
+        when(playerTeamService.countCurrentEntriesInTeams(1L, List.of(5L))).thenReturn(0L);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.get(1L));
 
@@ -159,8 +166,8 @@ class PlayerServiceTeamSyncTest {
         Player p = player(1L, TENANT);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(dataScopeService.resolve(any(), eq(TENANT))).thenReturn(EffectiveDataScope.restricted(Set.of(), Set.of(5L)));
-        when(playerTeamService.countCurrentEntriesInTeams(1L, Set.of(5L))).thenReturn(1L);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(List.of(5L));
+        when(playerTeamService.countCurrentEntriesInTeams(1L, List.of(5L))).thenReturn(1L);
 
         Player result = service.get(1L);
 
@@ -174,7 +181,7 @@ class PlayerServiceTeamSyncTest {
         Player p = player(1L, TENANT);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(dataScopeService.resolve(any(), eq(TENANT))).thenReturn(EffectiveDataScope.unrestricted());
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
 
         service.get(1L);
 
@@ -191,7 +198,7 @@ class PlayerServiceTeamSyncTest {
         Player p3 = player(3L, TENANT);
         when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(dataScopeService.resolve(any(), eq(TENANT))).thenReturn(EffectiveDataScope.restricted(Set.of(), Set.of(5L)));
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(List.of(5L));
         when(playerRepository.findByDeletedAtIsNullAndIdIn(ids)).thenReturn(List.of(p1, p2, p3));
         when(playerTeamService.currentTeamIdsByPlayerIds(List.of(1L, 2L, 3L)))
                 .thenReturn(Map.of(2L, Set.of(5L), 3L, Set.of(9L)));
@@ -207,7 +214,7 @@ class PlayerServiceTeamSyncTest {
     @DisplayName("阵容选择器：返回当前注册球员并按注册段映射背号与守备位置")
     void listTeamPlayerOptions_mapsEntryRows() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(dataScopeService.resolve(any(), eq(TENANT))).thenReturn(EffectiveDataScope.unrestricted());
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
         Object[] row = new Object[]{2L, "李四", "9", "[\"C\",\"1B\"]", "R", "L", "active"};
         when(playerTeamRepository.findTeamPlayerOptionFields(TENANT, 5L)).thenReturn(List.<Object[]>of(row));
 

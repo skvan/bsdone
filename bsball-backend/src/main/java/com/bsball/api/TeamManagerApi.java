@@ -28,6 +28,7 @@ import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
+import com.bsball.service.AccountScopeService;
 import com.bsball.service.ApiPermissionService;
 import com.bsball.service.JwtService;
 import java.time.LocalDateTime;
@@ -47,6 +48,7 @@ public class TeamManagerApi {
     private final TeamManagerRepository teamManagerRepository;
     private final TeamRepository teamRepository;
     private final ApiPermissionService apiPermissionService;
+    private final AccountScopeService accountScopeService;
     private final JwtService jwtService;
 
     @GetMapping(value={"/team/{teamId}/managers"})
@@ -83,7 +85,9 @@ public class TeamManagerApi {
         tm.setStatus("active");
         tm.setCreatedAt(now);
         tm.setUpdatedAt(now);
-        return Result.ok(((TeamManager)this.teamManagerRepository.save(tm)));
+        TeamManager saved = (TeamManager)this.teamManagerRepository.save(tm);
+        this.accountScopeService.evictUserScopeCache(userId);
+        return Result.ok(saved);
     }
 
     @DeleteMapping(value={"/team/{teamId}/managers/{userId}"})
@@ -96,6 +100,7 @@ public class TeamManagerApi {
         tm.setStatus("inactive");
         tm.setDeletedAt(LocalDateTime.now());
         this.teamManagerRepository.save(tm);
+        this.accountScopeService.evictUserScopeCache(userId);
         return Result.ok(Map.of());
     }
 
@@ -109,10 +114,11 @@ public class TeamManagerApi {
     }
 
     @Generated
-    public TeamManagerApi(TeamManagerRepository teamManagerRepository, TeamRepository teamRepository, ApiPermissionService apiPermissionService, JwtService jwtService) {
+    public TeamManagerApi(TeamManagerRepository teamManagerRepository, TeamRepository teamRepository, ApiPermissionService apiPermissionService, AccountScopeService accountScopeService, JwtService jwtService) {
         this.teamManagerRepository = teamManagerRepository;
         this.teamRepository = teamRepository;
         this.apiPermissionService = apiPermissionService;
+        this.accountScopeService = accountScopeService;
         this.jwtService = jwtService;
     }
 }

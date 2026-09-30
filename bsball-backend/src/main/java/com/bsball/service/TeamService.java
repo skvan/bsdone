@@ -6,13 +6,11 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.TeamOptionDto
  *  com.bsball.model.entity.League
  *  com.bsball.model.entity.Team
  *  com.bsball.repository.LeagueRepository
  *  com.bsball.repository.TeamRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.TeamService
  *  com.bsball.service.TenantQueryPolicyService
@@ -31,17 +29,14 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.TeamOptionDto;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.TeamRepository;
-import com.bsball.service.DataScopeService;
-import com.bsball.service.PersonnelHistoryRecorder;
-import com.bsball.service.TenantQueryPolicyService;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import lombok.Generated;
@@ -59,7 +54,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamService {
     private final TeamRepository teamRepository;
     private final LeagueRepository leagueRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
@@ -72,14 +69,15 @@ public class TeamService {
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
-            result = this.teamRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && visibleTeamIds.isEmpty()) {
+            return PageResult.of((List)List.of(), (long)0L);
+        }
+        if (visibleTeamIds != null) {
+            result = this.teamRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), visibleTeamIds, p);
         } else {
-            if (scope.getTeamIds().isEmpty()) {
-                return PageResult.of((List)List.of(), (long)0L);
-            }
-            result = this.teamRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), (Collection)scope.getTeamIds(), p);
+            result = this.teamRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
         }
         return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
     }
@@ -89,14 +87,15 @@ public class TeamService {
             return this.teamRepository.findAllForSelect();
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds == null) {
             return this.teamRepository.findForSelectByTenantId(Long.valueOf(tid));
         }
-        if (scope.getTeamIds().isEmpty()) {
+        if (visibleTeamIds.isEmpty()) {
             return List.of();
         }
-        return this.teamRepository.findForSelectByTenantIdAndIdIn(Long.valueOf(tid), (Collection)scope.getTeamIds());
+        return this.teamRepository.findForSelectByTenantIdAndIdIn(Long.valueOf(tid), visibleTeamIds);
     }
 
     public Team get(Long id) {
@@ -108,8 +107,9 @@ public class TeamService {
         if (!Objects.equals(t.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadTeam(id.longValue())) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && !visibleTeamIds.contains(id)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u961f");
         }
         return t;
@@ -140,6 +140,7 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u7403\u961f");
         }
+        this.resourceGuard.assertCanManageTeam(id);
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
@@ -169,6 +170,7 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u7403\u961f");
         }
+        this.resourceGuard.assertCanManageTeam(id);
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.teamRepository.save(existing);
@@ -227,10 +229,12 @@ public class TeamService {
     }
 
     @Generated
-    public TeamService(TeamRepository teamRepository, LeagueRepository leagueRepository, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public TeamService(TeamRepository teamRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
         this.teamRepository = teamRepository;
         this.leagueRepository = leagueRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }

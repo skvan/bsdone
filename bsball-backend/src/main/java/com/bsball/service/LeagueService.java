@@ -6,10 +6,8 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.League
  *  com.bsball.repository.LeagueRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.LeagueService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.TenantQueryPolicyService
@@ -28,14 +26,11 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.League;
 import com.bsball.repository.LeagueRepository;
-import com.bsball.service.DataScopeService;
-import com.bsball.service.PersonnelHistoryRecorder;
-import com.bsball.service.TenantQueryPolicyService;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import lombok.Generated;
@@ -49,7 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LeagueService {
     private final LeagueRepository leagueRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
@@ -62,14 +59,15 @@ public class LeagueService {
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
-            result = this.leagueRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && visibleLeagueIds.isEmpty()) {
+            return PageResult.of((List)List.of(), (long)0L);
+        }
+        if (visibleLeagueIds != null) {
+            result = this.leagueRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), visibleLeagueIds, p);
         } else {
-            if (scope.getLeagueIds().isEmpty()) {
-                return PageResult.of((List)List.of(), (long)0L);
-            }
-            result = this.leagueRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), (Collection)scope.getLeagueIds(), p);
+            result = this.leagueRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
         }
         return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
     }
@@ -83,14 +81,20 @@ public class LeagueService {
         if (!Objects.equals(league.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(id.longValue())) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && !visibleLeagueIds.contains(id)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8054\u76df");
         }
         return league;
     }
 
     public League create(League entity) {
+        return this.createInternal(entity);
+    }
+
+    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）。 */
+    public League createInternal(League entity) {
         String name;
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         entity.setTenantId(Long.valueOf(tid));
@@ -115,6 +119,7 @@ public class LeagueService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u8054\u76df");
         }
+        this.resourceGuard.assertCanManageLeague(id);
         String string = name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
@@ -142,6 +147,7 @@ public class LeagueService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8054\u76df");
         }
+        this.resourceGuard.assertCanManageLeague(id);
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.leagueRepository.save(existing);
@@ -158,9 +164,11 @@ public class LeagueService {
     }
 
     @Generated
-    public LeagueService(LeagueRepository leagueRepository, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
         this.leagueRepository = leagueRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }

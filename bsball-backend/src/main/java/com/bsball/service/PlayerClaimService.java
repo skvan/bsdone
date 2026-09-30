@@ -78,6 +78,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -93,6 +95,8 @@ public class PlayerClaimService {
     private final TeamManagerRepository teamManagerRepository;
     private final SysUserRepository sysUserRepository;
     private final PlayerTeamService playerTeamService;
+    private final AccountScopeService accountScopeService;
+    private final ResourceGuard resourceGuard;
 
     @Transactional
     public PlayerClaim submitClaim(Long userId, Long playerId, String remark, Long inviteId) {
@@ -143,7 +147,7 @@ public class PlayerClaimService {
         List kwUserIds;
         boolean superAdmin = this.apiPermissionService.isSuperAdmin(reviewerId);
         boolean tenantAdmin = this.apiPermissionService.isTenantAdmin(reviewerId);
-        List<Long> managedTeamIds = this.teamManagerRepository.findByUserIdAndStatusAndDeletedAtIsNull(reviewerId, "active").stream().map(TeamManager::getTeamId).toList();
+        Collection<Long> managedTeamIds = this.accountScopeService.resolveCurrent().getTeamIds();
         String reviewerTypeFilter = reviewerType != null && !reviewerType.isBlank() ? reviewerType.trim() : null;
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         List kwPlayerIds = hasKeyword ? this.playerRepository.findIdsByNameLike(keyword.trim()) : List.of();
@@ -156,7 +160,9 @@ public class PlayerClaimService {
             preds.add(cb.equal((Expression)root.get("status"), "pending"));
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             if (superAdmin || tenantAdmin) {
-                preds.add(cb.or((Expression)cb.equal((Expression)root.get("reviewerType"), "platform_admin"), (Expression)cb.and((Expression)cb.equal((Expression)root.get("reviewerType"), "team_manager"), (Expression)root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}))));
+                // 管理员列表仅呈平台认领；team_manager 认领由球队管理员的范围内列表呈现；
+                // 管理员仍可按 id 审任意认领（守卫对 unrestricted 直通）。
+                preds.add(cb.equal((Expression)root.get("reviewerType"), "platform_admin"));
             } else if (!managedTeamIds.isEmpty()) {
                 preds.add(cb.equal((Expression)root.get("reviewerType"), "team_manager"));
                 preds.add(root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}));
@@ -245,7 +251,7 @@ public class PlayerClaimService {
 
     @Transactional
     public PlayerClaim approve(Long claimId, Long reviewerId, String remark) {
-        PlayerClaim claim = this.requireClaimForReview(claimId, reviewerId);
+        PlayerClaim claim = this.requireClaimForReview(claimId);
         Player player = (Player)this.playerRepository.findById(claim.getPlayerId()).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
         if (player.getUserId() != null) {
             throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
@@ -260,12 +266,13 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
+        this.evictAfterCommit(claim.getUserId());
         return claim;
     }
 
     @Transactional
     public PlayerClaim reject(Long claimId, Long reviewerId, String reason) {
-        PlayerClaim claim = this.requireClaimForReview(claimId, reviewerId);
+        PlayerClaim claim = this.requireClaimForReview(claimId);
         LocalDateTime now = LocalDateTime.now();
         claim.setStatus("rejected");
         claim.setReviewerId(reviewerId);
@@ -367,38 +374,31 @@ public class PlayerClaimService {
         }
     }
 
-    private PlayerClaim requireClaimForReview(Long claimId, Long reviewerId) {
+    /**
+     * 校验认领可审：授权主体恒为 CurrentUserHolder（经范围中枢/守卫判定）；本方法不含 reviewerId 入参，
+     * reviewerId 由调用方在落库时留痕，不参与判定。
+     */
+    private PlayerClaim requireClaimForReview(Long claimId) {
         PlayerClaim claim = (PlayerClaim)this.playerClaimRepository.findByIdAndDeletedAtIsNull(claimId).orElseThrow(() -> new BusinessException(404, "\u7533\u8bf7\u4e0d\u5b58\u5728"));
         if (!"pending".equals(claim.getStatus())) {
             throw new BusinessException(400, "\u8be5\u7533\u8bf7\u5df2\u5904\u7406");
         }
-        if (!this.canReviewClaim(reviewerId, claim)) {
-            throw new BusinessException(403, "\u65e0\u6743\u5ba1\u6838\u8be5\u7533\u8bf7");
-        }
+        this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
     }
 
-    private boolean canReviewClaim(Long reviewerId, PlayerClaim claim) {
-        if (this.apiPermissionService.isSuperAdmin(reviewerId) || this.apiPermissionService.isTenantAdmin(reviewerId)) {
-            return true;
+    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤销类路径被并发读回填。 */
+    private void evictAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    PlayerClaimService.this.accountScopeService.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.accountScopeService.evictUserScopeCache(userId);
         }
-        if (!"team_manager".equals(claim.getReviewerType())) {
-            return false;
-        }
-        Player player = this.playerRepository.findById(claim.getPlayerId()).orElse(null);
-        if (player == null) {
-            return false;
-        }
-        return this.managesAnyCurrentTeamOf(player, reviewerId);
-    }
-
-    private boolean managesAnyCurrentTeamOf(Player player, Long userId) {
-        for (Long teamId : this.playerTeamService.currentTeamIds(player.getId())) {
-            if (this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(teamId, userId, "active")) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
@@ -436,7 +436,7 @@ public class PlayerClaimService {
         return invite;
     }
 
-    private Subquery<Long> subqueryPlayerIdsForTeams(CriteriaBuilder cb, CriteriaQuery<?> q, List<Long> teamIds) {
+    private Subquery<Long> subqueryPlayerIdsForTeams(CriteriaBuilder cb, CriteriaQuery<?> q, Collection<Long> teamIds) {
         Subquery<Long> sq = q.subquery(Long.class);
         Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
         sq.select((Expression)entry.get("playerId"));
@@ -452,7 +452,7 @@ public class PlayerClaimService {
     }
 
     @Generated
-    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService) {
+    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard) {
         this.accountProperties = accountProperties;
         this.apiPermissionService = apiPermissionService;
         this.playerClaimRepository = playerClaimRepository;
@@ -462,6 +462,8 @@ public class PlayerClaimService {
         this.teamManagerRepository = teamManagerRepository;
         this.sysUserRepository = sysUserRepository;
         this.playerTeamService = playerTeamService;
+        this.accountScopeService = accountScopeService;
+        this.resourceGuard = resourceGuard;
     }
 }
 

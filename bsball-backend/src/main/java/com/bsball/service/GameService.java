@@ -6,7 +6,6 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.GameSaveLiveDTO
  *  com.bsball.model.dto.GameSaveLiveDTO$GamePlayerStatPart
  *  com.bsball.model.dto.GameSaveLiveDTO$GameUpdatePart
@@ -22,7 +21,6 @@
  *  com.bsball.repository.GamePlayerStatRepository
  *  com.bsball.repository.GameRepository
  *  com.bsball.repository.StadiumRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.GameService
  *  com.bsball.service.TenantQueryPolicyService
  *  com.fasterxml.jackson.core.JsonProcessingException
@@ -45,12 +43,11 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
-import com.bsball.model.entity.BaseEntity;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
@@ -61,24 +58,21 @@ import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
-import com.bsball.service.DataScopeService;
+import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.service.TenantQueryPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -96,17 +90,19 @@ public class GameService {
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final EventRepository eventRepository;
     private final StadiumRepository stadiumRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
         boolean hasFilter;
-        EffectiveDataScope scope;
         Long tid = this.tenantQueryPolicyService.tenantIdOrNullForQuery();
         long scopeTid = this.tenantQueryPolicyService.requiredTenantId();
-        List allowedEventIds = this.resolveAllowedEventIds(scopeTid, scope = this.dataScopeService.resolve(CurrentUserHolder.get(), scopeTid));
-        if (allowedEventIds != null && allowedEventIds.isEmpty()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleEventIds = this.scopeQuerySupport.visibleEventIds(scope, scopeTid);
+        if (visibleEventIds != null && visibleEventIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
@@ -118,8 +114,8 @@ public class GameService {
                 if (tid != null) {
                     preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
                 }
-                if (allowedEventIds != null) {
-                    preds.add(root.get("eventId").in((Collection)allowedEventIds));
+                if (visibleEventIds != null) {
+                    preds.add(root.get("eventId").in((Collection)visibleEventIds));
                 }
                 if (teamId != null) {
                     preds.add(cb.or((Expression)cb.equal((Expression)root.get("homeTeamId"), (Object)teamId), (Expression)cb.equal((Expression)root.get("awayTeamId"), (Object)teamId)));
@@ -135,8 +131,8 @@ public class GameService {
             if (tid != null) {
                 preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
             }
-            if (allowedEventIds != null) {
-                preds.add(root.get("eventId").in((Collection)allowedEventIds));
+            if (visibleEventIds != null) {
+                preds.add(root.get("eventId").in((Collection)visibleEventIds));
             }
             if (teamId != null) {
                 preds.add(cb.or((Expression)cb.equal((Expression)root.get("homeTeamId"), (Object)teamId), (Expression)cb.equal((Expression)root.get("awayTeamId"), (Object)teamId)));
@@ -157,16 +153,6 @@ public class GameService {
         return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
     }
 
-    private List<Long> resolveAllowedEventIds(long tid, EffectiveDataScope scope) {
-        if (scope.isUnrestrictedInTenant()) {
-            return null;
-        }
-        if (scope.getLeagueIds().isEmpty()) {
-            return Collections.emptyList();
-        }
-        return this.eventRepository.findByTenantIdAndLeagueIdInAndDeletedAtIsNull(Long.valueOf(tid), scope.getLeagueIds()).stream().map(BaseEntity::getId).toList();
-    }
-
     public Game get(Long id) {
         Game g = this.gameRepository.findById(id).orElse(null);
         if (g == null || g.getDeletedAt() != null) {
@@ -183,8 +169,9 @@ public class GameService {
         if (ev == null || ev.getDeletedAt() != null || !this.tenantQueryPolicyService.isGlobalQueryMode() && !Objects.equals(ev.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(ev.getLeagueId().longValue())) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && ev.getLeagueId() != null && !visibleLeagueIds.contains(ev.getLeagueId())) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
         }
         return g;
@@ -212,10 +199,7 @@ public class GameService {
         if (ev == null || ev.getDeletedAt() != null || !Objects.equals(ev.getTenantId(), tid)) {
             throw new BusinessException(400, "\u8d5b\u4e8b\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(ev.getLeagueId().longValue())) {
-            throw new BusinessException(403, "\u65e0\u6743\u5728\u8be5\u8d5b\u4e8b\u4e0b\u521b\u5efa\u6bd4\u8d5b");
-        }
+        this.resourceGuard.assertCanManageLeague(ev.getLeagueId());
         entity.setTenantId(Long.valueOf(tid));
         if (entity.getStadiumId() != null) {
             this.assertStadiumBelongsToTenant(entity.getStadiumId(), tid);
@@ -237,15 +221,9 @@ public class GameService {
         if (ev == null || !Objects.equals(ev.getTenantId(), tid)) {
             throw new BusinessException(400, "\u8d5b\u4e8b\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant()) {
-            Event oldEv;
-            if (!(existing.getEventId() == null || (oldEv = (Event)this.eventRepository.findById(existing.getEventId()).orElse(null)) != null && scope.canReadLeague(oldEv.getLeagueId().longValue()))) {
-                throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u6bd4\u8d5b");
-            }
-            if (!scope.canReadLeague(ev.getLeagueId().longValue())) {
-                throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u6bd4\u8d5b");
-            }
+        this.resourceGuard.assertCanManageGame(id);
+        if (entity.getEventId() != null && !entity.getEventId().equals(existing.getEventId())) {
+            this.resourceGuard.assertCanManageEvent(entity.getEventId());
         }
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
@@ -406,10 +384,7 @@ public class GameService {
         if (ev == null || !Objects.equals(ev.getTenantId(), tid)) {
             throw new BusinessException(400, "\u8d5b\u4e8b\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(ev.getLeagueId().longValue())) {
-            throw new BusinessException(403, "\u65e0\u6743\u5728\u8be5\u8d5b\u4e8b\u4e0b\u5bfc\u5165\u6bd4\u8d5b");
-        }
+        this.resourceGuard.assertCanManageEvent(eventId);
         SaveGameResultDTO.GamePart g = dto.getGame();
         Game game = new Game();
         game.setEventId(eventId);
@@ -839,10 +814,7 @@ public class GameService {
         if (ev == null || ev.getDeletedAt() != null || !Objects.equals(ev.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u64cd\u4f5c\u8be5\u6bd4\u8d5b");
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(ev.getLeagueId().longValue())) {
-            throw new BusinessException(403, "\u65e0\u6743\u64cd\u4f5c\u8be5\u6bd4\u8d5b");
-        }
+        this.resourceGuard.assertCanManageGame(game.getId());
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {
@@ -856,12 +828,14 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.eventRepository = eventRepository;
         this.stadiumRepository = stadiumRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.earnedRunReconstructionService = earnedRunReconstructionService;
     }

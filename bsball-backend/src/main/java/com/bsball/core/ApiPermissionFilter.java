@@ -124,6 +124,8 @@ implements Filter {
         }
         long tenantId = this.resolveEffectiveTenantId(req, tokenAuth, userId, pathForEarly, req.getMethod());
         CurrentUserHolder.set((Long)userId, (Long)tenantId);
+        String scopeCtx = req.getHeader("X-Scope-Context");
+        ScopeContextHolder.setManage(scopeCtx != null && "manage".equalsIgnoreCase(scopeCtx.trim()));
         try {
             String path = req.getRequestURI();
             if (path == null) {
@@ -184,6 +186,7 @@ implements Filter {
         finally {
             CurrentUserHolder.clear();
             GuestPublicApiHolder.clear();
+            ScopeContextHolder.clear();
             ApiPermissionService.clearRequestCache();
             this.accountScopeService.clearRequestScopeCache();
         }
