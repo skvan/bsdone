@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.config.AccountProperties;
@@ -20,8 +21,6 @@ import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,13 +61,19 @@ class PlayerClaimServiceTest {
     @Mock
     private PlayerTeamService playerTeamService;
 
+    @Mock
+    private AccountScopeService accountScopeService;
+
+    @Mock
+    private ResourceGuard resourceGuard;
+
     private PlayerClaimService service;
 
     @BeforeEach
     void setUp() {
         service = new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
                 playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
-                sysUserRepository, playerTeamService);
+                sysUserRepository, playerTeamService, accountScopeService, resourceGuard);
     }
 
     @Test
@@ -134,7 +139,7 @@ class PlayerClaimServiceTest {
     }
 
     @Test
-    @DisplayName("审核：审核人是球员次要当前球队的经理 → 可审核通过")
+    @DisplayName("审核：审核守卫通过 → 认领通过并回写球员归属")
     void approve_reviewerManagesSecondaryCurrentTeam_succeeds() {
         PlayerClaim claim = new PlayerClaim();
         claim.setId(9L);
@@ -143,15 +148,8 @@ class PlayerClaimServiceTest {
         claim.setStatus("pending");
         claim.setReviewerType("team_manager");
         when(playerClaimRepository.findByIdAndDeletedAtIsNull(9L)).thenReturn(Optional.of(claim));
-        when(apiPermissionService.isSuperAdmin(7L)).thenReturn(false);
-        when(apiPermissionService.isTenantAdmin(7L)).thenReturn(false);
         Player p = player(1L);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
-        when(playerTeamService.currentTeamIds(1L)).thenReturn(new LinkedHashSet<>(List.of(5L, 6L)));
-        when(teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(5L, 7L, "active"))
-                .thenReturn(false);
-        when(teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(6L, 7L, "active"))
-                .thenReturn(true);
         when(playerClaimRepository.save(any(PlayerClaim.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -159,6 +157,7 @@ class PlayerClaimServiceTest {
 
         assertEquals("approved", result.getStatus());
         assertEquals(3L, p.getUserId().longValue());
+        verify(resourceGuard).assertCanReviewClaim(claim);
     }
 
     private static Player player(Long id) {
