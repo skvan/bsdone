@@ -280,7 +280,7 @@ public class TeamService {
         }
     }
 
-    /** 解散级联（c）：该队 active 负责人指派置 inactive + 软删，并逐人失效其范围缓存（后置提交）。 */
+    /** 解散级联（c）：该队 active 负责人指派置 inactive + 软删，逐人记失效沿革 + 失效其范围缓存（后置提交）。 */
     private void deactivateTeamManagers(Team team) {
         List<TeamManager> actives = this.teamManagerRepository
                 .findByTeamIdAndStatusAndDeletedAtIsNull(team.getId(), TeamManager.STATUS_ACTIVE);
@@ -295,6 +295,8 @@ public class TeamService {
             tm.setDeletedBy(uid);
             this.teamManagerRepository.save(tm);
             if (tm.getUserId() != null) {
+                this.personnelHistoryRecorder.recordTeamManagerRemoved(
+                        team.getId(), team.getTenantId(), tm.getUserId());
                 this.accountScopeService.evictUserScopeCacheAfterCommit(tm.getUserId());
             }
         }

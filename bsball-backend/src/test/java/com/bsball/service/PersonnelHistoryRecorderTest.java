@@ -217,6 +217,23 @@ class PersonnelHistoryRecorderTest {
         assertEquals(Boolean.FALSE, before.get("current"));
     }
 
+    @Test
+    @DisplayName("负责人失效：target=team、eventType=manager_removed、related=user（spec §6.7 第3条）")
+    void recordTeamManagerRemoved_writesManagerRemovedEvent() {
+        List<HistoryRecord> saved = captureSaves();
+
+        recorder.recordTeamManagerRemoved(100L, 10L, 42L);
+
+        assertEquals(1, saved.size());
+        HistoryRecord r = saved.get(0);
+        assertEquals("manager_removed", r.getType());
+        assertEquals("team", r.getTargetType());
+        assertEquals(100L, r.getTargetId().longValue());
+        assertEquals(10L, r.getTenantId().longValue());
+        assertEquals("user", r.getRelatedObjectType());
+        assertEquals(42L, r.getRelatedObjectId().longValue());
+    }
+
     private List<HistoryRecord> captureSaves() {
         List<HistoryRecord> captured = new ArrayList<>();
         when(historyRecordRepository.save(any(HistoryRecord.class))).thenAnswer(invocation -> {

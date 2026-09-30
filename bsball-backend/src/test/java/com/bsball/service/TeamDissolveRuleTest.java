@@ -4,7 +4,7 @@
  * 覆盖：
  *  - 守卫：存在“未开打”比赛 → 400「存在未开打的比赛，请先处理赛程」，不级联、不软删；
  *  - 级联全链：球员批量离队（current=false + 镜像重算为自由球员 + leave 沿革）+ 负责人指派失效
- *    （inactive + 软删 + evict）+ 软删球队 + 解散沿革（afterTeamDissolve）；
+ *    （inactive + 软删 + 记 manager_removed 沿革 + evict）+ 软删球队 + 解散沿革（afterTeamDissolve）；
  *  - 幂等：已解散（deletedAt 非空）直接返回，不触达任何守卫/级联；
  *  - 积分榜历史口径：解散队仍计入且带 dissolved 标记、对手战绩不变；队名走“含已解散”查询。
  *
@@ -182,10 +182,11 @@ class TeamDissolveRuleTest {
         verify(playerRepository).save(player);
         // leave 沿革：before={100} → after={}
         verify(personnelHistoryRecorder).recordPlayerTeamTransitions(eq(player), eq(Set.of(TEAM_ID)), eq(Set.of()));
-        // c. 负责人指派失效 + evict
+        // c. 负责人指派失效 + 记失效沿革 + evict
         assertEquals(TeamManager.STATUS_INACTIVE, manager.getStatus());
         assertNotNull(manager.getDeletedAt());
         verify(teamManagerRepository).save(manager);
+        verify(personnelHistoryRecorder).recordTeamManagerRemoved(eq(TEAM_ID), eq(TENANT_ID), eq(42L));
         verify(accountScopeService).evictUserScopeCacheAfterCommit(42L);
         // d. 软删球队 + 解散沿革
         assertNotNull(team.getDeletedAt());

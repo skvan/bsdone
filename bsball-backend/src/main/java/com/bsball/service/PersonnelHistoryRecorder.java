@@ -367,6 +367,25 @@ public class PersonnelHistoryRecorder {
         this.persist(r);
     }
 
+    /**
+     * 球队负责人失效（解散等场景，spec §6.7 第 3 条）：eventType={@code manager_removed}、targetType={@code team}、
+     * targetId=球队ID、relatedObjectType={@code user}、relatedObjectId=被失效的负责人账号ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param teamId   球队 ID
+     * @param tenantId 租户 ID
+     * @param userId   被失效的负责人账号 ID
+     */
+    public void recordTeamManagerRemoved(Long teamId, Long tenantId, Long userId) {
+        if (teamId == null || tenantId == null || userId == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", teamId.longValue(), tenantId.longValue(), "manager_removed");
+        r.setRelatedObjectType("user");
+        r.setRelatedObjectId(userId);
+        this.persist(r);
+    }
+
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {
         LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
         LinkedHashMap<String, Object> afterMap = new LinkedHashMap<>();
