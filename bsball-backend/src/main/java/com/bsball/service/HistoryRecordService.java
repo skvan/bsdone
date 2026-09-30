@@ -130,6 +130,13 @@ public class HistoryRecordService {
             entity.setTenantId(Long.valueOf(tid));
         }
         if ("team".equals(entity.getTargetType()) && entity.getTargetId() != null && entity.getTargetId() > 0L) {
+            Team targetTeam = this.teamRepository.findById(entity.getTargetId()).orElse(null);
+            if (targetTeam == null) {
+                throw new BusinessException(400, "\u7403\u961f\u4e0d\u5b58\u5728");
+            }
+            if (!Objects.equals(targetTeam.getTenantId(), tid)) {
+                throw new BusinessException(400, "\u7403\u961f\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
+            }
             this.resourceGuard.assertCanManageTeam(entity.getTargetId());
         }
         return (HistoryRecord)this.historyRecordRepository.save(entity);
