@@ -65,5 +65,8 @@ extends JpaRepository<Team, Long> {
      */
     @Query(value="select t from Team t where t.id in :ids")
     public List<Team> findByIdInIncludingDissolved(@Param(value="ids") Collection<Long> var1);
+
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的球队计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

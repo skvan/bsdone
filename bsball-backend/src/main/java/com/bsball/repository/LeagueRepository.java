@@ -40,5 +40,8 @@ extends JpaRepository<League, Long> {
     public boolean existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNullAndIdNot(Long var1, String var2, Long var3);
 
     public long countByTenantIdAndDeletedAtIsNull(Long var1);
+
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的联盟计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

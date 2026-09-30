@@ -174,6 +174,8 @@ implements CommandLineRunner {
                 this.ensureAdminRoleBindsAllMenusIfNeeded();
                 this.ensureAdminRoleBindsAllApisIfNeeded();
                 this.ensureTenantAdminRoleIfNeeded();
+                this.ensureTenantAdminRoleExcludesBusinessDeleteButtons();
+                this.ensurePlatformAssetApisIfNeeded();
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
                 long opIdForRoles = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 this.ensurePortalRolesIfNeeded(opIdForRoles);
@@ -567,6 +569,56 @@ implements CommandLineRunner {
         }
     }
 
+    /**
+     * 历史数据处置权收窄（批次 3b，spec §6.10）：从 tenant_admin 既有菜单绑定中移除 business:*:delete 类按钮
+     * （删除权收窄为仅超管）。幂等：无绑定则无操作；admin 全量绑定保持不动。
+     */
+    private void ensureTenantAdminRoleExcludesBusinessDeleteButtons() {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin").orElse(null);
+        if (role == null) {
+            return;
+        }
+        Set<Long> deleteButtonIds = this.sysMenuRepository.findAll().stream()
+                .filter(m -> InitDataRunner.isBusinessDeletePermission(m.getPermission()))
+                .map(BaseEntity::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (deleteButtonIds.isEmpty()) {
+            return;
+        }
+        int removed = 0;
+        for (SysRoleMenu rm : this.sysRoleMenuRepository.findByRoleId(role.getId())) {
+            if (deleteButtonIds.contains(rm.getMenuId())) {
+                this.sysRoleMenuRepository.delete(rm);
+                ++removed;
+            }
+        }
+        if (removed > 0) {
+            log.info("\u5386\u53f2\u6570\u636e\u5904\u7f6e\u6743\u6536\u7a84\uff1a\u5df2\u4ece\u79df\u6237\u7ba1\u7406\u5458\u89d2\u8272\u79fb\u9664 {} \u6761 delete \u7c7b\u6309\u94ae\u7ed1\u5b9a", (Object)removed);
+        }
+    }
+
+    /**
+     * 平台资产归还汇总 API 注册（批次 3b，spec §6.10）：仅超管端点 /sys/platform-asset/summary（GET）。
+     * 幂等：已存在同 path+method 则不重复写入；不绑定任何角色（过滤器层仅超管可访问）。
+     */
+    private void ensurePlatformAssetApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        String path = "/sys/platform-asset/summary";
+        boolean exists = this.sysApiRepository.findAll().stream()
+                .anyMatch(e -> path.equals(e.getPath()) && "GET".equalsIgnoreCase(e.getMethod()));
+        if (exists) {
+            return;
+        }
+        SysApi api = new SysApi();
+        api.setPath(path);
+        api.setMethod("GET");
+        api.setDescription("\u5e73\u53f0\u8d44\u4ea7\u5f52\u8fd8\u6c47\u603b");
+        api.setGroupName("\u5e73\u53f0\u8d44\u4ea7");
+        api.setCreatedBy(Long.valueOf(opId));
+        api.setUpdatedBy(Long.valueOf(opId));
+        this.sysApiRepository.save(api);
+    }
+
     private static boolean isApiAllowedForTenantAdmin(SysApi a) {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
@@ -646,6 +698,8 @@ implements CommandLineRunner {
                 direct.add(m2.getId());
             }
             if (businessRootId == null || !InitDataRunner.menuIsSelfOrDescendantOf((Long)m2.getId(), (Long)businessRootId, byId)) continue;
+            // 历史数据处置权（spec §6.10）：business:*:delete 类按钮不再默认授予租户管理员（收窄为仅超管）
+            if (InitDataRunner.isBusinessDeletePermission((String)m2.getPermission())) continue;
             direct.add(m2.getId());
         }
         HashSet<Long> withAncestors = new HashSet<Long>(direct);
@@ -653,6 +707,11 @@ implements CommandLineRunner {
             InitDataRunner.addMenuAncestors((Long)mid, byId, withAncestors);
         }
         return withAncestors;
+    }
+
+    /** 是否「business:*:delete」类按钮权限（spec §6.10 处置权收窄：租户管理员默认集合排除）。 */
+    private static boolean isBusinessDeletePermission(String permission) {
+        return permission != null && permission.startsWith("business:") && permission.endsWith(":delete");
     }
 
     private static boolean menuIsSelfOrDescendantOf(Long menuId, Long rootId, Map<Long, SysMenu> byId) {

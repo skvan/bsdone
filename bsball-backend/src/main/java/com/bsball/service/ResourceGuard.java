@@ -46,6 +46,7 @@ public class ResourceGuard {
     private final PlayerTeamService playerTeamService;
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
+    private final ApiPermissionService apiPermissionService;
 
     /** 联盟写保护：受限身份需命中自有联盟集合。 */
     public void assertCanManageLeague(Long leagueId) {
@@ -164,10 +165,31 @@ public class ResourceGuard {
         throw new BusinessException(403, "无权审核该认领");
     }
 
+    /**
+     * 历史数据销毁（最终处置）守卫（批次 3b，spec §6.10）：
+     * <p>历史数据属平台资产；租户管理员及以下的「删除」仅为归还（软删 + platform_owned 置位），
+     * 最终销毁权仅归系统超管，且须审计。
+     * <p><b>仅超管</b>放行（以 {@link ApiPermissionService#isSuperAdmin} 独立判定，
+     * 不可用 effective scope 的「租户内不受限」——后者合并超管与租管）；非超管一律 403。
+     * <p><b>预留通道</b>：待纠错/合规销毁立项后启用，当前无生产调用点（本批不新增销毁端点）。
+     */
+    public void assertCanPurgeHistoricalData() {
+        if (!isCurrentUserSuperAdmin()) throw new BusinessException(403, "仅系统超管可销毁历史数据");
+    }
+
+    /**
+     * 当前调用者是否系统超管（独立于 effective scope）：供删除路径决定是否置 platform_owned 归还标记。
+     * 超管为最终处置方，软删不置归还标记。
+     */
+    public boolean isCurrentUserSuperAdmin() {
+        return apiPermissionService.isSuperAdmin(CurrentUserHolder.get());
+    }
+
     @Generated
     public ResourceGuard(AccountScopeService accountScopeService, EventRepository eventRepository,
             GameRepository gameRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService,
-            TeamRepository teamRepository, TeamManagerRepository teamManagerRepository) {
+            TeamRepository teamRepository, TeamManagerRepository teamManagerRepository,
+            ApiPermissionService apiPermissionService) {
         this.accountScopeService = accountScopeService;
         this.eventRepository = eventRepository;
         this.gameRepository = gameRepository;
@@ -175,5 +197,6 @@ public class ResourceGuard {
         this.playerTeamService = playerTeamService;
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
+        this.apiPermissionService = apiPermissionService;
     }
 }

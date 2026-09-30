@@ -71,6 +71,9 @@ class ResourceGuardTest {
     @Mock
     private TeamManagerRepository teamManagerRepository;
 
+    @Mock
+    private ApiPermissionService apiPermissionService;
+
     private ResourceGuard guard;
 
     @BeforeEach
@@ -78,7 +81,7 @@ class ResourceGuardTest {
         // CurrentUserHolder 为 ThreadLocal，用例起点必须清空（与 AccountScopeServiceTest 基线对齐）
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
-                playerTeamService, teamRepository, teamManagerRepository);
+                playerTeamService, teamRepository, teamManagerRepository, apiPermissionService);
     }
 
     @AfterEach

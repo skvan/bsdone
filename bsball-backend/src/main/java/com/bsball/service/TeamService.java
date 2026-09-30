@@ -263,6 +263,10 @@ public class TeamService {
         if (this.gameRepository.countPendingGamesByTeamId(id) > 0L) {
             throw new BusinessException(400, "\u5b58\u5728\u672a\u5f00\u6253\u7684\u6bd4\u8d5b\uff0c\u8bf7\u5148\u5904\u7406\u8d5b\u7a0b");
         }
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管解散 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         this.dissolveTeamPlayers(existing);
         this.deactivateTeamManagers(existing);
         existing.setDeletedAt(LocalDateTime.now());

@@ -26,5 +26,8 @@ JpaSpecificationExecutor<Game> {
      */
     @Query(value="select count(g) from Game g where g.deletedAt is null and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and coalesce(g.status, 'scheduled') not in ('final', 'cancelled')")
     public long countPendingGamesByTeamId(@Param(value="teamId") Long var1);
+
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的比赛计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

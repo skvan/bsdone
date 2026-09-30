@@ -38,6 +38,9 @@ extends BaseEntity {
     private Long eventId;
     @Comment(value="\u79df\u6237ID")
     private Long tenantId;
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
     @Comment(value="\u4e3b\u961fID")
     private Long homeTeamId;
     @Comment(value="\u5ba2\u961fID")
@@ -172,6 +175,11 @@ extends BaseEntity {
     @Generated
     public Long getTenantId() {
         return this.tenantId;
+    }
+
+    @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
     }
 
     @Generated
@@ -367,6 +375,11 @@ extends BaseEntity {
     @Generated
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     @Generated

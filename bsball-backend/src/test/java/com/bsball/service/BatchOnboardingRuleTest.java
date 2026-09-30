@@ -121,7 +121,7 @@ class BatchOnboardingRuleTest {
     void setUp() {
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
-                playerTeamService, teamRepository, teamManagerRepository);
+                playerTeamService, teamRepository, teamManagerRepository, apiPermissionService);
         teamService = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
                 apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);

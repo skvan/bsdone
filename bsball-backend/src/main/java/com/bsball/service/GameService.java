@@ -249,6 +249,10 @@ public class GameService {
             return;
         }
         this.assertGameWritable(existing);
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.gameRepository.save(existing);

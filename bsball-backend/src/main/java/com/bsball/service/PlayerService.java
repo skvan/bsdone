@@ -891,6 +891,10 @@ public class PlayerService {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u7403\u5458");
         }
         this.resourceGuard.assertCanEditPlayerProfile(id, ResourceGuard.PlayerEditChannel.ROSTER);
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         Long uid = CurrentUserHolder.get();
         LocalDateTime now = LocalDateTime.now();
         existing.setDeletedAt(now);
@@ -911,8 +915,13 @@ public class PlayerService {
         Long uid = CurrentUserHolder.get();
         LocalDateTime now = LocalDateTime.now();
         List<Player> toSoftDelete = this.playerRepository.findAllById(validIds).stream().filter(p -> Objects.equals(p.getTenantId(), tid)).filter(p -> p.getDeletedAt() == null).toList();
+        boolean superAdmin = this.resourceGuard.isCurrentUserSuperAdmin();
         for (Player p2 : toSoftDelete) {
             this.resourceGuard.assertCanEditPlayerProfile(p2.getId(), ResourceGuard.PlayerEditChannel.ROSTER);
+            if (!superAdmin) {
+                // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+                p2.setPlatformOwned(Boolean.TRUE);
+            }
             p2.setDeletedAt(now);
             p2.setDeletedBy(uid);
         }
