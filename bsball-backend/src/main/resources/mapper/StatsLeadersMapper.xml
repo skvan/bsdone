@@ -29,12 +29,12 @@
         </if>
     </sql>
 
+    <!-- 积分榜参赛范围：仅按赛程口径筛选（final + 比分非空 + gameFilter），不得按当前可选球队过滤。
+         已解散球队的比赛保留（历史口径，§6.7）；队名/dissolved 由 Java 层含已解散查询解析。 -->
     <sql id="standingsGameFilter">
         <include refid="gameFilter"/>
         AND g.status = 'final'
         AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
-        AND EXISTS (SELECT 1 FROM bs_team th WHERE th.id = g.home_team_id AND th.deleted_at IS NULL)
-        AND EXISTS (SELECT 1 FROM bs_team ta WHERE ta.id = g.away_team_id AND ta.deleted_at IS NULL)
     </sql>
 
     <sql id="playerLeaderFilter">
