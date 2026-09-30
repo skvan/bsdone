@@ -159,6 +159,27 @@ class InitDataRunnerPortalRoleBindingTest {
     }
 
     @Test
+    @DisplayName("仅补绑不清理（T3.15 复核）：预置自定义绑定经二次调用后仍在，不重置不删除")
+    void customBindingSurvivesReinvocation() throws Exception {
+        // 预置：team_manager 的一条自定义菜单绑定（menuId 999，不在种子集合内）
+        SysRoleMenu customMenu = new SysRoleMenu();
+        customMenu.setRoleId(TEAM_MANAGER_ROLE_ID);
+        customMenu.setMenuId(999L);
+        roleMenus.computeIfAbsent(TEAM_MANAGER_ROLE_ID, k -> new ArrayList<>()).add(customMenu);
+        // 预置：team_manager 的一条自定义 API 绑定（apiId 999，不在种子集合内）
+        SysRoleApi customApi = new SysRoleApi();
+        customApi.setRoleId(TEAM_MANAGER_ROLE_ID);
+        customApi.setApiId(999L);
+        roleApis.computeIfAbsent(TEAM_MANAGER_ROLE_ID, k -> new ArrayList<>()).add(customApi);
+
+        invokeBindings();
+        invokeBindings();
+
+        assertTrue(menuIdsOf(TEAM_MANAGER_ROLE_ID).contains(999L), "自定义菜单绑定不得被种子函数清理/重置");
+        assertTrue(apiIdsOf(TEAM_MANAGER_ROLE_ID).contains(999L), "自定义 API 绑定不得被种子函数清理/重置");
+    }
+
+    @Test
     @DisplayName("team_manager：关键菜单/按钮绑定存在，且不授 /team/delete、/league/*、/player/create")
     void teamManagerKeyBindings() throws Exception {
         invokeBindings();

@@ -39,6 +39,7 @@ import com.bsball.model.entity.SysRole;
 import com.bsball.model.entity.SysRoleApi;
 import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.model.entity.SysTenant;
+import com.bsball.repository.SysMenuRepository;
 import com.bsball.repository.SysRoleApiRepository;
 import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysRoleRepository;
@@ -52,6 +53,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -68,6 +70,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class SysRoleService {
     private static final List<Long> ADMIN_REQUIRED_MENU_IDS = List.of(1L, 4L, 5L, 6L);
     private static final List<String> ASSIGN_OPTION_SYSTEM_CODES = List.of("tenant_admin", "guest");
+    /*
+     * 平台级/超管专属菜单路径（spec §8.6，批次 3b T3.15）：租户管理员配置本租户角色时不可授予下级角色（越权配置防护）。
+     * 识别依据 InitDataRunner.isApiAllowedForTenantAdmin 中「超管专属完整排除」的功能域
+     * （/sys/tenant、/sys/menu 写、/sys/api、/sys/monitor）与 spec 明示的「租户管理」；以菜单 path 为稳定标识。
+     */
+    private static final Set<String> PLATFORM_LEVEL_MENU_PATHS = Set.of("/admin/tenants", "/admin/menus", "/admin/apis", "/admin/monitor/data", "/admin/monitor/server", "/admin/monitor/cache", "/admin/monitor/cache-list");
     private final ApiPermissionService apiPermissionService;
     private final MenuExpansionHelper menuExpansionHelper;
     private final SysRoleRepository sysRoleRepository;
@@ -75,6 +83,7 @@ public class SysRoleService {
     private final SysRoleApiRepository sysRoleApiRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
     private final SysTenantRepository sysTenantRepository;
+    private final SysMenuRepository sysMenuRepository;
 
     public PageResult<SysRole> list(Long operatorUserId, Integer page, Integer pageSize, String keyword) {
         Page result;
@@ -162,6 +171,7 @@ public class SysRoleService {
         } else {
             throw new BusinessException(403, "\u65e0\u6743\u521b\u5efa\u89d2\u8272");
         }
+        this.assertCanGrantMenus(operatorUserId, entity.getMenuIds());
         this.validateCodeUniqueForCreate(entity);
         if (entity.getDescription() != null) {
             String d = entity.getDescription().trim();
@@ -180,6 +190,9 @@ public class SysRoleService {
             this.saveRoleApis(saved.getId(), entity.getApiIds());
             saved.setApiIds(entity.getApiIds());
         }
+        if (entity.getMenuIds() != null && !entity.getMenuIds().isEmpty() || entity.getApiIds() != null && !entity.getApiIds().isEmpty()) {
+            this.apiPermissionService.clearUserRoleCache();
+        }
         return saved;
     }
 
@@ -191,6 +204,7 @@ public class SysRoleService {
             return null;
         }
         this.assertCanModifyRole(operatorUserId, existing);
+        this.assertCanGrantMenus(operatorUserId, entity.getMenuIds());
         if (SysRoleService.isSystemSuperAdminRole((SysRole)existing)) {
             throw new BusinessException(403, "\u8d85\u7ea7\u7ba1\u7406\u5458\u89d2\u8272\u4e0d\u53ef\u4fee\u6539");
         }
@@ -234,6 +248,9 @@ public class SysRoleService {
             existing.setMenuIds(merged);
         } else {
             this.fillMenuIds(List.of(existing));
+        }
+        if (entity.getMenuIds() != null || entity.getApiIds() != null) {
+            this.apiPermissionService.clearUserRoleCache();
         }
         return (SysRole)this.sysRoleRepository.save(existing);
     }
@@ -370,6 +387,27 @@ public class SysRoleService {
         this.sysRoleApiRepository.deleteByRoleId(id);
         this.sysRoleApiRepository.flush();
         this.sysRoleRepository.deleteById(id);
+        this.apiPermissionService.clearUserRoleCache();
+    }
+
+    /**
+     * 越权配置防护（spec §8.6，批次 3b T3.15）：租户管理员配置本租户角色菜单/按钮时，
+     * 可授予集合 = 本租户可用菜单集合（排除平台级/超管专属项）；越界 → 403「无权授予平台级菜单」。超管不受限。
+     */
+    private void assertCanGrantMenus(Long operatorUserId, Collection<Long> menuIds) {
+        if (this.apiPermissionService.isSuperAdmin(operatorUserId)) {
+            return;
+        }
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
+        }
+        Set<Long> platformMenuIds = this.sysMenuRepository.findAll().stream().filter(m -> m.getId() != null && m.getPath() != null && SysRoleService.PLATFORM_LEVEL_MENU_PATHS.contains(m.getPath())).map(BaseEntity::getId).collect(Collectors.toSet());
+        if (platformMenuIds.isEmpty()) {
+            return;
+        }
+        if (menuIds.stream().anyMatch(id -> id != null && platformMenuIds.contains(id))) {
+            throw new BusinessException(403, "\u65e0\u6743\u6388\u4e88\u5e73\u53f0\u7ea7\u83dc\u5355");
+        }
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize) {
@@ -383,7 +421,7 @@ public class SysRoleService {
     }
 
     @Generated
-    public SysRoleService(ApiPermissionService apiPermissionService, MenuExpansionHelper menuExpansionHelper, SysRoleRepository sysRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysRoleApiRepository sysRoleApiRepository, SysUserRoleRepository sysUserRoleRepository, SysTenantRepository sysTenantRepository) {
+    public SysRoleService(ApiPermissionService apiPermissionService, MenuExpansionHelper menuExpansionHelper, SysRoleRepository sysRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysRoleApiRepository sysRoleApiRepository, SysUserRoleRepository sysUserRoleRepository, SysTenantRepository sysTenantRepository, SysMenuRepository sysMenuRepository) {
         this.apiPermissionService = apiPermissionService;
         this.menuExpansionHelper = menuExpansionHelper;
         this.sysRoleRepository = sysRoleRepository;
@@ -391,6 +429,7 @@ public class SysRoleService {
         this.sysRoleApiRepository = sysRoleApiRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
         this.sysTenantRepository = sysTenantRepository;
+        this.sysMenuRepository = sysMenuRepository;
     }
 }
 
