@@ -102,13 +102,20 @@ class PlayerClaimScopeWiringTest {
     @Mock
     private ResourceGuard resourceGuard;
 
+    @Mock
+    private PlayerService playerService;
+
+    @Mock
+    private PersonnelHistoryRecorder personnelHistoryRecorder;
+
     private PlayerClaimService service;
 
     @BeforeEach
     void setUp() {
         service = new PlayerClaimService(accountProperties, apiPermissionService, playerClaimRepository,
                 playerClaimInviteRepository, playerRepository, teamRepository, teamManagerRepository,
-                sysUserRepository, playerTeamService, accountScopeService, resourceGuard);
+                sysUserRepository, playerTeamService, accountScopeService, resourceGuard, playerService,
+                personnelHistoryRecorder);
     }
 
     // ------------------------------------------------------------------ 写：approve
