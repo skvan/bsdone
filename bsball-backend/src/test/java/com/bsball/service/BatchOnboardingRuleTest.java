@@ -3,6 +3,7 @@
  *
  * 覆盖（真实 ResourceGuard 接线，端到端验证「守卫分档 + 批量入口规则」）：
  *  - 批量代建（PlayerService.batchImport）：球队管理员本队 ✓ / 他队 ✗；联盟管理员域内 ✓ / 域外 ✗；
+ *    去重口径同自助建档（§6.9）：同租户 name+birthDate 撞既有档案 / 文件内同键行 → 跳过；birthDate 空不参与去重；
  *  - 批量建队（TeamService.batchCreate）：联盟管理员域内 ✓（初始无主，不授职）/ 域外 ✗；管理员直通；
  *  - 球队权属转移：无主球队联盟可编辑/解散删除（§6.7 语义）✓；有主即只读 403 ✗；
  *  - 球员档案分档：已认领 → 上级 ROSTER 编辑/删除 403；未认领 → 本队 ROSTER 可写 ✓；
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -170,6 +172,64 @@ class BatchOnboardingRuleTest {
 
         assertEquals(403, ex.getCode());
         verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("批量代建去重：与既有自助档案同 name+birthDate → 跳过该行、不重复建档（spec §6.9）")
+    void batchImport_dedup_existingSelfProfile_sameNameBirthDate_skipped() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        // 既有自助档案：number 为 null（自助建档未入队），name+birthDate 与导入行相同
+        Player selfArchive = playerRow("张三", null, "1990-01-01", null);
+        selfArchive.setId(900L);
+        when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of(selfArchive));
+
+        Player row = playerRow("张三", 100L, "1990-01-01", "7");
+        Map<String, Object> result = playerService.batchImport(List.of(row), "skip");
+
+        assertEquals(Integer.valueOf(0), result.get("created"));
+        assertEquals(Integer.valueOf(1), result.get("skipped"));
+        verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("批量代建去重：文件内两行同 name+birthDate → 仅建一条")
+    void batchImport_dedup_inFile_sameNameBirthDate() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of());
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Player row1 = playerRow("李四", 100L, "1991-02-02", "8");
+        Player row2 = playerRow("李四", 100L, "1991-02-02", "9");
+        Map<String, Object> result = playerService.batchImport(List.of(row1, row2), "skip");
+
+        assertEquals(Integer.valueOf(1), result.get("created"));
+        assertEquals(Integer.valueOf(1), result.get("skipped"));
+        verify(playerRepository, times(1)).save(any(Player.class));
+    }
+
+    @Test
+    @DisplayName("批量代建去重：birthDate 为空的导入行不参与去重 → 正常建档（与自助口径一致）")
+    void batchImport_dedup_blankBirthDate_notDeduped() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        // 既有同名档案（生日非空）+ 两行 birthDate 均为空 → 键为空，既不撞既有、文件内也不互相去重
+        Player existingSameName = playerRow("王五", null, "1988-08-08", null);
+        existingSameName.setId(901L);
+        when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of(existingSameName));
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Player row1 = playerRow("王五", 100L, null, null);
+        Player row2 = playerRow("王五", 100L, "  ", null);
+        Map<String, Object> result = playerService.batchImport(List.of(row1, row2), "skip");
+
+        assertEquals(Integer.valueOf(2), result.get("created"));
+        assertEquals(Integer.valueOf(0), result.get("skipped"));
+        verify(playerRepository, times(2)).save(any(Player.class));
     }
 
     @Test
@@ -528,6 +588,13 @@ class BatchOnboardingRuleTest {
         Player p = new Player();
         p.setName(name);
         p.setTeamId(teamId);
+        return p;
+    }
+
+    private static Player playerRow(String name, Long teamId, String birthDate, String number) {
+        Player p = playerRow(name, teamId);
+        p.setBirthDate(birthDate);
+        p.setNumber(number);
         return p;
     }
 }

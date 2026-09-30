@@ -954,9 +954,15 @@ public class PlayerService {
         if (!invalidTeamIds.isEmpty()) {
             throw new BusinessException(400, "\u4ee5\u4e0b\u7403\u961f\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u79df\u6237\uff1aID " + String.valueOf(invalidTeamIds));
         }
+        // 批次 3b（spec §6.9）：去重键对齐自助建档口径——同租户 name+birthDate（仅双非空参与）。
+        // 命中源①：既有同租户未删除档案（findByDeletedAtIsNullAndTenantId 预载后按新键归一化，
+        // 等价于 findByNameAndBirthDateAndTenantIdAndDeletedAtIsNull 的“既有同键档案”语义）。
         HashMap<String, Player> existingByKey = new HashMap<String, Player>();
         for (Player p : this.playerRepository.findByDeletedAtIsNullAndTenantId(tid)) {
-            existingByKey.put(this.dupKey(p), p);
+            String existingKey = this.dupKey(p);
+            if (existingKey != null) {
+                existingByKey.put(existingKey, p);
+            }
         }
         boolean overwrite = "overwrite".equalsIgnoreCase(duplicateStrategy);
         int created = 0;
@@ -970,7 +976,9 @@ public class PlayerService {
             this.applyTenantFromTeam(p);
             // 批次 3b（spec §6.9）：逐行代建守卫——受限身份仅可为本队 / 本联盟域内球队代建（越权整体 403 并事务回滚）。
             this.resourceGuard.assertCanCreateUnclaimedPlayer(p.getTeamId());
-            Player existing = (Player)existingByKey.get(this.dupKey(p));
+            // 命中源①/②统一：键为空（name 或 birthDate 任一为空）不参与去重，照常建档。
+            String dupKey = this.dupKey(p);
+            Player existing = dupKey != null ? (Player)existingByKey.get(dupKey) : null;
             if (existing != null) {
                 if (overwrite) {
                     p.setId(existing.getId());
@@ -985,14 +993,31 @@ public class PlayerService {
             }
             Player savedNew = (Player)this.playerRepository.save(p);
             this.playerTeamService.syncLegacyEntry(savedNew);
-            existingByKey.put(this.dupKey(savedNew), savedNew);
+            // 命中源②：本次导入文件内同键行——建后回填，供后续同键行去重。
+            if (dupKey != null) {
+                existingByKey.put(dupKey, savedNew);
+            }
             ++created;
         }
         return Map.of("created",created, "updated",updated, "skipped", (Object)skipped);
     }
 
+    /**
+     * 批量代建去重键（批次 3b，spec §6.9）：同租户 {@code name+birthDate}，与自助建档
+     * {@link #createSelfProfile} 口径一致——<b>仅当 name 与 birthDate 均非空（trim 后）</b>才构成
+     * 去重键；任一为空则返回 {@code null}，该行不参与去重（照常建档）。
+     *
+     * @param p 待判定球员（导入行或既有档案）
+     * @return 归一化去重键 {@code name|birthDate}；name / birthDate 任一为空时为 {@code null}
+     */
     private String dupKey(Player p) {
-        return (p.getName() != null ? p.getName() : "") + "|" + (p.getNumber() != null ? p.getNumber() : "");
+        if (p.getName() == null || p.getName().isBlank()) {
+            return null;
+        }
+        if (p.getBirthDate() == null || p.getBirthDate().isBlank()) {
+            return null;
+        }
+        return p.getName().trim() + "|" + p.getBirthDate().trim();
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {
