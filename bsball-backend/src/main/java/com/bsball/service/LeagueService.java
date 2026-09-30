@@ -114,17 +114,25 @@ public class LeagueService {
         return Map.of("pending", false, "id", created.getId());
     }
 
-    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）。 */
+    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）：租户取自当前请求上下文。 */
     public League createInternal(League entity) {
-        String name;
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        entity.setTenantId(Long.valueOf(tid));
-        String string = name = entity.getName() == null ? "" : entity.getName().trim();
+        return this.createInternalForTenant(entity, tid);
+    }
+
+    /**
+     * 指定租户建联盟（批次 3a 评审修复 I1）：供跨租户审批（LeagueProvisionService.approve）复用，
+     * 确保联盟落库租户 == 申请租户，而非审核者上下文租户（超管全局 token 下上下文租户为 0）。
+     * createInternal 保持原语义（上下文租户）；本方法仅新增显式租户入参，不改变原路径行为。
+     */
+    public League createInternalForTenant(League entity, long tenantId) {
+        entity.setTenantId(Long.valueOf(tenantId));
+        String name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
         }
         entity.setName(name);
-        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tid), name)) {
+        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tenantId), name)) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u5df2\u5b58\u5728");
         }
         return (League)this.leagueRepository.save(entity);

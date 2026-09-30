@@ -5,7 +5,8 @@
  * 自助创建链路（LeagueProvisionService）的程序化写入。
  *  - assignInternal：内部 / 程序化指派（不校验 operator），幂等插入 + 失效该用户范围缓存；
  *  - assign / revoke / handover：管理端操作，先校验 operator 为超管 / 租户管理员；
- *  - 失效语义：任何关系变更后 evict 相关用户的 AccountScopeService 范围缓存。
+ *  - 失效语义：关系变更（assignInternal / revokeInternal）内部统一 evict 相关用户的 AccountScopeService
+ *    范围缓存，并后置到事务提交后（evictAfterCommit，对齐批 2 PlayerClaimService 惯例）；调用方不再重复 evict。
  *
  * 语义铁律（对齐 spec §6.1）：
  *  - 存量联盟无归属行 = 平台代管；管理员可后补指派（不做数据回填）；
@@ -16,6 +17,7 @@ package com.bsball.service;
 
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.LeagueOwnerDto;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.LeagueOwner;
 import com.bsball.repository.LeagueOwnerRepository;
@@ -25,6 +27,8 @@ import java.util.List;
 import lombok.Generated;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LeagueOwnerAssignService {
@@ -42,7 +46,11 @@ public class LeagueOwnerAssignService {
     @Transactional(rollbackFor = Exception.class)
     public LeagueOwner assignInternal(Long userId, Long tenantId, Long leagueId, String source) {
         if (userId == null || tenantId == null || leagueId == null) return null;
+        // TODO(批 3a 已裁定硬化项/I4)：唯一索引 (league_id, user_id) 并发竞态——同一事务内捕获
+        //  DataIntegrityViolation 会被标记 rollback-only 而不可行；后续以幂等 upsert / 重试或独立事务边界硬化。
         if (this.leagueOwnerRepository.existsByLeagueIdAndUserIdAndDeletedAtIsNull(leagueId, userId)) {
+            // 幂等 no-op：不重复插入，但仍失效缓存（保证缓存与库一致）。
+            this.evictAfterCommit(userId);
             return null;
         }
         LeagueOwner owner = new LeagueOwner();
@@ -52,7 +60,7 @@ public class LeagueOwnerAssignService {
         owner.setStatus(LeagueOwner.STATUS_ACTIVE);
         owner.setGrantSource(source == null ? LeagueOwner.GRANT_ADMIN_ASSIGN : source);
         LeagueOwner saved = this.leagueOwnerRepository.save(owner);
-        this.accountScopeService.evictUserScopeCache(userId);
+        this.evictAfterCommit(userId);
         return saved;
     }
 
@@ -65,31 +73,46 @@ public class LeagueOwnerAssignService {
         return this.assignInternal(userId, league.getTenantId(), leagueId, LeagueOwner.GRANT_ADMIN_ASSIGN);
     }
 
-    /** 管理端撤回：把该 (league, user) 的 active 行置 inactive 并软删，失效该用户缓存。 */
+    /** 管理端撤回：把该 (league, user) 的 active 行置 inactive 并软删，失效该用户缓存（由 revokeInternal 承担）。 */
     @Transactional(rollbackFor = Exception.class)
     public void revoke(Long operatorId, Long leagueId, Long userId) {
         this.assertAdmin(operatorId);
         if (userId == null) throw new BusinessException(400, "userId 不能为空");
         this.requireLeagueForOperator(operatorId, leagueId);
         this.revokeInternal(leagueId, userId, operatorId);
-        this.accountScopeService.evictUserScopeCache(userId);
     }
 
-    /** 管理端交接：revoke(from) + assignInternal(to, ADMIN_ASSIGN)，失效双方缓存。 */
+    /**
+     * 管理端交接：revoke(from) + assignInternal(to, ADMIN_ASSIGN)。evict 由内部方法承担（后置提交）。
+     * M2：from == to 时无可交接，直接 no-op（不 revoke / 不 assign / 不 evict）。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void handover(Long operatorId, Long leagueId, Long fromUserId, Long toUserId) {
         this.assertAdmin(operatorId);
         if (toUserId == null) throw new BusinessException(400, "userId 不能为空");
         League league = this.requireLeagueForOperator(operatorId, leagueId);
+        if (toUserId.equals(fromUserId)) return;
         if (fromUserId != null) {
             this.revokeInternal(leagueId, fromUserId, operatorId);
-            this.accountScopeService.evictUserScopeCache(fromUserId);
         }
         this.assignInternal(toUserId, league.getTenantId(), leagueId, LeagueOwner.GRANT_ADMIN_ASSIGN);
-        this.accountScopeService.evictUserScopeCache(toUserId);
     }
 
-    /** 撤回内核：不校验 operator、不失效缓存，供 revoke / handover 复用。 */
+    /**
+     * 主办方列表（批次 3a 评审修复 I2）：仅超管 / 租户管理员可读；league 存在 + 同租户（超管放行）；
+     * 返回精简 DTO（仅 userId / grantSource / status / createdAt，不含审计 / 租户字段），防跨租户枚举与字段泄露。
+     */
+    public List<LeagueOwnerDto> listOwners(Long operatorId, Long leagueId) {
+        this.assertAdmin(operatorId);
+        this.requireLeagueForOperator(operatorId, leagueId);
+        return this.leagueOwnerRepository
+                .findByLeagueIdAndStatusAndDeletedAtIsNull(leagueId, LeagueOwner.STATUS_ACTIVE)
+                .stream()
+                .map(o -> new LeagueOwnerDto(o.getUserId(), o.getGrantSource(), o.getStatus(), o.getCreatedAt()))
+                .toList();
+    }
+
+    /** 撤回内核：不校验 operator；供 revoke / handover 复用。evict 后置提交（无 active 行亦失效，保证缓存与库一致）。 */
     private void revokeInternal(Long leagueId, Long userId, Long operatorId) {
         LocalDateTime now = LocalDateTime.now();
         List<LeagueOwner> actives = this.leagueOwnerRepository
@@ -101,6 +124,21 @@ public class LeagueOwnerAssignService {
                 owner.setDeletedBy(operatorId);
                 this.leagueOwnerRepository.save(owner);
             }
+        }
+        this.evictAfterCommit(userId);
+    }
+
+    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免撤权 / 指派被并发读回填（对齐 PlayerClaimService）。 */
+    private void evictAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    LeagueOwnerAssignService.this.accountScopeService.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.accountScopeService.evictUserScopeCache(userId);
         }
     }
 

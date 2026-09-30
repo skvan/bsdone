@@ -10,12 +10,14 @@
  *  - 审批通过：按申请回填 name / nameEn / description 落库，再把申请人授为 GRANT_SELF_CREATE 主办方；
  *  - 写路径一律落 reviewedBy / reviewedAt；approve / reject 对「不存在 / 已处理（非 pending）」统一 404；
  *  - 审核者权限：仅超管 / 租户管理员（ApiPermissionService），否则 403；租户管理员限本租户（超管放行）；
- *  - 关系变更（assignInternal 内部已 evict）+ 本服务对申请人再 evict，双保险失效范围缓存。
+ *  - 关系变更（assignInternal 内部已 evict）+ 本服务对申请人再 evict，双保险失效范围缓存；
+ *    本服务 evict 一律后置到事务提交后（evictAfterCommit，对齐批 2 PlayerClaimService 惯例）。
  *
  * 循环依赖说明：本服务需调用 LeagueService.createInternal；而 LeagueService.createForCurrentUser
  * 又需调用本服务的 submitOrCreate，形成 LeagueService ⇄ LeagueProvisionService 环。
  * 采用「本服务以 @Lazy LeagueService 注入」的最小方案打破环（见构造器），
  * 保持 LeagueService 侧为普通构造注入，语义直观、改动最小。
+ * TODO(批 3a 已裁定硬化项/M6)：后续可评估 ObjectProvider / ApplicationEvent 等替代 @Lazy 的更清晰解环方式。
  */
 package com.bsball.service;
 
@@ -33,6 +35,8 @@ import lombok.Generated;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LeagueProvisionService {
@@ -69,7 +73,7 @@ public class LeagueProvisionService {
         League created = this.leagueService.createInternal(payload);
         this.leagueOwnerAssignService.assignInternal(userId, Long.valueOf(tid), created.getId(),
                 LeagueOwner.GRANT_SELF_CREATE);
-        this.accountScopeService.evictUserScopeCache(userId);
+        this.evictAfterCommit(userId);
         return Map.of("pending", false, "id", created.getId());
     }
 
@@ -78,12 +82,15 @@ public class LeagueProvisionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public League approve(Long reviewerId, Long requestId) {
+        // TODO(批 3a 已裁定硬化项/I5)：approve 并发双击——沿用既有惯例（requirePending 校验 pending），
+        //  同请求并发提交仍可能双建联盟，后续批次以乐观锁/状态条件更新硬化。
         LeagueCreateRequest req = this.requirePending(reviewerId, requestId);
         League payload = new League();
         payload.setName(req.getName());
         payload.setNameEn(req.getNameEn());
         payload.setDescription(req.getDescription());
-        League created = this.leagueService.createInternal(payload);
+        // I1：联盟必须落在「申请租户」，而非审核者上下文租户（超管全局 token=0）。
+        League created = this.leagueService.createInternalForTenant(payload, req.getTenantId());
         this.leagueOwnerAssignService.assignInternal(req.getApplicantUserId(), req.getTenantId(), created.getId(),
                 LeagueOwner.GRANT_SELF_CREATE);
         req.setStatus(LeagueCreateRequest.STATUS_APPROVED);
@@ -91,7 +98,7 @@ public class LeagueProvisionService {
         req.setReviewedBy(reviewerId);
         req.setReviewedAt(LocalDateTime.now());
         this.leagueCreateRequestRepository.save(req);
-        this.accountScopeService.evictUserScopeCache(req.getApplicantUserId());
+        this.evictAfterCommit(req.getApplicantUserId());
         return created;
     }
 
@@ -101,6 +108,10 @@ public class LeagueProvisionService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long reviewerId, Long requestId, String reason) {
         LeagueCreateRequest req = this.requirePending(reviewerId, requestId);
+        // M5：驳回原因长度校验（列定义 length=500，超长则 400，避免落库截断/报错）。
+        if (reason != null && reason.length() > 500) {
+            throw new BusinessException(400, "驳回原因过长");
+        }
         req.setStatus(LeagueCreateRequest.STATUS_REJECTED);
         req.setRejectReason(reason);
         req.setReviewedBy(reviewerId);
@@ -112,6 +123,7 @@ public class LeagueProvisionService {
      * 待审申请分页（当前租户）：默认 page=1、pageSize=20；管理员可见。
      */
     public PageResult<LeagueCreateRequest> listPending(Long reviewerId, Integer page, Integer pageSize) {
+        // TODO(批 3a 已裁定硬化项/M4)：当前为内存分页（全量拉取后 subList）；数据量增大后改为仓储层分页。
         this.assertReviewer(reviewerId);
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         List<LeagueCreateRequest> all = this.leagueCreateRequestRepository
@@ -150,6 +162,20 @@ public class LeagueProvisionService {
             }
         }
         return req;
+    }
+
+    /** 范围缓存失效后置到事务提交后；无事务时立即失效，避免审批/直建被并发读回填（对齐 PlayerClaimService）。 */
+    private void evictAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    LeagueProvisionService.this.accountScopeService.evictUserScopeCache(userId);
+                }
+            });
+        } else {
+            this.accountScopeService.evictUserScopeCache(userId);
+        }
     }
 
     @Generated

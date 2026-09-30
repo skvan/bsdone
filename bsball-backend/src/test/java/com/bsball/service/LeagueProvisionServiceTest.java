@@ -134,7 +134,7 @@ class LeagueProvisionServiceTest {
     // ------------------------------------------------------------- approve
 
     @Test
-    @DisplayName("approve 成功：回填建联盟 + 授权申请人 + 申请置 approved + evict")
+    @DisplayName("approve 成功：回填建联盟（落申请租户）+ 授权申请人 + 申请置 approved + evict")
     void approve_success() {
         CurrentUserHolder.set(1L, 10L);
         when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
@@ -142,14 +142,14 @@ class LeagueProvisionServiceTest {
         when(leagueCreateRequestRepository.findById(500L)).thenReturn(Optional.of(req));
         League created = new League();
         created.setId(88L);
-        when(leagueService.createInternal(any(League.class))).thenReturn(created);
+        when(leagueService.createInternalForTenant(any(League.class), eq(10L))).thenReturn(created);
         when(leagueCreateRequestRepository.save(any(LeagueCreateRequest.class))).thenAnswer(inv -> inv.getArgument(0));
 
         League result = service.approve(1L, 500L);
 
         assertEquals(88L, result.getId());
         ArgumentCaptor<League> payloadCaptor = ArgumentCaptor.forClass(League.class);
-        verify(leagueService).createInternal(payloadCaptor.capture());
+        verify(leagueService).createInternalForTenant(payloadCaptor.capture(), eq(10L));
         assertEquals("新联盟", payloadCaptor.getValue().getName());
         assertEquals("New League", payloadCaptor.getValue().getNameEn());
         assertEquals("简介", payloadCaptor.getValue().getDescription());
@@ -158,6 +158,29 @@ class LeagueProvisionServiceTest {
         assertEquals(88L, req.getLeagueId());
         assertEquals(1L, req.getReviewedBy());
         assertNotNull(req.getReviewedAt());
+        verify(leagueOwnerAssignService).assignInternal(7L, 10L, 88L, LeagueOwner.GRANT_SELF_CREATE);
+        verify(accountScopeService).evictUserScopeCache(7L);
+    }
+
+    @Test
+    @DisplayName("approve 超管跨租户：联盟与 owner 均落「申请租户」（I1）")
+    void approve_superAdminCrossTenant_leagueAndOwnerInRequestTenant() {
+        // 超管全局 token：审核者上下文租户=0，申请租户=10
+        CurrentUserHolder.set(1L, 0L);
+        when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
+        LeagueCreateRequest req = pendingRequest(500L, 10L, 7L);
+        when(leagueCreateRequestRepository.findById(500L)).thenReturn(Optional.of(req));
+        League created = new League();
+        created.setId(88L);
+        when(leagueService.createInternalForTenant(any(League.class), eq(10L))).thenReturn(created);
+        when(leagueCreateRequestRepository.save(any(LeagueCreateRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.approve(1L, 500L);
+
+        // 联盟落申请租户 10（而非审核者上下文 0）
+        verify(leagueService).createInternalForTenant(any(League.class), eq(10L));
+        verify(leagueService, never()).createInternal(any());
+        // owner 亦落申请租户 10 → league.tenant == owner.tenant == 申请 tenant
         verify(leagueOwnerAssignService).assignInternal(7L, 10L, 88L, LeagueOwner.GRANT_SELF_CREATE);
         verify(accountScopeService).evictUserScopeCache(7L);
     }
@@ -220,6 +243,21 @@ class LeagueProvisionServiceTest {
         assertEquals(403, ex.getCode());
         assertEquals("仅管理员可审核联盟创建申请", ex.getMessage());
         verify(leagueCreateRequestRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("reject 原因超长：400「驳回原因过长」（M5）")
+    void reject_reasonTooLong_badRequest() {
+        CurrentUserHolder.set(1L, 10L);
+        when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
+        LeagueCreateRequest req = pendingRequest(500L, 10L, 7L);
+        when(leagueCreateRequestRepository.findById(500L)).thenReturn(Optional.of(req));
+        String longReason = "x".repeat(501);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.reject(1L, 500L, longReason));
+        assertEquals(400, ex.getCode());
+        assertEquals("驳回原因过长", ex.getMessage());
+        verify(leagueCreateRequestRepository, never()).save(any());
     }
 
     // ------------------------------------------------------------- approve 租管跨租户

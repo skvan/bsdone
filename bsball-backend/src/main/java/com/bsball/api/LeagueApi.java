@@ -25,10 +25,10 @@ import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.LeagueOwnerDto;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.LeagueCreateRequest;
 import com.bsball.model.entity.LeagueOwner;
-import com.bsball.repository.LeagueOwnerRepository;
 import com.bsball.service.LeagueOwnerAssignService;
 import com.bsball.service.LeagueProvisionService;
 import com.bsball.service.LeagueService;
@@ -51,7 +51,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class LeagueApi {
     private final LeagueService leagueService;
     private final LeagueOwnerAssignService leagueOwnerAssignService;
-    private final LeagueOwnerRepository leagueOwnerRepository;
     private final LeagueProvisionService leagueProvisionService;
 
     @GetMapping(value={"/list"})
@@ -109,8 +108,10 @@ public class LeagueApi {
     /* 账号权限重构（批次 3a）：联盟主办方管理端点（操作者须超管 / 租户管理员，服务内校验）。 */
 
     @GetMapping(value={"/{id}/owners"})
-    public Result<List<LeagueOwner>> owners(@PathVariable Long id) {
-        return Result.ok(this.leagueOwnerRepository.findByLeagueIdAndStatusAndDeletedAtIsNull(id, LeagueOwner.STATUS_ACTIVE));
+    public Result<List<LeagueOwnerDto>> owners(@PathVariable Long id) {
+        // I2：新增操作者守卫 + 服务内 assertAdmin/租户校验；返回精简 DTO（不回传实体）。
+        Long operatorId = this.requireOperator();
+        return Result.ok(this.leagueOwnerAssignService.listOwners(operatorId, id));
     }
 
     @PostMapping(value={"/{id}/owner/assign"})
@@ -140,6 +141,8 @@ public class LeagueApi {
     }
 
     private static Long parseUserId(Map<String, Object> body) {
+        // TODO(批 3a 已裁定硬化项/M3)：宽松解析失败（非数字）静默返回 null → 上层报「userId 不能为空」，
+        //  文案不够精确（应区分「非法」与「缺失」）；后续批次硬化。
         Object raw = body == null ? null : body.get("userId");
         if (raw == null) {
             return null;
@@ -157,10 +160,9 @@ public class LeagueApi {
 
     @Generated
     public LeagueApi(LeagueService leagueService, LeagueOwnerAssignService leagueOwnerAssignService,
-            LeagueOwnerRepository leagueOwnerRepository, LeagueProvisionService leagueProvisionService) {
+            LeagueProvisionService leagueProvisionService) {
         this.leagueService = leagueService;
         this.leagueOwnerAssignService = leagueOwnerAssignService;
-        this.leagueOwnerRepository = leagueOwnerRepository;
         this.leagueProvisionService = leagueProvisionService;
     }
 }
