@@ -1,6 +1,7 @@
 // PlayerList —— 行为保真移植自编译产物 PlayerList-qW20Eiqf（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
 // 2026-09-27 issue #29 改造：基本信息/球队经历分块 + 简历式多段经历编辑器与多队展示。
+// 2026-09-30 H36：位置列按当前球队经历（勾选「当前球队」）的位置有序并集（去重、逗号分隔）聚合 + 溢出省略（show-overflow-tooltip）。
 // 本页已脱离编译产物逐字对照（设计变更页），后续以本文件为准维护；重跑生成器须保留本改造。
 import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, vLoading as gn, ElTooltip as pn, ElForm as yn } from 'element-plus';
 import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, reactive as oa, createCommentVNode as H } from 'vue';
@@ -436,8 +437,10 @@ var $n={
     }
     ),ye=N(()=>(l.bgImages[0]??"").trim());
     function Xt(a){
-      const e=a,u=e.positions?.length?e.positions:e.position?[e.position]:[];
-      return u.length?u.map(i=>Ma(i)).join(", "):"-"
+      const e=(Array.isArray(a?.teamEntries)?a.teamEntries:[]).filter(u=>u&&u.current),u=[];
+      for(const i of e)if(Array.isArray(i.positions))for(const c of i.positions)c&&!u.includes(c)&&u.push(c);
+      const i=u.length?u:a?.positions?.length?a.positions:a?.position?[a.position]:[];
+      return i.length?i.map(c=>Ma(c)).join(", "):"-"
     }
     const He=v(!1),Se=v("");
     let _e=null,Ke=0;
@@ -1440,7 +1443,7 @@ var $n={
               ,V(Jc(h)),1)]),_:1
             }
             ),t(P,{
-              label:"位置","min-width":"100"
+              label:"位置","min-width":"100","show-overflow-tooltip":""
             }
             ,{
               default:n(({
