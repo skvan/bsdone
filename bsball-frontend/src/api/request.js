@@ -125,12 +125,40 @@ function isPublicPath(url) {
   );
 }
 
+// 管理上下文判定（T4.1）：当前页面是否处于「管理视图」窄域。
+// 口径对齐 utils/tenantRoute 的部署基址剥离约定：先剥掉已知部署基址前缀，再判断 /{tenant}/admin 开头。
+// 基址集合（长前缀优先，避免 '/bs-ball' 误剥 '/bs-ball-next'）：dev '/'、新版 '/bs-ball-next/'、默认 '/bs-ball/'。
+const DEPLOY_BASE_PREFIXES = Array.from(
+  new Set([BASE_URL, '/bs-ball-next', '/bs-ball'])
+)
+  .map((p) => String(p || '').replace(/\/+$/, ''))
+  .filter((p) => p && p !== '/')
+  .sort((a, b) => b.length - a.length);
+
+// 剥离部署基址前缀（仅按整段边界匹配；无基址即原样返回）
+function stripDeployBase(pathname) {
+  const p = pathname || '/';
+  for (const prefix of DEPLOY_BASE_PREFIXES) {
+    if (p === prefix) return '/';
+    if (p.startsWith(prefix + '/')) return p.slice(prefix.length);
+  }
+  return p;
+}
+
+// 当前页面是否管理区：剥离部署基址后以 /{tenant}/admin 开头
+function isManageContext() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  return /^\/[^/]+\/admin(\/|$)/.test(stripDeployBase(window.location.pathname || '/'));
+}
+
 function buildHeaders(fullUrl, custom) {
   const needAuth = !isPublicPath(fullUrl);
   return {
     'Content-Type': 'application/json',
     ...tenantHeaders(),
     ...(needAuth ? authHeaders() : {}),
+    // 管理区内的所有请求（含公开读接口）都带管理上下文头；公开路径判定仅决定是否带 Authorization，独立于此
+    ...(isManageContext() ? { 'X-Scope-Context': 'manage' } : {}),
     ...custom
   };
 }
