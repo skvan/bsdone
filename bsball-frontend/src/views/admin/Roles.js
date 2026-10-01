@@ -354,22 +354,20 @@ var ct={
       }
       )
     }
-    function tci(l,e){
-      for(const a of l||[])if(e.has(a.id)||tci(a.children||[],e))return!0;
-      return!1
-    }
-    function tcf(l,e,a){
-      for(const o of l||[]){
-        const i=o.children||[];
-        e.has(o.id)&&!tci(i,e)&&a.push(o.id),tcf(i,e,a)
+    function tcWithAncestors(l){
+      const e=new Set((l||[]).map(a=>Number(a)).filter(a=>!Number.isNaN(a))),a=new Map();
+      (function i(g,v){
+        for(const o of g||[])a.set(Number(o.id),v),i(o.children||[],Number(o.id))
       }
-    }
-    function tck(l){
-      const e=new Set((l||[]).map(a=>Number(a)).filter(a=>!Number.isNaN(a))),a=[];
-      return tcf(tcMenus.value,e,a),a
+      )(tcMenus.value,null);
+      for(const g of[...e]){
+        let v=a.get(g);
+        while(v!=null&&!e.has(v))e.add(v),v=a.get(v)
+      }
+      return[...e]
     }
     function tct(l){
-      l&&!tcSeeded.value&&(tcSeeded.value=!0,tcKeys.value=tck(tcGlobalIds.value),tcKey.value++)
+      l&&!tcSeeded.value&&(tcSeeded.value=!0,tcKeys.value=he(tcGlobalIds.value),tcKey.value++)
     }
     async function tcOpen(l){
       tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
@@ -377,7 +375,7 @@ var ct={
         const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id),st.list()]);
         tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
         const i=e?.enabled===!0;
-        tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?tck(he(e?.menuIds)):[],tcKey.value++
+        tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?he(e?.menuIds):[],tcKey.value++
       }
       finally{
         tcl.value=!1
@@ -387,7 +385,7 @@ var ct={
       await tcSubmit(async()=>{
         const l=tcRole.value;
         if(!l)return;
-        const e=tcTreeRef.value,a=[...(e?.getCheckedKeys()??[]),...(e?.getHalfCheckedKeys()??[])].map(o=>Number(o)).filter(o=>!Number.isNaN(o)),o=[...new Set(a)];
+        const e=tcTreeRef.value,a=(e?.getCheckedKeys()??[]).map(o=>Number(o)).filter(o=>!Number.isNaN(o)),o=tcWithAncestors(a);
         if(o.length===0){
           try{
             await jl.confirm("将停用该角色在本租户的全部后台菜单，确认？","提示",{
@@ -752,7 +750,7 @@ var ct={
           key:`tc-${tcKey.value}`,ref_key:"tcTreeRef",ref:tcTreeRef,data:tcMenus.value,props:{
             label:"name",value:"id"
           }
-          ,"node-key":"id","show-checkbox":"","default-expand-all":"","default-checked-keys":tcKeys.value,class:"permission-tree"
+          ,"node-key":"id","show-checkbox":"","check-strictly":"","default-expand-all":"","default-checked-keys":tcKeys.value,class:"permission-tree"
         }
         ,{
           default:n(({
