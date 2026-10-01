@@ -7,6 +7,8 @@
  *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 6 条新按钮）；
  *  - ④ tenant_admin 角色创建路径（ensureTenantAdminRoleIfNeeded）：落库绑定含 5 个 return、不含 5 个 delete；
  *  - ⑤ 收窄（ensureTenantAdminRoleExcludesBusinessDeleteButtons）：仅移除 delete 绑定、保留 return。
+ *  - ⑥ 升级补绑（ensureTenantAdminRoleRebindsDefaultMenusIfNeeded，批次 4b-2）：角色存在缺 5 个 return → 恰补 5；
+ *  - ⑦ 升级补绑幂等：二次调用零新增；⑧ 排除语义保持（不补 business:*:delete）；⑨ 角色不存在 → 零交互/零插入。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；被测 private 方法经反射调用（对齐既有 InitDataRunner*Test）。
  */
@@ -19,6 +21,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.bsball.config.InitSeedProperties;
 import com.bsball.config.TenantProperties;
@@ -277,6 +281,82 @@ class InitDataRunnerReturnButtonSeedTest {
         assertTrue(deleted.stream().noneMatch(RETURN_IDS::contains), "不得误删 return 按钮绑定");
     }
 
+    @Test
+    @DisplayName("⑥ 升级补绑：tenant_admin 角色存在但缺 5 个 return → 恰补 5 个（其余零插入）")
+    void rebindAddsOnlyMissingReturnButtons() throws Exception {
+        long roleId = 500L;
+        menuStore.addAll(tenantAdminFixture());
+        lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin"))
+                .thenReturn(Optional.of(role(roleId, "tenant_admin")));
+        // 既有绑定：默认集合中除 5 个 return 外均已绑定
+        List<SysRoleMenu> existing = new ArrayList<>();
+        for (long mid : new long[]{1L, 2L, 3L, 4L, 5L, 30L}) {
+            existing.add(roleMenu(roleId, mid));
+        }
+        roleMenus.put(roleId, existing);
+
+        invokeRebindTenantAdminDefaults();
+
+        List<SysRoleMenu> rows = roleMenus.get(roleId);
+        assertEquals(11, rows.size(), "应恰补 5 行（既有 6 + 新增 5，零重复）");
+        Set<Long> bound = boundMenuIds(roleId);
+        Set<Long> newlyAdded = new HashSet<>(bound);
+        newlyAdded.removeAll(Set.of(1L, 2L, 3L, 4L, 5L, 30L));
+        assertEquals(new HashSet<>(RETURN_IDS), newlyAdded, "新增应恰为 5 个 return 按钮");
+    }
+
+    @Test
+    @DisplayName("⑦ 升级补绑幂等：二次调用 ensureTenantAdminRoleRebindsDefaultMenusIfNeeded 零新增")
+    void rebindIsIdempotent() throws Exception {
+        long roleId = 500L;
+        menuStore.addAll(tenantAdminFixture());
+        lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin"))
+                .thenReturn(Optional.of(role(roleId, "tenant_admin")));
+        roleMenus.put(roleId, new ArrayList<>());
+
+        invokeRebindTenantAdminDefaults();
+        int sizeAfterFirst = roleMenus.get(roleId).size();
+        assertTrue(sizeAfterFirst > 0, "首次调用应补绑缺失的默认节点");
+
+        invokeRebindTenantAdminDefaults();
+
+        assertEquals(sizeAfterFirst, roleMenus.get(roleId).size(), "二次调用不得新增任何 role_menu 行");
+    }
+
+    @Test
+    @DisplayName("⑧ 排除语义保持：补绑不纳入 business:*:delete（含 league:delete）")
+    void rebindExcludesBusinessDeleteButtons() throws Exception {
+        long roleId = 500L;
+        menuStore.addAll(tenantAdminFixture());
+        lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin"))
+                .thenReturn(Optional.of(role(roleId, "tenant_admin")));
+        roleMenus.put(roleId, new ArrayList<>());
+
+        invokeRebindTenantAdminDefaults();
+
+        Set<Long> bound = boundMenuIds(roleId);
+        assertTrue(bound.containsAll(RETURN_IDS), "补绑后应含 5 个 return");
+        for (long id : DELETE_IDS) {
+            assertFalse(bound.contains(id), "补绑不得纳入 delete 按钮 id=" + id);
+        }
+    }
+
+    @Test
+    @DisplayName("⑨ 角色不存在：ensureTenantAdminRoleRebindsDefaultMenusIfNeeded 零交互/零插入")
+    void rebindNoOpWhenRoleMissing() throws Exception {
+        menuStore.addAll(tenantAdminFixture());
+        lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin"))
+                .thenReturn(Optional.empty());
+
+        invokeRebindTenantAdminDefaults();
+
+        assertTrue(roleMenus.isEmpty(), "角色不存在时不得写入 role_menu");
+        verify(sysRoleMenuRepository, never()).findByRoleId(anyLong());
+        verify(sysRoleMenuRepository, never()).save(any(SysRoleMenu.class));
+        verify(sysMenuRepository, never()).findAll();
+        verify(sysUserRepository, never()).findByUsernameAndDeletedAtIsNull(any());
+    }
+
     // ---- 反射调用 ----
 
     private void invokeButtonSeeds() throws Exception {
@@ -289,6 +369,10 @@ class InitDataRunnerReturnButtonSeedTest {
 
     private void invokeEnsureTenantAdminRole() throws Exception {
         invokeNoArg("ensureTenantAdminRoleIfNeeded");
+    }
+
+    private void invokeRebindTenantAdminDefaults() throws Exception {
+        invokeNoArg("ensureTenantAdminRoleRebindsDefaultMenusIfNeeded");
     }
 
     private void invokeNoArg(String name) throws Exception {

@@ -150,6 +150,8 @@ implements CommandLineRunner {
                 this.seedAdminRoleAndBindUser(adminId);
                 this.ensurePortalRolesIfNeeded(adminId);
                 this.ensurePortalRoleBindingsIfNeeded(adminId);
+                // 批次 4b Task 4b-2：首装分支对称兜底（无 tenant_admin 角色时为安全 no-op）
+                this.ensureTenantAdminRoleRebindsDefaultMenusIfNeeded();
                 if (this.initSeedProperties.isSeedDefaultStadiums()) {
                     this.ensureDefaultStadiumsIfEmpty(adminId);
                 }
@@ -177,6 +179,8 @@ implements CommandLineRunner {
                 this.ensureAdminRoleBindsAllApisIfNeeded();
                 this.ensureTenantAdminRoleIfNeeded();
                 this.ensureTenantAdminRoleExcludesBusinessDeleteButtons();
+                // 批次 4b Task 4b-2：升级分支在排除 delete 后补绑默认菜单（修复升级后新按钮不可见）
+                this.ensureTenantAdminRoleRebindsDefaultMenusIfNeeded();
                 this.ensurePlatformAssetApisIfNeeded();
                 this.ensureBatchAndTenantRoleConfigApisIfNeeded();
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
@@ -597,6 +601,40 @@ implements CommandLineRunner {
         }
         if (removed > 0) {
             log.info("\u5386\u53f2\u6570\u636e\u5904\u7f6e\u6743\u6536\u7a84\uff1a\u5df2\u4ece\u79df\u6237\u7ba1\u7406\u5458\u89d2\u8272\u79fb\u9664 {} \u6761 delete \u7c7b\u6309\u94ae\u7ed1\u5b9a", (Object)removed);
+        }
+    }
+
+    /**
+     * 升级路径默认菜单补绑（批次 4b，Task 4b-2）：tenant_admin 角色已存在时，确保默认菜单/按钮集合内的
+     * 新增节点（如本批新增的 business:*:return 归还按钮）随升级补绑可见，修复「仅创建时才绑定」导致的
+     * 升级后新按钮入库但租管不可见的缺口。与 ensureAdminRoleBindsAllMenusIfNeeded（超管每启动全量补绑）对称。
+     * 幂等：仅对默认集合按既有绑定判存后插入缺失行，绝不删除/不重写任何既有绑定；二次调用零插入。
+     * 排除语义由 collectTenantAdminDefaultMenuIds 保证（business:*:delete 不纳入）。
+     * 角色不存在 → 直接返回（首装路径由既有创建流程负责）。
+     */
+    private void ensureTenantAdminRoleRebindsDefaultMenusIfNeeded() {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin").orElse(null);
+        if (role == null) {
+            return;
+        }
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<SysMenu> menus = this.sysMenuRepository.findAll();
+        Set<Long> allowedMenuIds = InitDataRunner.collectTenantAdminDefaultMenuIds(menus);
+        Set<Long> bound = this.sysRoleMenuRepository.findByRoleId(role.getId()).stream().map(SysRoleMenu::getMenuId).collect(Collectors.toCollection(HashSet::new));
+        int added = 0;
+        for (Long mid : allowedMenuIds) {
+            if (mid == null || bound.contains(mid)) continue;
+            SysRoleMenu rm = new SysRoleMenu();
+            rm.setRoleId(role.getId());
+            rm.setMenuId(mid);
+            rm.setCreatedBy(Long.valueOf(opId));
+            rm.setUpdatedBy(Long.valueOf(opId));
+            this.sysRoleMenuRepository.save(rm);
+            bound.add(mid);
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已为租户管理员角色补绑 {} 个默认菜单/按钮节点（含新增按钮，幂等判存）", (Object)added);
         }
     }
 
