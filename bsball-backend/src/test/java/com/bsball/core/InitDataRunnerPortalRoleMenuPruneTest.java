@@ -6,7 +6,8 @@
  *  ② 设计集内保留；
  *  ③ 其它角色 / 租户级覆盖表零交互（never）；
  *  ④ 幂等：二跑零删除；
- *  ⑤ 设计集解析与补绑同源（收敛保留集 == 补绑产出集）。
+ *  ⑤ 设计集解析与补绑同源（收敛保留集 == 补绑产出集）；
+ *  ⑥ 空设计集防全删：设计解析为空 → 零删除、绑定原样。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；被测 private 方法经反射调用。
  * 说明：租户级覆盖表落到独立实体/仓储（bs_tenant_role_menu / bs_tenant_role_menu_config），
@@ -154,7 +155,7 @@ class InitDataRunnerPortalRoleMenuPruneTest {
                 }
             }
             return null;
-        }).when(sysRoleMenuRepository).deleteAll(anyIterable());
+        }).when(sysRoleMenuRepository).deleteAllInBatch(anyIterable());
         lenient().when(sysRoleApiRepository.findByRoleId(anyLong()))
                 .thenAnswer(inv -> new ArrayList<>(roleApis.getOrDefault((Long) inv.getArgument(0), List.of())));
         lenient().when(sysRoleApiRepository.save(any(SysRoleApi.class))).thenAnswer(inv -> {
@@ -224,12 +225,12 @@ class InitDataRunnerPortalRoleMenuPruneTest {
         preBind(LEAGUE_ORGANIZER_ROLE_ID, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 999L);
 
         invokePrune();
-        verify(sysRoleMenuRepository, times(2)).deleteAll(anyIterable());
+        verify(sysRoleMenuRepository, times(2)).deleteAllInBatch(anyIterable());
         assertEquals(DESIGN_TEAM_MANAGER, menuIdsOf(TEAM_MANAGER_ROLE_ID));
         assertEquals(DESIGN_LEAGUE_ORGANIZER, menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID));
 
         invokePrune();
-        verify(sysRoleMenuRepository, times(2)).deleteAll(anyIterable());
+        verify(sysRoleMenuRepository, times(2)).deleteAllInBatch(anyIterable());
         assertEquals(DESIGN_TEAM_MANAGER, menuIdsOf(TEAM_MANAGER_ROLE_ID), "二跑后 team_manager 稳定为设计集");
         assertEquals(DESIGN_LEAGUE_ORGANIZER, menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID), "二跑后 league_organizer 稳定为设计集");
     }
@@ -258,6 +259,23 @@ class InitDataRunnerPortalRoleMenuPruneTest {
 
         assertEquals(bindTm, menuIdsOf(TEAM_MANAGER_ROLE_ID), "收敛保留集应与补绑产出集同源");
         assertEquals(bindLo, menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID), "收敛保留集应与补绑产出集同源");
+    }
+
+    @Test
+    @DisplayName("⑥ 空设计集防全删：sys_menu 全空 → 设计解析为空 → 零删除、绑定原样")
+    void emptyDesignSetDeletesNothing() throws Exception {
+        // 构造：全部 role_menu 已存在（含超集与幻影 id），但 sys_menu 全空 → 设计集解析为空。
+        preBind(TEAM_MANAGER_ROLE_ID, 1L, 6L, 999L);
+        preBind(LEAGUE_ORGANIZER_ROLE_ID, 7L, 999L);
+        menuStore.clear();
+
+        invokePrune();
+
+        // 守卫：设计集为空时跳过收敛，绝不触发批量删除。
+        verify(sysRoleMenuRepository, never()).deleteAllInBatch(anyIterable());
+        // 绑定原样：一条不删（防止种子漂移把该角色全部绑定误删）。
+        assertEquals(Set.of(1L, 6L, 999L), menuIdsOf(TEAM_MANAGER_ROLE_ID), "空设计集下 team_manager 绑定须原样保留");
+        assertEquals(Set.of(7L, 999L), menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID), "空设计集下 league_organizer 绑定须原样保留");
     }
 
     // ---- helpers ----

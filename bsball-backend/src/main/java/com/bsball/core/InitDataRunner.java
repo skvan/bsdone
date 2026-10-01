@@ -955,12 +955,16 @@ implements CommandLineRunner {
         }
         List<SysMenu> all = this.sysMenuRepository.findAll();
         Set<Long> designSet = InitDataRunner.resolveDesignMenuIds(all, menuPaths, permissions);
+        if (designSet.isEmpty()) {
+            log.warn("门户角色预设菜单设计集为空，跳过收敛以防误删全部绑定（role={}）", (Object)roleCode);
+            return;
+        }
         List<SysRoleMenu> bound = this.sysRoleMenuRepository.findByRoleId(role.getId());
         List<SysRoleMenu> extra = bound.stream().filter(rm -> rm.getMenuId() == null || !designSet.contains(rm.getMenuId())).collect(Collectors.toList());
         if (extra.isEmpty()) {
             return;
         }
-        this.sysRoleMenuRepository.deleteAll(extra);
+        this.sysRoleMenuRepository.deleteAllInBatch(extra);
         log.info("已收敛门户角色超出预设的菜单绑定 {} 条（role={}）", (Object)extra.size(), (Object)roleCode);
     }
 
