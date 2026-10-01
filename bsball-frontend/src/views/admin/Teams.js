@@ -200,6 +200,26 @@ var Ta={
       }
       )
     }
+    async function UeReturn(o){
+      await pe(async()=>{
+        try{
+          const e=await ba(o.id);
+          if(e.length===0){
+            await ne.confirm(`确定要归还球队「${o.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+              confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+            }
+            ),await T.delete(o.id),c.success("已归还"),k();
+            return
+          }
+          z.value=o,x.value=e,w.value=[],I.value=!0,se(()=>J.value?.clearSelection?.())
+        }
+        catch(e){
+          e!=="cancel"&&c.error(e?.message||"归还失败")
+        }
+        
+      }
+      )
+    }
     async function ze(){
       if(U.value)return;
       const o=z.value;
@@ -422,6 +442,12 @@ var Ta={
               }
               ,{
                 default:t(()=>[...e[26]||(e[26]=[i("删除",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):E("",!0),n(C)("business:team:return")?(r(),v(d,{
+                key:3,link:"",type:"warning",disabled:n(me),onClick:q=>UeReturn(p)
+              }
+              ,{
+                default:t(()=>[...e[41]||(e[41]=[i("归还",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):E("",!0)]),_:1
             }

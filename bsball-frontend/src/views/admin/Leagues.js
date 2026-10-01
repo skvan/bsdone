@@ -91,6 +91,21 @@ var Ae={
       }
       )
     }
+    async function JReturn(n){
+      await P(async()=>{
+        try{
+          await ke.confirm(`确定要归还联盟「${n.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await k.delete(n.id),v.success("已归还"),u()
+        }
+        catch(e){
+          e!=="cancel"&&v.error(e?.message||"归还失败")
+        }
+        
+      }
+      )
+    }
     function S(){
       i.page=1,u()
     }
@@ -213,13 +228,19 @@ var Ae={
               ,{
                 default:a(()=>[...e[15]||(e[15]=[s("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),t(m,{
-                link:"",type:"danger",onClick:le=>J(c)
+              ,8,["onClick"]),d(Ab)("business:league:delete")?(C(),D(m,{
+                key:0,link:"",type:"danger",onClick:le=>J(c)
               }
               ,{
                 default:a(()=>[...e[16]||(e[16]=[s("删除",-1)])]),_:1
               }
-              ,8,["onClick"])]),_:1
+              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:return")?(C(),D(m,{
+                key:1,link:"",type:"warning",onClick:le=>JReturn(c)
+              }
+              ,{
+                default:a(()=>[...e[20]||(e[20]=[s("归还",-1)])]),_:1
+              }
+              ,8,["onClick"])):Ee("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }

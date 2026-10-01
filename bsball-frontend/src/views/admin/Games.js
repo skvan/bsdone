@@ -799,6 +799,12 @@ var Li={
             ,{
               default:o(()=>[...q[15]||(q[15]=[R("删除",-1)])]),_:1
             }
+            ,8,["onClick"])):j("",!0),Y(ie)("business:game:return")?(a(),V(he,{
+              key:6,link:"",type:"warning",onClick:ne=>$.$emit("delete",K)
+            }
+            ,{
+              default:o(()=>[...q[16]||(q[16]=[R("归还",-1)])]),_:1
+            }
             ,8,["onClick"])):j("",!0)])]),_:1
           }
           ,8,["fixed"])]),_:1
