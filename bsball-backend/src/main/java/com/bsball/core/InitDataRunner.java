@@ -133,6 +133,13 @@ implements CommandLineRunner {
     private final InitSeedProperties initSeedProperties;
     private final SysMenuApiRepository sysMenuApiRepository;
 
+    /* 账号权限重构（批次 7 / #154）：门户角色「预设集」单一来源——菜单路径 + 按钮权限清单。
+     * 补绑（ensurePortalRoleBindingsIfNeeded）与收敛（ensurePortalRolesPruneExtraMenusIfNeeded）共用，杜绝第二套口径。 */
+    private static final List<String> PORTAL_TEAM_MANAGER_MENU_PATHS = List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates");
+    private static final List<String> PORTAL_TEAM_MANAGER_PERMISSIONS = List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:lineup-template:manage");
+    private static final List<String> PORTAL_LEAGUE_ORGANIZER_MENU_PATHS = List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates", "/admin/leagues", "/admin/events");
+    private static final List<String> PORTAL_LEAGUE_ORGANIZER_PERMISSIONS = List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:team:batchCreate", "business:lineup-template:manage", "business:event:create", "business:event:edit", "business:event:delete", "business:event:games", "business:event:bracket", "business:game:import", "business:game:create", "business:game:edit", "business:game:delete", "business:game:export", "business:game:saveResult", "business:game:collage");
+
     @Transactional
     public void run(String ... args) {
         try {
@@ -190,6 +197,8 @@ implements CommandLineRunner {
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
                 long opIdForRoles = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 this.ensurePortalRolesIfNeeded(opIdForRoles);
+                // 批次 7 / #154：升级分支先收敛历史超集、再补绑预设（双保险，确保刚补的不会被删）
+                this.ensurePortalRolesPruneExtraMenusIfNeeded();
                 this.ensurePortalRoleBindingsIfNeeded(opIdForRoles);
                 long operatorId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 if (this.initSeedProperties.isSeedDefaultStadiums()) {
@@ -919,28 +928,56 @@ implements CommandLineRunner {
      * 初始分支与升级分支均调用（见 run）。
      */
     private void ensurePortalRoleBindingsIfNeeded(long opId) {
-        this.bindRoleMenusAndButtons(opId, "team_manager", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:lineup-template:manage"));
-        this.bindRoleMenusAndButtons(opId, "league_organizer", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates", "/admin/leagues", "/admin/events"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:team:batchCreate", "business:lineup-template:manage", "business:event:create", "business:event:edit", "business:event:delete", "business:event:games", "business:event:bracket", "business:game:import", "business:game:create", "business:game:edit", "business:game:delete", "business:game:export", "business:game:saveResult", "business:game:collage"));
+        this.bindRoleMenusAndButtons(opId, "team_manager", PORTAL_TEAM_MANAGER_MENU_PATHS, PORTAL_TEAM_MANAGER_PERMISSIONS);
+        this.bindRoleMenusAndButtons(opId, "league_organizer", PORTAL_LEAGUE_ORGANIZER_MENU_PATHS, PORTAL_LEAGUE_ORGANIZER_PERMISSIONS);
         this.bindRoleApis(opId, "member", InitDataRunner::isApiAllowedForMember);
         this.bindRoleApis(opId, "team_manager", InitDataRunner::isApiAllowedForTeamManager);
         this.bindRoleApis(opId, "league_organizer", InitDataRunner::isApiAllowedForLeagueOrganizer);
     }
 
     /*
-     * 按菜单 path 与按钮 permission 收集种子菜单 id → 沿 parentId 展开父级目录 → role_menu 判存插入（仅增不删）。
-     * 父级展开复用 addMenuAncestors（与 collectTenantAdminDefaultMenuIds 同源）。
+     * 账号权限重构（批次 7 / #154）：门户角色菜单「预设收敛」。
+     * 背景：存量库（生产备份恢复）中 team_manager / league_organizer 残留大量历史 role_menu 绑定，
+     *       致受限角色可见菜单远超设计、登录落点错。此处在引导启动时硬删「不在设计集」的绑定行。
+     * 边界：仅动平台门户角色（tenantId NULL）的 sys_role_menu；不触碰 member/admin/guest/tenant_admin；
+     *       不触碰租户级覆盖表（bs_tenant_role_menu / bs_tenant_role_menu_config）；不删 sys_menu 本体。
+     * 幂等：设计集内保留、超集移除；二次启动零删除。
      */
-    private void bindRoleMenusAndButtons(long opId, String roleCode, List<String> menuPaths, List<String> permissions) {
+    private void ensurePortalRolesPruneExtraMenusIfNeeded() {
+        this.prunePortalRoleExtraMenus("team_manager", PORTAL_TEAM_MANAGER_MENU_PATHS, PORTAL_TEAM_MANAGER_PERMISSIONS);
+        this.prunePortalRoleExtraMenus("league_organizer", PORTAL_LEAGUE_ORGANIZER_MENU_PATHS, PORTAL_LEAGUE_ORGANIZER_PERMISSIONS);
+    }
+
+    private void prunePortalRoleExtraMenus(String roleCode, List<String> menuPaths, List<String> permissions) {
         SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode(roleCode).orElse(null);
         if (role == null) {
             return;
         }
         List<SysMenu> all = this.sysMenuRepository.findAll();
+        Set<Long> designSet = InitDataRunner.resolveDesignMenuIds(all, menuPaths, permissions);
+        if (designSet.isEmpty()) {
+            log.warn("门户角色预设菜单设计集为空，跳过收敛以防误删全部绑定（role={}）", (Object)roleCode);
+            return;
+        }
+        List<SysRoleMenu> bound = this.sysRoleMenuRepository.findByRoleId(role.getId());
+        List<SysRoleMenu> extra = bound.stream().filter(rm -> rm.getMenuId() == null || !designSet.contains(rm.getMenuId())).collect(Collectors.toList());
+        if (extra.isEmpty()) {
+            return;
+        }
+        this.sysRoleMenuRepository.deleteAllInBatch(extra);
+        log.info("已收敛门户角色超出预设的菜单绑定 {} 条（role={}）", (Object)extra.size(), (Object)roleCode);
+    }
+
+    /*
+     * 计算「预设设计集」菜单 ID 全集：path 清单 + 按钮 permission 清单 → 种子菜单 id → 沿 parentId 展开祖先目录。
+     * 补绑（bindRoleMenusAndButtons）与收敛（prunePortalRoleExtraMenus）共用同一口径，杜绝第二套解析。
+     * path/permission 须与菜单种子逐字一致（精确匹配，大小写敏感）；祖先展开复用 addMenuAncestors。
+     */
+    private static Set<Long> resolveDesignMenuIds(List<SysMenu> all, List<String> menuPaths, List<String> permissions) {
         Map<Long, SysMenu> byId = all.stream().filter(m -> m.getId() != null).collect(Collectors.toMap(BaseEntity::getId, m -> m, (a, b) -> a));
         HashSet<String> pathSet = new HashSet<String>(menuPaths);
         HashSet<String> permSet = new HashSet<String>(permissions);
         HashSet<Long> seedIds = new HashSet<Long>();
-        /* path/permission 须与菜单种子逐字一致（精确匹配，大小写敏感）。 */
         for (SysMenu m : all) {
             if (m.getId() == null) continue;
             if (m.getPath() != null && pathSet.contains(m.getPath())) {
@@ -954,6 +991,21 @@ implements CommandLineRunner {
         for (Long mid : seedIds) {
             InitDataRunner.addMenuAncestors(mid, byId, withAncestors);
         }
+        return withAncestors;
+    }
+
+    /*
+     * 按菜单 path 与按钮 permission 收集种子菜单 id → 沿 parentId 展开父级目录 → role_menu 判存插入（仅增不删）。
+     * 父级展开复用 addMenuAncestors（与 collectTenantAdminDefaultMenuIds 同源）；设计集解析复用 resolveDesignMenuIds。
+     */
+    private void bindRoleMenusAndButtons(long opId, String roleCode, List<String> menuPaths, List<String> permissions) {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode(roleCode).orElse(null);
+        if (role == null) {
+            return;
+        }
+        List<SysMenu> all = this.sysMenuRepository.findAll();
+        /* 预设设计集解析与收敛同源：resolveDesignMenuIds（path/permission → 种子 id → 祖先展开）。 */
+        Set<Long> withAncestors = InitDataRunner.resolveDesignMenuIds(all, menuPaths, permissions);
         Set<Long> bound = this.sysRoleMenuRepository.findByRoleId(role.getId()).stream().map(SysRoleMenu::getMenuId).collect(Collectors.toCollection(HashSet::new));
         int added = 0;
         for (Long mid : withAncestors) {

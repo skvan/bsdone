@@ -292,10 +292,15 @@ public class SysRoleService {
             return;
         }
         if (this.apiPermissionService.isTenantAdmin(operatorUserId)) {
-            Long tid = CurrentUserHolder.getTenantId();
+            /*
+             * 只读语义放宽（#154）：租户管理员允许只读平台级角色（tenant_id NULL）——
+             * 「租户目录」抽屉需读取平台门户角色详情（GET /sys/role/:id）以初始化全局预设；
+             * 他租户角色仍 403；写入路径零改动（update/delete 仍由 assertCanModifyRole 拦截）。
+             */
             if (role.getTenantId() == null) {
-                throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u7cfb\u7edf\u7ea7\u89d2\u8272");
+                return;
             }
+            Long tid = CurrentUserHolder.getTenantId();
             if (tid == null || !Objects.equals(role.getTenantId(), tid)) {
                 throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u89d2\u8272");
             }

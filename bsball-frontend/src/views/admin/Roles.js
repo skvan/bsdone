@@ -126,7 +126,7 @@ var ct={
       }
       ]
     }
-    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1),{submitting:tcSubmitting,withSubmitLock:tcSubmit}=me(),Tc=r(!1),tcl=r(!1),tcRole=r(null),tcEnabled=r(!1),tcHad=r(!1),tcSeeded=r(!1),tcGlobalIds=r([]),tcMenus=r([]),tcKeys=r([]),tcTreeRef=r(),tcKey=r(0);
+    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1),{submitting:tcSubmitting,withSubmitLock:tcSubmit}=me(),Tc=r(!1),tcl=r(!1),tcRole=r(null),tcEnabled=r(!1),tcHad=r(!1),tcSeeded=r(!1),tcGlobalFailed=r(!1),tcGlobalIds=r([]),tcMenus=r([]),tcKeys=r([]),tcTreeRef=r(),tcKey=r(0);
     function he(l){
       if(l==null)return[];
       if(Array.isArray(l))return l.map(a=>Number(a)).filter(a=>!Number.isNaN(a));
@@ -371,11 +371,11 @@ var ct={
     }
     async function tcOpen(l){
       const rid=l?.id;
-      tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
+      tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalFailed.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
       try{
-        const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id),st.list()]);
+        const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id).catch(()=>null),st.list()]);
         if(rid!==tcRole.value?.id||!Tc.value)return;
-        tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
+        tcGlobalFailed.value=a==null,tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
         const i=e?.enabled===!0;
         tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?he(e?.menuIds):[],tcKey.value++
       }
@@ -745,7 +745,7 @@ var ct={
         ,8,["loading","disabled","title"])]),default:n(()=>[Pe((m(),E("div",ft,[f("div",{class:"permission-filter-row",style:{gap:"8px",marginBottom:"8px"}},[t(Wi,{
           modelValue:tcEnabled.value,"onUpdate:modelValue":e[44]||(e[44]=s=>tcEnabled.value=s),onChange:tct
         }
-        ,null,8,["modelValue"]),f("span",{class:"tenant-override-label"},[u("启用租户级目录覆盖",-1)])]),f("div",{class:"tenant-override-hint"},[u(b(tcEnabled.value?(tcMenus.value.length?"勾选 = 本次覆盖的菜单集合（保存时提交含父目录的全量集合）":"菜单数据未加载，暂不可保存"):"当前继承全局预设，开启开关后可自定义本租户目录"),1)]),f("div",{class:"permission-tree-wrap",style:{
+        ,null,8,["modelValue"]),f("span",{class:"tenant-override-label"},[u("启用租户级目录覆盖",-1)])]),f("div",{class:"tenant-override-hint"},[u(b(tcEnabled.value?(tcGlobalFailed.value?"未能读取全局预设，将从空集合开始；保存后将启用覆盖":tcMenus.value.length?"勾选 = 本次覆盖的菜单集合（保存时提交含父目录的全量集合）":"菜单数据未加载，暂不可保存"):"当前继承全局预设，开启开关后可自定义本租户目录"),1)]),f("div",{class:"permission-tree-wrap",style:{
           display:tcEnabled.value?"":"none"
         }
         },[(m(),k(Me,{
