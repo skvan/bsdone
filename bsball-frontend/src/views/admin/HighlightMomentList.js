@@ -1,7 +1,7 @@
 // HighlightMomentList —— 行为保真移植自编译产物 HighlightMomentList-B0xM9i0G（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
 import { ElRadioGroup as ge, ElDialog as Ve, ElDatePicker as Se, ElRadio as he, ElTableColumn as we, ElInput as xe, ElFormItem as Ue, ElMessage as y, ElUpload as Ce, ElTable as Ee, ElOption as Ie, ElButton as Me, ElCard as Le, ElSelect as Ae, ElMessageBox as Pe, vLoading as Fe, ElForm as De } from 'element-plus';
-import { withModifiers as _e, createElementBlock as L, defineComponent as je, createTextVNode as r, computed as w, toDisplayString as A, createElementVNode as O, unref as v, mergeProps as Te, createBlock as T, ref as f, createVNode as l, withDirectives as ke, openBlock as b, withCtx as a, Fragment as H, onMounted as Oe, renderList as K, reactive as P } from 'vue';
+import { withModifiers as _e, createElementBlock as L, defineComponent as je, createTextVNode as r, computed as w, toDisplayString as A, createElementVNode as O, unref as v, mergeProps as Te, createBlock as T, ref as f, createVNode as l, withDirectives as ke, openBlock as b, withCtx as a, Fragment as H, onMounted as Oe, renderList as K, reactive as P, createCommentVNode as Lt } from 'vue';
 import { useMediaQuery as $e } from '../../composables/useMediaQuery';
 import { useSettingsStore as ze } from '../../stores/settings';
 import { exportSfc as Be } from '../../utils/exportSfc';
@@ -17,6 +17,7 @@ import { useFixedOperationColumn as We } from '../../composables/useListTable';
 import { useListTableAttrs as Ye } from '../../composables/useListTable';
 import { useModalClose as Je } from '../../composables/useModalClose';
 import { useSubmitLock as q } from '../../composables/useSubmitLock';
+import { usePermission as Wa } from '../../composables/usePermission';
 import '../../styles/legacy/highlight-moments.css';
 var Ze={
   class:"admin-page"
@@ -35,7 +36,10 @@ var Ze={
     =q(),{
       submitting:Q,withSubmitLock:R
     }
-    =q(),W=ze(),Y=$e("(max-width: 768px)"),J=w(()=>W.fillPageHeight&&!Y.value),Z=Ye(),X=We(),x=f(!1),$=f([]),U=f([]),C=f([]),E=f([]),I=f([]),s=P({
+    =q(),{
+      hasPerm:Ha
+    }
+    =Wa(),W=ze(),Y=$e("(max-width: 768px)"),J=w(()=>W.fillPageHeight&&!Y.value),Z=Ye(),X=We(),x=f(!1),$=f([]),U=f([]),C=f([]),E=f([]),I=f([]),s=P({
       subjectType:"player",subjectId:void 0,mediaType:void 0
     }
     ),p=P({
@@ -125,6 +129,21 @@ var Ze={
         }
         catch(e){
           e!=="cancel"&&y.error(e?.message||"删除失败")
+        }
+        
+      }
+      )
+    }
+    async function reReturn(i){
+      await R(async()=>{
+        try{
+          await Pe.confirm(`确认归还高光「${i.title}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+            type:"warning"
+          }
+          ),await k.delete(i.id),y.success("已归还"),V()
+        }
+        catch(e){
+          e!=="cancel"&&y.error(e?.message||"归还失败")
         }
         
       }
@@ -269,13 +288,19 @@ var Ze={
               ,{
                 default:a(()=>[...e[18]||(e[18]=[r("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),l(n,{
-                text:"",type:"danger",disabled:v(Q),onClick:ve=>re(j)
+              ,8,["onClick"]),v(Ha)("business:highlight-moment:delete")?(b(),T(n,{
+                key:0,text:"",type:"danger",disabled:v(Q),onClick:ve=>re(j)
               }
               ,{
                 default:a(()=>[...e[19]||(e[19]=[r("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])]),_:1
+              ,8,["disabled","onClick"])):Lt("",!0),v(Ha)("business:highlight-moment:return")?(b(),T(n,{
+                key:1,text:"",type:"warning",disabled:v(Q),onClick:ve=>reReturn(j)
+              }
+              ,{
+                default:a(()=>[...e[26]||(e[26]=[r("归还",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):Lt("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }
