@@ -24,6 +24,8 @@
     </main>
 
     <footer v-if="footerText" class="welcome__footer" v-html="footerText"></footer>
+    <!-- H41：新旧版切换按钮组件化接入（无顶栏页面：右上角悬浮胶囊，与原注入保底一致） -->
+    <FrontendSwitchButton variant="floating" />
   </div>
 </template>
 
@@ -35,6 +37,7 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppConfigStore } from '../../stores/appConfig';
 import { DEFAULT_TENANT_CODE } from '../../utils/tenantRoute';
+import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 
 const router = useRouter();
 const config = useAppConfigStore();

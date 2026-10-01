@@ -6,12 +6,15 @@
       该页面尚未迁移（计划组件：{{ plannedComponent || '—' }}），将在后续批次按契约逐步开放。
     </p>
     <p class="placeholder-page__path">{{ route.fullPath }}</p>
+    <!-- H41：新旧版切换按钮组件化接入（404/未迁移占位页无顶栏：右上角悬浮胶囊） -->
+    <FrontendSwitchButton variant="floating" />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 
 const route = useRoute();
 const plannedComponent = computed(() => route.meta.plannedComponent || '');
