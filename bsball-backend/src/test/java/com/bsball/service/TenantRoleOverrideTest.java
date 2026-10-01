@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.common.PageResult;
+import com.bsball.config.TenantProperties;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.SysApi;
@@ -33,6 +34,8 @@ import com.bsball.model.entity.SysMenu;
 import com.bsball.model.entity.SysMenuApi;
 import com.bsball.model.entity.SysRole;
 import com.bsball.model.entity.SysRoleMenu;
+import com.bsball.model.entity.SysTenant;
+import com.bsball.model.entity.SysUser;
 import com.bsball.model.entity.SysUserRole;
 import com.bsball.model.entity.TenantRoleMenu;
 import com.bsball.model.entity.TenantRoleMenuConfig;
@@ -43,7 +46,9 @@ import com.bsball.repository.SysRoleApiRepository;
 import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysRoleRepository;
 import com.bsball.repository.SysTenantRepository;
+import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.SysUserRoleRepository;
+import com.bsball.repository.SysUserTenantRepository;
 import com.bsball.repository.TenantRoleMenuConfigRepository;
 import com.bsball.repository.TenantRoleMenuRepository;
 import java.util.ArrayList;
@@ -105,6 +110,16 @@ class TenantRoleOverrideTest {
     private MenuExpansionHelper menuExpansionHelper;
     @Mock
     private ApiPermissionService apiPermissionService;
+    @Mock
+    private JwtService jwtService;
+    @Mock
+    private TenantProperties tenantProperties;
+    @Mock
+    private SysUserRepository sysUserRepository;
+    @Mock
+    private SysUserTenantRepository sysUserTenantRepository;
+    @Mock
+    private TenantAccessGuard tenantAccessGuard;
 
     private TenantRoleConfigService tenantRoleConfigService;
     private ApiPermissionService apiDerivationService;
@@ -260,6 +275,61 @@ class TenantRoleOverrideTest {
                 "覆盖菜单 B 对应 API 应放行");
         assertFalse(apiDerivationService.canUserAccessApi(USER_ID, "/biz/a", "GET"),
                 "全局菜单 A 的 API 应被覆盖剔除");
+    }
+
+    // ------------------------------------------------------------ 端到端：AuthService.toAuthUser（真实合并服务驱动）
+
+    @Test
+    @DisplayName("端到端：真实 TenantRoleConfigService 驱动 AuthService.toAuthUser——有覆盖→覆盖集合且剔除全局；无覆盖→回落全局")
+    void toAuthUser_endToEnd_overrideThenFallback() {
+        // 本用例选 TenantRoleOverrideTest：它已装配真实 TenantRoleConfigService（mock 其仓储），
+        // 只需补建真实 AuthService；与 TenantRetireGuardTest（真实 AuthService 但 TenantRoleConfigService 为 mock）相比，
+        // 这里能真正经「覆盖两表读取 → 生效合并」驱动 toAuthUser，故为 I4 首选。
+        AuthService authService = new AuthService(apiPermissionService, jwtService, tenantProperties,
+                sysUserRepository, sysUserRoleRepository, tenantRoleConfigService, sysMenuRepository,
+                sysUserTenantRepository, sysTenantRepository, tenantAccessGuard);
+
+        when(sysUserRepository.findById(USER_ID)).thenReturn(Optional.of(user(USER_ID)));
+        when(sysUserRoleRepository.findByUserId(USER_ID)).thenReturn(List.of(ur(USER_ID, TM_ROLE_ID)));
+        when(sysRoleRepository.findAllById(any())).thenReturn(List.of(role(TM_ROLE_ID, "team_manager", null)));
+        when(sysRoleMenuRepository.findByRoleIdIn(any())).thenReturn(List.of(rm(TM_ROLE_ID, MENU_A)));
+        when(configRepository.findByTenantIdAndRoleIdIn(eq(TENANT_T), any()))
+                .thenReturn(List.of(config(1L, TENANT_T, TM_ROLE_ID)));
+        when(configRepository.findByTenantIdAndRoleIdIn(eq(TENANT_T2), any())).thenReturn(List.of());
+        when(tenantMenuRepository.findByConfigIdIn(List.of(1L))).thenReturn(List.of(trow(1L, MENU_B)));
+        when(sysMenuRepository.findAllById(any())).thenAnswer(inv -> {
+            Collection<Long> ids = inv.getArgument(0);
+            List<SysMenu> out = new ArrayList<>();
+            if (ids.contains(MENU_A)) {
+                out.add(menuWithPerm(MENU_A, "/admin/a", "biz:a"));
+            }
+            if (ids.contains(MENU_B)) {
+                out.add(menuWithPerm(MENU_B, "/admin/b", "biz:b"));
+            }
+            return out;
+        });
+        when(tenantProperties.isStrictDataScope()).thenReturn(false);
+        when(apiPermissionService.isSuperAdmin(USER_ID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(USER_ID)).thenReturn(false);
+        when(sysTenantRepository.findById(TENANT_T)).thenReturn(Optional.of(tenant(TENANT_T)));
+        when(sysTenantRepository.findById(TENANT_T2)).thenReturn(Optional.of(tenant(TENANT_T2)));
+        when(sysUserTenantRepository.findByUserIdAndDeletedAtIsNull(USER_ID)).thenReturn(List.of());
+        when(jwtService.authenticateBearerToken("tok-T"))
+                .thenReturn(new JwtService.TokenAuth(USER_ID, TENANT_T, null, null));
+        when(jwtService.authenticateBearerToken("tok-T2"))
+                .thenReturn(new JwtService.TokenAuth(USER_ID, TENANT_T2, null, null));
+
+        Map<String, Object> withOverride = authUser(authService.me("tok-T"));
+        assertEquals(List.of(MENU_B), withOverride.get("menuIds"), "有覆盖 → menuIds 为覆盖集合");
+        assertEquals(List.of("/admin/b"), withOverride.get("menuPaths"), "menuPaths 应反映覆盖菜单 B");
+        assertEquals(List.of("biz:b"), withOverride.get("perms"), "perms 应反映覆盖菜单 B");
+        assertFalse(((List<?>) withOverride.get("menuPaths")).contains("/admin/a"), "被替换掉的全局菜单 A 不应出现");
+        assertFalse(((List<?>) withOverride.get("perms")).contains("biz:a"), "被替换掉的全局权限不应出现");
+
+        Map<String, Object> fallback = authUser(authService.me("tok-T2"));
+        assertEquals(List.of(MENU_A), fallback.get("menuIds"), "无覆盖 → 回落全局 menuIds");
+        assertEquals(List.of("/admin/a"), fallback.get("menuPaths"), "无覆盖 → 回落全局 menuPaths");
+        assertEquals(List.of("biz:a"), fallback.get("perms"), "无覆盖 → 回落全局 perms");
     }
 
     // ------------------------------------------------------------ 执行者矩阵（服务层）
@@ -462,5 +532,34 @@ class TenantRoleOverrideTest {
         u.setUserId(userId);
         u.setRoleId(roleId);
         return u;
+    }
+
+    private static SysUser user(long id) {
+        SysUser u = new SysUser();
+        u.setId(id);
+        u.setUsername("coach");
+        u.setNickname("教练");
+        return u;
+    }
+
+    private static SysTenant tenant(long id) {
+        SysTenant t = new SysTenant();
+        t.setId(id);
+        t.setCode("t" + id);
+        t.setName("租户" + id);
+        return t;
+    }
+
+    private static SysMenu menuWithPerm(long id, String path, String permission) {
+        SysMenu m = new SysMenu();
+        m.setId(id);
+        m.setPath(path);
+        m.setPermission(permission);
+        return m;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> authUser(Map<String, Object> meResult) {
+        return (Map<String, Object>) meResult.get("user");
     }
 }

@@ -126,6 +126,8 @@ public class TenantRoleConfigService {
      */
     @Transactional
     public TenantRoleMenuConfig saveOverride(Long tenantId, Long roleId, Collection<Long> menuIds, Long operatorUserId) {
+        // TODO(批 3b 已裁定硬化项/I2)：UNIQUE(tenant_id, role_id) 双击竞态——同一事务内捕获
+        //  DataIntegrityViolation 会被标记 rollback-only 而不可行；后续以幂等 upsert / 重试或独立事务边界硬化。
         TenantRoleMenuConfig config = this.configRepository.findByTenantIdAndRoleId(tenantId, roleId).orElseGet(() -> {
             TenantRoleMenuConfig created = new TenantRoleMenuConfig();
             created.setTenantId(tenantId);

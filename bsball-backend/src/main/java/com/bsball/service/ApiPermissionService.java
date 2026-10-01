@@ -177,6 +177,9 @@ public class ApiPermissionService {
             return Set.of();
         }
         Set<Long> out = this.sysRoleApiRepository.findByRoleIdIn(roleIds).stream().map(ra -> ra.getApiId()).collect(HashSet::new, Set::add, Set::addAll);
+        // I1 口径：授权按生效请求租户（CurrentUserHolder 由 X-Tenant-Id/Host/JWT 解析链写入）裁定；
+        // 菜单路径按会话租户（toAuthUser 入参）。跨租户浏览的非超管 /sys 已被 filter 拦截、数据隔离由 AccountScope 约束；
+        // 两者口径差异为批 4 前端对齐点。
         Set<Long> effectiveMenuIds = this.tenantRoleConfigService.resolveEffectiveMenuIds(CurrentUserHolder.getTenantId(), roleIds);
         if (!effectiveMenuIds.isEmpty()) {
             for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(new ArrayList<>(effectiveMenuIds))) {

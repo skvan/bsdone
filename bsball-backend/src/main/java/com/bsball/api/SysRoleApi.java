@@ -24,6 +24,7 @@ package com.bsball.api;
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.core.CurrentUserHolder;
+import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.SysRole;
 import com.bsball.service.SysRoleService;
 import java.util.ArrayList;
@@ -107,6 +108,13 @@ public class SysRoleApi {
 
     /* ----------------------------- 租户级目录覆盖（spec §8.6 / T3.15b） ----------------------------- */
 
+    /**
+     * 租户级目录覆盖端点（spec §8.6 / T3.15b）。
+     * 参数位置：PUT 用 body（roleId/menuIds[/tenantId]），GET/DELETE 用 query（roleId[/tenantId]）。
+     * <p>PUT body 校验：menuIds 必须为数组（元素须为整数，不可解析 → 400「menuIds 元素必须为数字」）；
+     * roleId 须为整数（1.5 等非整数 → 400，不截断）。空数组 = 启用空覆盖（清空走 DELETE 或显式 []）。
+     */
+
     @GetMapping(value={"/tenant-config"})
     public Result<Map<String, Object>> getTenantConfig(@RequestParam(required=false) Long tenantId, @RequestParam Long roleId) {
         Long uid = CurrentUserHolder.get();
@@ -122,7 +130,7 @@ public class SysRoleApi {
         if (uid == null) {
             return Result.fail((int)401, "\u8bf7\u5148\u767b\u5f55");
         }
-        Long roleId = SysRoleApi.asLong(body.get("roleId"));
+        Long roleId = SysRoleApi.asLongId(body.get("roleId"));
         Long tenantId = SysRoleApi.asLong(body.get("tenantId"));
         List<Long> menuIds = SysRoleApi.asLongList(body.get("menuIds"));
         return Result.ok(this.sysRoleService.saveTenantConfig(uid, tenantId, roleId, menuIds));
@@ -153,18 +161,65 @@ public class SysRoleApi {
         }
     }
 
+    /*
+     * PUT body 校验收紧（批 3b T3.15b / I3）：menuIds 缺失或非数组 → 400「menuIds 必须为数组」；
+     * 元素无法解析为整数 → 400「menuIds 元素必须为数字」（不再静默丢弃）。空数组 = 启用空覆盖。
+     */
     private static List<Long> asLongList(Object v) {
-        if (v instanceof Collection) {
-            ArrayList<Long> out = new ArrayList<Long>();
-            for (Object o : (Collection)v) {
-                Long l = SysRoleApi.asLong(o);
-                if (l != null) {
-                    out.add(l);
-                }
-            }
-            return out;
+        if (!(v instanceof Collection)) {
+            throw new BusinessException(400, "menuIds 必须为数组");
         }
-        return List.of();
+        ArrayList<Long> out = new ArrayList<Long>();
+        for (Object o : (Collection)v) {
+            Long l = SysRoleApi.asMenuIdElement(o);
+            if (l == null) {
+                throw new BusinessException(400, "menuIds 元素必须为数字");
+            }
+            out.add(l);
+        }
+        return out;
+    }
+
+    /*
+     * roleId 校验收紧（批 3b T3.15b / I3）：非整数数字（如 1.5）→ 400「roleId 必须为整数」（不截断）；
+     * 非数字仍返回 null，交由服务层以「roleId 不能为空」400 兜底（现状保持）。
+     */
+    private static Long asLongId(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof Number) {
+            double d = ((Number)v).doubleValue();
+            if (d != Math.rint(d) || Double.isInfinite(d)) {
+                throw new BusinessException(400, "roleId 必须为整数");
+            }
+            return Long.valueOf(((Number)v).longValue());
+        }
+        try {
+            return Long.valueOf(v.toString().trim());
+        }
+        catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Long asMenuIdElement(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof Number) {
+            double d = ((Number)v).doubleValue();
+            if (d != Math.rint(d) || Double.isInfinite(d)) {
+                return null;
+            }
+            return Long.valueOf(((Number)v).longValue());
+        }
+        try {
+            return Long.valueOf(v.toString().trim());
+        }
+        catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Generated

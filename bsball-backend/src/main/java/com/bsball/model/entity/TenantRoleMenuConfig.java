@@ -3,6 +3,7 @@
  *
  * 语义：行存在 = 该租户对该平台级门户角色（team_manager / league_organizer）启用覆盖（即使明细为空集）；
  *       行删除 = 回落全局 role_menu 绑定。仅平台门户角色参与覆盖，其它角色照旧走全局绑定。
+ * 刻意不继承 BaseEntity：需硬删、无软删/创建人语义；行存在=启用覆盖。
  */
 package com.bsball.model.entity;
 
