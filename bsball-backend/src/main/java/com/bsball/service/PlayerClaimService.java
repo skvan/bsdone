@@ -399,13 +399,13 @@ public class PlayerClaimService {
         if (existing != null) {
             if (this.playerTeamService.currentTeamIds(existing.getId()).contains(teamId)) {
                 // 幂等早返回：已在受邀队，无写入 → 不消费令牌。
-                return this.joinResult(existing.getId(), teamId);
+                return this.joinResult(existing.getId(), teamId, "already_joined");
             }
             // 存量档案直接入队（不调 createSelfProfile、不需 draft）。
             this.applyInviteJoin(existing, teamId);
             this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
             this.consumeInvite(invite);
-            return this.joinResult(existing.getId(), teamId);
+            return this.joinResult(existing.getId(), teamId, "joined");
         }
         if (draft == null) {
             throw new BusinessException(400, "请指定要认领的球员或提供建档信息");
@@ -416,7 +416,7 @@ public class PlayerClaimService {
         this.applyInviteJoin(created, teamId);
         this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
         this.consumeInvite(invite);
-        return this.joinResult(created.getId(), teamId);
+        return this.joinResult(created.getId(), teamId, "registered");
     }
 
     /**
@@ -460,9 +460,13 @@ public class PlayerClaimService {
         }
     }
 
-    private Map<String, Object> joinResult(Long playerId, Long teamId) {
+    /**
+     * 邀请入队结果：mode 透传子语义——新建档入队={@code registered}、存量档案直接入队={@code joined}、
+     * 已在队幂等早返回={@code already_joined}（前端据此区分提示与埋点，三者均为终态成功）。
+     */
+    private Map<String, Object> joinResult(Long playerId, Long teamId, String mode) {
         LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
-        out.put("mode", "registered");
+        out.put("mode", mode);
         out.put("playerId", playerId);
         out.put("teamId", teamId);
         return out;
