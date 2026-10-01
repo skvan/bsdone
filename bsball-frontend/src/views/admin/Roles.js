@@ -126,7 +126,7 @@ var ct={
       }
       ]
     }
-    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1),{submitting:tcSubmitting,withSubmitLock:tcSubmit}=me(),Tc=r(!1),tcl=r(!1),tcRole=r(null),tcEnabled=r(!1),tcHad=r(!1),tcSeeded=r(!1),tcGlobalFailed=r(!1),tcGlobalIds=r([]),tcMenus=r([]),tcKeys=r([]),tcTreeRef=r(),tcKey=r(0);
+    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1),{submitting:tcSubmitting,withSubmitLock:tcSubmit}=me(),tcv=r(!1),tcl=r(!1),tcRole=r(null),tcEnabled=r(!1),tcHad=r(!1),tcSeeded=r(!1),tcGlobalFailed=r(!1),tcGlobalIds=r([]),tcMenus=r([]),tcKeys=r([]),tcTreeRef=r(),tcKey=r(0);
     function he(l){
       if(l==null)return[];
       if(Array.isArray(l))return l.map(a=>Number(a)).filter(a=>!Number.isNaN(a));
@@ -371,10 +371,10 @@ var ct={
     }
     async function tcOpen(l){
       const rid=l?.id;
-      tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalFailed.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
+      tcRole.value=l,tcv.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalFailed.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
       try{
         const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id).catch(()=>null),st.list()]);
-        if(rid!==tcRole.value?.id||!Tc.value)return;
+        if(rid!==tcRole.value?.id||!tcv.value)return;
         tcGlobalFailed.value=a==null,tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
         const i=e?.enabled===!0;
         tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?he(e?.menuIds):[],tcKey.value++
@@ -403,7 +403,7 @@ var ct={
           await F.saveTenantConfig({
             roleId:l.id,menuIds:o
           }
-          ),w.success("租户目录覆盖已保存"),tcHad.value=!0,Tc.value=!1,I()
+          ),w.success("租户目录覆盖已保存"),tcHad.value=!0,tcv.value=!1,I()
         }
         catch(i){
           w.error(i?.message||"保存失败")
@@ -425,7 +425,7 @@ var ct={
           return
         }
         try{
-          await F.clearTenantConfig(l.id),w.success("已清除租户目录覆盖"),Tc.value=!1,I()
+          await F.clearTenantConfig(l.id),w.success("已清除租户目录覆盖"),tcv.value=!1,I()
         }
         catch(e){
           w.error(e?.message||"清除失败")
@@ -721,11 +721,11 @@ var ct={
         ,8,["model"])]),_:1
       }
       ,8,["modelValue","title","close-on-click-modal"]),t(Tl,{
-        modelValue:Tc.value,"onUpdate:modelValue":e[42]||(e[42]=s=>Tc.value=s),title:`租户目录覆盖：${tcRole.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
+        modelValue:tcv.value,"onUpdate:modelValue":e[42]||(e[42]=s=>tcv.value=s),title:`租户目录覆盖：${tcRole.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
       }
       ,{
         footer:n(()=>[t(a,{
-          onClick:e[43]||(e[43]=s=>Tc.value=!1)
+          onClick:e[43]||(e[43]=s=>tcv.value=!1)
         }
         ,{
           default:n(()=>[u("取消",-1)]),_:1
@@ -759,7 +759,7 @@ var ct={
             data:s
           }
           )=>[f("span",ht,[f("span",null,b(s.title||s.name||"—"),1)])]),_:1}
-        ,8,["data","default-checked-keys"]))])])),[[Ke,tcl.value]])]),_:1}),t(Tl,{
+        ,8,["data","default-checked-keys"]))])])),[[Ke,tcl.value]])]),_:1},8,["modelValue","title","size","close-on-click-modal"]),t(Tl,{
         modelValue:G.value,"onUpdate:modelValue":e[17]||(e[17]=s=>G.value=s),title:`设置权限：${Z.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
       }
       ,{
