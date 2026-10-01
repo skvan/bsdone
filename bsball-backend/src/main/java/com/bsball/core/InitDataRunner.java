@@ -142,6 +142,8 @@ implements CommandLineRunner {
                 this.seedMenus(adminId);
                 this.seedApis(adminId);
                 this.ensurePortalProvisionApisIfNeeded();
+                this.ensurePlatformAssetApisIfNeeded();
+                this.ensureBatchAndTenantRoleConfigApisIfNeeded();
                 this.ensureMenuDirectoryTypesAndDefaultButtons();
                 this.seedDict(adminId);
                 this.seedConfig(adminId);
@@ -174,6 +176,9 @@ implements CommandLineRunner {
                 this.ensureAdminRoleBindsAllMenusIfNeeded();
                 this.ensureAdminRoleBindsAllApisIfNeeded();
                 this.ensureTenantAdminRoleIfNeeded();
+                this.ensureTenantAdminRoleExcludesBusinessDeleteButtons();
+                this.ensurePlatformAssetApisIfNeeded();
+                this.ensureBatchAndTenantRoleConfigApisIfNeeded();
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
                 long opIdForRoles = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 this.ensurePortalRolesIfNeeded(opIdForRoles);
@@ -567,6 +572,87 @@ implements CommandLineRunner {
         }
     }
 
+    /**
+     * 历史数据处置权收窄（批次 3b，spec §6.10）：从 tenant_admin 既有菜单绑定中移除 business:*:delete 类按钮
+     * （删除权收窄为仅超管）。幂等：无绑定则无操作；admin 全量绑定保持不动。
+     */
+    private void ensureTenantAdminRoleExcludesBusinessDeleteButtons() {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin").orElse(null);
+        if (role == null) {
+            return;
+        }
+        Set<Long> deleteButtonIds = this.sysMenuRepository.findAll().stream()
+                .filter(m -> InitDataRunner.isBusinessDeletePermission(m.getPermission()))
+                .map(BaseEntity::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (deleteButtonIds.isEmpty()) {
+            return;
+        }
+        int removed = 0;
+        for (SysRoleMenu rm : this.sysRoleMenuRepository.findByRoleId(role.getId())) {
+            if (deleteButtonIds.contains(rm.getMenuId())) {
+                this.sysRoleMenuRepository.delete(rm);
+                ++removed;
+            }
+        }
+        if (removed > 0) {
+            log.info("\u5386\u53f2\u6570\u636e\u5904\u7f6e\u6743\u6536\u7a84\uff1a\u5df2\u4ece\u79df\u6237\u7ba1\u7406\u5458\u89d2\u8272\u79fb\u9664 {} \u6761 delete \u7c7b\u6309\u94ae\u7ed1\u5b9a", (Object)removed);
+        }
+    }
+
+    /**
+     * 平台资产归还汇总 API 注册（批次 3b，spec §6.10）：仅超管端点 /sys/platform-asset/summary（GET）。
+     * 幂等：已存在同 path+method 则不重复写入；不绑定任何角色（过滤器层仅超管可访问）。
+     */
+    private void ensurePlatformAssetApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        String path = "/sys/platform-asset/summary";
+        boolean exists = this.sysApiRepository.findAll().stream()
+                .anyMatch(e -> path.equals(e.getPath()) && "GET".equalsIgnoreCase(e.getMethod()));
+        if (exists) {
+            return;
+        }
+        SysApi api = new SysApi();
+        api.setPath(path);
+        api.setMethod("GET");
+        api.setDescription("\u5e73\u53f0\u8d44\u4ea7\u5f52\u8fd8\u6c47\u603b");
+        api.setGroupName("\u5e73\u53f0\u8d44\u4ea7");
+        api.setCreatedBy(Long.valueOf(opId));
+        api.setUpdatedBy(Long.valueOf(opId));
+        this.sysApiRepository.save(api);
+    }
+
+    /**
+     * 批次 3b 新增端点注册（spec §6.10）：首装与升级双路径均调用，保证既有库升级后亦完成 sys_api 注册。
+     * 幂等：逐条按 (method, path) 判存，缺失才插入；不绑定任何角色（绑定由后续角色种子处理）。
+     *  - POST   /team/batch-create               批量创建球队（球队管理）
+     *  - GET    /sys/role/tenant-config          查询租户级目录覆盖（权限管理）
+     *  - PUT    /sys/role/tenant-config          保存租户级目录覆盖（权限管理）
+     *  - DELETE /sys/role/tenant-config          清除租户级目录覆盖（权限管理）
+     */
+    private void ensureBatchAndTenantRoleConfigApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<ApiDef> apis = List.of(new ApiDef("/team/batch-create", "POST", "\u6279\u91cf\u521b\u5efa\u7403\u961f", "\u7403\u961f\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "GET", "\u67e5\u8be2\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "PUT", "\u4fdd\u5b58\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "DELETE", "\u6e05\u9664\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"));
+        ArrayList<SysApi> existing = new ArrayList<SysApi>(this.sysApiRepository.findAll());
+        int added = 0;
+        for (ApiDef a : apis) {
+            boolean exists = existing.stream().anyMatch(e -> a.path.equals(e.getPath()) && a.method.equalsIgnoreCase(e.getMethod()));
+            if (exists) continue;
+            SysApi api = new SysApi();
+            api.setPath(a.path);
+            api.setMethod(a.method);
+            api.setDescription(a.desc);
+            api.setGroupName(a.group);
+            api.setCreatedBy(Long.valueOf(opId));
+            api.setUpdatedBy(Long.valueOf(opId));
+            existing.add((SysApi)this.sysApiRepository.save(api));
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已补录批次 3b 端点 {} 条（幂等判存）", (Object)added);
+        }
+    }
+
     private static boolean isApiAllowedForTenantAdmin(SysApi a) {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
@@ -646,6 +732,8 @@ implements CommandLineRunner {
                 direct.add(m2.getId());
             }
             if (businessRootId == null || !InitDataRunner.menuIsSelfOrDescendantOf((Long)m2.getId(), (Long)businessRootId, byId)) continue;
+            // 历史数据处置权（spec §6.10）：business:*:delete 类按钮不再默认授予租户管理员（收窄为仅超管）
+            if (InitDataRunner.isBusinessDeletePermission((String)m2.getPermission())) continue;
             direct.add(m2.getId());
         }
         HashSet<Long> withAncestors = new HashSet<Long>(direct);
@@ -653,6 +741,11 @@ implements CommandLineRunner {
             InitDataRunner.addMenuAncestors((Long)mid, byId, withAncestors);
         }
         return withAncestors;
+    }
+
+    /** 是否「business:*:delete」类按钮权限（spec §6.10 处置权收窄：租户管理员默认集合排除）。 */
+    private static boolean isBusinessDeletePermission(String permission) {
+        return permission != null && permission.startsWith("business:") && permission.endsWith(":delete");
     }
 
     private static boolean menuIsSelfOrDescendantOf(Long menuId, Long rootId, Map<Long, SysMenu> byId) {
@@ -741,8 +834,8 @@ implements CommandLineRunner {
      * 初始分支与升级分支均调用（见 run）。
      */
     private void ensurePortalRoleBindingsIfNeeded(long opId) {
-        this.bindRoleMenusAndButtons(opId, "team_manager", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:lineup-template:manage"));
-        this.bindRoleMenusAndButtons(opId, "league_organizer", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates", "/admin/leagues", "/admin/events"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:lineup-template:manage", "business:event:create", "business:event:edit", "business:event:delete", "business:event:games", "business:event:bracket", "business:game:import", "business:game:create", "business:game:edit", "business:game:delete", "business:game:export", "business:game:saveResult", "business:game:collage"));
+        this.bindRoleMenusAndButtons(opId, "team_manager", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:lineup-template:manage"));
+        this.bindRoleMenusAndButtons(opId, "league_organizer", List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates", "/admin/leagues", "/admin/events"), List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:team:batchCreate", "business:lineup-template:manage", "business:event:create", "business:event:edit", "business:event:delete", "business:event:games", "business:event:bracket", "business:game:import", "business:game:create", "business:game:edit", "business:game:delete", "business:game:export", "business:game:saveResult", "business:game:collage"));
         this.bindRoleApis(opId, "member", InitDataRunner::isApiAllowedForMember);
         this.bindRoleApis(opId, "team_manager", InitDataRunner::isApiAllowedForTeamManager);
         this.bindRoleApis(opId, "league_organizer", InitDataRunner::isApiAllowedForLeagueOrganizer);
@@ -859,9 +952,10 @@ implements CommandLineRunner {
             return true;
         }
         if (p.startsWith("/team/")) {
-            return !p.startsWith("/team/delete");
+            /* 不授删除；不授批量建队（仅联盟主办方，见 league_organizer 谓词）。 */
+            return !p.startsWith("/team/delete") && !p.startsWith("/team/batch-create");
         }
-        return "/player/team-options".equals(p) || "/player/list".equals(p);
+        return "/player/team-options".equals(p) || "/player/list".equals(p) || "/player/import".equals(p);
     }
 
     /* league_organizer：team_manager 集 + 联盟/赛事/比赛；排除联盟主办方管理（/league/*owner*）与建联盟审核（/league/create-request/*，仅管理员）。 */
@@ -875,6 +969,10 @@ implements CommandLineRunner {
         }
         if (p.startsWith("/league/") && p.contains("/owner")) {
             return false;
+        }
+        /* 批量建队：仅联盟主办方（上方已排除 /team/delete；team_manager 谓词不授该端点）。 */
+        if (p.startsWith("/team/batch-create")) {
+            return true;
         }
         if (InitDataRunner.isApiAllowedForTeamManager(a)) {
             return true;
@@ -1354,7 +1452,7 @@ implements CommandLineRunner {
         Map<String, SysMenu> byPath = this.sysMenuRepository.findAll().stream().filter(x -> x.getPath() != null && !x.getPath().isBlank()).collect(Collectors.toMap(SysMenu::getPath, x -> x, (a, b) -> a));
         Map apiLookup = this.buildApiPathMethodLookup();
         long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
-        List<ButtonSeed> seeds = List.of(new ButtonSeed("/admin/events", "\u53d1\u5e03\u8d5b\u4e8b", "business:event:create", 1, new String[]{"POST|/event/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u8d5b\u4e8b", "business:event:edit", 2, new String[]{"PUT|/event/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u8d5b\u4e8b", "business:event:delete", 3, new String[]{"DELETE|/event/delete/:id"}), new ButtonSeed("/admin/events", "\u8d5b\u7a0b\u4e0e\u7ed3\u679c", "business:event:games", 4, new String[]{"GET|/game/list"}), new ButtonSeed("/admin/events", "\u5bf9\u6218\u8be6\u60c5", "business:event:bracket", 5, new String[]{"GET|/event/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u5165\u6bd4\u8d5b\u6570\u636e", "business:game:import", 6, new String[]{"POST|/event/:eventId/import-game-result"}), new ButtonSeed("/admin/events", "\u65b0\u589e\u6bd4\u8d5b", "business:game:create", 7, new String[]{"POST|/game/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u6bd4\u8d5b", "business:game:edit", 8, new String[]{"PUT|/game/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u6bd4\u8d5b", "business:game:delete", 9, new String[]{"DELETE|/game/delete/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u51fa\u6bd4\u8d5b\u6570\u636e", "business:game:export", 10, new String[0]), new ButtonSeed("/admin/events", "\u4fdd\u5b58\u6bd4\u8d5b\u7ed3\u679c", "business:game:saveResult", 11, new String[]{"POST|/game/:id/save-result"}), new ButtonSeed("/admin/events", "\u4e00\u952e\u62fc\u56fe", "business:game:collage", 12, new String[0]), new ButtonSeed("/admin/teams", "\u65b0\u589e\u7403\u961f", "business:team:create", 1, new String[]{"POST|/team/create"}), new ButtonSeed("/admin/teams", "\u7f16\u8f91\u7403\u961f", "business:team:edit", 2, new String[]{"PUT|/team/update/:id"}), new ButtonSeed("/admin/teams", "\u5220\u9664\u7403\u961f", "business:team:delete", 3, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/teams", "\u7ba1\u7406\u7403\u5458", "business:team:managePlayers", 4, new String[]{"GET|/player/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5206\u9875\u5217\u8868", "business:lineup-template:manage", 1, new String[]{"GET|/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5217\u8868", "business:lineup-template:manage", 2, new String[]{"GET|/team/:teamId/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u8be6\u60c5", "business:lineup-template:manage", 3, new String[]{"GET|/team/:teamId/lineup-template/:id"}), new ButtonSeed("/admin/lineup-templates", "\u65b0\u589e\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 4, new String[]{"POST|/team/:teamId/lineup-template/create"}), new ButtonSeed("/admin/lineup-templates", "\u4ece\u6bd4\u8d5b\u590d\u5236\u6a21\u677f", "business:lineup-template:manage", 5, new String[]{"POST|/team/:teamId/lineup-template/copy-from-game"}), new ButtonSeed("/admin/lineup-templates", "\u7f16\u8f91\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 6, new String[]{"PUT|/team/:teamId/lineup-template/update/:id"}), new ButtonSeed("/admin/lineup-templates", "\u5220\u9664\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 7, new String[]{"DELETE|/team/:teamId/lineup-template/delete/:id"}), new ButtonSeed("/admin/lineup-templates", "\u7403\u961f\u7403\u5458\u9009\u9879", "business:lineup-template:manage", 8, new String[]{"GET|/player/team-options"}), new ButtonSeed("/admin/users", "\u65b0\u589e\u7528\u6237", "sys:user:create", 1, new String[]{"POST|/sys/user/create"}), new ButtonSeed("/admin/users", "\u7f16\u8f91\u7528\u6237", "sys:user:edit", 2, new String[]{"PUT|/sys/user/update/:id"}), new ButtonSeed("/admin/users", "\u5220\u9664\u7528\u6237", "sys:user:delete", 3, new String[]{"DELETE|/sys/user/delete/:id"}), new ButtonSeed("/admin/roles", "\u65b0\u589e\u89d2\u8272", "sys:role:create", 1, new String[]{"POST|/sys/role/create"}), new ButtonSeed("/admin/roles", "\u7f16\u8f91\u89d2\u8272", "sys:role:edit", 2, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/roles", "\u8bbe\u7f6e\u6743\u9650", "sys:role:permission", 3, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/menus", "\u65b0\u589e\u83dc\u5355", "sys:menu:create", 1, new String[]{"POST|/sys/menu/create"}), new ButtonSeed("/admin/menus", "\u7f16\u8f91\u83dc\u5355", "sys:menu:edit", 2, new String[]{"PUT|/sys/menu/update/:id"}), new ButtonSeed("/admin/menus", "\u5220\u9664\u83dc\u5355", "sys:menu:delete", 3, new String[]{"DELETE|/sys/menu/delete/:id"}), new ButtonSeed("/admin/players", "新增球员", "business:player:create", 1, new String[]{"POST|/player/create"}), new ButtonSeed("/admin/players", "编辑球员", "business:player:edit", 2, new String[]{"PUT|/player/update/:id"}), new ButtonSeed("/admin/players", "删除球员", "business:player:delete", 3, new String[]{"DELETE|/player/delete/:id"}), new ButtonSeed("/admin/players", "导入球员", "business:player:import", 4, new String[]{"POST|/player/import"}), new ButtonSeed("/admin/leagues", "创建联盟", "business:league:create", 1, new String[]{"POST|/league/create"}), new ButtonSeed("/admin/player-claims", "审核认领", "business:claim:review", 1, new String[]{"POST|/account/player-claims/:id/approve", "POST|/account/player-claims/:id/reject"}));
+        List<ButtonSeed> seeds = List.of(new ButtonSeed("/admin/events", "\u53d1\u5e03\u8d5b\u4e8b", "business:event:create", 1, new String[]{"POST|/event/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u8d5b\u4e8b", "business:event:edit", 2, new String[]{"PUT|/event/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u8d5b\u4e8b", "business:event:delete", 3, new String[]{"DELETE|/event/delete/:id"}), new ButtonSeed("/admin/events", "\u8d5b\u7a0b\u4e0e\u7ed3\u679c", "business:event:games", 4, new String[]{"GET|/game/list"}), new ButtonSeed("/admin/events", "\u5bf9\u6218\u8be6\u60c5", "business:event:bracket", 5, new String[]{"GET|/event/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u5165\u6bd4\u8d5b\u6570\u636e", "business:game:import", 6, new String[]{"POST|/event/:eventId/import-game-result"}), new ButtonSeed("/admin/events", "\u65b0\u589e\u6bd4\u8d5b", "business:game:create", 7, new String[]{"POST|/game/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u6bd4\u8d5b", "business:game:edit", 8, new String[]{"PUT|/game/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u6bd4\u8d5b", "business:game:delete", 9, new String[]{"DELETE|/game/delete/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u51fa\u6bd4\u8d5b\u6570\u636e", "business:game:export", 10, new String[0]), new ButtonSeed("/admin/events", "\u4fdd\u5b58\u6bd4\u8d5b\u7ed3\u679c", "business:game:saveResult", 11, new String[]{"POST|/game/:id/save-result"}), new ButtonSeed("/admin/events", "\u4e00\u952e\u62fc\u56fe", "business:game:collage", 12, new String[0]), new ButtonSeed("/admin/teams", "\u65b0\u589e\u7403\u961f", "business:team:create", 1, new String[]{"POST|/team/create"}), new ButtonSeed("/admin/teams", "\u7f16\u8f91\u7403\u961f", "business:team:edit", 2, new String[]{"PUT|/team/update/:id"}), new ButtonSeed("/admin/teams", "\u5220\u9664\u7403\u961f", "business:team:delete", 3, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/teams", "\u7ba1\u7406\u7403\u5458", "business:team:managePlayers", 4, new String[]{"GET|/player/list"}), new ButtonSeed("/admin/teams", "\u6279\u91cf\u5efa\u961f", "business:team:batchCreate", 5, new String[]{"POST|/team/batch-create"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5206\u9875\u5217\u8868", "business:lineup-template:manage", 1, new String[]{"GET|/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5217\u8868", "business:lineup-template:manage", 2, new String[]{"GET|/team/:teamId/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u8be6\u60c5", "business:lineup-template:manage", 3, new String[]{"GET|/team/:teamId/lineup-template/:id"}), new ButtonSeed("/admin/lineup-templates", "\u65b0\u589e\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 4, new String[]{"POST|/team/:teamId/lineup-template/create"}), new ButtonSeed("/admin/lineup-templates", "\u4ece\u6bd4\u8d5b\u590d\u5236\u6a21\u677f", "business:lineup-template:manage", 5, new String[]{"POST|/team/:teamId/lineup-template/copy-from-game"}), new ButtonSeed("/admin/lineup-templates", "\u7f16\u8f91\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 6, new String[]{"PUT|/team/:teamId/lineup-template/update/:id"}), new ButtonSeed("/admin/lineup-templates", "\u5220\u9664\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 7, new String[]{"DELETE|/team/:teamId/lineup-template/delete/:id"}), new ButtonSeed("/admin/lineup-templates", "\u7403\u961f\u7403\u5458\u9009\u9879", "business:lineup-template:manage", 8, new String[]{"GET|/player/team-options"}), new ButtonSeed("/admin/users", "\u65b0\u589e\u7528\u6237", "sys:user:create", 1, new String[]{"POST|/sys/user/create"}), new ButtonSeed("/admin/users", "\u7f16\u8f91\u7528\u6237", "sys:user:edit", 2, new String[]{"PUT|/sys/user/update/:id"}), new ButtonSeed("/admin/users", "\u5220\u9664\u7528\u6237", "sys:user:delete", 3, new String[]{"DELETE|/sys/user/delete/:id"}), new ButtonSeed("/admin/roles", "\u65b0\u589e\u89d2\u8272", "sys:role:create", 1, new String[]{"POST|/sys/role/create"}), new ButtonSeed("/admin/roles", "\u7f16\u8f91\u89d2\u8272", "sys:role:edit", 2, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/roles", "\u8bbe\u7f6e\u6743\u9650", "sys:role:permission", 3, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/menus", "\u65b0\u589e\u83dc\u5355", "sys:menu:create", 1, new String[]{"POST|/sys/menu/create"}), new ButtonSeed("/admin/menus", "\u7f16\u8f91\u83dc\u5355", "sys:menu:edit", 2, new String[]{"PUT|/sys/menu/update/:id"}), new ButtonSeed("/admin/menus", "\u5220\u9664\u83dc\u5355", "sys:menu:delete", 3, new String[]{"DELETE|/sys/menu/delete/:id"}), new ButtonSeed("/admin/players", "新增球员", "business:player:create", 1, new String[]{"POST|/player/create"}), new ButtonSeed("/admin/players", "编辑球员", "business:player:edit", 2, new String[]{"PUT|/player/update/:id"}), new ButtonSeed("/admin/players", "删除球员", "business:player:delete", 3, new String[]{"DELETE|/player/delete/:id"}), new ButtonSeed("/admin/players", "导入球员", "business:player:import", 4, new String[]{"POST|/player/import"}), new ButtonSeed("/admin/leagues", "创建联盟", "business:league:create", 1, new String[]{"POST|/league/create"}), new ButtonSeed("/admin/player-claims", "审核认领", "business:claim:review", 1, new String[]{"POST|/account/player-claims/:id/approve", "POST|/account/player-claims/:id/reject"}));
         int inserted = 0;
         for (ButtonSeed s : seeds) {
             boolean exists;

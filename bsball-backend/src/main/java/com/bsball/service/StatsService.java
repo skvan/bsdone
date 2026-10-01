@@ -49,9 +49,9 @@ import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.model.dto.StandingGameRowDTO;
-import com.bsball.model.dto.TeamOptionDto;
+import com.bsball.model.entity.Team;
+import com.bsball.repository.TeamRepository;
 import com.bsball.service.StatsService;
-import com.bsball.service.TeamService;
 import com.bsball.stats.PlayerStatDrillBattingMetric;
 import com.bsball.stats.PlayerStatDrillFieldingMetric;
 import com.bsball.stats.PlayerStatDrillPitchingMetric;
@@ -82,7 +82,7 @@ public class StatsService {
     private final PlayerStatsMapper playerStatsMapper;
     private final StatsLeadersMapper statsLeadersMapper;
     private final TenantProperties tenantProperties;
-    private final TeamService teamService;
+    private final TeamRepository teamRepository;
     private static final List<StarTopListMetricSpec> STAR_TOP_LIST_SPECS = List.of(new StarTopListMetricSpec("era", "pitching", "era", "asc", "era", "\u9632\u5fa1\u7387", "\u6295\u7403", "ERA"), new StarTopListMetricSpec("avg", "batting", "avg", "desc", "avg", "\u6253\u51fb\u7387", "\u6253\u51fb", "AVG"), new StarTopListMetricSpec("w", "pitching", "w", "desc", "w", "\u80dc\u6295", "\u6295\u7403", "W"), new StarTopListMetricSpec("h", "batting", "h", "desc", "h", "\u5b89\u6253\u6570", "\u6253\u51fb", "H"), new StarTopListMetricSpec("sv", "pitching", "sv", "desc", "sv", "\u6551\u63f4\u6210\u529f", "\u6295\u7403", "SV"), new StarTopListMetricSpec("hr", "batting", "hr", "desc", "hr", "\u5168\u5792\u6253", "\u6253\u51fb", "HR"), new StarTopListMetricSpec("hld", "pitching", "hld", "desc", "hld", "\u4e2d\u7ee7\u6210\u529f", "\u6295\u7403", "HLD"), new StarTopListMetricSpec("rbi", "batting", "rbi", "desc", "rbi", "\u6253\u70b9", "\u6253\u51fb", "RBI"), new StarTopListMetricSpec("so", "pitching", "pitchSo", "desc", "pitchSo", "\u593a\u4e09\u632f", "\u6295\u7403", "SO"), new StarTopListMetricSpec("sb", "batting", "sb", "desc", "sb", "\u76d7\u5792\u6210\u529f", "\u6253\u51fb", "SB"));
 
     private long resolveTenantId() {
@@ -771,13 +771,8 @@ public class StatsService {
         int ps;
         long tid = this.resolveTenantId();
         String gm = StatsService.normalizeGameMode(gameMode);
-        List<TeamOptionDto> teamList = this.teamService.listForSelect();
-        if (teamList.isEmpty()) {
-            return PageResult.of(List.of(), (long)0L);
-        }
-        Set<Long> validTeamIds = teamList.stream().map(TeamOptionDto::id).filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
         List<StandingGameRowDTO> games = this.statsLeadersMapper.selectStandingGames(Long.valueOf(tid), eventId, eventIds, years, gm);
-        List<Map<String, Object>> all = this.buildStandingsRows(games, teamList, validTeamIds);
+        List<Map<String, Object>> all = this.buildStandingsRows(games);
         long total = all.size();
         if (total == 0L) {
             return PageResult.of(List.of(), (long)0L);
@@ -1082,15 +1077,38 @@ public class StatsService {
         teamGames.computeIfAbsent(teamId, k -> new ArrayList<>()).add(line);
     }
 
-    private List<Map<String, Object>> buildStandingsRows(List<StandingGameRowDTO> games, List<TeamOptionDto> teamList, Set<Long> validTeamIds) {
+    private List<Map<String, Object>> buildStandingsRows(List<StandingGameRowDTO> games) {
+        // 参赛球队集合由比赛记录反推（含已解散）：home/away 出现的队 id 一律计入，队 id 缺省才跳过
+        LinkedHashSet<Long> teamIds = new LinkedHashSet<Long>();
+        for (StandingGameRowDTO g : games) {
+            if (g.getHomeTeamId() != null) {
+                teamIds.add(g.getHomeTeamId());
+            }
+            if (g.getAwayTeamId() != null) {
+                teamIds.add(g.getAwayTeamId());
+            }
+        }
+        // 队名与 dissolved 标记：走“含已解散”名称查询（否则解散队名退化为“球队#id”、前端无法标注已解散）
+        Map<Long, String> teamNameById = new LinkedHashMap<Long, String>();
+        Set<Long> dissolvedTeamIds = new LinkedHashSet<Long>();
+        if (!teamIds.isEmpty()) {
+            for (Team t : this.teamRepository.findByIdInIncludingDissolved(teamIds)) {
+                if (t.getId() == null) {
+                    continue;
+                }
+                teamNameById.put(t.getId(), t.getName());
+                if (t.getDeletedAt() != null) {
+                    dissolvedTeamIds.add(t.getId());
+                }
+            }
+        }
         HashMap<Long, int[]> wl = new HashMap<Long, int[]>();
         HashMap<Long, List<StandLine>> teamGames = new HashMap<>();
-        Map teamNameById = teamList.stream().filter(t -> t.id() != null && validTeamIds.contains(t.id())).collect(Collectors.toMap(TeamOptionDto::id, TeamOptionDto::name, (a, b) -> a, LinkedHashMap::new));
         for (StandingGameRowDTO standingGameRowDTO : games) {
             int asv;
             Long l = standingGameRowDTO.getHomeTeamId();
             Long l2 = standingGameRowDTO.getAwayTeamId();
-            if (l == null || l2 == null || !validTeamIds.contains(l) || !validTeamIds.contains(l2)) continue;
+            if (l == null || l2 == null) continue;
             Integer hs = standingGameRowDTO.getHomeScore();
             Integer as = standingGameRowDTO.getAwayScore();
             if (hs == null || as == null) continue;
@@ -1168,6 +1186,7 @@ public class StatsService {
             LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
             row.put("teamId", l);
             row.put("teamName", teamNameById.getOrDefault(l, "\u7403\u961f#" + l));
+            row.put("dissolved", dissolvedTeamIds.contains(l));
             row.put("win", w);
             row.put("draw", d);
             row.put("loss", l3);
@@ -1223,11 +1242,11 @@ public class StatsService {
     }
 
     @Generated
-    public StatsService(PlayerStatsMapper playerStatsMapper, StatsLeadersMapper statsLeadersMapper, TenantProperties tenantProperties, TeamService teamService) {
+    public StatsService(PlayerStatsMapper playerStatsMapper, StatsLeadersMapper statsLeadersMapper, TenantProperties tenantProperties, TeamRepository teamRepository) {
         this.playerStatsMapper = playerStatsMapper;
         this.statsLeadersMapper = statsLeadersMapper;
         this.tenantProperties = tenantProperties;
-        this.teamService = teamService;
+        this.teamRepository = teamRepository;
     }
 
     private record StandLine(String sortKey, char outcome, int rf, int ra) {

@@ -102,6 +102,9 @@ extends BaseEntity {
     private @Size(max=2000, message="\u7b80\u4ecb\u4e0d\u80fd\u8d85\u8fc72000\u5b57") String intro;
     @Comment(value="\u6392\u5e8f")
     private Integer sort = 0;
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
     // 非持久化：球队经历（简历式多段），仅用于接口输出，由 PlayerTeamService 填充
     @Transient
     private List<PlayerTeamEntryDto> teamEntries;
@@ -266,6 +269,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
+    }
+
+    @Generated
     public void setUserId(Long userId) {
         this.userId = userId;
     }
@@ -398,6 +406,11 @@ extends BaseEntity {
     @Generated
     public void setSort(Integer sort) {
         this.sort = sort;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     public List<PlayerTeamEntryDto> getTeamEntries() {

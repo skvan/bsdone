@@ -124,12 +124,17 @@ public class LeagueService {
      * 指定租户建联盟（批次 3a 评审修复 I1）：供跨租户审批（LeagueProvisionService.approve）复用，
      * 确保联盟落库租户 == 申请租户，而非审核者上下文租户（超管全局 token 下上下文租户为 0）。
      * createInternal 保持原语义（上下文租户）；本方法仅新增显式租户入参，不改变原路径行为。
+     * 批 3a 沉淀⑪硬化：直建路径补 name 长度守卫（len>200 → 400），与 submitOrCreate 待审分支同口径
+     * （bs_league.name 列定义 length=200）。
      */
     public League createInternalForTenant(League entity, long tenantId) {
         entity.setTenantId(Long.valueOf(tenantId));
         String name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
+        }
+        if (name.length() > 200) {
+            throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u8fc7\u957f");
         }
         entity.setName(name);
         if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tenantId), name)) {
@@ -177,6 +182,10 @@ public class LeagueService {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8054\u76df");
         }
         this.resourceGuard.assertCanManageLeague(id);
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.leagueRepository.save(existing);

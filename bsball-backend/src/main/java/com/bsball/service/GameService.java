@@ -1,41 +1,6 @@
 /*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  com.bsball.common.PageResult
- *  com.bsball.common.PaginationSupport
- *  com.bsball.core.CurrentUserHolder
- *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.GameSaveLiveDTO
- *  com.bsball.model.dto.GameSaveLiveDTO$GamePlayerStatPart
- *  com.bsball.model.dto.GameSaveLiveDTO$GameUpdatePart
- *  com.bsball.model.dto.SaveGameResultDTO
- *  com.bsball.model.dto.SaveGameResultDTO$GamePart
- *  com.bsball.model.dto.SaveGameResultDTO$StatPart
- *  com.bsball.model.entity.BaseEntity
- *  com.bsball.model.entity.Event
- *  com.bsball.model.entity.Game
- *  com.bsball.model.entity.GamePlayerStat
- *  com.bsball.model.entity.Stadium
- *  com.bsball.repository.EventRepository
- *  com.bsball.repository.GamePlayerStatRepository
- *  com.bsball.repository.GameRepository
- *  com.bsball.repository.StadiumRepository
- *  com.bsball.service.GameService
- *  com.bsball.service.TenantQueryPolicyService
- *  com.fasterxml.jackson.core.JsonProcessingException
- *  com.fasterxml.jackson.databind.ObjectMapper
- *  jakarta.persistence.criteria.Expression
- *  jakarta.persistence.criteria.Predicate
- *  lombok.Generated
- *  org.springframework.data.domain.Page
- *  org.springframework.data.domain.PageRequest
- *  org.springframework.data.domain.Pageable
- *  org.springframework.data.domain.Sort
- *  org.springframework.data.domain.Sort$Direction
- *  org.springframework.data.jpa.domain.Specification
- *  org.springframework.stereotype.Service
- *  org.springframework.transaction.annotation.Transactional
+ * 账号权限重构（批次 3b 收敛）：比赛（Game）业务服务。
+ * 批 2 沉淀⑥ Minor 收敛：清理反编译残留头注释（无行为变化）。
  */
 package com.bsball.service;
 
@@ -59,7 +24,6 @@ import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
-import com.bsball.service.TenantQueryPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -106,7 +70,7 @@ public class GameService {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        boolean bl = hasFilter = eventId != null || eventIds != null && !eventIds.isEmpty() || years != null && !years.isEmpty();
+        hasFilter = eventId != null || eventIds != null && !eventIds.isEmpty() || years != null && !years.isEmpty();
         if (!hasFilter) {
             Specification spec = (root, q, cb) -> {
                 ArrayList<Predicate> preds = new ArrayList<Predicate>();
@@ -171,7 +135,8 @@ public class GameService {
         }
         EffectiveScope scope = this.accountScopeService.resolveCurrent();
         List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
-        if (visibleLeagueIds != null && ev.getLeagueId() != null && !visibleLeagueIds.contains(ev.getLeagueId())) {
+        // 批次 3b（前置⑤）：管理上下文 + 受限身份下，leagueId 为 null 亦拒绝（与 list 收窄口径一致）；非管理上下文（宽读）不变。
+        if (visibleLeagueIds != null && (ev.getLeagueId() == null || !visibleLeagueIds.contains(ev.getLeagueId()))) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
         }
         return g;
@@ -248,6 +213,10 @@ public class GameService {
             return;
         }
         this.assertGameWritable(existing);
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.gameRepository.save(existing);
@@ -451,12 +420,18 @@ public class GameService {
         if (game == null) {
             return;
         }
+        // 批次 3b（前置④）：守卫前移——位内任何 set/save 之前，基于「原域」判定（防跳域搬运）。
+        this.assertGameWritable(game);
         if (dto != null && dto.getStats() != null && !Boolean.TRUE.equals(game.getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
         }
         if (dto.getGame() != null) {
             SaveGameResultDTO.GamePart g = dto.getGame();
             if (g.getEventId() != null) {
+                if (!g.getEventId().equals(game.getEventId())) {
+                    // 改 eventId：原域已在 assertGameWritable 校验；此处再校验目标域可管理，禁跨域搬运。
+                    this.resourceGuard.assertCanManageEvent(g.getEventId());
+                }
                 game.setEventId(g.getEventId());
             }
             if (g.getHomeTeamId() != null) {
@@ -548,7 +523,6 @@ public class GameService {
             }
             this.gameRepository.save(game);
         }
-        this.assertGameWritable(game);
         Long statTenantId = game.getTenantId();
         if (dto.getStats() != null) {
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);

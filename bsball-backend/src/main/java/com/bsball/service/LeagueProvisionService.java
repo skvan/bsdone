@@ -128,14 +128,21 @@ public class LeagueProvisionService {
     }
 
     /**
-     * 待审申请分页（当前租户）：默认 page=1、pageSize=20；管理员可见。
+     * 待审申请分页：默认 page=1、pageSize=20；管理员可见。
+     * 超管全局令牌（tenant=0/null，isGlobalQueryMode）下跨租户列举，与 approve/reject 的超管跨租户语义一致；
+     * 其余（含切租户后的超管/租户管理员）限本租户（批 3a 沉淀⑨收敛）。
      */
     public PageResult<LeagueCreateRequest> listPending(Long reviewerId, Integer page, Integer pageSize) {
         // TODO(批 3a 已裁定硬化项/M4)：当前为内存分页（全量拉取后 subList）；数据量增大后改为仓储层分页。
         this.assertReviewer(reviewerId);
-        long tid = this.tenantQueryPolicyService.requiredTenantId();
-        List<LeagueCreateRequest> all = this.leagueCreateRequestRepository
-                .findByTenantIdAndStatusAndDeletedAtIsNull(Long.valueOf(tid), LeagueCreateRequest.STATUS_PENDING);
+        List<LeagueCreateRequest> all;
+        if (this.apiPermissionService.isSuperAdmin(reviewerId) && this.tenantQueryPolicyService.isGlobalQueryMode()) {
+            all = this.leagueCreateRequestRepository.findByStatusAndDeletedAtIsNull(LeagueCreateRequest.STATUS_PENDING);
+        } else {
+            long tid = this.tenantQueryPolicyService.requiredTenantId();
+            all = this.leagueCreateRequestRepository
+                    .findByTenantIdAndStatusAndDeletedAtIsNull(Long.valueOf(tid), LeagueCreateRequest.STATUS_PENDING);
+        }
         int p = page != null && page > 0 ? page : 1;
         int ps = pageSize != null && pageSize > 0 ? pageSize : 20;
         int from = Math.min((p - 1) * ps, all.size());

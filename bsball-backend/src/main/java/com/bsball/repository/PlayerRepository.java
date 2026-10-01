@@ -63,5 +63,8 @@ JpaSpecificationExecutor<Player> {
 
     @Query(value="select count(p) from Player p where p.deletedAt is null and p.tenantId = :tenantId and trim(p.name) = :name and p.id <> :excludeId")
     public long countActiveByTenantIdAndFullNameExcludingId(@Param(value="tenantId") long var1, @Param(value="name") String var3, @Param(value="excludeId") long var4);
+
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的球员计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

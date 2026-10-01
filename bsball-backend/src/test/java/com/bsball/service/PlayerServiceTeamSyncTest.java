@@ -17,6 +17,7 @@ import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
+import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
@@ -76,13 +77,17 @@ class PlayerServiceTeamSyncTest {
     @Mock
     private PlayerClaimRepository playerClaimRepository;
 
+    @Mock
+    private GamePlayerStatRepository gamePlayerStatRepository;
+
     private PlayerService service;
 
     @BeforeEach
     void setUp() {
         service = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
                 accountScopeService, scopeQuerySupport, resourceGuard, personnelHistoryRecorder,
-                playerTeamService, tenantQueryPolicyService, sysConfigService, playerClaimRepository);
+                playerTeamService, tenantQueryPolicyService, sysConfigService, playerClaimRepository,
+                gamePlayerStatRepository);
     }
 
     @Test
@@ -188,7 +193,7 @@ class PlayerServiceTeamSyncTest {
         Player p = player(1L, TENANT);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(null);
 
         service.get(1L);
 
@@ -221,7 +226,7 @@ class PlayerServiceTeamSyncTest {
     @DisplayName("阵容选择器：返回当前注册球员并按注册段映射背号与守备位置")
     void listTeamPlayerOptions_mapsEntryRows() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(null);
         Object[] row = new Object[]{2L, "李四", "9", "[\"C\",\"1B\"]", "R", "L", "active"};
         when(playerTeamRepository.findTeamPlayerOptionFields(TENANT, 5L)).thenReturn(List.<Object[]>of(row));
 

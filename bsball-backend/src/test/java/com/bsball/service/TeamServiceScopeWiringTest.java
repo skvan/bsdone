@@ -29,6 +29,9 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.GameRepository;
+import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -78,6 +81,18 @@ class TeamServiceScopeWiringTest {
     @Mock
     private ApiPermissionService apiPermissionService;
 
+    @Mock
+    private GameRepository gameRepository;
+
+    @Mock
+    private PlayerTeamRepository playerTeamRepository;
+
+    @Mock
+    private PlayerRepository playerRepository;
+
+    @Mock
+    private PlayerTeamService playerTeamService;
+
     private TeamService service;
 
     @BeforeEach
@@ -85,7 +100,7 @@ class TeamServiceScopeWiringTest {
         CurrentUserHolder.clear();
         service = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
-                apiPermissionService);
+                apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);
     }
 
     @AfterEach
@@ -194,12 +209,12 @@ class TeamServiceScopeWiringTest {
     void update_otherTeam_guardForbidden() {
         when(teamRepository.findById(101L)).thenReturn(java.util.Optional.of(team(101L, TENANT_ID)));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
-        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanManageTeam(101L);
+        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanStewardOrManageTeam(101L);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.update(101L, new Team()));
         assertEquals(403, ex.getCode());
         assertEquals("无权管理该球队", ex.getMessage());
-        verify(resourceGuard).assertCanManageTeam(101L);
+        verify(resourceGuard).assertCanStewardOrManageTeam(101L);
     }
 
     @Test
@@ -211,7 +226,7 @@ class TeamServiceScopeWiringTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> service.update(101L, new Team()));
         assertEquals(403, ex.getCode());
         assertEquals("无权修改该球队", ex.getMessage());
-        verify(resourceGuard, never()).assertCanManageTeam(any());
+        verify(resourceGuard, never()).assertCanStewardOrManageTeam(any());
         verify(teamRepository, never()).save(any());
     }
 
@@ -227,7 +242,7 @@ class TeamServiceScopeWiringTest {
         Team saved = service.update(100L, updated);
 
         assertEquals(updated, saved);
-        verify(resourceGuard).assertCanManageTeam(100L);
+        verify(resourceGuard).assertCanStewardOrManageTeam(100L);
         verify(teamRepository).save(updated);
     }
 
@@ -240,7 +255,7 @@ class TeamServiceScopeWiringTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> service.delete(101L));
         assertEquals(403, ex.getCode());
         assertEquals("无权删除该球队", ex.getMessage());
-        verify(resourceGuard, never()).assertCanManageTeam(any());
+        verify(resourceGuard, never()).assertCanStewardOrManageTeam(any());
     }
 
     private static Team team(long id, long tenantId) {

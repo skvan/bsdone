@@ -29,4 +29,11 @@ extends JpaRepository<PlayerTeam, Long> {
 
     @Query(value="select p.id, p.name, e.number, e.positions, p.batHand, p.throwHand, p.status from PlayerTeam e, Player p where e.deletedAt is null and p.deletedAt is null and p.id = e.playerId and e.current = true and e.tenantId = :tid and e.teamId = :teamId order by coalesce(p.sort, 0) asc, p.id asc")
     public List<Object[]> findTeamPlayerOptionFields(@Param(value="tid") long tid, @Param(value="teamId") long teamId);
+
+    /**
+     * 按球队查“当前球队”经历（{@code current = true}）行，供球队解散时批量球员离队之用。
+     * 仅取未软删经历；结果按 playerId/sort/id 稳定排序。
+     */
+    @Query(value="select e from PlayerTeam e where e.deletedAt is null and e.current = true and e.teamId = :teamId order by e.playerId asc, e.sort asc, e.id asc")
+    public List<PlayerTeam> findCurrentEntriesByTeamId(@Param(value="teamId") Long teamId);
 }

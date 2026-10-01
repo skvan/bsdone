@@ -21,6 +21,7 @@ import com.bsball.model.entity.Coach;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.HistoryRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -150,6 +151,35 @@ public class PersonnelHistoryRecorder {
             this.persist(r);
         }
         return latestJoinRecordId;
+    }
+
+    /**
+     * 记录一条球队经历被移除（软删）的审计事件：eventType=profile_update、target=player、
+     * relatedObject=team；变更载荷含 changedFields=[teamEntries.removed] 与移除前值（teamId/number/positions/current）。
+     * <p>本 payload 形态（{@code changedFields:["teamEntries.removed"]} + {@code before}{teamId,number,positions,current}、
+     * relatedObject=team）为 spec §6.6 / T3.10 定义的<b>有意形态</b>，非通用档案差分（无 after）；勿按 wrapProfilePayload 改写。
+     *
+     * @param playerId 球员档案 ID
+     * @param tenantId 租户 ID
+     * @param removed  被移除的球队经历行
+     */
+    public void recordPlayerTeamEntryRemoval(Long playerId, Long tenantId, PlayerTeam removed) {
+        if (playerId == null || tenantId == null || removed == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("player", playerId, tenantId, "profile_update");
+        r.setRelatedObjectType("team");
+        r.setRelatedObjectId(removed.getTeamId());
+        LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
+        beforeMap.put("teamId", removed.getTeamId());
+        beforeMap.put("number", removed.getNumber());
+        beforeMap.put("positions", removed.getPositionsList());
+        beforeMap.put("current", Boolean.TRUE.equals(removed.getCurrent()));
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+        payload.put("changedFields", List.of("teamEntries.removed"));
+        payload.put("before", beforeMap);
+        r.setChangePayloadJson(this.jsonPayload(payload));
+        this.persist(r);
     }
 
     public void afterPlayerUpdate(Player before, Player after) {
@@ -321,6 +351,39 @@ public class PersonnelHistoryRecorder {
 
     private static boolean teamProfileFieldsChanged(Team a, Team b) {
         return !Objects.equals(PersonnelHistoryRecorder.str(a.getName()), PersonnelHistoryRecorder.str(b.getName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getNameEn()), PersonnelHistoryRecorder.str((String)b.getNameEn())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getShortName()), PersonnelHistoryRecorder.str((String)b.getShortName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getLogo()), PersonnelHistoryRecorder.str((String)b.getLogo()));
+    }
+
+    /**
+     * 记录球队解散事件（spec §6.7）：eventType={@code dissolved}、targetType={@code team}、targetId=球队ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param dissolved 已软删（解散）的球队实体
+     */
+    public void afterTeamDissolve(Team dissolved) {
+        if (dissolved == null || dissolved.getId() == null || dissolved.getTenantId() == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", dissolved.getId().longValue(), dissolved.getTenantId().longValue(), "dissolved");
+        this.persist(r);
+    }
+
+    /**
+     * 球队负责人失效（解散等场景，spec §6.7 第 3 条）：eventType={@code manager_removed}、targetType={@code team}、
+     * targetId=球队ID、relatedObjectType={@code user}、relatedObjectId=被失效的负责人账号ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param teamId   球队 ID
+     * @param tenantId 租户 ID
+     * @param userId   被失效的负责人账号 ID
+     */
+    public void recordTeamManagerRemoved(Long teamId, Long tenantId, Long userId) {
+        if (teamId == null || tenantId == null || userId == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", teamId.longValue(), tenantId.longValue(), "manager_removed");
+        r.setRelatedObjectType("user");
+        r.setRelatedObjectId(userId);
+        this.persist(r);
     }
 
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {

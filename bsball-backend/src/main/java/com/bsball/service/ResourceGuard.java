@@ -11,8 +11,8 @@
  *  - 赛事 / 比赛链路：对「不存在 / 缺联盟 / 越权」统一 403（隐藏存在性；文案不区分原因，排障依赖日志上下文）；
  *  - 球员档案 / 认领链路：对「球员不存在」（含 playerId 为空）返回 404（文案逐字「球员不存在」）。
  *
- * 本类为批次 2 范围护栏的一部分，批次 3 规则（如更细粒度写保护）由后续任务扩展，
- * 本任务不预埋任何批次 3 语义。
+ * 批次 3b（spec §6.9）扩展：球队「接管或代管」判定 assertCanStewardOrManageTeam、球员档案写分档
+ * （已认领 → 上级只读 403；未认领 → 代建方域内可写）与球员「代建」守卫 assertCanCreateUnclaimedPlayer。
  */
 package com.bsball.service;
 
@@ -23,9 +23,13 @@ import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
+import com.bsball.model.entity.Team;
+import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.TeamManagerRepository;
+import com.bsball.repository.TeamRepository;
 import lombok.Generated;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +44,9 @@ public class ResourceGuard {
     private final GameRepository gameRepository;
     private final PlayerRepository playerRepository;
     private final PlayerTeamService playerTeamService;
+    private final TeamRepository teamRepository;
+    private final TeamManagerRepository teamManagerRepository;
+    private final ApiPermissionService apiPermissionService;
 
     /** 联盟写保护：受限身份需命中自有联盟集合。 */
     public void assertCanManageLeague(Long leagueId) {
@@ -53,6 +60,29 @@ public class ResourceGuard {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
         if (teamId == null || !s.canManageTeam(teamId)) throw new BusinessException(403, "无权管理该球队");
+    }
+
+    /**
+     * 球队「接管或代管」写保护（批次 3b，spec §6.9 权属随接管转移）：
+     *  - 受限身份命中自有球队集合（team_manager 本人球队）→ 放行；
+     *  - 否则：球队「无主」（不存在 active bs_team_manager）且归属联盟（leagueId 非空）∈ 自有联盟集合 → 放行（联盟接管）；
+     *  - 球队「有主」→ 联盟只读，一律 403；球队不存在 / 无联盟归属 / 越权 → 403。
+     * <p>用于 TeamService.update / delete（删除即 §6.7 解散语义）。
+     */
+    public void assertCanStewardOrManageTeam(Long teamId) {
+        EffectiveScope s = accountScopeService.resolveCurrent();
+        if (s.isUnrestrictedInTenant()) return;
+        if (teamId != null && s.canManageTeam(teamId)) return;
+        if (teamId == null) throw new BusinessException(403, "无权管理该球队");
+        Team team = teamRepository.findById(teamId).orElse(null);
+        if (team == null) throw new BusinessException(403, "无权管理该球队");
+        if (teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(teamId, TeamManager.STATUS_ACTIVE)) {
+            // 球队有主：权属随接管转移，联盟只读
+            throw new BusinessException(403, "无权管理该球队");
+        }
+        if (team.getLeagueId() == null || !s.canManageLeague(team.getLeagueId())) {
+            throw new BusinessException(403, "无权管理该球队");
+        }
     }
 
     /** 赛事写保护：经赛事所属联盟判定。 */
@@ -76,14 +106,22 @@ public class ResourceGuard {
     }
 
     /**
-     * 球员档案（增删）写保护：仅租户内不受限放行；球队账号一律禁止增删球员档案。
-     * <p><b>注意：当前对该参数不做任何校验</b>——任意受限身份一律 403；
-     * 参数仅为调用方签名对齐预留。
+     * 球员「代建」写保护（批次 3b，spec §6.9）：供 PlayerService.create / batchImport / 批量代建共用。
+     * 语义分档：
+     *  - 租户内不受限（超管 / 租管）→ 直通；
+     *  - 受限：teamId 为空 → 403（仅不受限可建无队球员）；
+     *  - 受限：teamId ∈ 自有球队集合（球队管理员本队）→ 放行；
+     *  - 受限：球队归属联盟 ∈ 自有联盟集合（联盟管理员域内球队）→ 放行；
+     *  - 其余（他队 / 域外联盟）→ 403。
      */
-    public void assertCanManagePlayerRoster(Long teamId) {
+    public void assertCanCreateUnclaimedPlayer(Long teamId) {
         EffectiveScope s = accountScopeService.resolveCurrent();
         if (s.isUnrestrictedInTenant()) return;
-        throw new BusinessException(403, "球队账号不可增删球员档案");
+        if (teamId == null) throw new BusinessException(403, "无权代建该球员");
+        if (s.canManageTeam(teamId)) return;
+        Team team = teamRepository.findById(teamId).orElse(null);
+        if (team != null && team.getLeagueId() != null && s.canManageLeague(team.getLeagueId())) return;
+        throw new BusinessException(403, "无权代建该球员");
     }
 
     /**
@@ -100,8 +138,14 @@ public class ResourceGuard {
             if (uid != null && uid.equals(p.getUserId())) return;
             throw new BusinessException(403, "只能编辑本人档案");
         }
+        // ROSTER 通道（批次 3b，spec §6.9）：已认领 → 球队/联盟不可直接改档案；未认领 → 代建方域内可写。
+        if (p.getUserId() != null) {
+            throw new BusinessException(403, "球队/联盟不可直接修改已认领球员信息");
+        }
         for (Long teamId : playerTeamService.currentTeamIds(playerId)) {
             if (s.canManageTeam(teamId)) return;
+            Team team = teamRepository.findById(teamId).orElse(null);
+            if (team != null && team.getLeagueId() != null && s.canManageLeague(team.getLeagueId())) return;
         }
         throw new BusinessException(403, "无权修改该球员的赛务信息");
     }
@@ -121,13 +165,38 @@ public class ResourceGuard {
         throw new BusinessException(403, "无权审核该认领");
     }
 
+    /**
+     * 历史数据销毁（最终处置）守卫（批次 3b，spec §6.10）：
+     * <p>历史数据属平台资产；租户管理员及以下的「删除」仅为归还（软删 + platform_owned 置位），
+     * 最终销毁权仅归系统超管，且须审计。
+     * <p><b>仅超管</b>放行（以 {@link ApiPermissionService#isSuperAdmin} 独立判定，
+     * 不可用 effective scope 的「租户内不受限」——后者合并超管与租管）；非超管一律 403。
+     * <p><b>预留通道</b>：待纠错/合规销毁立项后启用，当前无生产调用点（本批不新增销毁端点）。
+     */
+    public void assertCanPurgeHistoricalData() {
+        if (!isCurrentUserSuperAdmin()) throw new BusinessException(403, "仅系统超管可销毁历史数据");
+    }
+
+    /**
+     * 当前调用者是否系统超管（独立于 effective scope）：供删除路径决定是否置 platform_owned 归还标记。
+     * 超管为最终处置方，软删不置归还标记。
+     */
+    public boolean isCurrentUserSuperAdmin() {
+        return apiPermissionService.isSuperAdmin(CurrentUserHolder.get());
+    }
+
     @Generated
     public ResourceGuard(AccountScopeService accountScopeService, EventRepository eventRepository,
-            GameRepository gameRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService) {
+            GameRepository gameRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService,
+            TeamRepository teamRepository, TeamManagerRepository teamManagerRepository,
+            ApiPermissionService apiPermissionService) {
         this.accountScopeService = accountScopeService;
         this.eventRepository = eventRepository;
         this.gameRepository = gameRepository;
         this.playerRepository = playerRepository;
         this.playerTeamService = playerTeamService;
+        this.teamRepository = teamRepository;
+        this.teamManagerRepository = teamManagerRepository;
+        this.apiPermissionService = apiPermissionService;
     }
 }

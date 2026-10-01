@@ -82,6 +82,9 @@ extends BaseEntity {
     private Integer verified = 0;
     @Comment(value="\u6392\u5e8f")
     private Integer sort = 0;
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
 
     @Generated
     public Team() {
@@ -173,6 +176,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
+    }
+
+    @Generated
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
     }
@@ -255,6 +263,11 @@ extends BaseEntity {
     @Generated
     public void setSort(Integer sort) {
         this.sort = sort;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     @Generated

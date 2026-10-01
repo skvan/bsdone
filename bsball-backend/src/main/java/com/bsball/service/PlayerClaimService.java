@@ -51,6 +51,7 @@ import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.PlayerClaimInviteRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
@@ -100,6 +101,7 @@ public class PlayerClaimService {
     private final ResourceGuard resourceGuard;
     private final PlayerService playerService;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
+    private final PlayerTeamRepository playerTeamRepository;
 
     @Transactional
     public PlayerClaim submitClaim(Long userId, Long playerId, String remark, Long inviteId) {
@@ -287,7 +289,9 @@ public class PlayerClaimService {
 
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
-        this.requireTeamManagerOrAdmin(creatorId, teamId);
+        // 批 2 沉淀⑩收敛：改用统一写保护守卫（ResourceGuard.assertCanManageTeam），与其它写路径同源。
+        // 语义：租户内不受限（超管/租管）放行；受限身份需命中自有球队集合（super/tenant admin 之外仅团队负责人/联盟派生域），否则 403。
+        this.resourceGuard.assertCanManageTeam(teamId);
         Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
@@ -415,11 +419,36 @@ public class PlayerClaimService {
         return this.joinResult(created.getId(), teamId);
     }
 
-    /** 入队落库：写 current=true 经历 + 镜像 + join 沿革，并回写 currentJoinRecordId（对齐 PlayerService.create）。 */
+    /**
+     * 入队落库：<b>追加语义</b>——desired = 既有全部经历（当前字段原样保留） + 受邀队经历（current=true）。
+     * 受邀队已在经历中则仅置该队 current=true；否则追加新经历。以完整 desired 调 plan，{@code toDelete} 恒为空，
+     * 杜绝“存量档案凭邀请入队时其余经历被静默软删”。落库前对 {@code toDelete} 做防御性删除守卫（双保险）。
+     * 随后写镜像 + join 沿革，并回写 currentJoinRecordId（对齐 PlayerService.create）。
+     */
     private void applyInviteJoin(Player player, Long teamId) {
-        List<PlayerTeamEntryDto> entries = List.of(
-                new PlayerTeamEntryDto(null, teamId, null, null, null, Boolean.TRUE, null));
-        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(player, entries, true);
+        List<PlayerTeam> existing = player.getId() == null ? List.of()
+                : this.playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(player.getId());
+        List<PlayerTeamEntryDto> desired = new ArrayList<>(existing.size() + 1);
+        boolean invitedPresent = false;
+        for (PlayerTeam e : existing) {
+            if (Objects.equals(e.getTeamId(), teamId)) {
+                // 受邀队已存在：仅置 current=true，余字段原样保留。
+                desired.add(new PlayerTeamEntryDto(e.getId(), e.getTeamId(), null, e.getNumber(),
+                        e.getPositionsList(), Boolean.TRUE, e.getSort()));
+                invitedPresent = true;
+            } else {
+                desired.add(new PlayerTeamEntryDto(e.getId(), e.getTeamId(), null, e.getNumber(),
+                        e.getPositionsList(), Boolean.TRUE.equals(e.getCurrent()), e.getSort()));
+            }
+        }
+        if (!invitedPresent) {
+            desired.add(new PlayerTeamEntryDto(null, teamId, null, null, null, Boolean.TRUE, null));
+        }
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(player, desired, true);
+        // 防御双保险：追加语义下 toDelete 应为空；若非空（异常情形）须过删除守卫，杜绝静默软删（复用 PlayerService 守卫，勿复制）。
+        if (!plan.toDelete().isEmpty()) {
+            this.playerService.assertEntriesDeletable(player.getId(), plan.toDelete());
+        }
         this.playerTeamService.applyMirror(player, plan);
         Player saved = (Player)this.playerRepository.save(player);
         this.playerTeamService.persistPlan(saved.getId(), plan);
@@ -476,15 +505,6 @@ public class PlayerClaimService {
         return claim;
     }
 
-    private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
-        if (this.apiPermissionService.isSuperAdmin(userId) || this.apiPermissionService.isTenantAdmin(userId)) {
-            return;
-        }
-        if (!this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(teamId, userId, "active")) {
-            throw new BusinessException(403, "\u4ec5\u7403\u961f\u8d1f\u8d23\u4eba\u6216\u7ba1\u7406\u5458\u53ef\u521b\u5efa\u9080\u8bf7");
-        }
-    }
-
     private String resolveReviewerType(Player player) {
         for (Long teamId : this.playerTeamService.currentTeamIds(player.getId())) {
             List<TeamManager> managers = this.teamManagerRepository.findByTeamIdAndStatusAndDeletedAtIsNull(teamId, "active");
@@ -527,7 +547,7 @@ public class PlayerClaimService {
     }
 
     @Generated
-    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard, PlayerService playerService, PersonnelHistoryRecorder personnelHistoryRecorder) {
+    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard, PlayerService playerService, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamRepository playerTeamRepository) {
         this.accountProperties = accountProperties;
         this.apiPermissionService = apiPermissionService;
         this.playerClaimRepository = playerClaimRepository;
@@ -541,6 +561,7 @@ public class PlayerClaimService {
         this.resourceGuard = resourceGuard;
         this.playerService = playerService;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
+        this.playerTeamRepository = playerTeamRepository;
     }
 }
 
