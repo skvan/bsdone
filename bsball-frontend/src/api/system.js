@@ -18,7 +18,11 @@ export const roleApi = {
   get: (id) => getData(`${BASE}/role/${id}`),
   create: (data) => post(`${BASE}/role/create`, data),
   update: (id, data) => put(`${BASE}/role/update/${id}`, data),
-  delete: (id) => del(`${BASE}/role/delete/${id}`)
+  delete: (id) => del(`${BASE}/role/delete/${id}`),
+  // 租户级目录覆盖（spec §8.6 / T3.15b）：GET/DELETE 走 query(roleId)，PUT 走 body({roleId, menuIds})
+  tenantConfig: (roleId) => getData(`${BASE}/role/tenant-config?roleId=${roleId}`),
+  saveTenantConfig: (data) => put(`${BASE}/role/tenant-config`, data),
+  clearTenantConfig: (roleId) => del(`${BASE}/role/tenant-config?roleId=${roleId}`)
 };
 
 export const menuApi = {
