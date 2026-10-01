@@ -13,7 +13,7 @@ import { useAuthStore as $ } from '../../stores/auth';
 import { formatDateTimeDotWithWeek as j } from '../../utils/dateExtras';
 import { exportSfc as F } from '../../utils/exportSfc';
 import { accountApi as N } from '../../api/account';
-import { POSITION_LABELS as PL } from '../../utils/playerOptions';
+import { POSITION_LABELS as PL, formatPosition as fp } from '../../utils/playerOptions';
 import '../../styles/legacy/auth-player-claim-invite.css';
 var G={
   class:"player-claim-invite"
@@ -56,20 +56,20 @@ var G={
       }
       
     }
-    )),u=y(!0),p=y(!1),e=y(null);
+    )),u=y(!0),p=y(!1),e=y(null),Dk=y(!1);
     // 建档草稿（无档案者提交）：name 必填，birthDate/positions 选填（与后端 Player 口径一致）。
     const dr=re({
       name:"",birthDate:"",positions:[]
     }
     ),Zi=y(),Rl={
       name:[{
-        required:!0,message:"请输入姓名",trigger:"blur"
+        required:!0,whitespace:!0,message:()=>l("playerClaimInvite.nameRequired"),trigger:"blur"
       }
       ]
     }
-    // 守位选项取自 POSITION_LABELS（与 admin 球员表单同源口径）。
-    ,Po=Object.entries(PL).map(([k,val])=>({
-      value:k,label:val
+    // 守位选项 label 取自 formatPosition（与 admin 球员表单同源口径）。
+    ,Po=Object.keys(PL).map(k=>({
+      value:k,label:fp(k)
     }
     ));
     async function E(){
@@ -88,12 +88,22 @@ var G={
     async function P(){
       // 邀请未绑定档案 → 需建档（先过表单必填校验）；已绑定档案 → 维持现状直接认领。
       const Yd=!e.value?.playerId;
+      // M5：需建档但表单 ref 尚未挂载时直接返回，避免绕过校验。
+      if(Yd&&!Zi.value){
+        return
+      }
       if(Yd&&Zi.value&&!await Zi.value.validate().catch(()=>!1)){
+        return
+      }
+      // C1：空白姓名防线——校验规则(whitespace) + trim 守卫，绝不构造 {name:""} 提交。
+      const nm=(dr.name||"").trim();
+      if(Yd&&!nm){
+        A.error(l("playerClaimInvite.nameRequired"));
         return
       }
       let Od;
       if(Yd){
-        const nm=(dr.name||"").trim(),d={
+        const d={
           name:nm
         }
         ;
@@ -108,10 +118,12 @@ var G={
       try{
         const res=await N.claimViaInvite(f.value,Yd?Od:void 0),mode=res?.data?.mode;
         // 成功分支按后端返回 mode 区分：claim=认领落库待审核；registered=建档并入队 / 存量直接入队。
-        mode==="claim"?A.success(l("playerClaimInvite.submitted")):A.success(Yd?"建档并入队成功，已加入球队":"已加入球队")
+        mode==="claim"?A.success(l("playerClaimInvite.submitted")):A.success(Yd?l("playerClaimInvite.registered"):l("playerClaimInvite.joined"));
+        // M4：成功后置 done，禁用提交按钮防止二次点击 400。
+        Dk.value=!0
       }
       catch(err){
-        A.error(err?.message||"提交失败，请稍后重试")
+        A.error(err?.message||l("playerClaimInvite.submitFailed"))
       }
       finally{
         p.value=!1
@@ -138,34 +150,34 @@ var G={
       ,8,["loading"])):(r(),i(I,{
         key:1
       }
-      ,[d("p",X,"该邀请未绑定球员档案，请填写基础信息完成建档并加入球队"),m(Ef,{
+      ,[d("p",X,a(t(l)("playerClaimInvite.draftHint")),1),m(Ef,{
         ref_key:"formRef",ref:Zi,model:dr,rules:Rl,"label-position":"top",class:"draft-form"
       }
       ,{
         default:s(()=>[m(Efi,{
-          label:"姓名",prop:"name"
+          label:t(l)("playerClaimInvite.name"),prop:"name"
         }
         ,{
           default:s(()=>[m(Ei,{
-            modelValue:dr.name,"onUpdate:modelValue":te[0]||(te[0]=k=>dr.name=k),placeholder:"请输入姓名",size:"large",maxlength:"50"
+            modelValue:dr.name,"onUpdate:modelValue":te[0]||(te[0]=k=>dr.name=k),placeholder:t(l)("playerClaimInvite.namePlaceholder"),size:"large",maxlength:"50"
           }
-          ,null,8,["modelValue"])]),_:1
+          ,null,8,["modelValue","placeholder"])]),_:1
         }
-        ),m(Efi,{
-          label:"出生日期",prop:"birthDate"
+        ,8,["label"]),m(Efi,{
+          label:t(l)("playerClaimInvite.birthDate"),prop:"birthDate"
         }
         ,{
           default:s(()=>[m(Edp,{
-            modelValue:dr.birthDate,"onUpdate:modelValue":te[1]||(te[1]=k=>dr.birthDate=k),type:"date","value-format":"YYYY-MM-DD",placeholder:"选填（YYYY-MM-DD）",size:"large",style:"width:100%"
+            modelValue:dr.birthDate,"onUpdate:modelValue":te[1]||(te[1]=k=>dr.birthDate=k),type:"date","value-format":"YYYY-MM-DD",placeholder:t(l)("playerClaimInvite.birthDatePlaceholder"),size:"large"
           }
-          ,null,8,["modelValue"])]),_:1
+          ,null,8,["modelValue","placeholder"])]),_:1
         }
-        ),m(Efi,{
-          label:"守位",prop:"positions"
+        ,8,["label"]),m(Efi,{
+          label:t(l)("playerClaimInvite.positions"),prop:"positions"
         }
         ,{
           default:s(()=>[m(Es,{
-            modelValue:dr.positions,"onUpdate:modelValue":te[2]||(te[2]=k=>dr.positions=k),multiple:!0,collapseTags:!0,clearable:!0,placeholder:"选填，可多选",size:"large",style:"width:100%"
+            modelValue:dr.positions,"onUpdate:modelValue":te[2]||(te[2]=k=>dr.positions=k),multiple:!0,collapseTags:!0,clearable:!0,placeholder:t(l)("playerClaimInvite.positionsPlaceholder"),size:"large"
           }
           ,{
             default:s(()=>Po.map(k=>m(Eo,{
@@ -173,15 +185,15 @@ var G={
             }
             ))),_:1
           }
-          ,8,["modelValue"])]),_:1
+          ,8,["modelValue","placeholder"])]),_:1
         }
-        ),m(_,{
-          type:"primary",size:"large",loading:p.value,onClick:P,class:"submit-btn"
+        ,8,["label"]),m(_,{
+          type:"primary",size:"large",loading:p.value,disabled:Dk.value,onClick:P,class:"submit-btn"
         }
         ,{
-          default:s(()=>[c("建档并入队",1)]),_:1
+          default:s(()=>[c(a(t(l)("playerClaimInvite.createBtn")),1)]),_:1
         }
-        ,8,["loading"])]),_:1
+        ,8,["loading","disabled"])]),_:1
       }
       ,8,["model","rules"])],64))],64)):(r(),i(I,{
         key:5
