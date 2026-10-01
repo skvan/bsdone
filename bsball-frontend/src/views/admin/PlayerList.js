@@ -1240,7 +1240,7 @@ var $n={
           default:n(()=>[...e[51]||(e[51]=[s("导入数据",-1)])]),_:1
         }
         )):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
-          key:0,type:"primary",onClick:e[1]||(e[1]=o=>We())
+          key:1,type:"primary",onClick:e[1]||(e[1]=o=>We())
         }
         ,{
           default:n(()=>[...e[52]||(e[52]=[s("新增球员",-1)])]),_:1
