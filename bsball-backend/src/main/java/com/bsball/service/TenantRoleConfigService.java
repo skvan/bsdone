@@ -7,6 +7,9 @@
  *  - 覆盖读写（saveOverride / clearOverride）：全量替换语义；仅操作覆盖两表，绝不触碰全局角色/绑定行。
  *
  * 说明：本服务不依赖 ApiPermissionService（避免循环依赖）；缓存失效由调用方（SysRoleService）负责。
+ *
+ * 覆盖口径：覆盖层调整的是「菜单/按钮导航面 + 由生效菜单（menu_api）派生的 API 绑定」；
+ * 平台门户角色的基线功能 API（role_api，预设能力）不受覆盖影响（API 授予语义恒为 role_api ∪ menu_api(生效菜单)）。
  */
 package com.bsball.service;
 

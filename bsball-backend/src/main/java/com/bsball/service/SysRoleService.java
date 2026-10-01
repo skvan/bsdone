@@ -459,6 +459,7 @@ public class SysRoleService {
 
     /**
      * 租户级目录覆盖（spec §8.6，批次 3b T3.15b）：查询平台门户角色在本租户的覆盖配置（无则 enabled=false）。
+     * 口径：覆盖调整菜单/按钮导航面及由其（menu_api）派生的 API 绑定；角色基线 role_api（预设能力）不受覆盖影响。
      */
     public Map<String, Object> getTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId) {
         SysRole role = this.loadRoleForOverride(roleId);
@@ -469,6 +470,7 @@ public class SysRoleService {
 
     /**
      * 保存（全量替换）租户级目录覆盖：空数组=启用空覆盖；仅写覆盖两表，绝不触碰全局角色/绑定。缓存失效后返回覆盖视图。
+     * 口径：覆盖调整菜单/按钮导航面及由其（menu_api）派生的 API 绑定；角色基线 role_api（预设能力）不受覆盖影响。
      */
     @Transactional
     public Map<String, Object> saveTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId, List<Long> menuIds) {
@@ -483,6 +485,7 @@ public class SysRoleService {
 
     /**
      * 清除租户级目录覆盖（回落全局）：仅删覆盖两表。
+     * 口径：清除后菜单/按钮导航面与派生 API 绑定回落全局；角色基线 role_api（预设能力）不受覆盖影响。
      */
     @Transactional
     public void clearTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId) {

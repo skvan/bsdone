@@ -180,6 +180,7 @@ public class ApiPermissionService {
         // I1 口径：授权按生效请求租户（CurrentUserHolder 由 X-Tenant-Id/Host/JWT 解析链写入）裁定；
         // 菜单路径按会话租户（toAuthUser 入参）。跨租户浏览的非超管 /sys 已被 filter 拦截、数据隔离由 AccountScope 约束；
         // 两者口径差异为批 4 前端对齐点。
+        // 覆盖口径：role_api 为角色基线能力（预设）不受租户覆盖影响；覆盖通过生效菜单调整 menu_api 派生面（菜单/按钮导航 + 其绑定 API）。
         Set<Long> effectiveMenuIds = this.tenantRoleConfigService.resolveEffectiveMenuIds(CurrentUserHolder.getTenantId(), roleIds);
         if (!effectiveMenuIds.isEmpty()) {
             for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(new ArrayList<>(effectiveMenuIds))) {

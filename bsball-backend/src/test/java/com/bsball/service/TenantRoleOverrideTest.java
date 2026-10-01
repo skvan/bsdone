@@ -33,6 +33,7 @@ import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysMenu;
 import com.bsball.model.entity.SysMenuApi;
 import com.bsball.model.entity.SysRole;
+import com.bsball.model.entity.SysRoleApi;
 import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.model.entity.SysTenant;
 import com.bsball.model.entity.SysUser;
@@ -85,6 +86,8 @@ class TenantRoleOverrideTest {
     private static final long PLATFORM_MENU_ID = 200L;
     private static final long API_A = 300L;
     private static final long API_B = 301L;
+    // 与任意菜单无关的「基线功能 API」（role_api / 预设能力）：覆盖不应剔除它。
+    private static final long BIZ_BASE_API = 350L;
 
     @Mock
     private TenantRoleMenuConfigRepository configRepository;
@@ -246,15 +249,17 @@ class TenantRoleOverrideTest {
     // ------------------------------------------------------------ 读路径接入
 
     @Test
-    @DisplayName("API 派生接入覆盖：生效菜单 B 对应 API 放行，全局菜单 A 的 API 被剔除")
+    @DisplayName("API 派生接入覆盖：覆盖调整菜单派生 API；保留基线 role_api")
     void apiDerivation_respectsOverride() {
         when(sysUserRoleRepository.findByUserId(USER_ID)).thenReturn(List.of(ur(USER_ID, TM_ROLE_ID)));
         when(sysRoleRepository.findAllById(any())).thenReturn(List.of(role(TM_ROLE_ID, "team_manager", null)));
         when(sysRoleMenuRepository.findByRoleIdIn(any())).thenReturn(List.of(rm(TM_ROLE_ID, MENU_A)));
         when(configRepository.findByTenantIdAndRoleIdIn(eq(TENANT_T), any()))
                 .thenReturn(List.of(config(1L, TENANT_T, TM_ROLE_ID)));
+        when(configRepository.findByTenantIdAndRoleIdIn(eq(TENANT_T2), any())).thenReturn(List.of());
         when(tenantMenuRepository.findByConfigIdIn(List.of(1L))).thenReturn(List.of(trow(1L, MENU_B)));
-        when(sysRoleApiRepository.findByRoleIdIn(any())).thenReturn(List.of());
+        // 真实非空的 role_api：基线（预设）能力 BIZ_BASE_API，与任意菜单无关——覆盖不应剔除它。
+        when(sysRoleApiRepository.findByRoleIdIn(any())).thenReturn(List.of(ra(TM_ROLE_ID, BIZ_BASE_API)));
         when(sysMenuApiRepository.findByMenuIdIn(any())).thenAnswer(inv -> {
             Collection<Long> ids = inv.getArgument(0);
             List<SysMenuApi> out = new ArrayList<>();
@@ -267,14 +272,23 @@ class TenantRoleOverrideTest {
             return out;
         });
         when(sysApiRepository.findAll()).thenReturn(List.of(
-                api(API_A, "/biz/a", "GET"), api(API_B, "/biz/b", "GET")));
+                api(API_A, "/biz/a", "GET"), api(API_B, "/biz/b", "GET"), api(BIZ_BASE_API, "/biz/base", "GET")));
 
+        // 覆盖后（TENANT_T）：授予 = role_api ∪ menu_api(生效菜单 B)。
         CurrentUserHolder.set(USER_ID, TENANT_T);
-
         assertTrue(apiDerivationService.canUserAccessApi(USER_ID, "/biz/b", "GET"),
-                "覆盖菜单 B 对应 API 应放行");
+                "覆盖菜单 B 的 menu_api 派生 API 应放行");
         assertFalse(apiDerivationService.canUserAccessApi(USER_ID, "/biz/a", "GET"),
-                "全局菜单 A 的 API 应被覆盖剔除");
+                "全局菜单 A 的 menu_api 派生 API 应被覆盖剔除");
+        assertTrue(apiDerivationService.canUserAccessApi(USER_ID, "/biz/base", "GET"),
+                "基线 role_api（BIZ_BASE_API）不受覆盖影响，应始终放行");
+
+        // 无覆盖（TENANT_T2）：回落全局菜单 A，A 的派生 API 放行；基线仍放行。
+        CurrentUserHolder.set(USER_ID, TENANT_T2);
+        assertTrue(apiDerivationService.canUserAccessApi(USER_ID, "/biz/a", "GET"),
+                "无覆盖 → 回落全局菜单 A，其 menu_api 派生 API 应放行");
+        assertTrue(apiDerivationService.canUserAccessApi(USER_ID, "/biz/base", "GET"),
+                "无覆盖 → 基线 role_api 仍放行");
     }
 
     // ------------------------------------------------------------ 端到端：AuthService.toAuthUser（真实合并服务驱动）
@@ -525,6 +539,13 @@ class TenantRoleOverrideTest {
         m.setMenuId(menuId);
         m.setApiId(apiId);
         return m;
+    }
+
+    private static SysRoleApi ra(long roleId, long apiId) {
+        SysRoleApi r = new SysRoleApi();
+        r.setRoleId(roleId);
+        r.setApiId(apiId);
+        return r;
     }
 
     private static SysUserRole ur(long userId, long roleId) {
