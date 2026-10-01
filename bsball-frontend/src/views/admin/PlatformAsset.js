@@ -28,6 +28,7 @@ export default defineComponent({
   name: 'PlatformAsset',
   setup() {
     const loading = ref(false);
+    const failed = ref(false);
     const summary = ref({});
 
     const rows = computed(() =>
@@ -37,9 +38,13 @@ export default defineComponent({
 
     async function load() {
       loading.value = true;
+      failed.value = false;
       try {
         summary.value = await platformAssetApi.summary();
+        failed.value = false;
       } catch (e) {
+        // 失败态：不渲染全 0 表格，改显示「加载失败，请重试」（评审 I-2）
+        failed.value = true;
         ElMessage.error((e && e.message) || '加载平台资产汇总失败');
       } finally {
         loading.value = false;
@@ -59,31 +64,48 @@ export default defineComponent({
               { default: () => '刷新' }
             )
           ],
-          default: () => [
-            h(
+          default: () => {
+            const desc = h(
               'p',
               { style: { color: 'var(--el-text-color-secondary)', margin: '0 0 16px', fontSize: '13px' } },
               PAGE_DESC
-            ),
-            withDirectives(
-              h(
-                ElTable,
-                { data: rows.value, border: true, emptyText: '暂无平台回收资产', style: { width: '100%' } },
-                {
-                  default: () => [
-                    h(ElTableColumn, { prop: 'label', label: '资产类型', minWidth: '140' }),
-                    h(ElTableColumn, { prop: 'count', label: '回收数量', minWidth: '120', align: 'right' })
-                  ]
-                }
+            );
+            // 失败态：不渲染全 0 表格，显示「加载失败，请重试」+ 重试按钮（调用同一 load）；成功恢复 failed=false 正常渲染
+            if (failed.value) {
+              return [
+                desc,
+                h('div', { style: { color: 'var(--el-color-danger)', fontSize: '13px' } }, [
+                  h('span', null, '加载失败，请重试'),
+                  h(
+                    ElButton,
+                    { size: 'small', type: 'primary', style: { marginLeft: '12px' }, onClick: load },
+                    { default: () => '重试' }
+                  )
+                ])
+              ];
+            }
+            return [
+              desc,
+              withDirectives(
+                h(
+                  ElTable,
+                  { data: rows.value, border: true, emptyText: '暂无平台回收资产', style: { width: '100%' } },
+                  {
+                    default: () => [
+                      h(ElTableColumn, { prop: 'label', label: '资产类型', minWidth: '140' }),
+                      h(ElTableColumn, { prop: 'count', label: '回收数量', minWidth: '120', align: 'right' })
+                    ]
+                  }
+                ),
+                [[vLoading, loading.value]]
               ),
-              [[vLoading, loading.value]]
-            ),
-            h(
-              'p',
-              { style: { color: 'var(--el-text-color-secondary)', margin: '12px 0 0', fontSize: '13px' } },
-              `合计：${total.value}`
-            )
-          ]
+              h(
+                'p',
+                { style: { color: 'var(--el-text-color-secondary)', margin: '12px 0 0', fontSize: '13px' } },
+                `合计：${total.value}`
+              )
+            ];
+          }
         })
       ]);
   }

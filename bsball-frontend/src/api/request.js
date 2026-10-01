@@ -309,7 +309,9 @@ const TENANT_NOT_FOUND_MSG = '租户不存在';
 let tenantUnavailableRedirected = false;
 function redirectTenantUnavailableToNotFound(status, body) {
   if (status !== 404) return false;
-  const msg = body && (body.msg || body.message);
+  // 容错：msg 取值补 trim（防未来后端 msg 首尾空白导致精确匹配漏判）；
+  // 仍维持精确匹配语义——不做前缀/包含匹配，避免误伤其它 404（如「资源不存在」）。
+  const msg = String((body && (body.msg || body.message)) || '').trim();
   if (msg !== TENANT_NOT_FOUND_MSG) return false;
   if (typeof window !== 'undefined' && !tenantUnavailableRedirected) {
     tenantUnavailableRedirected = true;
