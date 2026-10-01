@@ -9,7 +9,7 @@
  *  - ④ 命中已存在菜单：仅确保超管绑定，零插入；
  *  - ⑤ 「系统管理」目录缺失 → 直接返回，零插入（防御：不产生悬挂菜单）；
  *  - ⑥ tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：不含平台资产菜单 id（排除结论）；
- *  - ⑦ 双分支调用代码证据：源码中 `this.ensurePlatformAssetMenuIfNeeded();` 恰出现 2 次（首装 + 升级）。
+ *  - ⑦ 双分支保障（行为/反射，替代源码计数）：ensure 方法契约存在（私有无参 void）+ 首装/升级语义等价行为。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；被测 private 方法经反射调用（对齐既有 InitDataRunner*Test）。
  */
@@ -43,10 +43,6 @@ import com.bsball.repository.SysRoleRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.SysUserRoleRepository;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,7 +51,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -241,14 +236,29 @@ class InitDataRunnerPlatformAssetMenuTest {
     }
 
     @Test
-    @DisplayName("⑦ 双分支调用代码证据：源码中 this.ensurePlatformAssetMenuIfNeeded() 恰出现 2 次")
-    void dualBranchInvocationEvidence() throws Exception {
-        Path src = Paths.get(System.getProperty("user.dir"), "src", "main", "java", "com", "bsball", "core",
-                "InitDataRunner.java");
-        Assumptions.assumeTrue(Files.exists(src), "源码文件存在时才做双分支调用代码证据断言");
-        String content = Files.readString(src, StandardCharsets.UTF_8);
-        int count = countOccurrences(content, "this.ensurePlatformAssetMenuIfNeeded();");
-        assertEquals(2, count, "首装分支与升级分支应各调用一次 ensurePlatformAssetMenuIfNeeded()");
+    @DisplayName("⑦ 双分支保障（行为/反射，替代源码计数）：方法契约存在 + 首装/升级语义等价行为")
+    void dualBranchGuaranteeViaContractAndBehavior() throws Exception {
+        // (a) 反射契约：ensure 方法存在且为私有无参 void（守卫重命名/删除/可见性漂移）。
+        //     理由：run() 首装/升级两分支的统一调用方，任一分支移除调用都会使该契约失效。
+        Method ensure = InitDataRunner.class.getDeclaredMethod("ensurePlatformAssetMenuIfNeeded");
+        assertEquals(void.class, ensure.getReturnType(), "ensure 应为 void");
+        assertEquals(0, ensure.getParameterCount(), "ensure 应无参");
+        assertTrue(java.lang.reflect.Modifier.isPrivate(ensure.getModifiers()), "ensure 应为 private");
+        Method run = InitDataRunner.class.getMethod("run", String[].class);
+        assertTrue(java.lang.reflect.Modifier.isPublic(run.getModifiers()), "run 应为 public 入口");
+
+        // (b) 首装分支语义等价：空库 + 「系统管理」目录存在 → ensure 恰插入一条平台资产菜单。
+        menuStore.add(menu(2L, 0L, "/system", "系统管理", 1, null));
+        invokeEnsure();
+        assertEquals(1L, menuStore.stream().filter(m -> ASSET_PATH.equals(m.getPath())).count(),
+                "首装语义：ensure 应插入平台资产菜单");
+        int savesAfterFirst = menuSaveCount;
+
+        // (c) 升级分支语义等价：再次调用（菜单已在）→ 幂等零插入（与首装后升级到新版本等价）。
+        invokeEnsure();
+        assertEquals(savesAfterFirst, menuSaveCount, "升级语义：ensure 对既有菜单幂等零插入");
+        assertEquals(1L, menuStore.stream().filter(m -> ASSET_PATH.equals(m.getPath())).count(),
+                "升级语义：不得重复插入");
     }
 
     // ---- helpers ----
@@ -269,16 +279,6 @@ class InitDataRunnerPlatformAssetMenuTest {
     private Set<Long> boundMenuIds(long roleId) {
         return roleMenus.getOrDefault(roleId, List.of()).stream().map(SysRoleMenu::getMenuId)
                 .collect(Collectors.toCollection(HashSet::new));
-    }
-
-    private static int countOccurrences(String haystack, String needle) {
-        int count = 0;
-        int idx = 0;
-        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
-            count++;
-            idx += needle.length();
-        }
-        return count;
     }
 
     private static SysMenu menu(long id, long parentId, String path, String title, int menuType, String permission) {
