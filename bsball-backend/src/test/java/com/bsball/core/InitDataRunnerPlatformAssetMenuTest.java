@@ -9,7 +9,8 @@
  *  - ④ 命中已存在菜单：仅确保超管绑定，零插入；
  *  - ⑤ 「系统管理」目录缺失 → 直接返回，零插入（防御：不产生悬挂菜单）；
  *  - ⑥ tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：不含平台资产菜单 id（排除结论）；
- *  - ⑦ 双分支保障（行为/反射，替代源码计数）：ensure 方法契约存在（私有无参 void）+ 首装/升级语义等价行为。
+ *  - ⑦ 双分支保障（反射契约 + 首装/升级行为 + 名称级调用点计数）：ensure 方法契约存在（私有无参 void）、
+ *        首装/升级语义等价行为、源码中 ensurePlatformAssetMenuIfNeeded 名称恰出现 3 次（1 声明 + 2 调用点）。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；被测 private 方法经反射调用（对齐既有 InitDataRunner*Test）。
  */
@@ -43,6 +44,10 @@ import com.bsball.repository.SysRoleRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.SysUserRoleRepository;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -51,6 +56,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -236,10 +242,10 @@ class InitDataRunnerPlatformAssetMenuTest {
     }
 
     @Test
-    @DisplayName("⑦ 双分支保障（行为/反射，替代源码计数）：方法契约存在 + 首装/升级语义等价行为")
+    @DisplayName("⑦ 双分支保障（反射契约 + 首装/升级行为 + 名称级调用点计数=3）")
     void dualBranchGuaranteeViaContractAndBehavior() throws Exception {
         // (a) 反射契约：ensure 方法存在且为私有无参 void（守卫重命名/删除/可见性漂移）。
-        //     理由：run() 首装/升级两分支的统一调用方，任一分支移除调用都会使该契约失效。
+        //     说明：本契约仅保证方法自身存在；对「run() 首装/升级双分支是否真的调用 ensure」的守护见下方 (d)。
         Method ensure = InitDataRunner.class.getDeclaredMethod("ensurePlatformAssetMenuIfNeeded");
         assertEquals(void.class, ensure.getReturnType(), "ensure 应为 void");
         assertEquals(0, ensure.getParameterCount(), "ensure 应无参");
@@ -259,6 +265,17 @@ class InitDataRunnerPlatformAssetMenuTest {
         assertEquals(savesAfterFirst, menuSaveCount, "升级语义：ensure 对既有菜单幂等零插入");
         assertEquals(1L, menuStore.stream().filter(m -> ASSET_PATH.equals(m.getPath())).count(),
                 "升级语义：不得重复插入");
+
+        // (d) 名称级调用点计数：读 InitDataRunner 源码，统计子串 ensurePlatformAssetMenuIfNeeded 的出现次数。
+        //     预期恰为 3 = 1 处 private 方法声明 + run() 首装/升级 2 处调用点。名称计数对空白/换行/格式不敏感，
+        //     比精确语句计数稳定；删除任一分支的调用点即跌破 3，兜住「run() 是否真的调用 ensure」这一护栏。
+        Path source = Paths.get(System.getProperty("user.dir"), "src", "main", "java", "com", "bsball", "core",
+                "InitDataRunner.java");
+        Assumptions.assumeTrue(Files.exists(source), "源码文件存在时才做名称级调用点计数断言");
+        String content = Files.readString(source, StandardCharsets.UTF_8);
+        int nameOccurrences = countOccurrences(content, "ensurePlatformAssetMenuIfNeeded");
+        assertEquals(3, nameOccurrences,
+                "ensurePlatformAssetMenuIfNeeded 名称应恰出现 3 次：1 处方法声明 + 首装/升级 2 处调用点（删除任一调用即失败）");
     }
 
     // ---- helpers ----
@@ -267,6 +284,16 @@ class InitDataRunnerPlatformAssetMenuTest {
         Method m = InitDataRunner.class.getDeclaredMethod("ensurePlatformAssetMenuIfNeeded");
         m.setAccessible(true);
         m.invoke(runner);
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     @SuppressWarnings("unchecked")

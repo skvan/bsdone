@@ -44,6 +44,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class HighlightMomentService {
@@ -107,6 +108,7 @@ public class HighlightMomentService {
         return (HighlightMoment)this.highlightMomentRepository.save(body);
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public void delete(Long id) {
         HighlightMoment existing = this.highlightMomentRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
