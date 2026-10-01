@@ -2,7 +2,8 @@
  * 账号权限重构（批次 3b，Task 3.13 / spec §6.9）：批量代建与权属转移规则接线测试。
  *
  * 覆盖（真实 ResourceGuard 接线，端到端验证「守卫分档 + 批量入口规则」）：
- *  - 批量代建（PlayerService.batchImport）：球队管理员本队 ✓ / 他队 ✗；联盟管理员域内 ✓ / 域外 ✗；
+ *  - 批量代建（PlayerService.batchImport）：球队管理员本队 ✓（含已置管理员）/ 他队 ✗；联盟管理员域内「无主」球队 ✓、
+ *    域内「有管理员」/ 域外 ✗（批次 6：主办方代建/批量建档仅限无有效管理员的球队）；
  *    去重口径同自助建档（§6.9）：同租户 name+birthDate 撞既有档案 / 文件内同键行 → 跳过；birthDate 空不参与去重；
  *  - 批量建队（TeamService.batchCreate）：联盟管理员域内 ✓（初始无主，不授职）/ 域外 ✗；管理员直通；
  *  - 球队权属转移：无主球队联盟可编辑/解散删除（§6.7 语义）✓；有主即只读 403 ✗；
@@ -180,6 +181,8 @@ class BatchOnboardingRuleTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
         when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
         // 既有自助档案：number 为 null（自助建档未入队），name+birthDate 与导入行相同
         Player selfArchive = playerRow("张三", null, "1990-01-01", null);
         selfArchive.setId(900L);
@@ -199,6 +202,8 @@ class BatchOnboardingRuleTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
         when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
         when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of());
         when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -217,6 +222,8 @@ class BatchOnboardingRuleTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
         when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
         // 既有同名档案（生日非空）+ 两行 birthDate 均为空 → 键为空，既不撞既有、文件内也不互相去重
         Player existingSameName = playerRow("王五", null, "1988-08-08", null);
         existingSameName.setId(901L);
@@ -233,11 +240,13 @@ class BatchOnboardingRuleTest {
     }
 
     @Test
-    @DisplayName("批量代建：联盟管理员域内球队 ✓")
+    @DisplayName("批量代建：联盟管理员域内「无主」球队 ✓（批次 6：无 active 管理员）")
     void batchImport_leagueOrganizer_domainTeam_ok() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
         when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(false);
         when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of());
         when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -245,6 +254,27 @@ class BatchOnboardingRuleTest {
         Map<String, Object> result = playerService.batchImport(List.of(row), "skip");
 
         assertEquals(Integer.valueOf(1), result.get("created"));
+    }
+
+    @Test
+    @DisplayName("批量代建：联盟管理员域内「有管理员」球队 ✗（403 且无写；批次 6 新增口径）")
+    void batchImport_leagueOrganizer_domainTeamWithManager_forbidden() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(10L), Set.of()));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID, 10L)));
+        when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
+                .thenReturn(true);
+        when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of());
+
+        Player row = playerRow("己", 100L);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> playerService.batchImport(List.of(row), "skip"));
+
+        assertEquals(403, ex.getCode());
+        assertEquals("无权代建该球员", ex.getMessage());
+        // M-2：钉死批次 6 新条件——批量入口确已查询「无有效管理员」后方才拦截
+        verify(teamManagerRepository).existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE);
+        verify(playerRepository, never()).save(any(Player.class));
     }
 
     @Test

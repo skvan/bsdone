@@ -106,13 +106,15 @@ public class ResourceGuard {
     }
 
     /**
-     * 球员「代建」写保护（批次 3b，spec §6.9）：供 PlayerService.create / batchImport / 批量代建共用。
+     * 球员「代建」写保护（批次 3b / 批次 6，spec §6.9）：供 PlayerService.create（单建）/
+     * batchImport（批量导入）共用——统一口径。
      * 语义分档：
-     *  - 租户内不受限（超管 / 租管）→ 直通；
+     *  - 租户内不受限（超管 / 租管）→ 直通（不受「球队有无管理员」影响）；
      *  - 受限：teamId 为空 → 403（仅不受限可建无队球员）；
-     *  - 受限：teamId ∈ 自有球队集合（球队管理员本队）→ 放行；
-     *  - 受限：球队归属联盟 ∈ 自有联盟集合（联盟管理员域内球队）→ 放行；
-     *  - 其余（他队 / 域外联盟）→ 403。
+     *  - 受限：teamId ∈ 自有球队集合（球队管理员本队）→ 放行（不受「球队有无管理员」影响）；
+     *  - 受限：球队归属联盟 ∈ 自有联盟集合<b>且该球队无有效管理员</b>（不存在 active
+     *    {@code bs_team_manager} 行）→ 放行（联盟代建；权限随接管转移——球队有主即只读）；
+     *  - 其余（他队 / 域外联盟 / 域内但有管理员）→ 403。
      */
     public void assertCanCreateUnclaimedPlayer(Long teamId) {
         EffectiveScope s = accountScopeService.resolveCurrent();
@@ -120,7 +122,12 @@ public class ResourceGuard {
         if (teamId == null) throw new BusinessException(403, "无权代建该球员");
         if (s.canManageTeam(teamId)) return;
         Team team = teamRepository.findById(teamId).orElse(null);
-        if (team != null && team.getLeagueId() != null && s.canManageLeague(team.getLeagueId())) return;
+        // 批次 6（2026-10-01 口径精化，spec §6.9）：主办方（联盟管理员）代建/批量建档仅限「无有效管理员」的球队。
+        // 该条件只在受限的「联盟域内」分支追加：上方球队管理员本队与不受限（租管/超管）直通分支均不受影响。
+        if (team != null && team.getLeagueId() != null && s.canManageLeague(team.getLeagueId())
+                && !teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(teamId, TeamManager.STATUS_ACTIVE)) {
+            return;
+        }
         throw new BusinessException(403, "无权代建该球员");
     }
 
