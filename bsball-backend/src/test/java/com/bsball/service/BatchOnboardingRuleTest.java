@@ -272,6 +272,8 @@ class BatchOnboardingRuleTest {
 
         assertEquals(403, ex.getCode());
         assertEquals("无权代建该球员", ex.getMessage());
+        // M-2：钉死批次 6 新条件——批量入口确已查询「无有效管理员」后方才拦截
+        verify(teamManagerRepository).existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE);
         verify(playerRepository, never()).save(any(Player.class));
     }
 

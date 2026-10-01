@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -392,7 +394,7 @@ class ResourceGuardTest {
         verifyNoInteractions(gameRepository, eventRepository);
     }
 
-    // ------------------------------------------------------------------ assertCanCreateUnclaimedPlayer（批次 3b）
+    // ------------------------------------------------------------------ assertCanCreateUnclaimedPlayer（批次 3b / 批次 6）
 
     @Test
     @DisplayName("代建守卫：不受限（租管/超管）放行（不查库——球队有无管理员均无影响）")
@@ -439,6 +441,8 @@ class ResourceGuardTest {
                 () -> guard.assertCanCreateUnclaimedPlayer(100L));
         assertEquals(403, ex.getCode());
         assertEquals("无权代建该球员", ex.getMessage());
+        // M-2：钉死批次 6 新条件——受限联盟域内分支确已查询「无有效管理员」后方才拦截
+        verify(teamManagerRepository).existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE);
     }
 
     @Test
@@ -446,21 +450,20 @@ class ResourceGuardTest {
     void createPlayer_ownTeam_hasManager_passes() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
-        // 显式声明本队存在 active 管理员；本队命中分支先返回、不查负责人 → 依旧放行（回归护栏）
-        lenient().when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
-                .thenReturn(true);
 
         assertDoesNotThrow(() -> guard.assertCanCreateUnclaimedPlayer(100L));
+        // M-1：本队命中分支先返回、不查负责人——钉死「未读取管理员存在性」（去恒真装饰存根）
+        verify(teamManagerRepository, never()).existsByTeamIdAndStatusAndDeletedAtIsNull(any(), any());
     }
 
     @Test
     @DisplayName("代建守卫：租管/超管且球队已有 active 管理员 → 仍放行（不受限直通不受管理员影响）")
     void createPlayer_unrestricted_hasManager_passes() {
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
-        lenient().when(teamManagerRepository.existsByTeamIdAndStatusAndDeletedAtIsNull(100L, TeamManager.STATUS_ACTIVE))
-                .thenReturn(true);
 
         assertDoesNotThrow(() -> guard.assertCanCreateUnclaimedPlayer(100L));
+        // M-1：不受限直通分支先返回、不查库——钉死「未读取管理员存在性」（去恒真装饰存根）
+        verify(teamManagerRepository, never()).existsByTeamIdAndStatusAndDeletedAtIsNull(any(), any());
     }
 
     @Test
