@@ -9,7 +9,8 @@
  *  - ④ 命中已存在菜单：仅确保超管绑定，零插入；
  *  - ⑤ 「系统管理」目录缺失 → 直接返回，零插入（防御：不产生悬挂菜单）；
  *  - ⑥ tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：不含平台资产菜单 id（排除结论）；
- *  - ⑦ 双分支调用代码证据：源码中 `this.ensurePlatformAssetMenuIfNeeded();` 恰出现 2 次（首装 + 升级）。
+ *  - ⑦ 双分支保障（反射契约 + 首装/升级行为 + 名称级调用点计数）：ensure 方法契约存在（私有无参 void）、
+ *        首装/升级语义等价行为、源码中 ensurePlatformAssetMenuIfNeeded 名称恰出现 3 次（1 声明 + 2 调用点）。
  *
  * 风格：外部依赖一律 Mockito mock，不启动 Spring、不连库；被测 private 方法经反射调用（对齐既有 InitDataRunner*Test）。
  */
@@ -241,14 +242,40 @@ class InitDataRunnerPlatformAssetMenuTest {
     }
 
     @Test
-    @DisplayName("⑦ 双分支调用代码证据：源码中 this.ensurePlatformAssetMenuIfNeeded() 恰出现 2 次")
-    void dualBranchInvocationEvidence() throws Exception {
-        Path src = Paths.get(System.getProperty("user.dir"), "src", "main", "java", "com", "bsball", "core",
+    @DisplayName("⑦ 双分支保障（反射契约 + 首装/升级行为 + 名称级调用点计数=3）")
+    void dualBranchGuaranteeViaContractAndBehavior() throws Exception {
+        // (a) 反射契约：ensure 方法存在且为私有无参 void（守卫重命名/删除/可见性漂移）。
+        //     说明：本契约仅保证方法自身存在；对「run() 首装/升级双分支是否真的调用 ensure」的守护见下方 (d)。
+        Method ensure = InitDataRunner.class.getDeclaredMethod("ensurePlatformAssetMenuIfNeeded");
+        assertEquals(void.class, ensure.getReturnType(), "ensure 应为 void");
+        assertEquals(0, ensure.getParameterCount(), "ensure 应无参");
+        assertTrue(java.lang.reflect.Modifier.isPrivate(ensure.getModifiers()), "ensure 应为 private");
+        Method run = InitDataRunner.class.getMethod("run", String[].class);
+        assertTrue(java.lang.reflect.Modifier.isPublic(run.getModifiers()), "run 应为 public 入口");
+
+        // (b) 首装分支语义等价：空库 + 「系统管理」目录存在 → ensure 恰插入一条平台资产菜单。
+        menuStore.add(menu(2L, 0L, "/system", "系统管理", 1, null));
+        invokeEnsure();
+        assertEquals(1L, menuStore.stream().filter(m -> ASSET_PATH.equals(m.getPath())).count(),
+                "首装语义：ensure 应插入平台资产菜单");
+        int savesAfterFirst = menuSaveCount;
+
+        // (c) 升级分支语义等价：再次调用（菜单已在）→ 幂等零插入（与首装后升级到新版本等价）。
+        invokeEnsure();
+        assertEquals(savesAfterFirst, menuSaveCount, "升级语义：ensure 对既有菜单幂等零插入");
+        assertEquals(1L, menuStore.stream().filter(m -> ASSET_PATH.equals(m.getPath())).count(),
+                "升级语义：不得重复插入");
+
+        // (d) 名称级调用点计数：读 InitDataRunner 源码，统计子串 ensurePlatformAssetMenuIfNeeded 的出现次数。
+        //     预期恰为 3 = 1 处 private 方法声明 + run() 首装/升级 2 处调用点。名称计数对空白/换行/格式不敏感，
+        //     比精确语句计数稳定；删除任一分支的调用点即跌破 3，兜住「run() 是否真的调用 ensure」这一护栏。
+        Path source = Paths.get(System.getProperty("user.dir"), "src", "main", "java", "com", "bsball", "core",
                 "InitDataRunner.java");
-        Assumptions.assumeTrue(Files.exists(src), "源码文件存在时才做双分支调用代码证据断言");
-        String content = Files.readString(src, StandardCharsets.UTF_8);
-        int count = countOccurrences(content, "this.ensurePlatformAssetMenuIfNeeded();");
-        assertEquals(2, count, "首装分支与升级分支应各调用一次 ensurePlatformAssetMenuIfNeeded()");
+        Assumptions.assumeTrue(Files.exists(source), "源码文件存在时才做名称级调用点计数断言");
+        String content = Files.readString(source, StandardCharsets.UTF_8);
+        int nameOccurrences = countOccurrences(content, "ensurePlatformAssetMenuIfNeeded");
+        assertEquals(3, nameOccurrences,
+                "ensurePlatformAssetMenuIfNeeded 名称应恰出现 3 次：1 处方法声明 + 首装/升级 2 处调用点（删除任一调用即失败）");
     }
 
     // ---- helpers ----
@@ -257,6 +284,16 @@ class InitDataRunnerPlatformAssetMenuTest {
         Method m = InitDataRunner.class.getDeclaredMethod("ensurePlatformAssetMenuIfNeeded");
         m.setAccessible(true);
         m.invoke(runner);
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     @SuppressWarnings("unchecked")
@@ -269,16 +306,6 @@ class InitDataRunnerPlatformAssetMenuTest {
     private Set<Long> boundMenuIds(long roleId) {
         return roleMenus.getOrDefault(roleId, List.of()).stream().map(SysRoleMenu::getMenuId)
                 .collect(Collectors.toCollection(HashSet::new));
-    }
-
-    private static int countOccurrences(String haystack, String needle) {
-        int count = 0;
-        int idx = 0;
-        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
-            count++;
-            idx += needle.length();
-        }
-        return count;
     }
 
     private static SysMenu menu(long id, long parentId, String path, String title, int menuType, String permission) {

@@ -192,6 +192,10 @@ public class CoachService {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u6559\u7ec3");
         }
         this.resourceGuard.assertCanManageTeam(existing.getTeamId());
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.coachRepository.save(existing);

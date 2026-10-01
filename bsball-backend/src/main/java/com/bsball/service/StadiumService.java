@@ -100,6 +100,7 @@ public class StadiumService {
     private final TeamRepository teamRepository;
     private final ChinaRegionRepository chinaRegionRepository;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final ResourceGuard resourceGuard;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -156,13 +157,35 @@ public class StadiumService {
         }
         Long uid = CurrentUserHolder.get();
         LocalDateTime now = LocalDateTime.now();
+        boolean superAdmin = this.resourceGuard.isCurrentUserSuperAdmin();
+        if (!superAdmin) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            s.setPlatformOwned(Boolean.TRUE);
+        }
         s.setDeletedAt(now);
         s.setDeletedBy(uid);
         for (StadiumHomeTeam ht : s.getHomeTeams()) {
             ht.setDeletedAt(now);
             ht.setDeletedBy(uid);
+            if (!superAdmin) {
+                // 级联裁定：非超管归还球场时，其主场球队一并离开运营面沉淀（复用既有 bs_team.platform_owned，不改 tenant_id）
+                this.markTeamPlatformOwned(ht.getTeamId());
+            }
         }
         this.stadiumRepository.save(s);
+    }
+
+    /** 级联置标（spec §6.10）：球场归还时其主场球队一并沉淀（复用既有 bs_team.platform_owned，不改 tenant_id）。 */
+    private void markTeamPlatformOwned(Long teamId) {
+        if (teamId == null) {
+            return;
+        }
+        Team t = (Team)this.teamRepository.findById(teamId).orElse(null);
+        if (t == null || Boolean.TRUE.equals(t.getPlatformOwned())) {
+            return;
+        }
+        t.setPlatformOwned(Boolean.TRUE);
+        this.teamRepository.save(t);
     }
 
     @Transactional(readOnly=true)
@@ -492,11 +515,12 @@ public class StadiumService {
     }
 
     @Generated
-    public StadiumService(StadiumRepository stadiumRepository, TeamRepository teamRepository, ChinaRegionRepository chinaRegionRepository, TenantQueryPolicyService tenantQueryPolicyService) {
+    public StadiumService(StadiumRepository stadiumRepository, TeamRepository teamRepository, ChinaRegionRepository chinaRegionRepository, TenantQueryPolicyService tenantQueryPolicyService, ResourceGuard resourceGuard) {
         this.stadiumRepository = stadiumRepository;
         this.teamRepository = teamRepository;
         this.chinaRegionRepository = chinaRegionRepository;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.resourceGuard = resourceGuard;
     }
 }
 

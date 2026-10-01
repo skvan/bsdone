@@ -20,6 +20,7 @@ import { useListTableAttrs as xl } from '../../composables/useListTable';
 import { useModalClose as Ml } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as El } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as me } from '../../composables/useSubmitLock';
+import { usePermission as Ma } from '../../composables/usePermission';
 import { loadLeaflet as Il } from '../../utils/leafletMapUi';
 import { addDefaultBaseLayer as Ll } from '../../utils/leafletMapUi';
 import { applyMapBranding as Al } from '../../utils/leafletMapUi';
@@ -73,7 +74,10 @@ var J=$e(Il(),1),Ol={
     =me(),{
       isSuperAdmin:ve,tenantLabel:ye
     }
-    =El(),be=wl(),_e=xl(),W=Cl(),Ve=Ml(),we=Dl(),U=_l("(max-width: 768px)"),he=z(()=>we.fillPageHeight&&!U.value),De=z(()=>U.value?"100%":900),Y=z(()=>l.layoutDiagramUrl?re(l.layoutDiagramUrl):""),X=z(()=>l.introImageUrl?re(l.introImageUrl):"");
+    =El(),{
+      hasPerm:Sa
+    }
+    =Ma(),be=wl(),_e=xl(),W=Cl(),Ve=Ml(),we=Dl(),U=_l("(max-width: 768px)"),he=z(()=>we.fillPageHeight&&!U.value),De=z(()=>U.value?"100%":900),Y=z(()=>l.layoutDiagramUrl?re(l.layoutDiagramUrl):""),X=z(()=>l.introImageUrl?re(l.introImageUrl):"");
     async function Ue(i){
       try{
         const{
@@ -245,6 +249,21 @@ var J=$e(Il(),1),Ol={
         }
         catch(e){
           e!=="cancel"&&h.error(e?.message||"删除失败")
+        }
+        
+      }
+      )
+    }
+    async function NeReturn(i){
+      await ge(async()=>{
+        try{
+          await vl.confirm(`确定要归还球场「${i.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await O.delete(i.id),h.success("已归还"),T()
+        }
+        catch(e){
+          e!=="cancel"&&h.error(e?.message||"归还失败")
         }
         
       }
@@ -444,13 +463,19 @@ var J=$e(Il(),1),Ol={
               ,{
                 default:a(()=>[...e[37]||(e[37]=[s("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),t(r,{
-                link:"",type:"danger",disabled:m(ce),onClick:qe=>Ne(n)
+              ,8,["onClick"]),m(Sa)("business:stadium:delete")?(p(),_(r,{
+                key:0,link:"",type:"danger",disabled:m(ce),onClick:qe=>Ne(n)
               }
               ,{
                 default:a(()=>[...e[38]||(e[38]=[s("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])]),_:1
+              ,8,["disabled","onClick"])):N("",!0),m(Sa)("business:stadium:return")?(p(),_(r,{
+                key:1,link:"",type:"warning",disabled:m(ce),onClick:qe=>NeReturn(n)
+              }
+              ,{
+                default:a(()=>[...e[57]||(e[57]=[s("归还",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):N("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }

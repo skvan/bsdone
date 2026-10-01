@@ -3,7 +3,9 @@
 // 批 4b-2（#154）：门户邀请「建档入队」交互——
 //   · 邀请已绑定档案（playerId 非空）：维持现状，直接认领（claimViaInvite(token, undefined) → body {}）；
 //   · 邀请未绑定档案（playerId 空）：展示轻量建档表单（姓名必填 / 出生日期选填 / 守位选填），
-//     提交 claimViaInvite(token, { draft })，后端按 mode 分支（claim=待审核 / registered=建档并入队）。
+//     提交 claimViaInvite(token, { draft })，后端按 mode 分支。
+// 批 b5（#154）：成功文案改由后端 mode 精确映射（claim→submitted / registered→registered /
+//   joined→joined / already_joined→alreadyJoined），移除本地对 playerId 的推断。
 import { createElementBlock as i, defineComponent as V, createTextVNode as c, computed as o, toDisplayString as a, createElementVNode as d, unref as t, createBlock as C, ref as y, reactive as re, createVNode as m, withDirectives as w, openBlock as r, withCtx as s, Fragment as I, resolveComponent as T, onMounted as L, KeepAlive as W, createCommentVNode as n } from 'vue';
 import { ElMessage as A, ElEmpty as M, ElButton as D, ElForm as Ef, ElFormItem as Efi, ElInput as Ei, ElDatePicker as Edp, ElSelect as Es, ElOption as Eo } from 'element-plus';
 import { useI18n as q } from 'vue-i18n';
@@ -117,8 +119,9 @@ var G={
       p.value=!0;
       try{
         const res=await N.claimViaInvite(f.value,Yd?Od:void 0),mode=res?.data?.mode;
-        // 成功分支按后端返回 mode 区分：claim=认领落库待审核；registered=建档并入队 / 存量直接入队。
-        mode==="claim"?A.success(l("playerClaimInvite.submitted")):A.success(Yd?l("playerClaimInvite.registered"):l("playerClaimInvite.joined"));
+        // 成功分支严格按后端返回 mode 映射文案（不再本地推断）：
+        // claim=认领落库待审核；registered=建档并入队；joined=存量直接入队；already_joined=已在队幂等。
+        mode==="claim"?A.success(l("playerClaimInvite.submitted")):mode==="registered"?A.success(l("playerClaimInvite.registered")):mode==="joined"?A.success(l("playerClaimInvite.joined")):mode==="already_joined"&&A.success(l("playerClaimInvite.alreadyJoined"));
         // M4：成功后置 done，禁用提交按钮防止二次点击 400。
         Dk.value=!0
       }

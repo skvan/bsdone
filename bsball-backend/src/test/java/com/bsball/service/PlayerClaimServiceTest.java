@@ -10,6 +10,9 @@
  *  ⑥ 无目标球员且无档案且无草稿 → 400；
  *  ⑦ 存量档案（不在受邀队）凭开放邀请 → 直接入队（不建档，固化 I-2 新语义）；
  *  ⑧ 幂等早返回不消费令牌（usedCount 不变）。
+ *
+ * mode 契约细分（批 b5，Task 2）：新建档入队={@code registered} / 存量档案直接入队={@code joined} /
+ * 已在队幂等早返回={@code already_joined}；claim 路径仍为 {@code claim}。
  */
 package com.bsball.service;
 
@@ -218,7 +221,7 @@ class PlayerClaimServiceTest {
 
         Map<String, Object> out = service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, new Player());
 
-        assertEquals("registered", out.get("mode"));
+        assertEquals("already_joined", out.get("mode"));
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
         // 不重复建档 / 不重复入队 / 不重复写沿革
@@ -310,7 +313,7 @@ class PlayerClaimServiceTest {
 
         Map<String, Object> out = service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null);
 
-        assertEquals("registered", out.get("mode"));
+        assertEquals("joined", out.get("mode"));
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
         // 存量档案直接入队：绝不建档
@@ -361,7 +364,7 @@ class PlayerClaimServiceTest {
 
         Map<String, Object> out = svc.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, null);
 
-        assertEquals("registered", out.get("mode"));
+        assertEquals("joined", out.get("mode"));
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
         List<PlayerTeamEntryDto> desired = (List<PlayerTeamEntryDto>) holders[0];
         PlayerTeamService.PlayerTeamSyncPlan plan = (PlayerTeamService.PlayerTeamSyncPlan) holders[1];
@@ -436,7 +439,7 @@ class PlayerClaimServiceTest {
 
         Map<String, Object> out = service.claimOrRegisterViaInvite(CLAIMANT_ID, "tok", null, new Player());
 
-        assertEquals("registered", out.get("mode"));
+        assertEquals("already_joined", out.get("mode"));
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
         // 无写入 → 不消费令牌、不落库邀请
         assertEquals(0, invite.getUsedCount());

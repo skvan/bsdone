@@ -330,6 +330,8 @@ implements Filter {
 
     private void writeTenantReject(HttpServletRequest req, HttpServletResponse res, TenantAccessGuard.Decision decision) throws IOException {
         ApiPermissionFilter.applyCorsHeaders((HttpServletRequest)req, (HttpServletResponse)res);
+        // 唯一租户不可用拒绝响应（404 码通路 / 403 ID头与JWT通路）均置唯一码标记头，便于前端/网关精确识别。
+        res.setHeader("X-Tenant-Unavailable", "1");
         res.setStatus(decision.code());
         res.setContentType("application/json");
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());

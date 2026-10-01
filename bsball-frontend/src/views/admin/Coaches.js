@@ -18,6 +18,7 @@ import { useListTableAttrs as Qe } from '../../composables/useListTable';
 import { useModalClose as Je } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as We } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as N } from '../../composables/useSubmitLock';
+import { usePermission as Pa } from '../../composables/usePermission';
 import '../../styles/legacy/coaches.css';
 var Xe={
   coach:"教练",head_coach:"主教练"
@@ -45,7 +46,10 @@ var Xe={
     =N(),{
       isSuperAdmin:G,tenantLabel:K
     }
-    =We(),w=_(),Q=U(()=>({
+    =We(),{
+      hasPerm:Ca
+    }
+    =Pa(),w=_(),Q=U(()=>({
       name:[{
         required:!0,message:"请输入姓名",trigger:"blur"
       }
@@ -112,6 +116,21 @@ var Xe={
         }
         catch(e){
           e!=="cancel"&&h.error(e?.message||"删除失败")
+        }
+        
+      }
+      )
+    }
+    async function ieReturn(o){
+      await H(async()=>{
+        try{
+          await ze.confirm(`确定要归还教练「${o.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await S.delete(o.id),h.success("已归还"),u()
+        }
+        catch(e){
+          e!=="cancel"&&h.error(e?.message||"归还失败")
         }
         
       }
@@ -297,13 +316,19 @@ var Xe={
               ,{
                 default:t(()=>[...e[17]||(e[17]=[i("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),a(c,{
-                link:"",type:"danger",disabled:d(Y),onClick:fe=>ie(s)
+              ,8,["onClick"]),d(Ca)("business:coach:delete")?(g(),b(c,{
+                key:0,link:"",type:"danger",disabled:d(Y),onClick:fe=>ie(s)
               }
               ,{
                 default:t(()=>[...e[18]||(e[18]=[i("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])]),_:1
+              ,8,["disabled","onClick"])):Be("",!0),d(Ca)("business:coach:return")?(g(),b(c,{
+                key:1,link:"",type:"warning",disabled:d(Y),onClick:fe=>ieReturn(s)
+              }
+              ,{
+                default:t(()=>[...e[22]||(e[22]=[i("归还",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):Be("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }
