@@ -618,9 +618,7 @@ var We={
           const t=w();
           Wa.completeLogin(t,e.token,e.user);
           const r=typeof Z.query.redirect=="string"?Z.query.redirect.trim():"",o={
-            name:"AdminDashboard",params:{
-              tenantCode:t
-            }
+            path:`/${t}${Wa.firstAccessibleMenuPath()}`
             
           };
           if(r&&/\/admin(\/|$)/.test(r)){

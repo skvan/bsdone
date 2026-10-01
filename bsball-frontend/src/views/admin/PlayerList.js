@@ -28,6 +28,7 @@ import { useListTableAttrs as Fn } from '../../composables/useListTable';
 import { useModalClose as Rn } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as Mn } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as bt } from '../../composables/useSubmitLock';
+import { usePermission as Ii } from '../../composables/usePermission';
 import { formatPosition as Ma } from '../../utils/playerOptions';
 import { POSITION_LABELS as Pn } from '../../utils/playerOptions';
 import { formatBatsThrows as Un } from '../../utils/playerOptions';
@@ -221,7 +222,10 @@ var $n={
     =bt(),{
       isSuperAdmin:re,tenantLabel:It
     }
-    =Mn(),Ua=_n(),se=hn(),Et=Fn(),Vt=Sn(),Bt=Rn(),xt=wn(),K=bn("(max-width: 768px)"),Ct=N(()=>xt.fillPageHeight&&!K.value),Dt=N(()=>K.value?"100%":920),St=N(()=>K.value?"100%":720),qe=Object.keys(Pn);
+    =Mn(),{
+      hasPerm:Zi
+    }
+    =Ii(),Ua=_n(),se=hn(),Et=Fn(),Vt=Sn(),Bt=Rn(),xt=wn(),K=bn("(max-width: 768px)"),Ct=N(()=>xt.fillPageHeight&&!K.value),Dt=N(()=>K.value?"100%":920),St=N(()=>K.value?"100%":720),qe=Object.keys(Pn);
     function Ft(a){
       Ua.push({
         name:"AdminPlayerDetail",params:{
@@ -1195,13 +1199,13 @@ var $n={
             ,{
               default:n(()=>[...e[47]||(e[47]=[s("导出数据",-1)])]),_:1
             }
-            ),t(y,{
-              command:"import"
+            ),g(Zi)("business:player:import")?(m(),R(y,{
+              key:0,command:"import"
             }
             ,{
               default:n(()=>[...e[48]||(e[48]=[s("导入数据",-1)])]),_:1
             }
-            )]),_:1
+            )):H("",!0)]),_:1
           }
           )]),default:n(()=>[t(i,null,{
             default:n(()=>[e[46]||(e[46]=s(" 更多 ",-1)),t(u,{
@@ -1214,13 +1218,13 @@ var $n={
           }
           )]),_:1
         }
-        ),t(i,{
-          type:"primary",onClick:e[0]||(e[0]=o=>We())
+        ),g(Zi)("business:player:create")?(m(),R(i,{
+          key:0,type:"primary",onClick:e[0]||(e[0]=o=>We())
         }
         ,{
           default:n(()=>[...e[49]||(e[49]=[s("新增球员",-1)])]),_:1
         }
-        )],64)):(m(),b(q,{
+        )):H("",!0)],64)):(m(),b(q,{
           key:1
         }
         ,[t(i,{
@@ -1229,19 +1233,19 @@ var $n={
         ,{
           default:n(()=>[...e[50]||(e[50]=[s("导出数据",-1)])]),_:1
         }
-        ),t(i,{
-          onClick:st
+        ),g(Zi)("business:player:import")?(m(),R(i,{
+          key:0,onClick:st
         }
         ,{
           default:n(()=>[...e[51]||(e[51]=[s("导入数据",-1)])]),_:1
         }
-        ),t(i,{
-          type:"primary",onClick:e[1]||(e[1]=o=>We())
+        )):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
+          key:1,type:"primary",onClick:e[1]||(e[1]=o=>We())
         }
         ,{
           default:n(()=>[...e[52]||(e[52]=[s("新增球员",-1)])]),_:1
         }
-        )],64))])]),default:n(()=>[t(Cn,{
+        )):H("",!0)],64))])]),default:n(()=>[t(Cn,{
           class:"player-list-scaffold","fill-mode":Ct.value
         }
         ,{
@@ -1526,13 +1530,13 @@ var $n={
               ,{
                 default:n(()=>[...e[57]||(e[57]=[s("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),t(i,{
-                link:"",type:"danger",disabled:g(Ce),onClick:mt=>Bl(h)
+              ,8,["onClick"]),g(Zi)("business:player:delete")?(m(),R(i,{
+                key:0,link:"",type:"danger",disabled:g(Ce),onClick:mt=>Bl(h)
               }
               ,{
                 default:n(()=>[...e[58]||(e[58]=[s("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])]),_:1
+              ,8,["disabled","onClick"])):H("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }
