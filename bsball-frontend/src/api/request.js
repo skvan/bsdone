@@ -128,6 +128,7 @@ function isPublicPath(url) {
 // 管理上下文判定（T4.1）：当前页面是否处于「管理视图」窄域。
 // 口径对齐 utils/tenantRoute 的部署基址剥离约定：先剥掉已知部署基址前缀，再判断 /{tenant}/admin 开头。
 // 基址集合（长前缀优先，避免 '/bs-ball' 误剥 '/bs-ball-next'）：dev '/'、新版 '/bs-ball-next/'、默认 '/bs-ball/'。
+// 注：硬编码前缀与 utils/tenantRoute.js 部署基址约定同源（BASE_URL / currentRoutePath 口径），改动需两处同步以防漂移。
 const DEPLOY_BASE_PREFIXES = Array.from(
   new Set([BASE_URL, '/bs-ball-next', '/bs-ball'])
 )
@@ -157,8 +158,10 @@ function buildHeaders(fullUrl, custom) {
     'Content-Type': 'application/json',
     ...tenantHeaders(),
     ...(needAuth ? authHeaders() : {}),
-    // 管理区内的所有请求（含公开读接口）都带管理上下文头；公开路径判定仅决定是否带 Authorization，独立于此
-    ...(isManageContext() ? { 'X-Scope-Context': 'manage' } : {}),
+    // 管理上下文头仅随「已认证的管理区请求」附加（isManageContext() && needAuth）：
+    // needAuth 由 isPublicPath 独立判定，二者正交——管理区内的公开路径（如 /{t}/admin/login 页的登录/验证码）不再携带；
+    // 管理区业务请求（needAuth=true）仍照常携带。
+    ...(isManageContext() && needAuth ? { 'X-Scope-Context': 'manage' } : {}),
     ...custom
   };
 }
