@@ -143,6 +143,8 @@ implements CommandLineRunner {
                 this.seedApis(adminId);
                 this.ensurePortalProvisionApisIfNeeded();
                 this.ensurePlatformAssetApisIfNeeded();
+                // 批次 4b Task 4b-4：平台资产页菜单种子（首装分支，与既有 ensure 并列）
+                this.ensurePlatformAssetMenuIfNeeded();
                 this.ensureBatchAndTenantRoleConfigApisIfNeeded();
                 this.ensureMenuDirectoryTypesAndDefaultButtons();
                 this.seedDict(adminId);
@@ -182,6 +184,8 @@ implements CommandLineRunner {
                 // 批次 4b Task 4b-2：升级分支在排除 delete 后补绑默认菜单（修复升级后新按钮不可见）
                 this.ensureTenantAdminRoleRebindsDefaultMenusIfNeeded();
                 this.ensurePlatformAssetApisIfNeeded();
+                // 批次 4b Task 4b-4：平台资产页菜单种子（升级分支，靠近端点 ensure）
+                this.ensurePlatformAssetMenuIfNeeded();
                 this.ensureBatchAndTenantRoleConfigApisIfNeeded();
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
                 long opIdForRoles = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
@@ -639,6 +643,44 @@ implements CommandLineRunner {
     }
 
     /**
+     * 平台资产页菜单种子（批次 4b，Task 4b-4）：在「系统管理」目录下补插「平台资产」叶菜单。
+     *
+     * 挂载点：读现有「系统管理」目录（path=/system 或 title=系统管理，即 users/roles 所在目录）作为 parentId，
+     *         不另建目录；该目录缺失（异常库）直接返回，避免产生悬挂菜单。
+     * 字段风格：对齐该目录既有子菜单（Users/Roles/…）——叶菜单 menuType=2，permission 留空
+     *         （既有系统区叶菜单均不带 permission；按钮菜单才带），故按 path 判存（permission 为空不能作判存键）。
+     * 幂等：按 path=/admin/platform-asset 判存；已存在则仅确保超管绑定，零插入。
+     * 双分支：run() 首装分支与升级分支均调用本方法（与 ensurePlatformAssetApisIfNeeded 同源端点）。
+     * 可见性：插入/命中后显式绑定超管（admin）角色，保证两分支超管均可见；tenant_admin 不在
+     *         collectTenantAdminDefaultMenuIds 采集范围内（该 path 属 /system 子树而非 /business 子树，
+     *         且 leafPaths 白名单未含之），故天然不获得（详见报告绑定论证）。
+     */
+    private void ensurePlatformAssetMenuIfNeeded() {
+        String path = "/admin/platform-asset";
+        List<SysMenu> all = this.sysMenuRepository.findAll();
+        SysMenu existed = all.stream().filter(m -> path.equals(m.getPath())).findFirst().orElse(null);
+        SysRole adminRole = this.sysRoleRepository.findByTenantIdIsNullAndCode("admin").orElse(null);
+        if (existed != null) {
+            if (adminRole != null) {
+                this.bindMenuToAdminIfNeeded(adminRole.getId().longValue(), existed.getId().longValue());
+            }
+            return;
+        }
+        SysMenu systemRoot = all.stream().filter(m -> "/system".equals(m.getPath()) || "系统管理".equals(m.getTitle())).findFirst().orElse(null);
+        if (systemRoot == null) {
+            return;
+        }
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        int maxSort = all.stream().filter(m -> systemRoot.getId().equals(m.getParentId())).mapToInt(m -> m.getSort() != null ? m.getSort() : 0).max().orElse(0);
+        SysMenu platformAssetMenu = this.menu(systemRoot.getId(), "平台资产", "平台资产", path, "AdminPlatformAsset", "views/admin/PlatformAsset.js", "Coin", maxSort + 1, opId);
+        SysMenu savedMenu = (SysMenu)this.sysMenuRepository.save(platformAssetMenu);
+        if (adminRole != null) {
+            this.bindMenuToAdminIfNeeded(adminRole.getId().longValue(), savedMenu.getId().longValue());
+        }
+        log.info("已补插菜单：平台资产");
+    }
+
+    /**
      * 平台资产归还汇总 API 注册（批次 3b，spec §6.10）：仅超管端点 /sys/platform-asset/summary（GET）。
      * 幂等：已存在同 path+method 则不重复写入；不绑定任何角色（过滤器层仅超管可访问）。
      */
@@ -694,6 +736,11 @@ implements CommandLineRunner {
     private static boolean isApiAllowedForTenantAdmin(SysApi a) {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
+            return false;
+        }
+        if (p.startsWith("/sys/platform-asset")) {
+            // 平台资产归还汇总（GET /sys/platform-asset/summary）：仅系统超管，租户管理员显式排除
+            // （服务层 PlatformAssetService 已有 isSuperAdmin 守卫兜底；此处提前短路，防未来规则重排漂移）
             return false;
         }
         if (p.startsWith("/sys/monitor")) {

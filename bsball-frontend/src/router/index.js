@@ -73,6 +73,7 @@ import AppConfig from '../views/admin/AppConfig.js';
 import LineupTemplates from '../views/admin/LineupTemplates.js';
 import HistoryRecordList from '../views/admin/HistoryRecordList.js';
 import HighlightMomentList from '../views/admin/HighlightMomentList.js';
+import PlatformAsset from '../views/admin/PlatformAsset.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -195,7 +196,9 @@ const routes = [
             { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
             { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
             { path: 'history-records', name: 'AdminHistoryRecords', component: HistoryRecordList },
-            { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList }
+            { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList },
+            // 平台资产页（超管；批次 4b Task 4b-4）：菜单 path=/admin/platform-asset 经后端菜单树下发至超管侧边栏
+            { path: 'platform-asset', name: 'AdminPlatformAsset', component: PlatformAsset, meta: { title: '平台资产' } }
           ]
         }
       ]

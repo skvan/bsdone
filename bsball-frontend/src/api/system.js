@@ -167,6 +167,12 @@ export const tenantApi = {
   scopeOptions: (tenantId) => getData(`${BASE}/tenant/scope-options?tenantId=${tenantId}`)
 };
 
+// 平台资产归还汇总（超管；批次 4b Task 4b-4 / spec §6.10）
+// GET /sys/platform-asset/summary：各实体 platform_owned=true 且已软删的计数（league/team/player/event/game）
+export const platformAssetApi = {
+  summary: () => getData(`${BASE}/platform-asset/summary`).then((data) => data ?? {})
+};
+
 // 资源上传（multipart，单独走 fetch）
 export async function uploadResource(file) {
   const url = rewriteUrl('/api/sys/resource/upload');
