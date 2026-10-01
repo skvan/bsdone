@@ -938,10 +938,6 @@ var Bu=Yc("liveGame",()=>{
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
   ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),earnedRunHalfTotals=x({});
-  function addLivePitcherEarnedRuns(pitcher, runs=1){
-    if(!pitcher?.stats?.pitching||runs<=0)return;
-    pitcher.stats.pitching.pitchR=(pitcher.stats.pitching.pitchR??0)+runs;
-  }
   function applyEarnedRunTotals(event, result){
     const totals=result?.pitcherTotals??{};
     const key=`${event.inning}:${event.half}`;
@@ -1095,7 +1091,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,earnedRunHalfTotals,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -4283,6 +4279,10 @@ function zv(u){
   const f=Ls(u);
   return f==="fly"||f==="pop"?"F":f==="ld"?"L":"G"
 }
+function addLivePitcherEarnedRuns(pitcher, runs=1){
+  if(!pitcher?.stats?.pitching||runs<=0)return;
+  pitcher.stats.pitching.pitchR=(pitcher.stats.pitching.pitchR??0)+runs;
+}
 function qv(u,f){
   const l={
     1:f[1],2:f[2],3:f[3]
@@ -6970,18 +6970,18 @@ var sg={
       const E={
         id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
       };
-      Me.value.push(w),pn.value.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
+      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
     }
     function syncEarnedRunHalfInning(event){
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
         const gameId=Number(R.value);
         if(!gameId||!event)return;
-        const plays=pn.value.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
+        const plays=f.playEvents.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
         if(!plays.length)return;
         try{
           const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
-          earnedRunReconstruction.value=result?.data??result??null;
-          applyEarnedRunTotals(event,earnedRunReconstruction.value);
+          f.earnedRunReconstruction=result?.data??result??null;
+          f.applyEarnedRunTotals(event,f.earnedRunReconstruction);
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
         }
@@ -7129,7 +7129,7 @@ var sg={
             }
             
           }
-          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(pn.value)),earnedRunHalfTotals:JSON.parse(JSON.stringify(earnedRunHalfTotals.value)),playerStatsById:kf(),...t?{
+          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(f.playEvents)),earnedRunHalfTotals:JSON.parse(JSON.stringify(f.earnedRunHalfTotals)),playerStatsById:kf(),...t?{
             undoHistory:An($e.value),redoHistory:An(Ne.value)
           }
           :{
@@ -7445,7 +7445,7 @@ var sg={
         };
         l.runners&&(l.runners[1]=t(l.runners[1]),l.runners[2]=t(l.runners[2]),l.runners[3]=t(l.runners[3])),l.mvp=t(l.mvp),l.svp=t(l.svp),l.flow&&l.flow.runner&&(l.flow.runner=t(l.flow.runner))
       }
-      )(),ke.value=e.log??[],e.atBatSummaries&&(Me.value=JSON.parse(JSON.stringify(e.atBatSummaries))),e.playEvents&&(pn.value=JSON.parse(JSON.stringify(e.playEvents)));
+      )(),ke.value=e.log??[],e.atBatSummaries&&(Me.value=JSON.parse(JSON.stringify(e.atBatSummaries))),e.playEvents&&(f.playEvents=JSON.parse(JSON.stringify(e.playEvents)));
       for(const t of pn)clearTimeout(t);
       pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,Jl(),pt()
     }
@@ -7546,7 +7546,7 @@ var sg={
         let b;
         y===uo&&ql!==null?b=ql:(ql=Kl(),b=ql,uo=y);
         const w={
-          game:t,teams:Xl(),lineup:p,hitSprayQueue:[...l.hitSprayQueue],nextAction:e,log:g,atBatSummaries:b,playEvents:JSON.parse(JSON.stringify(pn.value))
+          game:t,teams:Xl(),lineup:p,hitSprayQueue:[...l.hitSprayQueue],nextAction:e,log:g,atBatSummaries:b,playEvents:JSON.parse(JSON.stringify(f.playEvents))
         };
         lo($e.value,w),nt()||requestAnimationFrame(()=>Ii())
       }
@@ -7562,7 +7562,7 @@ var sg={
       }
       const e=$e.value.pop(),t=Wl(),a=Yl();
       Ne.value.push({
-        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.nextAction,lastAction:e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(pn.value))
+        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.nextAction,lastAction:e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
       }
       ),Ne.value.length>Fs&&Ne.value.shift();
       const s=ro(t,a,e.game,e.lineup,e.nextAction,"undo");
@@ -7587,7 +7587,7 @@ var sg={
       }
       const e=Ne.value.pop(),t=Wl(),a=Yl();
       lo($e.value,{
-        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.lastAction??e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(pn.value))
+        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.lastAction??e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
       }
       );
       const s=e.lastAction??e.nextAction,r=ro(t,a,e.game,e.lineup,s,"redo");
@@ -8660,7 +8660,7 @@ var sg={
       }
       const t=$e.value.pop();
       Ne.value.push({
-        game:Wl(),teams:Xl(),lineup:Yl(),nextAction:t.nextAction,lastAction:t.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(pn.value))
+        game:Wl(),teams:Xl(),lineup:Yl(),nextAction:t.nextAction,lastAction:t.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
       }
       ),Ne.value.length>Fs&&Ne.value.shift(),xi(()=>{
         ns(t)
