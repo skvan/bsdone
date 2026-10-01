@@ -412,7 +412,7 @@ var Rl={
             return
           }
           const e={
-            v:1,gameId:l,gameMode:V.value,gameStarted:!0,setupForm:{
+            v:1,savedAt:Date.now(),gameId:l,gameMode:V.value,gameStarted:!0,setupForm:{
               homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue
             }
             ,homeLineup:h.value,awayLineup:y.value,homeBench:T.value,awayBench:k.value,awayFieldingPitcherId:G.value,homeFieldingPitcherId:q.value,awayLastDhAddedFromPoolId:A.value,homeLastDhAddedFromPoolId:D.value,awayUnavailablePlayerIds:ge.value,homeUnavailablePlayerIds:be.value,gameState:{
@@ -429,7 +429,14 @@ var Rl={
             }
             
           };
-          Ul(ee.value,l,e),X.success("阵容与对战信息已保存，正在进入录入…"),Xe.replace({
+          Ul(ee.value,l,e);
+          try{
+            await Al.saveLiveSnapshot(l,JSON.stringify(e))
+          }
+          catch(error){
+            console.warn('[LiveGameLineup] initial snapshot save failed',error),X.warning("初始阵容未同步到服务器，切换页面后可能需要重排阵容")
+          }
+          X.success("阵容与对战信息已保存，正在进入录入…"),Xe.replace({
             name:"AdminGameLiveResume",params:{
               eventId:String(ee.value),gameId:String(l)
             }
