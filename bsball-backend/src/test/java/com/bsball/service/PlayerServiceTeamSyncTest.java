@@ -193,7 +193,7 @@ class PlayerServiceTeamSyncTest {
         Player p = player(1L, TENANT);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(null);
 
         service.get(1L);
 
@@ -226,7 +226,7 @@ class PlayerServiceTeamSyncTest {
     @DisplayName("阵容选择器：返回当前注册球员并按注册段映射背号与守备位置")
     void listTeamPlayerOptions_mapsEntryRows() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
-        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn((List<Long>)null);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(null);
         Object[] row = new Object[]{2L, "李四", "9", "[\"C\",\"1B\"]", "R", "L", "active"};
         when(playerTeamRepository.findTeamPlayerOptionFields(TENANT, 5L)).thenReturn(List.<Object[]>of(row));
 

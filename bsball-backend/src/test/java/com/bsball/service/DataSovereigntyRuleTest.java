@@ -182,6 +182,7 @@ class DataSovereigntyRuleTest {
         leagueService.delete(1L);
 
         assertEquals(Boolean.TRUE, existing.getPlatformOwned());
+        assertEquals(TENANT_ID, existing.getTenantId());
         assertNotNull(existing.getDeletedAt());
         verify(leagueRepository).save(existing);
     }
@@ -203,6 +204,7 @@ class DataSovereigntyRuleTest {
         teamService.delete(8L);
 
         assertEquals(Boolean.TRUE, existing.getPlatformOwned());
+        assertEquals(TENANT_ID, existing.getTenantId());
         assertNotNull(existing.getDeletedAt());
         verify(teamRepository).save(existing);
     }
@@ -220,6 +222,7 @@ class DataSovereigntyRuleTest {
         playerService.delete(5L);
 
         assertEquals(Boolean.TRUE, existing.getPlatformOwned());
+        assertEquals(TENANT_ID, existing.getTenantId());
         assertNotNull(existing.getDeletedAt());
         verify(playerRepository).save(existing);
     }
@@ -239,6 +242,8 @@ class DataSovereigntyRuleTest {
 
         assertEquals(Boolean.TRUE, a.getPlatformOwned());
         assertEquals(Boolean.TRUE, b.getPlatformOwned());
+        assertEquals(TENANT_ID, a.getTenantId());
+        assertEquals(TENANT_ID, b.getTenantId());
         assertNotNull(a.getDeletedAt());
         assertNotNull(b.getDeletedAt());
         verify(playerRepository).saveAll(any());
@@ -257,6 +262,7 @@ class DataSovereigntyRuleTest {
         eventService.delete(2L);
 
         assertEquals(Boolean.TRUE, existing.getPlatformOwned());
+        assertEquals(TENANT_ID, existing.getTenantId());
         assertNotNull(existing.getDeletedAt());
         verify(eventRepository).save(existing);
     }
@@ -276,6 +282,7 @@ class DataSovereigntyRuleTest {
         gameService.delete(3L);
 
         assertEquals(Boolean.TRUE, existing.getPlatformOwned());
+        assertEquals(TENANT_ID, existing.getTenantId());
         assertNotNull(existing.getDeletedAt());
         verify(gameRepository).save(existing);
     }

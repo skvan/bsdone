@@ -124,7 +124,7 @@ class PlayerClaimServiceTest {
     @Test
     @DisplayName("① 创建邀请：无队伍游离球员（同租户）不再因 isCurrentlyInTeam 被拒 → 正常创建邀请")
     void createInvite_playerWithoutTeam_createsInvite() {
-        when(apiPermissionService.isSuperAdmin(CREATOR_ID)).thenReturn(true);
+        // 批 2 沉淀⑩收敛：改用统一守卫（resourceGuard mock 放行），不再走自研 isSuperAdmin 判定
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
         when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(player(PLAYER_ID, TENANT_ID, null)));
         when(accountProperties.getInviteDefaultExpireHours()).thenReturn(72);
@@ -143,6 +143,8 @@ class PlayerClaimServiceTest {
         assertEquals(50L, ((Number) out.get("id")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
+        // 权限：改由统一写保护守卫判定（同语义）
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
         // 硬校验已删除：不再查询“球员是否在当前队”
         verify(playerTeamService, never()).isCurrentlyInTeam(any(), any());
     }
@@ -150,7 +152,6 @@ class PlayerClaimServiceTest {
     @Test
     @DisplayName("创建邀请：playerId 非空但跨租户 → 400")
     void createInvite_crossTenantPlayer_rejected() {
-        when(apiPermissionService.isSuperAdmin(CREATOR_ID)).thenReturn(true);
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
         when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(player(PLAYER_ID, 8L, null)));
 

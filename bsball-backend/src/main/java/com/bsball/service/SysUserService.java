@@ -94,6 +94,7 @@ public class SysUserService {
     private final SysUserTenantManageService sysUserTenantManageService;
     private final ApiPermissionService apiPermissionService;
     private final SysRoleRepository sysRoleRepository;
+    private final AccountScopeService accountScopeService;
 
     private static void validateUsername(String username) {
         if (username == null || username.isBlank()) {
@@ -167,6 +168,8 @@ public class SysUserService {
         this.assertSuperAdminRoleUnique(saved.getId(), rolesToSave);
         if (rolesToSave != null && !rolesToSave.isEmpty()) {
             this.saveUserRoles(saved.getId(), rolesToSave);
+            // 批 2 沉淀⑪：角色授予影响 scope resolveCore（角色/管理员判定），失效该用户范围缓存（后置到事务提交）
+            this.accountScopeService.evictUserScopeCacheAfterCommit(saved.getId());
         }
         if (targetIsSystemAdmin = this.containsSystemAdminRole(rolesToSave)) {
             if (reqTenants != null && !reqTenants.isEmpty()) {
@@ -230,6 +233,8 @@ public class SysUserService {
                 this.sysUserRoleRepository.deleteByUserId(id);
                 this.sysUserRoleRepository.flush();
                 this.saveUserRoles(id, sanitized);
+                // 批 2 沉淀⑪：角色变更（授予/回收）影响 scope resolveCore，失效该用户范围缓存（后置到事务提交）
+                this.accountScopeService.evictUserScopeCacheAfterCommit(id);
             }
         }
         if (targetIsSystemAdmin = this.containsSystemAdminRole(effectiveRoleIds = entity.getRoleIds() != null ? this.sanitizeRoleIdsForTenantOperator(op, entity.getRoleIds()) : this.sysUserRoleRepository.findByUserId(id).stream().map(SysUserRole::getRoleId).toList())) {
@@ -440,7 +445,7 @@ public class SysUserService {
     }
 
     @Generated
-    public SysUserService(SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository, SysUserTenantManageService sysUserTenantManageService, ApiPermissionService apiPermissionService, SysRoleRepository sysRoleRepository) {
+    public SysUserService(SysUserRepository sysUserRepository, SysUserRoleRepository sysUserRoleRepository, SysUserTenantRepository sysUserTenantRepository, SysTenantRepository sysTenantRepository, SysUserTenantManageService sysUserTenantManageService, ApiPermissionService apiPermissionService, SysRoleRepository sysRoleRepository, AccountScopeService accountScopeService) {
         this.sysUserRepository = sysUserRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
         this.sysUserTenantRepository = sysUserTenantRepository;
@@ -448,6 +453,7 @@ public class SysUserService {
         this.sysUserTenantManageService = sysUserTenantManageService;
         this.apiPermissionService = apiPermissionService;
         this.sysRoleRepository = sysRoleRepository;
+        this.accountScopeService = accountScopeService;
     }
 }
 

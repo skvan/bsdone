@@ -289,7 +289,9 @@ public class PlayerClaimService {
 
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
-        this.requireTeamManagerOrAdmin(creatorId, teamId);
+        // 批 2 沉淀⑩收敛：改用统一写保护守卫（ResourceGuard.assertCanManageTeam），与其它写路径同源。
+        // 语义：租户内不受限（超管/租管）放行；受限身份需命中自有球队集合（super/tenant admin 之外仅团队负责人/联盟派生域），否则 403。
+        this.resourceGuard.assertCanManageTeam(teamId);
         Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
@@ -501,15 +503,6 @@ public class PlayerClaimService {
         }
         this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
-    }
-
-    private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
-        if (this.apiPermissionService.isSuperAdmin(userId) || this.apiPermissionService.isTenantAdmin(userId)) {
-            return;
-        }
-        if (!this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(teamId, userId, "active")) {
-            throw new BusinessException(403, "\u4ec5\u7403\u961f\u8d1f\u8d23\u4eba\u6216\u7ba1\u7406\u5458\u53ef\u521b\u5efa\u9080\u8bf7");
-        }
     }
 
     private String resolveReviewerType(Player player) {

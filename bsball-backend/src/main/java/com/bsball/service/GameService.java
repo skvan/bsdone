@@ -1,41 +1,6 @@
 /*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  com.bsball.common.PageResult
- *  com.bsball.common.PaginationSupport
- *  com.bsball.core.CurrentUserHolder
- *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.GameSaveLiveDTO
- *  com.bsball.model.dto.GameSaveLiveDTO$GamePlayerStatPart
- *  com.bsball.model.dto.GameSaveLiveDTO$GameUpdatePart
- *  com.bsball.model.dto.SaveGameResultDTO
- *  com.bsball.model.dto.SaveGameResultDTO$GamePart
- *  com.bsball.model.dto.SaveGameResultDTO$StatPart
- *  com.bsball.model.entity.BaseEntity
- *  com.bsball.model.entity.Event
- *  com.bsball.model.entity.Game
- *  com.bsball.model.entity.GamePlayerStat
- *  com.bsball.model.entity.Stadium
- *  com.bsball.repository.EventRepository
- *  com.bsball.repository.GamePlayerStatRepository
- *  com.bsball.repository.GameRepository
- *  com.bsball.repository.StadiumRepository
- *  com.bsball.service.GameService
- *  com.bsball.service.TenantQueryPolicyService
- *  com.fasterxml.jackson.core.JsonProcessingException
- *  com.fasterxml.jackson.databind.ObjectMapper
- *  jakarta.persistence.criteria.Expression
- *  jakarta.persistence.criteria.Predicate
- *  lombok.Generated
- *  org.springframework.data.domain.Page
- *  org.springframework.data.domain.PageRequest
- *  org.springframework.data.domain.Pageable
- *  org.springframework.data.domain.Sort
- *  org.springframework.data.domain.Sort$Direction
- *  org.springframework.data.jpa.domain.Specification
- *  org.springframework.stereotype.Service
- *  org.springframework.transaction.annotation.Transactional
+ * 账号权限重构（批次 3b 收敛）：比赛（Game）业务服务。
+ * 批 2 沉淀⑥ Minor 收敛：清理反编译残留头注释（无行为变化）。
  */
 package com.bsball.service;
 
@@ -59,7 +24,6 @@ import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
-import com.bsball.service.TenantQueryPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -106,7 +70,7 @@ public class GameService {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        boolean bl = hasFilter = eventId != null || eventIds != null && !eventIds.isEmpty() || years != null && !years.isEmpty();
+        hasFilter = eventId != null || eventIds != null && !eventIds.isEmpty() || years != null && !years.isEmpty();
         if (!hasFilter) {
             Specification spec = (root, q, cb) -> {
                 ArrayList<Predicate> preds = new ArrayList<Predicate>();

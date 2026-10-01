@@ -339,6 +339,41 @@ class LeagueProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("listPending 超管全局令牌（tenant=0）：跨租户列举 pending（批 3a 沉淀⑨）")
+    void listPending_superAdminGlobal_crossTenant() {
+        // 超管全局令牌：上下文租户=0，isGlobalQueryMode=true
+        CurrentUserHolder.set(1L, 0L);
+        when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(true);
+        when(leagueCreateRequestRepository.findByStatusAndDeletedAtIsNull(LeagueCreateRequest.STATUS_PENDING))
+                .thenReturn(List.of(pendingRequest(1L, 10L, 7L), pendingRequest(2L, 99L, 8L)));
+
+        PageResult<LeagueCreateRequest> page = service.listPending(1L, 1, 20);
+
+        assertEquals(2L, page.getTotal());
+        assertEquals(2, page.getList().size());
+        // 跨租户列举：走全局仓储方法，不落单租户查询
+        verify(leagueCreateRequestRepository).findByStatusAndDeletedAtIsNull(LeagueCreateRequest.STATUS_PENDING);
+        verify(leagueCreateRequestRepository, never()).findByTenantIdAndStatusAndDeletedAtIsNull(any(), any());
+    }
+
+    @Test
+    @DisplayName("listPending 超管切租户（tenant非0）：仍限本租户（不跨租户）")
+    void listPending_superAdminScopedTenant_restricted() {
+        CurrentUserHolder.set(1L, 10L);
+        when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(10L);
+        when(leagueCreateRequestRepository.findByTenantIdAndStatusAndDeletedAtIsNull(eq(10L),
+                eq(LeagueCreateRequest.STATUS_PENDING))).thenReturn(List.of(pendingRequest(1L, 10L, 7L)));
+
+        PageResult<LeagueCreateRequest> page = service.listPending(1L, 1, 20);
+
+        assertEquals(1L, page.getTotal());
+        verify(leagueCreateRequestRepository, never()).findByStatusAndDeletedAtIsNull(any());
+    }
+
+    @Test
     @DisplayName("listPending 非管理员：403")
     void listPending_nonAdmin_forbidden() {
         CurrentUserHolder.set(2L, 10L);

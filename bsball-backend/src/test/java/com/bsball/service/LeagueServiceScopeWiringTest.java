@@ -254,6 +254,36 @@ class LeagueServiceScopeWiringTest {
         assertNotNull(existing.getDeletedAt());
     }
 
+    // ------------------------------------------------------------------ 写：createInternalForTenant（直建 name 守卫）
+
+    @Test
+    @DisplayName("createInternalForTenant 名称超 200：400「联盟名称过长」（批 3a 沉淀⑪）")
+    void createInternalForTenant_nameTooLong_badRequest() {
+        League body = new League();
+        body.setName("x".repeat(201));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.createInternalForTenant(body, TENANT_ID));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("联盟名称过长", ex.getMessage());
+        verify(leagueRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createInternalForTenant 空名/空白：400「联盟名称不能为空」")
+    void createInternalForTenant_blankName_badRequest() {
+        League body = new League();
+        body.setName("   ");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.createInternalForTenant(body, TENANT_ID));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("联盟名称不能为空", ex.getMessage());
+        verify(leagueRepository, never()).save(any());
+    }
+
     private static League league(long id, long tenantId) {
         League l = new League();
         l.setId(id);
