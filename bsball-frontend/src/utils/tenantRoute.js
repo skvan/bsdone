@@ -3,10 +3,13 @@
 export const DEFAULT_TENANT_CODE = 'bs-ball';
 
 // 保留字：不可作为租户码的首段路径（与编译产物逐字一致）
+// H40：追加新版顶层无租户路由段 'welcome'、'intro'——此前二者被误判为租户码
+//（测试环境双轨前缀下经 #154「租户不可用 404」通路整页跳 /404；见 frontend-hotfix-log H40）
 const RESERVED_CODES = new Set([
   'admin', 'user', 'users', 'default', 'api', 'assets', 'src', 'files', 'www', 'static',
   'public', 'server', 'health', 'sys', 'system', 'favicon.ico', 'root', 'null', 'undefined',
-  'portal', 'docs', 'login', 'logout', 'auth', 'oauth', 'index', '404', 'service-unavailable'
+  'portal', 'docs', 'login', 'logout', 'auth', 'oauth', 'index', '404', 'service-unavailable',
+  'welcome', 'intro'
 ]);
 
 const URL_SEGMENT_MAX = 512;
@@ -69,13 +72,17 @@ export function currentTenantCodeFromUrl() {
   let code = firstPathSegment(path);
   if (!code || isReservedTenantCode(code)) {
     const raw = (window.location.pathname || '/').replace(/^\/+/, '/').match(/^\/([^/]+)/);
-    if (raw && !isReservedTenantCode(raw[1])) code = raw[1];
+    // H40：部署前缀段仅当等于默认租户码时才视为租户——生产前缀 /bs-ball/ 与默认租户码一致（行为不变）；
+    // 测试环境双轨前缀 /bs-ball-next/ ≠ 任何租户码，此前被误当租户发出请求（portal/settings、
+    // portal/visit/record）触发 #154「租户不可用 404」→ 整页跳 /404
+    if (raw && raw[1].toLowerCase() === DEFAULT_TENANT_CODE) code = raw[1];
   }
   if ((!code || isReservedTenantCode(code)) && (path === '/' || path === '')) {
     const base = BASE_URL.replace(/\/+$/, '') || '';
     if (base && base !== '/') {
       const seg = base.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)[0];
-      if (seg && !isReservedTenantCode(seg)) code = seg;
+      // H40：同上游回退——仅默认租户码时采用（/bs-ball-next/ 前缀不再被回退为租户码）
+      if (seg && seg.toLowerCase() === DEFAULT_TENANT_CODE) code = seg;
     }
   }
   return code && !isReservedTenantCode(code) ? code : null;
