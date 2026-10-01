@@ -370,15 +370,17 @@ var ct={
       l&&!tcSeeded.value&&(tcSeeded.value=!0,tcKeys.value=he(tcGlobalIds.value),tcKey.value++)
     }
     async function tcOpen(l){
+      const rid=l?.id;
       tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
       try{
         const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id),st.list()]);
+        if(rid!==tcRole.value?.id||!Tc.value)return;
         tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
         const i=e?.enabled===!0;
         tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?he(e?.menuIds):[],tcKey.value++
       }
       finally{
-        tcl.value=!1
+        rid===tcRole.value?.id&&(tcl.value=!1)
       }
     }
     async function tcSave(){
@@ -590,13 +592,13 @@ var ct={
               ,{
                 default:n(()=>[...e[23]||(e[23]=[u("设置权限",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):V("",!0),je.user?.tenantAdmin===!0&&d.platform===!0?(m(),k(a,{
-                key:2,link:"",type:"primary",onClick:De=>tcOpen(d)
+              ,8,["disabled","onClick"])):V("",!0),je.user?.tenantAdmin===!0&&d.platform===!0&&["team_manager","league_organizer"].includes(d.code)?(m(),k(a,{
+                key:2,link:"",type:"primary",disabled:Q(d),onClick:De=>tcOpen(d)
               }
               ,{
                 default:n(()=>[u("租户目录",-1)]),_:1
               }
-              ,8,["onClick"])):V("",!0),t(a,{
+              ,8,["disabled","onClick"])):V("",!0),t(a,{
                 link:"",type:"danger",disabled:Ye(d)||c(Be),onClick:De=>yl(d)
               }
               ,{
@@ -735,15 +737,15 @@ var ct={
           default:n(()=>[u("清除覆盖",-1)]),_:1
         }
         ,8,["loading","disabled"])):V("",!0),t(a,{
-          type:"primary",loading:c(tcSubmitting),disabled:c(tcSubmitting)||!tcEnabled.value,onClick:tcSave
+          type:"primary",loading:c(tcSubmitting),disabled:c(tcSubmitting)||!tcEnabled.value||!tcMenus.value.length,title:tcEnabled.value&&!tcMenus.value.length?"菜单数据未加载":void 0,onClick:tcSave
         }
         ,{
           default:n(()=>[u("保存",-1)]),_:1
         }
-        ,8,["loading","disabled"])]),default:n(()=>[f("div",ft,[f("div",{class:"permission-filter-row",style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}},[t(Wi,{
+        ,8,["loading","disabled","title"])]),default:n(()=>[Pe((m(),E("div",ft,[f("div",{class:"permission-filter-row",style:{gap:"8px",marginBottom:"8px"}},[t(Wi,{
           modelValue:tcEnabled.value,"onUpdate:modelValue":e[44]||(e[44]=s=>tcEnabled.value=s),onChange:tct
         }
-        ,null,8,["modelValue"]),f("span",{class:"tenant-override-label"},[u("启用租户级目录覆盖",-1)])]),f("div",{class:"tenant-override-hint"},[u(b(tcEnabled.value?tcSeeded.value?"勾选 = 本次覆盖的菜单集合（保存时提交含父目录的全量集合）":"留空保存将停用该角色在本租户的全部后台菜单":"当前继承全局预设，开启开关后可自定义本租户目录"),1)]),f("div",{class:"permission-tree-wrap",style:{
+        ,null,8,["modelValue"]),f("span",{class:"tenant-override-label"},[u("启用租户级目录覆盖",-1)])]),f("div",{class:"tenant-override-hint"},[u(b(tcEnabled.value?(tcMenus.value.length?"勾选 = 本次覆盖的菜单集合（保存时提交含父目录的全量集合）":"菜单数据未加载，暂不可保存"):"当前继承全局预设，开启开关后可自定义本租户目录"),1)]),f("div",{class:"permission-tree-wrap",style:{
           display:tcEnabled.value?"":"none"
         }
         },[(m(),k(Me,{
@@ -757,7 +759,7 @@ var ct={
             data:s
           }
           )=>[f("span",ht,[f("span",null,b(s.title||s.name||"—"),1)])]),_:1}
-        ,8,["data","default-checked-keys"]))])])]),_:1}),t(Tl,{
+        ,8,["data","default-checked-keys"]))])])),[[Ke,tcl.value]])]),_:1}),t(Tl,{
         modelValue:G.value,"onUpdate:modelValue":e[17]||(e[17]=s=>G.value=s),title:`设置权限：${Z.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
       }
       ,{
