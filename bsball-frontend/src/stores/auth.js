@@ -238,10 +238,22 @@ export const useAuthStore = defineStore('auth', () => {
     return '/admin/leagues';
   });
 
-  // 登录落地（T4.2）：按计划顺序返回第一个可访问的管理端菜单路径
-  // 语义：优先复用 canAccess（菜单 ID 制 + 父级兜底 + 未知路径放行）；无 user 或全不可达 → /admin/dashboard（保持现有兜底）
+  // 登录落地（T4.2）：两遍法选取登录后首个可访问的管理端菜单路径
+  // 裁定：显式授权优先（避免 canAccess 的「父级兜底」把受限角色误导向兄弟页）。
+  // 第一遍（显式授权优先）：按 FIRST_MENU_ORDER 顺序返回首个被 menuPaths 显式包含的候选，
+  //   口径与 businessFirstPath 一致（menuPaths.has(path)）；team_manager 仅显式授予 /admin/teams
+  //   而未授予 /admin/leagues，故不会因 menuIds 含业务根目录 id=4（leagues 父级）而被兜底放行。
+  // 第二遍（兜底）：同样按顺序回退到首个 canAccess 放行的候选（含菜单 ID 制 + 父级兜底 + 未知路径放行），
+  //   仅在 menuPaths 为空/未显式命中任一候选时生效，保持既有安全网。
+  // 无 user 或两遍均无命中 → /admin/dashboard（保持既有兜底不变）。
   function firstAccessibleMenuPath() {
     if (!user.value) return '/admin/dashboard';
+    const paths = menuPaths.value;
+    if (paths != null && paths.size > 0) {
+      for (const path of FIRST_MENU_ORDER) {
+        if (paths.has(path)) return path;
+      }
+    }
     for (const path of FIRST_MENU_ORDER) {
       if (canAccess(path)) return path;
     }
