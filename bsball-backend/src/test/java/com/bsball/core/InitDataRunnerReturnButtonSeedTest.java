@@ -196,7 +196,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("② tenant_admin 默认集合：含 5 个 return、排除 6 个 delete（含 league:delete）")
+    @DisplayName("② tenant_admin 默认集合：含 5 个 return、排除 5 个 delete（含 league:delete）")
     void tenantAdminDefaultSetIncludesReturnExcludesDelete() throws Exception {
         Set<Long> result = collectTenantAdminDefaultMenuIds(tenantAdminFixture());
 
@@ -415,7 +415,7 @@ class InitDataRunnerReturnButtonSeedTest {
         return list;
     }
 
-    /** business 目录 + 4 页面 + 5 return + 6 delete + 1 普通按钮（parentId 指向页面，供 collect 沿父展开）。 */
+    /** business 目录 + 4 页面 + 5 return + 5 delete + 1 普通按钮（parentId 指向页面，供 collect 沿父展开）。 */
     private static List<SysMenu> tenantAdminFixture() {
         List<SysMenu> list = new ArrayList<>();
         list.add(menu(1L, 0L, "/business", null, 1));
@@ -429,7 +429,7 @@ class InitDataRunnerReturnButtonSeedTest {
         list.add(menu(12L, 4L, null, "business:event:return", 3));
         list.add(menu(13L, 4L, null, "business:game:return", 3));
         list.add(menu(14L, 5L, null, "business:league:return", 3));
-        // 6 个 delete（应被排除）
+        // 5 个 delete（应被排除）
         list.add(menu(20L, 2L, null, "business:player:delete", 3));
         list.add(menu(21L, 3L, null, "business:team:delete", 3));
         list.add(menu(22L, 4L, null, "business:event:delete", 3));
