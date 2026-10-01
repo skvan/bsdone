@@ -1,6 +1,6 @@
 // PlayerClaimReview —— 行为保真移植自编译产物 PlayerClaimReview-Dn1pLlfl（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { withModifiers as X, createElementBlock as k, defineComponent as Z, createTextVNode as p, computed as ee, toDisplayString as s, createElementVNode as x, unref as l, mergeProps as ae, createBlock as le, ref as f, createVNode as a, withDirectives as re, openBlock as b, withCtx as t, Fragment as pe, withKeys as ue, onMounted as ve, reactive as A } from 'vue';
+import { withModifiers as X, createElementBlock as k, defineComponent as Z, createTextVNode as p, computed as ee, toDisplayString as s, createElementVNode as x, unref as l, mergeProps as ae, createBlock as le, createCommentVNode as Ac, ref as f, createVNode as a, withDirectives as re, openBlock as b, withCtx as t, Fragment as pe, withKeys as ue, onMounted as ve, reactive as A } from 'vue';
 import { ElDialog as Y, ElTableColumn as te, ElInput as ie, ElFormItem as oe, ElMessage as R, ElTable as ne, ElOption as se, ElButton as de, ElCard as me, ElSelect as ce, ElTag as we, vLoading as ye, ElForm as _e } from 'element-plus';
 import { useI18n as ge } from 'vue-i18n';
 import { useMediaQuery as fe } from '../../composables/useMediaQuery';
@@ -12,6 +12,7 @@ import he from '../../components/admin/AdminListScaffold.js';
 import Te from '../../components/admin/AdminPagination.js';
 import { useListTableAttrs as ke } from '../../composables/useListTable';
 import { DEFAULT_SORT_CREATED_AT as je } from '../../composables/useListTable';
+import { usePermission as Aa } from '../../composables/usePermission';
 import '../../styles/legacy/player-claim-review.css';
 var Se={
   class:"admin-page"
@@ -27,7 +28,10 @@ var Se={
     const{
       t:e
     }
-    =ge(),z=ke({
+    =ge(),{
+      hasPerm:Ab
+    }
+    =Aa(),z=ke({
       defaultSort:je
     }
     ),I=be(),L=fe("(max-width: 768px)"),N=ee(()=>I.fillPageHeight&&!L.value),h=f(!1),S=f([]),m=A({
@@ -305,19 +309,19 @@ var Se={
               )=>[r.status==="pending"?(b(),k(pe,{
                 key:0
               }
-              ,[a(y,{
-                type:"primary",link:"",onClick:W=>B(r.id)
+              ,[l(Ab)("business:claim:review")?(b(),le(y,{
+                key:0,type:"primary",link:"",onClick:W=>B(r.id)
               }
               ,{
                 default:t(()=>[p(s(l(e)("playerClaimReview.approve")),1)]),_:1
               }
-              ,8,["onClick"]),a(y,{
-                type:"danger",link:"",onClick:W=>$(r.id)
+              ,8,["onClick"])):Ac("",!0),l(Ab)("business:claim:review")?(b(),le(y,{
+                key:1,type:"danger",link:"",onClick:W=>$(r.id)
               }
               ,{
                 default:t(()=>[p(s(l(e)("playerClaimReview.reject")),1)]),_:1
               }
-              ,8,["onClick"])],64)):(b(),k("span",Ve,"-"))]),_:1
+              ,8,["onClick"])):Ac("",!0)],64)):(b(),k("span",Ve,"-"))]),_:1
             }
             ,8,["label"])]),_:1
           }

@@ -14,6 +14,7 @@ import { useListTableAttrs as Be } from '../../composables/useListTable';
 import { useModalClose as De } from '../../composables/useModalClose';
 import { useSuperAdminTenantColumn as Ie } from '../../composables/useSuperAdminTenantColumn';
 import { useSubmitLock as I } from '../../composables/useSubmitLock';
+import { usePermission as Aa } from '../../composables/usePermission';
 import '../../styles/legacy/leagues.css';
 var Ae={
   class:"admin-page"
@@ -32,7 +33,10 @@ var Ae={
     =I(),{
       isSuperAdmin:F,tenantLabel:$
     }
-    =Ie(),N=Be(),O=ze(),R=De(),q=Te(),H=xe("(max-width: 768px)"),K=ue(()=>q.fillPageHeight&&!H.value),T=f([]),V=f(!1),g=f(!1),_=f(null),b=f(),o=E({
+    =Ie(),{
+      hasPerm:Ab
+    }
+    =Aa(),N=Be(),O=ze(),R=De(),q=Te(),H=xe("(max-width: 768px)"),K=ue(()=>q.fillPageHeight&&!H.value),T=f([]),V=f(!1),g=f(!1),_=f(null),b=f(),o=E({
       name:"",nameEn:"",description:"",verified:0,sort:0
     }
     ),Q={
@@ -107,8 +111,8 @@ var Ae={
     return ye(()=>u()),(n,e)=>{
       const m=be,y=ce,p=ge,z=Ce,r=pe,X=ve,Y=we,Z=Se,ee=se,te=re,ae=Ve;
       return C(),ie("div",Ae,[t(Y,null,{
-        header:a(()=>[e[12]||(e[12]=x("span",null,"联盟管理",-1)),t(m,{
-          type:"primary",style:{
+        header:a(()=>[e[12]||(e[12]=x("span",null,"联盟管理",-1)),d(Ab)("business:league:create")?(C(),D(m,{
+          key:0,type:"primary",style:{
             float:"right"
           }
           ,onClick:e[0]||(e[0]=l=>h())
@@ -116,7 +120,7 @@ var Ae={
         ,{
           default:a(()=>[...e[11]||(e[11]=[s("新增联盟",-1)])]),_:1
         }
-        )]),default:a(()=>[t(Ue,{
+        )):Ee("",!0)]),default:a(()=>[t(Ue,{
           class:"league-list-scaffold","fill-mode":K.value
         }
         ,{
