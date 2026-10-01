@@ -61,6 +61,9 @@ extends BaseEntity {
     private Integer pinned = 0;
     @Comment(value="\u72b6\u6001\uff1adraft/published/rejected")
     private String status = "published";
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
 
     @Generated
     public HighlightMoment() {
@@ -142,6 +145,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
+    }
+
+    @Generated
     public void setSubjectType(String subjectType) {
         this.subjectType = subjectType;
     }
@@ -214,6 +222,11 @@ extends BaseEntity {
     @Generated
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     @Generated

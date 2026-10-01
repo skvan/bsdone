@@ -44,6 +44,9 @@ extends BaseEntity {
     @Column(name="slots_json", nullable=false, columnDefinition="TEXT")
     @Comment(value="9 \u6761\u5148\u53d1 JSON")
     private String slotsJson;
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
 
     @Generated
     public TeamLineupTemplate() {
@@ -75,6 +78,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
+    }
+
+    @Generated
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
     }
@@ -97,6 +105,11 @@ extends BaseEntity {
     @Generated
     public void setSlotsJson(String slotsJson) {
         this.slotsJson = slotsJson;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     @Generated

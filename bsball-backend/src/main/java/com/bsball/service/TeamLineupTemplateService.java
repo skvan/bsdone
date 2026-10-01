@@ -184,6 +184,10 @@ public class TeamLineupTemplateService {
         this.assertTeam(teamId);
         this.resourceGuard.assertCanManageTeam(teamId);
         TeamLineupTemplate existing = (TeamLineupTemplate)this.templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(Long.valueOf(id), Long.valueOf(teamId)).orElseThrow(() -> new BusinessException(404, "\u6a21\u677f\u4e0d\u5b58\u5728"));
+        // 历史数据处置权（spec §6.10）：仅置标（保留 business:lineup-template:manage 名目，不收窄 :delete/:return）；非超管删除 = 归还
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.templateRepository.save(existing);

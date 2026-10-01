@@ -154,6 +154,9 @@ extends BaseEntity {
     @OneToMany(mappedBy="stadium", cascade={CascadeType.ALL}, orphanRemoval=true)
     @OrderBy(value="sortOrder ASC, id ASC")
     private List<StadiumHomeTeam> homeTeams = new ArrayList();
+    @Column(nullable=false)
+    @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
+    private Boolean platformOwned = Boolean.FALSE;
 
     @Generated
     public Stadium() {
@@ -315,6 +318,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public Boolean getPlatformOwned() {
+        return this.platformOwned;
+    }
+
+    @Generated
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
     }
@@ -467,6 +475,11 @@ extends BaseEntity {
     @Generated
     public void setHomeTeams(List<StadiumHomeTeam> homeTeams) {
         this.homeTeams = homeTeams;
+    }
+
+    @Generated
+    public void setPlatformOwned(Boolean platformOwned) {
+        this.platformOwned = platformOwned;
     }
 
     @Generated
