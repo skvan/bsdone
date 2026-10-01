@@ -20,7 +20,7 @@ import { useSuperAdminTenantColumn as ua } from '../../composables/useSuperAdmin
 import { useSubmitLock as ia } from '../../composables/useSubmitLock';
 import '../../styles/legacy/history-records.css';
 var J={
-  join:"加入",leave:"离队",transfer:"转队",appointment:"任命",retire:"退役/离任",profile_update:"档案更新"
+  join:"加入",leave:"离队",transfer:"转队",appointment:"任命",retire:"退役/离任",profile_update:"档案更新",dissolved:"球队解散",manager_removed:"负责人离任"
 }
 ,B={
   league:"联盟",team:"球队",player:"球员",coach:"教练"
