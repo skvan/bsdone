@@ -9423,8 +9423,8 @@ var sg={
       )
     }
     async function Do(e,t,a,s,r,p){
-      const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),y=["SS","2B","CF","1B","3B","RF","LF","C","P"],b=(P,A,T,Y)=>{
-        const j=P.positions?.[0],ee=Y!=null?y[Y]??"P":"",V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??(Y!=null?ee:j)??ee,E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
+      const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
+        const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
         return T?{
           ...P,name:E,number:U,teamId:A,position:V,stats:{
             batting:{
@@ -9460,8 +9460,8 @@ var sg={
         const j=Array.from({
           length:9
         }
-        ,(E,U)=>Y.get(U+1)).filter(Boolean),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):P.slice(0,9).map(E=>E.id);
-        for(const E of P){
+        ,(E,U)=>Y.get(U+1)).filter(Boolean),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
+        if(j.length>0)for(const E of P){
           if(V.length>=9)break;
           const U=Number(E.id);
           ee.has(U)||V.push(U)
@@ -9485,19 +9485,7 @@ var sg={
           }
           return V
         };
-        if(ye.value=A(a,t.homeTeamId,P(q.value)),ae.value=A(s,t.awayTeamId,P(X.value)),q.value.length===0||X.value.length===0){
-          const Y=(ee,V)=>ee.slice(0,9).map((E,U)=>{
-            const d=E.positions?.[0],z=y[U]??d??"P";
-            return{
-              ...E,teamId:V,position:z,stats:Pt()
-            }
-            
-          }
-          );
-          q.value=Y(a,t.homeTeamId),X.value=Y(s,t.awayTeamId);
-          const j=ee=>ee.some(V=>(V.position??"")==="P");
-          !j(q.value)&&q.value.length>0&&(q.value[q.value.length-1].position="P"),!j(X.value)&&X.value.length>0&&(X.value[X.value.length-1].position="P"),ye.value=A(a,t.homeTeamId,P(q.value)),ae.value=A(s,t.awayTeamId,P(X.value))
-        }
+        ye.value=A(a,t.homeTeamId,P(q.value)),ae.value=A(s,t.awayTeamId,P(X.value))
         o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,o.home.score=t.homeScore??0,o.away.score=t.awayScore??0;
         const T=Y=>Y==null||Y===""||Y==="/"?0:Number(Y)||0;
         o.home.innings=Array.from({
@@ -9506,7 +9494,7 @@ var sg={
         ,(Y,j)=>T(t.homeScoreByInning?.[j])),o.away.innings=Array.from({
           length:yn
         }
-        ,(Y,j)=>T(t.awayScoreByInning?.[j])),l.inning=t.inning??1,l.isTop=t.topBottom!=="bottom",l.isGameEnd=t.status==="final",F.value=!p?.lineupPrepOnly,Me.value=[],ve.value=null,i.value=null,$e.value=[],Ne.value=[],ke.value=[],await ao([...q.value,...ye.value],[...X.value,...ae.value],a,s)
+        ,(Y,j)=>T(t.awayScoreByInning?.[j])),l.inning=t.inning??1,l.isTop=t.topBottom!=="bottom",l.isGameEnd=t.status==="final",F.value=!p?.lineupPrepOnly&&q.value.length>0&&X.value.length>0&&g.some(E=>(E.battingOrder??0)>0),Me.value=[],ve.value=null,i.value=null,$e.value=[],Ne.value=[],ke.value=[],await ao([...q.value,...ye.value],[...X.value,...ae.value],a,s)
       }
       finally{
         await Ks()
@@ -9557,7 +9545,18 @@ var sg={
         await Do(e,a,s,r,p),jt({
           persistCache:"immediate"
         }
-        ),Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
+        );
+        if(!F.value){
+          Fe.warning("该场暂无可恢复的录入数据，请先确认先发阵容"),await Pn.replace({
+            name:"AdminGameLiveLineupGame",params:{
+              eventId:String(Re.value),gameId:String(e)
+            }
+            
+          }
+          );
+          return
+        }
+        Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
       }
       catch(t){
         if(t?.message==="cancel")return;
@@ -9609,7 +9608,7 @@ var sg={
       ),t?.quiet||Fe.success(y.source==="local"?"已从本地缓存恢复录入现场（含未保存到服务器的进度）":"已从服务器恢复录入现场"),Tn(),"ok"):(await Do(e,a,s,r,p),jt({
         persistCache:"immediate"
       }
-      ),t?.quiet||Fe.success("已恢复比赛，继续录入"),Tn(),"ok")
+      ),t?.quiet||(F.value?Fe.success("已恢复比赛，继续录入"):Fe.warning("该场暂无可恢复的录入数据，请先确认先发阵容")),Tn(),"ok")
     }
     const{
       skipNextRouteLeaveOnce:hc
