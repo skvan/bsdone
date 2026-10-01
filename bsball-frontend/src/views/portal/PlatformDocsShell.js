@@ -8,6 +8,8 @@ import { useRouter as k, useRoute as T } from 'vue-router';
 import { DEFAULT_TENANT_CODE as x } from '../../utils/tenantRoute';
 import { exportSfc as y } from '../../utils/exportSfc';
 import { PLATFORM_DOCS_LIST_REFRESH as C } from '../../utils/platformDocsRefresh';
+// H41：新旧版切换按钮组件化接入（文档壳无顶栏用户区：悬浮胶囊形态，与原注入保底一致）
+import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 import '../../styles/legacy/platform-docs-shell.css';
 var E={
   class:"platform-docs-shell"
@@ -46,7 +48,7 @@ var E={
       ,null,8,["icon","aria-label","title"]),e("button",{
         type:"button",class:"platform-docs-title-btn",title:t(o)("platformDocs.refreshListHint"),onClick:c
       }
-      ,u(t(o)("route.platformDocs")),9,I)]),e("main",S,[s(m)])])
+      ,u(t(o)("route.platformDocs")),9,I)]),e("main",S,[s(m)]),s(FrontendSwitchButton,{variant:"floating"})])
     }
     
   }

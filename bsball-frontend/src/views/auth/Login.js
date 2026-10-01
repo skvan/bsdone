@@ -17,6 +17,8 @@ import { normalizeCaptchaType as Ha } from '../../utils/captchaType';
 import { authApi as Q } from '../../api/account';
 import { exportSfc as Oe } from '../../utils/exportSfc';
 import { useTenantRouter as Ue } from '../../composables/useTenantRouter';
+// H41：新旧版切换按钮组件化接入（无顶栏页：右上角悬浮胶囊形态）
+import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 import '../../styles/legacy/auth-admin-login.css';
 var We={
   class:"admin-login"
@@ -660,7 +662,7 @@ var We={
     }
     ),(a,e)=>{
       const t=ke,r=Ie("router-link"),o=Le,p=Te,_=be,$=Ae;
-      return d(),f("div",We,[v("div",ze,[i(r,{
+      return d(),f("div",We,[i(FrontendSwitchButton,{variant:"floating"}),v("div",ze,[i(r,{
         to:c(Ua)(""),class:"home-link",title:c(n)("adminLogin.backHome")
       }
       ,{

@@ -9,7 +9,6 @@ import { useSettingsStore } from './stores/settings';
 import { startVersionCheck } from './composables/useVersionCheck';
 import { installMessageDedupe } from './utils/messageDedupe';
 import { installPortalDevtoolsGuard } from './composables/portalDevtoolsGuard';
-import { installFrontendSwitchButton } from './utils/frontendSwitch';
 import './styles/index.css';
 
 // 装配顺序对齐编译产物入口：消息去重 ur() → pinia → 弹窗默认值补丁 → i18n → Element Plus → router → mount → 版本检查 → devtools 防护
@@ -50,5 +49,5 @@ router.isReady().then(() => {
   installPortalDevtoolsGuard(router);
 });
 
-// 新旧版兜底切换入口（Issue #105：默认新版，仅手动兜底，无偏好记忆）
-installFrontendSwitchButton();
+// H41：新旧版切换按钮已组件化（components/common/FrontendSwitchButton.vue，各布局/页面模板内渲染）；
+// 原全局 DOM 注入（悬浮保底 + 顶栏迁移）已下线，不再在此挂载。

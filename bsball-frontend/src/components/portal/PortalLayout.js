@@ -31,6 +31,7 @@ import { useAppConfigStore as Jt } from '../../stores/appConfig';
 import { hasMeaningfulText as Zt } from '../../utils/richText';
 import { usePortalStorageBridge as ea } from '../../composables/usePortalStorageBridge';
 import { PORTAL_FEEDBACK_GUIDE_SYNC_EVENT as Je } from '../../composables/usePortalStorageBridge';
+import FrontendSwitchButton from '../common/FrontendSwitchButton.vue';
 import '../../styles/legacy/portal-layout.css';
 
 var oa={
@@ -989,7 +990,7 @@ var oa={
       ,{
         default:n(()=>[h(d(t(c)("nav.news")),1)]),_:1
       }
-      ,8,["to","class"])],2),u("div",Ra,[o(ua),o(g,{
+      ,8,["to","class"])],2),u("div",Ra,[o(FrontendSwitchButton,{variant:"portal"}),o(ua),o(g,{
         trigger:"click",class:"portal-theme-switch","popper-class":"portal-theme-dropdown-popper",onCommand:He
       }
       ,{

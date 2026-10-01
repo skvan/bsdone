@@ -27,6 +27,8 @@ import it from './AdminTagsView.vue';
 import Ot from './AdminWatermark.js';
 import hl from './AdminSettingsDrawer.js';
 import Ge from './AdminMenu.js';
+// H41：新旧版切换按钮组件化接入（原全局 DOM 注入已下线；3 套顶栏变体均内联渲染于用户下拉之前）
+import FrontendSwitchButton from '../common/FrontendSwitchButton.vue';
 // 值解包（等价编译产物 Gn：兼容 ref 与普通值）
 const Gn = (value) => (value && typeof value === "object" && "value" in value ? value.value : value);
 import '../../styles/legacy/admin-layout.css';
@@ -591,7 +593,7 @@ var Cl={
             }
             )]),_:1
           }
-          )),t(nt,{
+          )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
             trigger:se.value,onCommand:et
           }
           ,{
@@ -736,7 +738,7 @@ var Cl={
         }
         )]),_:1
       }
-      )),t(nt,{
+      )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
         trigger:se.value,onCommand:et
       }
       ,{
@@ -919,7 +921,7 @@ var Cl={
         }
         )]),_:1
       }
-      )),t(nt,{
+      )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
         trigger:se.value,onCommand:et
       }
       ,{
