@@ -1,6 +1,6 @@
 // Roles —— 行为保真移植自编译产物 Roles-D_JtM0OU（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { ElRadioGroup as Al, ElInputNumber as El, ElDialog as Nl, ElDrawer as Ml, ElRadio as Kl, ElTableColumn as Dl, ElInput as Pl, ElFormItem as Ul, ElMessage as w, ElTable as Rl, ElTabs as Fl, ElOption as Ol, ElButton as $l, ElTabPane as Bl, ElCard as Gl, ElSelect as ql, ElTree as Hl, ElMessageBox as jl, ElTag as Jl, vLoading as Wl, ElForm as Yl } from 'element-plus';
+import { ElRadioGroup as Al, ElInputNumber as El, ElDialog as Nl, ElDrawer as Ml, ElRadio as Kl, ElTableColumn as Dl, ElInput as Pl, ElFormItem as Ul, ElMessage as w, ElTable as Rl, ElTabs as Fl, ElOption as Ol, ElButton as $l, ElTabPane as Bl, ElCard as Gl, ElSelect as ql, ElTree as Hl, ElMessageBox as jl, ElTag as Jl, vLoading as Wl, ElForm as Yl, ElSwitch as Wi } from 'element-plus';
 import { nextTick as C, withModifiers as Ll, createElementBlock as E, defineComponent as xl, createTextVNode as u, computed as h, toDisplayString as b, createElementVNode as f, unref as c, mergeProps as zl, createBlock as k, ref as r, createVNode as t, withDirectives as Pe, openBlock as m, withCtx as n, Fragment as Ue, withKeys as de, watch as Re, onMounted as Ql, renderList as Zl, reactive as pe, createCommentVNode as V } from 'vue';
 import { useMediaQuery as Xl } from '../../composables/useMediaQuery';
 import { useAuthStore as et } from '../../stores/auth';
@@ -126,7 +126,7 @@ var ct={
       }
       ]
     }
-    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1);
+    ,G=r(!1),ee=r(!1),_e=r("menu"),Z=r(null),M=r(),le=r([]),S=r([]),te=r([]),z=r(""),K=r(""),A=r(!1),ae=r([]),y=r([]),ne=r([]),D=r(),q=r("ALL"),P=r(""),U=r(""),L=r(!1),{submitting:tcSubmitting,withSubmitLock:tcSubmit}=me(),Tc=r(!1),tcl=r(!1),tcRole=r(null),tcEnabled=r(!1),tcHad=r(!1),tcSeeded=r(!1),tcGlobalIds=r([]),tcMenus=r([]),tcKeys=r([]),tcTreeRef=r(),tcKey=r(0);
     function he(l){
       if(l==null)return[];
       if(Array.isArray(l))return l.map(a=>Number(a)).filter(a=>!Number.isNaN(a));
@@ -354,6 +354,85 @@ var ct={
       }
       )
     }
+    function tcWithAncestors(l){
+      const e=new Set((l||[]).map(a=>Number(a)).filter(a=>!Number.isNaN(a))),a=new Map();
+      (function i(g,v){
+        for(const o of g||[])a.set(Number(o.id),v),i(o.children||[],Number(o.id))
+      }
+      )(tcMenus.value,null);
+      for(const g of[...e]){
+        let v=a.get(g);
+        while(v!=null&&!e.has(v))e.add(v),v=a.get(v)
+      }
+      return[...e]
+    }
+    function tct(l){
+      l&&!tcSeeded.value&&(tcSeeded.value=!0,tcKeys.value=he(tcGlobalIds.value),tcKey.value++)
+    }
+    async function tcOpen(l){
+      const rid=l?.id;
+      tcRole.value=l,Tc.value=!0,tcl.value=!0,tcEnabled.value=!1,tcHad.value=!1,tcSeeded.value=!1,tcGlobalIds.value=[],tcMenus.value=[],tcKeys.value=[];
+      try{
+        const[e,a,o]=await Promise.all([F.tenantConfig(l.id),F.get(l.id),st.list()]);
+        if(rid!==tcRole.value?.id||!Tc.value)return;
+        tcMenus.value=o?.list||[],tcGlobalIds.value=he(a?.menuIds);
+        const i=e?.enabled===!0;
+        tcHad.value=i,tcEnabled.value=i,tcSeeded.value=i,tcKeys.value=i?he(e?.menuIds):[],tcKey.value++
+      }
+      finally{
+        rid===tcRole.value?.id&&(tcl.value=!1)
+      }
+    }
+    async function tcSave(){
+      await tcSubmit(async()=>{
+        const l=tcRole.value;
+        if(!l)return;
+        const e=tcTreeRef.value,a=(e?.getCheckedKeys()??[]).map(o=>Number(o)).filter(o=>!Number.isNaN(o)),o=tcWithAncestors(a);
+        if(o.length===0){
+          try{
+            await jl.confirm("将停用该角色在本租户的全部后台菜单，确认？","提示",{
+              confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+            }
+            )
+          }
+          catch{
+            return
+          }
+        }
+        try{
+          await F.saveTenantConfig({
+            roleId:l.id,menuIds:o
+          }
+          ),w.success("租户目录覆盖已保存"),tcHad.value=!0,Tc.value=!1,I()
+        }
+        catch(i){
+          w.error(i?.message||"保存失败")
+        }
+      }
+      )
+    }
+    async function tcClear(){
+      await tcSubmit(async()=>{
+        const l=tcRole.value;
+        if(!l)return;
+        try{
+          await jl.confirm("确定清除该角色在本租户的目录覆盖并回落全局预设吗？","清除确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          )
+        }
+        catch{
+          return
+        }
+        try{
+          await F.clearTenantConfig(l.id),w.success("已清除租户目录覆盖"),Tc.value=!1,I()
+        }
+        catch(e){
+          w.error(e?.message||"清除失败")
+        }
+      }
+      )
+    }
     function re(){
       _.page=1,I()
     }
@@ -454,6 +533,19 @@ var ct={
             )):V("",!0),t(v,{
               prop:"name",label:"角色名"
             }
+            ,{
+              default:n(({
+                row:d
+              }
+              )=>[u(b(d.name),1),d.hasTenantOverride===!0?(m(),k(ue,{
+                key:0,type:"warning",size:"small",style:{
+                  marginLeft:"6px"
+                }
+              }
+              ,{
+                default:n(()=>[u("已覆盖",-1)]),_:1
+              }
+              )):V("",!0)]),_:1}
             ),t(v,{
               prop:"code",label:"编码",width:"120"
             }
@@ -499,6 +591,12 @@ var ct={
               }
               ,{
                 default:n(()=>[...e[23]||(e[23]=[u("设置权限",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):V("",!0),je.user?.tenantAdmin===!0&&d.platform===!0&&["team_manager","league_organizer"].includes(d.code)?(m(),k(a,{
+                key:2,link:"",type:"primary",disabled:Q(d),onClick:De=>tcOpen(d)
+              }
+              ,{
+                default:n(()=>[u("租户目录",-1)]),_:1
               }
               ,8,["disabled","onClick"])):V("",!0),t(a,{
                 link:"",type:"danger",disabled:Ye(d)||c(Be),onClick:De=>yl(d)
@@ -623,6 +721,45 @@ var ct={
         ,8,["model"])]),_:1
       }
       ,8,["modelValue","title","close-on-click-modal"]),t(Tl,{
+        modelValue:Tc.value,"onUpdate:modelValue":e[42]||(e[42]=s=>Tc.value=s),title:`租户目录覆盖：${tcRole.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
+      }
+      ,{
+        footer:n(()=>[t(a,{
+          onClick:e[43]||(e[43]=s=>Tc.value=!1)
+        }
+        ,{
+          default:n(()=>[u("取消",-1)]),_:1
+        }
+        ),tcHad.value?(m(),k(a,{
+          key:0,link:"",type:"danger",loading:c(tcSubmitting),disabled:c(tcSubmitting),onClick:tcClear
+        }
+        ,{
+          default:n(()=>[u("清除覆盖",-1)]),_:1
+        }
+        ,8,["loading","disabled"])):V("",!0),t(a,{
+          type:"primary",loading:c(tcSubmitting),disabled:c(tcSubmitting)||!tcEnabled.value||!tcMenus.value.length,title:tcEnabled.value&&!tcMenus.value.length?"菜单数据未加载":void 0,onClick:tcSave
+        }
+        ,{
+          default:n(()=>[u("保存",-1)]),_:1
+        }
+        ,8,["loading","disabled","title"])]),default:n(()=>[Pe((m(),E("div",ft,[f("div",{class:"permission-filter-row",style:{gap:"8px",marginBottom:"8px"}},[t(Wi,{
+          modelValue:tcEnabled.value,"onUpdate:modelValue":e[44]||(e[44]=s=>tcEnabled.value=s),onChange:tct
+        }
+        ,null,8,["modelValue"]),f("span",{class:"tenant-override-label"},[u("启用租户级目录覆盖",-1)])]),f("div",{class:"tenant-override-hint"},[u(b(tcEnabled.value?(tcMenus.value.length?"勾选 = 本次覆盖的菜单集合（保存时提交含父目录的全量集合）":"菜单数据未加载，暂不可保存"):"当前继承全局预设，开启开关后可自定义本租户目录"),1)]),f("div",{class:"permission-tree-wrap",style:{
+          display:tcEnabled.value?"":"none"
+        }
+        },[(m(),k(Me,{
+          key:`tc-${tcKey.value}`,ref_key:"tcTreeRef",ref:tcTreeRef,data:tcMenus.value,props:{
+            label:"name",value:"id"
+          }
+          ,"node-key":"id","show-checkbox":"","check-strictly":"","default-expand-all":"","default-checked-keys":tcKeys.value,class:"permission-tree"
+        }
+        ,{
+          default:n(({
+            data:s
+          }
+          )=>[f("span",ht,[f("span",null,b(s.title||s.name||"—"),1)])]),_:1}
+        ,8,["data","default-checked-keys"]))])])),[[Ke,tcl.value]])]),_:1}),t(Tl,{
         modelValue:G.value,"onUpdate:modelValue":e[17]||(e[17]=s=>G.value=s),title:`设置权限：${Z.value?.name??""}`,size:We.value,"destroy-on-close":"","close-on-click-modal":c(fe),class:"permission-drawer","header-class":"permission-drawer-header"
       }
       ,{

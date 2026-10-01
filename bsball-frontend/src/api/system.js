@@ -1,5 +1,5 @@
 // 系统管理 API —— 行为与端点移植自编译产物 system chunk（B0 契约）
-import { getData, post, put, del, fetchList, fetchListResult, rewriteUrl, isSuccessCode } from './request';
+import { get, getData, post, put, del, fetchList, fetchListResult, rewriteUrl, isSuccessCode } from './request';
 import { resolveToken } from './tokenStorage';
 
 const BASE = '/api/sys';
@@ -18,7 +18,11 @@ export const roleApi = {
   get: (id) => getData(`${BASE}/role/${id}`),
   create: (data) => post(`${BASE}/role/create`, data),
   update: (id, data) => put(`${BASE}/role/update/${id}`, data),
-  delete: (id) => del(`${BASE}/role/delete/${id}`)
+  delete: (id) => del(`${BASE}/role/delete/${id}`),
+  // 租户级目录覆盖（spec §8.6 / T3.15b）：GET/DELETE 走 query(roleId)，PUT 走 body({roleId, menuIds})
+  tenantConfig: (roleId) => getData(`${BASE}/role/tenant-config?roleId=${roleId}`),
+  saveTenantConfig: (data) => put(`${BASE}/role/tenant-config`, data),
+  clearTenantConfig: (roleId) => del(`${BASE}/role/tenant-config?roleId=${roleId}`)
 };
 
 export const menuApi = {
@@ -161,6 +165,15 @@ export const tenantApi = {
   update: (id, data) => put(`${BASE}/tenant/update/${id}`, data),
   delete: (id) => del(`${BASE}/tenant/delete/${id}`),
   scopeOptions: (tenantId) => getData(`${BASE}/tenant/scope-options?tenantId=${tenantId}`)
+};
+
+// 平台资产归还汇总（超管；批次 4b Task 4b-4 / spec §6.10）
+// GET /sys/platform-asset/summary：各实体 platform_owned=true 且已软删的计数（league/team/player/event/game）
+export const platformAssetApi = {
+  // summary 改用会 reject 的 get（失败 throw 携带后端 message，供页面 catch 区分失败态）；
+  // 成功解包 body.data（对齐历史 getData 语义：data ?? {}）。
+  // 原 getData 内部永不 reject、失败返回 null → 页面 catch 成死代码、失败静默显全 0（评审 I-2）。
+  summary: () => get(`${BASE}/platform-asset/summary`).then((body) => body.data ?? {})
 };
 
 // 资源上传（multipart，单独走 fetch）

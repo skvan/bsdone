@@ -1,6 +1,6 @@
 // Teams —— 行为保真移植自编译产物 Teams-8xHO_KQ2（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { nextTick as se, withModifiers as $e, createElementBlock as N, defineComponent as Re, createTextVNode as i, computed as R, toDisplayString as h, createElementVNode as m, unref as n, normalizeClass as Ge, mergeProps as He, createBlock as v, ref as g, createVNode as a, withDirectives as Je, openBlock as r, withCtx as t, Fragment as la, withKeys as oa, onMounted as ra, renderList as da, reactive as W, createCommentVNode as E } from 'vue';
+import { nextTick as se, withModifiers as $e, createElementBlock as N, defineComponent as Re, createTextVNode as i, computed as R, toDisplayString as h, createElementVNode as m, unref as n, normalizeClass as Ge, mergeProps as He, createBlock as v, ref as g, createVNode as a, withDirectives as Je, openBlock as r, withCtx as t, Fragment as la, withKeys as oa, onMounted as ra, renderList as da, reactive as W, createCommentVNode as E, watch as Bt } from 'vue';
 import { ElDialog as Oe, ElCol as We, ElDivider as je, ElRow as Ke, ElTableColumn as Qe, ElInput as Ye, ElFormItem as Xe, ElMessage as c, ElUpload as Ze, ElTable as ea, ElAvatar as aa, ElOption as ta, ElButton as sa, ElCard as na, ElSelect as ia, ElMessageBox as ne, vLoading as ua, ElSwitch as ma, ElForm as ca } from 'element-plus';
 import { useRouter as fa } from 'vue-router';
 import { useMediaQuery as pa } from '../../composables/useMediaQuery';
@@ -99,7 +99,7 @@ var Ta={
       }
       )
     }
-    const Pe=wa,K=g([]),Q=g([]),M=g(!1),P=g(!1),I=g(!1),U=g(!1),z=g(null),x=g([]),w=g([]),J=g(null),A=g(null),l=W({
+    const Pe=wa,K=g([]),Q=g([]),M=g(!1),P=g(!1),I=g(!1),U=g(!1),z=g(null),x=g([]),w=g([]),J=g(null),A=g(null),returnMode=g(!1),l=W({
       leagueId:void 0,name:"",shortName:"",wordmark:"",city:"",stadium:"",description:"",contactPerson:"",contactPhone:"",contactEmail:"",logo:"",bgImage:"",showInPortal:!0,verified:!1
     }
     ),B=W({
@@ -108,7 +108,7 @@ var Ta={
     ),_=W({
       page:1,pageSize:10,total:0
     }
-    ),Y=g("id"),X=g("asc");
+    ),Y=g("id"),X=g("asc");Bt(I,o=>{o||(returnMode.value=!1)});
     function Ie({
       prop:o,order:e
     }
@@ -180,7 +180,7 @@ var Ta={
     function Le(o){
       w.value=o.map(e=>e.id)
     }
-    async function Ue(o){
+    async function Ue(o){returnMode.value=!1;
       await pe(async()=>{
         try{
           const e=await ba(o.id);
@@ -195,6 +195,26 @@ var Ta={
         }
         catch(e){
           e!=="cancel"&&c.error(e?.message||"删除失败")
+        }
+        
+      }
+      )
+    }
+    async function UeReturn(o){returnMode.value=!0;
+      await pe(async()=>{
+        try{
+          const e=await ba(o.id);
+          if(e.length===0){
+            await ne.confirm(`确定要归还球队「${o.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+              confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+            }
+            ),await T.delete(o.id),c.success("已归还"),k();
+            return
+          }
+          z.value=o,x.value=e,w.value=[],I.value=!0,se(()=>J.value?.clearSelection?.())
+        }
+        catch(e){
+          e!=="cancel"&&c.error(e?.message||"归还失败")
         }
         
       }
@@ -223,7 +243,7 @@ var Ta={
         }
         U.value=!0;
         try{
-          await _a.deleteBatch(w.value),await T.delete(o.id),c.success("已删除球员并删除球队"),I.value=!1,z.value=null,x.value=[],w.value=[],k()
+          await _a.deleteBatch(w.value),await T.delete(o.id),c.success(returnMode.value?"已清理球员并归还球队":"已删除球员并删除球队"),I.value=!1,z.value=null,x.value=[],w.value=[],k()
         }
         catch(e){
           c.error(e?.message||"删除失败")
@@ -422,6 +442,12 @@ var Ta={
               }
               ,{
                 default:t(()=>[...e[26]||(e[26]=[i("删除",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):E("",!0),n(C)("business:team:return")?(r(),v(d,{
+                key:3,link:"",type:"warning",disabled:n(me),onClick:q=>UeReturn(p)
+              }
+              ,{
+                default:t(()=>[...e[41]||(e[41]=[i("归还",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):E("",!0)]),_:1
             }
@@ -720,7 +746,7 @@ var Ta={
         ,8,["model","label-position","label-width","class"])]),_:1
       }
       ,8,["modelValue","title","width","close-on-click-modal"]),a(oe,{
-        modelValue:I.value,"onUpdate:modelValue":e[19]||(e[19]=s=>I.value=s),title:"删除球队前清理球员",width:we.value,"align-center":"","append-to-body":"","destroy-on-close":"","close-on-click-modal":n(H),class:"delete-team-dialog"
+        modelValue:I.value,"onUpdate:modelValue":e[19]||(e[19]=s=>I.value=s),title:n(returnMode)?"归还球队前清理球员":"删除球队前清理球员",width:we.value,"align-center":"","append-to-body":"","destroy-on-close":"","close-on-click-modal":n(H),class:"delete-team-dialog"
       }
       ,{
         footer:t(()=>[m("div",Ra,[a(d,{
@@ -733,9 +759,9 @@ var Ta={
           type:"primary",loading:U.value,disabled:w.value.length===0,onClick:ze
         }
         ,{
-          default:t(()=>[...e[40]||(e[40]=[i(" 删除选中球员并删除球队 ",-1)])]),_:1
+          default:t(()=>[i(h(n(returnMode)?" 清理球员并归还球队 ":" 删除选中球员并删除球队 "),1)]),_:1
         }
-        ,8,["loading","disabled"])])]),default:t(()=>[m("p",$a," 球队「"+h(z.value?.name)+"」下还有 "+h(x.value.length)+" 名球员。请先勾选要删除的球员，再删除球队。 ",1),m("div",Oa,[a(ae,{
+        ,8,["loading","disabled"])])]),default:t(()=>[m("p",$a," 球队「"+h(z.value?.name)+"」下还有 "+h(x.value.length)+" 名球员。请先勾选要"+(n(returnMode)?"清理的球员，再归还球队":"删除的球员，再删除球队")+"。 ",1),m("div",Oa,[a(ae,{
           ref_key:"deleteTeamPlayersTableRef",ref:J,data:x.value,"max-height":n(b)?280:360,onSelectionChange:Le
         }
         ,{

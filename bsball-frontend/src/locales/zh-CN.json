@@ -567,7 +567,19 @@
     "claimBtn": "提交认领申请",
     "loginHint": "登录或注册后即可提交认领申请",
     "submitted": "认领申请已提交，请等待审核",
-    "invalid": "邀请链接无效或已过期"
+    "invalid": "邀请链接无效或已过期",
+    "draftHint": "该邀请未绑定球员档案，请填写基础信息完成建档并加入球队",
+    "name": "姓名",
+    "namePlaceholder": "请输入姓名",
+    "nameRequired": "请输入姓名",
+    "birthDate": "出生日期",
+    "birthDatePlaceholder": "选填（YYYY-MM-DD）",
+    "positions": "守位",
+    "positionsPlaceholder": "选填，可多选",
+    "createBtn": "建档并入队",
+    "registered": "建档并入队成功，已加入球队",
+    "joined": "已加入球队",
+    "submitFailed": "提交失败，请稍后重试"
   },
   "playerClaimReview": {
     "title": "球员认证管理",

@@ -299,6 +299,28 @@ function httpErrorMessage(status, body) {
   return body.msg || body.message || `请求失败（${status}）`;
 }
 
+// 租户不可用门户「找不到」404 口径（批次 4b Task 4b-4 / #154）
+// 后端对不可用租户码通路已统一终端响应 404 {"code":404,"msg":"租户不存在"}（不回退默认租户）。
+// 此处单点处理：仅当 HTTP 404 且 msg 精确等于「租户不存在」时，重定向到平台「找不到」页。
+// - 不动其它 404（资源不存在等）逻辑；仅精确匹配触发，正常租户零影响；
+// - BASE_URL 为 '/'、'/bs-ball-next/' 时分别产出 '/404'、'/bs-ball-next/404'（尾斜杠归一，防双斜杠）；
+// - 同一会话只跳一次（模块级防抖），跳转后仍 throw 以防调用方重复处理。
+const TENANT_NOT_FOUND_MSG = '租户不存在';
+let tenantUnavailableRedirected = false;
+function redirectTenantUnavailableToNotFound(status, body) {
+  if (status !== 404) return false;
+  // 容错：msg 取值补 trim（防未来后端 msg 首尾空白导致精确匹配漏判）；
+  // 仍维持精确匹配语义——不做前缀/包含匹配，避免误伤其它 404（如「资源不存在」）。
+  const msg = String((body && (body.msg || body.message)) || '').trim();
+  if (msg !== TENANT_NOT_FOUND_MSG) return false;
+  if (typeof window !== 'undefined' && !tenantUnavailableRedirected) {
+    tenantUnavailableRedirected = true;
+    const base = String(BASE_URL || '/').replace(/\/+$/, ''); // '/' → ''，'/bs-ball-next/' → '/bs-ball-next'
+    window.location.replace(`${base}/404`);
+  }
+  return true;
+}
+
 // ---------- 核心请求 ----------
 export async function request(url, options = {}, retried = false) {
   const fullUrl = rewriteUrl(url);
@@ -342,6 +364,11 @@ export async function request(url, options = {}, retried = false) {
       const retriedRequest = retryAfterSessionLoss();
       if (retriedRequest) return retriedRequest;
       throwAuthError(msg, detail);
+    }
+    // 租户不可用：后端统一 404 {"code":404,"msg":"租户不存在"} → 重定向平台「找不到」页
+    // （单点最小改动：仅 msg 精确匹配触发；随后仍 throw 防重复处理）
+    if (redirectTenantUnavailableToNotFound(res.status, body)) {
+      throw new Error(httpErrorMessage(res.status, body));
     }
     let message = httpErrorMessage(res.status, body);
     if (res.status === 403) {
