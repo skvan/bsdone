@@ -2,9 +2,9 @@
  * 账号权限重构（批次 4b，Task 4b-1）：InitDataRunner 归还/下架按钮种子与联盟删除名目单测。
  *
  * 覆盖：
- *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；7 条新按钮各落库一次；
+ *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；8 条新按钮各落库一次；
  *  - ② tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：含 5 个 business:*:return、排除 5 个 business:*:delete（含 league:delete）；
- *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 7 条新按钮）；
+ *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 8 条新按钮）；
  *  - ④ tenant_admin 角色创建路径（ensureTenantAdminRoleIfNeeded）：落库绑定含 5 个 return、不含 5 个 delete；
  *  - ⑤ 收窄（ensureTenantAdminRoleExcludesBusinessDeleteButtons）：仅移除 delete 绑定、保留 return。
  *  - ⑥ 升级补绑（ensureTenantAdminRoleRebindsDefaultMenusIfNeeded，批次 4b-2）：角色存在缺 5 个 return → 恰补 5；
@@ -79,9 +79,9 @@ class InitDataRunnerReturnButtonSeedTest {
             "business:player:delete", "business:team:delete", "business:event:delete",
             "business:game:delete", "business:league:delete");
 
-    /** 本次新增（种子）按钮权限共 7 条：5 个 return + league:delete + player:release-claim（解除认领）。 */
+    /** 本次新增（种子）按钮权限共 8 条：5 个 return + league:delete + player:release-claim + league:requestReview。 */
     private static final Set<String> BATCH_NEW_PERMS = Stream
-            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim"))
+            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim", "business:league:requestReview"))
             .collect(Collectors.toSet());
 
     @Mock
@@ -179,7 +179,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("① 按钮种子幂等：二次调用零新增，7 条新按钮各落库一次")
+    @DisplayName("① 按钮种子幂等：二次调用零新增，8 条新按钮各落库一次")
     void buttonSeedIdempotent() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -219,7 +219,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 7 条新按钮）")
+    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 8 条新按钮）")
     void adminBindsAllMenusIncludingNewButtons() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -238,8 +238,8 @@ class InitDataRunnerReturnButtonSeedTest {
                 .filter(m -> m.getPermission() != null && BATCH_NEW_PERMS.contains(m.getPermission()))
                 .map(SysMenu::getId)
                 .collect(Collectors.toSet());
-        assertEquals(7, newIds.size(), "应检出 7 条新按钮");
-        assertTrue(bound.containsAll(newIds), "超管应绑定 7 条新按钮（含 league:delete 与 release-claim）");
+        assertEquals(8, newIds.size(), "应检出 8 条新按钮");
+        assertTrue(bound.containsAll(newIds), "超管应绑定 8 条新按钮（含 requestReview 等）");
     }
 
     @Test

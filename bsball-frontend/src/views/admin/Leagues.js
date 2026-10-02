@@ -106,6 +106,74 @@ var Ae={
       }
       )
     }
+    // ---- 建盟申请审核（建盟链路批次①）----
+    const reqDlg=f(!1),reqRows=f([]),reviewing=f(!1);
+    async function openRequests(){
+      reqDlg.value=!0,await loadRequests()
+    }
+    async function loadRequests(){
+      try{
+        const{
+          list:n
+        }
+        =await k.pendingCreateRequests({
+          page:1,pageSize:50
+        }
+        );
+        reqRows.value=n??[]
+      }
+      catch(e){
+        v.error(e?.message||"加载失败")
+      }
+    }
+    async function approveReq(n){
+      if(reviewing.value)return;
+      try{
+        await ke.confirm(`通过后将立即创建联盟「${n.name}」并授权申请人为主办方，确认？`,"审核通过",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      reviewing.value=!0;
+      try{
+        await k.approveCreateRequest(n.id),v.success("已通过并授权主办方"),await loadRequests(),u()
+      }
+      catch(e){
+        v.error(e?.message||"操作失败")
+      }
+      finally{
+        reviewing.value=!1
+      }
+    }
+    async function rejectReq(n){
+      if(reviewing.value)return;
+      let e;
+      try{
+        ({
+          value:e
+        }
+        =await ke.prompt("请输入驳回原因（≤500 字）","驳回申请",{
+          confirmButtonText:"确定",cancelButtonText:"取消",inputValidator:t=>t&&t.length<=500||"原因必填且≤500字"
+        }
+        ))
+      }
+      catch{
+        return
+      }
+      reviewing.value=!0;
+      try{
+        await k.rejectCreateRequest(n.id,e),v.success("已驳回"),await loadRequests()
+      }
+      catch(t){
+        v.error(t?.message||"操作失败")
+      }
+      finally{
+        reviewing.value=!1
+      }
+    }
     function S(){
       i.page=1,u()
     }
@@ -134,6 +202,12 @@ var Ae={
         }
         ,{
           default:a(()=>[...e[11]||(e[11]=[s("新增联盟",-1)])]),_:1
+        }
+        )):Ee("",!0),d(Ab)("business:league:requestReview")?(C(),D(m,{
+          key:9,type:"default",style:{float:"right",marginRight:"8px"},onClick:R3=>openRequests()
+        }
+        ,{
+          default:a(()=>[s("建盟申请",-1)]),_:1
         }
         )):Ee("",!0)]),default:a(()=>[t(Ue,{
           class:"league-list-scaffold","fill-mode":K.value
@@ -323,7 +397,31 @@ var Ae={
         }
         ,8,["model"])]),_:1
       }
-      ,8,["modelValue","title","close-on-click-modal"])])
+      ,8,["modelValue","title","close-on-click-modal"]),d(te,{
+        modelValue:reqDlg.value,"onUpdate:modelValue":R2=>reqDlg.value=R2,title:"建盟申请审核",width:"720"
+      }
+      ,{
+        default:a(()=>[t(X,{data:reqRows.value,"max-height":380},{
+          default:a(()=>[t(r,{prop:"id",label:"ID",width:"70"}),t(r,{prop:"name",label:"联盟名称","min-width":"160"}),t(r,{prop:"nameEn",label:"英文名",width:"140"}),t(r,{prop:"applicantUserId",label:"申请人ID",width:"90"}),t(r,{prop:"createdAt",label:"申请时间",width:"160"},{
+            default:a(({
+              row:cr
+            }
+            )=>[s(B(d(Le)(cr.createdAt)),1)]),_:1}),t(r,{label:"操作",width:"150"},{
+            default:a(({
+              row:cr
+            }
+            )=>[t(m,{link:"",type:"primary",disabled:reviewing.value,onClick:R2=>approveReq(cr)},{
+              default:a(()=>[s("通过",-1)]),_:1
+            }
+            ,8,["disabled","onClick"]),t(m,{link:"",type:"danger",disabled:reviewing.value,onClick:R2=>rejectReq(cr)},{
+              default:a(()=>[s("驳回",-1)]),_:1
+            }
+            ,8,["disabled","onClick"])]),_:1})]),_:1
+        }
+        ,8,["data"])])
+      }
+      ,8,["modelValue"])
+      ])
     }
     
   }

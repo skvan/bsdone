@@ -438,7 +438,22 @@
     "confirmRefresh": "立即重新整理",
     "cancelLater": "稍後"
   },
+    "portalLeagues": {
+      "title": "聯盟一覽",
+      "apply": "申請創建聯盟",
+      "name": "聯盟名稱",
+      "nameEn": "英文名",
+      "description": "描述",
+      "submit": "提交申請",
+      "cancel": "取消",
+      "pending": "已提交申請，等待管理員審核",
+      "created": "創建成功",
+      "empty": "暫無聯盟",
+      "loginRequired": "請先登入後再申請創建聯盟",
+      "failed": "提交失敗"
+    },
   "nav": {
+    "leagues": "聯盟",
     "home": "首頁",
     "events": "賽事一覽",
     "teams": "聯盟球隊",

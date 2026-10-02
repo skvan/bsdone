@@ -6,7 +6,12 @@ export const leagueApi = {
   get: (id) => getData(`/api/league/${id}`),
   create: (data) => post('/api/league/create', data),
   update: (id, data) => put(`/api/league/update/${id}`, data),
-  delete: (id) => del(`/api/league/delete/${id}`)
+  delete: (id) => del(`/api/league/delete/${id}`),
+  // ---- 建盟链路（批次①）：门户自助申请 + 管理端审核 ----
+  portalCreate: (data) => post('/api/portal/league-create', data),
+  pendingCreateRequests: (params) => fetchList('/api/league/create-request/list', params),
+  approveCreateRequest: (id) => post(`/api/league/create-request/${id}/approve`, {}),
+  rejectCreateRequest: (id, reason) => post(`/api/league/create-request/${id}/reject`, { reason })
 };
 
 export const regionApi = {
