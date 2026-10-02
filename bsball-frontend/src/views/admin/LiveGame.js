@@ -16,7 +16,7 @@ import { fetchAllStadiums as Jc } from '../../api/business';
 import { fetchPlayersByTeam as Qc } from '../../api/business';
 import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
-import { createLivePlayEvent, toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
+import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
 import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -6565,9 +6565,9 @@ var sg={
         
       }
       if(!V||b.some(U=>Number(U.id)===Number(y)))return b;
-      const E=createLivePlayEvent({
+      const E={
         ...JSON.parse(JSON.stringify(V)),position:"P"
-      });
+      };
       return jo([...b,E],N.value)
     }
     const Hn=$(()=>Dr(l.isTop?"home":"away"));
