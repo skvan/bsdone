@@ -438,7 +438,22 @@
     "confirmRefresh": "今すぐ再読み込み",
     "cancelLater": "後で"
   },
+    "portalLeagues": {
+      "title": "リーグ一覧",
+      "apply": "リーグ作成を申請",
+      "name": "リーグ名",
+      "nameEn": "英語名",
+      "description": "説明",
+      "submit": "申請する",
+      "cancel": "キャンセル",
+      "pending": "申請を送信しました。管理者の承認をお待ちください",
+      "created": "作成しました",
+      "empty": "リーグはまだありません",
+      "loginRequired": "申請するにはログインしてください",
+      "failed": "送信に失敗しました"
+    },
   "nav": {
+    "leagues": "リーグ",
     "home": "ホーム",
     "events": "大会",
     "teams": "チーム",

@@ -438,7 +438,22 @@
     "confirmRefresh": "Refresh now",
     "cancelLater": "Later"
   },
+    "portalLeagues": {
+      "title": "Leagues",
+      "apply": "Apply to Create a League",
+      "name": "League name",
+      "nameEn": "English name",
+      "description": "Description",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "pending": "Application submitted, awaiting review",
+      "created": "Created successfully",
+      "empty": "No leagues yet",
+      "loginRequired": "Please sign in before applying",
+      "failed": "Failed to submit"
+    },
   "nav": {
+    "leagues": "Leagues",
     "home": "Home",
     "events": "Events",
     "teams": "Teams",

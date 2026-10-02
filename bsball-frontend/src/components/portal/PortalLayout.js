@@ -967,6 +967,12 @@ var oa={
         default:n(()=>[h(d(t(c)("nav.events")),1)]),_:1
       }
       ,8,["to"]),o(r,{
+        to:t(l)("leagues"),"active-class":"nav-active",onClick:R=>b.value=!1
+      }
+      ,{
+        default:n(()=>[h(d(t(c)("nav.leagues")),1)]),_:1
+      }
+      ,8,["to"]),o(r,{
         to:t(l)("teams"),"active-class":"nav-active",onClick:a[2]||(a[2]=R=>b.value=!1)
       }
       ,{

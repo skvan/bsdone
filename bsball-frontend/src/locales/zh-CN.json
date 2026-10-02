@@ -438,7 +438,22 @@
     "confirmRefresh": "立即刷新",
     "cancelLater": "稍后"
   },
+    "portalLeagues": {
+      "title": "联盟一览",
+      "apply": "申请创建联盟",
+      "name": "联盟名称",
+      "nameEn": "英文名",
+      "description": "描述",
+      "submit": "提交申请",
+      "cancel": "取消",
+      "pending": "已提交申请，等待管理员审核",
+      "created": "创建成功",
+      "empty": "暂无联盟",
+      "loginRequired": "请先登录后再申请创建联盟",
+      "failed": "提交失败"
+    },
   "nav": {
+    "leagues": "联盟",
     "home": "首页",
     "expandMenu": "展开菜单",
     "events": "赛事一览",

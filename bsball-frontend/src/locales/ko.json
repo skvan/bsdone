@@ -438,7 +438,22 @@
     "confirmRefresh": "지금 새로고침",
     "cancelLater": "나중에"
   },
+    "portalLeagues": {
+      "title": "리그 목록",
+      "apply": "리그 생성 신청",
+      "name": "리그 이름",
+      "nameEn": "영문명",
+      "description": "설명",
+      "submit": "신청",
+      "cancel": "취소",
+      "pending": "신청이 제출되었습니다. 관리자 승인을 기다려 주세요",
+      "created": "생성되었습니다",
+      "empty": "리그가 없습니다",
+      "loginRequired": "신청하려면 로그인하세요",
+      "failed": "제출 실패"
+    },
   "nav": {
+    "leagues": "리그",
     "home": "홈",
     "events": "대회",
     "teams": "팀",
