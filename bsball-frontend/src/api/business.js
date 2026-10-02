@@ -11,7 +11,11 @@ export const leagueApi = {
   portalCreate: (data) => post('/api/portal/league-create', data),
   pendingCreateRequests: (params) => fetchList('/api/league/create-request/list', params),
   approveCreateRequest: (id) => post(`/api/league/create-request/${id}/approve`, {}),
-  rejectCreateRequest: (id, reason) => post(`/api/league/create-request/${id}/reject`, { reason })
+  rejectCreateRequest: (id, reason) => post(`/api/league/create-request/${id}/reject`, { reason }),
+  // ---- 建盟链路（批次②）：联盟主办方管理（仅超管/租管） ----
+  owners: (id) => getData(`/api/league/${id}/owners`).then((d) => d ?? []),
+  assignOwner: (id, userId) => post(`/api/league/${id}/owner/assign`, { userId }),
+  revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`)
 };
 
 export const regionApi = {
