@@ -105,6 +105,7 @@ export const playerApi = {
   update: (id, data) => put(`/api/player/update/${id}`, data),
   delete: (id) => del(`/api/player/delete/${id}`),
   deleteBatch: (ids) => post('/api/player/delete-batch', { ids }),
+  releaseClaim: (id) => post(`/api/account/player-profile/${id}/release-claim`, {}),
   import: async (data) => (await post('/api/player/import', data)).data
 };
 

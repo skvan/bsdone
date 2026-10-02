@@ -2,9 +2,9 @@
  * 账号权限重构（批次 4b，Task 4b-1）：InitDataRunner 归还/下架按钮种子与联盟删除名目单测。
  *
  * 覆盖：
- *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；6 条新按钮各落库一次；
+ *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；7 条新按钮各落库一次；
  *  - ② tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：含 5 个 business:*:return、排除 5 个 business:*:delete（含 league:delete）；
- *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 6 条新按钮）；
+ *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 7 条新按钮）；
  *  - ④ tenant_admin 角色创建路径（ensureTenantAdminRoleIfNeeded）：落库绑定含 5 个 return、不含 5 个 delete；
  *  - ⑤ 收窄（ensureTenantAdminRoleExcludesBusinessDeleteButtons）：仅移除 delete 绑定、保留 return。
  *  - ⑥ 升级补绑（ensureTenantAdminRoleRebindsDefaultMenusIfNeeded，批次 4b-2）：角色存在缺 5 个 return → 恰补 5；
@@ -28,6 +28,7 @@ import com.bsball.config.InitSeedProperties;
 import com.bsball.config.TenantProperties;
 import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysMenu;
+import com.bsball.model.entity.SysMenuApi;
 import com.bsball.model.entity.SysRole;
 import com.bsball.model.entity.SysRoleApi;
 import com.bsball.model.entity.SysRoleMenu;
@@ -78,9 +79,9 @@ class InitDataRunnerReturnButtonSeedTest {
             "business:player:delete", "business:team:delete", "business:event:delete",
             "business:game:delete", "business:league:delete");
 
-    /** 本批新增（种子）按钮权限共 6 条：5 个 return + 1 个 league:delete。 */
+    /** 本次新增（种子）按钮权限共 7 条：5 个 return + league:delete + player:release-claim（解除认领）。 */
     private static final Set<String> BATCH_NEW_PERMS = Stream
-            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete"))
+            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim"))
             .collect(Collectors.toSet());
 
     @Mock
@@ -115,6 +116,7 @@ class InitDataRunnerReturnButtonSeedTest {
     private InitDataRunner runner;
     private final List<SysMenu> menuStore = new ArrayList<>();
     private final List<SysApi> apiStore = new ArrayList<>();
+    private final List<SysMenuApi> menuApiStore = new ArrayList<>();
     private final Map<Long, List<SysRoleMenu>> roleMenus = new HashMap<>();
     private final Map<Long, List<SysRoleApi>> roleApis = new HashMap<>();
     private long nextId = 1000L;
@@ -128,6 +130,7 @@ class InitDataRunnerReturnButtonSeedTest {
 
         menuStore.clear();
         apiStore.clear();
+        menuApiStore.clear();
         roleMenus.clear();
         roleApis.clear();
         nextId = 1000L;
@@ -146,7 +149,11 @@ class InitDataRunnerReturnButtonSeedTest {
             return m;
         });
         lenient().when(sysMenuRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(sysMenuApiRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(sysMenuApiRepository.save(any())).thenAnswer(inv -> {
+            SysMenuApi link = inv.getArgument(0);
+            menuApiStore.add(link);
+            return link;
+        });
         lenient().when(sysApiRepository.findAll()).thenAnswer(inv -> new ArrayList<>(apiStore));
         lenient().when(sysRoleRepository.save(any(SysRole.class))).thenAnswer(inv -> {
             SysRole r = inv.getArgument(0);
@@ -172,7 +179,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("① 按钮种子幂等：二次调用零新增，6 条新按钮各落库一次")
+    @DisplayName("① 按钮种子幂等：二次调用零新增，7 条新按钮各落库一次")
     void buttonSeedIdempotent() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -212,7 +219,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 6 条新按钮）")
+    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 7 条新按钮）")
     void adminBindsAllMenusIncludingNewButtons() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -231,8 +238,8 @@ class InitDataRunnerReturnButtonSeedTest {
                 .filter(m -> m.getPermission() != null && BATCH_NEW_PERMS.contains(m.getPermission()))
                 .map(SysMenu::getId)
                 .collect(Collectors.toSet());
-        assertEquals(6, newIds.size(), "应检出 6 条新按钮");
-        assertTrue(bound.containsAll(newIds), "超管应绑定 6 条新按钮（含 league:delete）");
+        assertEquals(7, newIds.size(), "应检出 7 条新按钮");
+        assertTrue(bound.containsAll(newIds), "超管应绑定 7 条新按钮（含 league:delete 与 release-claim）");
     }
 
     @Test
@@ -358,6 +365,32 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     // ---- 反射调用 ----
+
+    @Test
+    @DisplayName("⑩ 解除认领按钮：apiBinding 解析到已注册 sys_api（path 逐字对齐）")
+    void releaseClaimButtonBindsRegisteredApi() throws Exception {
+        menuStore.addAll(pageFixtures());
+        apiStore.add(releaseClaimApi());
+
+        invokeButtonSeeds();
+
+        SysMenu btn = menuStore.stream()
+                .filter(m -> "business:player:release-claim".equals(m.getPermission()))
+                .findFirst().orElseThrow();
+        List<SysMenuApi> links = menuApiStore.stream()
+                .filter(x -> btn.getId().equals(x.getMenuId()))
+                .toList();
+        assertEquals(1, links.size(), "解除认领按钮应绑定 1 条 sys_menu_api");
+        assertEquals(releaseClaimApi().getId(), links.get(0).getApiId(), "apiId 应指向已注册的解除认领端点");
+    }
+
+    private static SysApi releaseClaimApi() {
+        SysApi a = new SysApi();
+        a.setId(9001L);
+        a.setPath("/account/player-profile/:playerId/release-claim");
+        a.setMethod("POST");
+        return a;
+    }
 
     private void invokeButtonSeeds() throws Exception {
         invokeNoArg("ensureMenuDirectoryTypesAndDefaultButtons");

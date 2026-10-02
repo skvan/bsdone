@@ -660,7 +660,8 @@
       "pending": "待审核",
       "approved": "已通过",
       "rejected": "已拒绝",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "revoked": "已解除"
     },
     "claimRejectReason": "拒绝理由",
     "claimRemark": "备注",
@@ -669,6 +670,10 @@
     "claimCancelConfirm": "确定取消该认领申请吗？取消后需等待 3 个工作日才能重新申请。",
     "claimCancelled": "已取消认领申请",
     "claimCancelFailed": "取消失败",
+        "claimRelease": "解除认领",
+        "claimReleaseConfirm": "确定解除认领吗？解除后档案回到未认领状态，可重新被邀请/认领；你的球队经历与比赛统计仍保留在档案中。",
+        "claimReleased": "已解除认领",
+        "claimReleaseFailed": "解除认领失败",
     "rebindPhone": "改绑手机号",
     "bindPhone": "绑定手机号",
     "rebindEmail": "改绑邮箱",

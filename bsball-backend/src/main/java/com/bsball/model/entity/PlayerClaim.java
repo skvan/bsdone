@@ -27,8 +27,10 @@ extends BaseEntity {
     public static final String STATUS_APPROVED = "approved";
     public static final String STATUS_REJECTED = "rejected";
     public static final String STATUS_CANCELLED = "cancelled";
+    public static final String STATUS_REVOKED = "revoked";
     public static final String REVIEWER_TEAM_MANAGER = "team_manager";
     public static final String REVIEWER_PLATFORM_ADMIN = "platform_admin";
+    public static final String REVIEWER_SELF = "self";
     @Comment(value="\u79df\u6237ID")
     private Long tenantId;
     @Comment(value="\u7533\u8bf7\u7528\u6237ID")

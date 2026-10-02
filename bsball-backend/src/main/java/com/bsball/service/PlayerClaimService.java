@@ -287,6 +287,46 @@ public class PlayerClaimService {
         return (PlayerClaim)this.playerClaimRepository.save(claim);
     }
 
+    /**
+     * 解除认领（修正错误认领，Feature 解除认领）：守卫三通道（球员本人 / 超管 / 租户管理员）。
+     * 语义：原 approved 认领记录置 revoked（记录操作者与类型），清空 player.userId，
+     * 失效原用户范围缓存，并写沿革词条（claim_released）；档案回到未认领，可重新被邀请/认领。
+     */
+    @Transactional
+    public Map<String, Object> releaseClaim(Long playerId, Long operatorId, String remark) {
+        Player player = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
+        this.resourceGuard.assertCanReleasePlayerClaim(player);
+        if (player.getUserId() == null) {
+            throw new BusinessException(400, "\u8be5\u7403\u5458\u672a\u88ab\u8ba4\u9886");
+        }
+        Long previousUserId = player.getUserId();
+        boolean self = Objects.equals(operatorId, previousUserId);
+        LocalDateTime now = LocalDateTime.now();
+        PlayerClaim claim = this.playerClaimRepository.findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(playerId, PlayerClaim.STATUS_APPROVED).orElse(null);
+        if (claim != null) {
+            claim.setStatus(PlayerClaim.STATUS_REVOKED);
+            claim.setReviewerId(operatorId);
+            claim.setReviewedAt(now);
+            claim.setUpdatedAt(now);
+            claim.setReviewerType(self ? PlayerClaim.REVIEWER_SELF : PlayerClaim.REVIEWER_PLATFORM_ADMIN);
+            if (remark != null && !remark.isBlank()) {
+                claim.setRemark(remark);
+            }
+            this.playerClaimRepository.save(claim);
+        }
+        player.setUserId(null);
+        player.setUpdatedAt(now);
+        this.playerRepository.save(player);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(previousUserId);
+        this.personnelHistoryRecorder.recordPlayerClaimReleased(player, previousUserId, operatorId, self);
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        out.put("playerId", playerId);
+        out.put("previousUserId", previousUserId);
+        out.put("claimId", claim == null ? null : claim.getId());
+        out.put("self", Boolean.valueOf(self));
+        return out;
+    }
+
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
         // 批 2 沉淀⑩收敛：改用统一写保护守卫（ResourceGuard.assertCanManageTeam），与其它写路径同源。

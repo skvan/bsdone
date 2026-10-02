@@ -143,6 +143,7 @@ var Je={
         case"approved":return"success";
         case"rejected":return"danger";
         case"cancelled":return"info";
+        case"revoked":return"info";
         default:return"warning"
       }
       
@@ -176,6 +177,28 @@ var Je={
       }
       catch(r){
         i.error(r?.message||e("accountProfile.claimCancelFailed"))
+      }
+      finally{
+        q.value=null
+      }
+      
+    }
+    async function releaseClaimSelf(t){
+      try{
+        await Ae.confirm(e("accountProfile.claimReleaseConfirm"),e("accountProfile.claimRelease"),{
+          confirmButtonText:e("accountProfile.confirm"),cancelButtonText:e("accountProfile.cancel"),type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      q.value=t.id;
+      try{
+        await b.releasePlayerClaim(t.playerId),i.success(e("accountProfile.claimReleased")),await K()
+      }
+      catch(r){
+        i.error(r?.message||e("accountProfile.claimReleaseFailed"))
       }
       finally{
         q.value=null
@@ -490,6 +513,12 @@ var Je={
         }
         ,{
           default:n(()=>[u(s(a(e)("accountProfile.claimCancel")),1)]),_:1
+        }
+        ,8,["loading","onClick"])])):k("",!0),l.status==="approved"?(v(),w("div",_a,[o(P,{
+          size:"small",type:"danger",loading:q.value===l.id,onClick:ka=>releaseClaimSelf(l)
+        }
+        ,{
+          default:n(()=>[u(s(a(e)("accountProfile.claimRelease")),1)]),_:1
         }
         ,8,["loading","onClick"])])):k("",!0)]))),128))]))]),_:1
       }

@@ -386,6 +386,22 @@ public class PersonnelHistoryRecorder {
         this.persist(r);
     }
 
+    /** 解除认领（Feature 解除认领）：清空 player.userId 的审计词条（player 域，claim_released）。 */
+    public void recordPlayerClaimReleased(Player player, Long releasedUserId, Long operatorId, boolean self) {
+        if (player == null || player.getId() == null || player.getTenantId() == null || releasedUserId == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("player", player.getId().longValue(), player.getTenantId().longValue(), "claim_released");
+        r.setRelatedObjectType("user");
+        r.setRelatedObjectId(releasedUserId);
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<String, Object>();
+        payload.put("releasedUserId", releasedUserId);
+        payload.put("operatorId", operatorId);
+        payload.put("self", Boolean.valueOf(self));
+        r.setChangePayloadJson(this.jsonPayload(payload));
+        this.persist(r);
+    }
+
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {
         LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
         LinkedHashMap<String, Object> afterMap = new LinkedHashMap<>();

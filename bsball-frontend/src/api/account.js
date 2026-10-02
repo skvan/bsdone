@@ -40,6 +40,8 @@ export const accountApi = {
   resetPassword: (data) => post('/api/auth/password/reset', data),
   submitPlayerClaim: (data) => post('/api/account/player-claim', data),
   cancelPlayerClaim: (id) => post(`/api/account/player-claims/${id}/cancel`, {}),
+  // 球员本人自助解除认领（Feature 解除认领；与 manage 台共用端点）
+  releasePlayerClaim: (playerId) => post(`/api/account/player-profile/${playerId}/release-claim`, {}),
   myPlayerClaims: () => get('/api/account/player-claims'),
   pendingPlayerClaims: (params) => {
     const query = new URLSearchParams();

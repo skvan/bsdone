@@ -173,6 +173,23 @@ public class ResourceGuard {
     }
 
     /**
+     * 解除认领写保护（Feature 解除认领）：球员本人（player.userId == 当前登录人）自助放行；
+     * 超管放行；租户管理员限本租户（player.tenantId == 当前请求租户，防 IDOR）；其余 403。
+     */
+    public void assertCanReleasePlayerClaim(Player player) {
+        if (player == null) throw new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728");
+        Long uid = CurrentUserHolder.get();
+        if (uid != null && uid.equals(player.getUserId())) return;
+        if (this.isCurrentUserSuperAdmin()) return;
+        EffectiveScope s = this.accountScopeService.resolveCurrent();
+        if (s.isUnrestrictedInTenant()) {
+            Long curTenant = CurrentUserHolder.getTenantId();
+            if (curTenant != null && curTenant.equals(player.getTenantId())) return;
+        }
+        throw new BusinessException(403, "\u65e0\u6743\u89e3\u9664\u8be5\u8ba4\u9886");
+    }
+
+    /**
      * 历史数据销毁（最终处置）守卫（批次 3b，spec §6.10）：
      * <p>历史数据属平台资产；租户管理员及以下的「删除」仅为归还（软删 + platform_owned 置位），
      * 最终销毁权仅归系统超管，且须审计。
