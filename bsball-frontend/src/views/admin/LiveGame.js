@@ -10359,7 +10359,15 @@ var sg={
         ,"安全"),Bl.value.allowDidntScore?(h(),C("button",{
           key:1,type:"button",class:"hsc-inline__btn",onClick:t[10]||(t[10]=d=>Tl("noscore"))
         }
-        ," 不进垒 ")):W("",!0)])])):W("",!0)],2),W("",!0),n("div",{
+        ," 不进垒 ")):W("",!0)])])):W("",!0)],2),W("",!0),c(Ll).length?(h(),C("div",{
+          key:0,class:"live-lineup-rail",role:"group","aria-label":"当前进攻方打线"
+        }
+        ,[n("div",{class:"live-lineup-rail__head"},[n("span",{class:"live-lineup-rail__title"},"打线"),n("span",{class:"live-lineup-rail__team"},H(c(l).isTop?(At.value?.name??"客队"):(xt.value?.name??"主队")),1)]),n("ol",{class:"live-lineup-rail__list"},[(h(!0),C(me,null,et(c(Ll),(d,z)=>(h(),C("li",{
+          key:d.id??z,class:re(["live-lineup-rail__item",{
+            "live-lineup-rail__item--current":z===c(Dl)
+          }]),"aria-current":z===c(Dl)?"true":void 0
+        }
+        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current"]))),128))])])):W("",!0),n("div",{
           class:"field-quick-pitch",onClick:t[35]||(t[35]=Ze(()=>{
             
           }
