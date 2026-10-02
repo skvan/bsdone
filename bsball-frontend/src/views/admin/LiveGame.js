@@ -8612,7 +8612,7 @@ var sg={
       a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,erDelta:1,origin:"ERROR"}),addLivePitcherEarnedRuns(w),D(`${b}，${s.name} 进本垒得分`,t.advanceFeReasonCn)):(l.runners[e]&&ds(e),l.runners[e]=s,D(`${b}，${s.name} 进${p[e]}`,t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
         playerId:g,from:a,to:e
       }
-      ]),Qa(!1),Qe()
+      ]),Qa(!1)
     }
     function ic(){
       const e=l.flow;
