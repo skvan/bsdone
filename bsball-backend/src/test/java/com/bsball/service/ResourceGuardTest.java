@@ -738,6 +738,87 @@ class ResourceGuardTest {
         verifyNoInteractions(playerRepository, playerTeamService);
     }
 
+    // ------------------------------------------------------------------ assertCanReleasePlayerClaim
+
+    @Test
+    @DisplayName("解除认领守卫：球员本人（player.userId==当前用户）放行，不触碰租户解析")
+    void releaseClaim_self_passes() {
+        CurrentUserHolder.set(5L, 2L);
+        Player p = releasePlayer(5L, 2L);
+
+        assertDoesNotThrow(() -> guard.assertCanReleasePlayerClaim(p));
+        verifyNoInteractions(accountScopeService);
+    }
+
+    @Test
+    @DisplayName("解除认领守卫：系统超管放行（独立判定，不受租户限制）")
+    void releaseClaim_superAdmin_passes() {
+        CurrentUserHolder.set(9L, 2L);
+        when(apiPermissionService.isSuperAdmin(9L)).thenReturn(true);
+        Player p = releasePlayer(5L, 99L);
+
+        assertDoesNotThrow(() -> guard.assertCanReleasePlayerClaim(p));
+        verifyNoInteractions(accountScopeService);
+    }
+
+    @Test
+    @DisplayName("解除认领守卫：租户管理员（不受限且同租户）放行")
+    void releaseClaim_tenantAdminSameTenant_passes() {
+        CurrentUserHolder.set(9L, 2L);
+        when(apiPermissionService.isSuperAdmin(9L)).thenReturn(false);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
+        Player p = releasePlayer(5L, 2L);
+
+        assertDoesNotThrow(() -> guard.assertCanReleasePlayerClaim(p));
+    }
+
+    @Test
+    @DisplayName("解除认领守卫：租户管理员跨租户（player.tenantId 不同）→ 403（防 IDOR）")
+    void releaseClaim_tenantAdminCrossTenant_403() {
+        CurrentUserHolder.set(9L, 2L);
+        when(apiPermissionService.isSuperAdmin(9L)).thenReturn(false);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
+        Player p = releasePlayer(5L, 3L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanReleasePlayerClaim(p));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权解除该认领", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("解除认领守卫：受限身份（球队负责人等）→ 403；文案「无权解除该认领」")
+    void releaseClaim_restricted_forbidden() {
+        CurrentUserHolder.set(9L, 2L);
+        when(apiPermissionService.isSuperAdmin(9L)).thenReturn(false);
+        when(accountScopeService.resolveCurrent())
+                .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
+        Player p = releasePlayer(5L, 2L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanReleasePlayerClaim(p));
+        assertEquals(403, ex.getCode());
+        assertEquals("无权解除该认领", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("解除认领守卫：player 为 null → 404（不查库）")
+    void releaseClaim_nullPlayer_404() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanReleasePlayerClaim(null));
+        assertEquals(404, ex.getCode());
+        assertEquals("球员不存在", ex.getMessage());
+        verifyNoInteractions(accountScopeService, playerRepository);
+    }
+
+    private static Player releasePlayer(Long boundUserId, Long tenantId) {
+        Player p = new Player();
+        p.setId(50L);
+        p.setUserId(boundUserId);
+        p.setTenantId(tenantId);
+        return p;
+    }
+
     // ------------------------------------------------------------------ 空域 / 只读放行（§12.2 矩阵：写侧）
 
     @Test

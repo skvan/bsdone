@@ -1161,6 +1161,21 @@ var $n={
       }
       )
     }
+    async function BlReleaseClaim(a){
+      await fe(async()=>{
+        try{
+          await vn.confirm(`确定要解除球员「${a.name}」的认领吗？解除后档案回到未认领状态，可重新被邀请/认领。`,"解除认领确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await Ve.releaseClaim(a.id),p.success("已解除认领"),L()
+        }
+        catch(e){
+          e!=="cancel"&&p.error(e?.message||"解除认领失败")
+        }
+        
+      }
+      )
+    }
     async function L(){
       ra.value=!0;
       const a={
@@ -1556,6 +1571,12 @@ var $n={
               }
               ,{
                 default:n(()=>[...e[98]||(e[98]=[s("归还",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):H("",!0),h.userId&&g(Zi)("business:player:release-claim")?(m(),R(i,{
+                key:2,link:"",type:"danger",disabled:g(Ce),onClick:mt=>BlReleaseClaim(h)
+              }
+              ,{
+                default:n(()=>[...e[99]||(e[99]=[s("解除认领",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):H("",!0)]),_:1
             }

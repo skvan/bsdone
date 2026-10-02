@@ -86,6 +86,13 @@ public class PlayerClaimApi {
         return Result.ok(this.playerClaimService.reject(id, this.requireUserId(auth), reason));
     }
 
+    @PostMapping(value={"/account/player-profile/{playerId}/release-claim"})
+    public Result<Map<String, Object>> releaseClaim(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long playerId, @RequestBody(required=false) Map<String, Object> body) {
+        Long userId = this.requireUserId(auth);
+        String remark = body != null && body.get("remark") != null ? body.get("remark").toString() : null;
+        return Result.ok(this.playerClaimService.releaseClaim(playerId, userId, remark));
+    }
+
     @PostMapping(value={"/team/{teamId}/player-claim-invite"})
     public Result<Map<String, Object>> createInvite(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @RequestBody(required=false) Map<String, Object> body) {
         Integer n;

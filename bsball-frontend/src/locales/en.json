@@ -659,7 +659,8 @@
       "pending": "Pending",
       "approved": "Approved",
       "rejected": "Rejected",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "revoked": "Released"
     },
     "claimRejectReason": "Rejection reason",
     "claimRemark": "Remark",
@@ -668,6 +669,10 @@
     "claimCancelConfirm": "Cancel this claim request? After cancellation you must wait 3 business days before applying again.",
     "claimCancelled": "Claim request cancelled",
     "claimCancelFailed": "Cancellation failed",
+        "claimRelease": "Release claim",
+        "claimReleaseConfirm": "Release this claim? The profile will return to unclaimed and can be invited or claimed again. Team history and match stats remain on the profile.",
+        "claimReleased": "Claim released",
+        "claimReleaseFailed": "Failed to release claim",
     "rebindPhone": "Change phone",
     "bindPhone": "Bind phone",
     "rebindEmail": "Change email",

@@ -18,6 +18,7 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -461,6 +462,90 @@ class PlayerClaimServiceTest {
         invite.setUsedCount(0);
         invite.setMaxUses(maxUses);
         return invite;
+    }
+
+    // ------------------------------------------------------------------ releaseClaim（Feature 解除认领）
+
+    @Test
+    @DisplayName("⑨ 解除认领（管理侧）：approved→revoked、清空绑定、evict、写沿革（self=false）")
+    void releaseClaim_admin_success() {
+        Player p = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        PlayerClaim claim = approvedClaim(60L, CLAIMANT_ID);
+        when(playerClaimRepository.findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(PLAYER_ID, PlayerClaim.STATUS_APPROVED))
+                .thenReturn(Optional.of(claim));
+
+        Map<String, Object> out = service.releaseClaim(PLAYER_ID, CREATOR_ID, "平台修正");
+
+        verify(resourceGuard).assertCanReleasePlayerClaim(p);
+        assertEquals(PlayerClaim.STATUS_REVOKED, claim.getStatus());
+        assertEquals(PlayerClaim.REVIEWER_PLATFORM_ADMIN, claim.getReviewerType());
+        assertEquals(Long.valueOf(CREATOR_ID), claim.getReviewerId());
+        assertNull(p.getUserId());
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+        verify(personnelHistoryRecorder).recordPlayerClaimReleased(p, CLAIMANT_ID, CREATOR_ID, false);
+        assertEquals(CLAIMANT_ID, ((Number) out.get("previousUserId")).longValue());
+        assertEquals(60L, ((Number) out.get("claimId")).longValue());
+        assertEquals(Boolean.FALSE, out.get("self"));
+    }
+
+    @Test
+    @DisplayName("⑩ 解除认领（本人自助）：reviewerType=self、self=true")
+    void releaseClaim_self_success() {
+        Player p = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        PlayerClaim claim = approvedClaim(61L, CLAIMANT_ID);
+        when(playerClaimRepository.findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(PLAYER_ID, PlayerClaim.STATUS_APPROVED))
+                .thenReturn(Optional.of(claim));
+
+        Map<String, Object> out = service.releaseClaim(PLAYER_ID, CLAIMANT_ID, null);
+
+        assertEquals(PlayerClaim.STATUS_REVOKED, claim.getStatus());
+        assertEquals(PlayerClaim.REVIEWER_SELF, claim.getReviewerType());
+        assertNull(p.getUserId());
+        assertEquals(Boolean.TRUE, out.get("self"));
+        verify(personnelHistoryRecorder).recordPlayerClaimReleased(p, CLAIMANT_ID, CLAIMANT_ID, true);
+    }
+
+    @Test
+    @DisplayName("⑪ 解除认领：未认领球员 → 400（不查认领表、不清缓存）")
+    void releaseClaim_unclaimed_400() {
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.releaseClaim(PLAYER_ID, CREATOR_ID, null));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("未被认领"));
+        verify(playerClaimRepository, never()).findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(any(), any());
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
+    }
+
+    @Test
+    @DisplayName("⑫ 解除认领：无 approved 记录（旧数据）→ 仍清绑定并写沿革，claimId 为空")
+    void releaseClaim_legacyNoApprovedClaim_stillReleases() {
+        Player p = player(PLAYER_ID, TENANT_ID, CLAIMANT_ID);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerClaimRepository.findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(PLAYER_ID, PlayerClaim.STATUS_APPROVED))
+                .thenReturn(Optional.empty());
+
+        Map<String, Object> out = service.releaseClaim(PLAYER_ID, CREATOR_ID, null);
+
+        assertNull(p.getUserId());
+        assertNull(out.get("claimId"));
+        assertEquals(CLAIMANT_ID, ((Number) out.get("previousUserId")).longValue());
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+        verify(personnelHistoryRecorder).recordPlayerClaimReleased(p, CLAIMANT_ID, CREATOR_ID, false);
+    }
+
+    private static PlayerClaim approvedClaim(Long id, Long boundUserId) {
+        PlayerClaim c = new PlayerClaim();
+        c.setId(id);
+        c.setPlayerId(PLAYER_ID);
+        c.setUserId(boundUserId);
+        c.setStatus(PlayerClaim.STATUS_APPROVED);
+        return c;
     }
 
     private static Player player(Long id, Long tenantId, Long userId) {

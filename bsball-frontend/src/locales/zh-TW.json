@@ -658,7 +658,8 @@
       "pending": "待審核",
       "approved": "已通過",
       "rejected": "已拒絕",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+            "revoked": "已解除"
     },
     "claimRejectReason": "拒絕理由",
     "claimRemark": "備註",
@@ -667,6 +668,10 @@
     "claimCancelConfirm": "確定取消該認領申請嗎？取消後需等待 3 個工作日才能重新申請。",
     "claimCancelled": "已取消認領申請",
     "claimCancelFailed": "取消失敗",
+        "claimRelease": "解除認領",
+        "claimReleaseConfirm": "確定要解除認領嗎？解除後檔案回到未認領狀態，可重新被邀請/認領；你的球隊經歷與比賽統計仍保留在檔案中。",
+        "claimReleased": "已解除認領",
+        "claimReleaseFailed": "解除認領失敗",
     "rebindPhone": "改綁手機號",
     "bindPhone": "綁定手機號",
     "rebindEmail": "改綁信箱",

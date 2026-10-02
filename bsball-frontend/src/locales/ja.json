@@ -659,7 +659,8 @@
       "pending": "審査中",
       "approved": "承認済み",
       "rejected": "拒否済み",
-      "cancelled": "キャンセル済み"
+      "cancelled": "キャンセル済み",
+            "revoked": "解除済み"
     },
     "claimRejectReason": "拒否理由",
     "claimRemark": "備考",
@@ -668,6 +669,10 @@
     "claimCancelConfirm": "この紐付け申請をキャンセルしますか？キャンセル後、再申請には3営業日お待ちいただく必要があります。",
     "claimCancelled": "紐付け申請をキャンセルしました",
     "claimCancelFailed": "キャンセルに失敗しました",
+        "claimRelease": "紐付け解除",
+        "claimReleaseConfirm": "紐付けを解除しますか？解除後プロフィールは未紐付け状態に戻り、再度招待/紐付けできます。チーム経歴と試合成績はプロフィールに残ります。",
+        "claimReleased": "紐付けを解除しました",
+        "claimReleaseFailed": "紐付け解除に失敗しました",
     "rebindPhone": "携帯電話番号を変更",
     "bindPhone": "携帯電話番号を連携",
     "rebindEmail": "メールアドレスを変更",

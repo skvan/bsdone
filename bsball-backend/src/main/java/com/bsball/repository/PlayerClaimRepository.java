@@ -29,5 +29,8 @@ JpaSpecificationExecutor<PlayerClaim> {
     public boolean existsByUserIdAndStatusAndDeletedAtIsNull(Long var1, String var2);
 
     public Optional<PlayerClaim> findTopByUserIdAndStatusAndDeletedAtIsNullOrderByUpdatedAtDesc(Long var1, String var2);
+
+    /** 解除认领用：取该球员最近一条指定状态的认领记录（升级兼容旧库无此方法时仅取消绑定）。 */
+    public Optional<PlayerClaim> findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(Long var1, String var2);
 }
 
