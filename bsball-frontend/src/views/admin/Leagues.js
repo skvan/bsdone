@@ -1,12 +1,13 @@
 // Leagues —— 行为保真移植自编译产物 Leagues-BIaLS4-C（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { nextTick as oe, withModifiers as ne, createElementBlock as ie, defineComponent as de, createTextVNode as s, computed as ue, toDisplayString as B, createElementVNode as x, unref as d, mergeProps as me, createBlock as D, ref as f, createVNode as t, withDirectives as fe, openBlock as C, withCtx as a, withKeys as _e, onMounted as ye, reactive as E, createCommentVNode as Ee } from 'vue';
-import { ElInputNumber as se, ElDialog as re, ElTableColumn as pe, ElInput as ce, ElFormItem as ge, ElMessage as v, ElTable as ve, ElButton as be, ElCard as we, ElMessageBox as ke, vLoading as Ve, ElSwitch as Se, ElForm as Ce } from 'element-plus';
+import { nextTick as oe, withModifiers as ne, createElementBlock as ie, defineComponent as de, createTextVNode as s, computed as ue, toDisplayString as B, createElementVNode as x, unref as d, mergeProps as me, createBlock as D, ref as f, createVNode as t, withDirectives as fe, openBlock as C, withCtx as a, withKeys as _e, onMounted as ye, reactive as E, createCommentVNode as Ee, Fragment as Zz, renderList as Yy } from 'vue';
+import { ElInputNumber as se, ElDialog as re, ElTableColumn as pe, ElInput as ce, ElFormItem as ge, ElMessage as v, ElTable as ve, ElButton as be, ElCard as we, ElMessageBox as ke, vLoading as Ve, ElSwitch as Se, ElForm as Ce, ElSelect as ys, ElOption as yo } from 'element-plus';
 import { useMediaQuery as xe } from '../../composables/useMediaQuery';
 import { formatDateYmd as Le } from '../../utils/dateExtras';
 import { useSettingsStore as Te } from '../../stores/settings';
 import { exportSfc as Me } from '../../utils/exportSfc';
 import { leagueApi as k } from '../../api/business';
+import { userApi as sn } from '../../api/system';
 import Ue from '../../components/admin/AdminListScaffold.js';
 import he from '../../components/admin/AdminPagination.js';
 import { useFixedOperationColumn as ze } from '../../composables/useListTable';
@@ -174,6 +175,96 @@ var Ae={
         reviewing.value=!1
       }
     }
+    // ---- 联盟主办方管理（建盟链路批次②）----
+    const ownDlg=f(!1),ownRows=f([]),ownLeague=f(null),pickUser=f(null),userOpts=f([]),ownBusy=f(!1),ownNames=f({});
+    const GD={ADMIN_ASSIGN:"管理员指派",SELF_CREATE:"自助创建"},SD={active:"生效",inactive:"已解除"};
+    async function openOwners(n){
+      ownLeague.value=n,ownDlg.value=!0,pickUser.value=null,await Promise.all([loadOwners(),searchUsers("")])
+    }
+    async function resolveNames(){
+      const n={...ownNames.value};
+      await Promise.all(ownRows.value.map(async e=>{
+        if(n[e.userId])return;
+        try{
+          const t=await sn.get(e.userId);n[e.userId]=t?.nickname||t?.username||""
+        }
+        catch{
+          
+        }
+      }
+      )),ownNames.value=n
+    }
+    async function loadOwners(){
+      try{
+        ownRows.value=await k.owners(ownLeague.value.id)??[],await resolveNames()
+      }
+      catch(e){
+        v.error(e?.message||"加载失败")
+      }
+    }
+    async function searchUsers(n){
+      try{
+        const{
+          list:e
+        }
+        =await sn.list({
+          keyword:n||void 0,page:1,pageSize:20
+        }
+        );
+        userOpts.value=e??[]
+      }
+      catch{
+        userOpts.value=[]
+      }
+    }
+    async function doAssign(){
+      if(ownBusy.value)return;
+      const n=pickUser.value;
+      if(!n){
+        v.warning("请先选择用户");return
+      }
+      try{
+        await ke.confirm(`确认指派用户 #${n} 为联盟「${ownLeague.value.name}」主办方？`,"指派确认",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      ownBusy.value=!0;
+      try{
+        await k.assignOwner(ownLeague.value.id,n),v.success("已指派"),pickUser.value=null,await loadOwners()
+      }
+      catch(e){
+        v.error(e?.message||"指派失败")
+      }
+      finally{
+        ownBusy.value=!1
+      }
+    }
+    async function doRevoke(n){
+      if(ownBusy.value)return;
+      try{
+        await ke.confirm(`确认解除${(ownNames.value[n.userId]?"「"+ownNames.value[n.userId]+"」 ":"")}用户 #${n.userId} 的主办方绑定？`,"解除确认",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      ownBusy.value=!0;
+      try{
+        await k.revokeOwner(ownLeague.value.id,n.userId),v.success("已解除"),await loadOwners()
+      }
+      catch(e){
+        v.error(e?.message||"解除失败")
+      }
+      finally{
+        ownBusy.value=!1
+      }
+    }
     function S(){
       i.page=1,u()
     }
@@ -314,6 +405,12 @@ var Ae={
               ,{
                 default:a(()=>[...e[20]||(e[20]=[s("归还",-1)])]),_:1
               }
+              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:owners")?(C(),D(m,{
+                key:2,link:"",type:"primary",onClick:R4=>openOwners(c)
+              }
+              ,{
+                default:a(()=>[s("主办方",-1)]),_:1
+              }
               ,8,["onClick"])):Ee("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
@@ -415,6 +512,52 @@ var Ae={
             }
             ,8,["disabled","onClick"]),t(m,{link:"",type:"danger",disabled:reviewing.value,onClick:R2=>rejectReq(cr)},{
               default:a(()=>[s("驳回",-1)]),_:1
+            }
+            ,8,["disabled","onClick"])]),_:1})]),_:1
+        }
+        ,8,["data"])])
+      }
+      ,8,["modelValue"]),d(te,{
+        modelValue:ownDlg.value,"onUpdate:modelValue":R4=>ownDlg.value=R4,title:`联盟主办方：${ownLeague.value?.name??""}`,width:"640"
+      }
+      ,{
+        default:a(()=>[x("div",{
+          class:"owner-toolbar",style:{display:"flex",gap:"8px",marginBottom:"8px"}
+        }
+        ,[t(ys,{modelValue:pickUser.value,"onUpdate:modelValue":R4=>pickUser.value=R4,filterable:"",remote:"",clearable:"",placeholder:"搜索用户名/昵称并选择","remote-method":searchUsers,style:{flex:"1"}
+        }
+        ,{
+          default:a(()=>[(C(!0),ie(Zz,null,Yy(userOpts.value,R4=>(C(),D(yo,{
+            key:R4.id,label:(R4.username||"")+(R4.nickname?"（"+R4.nickname+"）":""),value:R4.id
+          }
+          ,null,8,["label","value"]))),128))]),_:1
+        }
+        ,8,["modelValue","remote-method"]),t(m,{type:"primary",disabled:ownBusy.value,onClick:doAssign},{
+          default:a(()=>[s("指派",-1)]),_:1
+        }
+        ,8,["disabled","onClick"])]),t(X,{data:ownRows.value,"max-height":320},{
+          default:a(()=>[t(r,{prop:"userId",label:"用户",width:"150"},{
+            default:a(({
+              row:cr
+            }
+            )=>[s((ownNames.value[cr.userId]?ownNames.value[cr.userId]+" ":"")+"#"+cr.userId,1)]),_:1}),t(r,{prop:"grantSource",label:"来源",width:"120"},{
+            default:a(({
+              row:cr
+            }
+            )=>[s(GD[cr.grantSource]??cr.grantSource,1)]),_:1}),t(r,{prop:"status",label:"状态",width:"90"},{
+            default:a(({
+              row:cr
+            }
+            )=>[s(SD[cr.status]??cr.status,1)]),_:1}),t(r,{prop:"createdAt",label:"绑定时间",width:"160"},{
+            default:a(({
+              row:cr
+            }
+            )=>[s(B(d(Le)(cr.createdAt)),1)]),_:1}),t(r,{label:"操作",width:"90"},{
+            default:a(({
+              row:cr
+            }
+            )=>[t(m,{link:"",type:"danger",disabled:ownBusy.value,onClick:R4=>doRevoke(cr)},{
+              default:a(()=>[s("解除",-1)]),_:1
             }
             ,8,["disabled","onClick"])]),_:1})]),_:1
         }

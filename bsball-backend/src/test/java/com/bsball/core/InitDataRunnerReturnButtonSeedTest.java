@@ -2,9 +2,9 @@
  * 账号权限重构（批次 4b，Task 4b-1）：InitDataRunner 归还/下架按钮种子与联盟删除名目单测。
  *
  * 覆盖：
- *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；8 条新按钮各落库一次；
+ *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；9 条新按钮各落库一次；
  *  - ② tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：含 5 个 business:*:return、排除 5 个 business:*:delete（含 league:delete）；
- *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 8 条新按钮）；
+ *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 9 条新按钮）；
  *  - ④ tenant_admin 角色创建路径（ensureTenantAdminRoleIfNeeded）：落库绑定含 5 个 return、不含 5 个 delete；
  *  - ⑤ 收窄（ensureTenantAdminRoleExcludesBusinessDeleteButtons）：仅移除 delete 绑定、保留 return。
  *  - ⑥ 升级补绑（ensureTenantAdminRoleRebindsDefaultMenusIfNeeded，批次 4b-2）：角色存在缺 5 个 return → 恰补 5；
@@ -79,9 +79,9 @@ class InitDataRunnerReturnButtonSeedTest {
             "business:player:delete", "business:team:delete", "business:event:delete",
             "business:game:delete", "business:league:delete");
 
-    /** 本次新增（种子）按钮权限共 8 条：5 个 return + league:delete + player:release-claim + league:requestReview。 */
+    /** 本次新增（种子）按钮权限共 9 条：5 个 return + league:delete + player:release-claim + league:requestReview + league:owners。 */
     private static final Set<String> BATCH_NEW_PERMS = Stream
-            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim", "business:league:requestReview"))
+            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim", "business:league:requestReview", "business:league:owners"))
             .collect(Collectors.toSet());
 
     @Mock
@@ -179,7 +179,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("① 按钮种子幂等：二次调用零新增，8 条新按钮各落库一次")
+    @DisplayName("① 按钮种子幂等：二次调用零新增，9 条新按钮各落库一次")
     void buttonSeedIdempotent() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -219,7 +219,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 8 条新按钮）")
+    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 9 条新按钮）")
     void adminBindsAllMenusIncludingNewButtons() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -238,8 +238,8 @@ class InitDataRunnerReturnButtonSeedTest {
                 .filter(m -> m.getPermission() != null && BATCH_NEW_PERMS.contains(m.getPermission()))
                 .map(SysMenu::getId)
                 .collect(Collectors.toSet());
-        assertEquals(8, newIds.size(), "应检出 8 条新按钮");
-        assertTrue(bound.containsAll(newIds), "超管应绑定 8 条新按钮（含 requestReview 等）");
+        assertEquals(9, newIds.size(), "应检出 9 条新按钮");
+        assertTrue(bound.containsAll(newIds), "超管应绑定 9 条新按钮（含 owners 等）");
     }
 
     @Test
@@ -382,6 +382,42 @@ class InitDataRunnerReturnButtonSeedTest {
                 .toList();
         assertEquals(1, links.size(), "解除认领按钮应绑定 1 条 sys_menu_api");
         assertEquals(releaseClaimApi().getId(), links.get(0).getApiId(), "apiId 应指向已注册的解除认领端点");
+    }
+
+    @Test
+    @DisplayName("⑪ 主办方管理按钮：双 apiBinding（指派/解除）解析到已注册 sys_api")
+    void ownersButtonBindsBothApis() throws Exception {
+        menuStore.addAll(pageFixtures());
+        apiStore.add(ownerAssignApi());
+        apiStore.add(ownerRevokeApi());
+
+        invokeButtonSeeds();
+
+        SysMenu btn = menuStore.stream()
+                .filter(m -> "business:league:owners".equals(m.getPermission()))
+                .findFirst().orElseThrow();
+        List<SysMenuApi> links = menuApiStore.stream()
+                .filter(x -> btn.getId().equals(x.getMenuId()))
+                .toList();
+        assertEquals(2, links.size(), "主办方管理按钮应绑定 2 条 sys_menu_api");
+        Set<Long> ids = links.stream().map(SysMenuApi::getApiId).collect(Collectors.toSet());
+        assertEquals(Set.of(ownerAssignApi().getId(), ownerRevokeApi().getId()), ids, "应分别指向指派/解除两个端点");
+    }
+
+    private static SysApi ownerAssignApi() {
+        SysApi a = new SysApi();
+        a.setId(9002L);
+        a.setPath("/league/:id/owner/assign");
+        a.setMethod("POST");
+        return a;
+    }
+
+    private static SysApi ownerRevokeApi() {
+        SysApi a = new SysApi();
+        a.setId(9003L);
+        a.setPath("/league/:id/owner/:userId");
+        a.setMethod("DELETE");
+        return a;
     }
 
     private static SysApi releaseClaimApi() {
