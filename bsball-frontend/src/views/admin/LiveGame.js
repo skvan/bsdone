@@ -17,6 +17,7 @@ import { fetchPlayersByTeam as Qc } from '../../api/business';
 import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
+import { decideRbi, rbiContextForAdvance, rbiContextForBattedBall, sacrificeStatForError } from '../../domain/rbi/rbiDecision';
 import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -713,6 +714,9 @@ function Wd(u,f,l){
     ,{
       id:"safe_same_err",en:"On Same Play Error",cn:"同一play内失误推进"
     }
+    ,{
+      id:"safe_same_err_rbi",en:"Same Play Error, Run Would Score",cn:"同一play失误，正常防守仍得分（计打点）"
+    }
     ].filter(x=>!o.some(y=>y.id===x.id));
     if(add.length){
       let i=o.findIndex(y=>y.id==="safe_other");
@@ -888,15 +892,15 @@ function Kd(u,f){
   }
   ]:null
 }
-var zd=new Set(["safe_te","safe_fe","safe_same_err","safe_diff_err"]);
+var zd=new Set(["safe_te","safe_fe","safe_same_err","safe_same_err_rbi","safe_diff_err"]);
 function lu(u){
   return{
-    safe_te:"传球失误推进：请点击失误责任守备员",safe_fe:"守备失误推进：请点击失误责任守备员",safe_same_err:"同一play内失误推进：请点击失误责任守备员",safe_diff_err:"失误后推进：请点击失误责任守备员"
+    safe_te:"传球失误推进：请点击失误责任守备员",safe_fe:"守备失误推进：请点击失误责任守备员",safe_same_err:"同一play内失误推进：请点击失误责任守备员",safe_same_err_rbi:"同一play失误且正常防守仍得分：请点击失误责任守备员",safe_diff_err:"失误后推进：请点击失误责任守备员"
   }
   [u]??"请点击失误责任守备员"
 }
 function iu(u,f){
-  return u==="safe_te"?`传球失误：${f} 失误`:u==="safe_fe"?`守备失误：${f} 失误`:u==="safe_same_err"?`同一play内失误：${f} 失误`:u==="safe_diff_err"?`失误后推进：${f} 失误`:`暴传失误：${f} 失误`
+  return u==="safe_te"?`传球失误：${f} 失误`:u==="safe_fe"?`守备失误：${f} 失误`:u==="safe_same_err"?`同一play内失误：${f} 失误`:u==="safe_same_err_rbi"?`同一play失误（正常防守仍得分）：${f} 失误`:u==="safe_diff_err"?`失误后推进：${f} 失误`:`暴传失误：${f} 失误`
 }
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
@@ -2312,6 +2316,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Double Play")],-1))])):W("",!0),oe.value?(h(),C("button",{
+        key:"reverse-dp",type:"button",class:"lgpfm__item",onClick:k=>I("bip:g:reverse:dp")
+      }
+      ,[v(B,{
+        variant:c(o)("bip:g:reverse:dp")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"逆双杀"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Reverse-force Double Play")])])):W("",!0),oe.value?(h(),C("button",{
         key:2,type:"button",class:"lgpfm__item",onClick:i[42]||(i[42]=k=>I("bip:g:tp"))
       }
       ,[v(B,{
@@ -2342,6 +2361,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Error")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("bip:g:dp:e")
+      }
+      ,[v(B,{
+        variant:c(o)("bip:g:dp:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"双杀机会失误"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Failed Double-play Error")])]),n("button",{
         type:"button",class:"lgpfm__item",onClick:i[44]||(i[44]=k=>I("bip:g:f"))
       }
       ,[v(B,{
@@ -2543,6 +2577,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Double Play")],-1))])):W("",!0),oe.value?(h(),C("button",{
+        key:"reverse-dp",type:"button",class:"lgpfm__item",onClick:k=>I("bip:hg:reverse:dp")
+      }
+      ,[v(B,{
+        variant:c(o)("bip:hg:reverse:dp")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"逆双杀"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Reverse-force Double Play")])])):W("",!0),oe.value?(h(),C("button",{
         key:2,type:"button",class:"lgpfm__item",onClick:i[57]||(i[57]=k=>I("bip:hg:tp"))
       }
       ,[v(B,{
@@ -2573,6 +2622,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Error")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("bip:hg:dp:e")
+      }
+      ,[v(B,{
+        variant:c(o)("bip:hg:dp:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"双杀机会失误"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Failed Double-play Error")])]),n("button",{
         type:"button",class:"lgpfm__item",onClick:i[59]||(i[59]=k=>I("bip:hg:f"))
       }
       ,[v(B,{
@@ -4351,13 +4415,13 @@ function pu(u,f,l){
   const o=l.batter;
   l.ensureBatting(o);
   const _=l.pitcher;
-  let S=0,H=null;
+  let S=0,H=null,scoreCount=0;
   for(let R=0;
   R<u;
   R++){
     if(l.runners[3]&&l.runners[3]!==H){
       const N=l.runners[3],M=f[S++]??"safe";
-      if(l.ensureBatting(N),M==="safe")l.addScore(1),l.creditRBI!==!1&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
+      if(l.ensureBatting(N),M==="safe")l.addScore(1,N),scoreCount++,l.creditRBI!==!1&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(`安打得分 · ${N.name} (#${N.number??"-"}) — Safe`);
       else if(M==="noscore")H=N,l.addLog(`不进垒 · ${N.name} (#${N.number??"-"}) — 退回三垒`);
       else{
         l.handleOut();
@@ -4381,6 +4445,7 @@ function pu(u,f,l){
     )b--;
     l.runners[b>=1?b:1]=o
   }
+  return scoreCount
   
 }
 function fu(u,f,l,o=[]){
@@ -5747,13 +5812,15 @@ var sg={
       ue(a),ue(s??void 0);
       const r={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
-      }
-      ,p=l.runners[3],g=t[0]??"safe";
+      };
+      const rbiDecision=decideRbi(rbiContextForBattedBall({playType:e.playType,bipCode:e.opts?.bipCode,basesBefore:r,outsBefore:l.outs}));
+      dt.value&&(dt.value.rbiDecision=rbiDecision);
+      const p=l.runners[3],g=t[0]??"safe";
       let m=0;
       p&&(ue(p),g==="safe"?(p.stats.batting.r=(p.stats.batting.r??0)+1,ls(1,{
-        runner:p,batter:a,rbiDelta:1,pitcher:s??void 0,erDelta:1
+        runner:p,batter:rbiDecision.creditRbi?a:void 0,rbiDelta:rbiDecision.creditRbi?1:void 0,pitcher:s??void 0,erDelta:1
       }
-      ),addLivePitcherEarnedRuns(s),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,D(`野选推进得分 · ${p.name} (#${p.number??"-"}) — Safe`)):(Bt(Gt(p,"野选本垒出局")),m=1,D(`野选推进 · ${p.name} (#${p.number??"-"}) ${g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"} — 未得分`))),ni(a,e.outsToAdd);
+      ),addLivePitcherEarnedRuns(s),rbiDecision.creditRbi&&(a.stats.batting.rbi=(a.stats.batting.rbi??0)+1),D(`野选推进得分 · ${p.name} (#${p.number??"-"}) — Safe`)):(Bt(Gt(p,"野选本垒出局")),m=1,D(`野选推进 · ${p.name} (#${p.number??"-"}) ${g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"} — 未得分`))),ni(a,e.outsToAdd);
       const y=Math.max(0,e.outsToAdd-m),b=e.playType==="FC"?"野选出局":e.playType==="DP"?"双杀出局":"三杀出局";
       os(y,Gt(a,b),b,{
         pbp:!1
@@ -5796,10 +5863,13 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
       ,p=e.playType==="H1"||e.playType==="H2"||e.playType==="H3"?uu(e.bases,r,t):null;
-      pu(e.bases,t,{
-        creditRBI:e.playType!=="E",runners:l.runners,batter:a,pitcher:s,addScore:Ct,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
+      const rbiDecision=decideRbi(rbiContextForBattedBall({playType:e.playType,bipCode:e.opts?.bipCode,basesBefore:r,outsBefore:l.outs}));
+      dt.value&&(dt.value.rbiDecision=rbiDecision);
+      const scoredRuns=pu(e.bases,t,{
+        creditRBI:rbiDecision.creditRbi,runners:l.runners,batter:a,pitcher:s,addScore:(w,P)=>ls(w,{runner:P,batter:rbiDecision.creditRbi?a:void 0,rbiDelta:rbiDecision.creditRbi?1:void 0,pitcher:s??void 0,erDelta:1,rbiDecision}),handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
       }
-      ),fn.value||Ge(Gn(e.bases,r,a,t));
+      );
+      fn.value||Ge(Gn(e.bases,r,a,t));
       const g=w=>au(w,{
         bipCode:e.opts?.bipCode,sprayZone:e.opts?.sprayZone,sprayFieldPos:e.opts?.sprayFieldPos,sprayX:e.opts?.sprayX,sprayY:e.opts?.sprayY,sprayDepth:e.opts?.sprayDepth
       }
@@ -5810,7 +5880,13 @@ var sg={
       else if(e.playType==="H2")a.stats.batting.h=(a.stats.batting.h??0)+1,a.stats.batting.doubles=(a.stats.batting.doubles??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchH=(s.stats.pitching.pitchH??0)+1),m="H2",y=g(`${a.name}: ${hn("H2")}`),D(y,p??void 0),p&&(y=`${y}，${p}`);
       else if(e.playType==="H3")a.stats.batting.h=(a.stats.batting.h??0)+1,a.stats.batting.triples=(a.stats.batting.triples??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchH=(s.stats.pitching.pitchH??0)+1),m="H3",y=g(`${a.name}: ${hn("H3")}`),D(y,p??void 0),p&&(y=`${y}，${p}`);
       else if(e.playType==="E"){
-        a.stats.batting.ab=(a.stats.batting.ab??0)+1;
+        const runnerAdvanced=scoredRuns>0||[1,2].some(w=>r[w]&&Object.entries(l.runners).some(([P,A])=>Number(P)>w&&A===r[w]));
+        const sacrificeStat=b?sacrificeStatForError({bipCode:e.opts?.bipCode,scoredRuns,runnerAdvanced}):null;
+        if(sacrificeStat){
+          const w=sacrificeStat.toLowerCase();
+          a.stats.batting[w]=(a.stats.batting[w]??0)+1
+        }
+        else a.stats.batting.ab=(a.stats.batting.ab??0)+1;
         for(const w of e.fielders){
           const P=Vt(w);
           P?.stats?.fielding&&(P.stats.fielding.e=(P.stats.fielding.e??0)+1)
@@ -6926,12 +7002,23 @@ var sg={
       a&&(ue(a),e===4?(a.stats.batting.sf=(a.stats.batting.sf??0)+1,a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.resultCode="SF",t.rbi=(t.rbi??0)+1):(a.stats.batting.sh=(a.stats.batting.sh??0)+1,t.resultCode="SH"))
     }
     // 「上一棒内推进（有打点）」：给上一棒打者记 1 分打点（#206；与 wf 的牺牲打记账同机制）
-    function creditLastBatterRbi(){
+    function creditLastBatterRbi(rbiDecision){
       const e=El.value,t=l.isTop?"top":"bottom";
       if(!e||e.inning!==l.inning||e.half!==t)return!1;
       const a=Ar.value.find(s=>Number(s.id)===Number(e.batterPlayerId))??null;
       if(!a)return!1;
-      return ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1,!0
+      ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1;
+      if(rbiDecision){
+        e.options={...(e.options??{}),rbiDecision};
+        for(let s=f.playEvents.length-1;s>=0;s--){
+          const r=f.playEvents[s];
+          if(r.id===e.id){
+            r.rbi=(r.rbi??0)+1,r.options={...(r.options??{}),rbiDecision};
+            break
+          }
+        }
+      }
+      return a
     }
     function Sf(){
       const e=ke.value[0];
@@ -6968,7 +7055,7 @@ var sg={
       let b=0;
       m&&m.batterId===Number(e.id)&&(b=y-(m.rbiAtStart??0));
       const w={
-        id:`ab-${l.inning}-${a}-${r}-${Date.now()}-${Math.random().toString(36).slice(2,9)}`,inning:l.inning,half:a,batterPlayerId:Number(e.id),batterName:e.name,batterOrder:r,pitcherPlayerId:t?Number(t.id):null,pitcherName:t?.name??null,outsAfter:l.outs,resultCode:p,resultText:g,rbi:Math.max(0,b),recordedAt:Date.now(),...m?{
+        id:`ab-${l.inning}-${a}-${r}-${Date.now()}-${Math.random().toString(36).slice(2,9)}`,inning:l.inning,half:a,batterPlayerId:Number(e.id),batterName:e.name,batterOrder:r,pitcherPlayerId:t?Number(t.id):null,pitcherName:t?.name??null,outsAfter:l.outs,resultCode:p,resultText:g,rbi:Math.max(0,b),recordedAt:Date.now(),options:m?.rbiDecision?{rbiDecision:m.rbiDecision}:null,...m?{
           batterPosition:m.batterPosition,outsBefore:m.outsBefore,ballsBefore:m.ballsBefore,strikesBefore:m.strikesBefore,basesBefore:{
             ...m.basesBefore
           }
@@ -6980,7 +7067,7 @@ var sg={
         
       };
       const E={
-        id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
+        id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null,rbiCredited:Boolean(t.batter&&t.rbiDelta),rbiDecision:t.rbiDecision??w.options?.rbiDecision??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
       };
       Me.value.push(w),f.playEvents.push(E),Jl(),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
     }
@@ -7773,7 +7860,7 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
       pu(e,qv(e,l.runners).map(()=>"safe"),{
-        creditRBI:r,runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
+        creditRBI:r,runners:l.runners,batter:t,pitcher:Se.value,addScore:(a,s)=>ls(a,{runner:s,batter:r?t:void 0,rbiDelta:r?1:void 0,pitcher:Se.value??void 0,erDelta:1}),handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
       }
       ),Ge(Gn(e,a,t))
     }
@@ -8465,7 +8552,7 @@ var sg={
         return;
         case"bip:g:fc":case"bip:hg:fc":case"bip:fly:fc":case"bip:ld:fc":case"bip:b:fc":case"bip:pop:fc":rt("FC");
         return;
-        case"bip:g:e":case"bip:hg:e":case"bip:fly:e":case"bip:ld:e":case"bip:b:e":case"bip:pop:e":case"bip:fly:sac:e":case"bip:ld:sac:e":case"bip:b:sac:e":case"bip:pop:sac:e":rt("E");
+        case"bip:g:e":case"bip:hg:e":case"bip:g:dp:e":case"bip:hg:dp:e":case"bip:fly:e":case"bip:ld:e":case"bip:b:e":case"bip:pop:e":case"bip:fly:sac:e":case"bip:ld:sac:e":case"bip:b:sac:e":case"bip:pop:sac:e":rt("E");
         return;
         case"bip:g:f":case"bip:hg:f":case"bip:fly:f":case"bip:ld:f":case"bip:b:f":case"bip:pop:f":Wt("F");
         return;
@@ -8499,7 +8586,7 @@ var sg={
         return;
         case"bip:b:sac:fc":rt("FC");
         return;
-        case"bip:g:dp":case"bip:hg:dp":case"bip:fly:dp":case"bip:ld:dp":case"bip:b:dp":case"bip:pop:dp":rt("DP");
+        case"bip:g:dp":case"bip:hg:dp":case"bip:g:reverse:dp":case"bip:hg:reverse:dp":case"bip:fly:dp":case"bip:ld:dp":case"bip:b:dp":case"bip:pop:dp":rt("DP");
         return;
         case"bip:g:tp":case"bip:hg:tp":case"bip:fly:tp":case"bip:ld:tp":case"bip:b:tp":case"bip:pop:tp":rt("TP");
         return;
@@ -8637,9 +8724,11 @@ var sg={
         1:"一垒",2:"二垒",3:"三垒",4:"本垒"
       }
       ,g=s.id??s.name??"?",m=e<4&&l.runners[e]?fr(e):[];
-      de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt(),t.advanceFeReasonId!=="safe_same_err"&&r?.stats?.fielding&&(r.stats.fielding.e=(r.stats.fielding.e??0)+1);
+      de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt(),!["safe_same_err","safe_same_err_rbi"].includes(t.advanceFeReasonId)&&r?.stats?.fielding&&(r.stats.fielding.e=(r.stats.fielding.e??0)+1);
       const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y),w=Se.value;
-      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,erDelta:1,origin:"ERROR"}),addLivePitcherEarnedRuns(w),D(`${b}，${s.name} 进本垒得分`,t.advanceFeReasonCn)):(l.runners[e]&&ds(e),l.runners[e]=s,D(`${b}，${s.name} 进${p[e]}`,t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
+      const rbiDecision=decideRbi(rbiContextForAdvance({resultCode:El.value?.resultCode,advanceReasonId:t.advanceFeReasonId}));
+      const rbiBatter=e===4&&rbiDecision.creditRbi?creditLastBatterRbi(rbiDecision):null;
+      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,batter:rbiBatter||void 0,rbiDelta:rbiBatter?1:void 0,pitcher:w??void 0,erDelta:1,origin:"ERROR"}),addLivePitcherEarnedRuns(w),D(`${b}，${s.name} 进本垒得分`,t.advanceFeReasonCn)):(l.runners[e]&&ds(e),l.runners[e]=s,D(`${b}，${s.name} 进${p[e]}`,t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
         playerId:g,from:a,to:e
       }
       ]),Qa(!1)

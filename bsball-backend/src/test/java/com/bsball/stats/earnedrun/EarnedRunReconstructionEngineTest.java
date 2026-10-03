@@ -112,14 +112,29 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
-    @DisplayName("暴投與捕逸使用不同的非自責原因")
-    void distinguishesWildPitchFromPassedBall() {
+    @DisplayName("暴投本身不構成非自責分原因")
+    void keepsWildPitchRunEarnedWithoutAnotherUnearnedCause() {
         EarnedRunDecision decision = engine.reconstruct(List.of(
                 play(1, 1, 0, 0, false, ScoringRunner.wildPitch(11, 101))))
                 .decisions().get(0);
 
+        assertEquals(EarnedRunStatus.EARNED, decision.status());
+        assertEquals(null, decision.reason());
+    }
+
+    @Test
+    @DisplayName("暴投得分仍可因失误延长半局而成为非自责分")
+    void marksWildPitchRunUnearnedAfterReconstructedThirdOut() {
+        List<EarnedRunPlay> plays = List.of(
+                play(1, 1, 1, 1, false),
+                play(2, 2, 0, 1, false),
+                play(3, 3, 1, 1, false),
+                play(4, 4, 0, 0, false, ScoringRunner.wildPitch(11, 101)));
+
+        EarnedRunDecision decision = engine.reconstruct(plays).decisions().get(0);
+
         assertEquals(EarnedRunStatus.UNEARNED, decision.status());
-        assertEquals(UnearnedRunReason.WILD_PITCH, decision.reason());
+        assertEquals(UnearnedRunReason.ERROR_EXTENDED_INNING, decision.reason());
     }
 
     @Test

@@ -37,11 +37,14 @@ test('Nd() 覆盖三项「上一棒内推进」变体', () => {
   }
 });
 
-test('既有挂接不被破坏：lc 失误得分仍带 origin=ERROR；wf/creditLastBatterRbi 原样', () => {
-  assert.match(src, /ls\(1,\{runner:s,pitcher:w\?\?void 0,erDelta:1,origin:"ERROR"\}\)/,
-    'lc 的失误得分挂接仍在');
+test('既有挂接不被破坏：lc 失误得分保留 ER 来源并依 RBI 判定挂接打者', () => {
+  const body = pick('function lc(e){', 'function ic(){');
+  assert.match(body, /rbiBatter=e===4&&rbiDecision\.creditRbi\?creditLastBatterRbi\(rbiDecision\):null/,
+    'RBI 必须先经结构化判定');
+  assert.match(body, /ls\(1,\{runner:s,batter:rbiBatter\|\|void 0,rbiDelta:rbiBatter\?1:void 0,pitcher:w\?\?void 0,erDelta:1,origin:"ERROR"\}\)/,
+    'lc 的失误得分须保留 ERROR 来源并条件式挂接 RBI');
   assert.match(src, /function wf\(e\)\{/, 'wf 存在');
-  assert.match(src, /function creditLastBatterRbi\(\)\{/, '#206 记账函数存在');
+  assert.match(src, /function creditLastBatterRbi\(rbiDecision\)\{/, '#206 记账函数存在并可保存判定');
 });
 
 test('自检：悬挂列表仅在允许的消费点清空（Qr/xf/结果处理/恢复/重置）', () => {
