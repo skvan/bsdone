@@ -10584,7 +10584,7 @@ var sg={
       ,"Out",-1)])])])):ge.value.phase==="safePick"?(h(),C("div",Jb,[n("p",Qb,H(c(Dd)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(np.value,d=>(h(),C("button",{
         key:d.id,type:"button",class:"rdm__item",onClick:z=>Sp(d)
       }
-      ,[n("span",e_,[H(d.emph?d.cn.replace(`（${d.emph}）`,"（"):d.cn),d.emph?(h(),C("strong",{key:0,class:"rdm__cn-emph"},H(d.emph),1)):W("",!0),d.emph?n("span",null,"）",-1):W("",!0)]),n("span",t_,H(d.en),1)],8,Zb))),128))])):ge.value.phase==="outPick"?(h(),C("div",n_,[n("p",a_,H(c(Md)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(ap.value,d=>(h(),C("button",{
+      ,[n("span",e_,[n("span",null,H(d.emph?d.cn.replace(`（${d.emph}）`,"（"):d.cn),1),d.emph?(h(),C("strong",{key:0,class:"rdm__cn-emph"},H(d.emph),1)):W("",!0),d.emph?n("span",null,"）",-1):W("",!0)]),n("span",t_,H(d.en),1)],8,Zb))),128))])):ge.value.phase==="outPick"?(h(),C("div",n_,[n("p",a_,H(c(Md)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(ap.value,d=>(h(),C("button",{
         key:d.id,type:"button",class:"rdm__item",onClick:z=>kp(d)
       }
       ,[n("span",i_,H(d.cn),1),n("span",s_,H(d.en),1)],8,l_))),128))])):W("",!0)])):W("",!0),n("footer",{
