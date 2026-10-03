@@ -670,6 +670,23 @@ var Ta={
       }
       
     }
+    // 旧快照修复（#204 同族）：投手统计对象缺失时，由逐打席记录回算计数（仅可由 PBP 推导的字段，R/ER 不臆造）
+    function derivePitcherFromSummary(e,t){
+      let outs=0,h=0,hr=0,iphr=0,bh=0,so=0,pa=0,found=!1;
+      for(const r of t??[]){
+        if(Number(r?.pitcherPlayerId)!==Number(e))continue;
+        found=!0,pa+=1,outs+=Math.max(0,(r.outsAfter??0)-(r.outsBefore??0));
+        const c=String(r.resultCode??"");
+        if(c==="H1"||c==="H2"||c==="H3"||c==="HR"||c==="IPHR")h+=1;
+        if(c==="HR")hr+=1;
+        if(c==="IPHR")iphr+=1;
+        if(c==="BB"||c==="HBP")bh+=1;
+        if(/^K/.test(c))so+=1
+      }
+      return found?{
+        ip:Math.floor(outs/3)+(outs%3)/10,pitchH:h,pitchHr:hr,pitchInsideParkHr:iphr,pitchBbHp:bh,pitchSo:so,pitchPa:pa,pitchBf:pa
+      }:null
+    }
     function Zt(e,t,a,l){
       for(const s of["home","away"]){
         const o=(s==="home"?E.value:D.value).find(p=>!A(p)&&R(p.position)==="P");
@@ -736,8 +753,21 @@ var Ta={
           const y=bt(s,k,o);
           if(!y||A(y))continue;
           console.log("[WatchDebug] buildPitchingSide:",s,"pitcher pid:",k,"found:",y?.name,"np:",y?.stats?.pitching?.np,"has stats:",!!y?.stats);
+          let z=y.stats??W();
+          const P=z.pitching??{
+            
+          };
+          if((P.ip??0)===0&&(P.np??0)===0&&(P.pitchH??0)===0&&(P.pitchSo??0)===0&&(P.pitchBbHp??0)===0&&(P.pitchPa??0)===0){
+            const D=derivePitcherFromSummary(k,l);
+            D&&(z={
+              ...z,pitching:{
+                ...W().pitching,...P,...D
+              }
+            }
+            )
+          }
           const V={
-            ...y,position:"P",stats:y.stats??W()
+            ...y,position:"P",stats:z
           };
           m(V,o,void 0,g+B*100,{
             pitcherOrder:B,isPitcher:1
