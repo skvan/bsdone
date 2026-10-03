@@ -8908,6 +8908,15 @@ var sg={
     function xo(e,t,a){
       return`${e} ${t} 换为 ${a}`
     }
+    // P 位持有人变更时的统一投手同步（#205）：fpId 落位 → ft 同步守备投手行 → Ka 刷新 → 换投日志
+    // 三路径共用（板凳替换/DH 制换投、守备组互换涉 P、非 DH 制 P 位替换），保证任何实际投球者单独记账
+    function syncFieldingPitcher(e,t,P){
+      const{
+        bench:r,lineup:p,fpId:g
+      }
+      =Ee(e),T=g.value,Y=[...p.value,...r.value].find(j=>Number(j.id)===Number(T))?.name??t?.name??"上一任投手";
+      g.value=Number(P.id),ft(e),Ka(),D(T!=null&&Number(P.id)!==Number(T)?pc(Y,P.name):`投手 ${P.name} 登板`)
+    }
     function cc(e){
       const t=Ga.value,a=ia.value,s=typeof e.id=="string"?Number(e.id):e.id,{
         bench:r,lineup:p,fpId:g
@@ -8920,17 +8929,15 @@ var sg={
           const T=y.find(j=>Number(j.id)===Number(s));
           if(!T||t&&T.id===t.id)return;
           de("换守备");
-          const Y=(T.position??"").toString().toUpperCase();
-          T.position=b,t&&(t.position=Y),D(t&&Y&&Y!==b?fc(b,t.name,Y,Y,T.name,b):t?xo(b,t.name,T.name):`${b} ${T.name} 补位`),ri(a),Kt();
+          const Y=(T.position??"").toString().toUpperCase(),P=b==="P"?T:Y==="P"&&t?t:null;
+          T.position=b,t&&(t.position=Y),D(t&&Y&&Y!==b?fc(b,t.name,Y,Y,T.name,b):t?xo(b,t.name,T.name):`${b} ${T.name} 补位`),ri(a),P?syncFieldingPitcher(a,b==="P"?t:T,P):Y==="P"&&!t&&(g.value=null,ft(a),Ka()),Kt();
           return
         }
         const w=m.findIndex(T=>Number(T.id)===Number(s));
         if(w<0)return;
         const P=m[w];
         if(b==="P"&&!oa(y)){
-          de("换投");
-          const T=g.value,Y=[...y,...m].find(j=>Number(j.id)===Number(T))?.name??t?.name??"上一任投手";
-          g.value=Number(P.id),ft(a),Ka(),D(T!=null&&Number(P.id)!==Number(T)?pc(Y,P.name):`投手 ${P.name} 登板`),Kt();
+          de("换投"),syncFieldingPitcher(a,t,P),Kt();
           return
         }
         de("换守备");
@@ -8954,7 +8961,7 @@ var sg={
           }
           )
         }
-        D(t?xo(b,t.name,P.name):`${b} ${P.name} 补位`),ri(a),b==="P"&&Ka(),Kt();
+        D(t?xo(b,t.name,P.name):`${b} ${P.name} 补位`),ri(a),b==="P"&&syncFieldingPitcher(a,t,P),Kt();
         return
       }
       if(mt.value==="pinchRunner"){
