@@ -1,8 +1,8 @@
 // 比赛详情字段设置存储——行为保真移植自编译产物 chunk gameDetailFieldSettingsStorage-DkSFgXpY.js
 // 逐字对应：H=默认投手字段、m=存储键、F=版本、c=旧版键组、u=合并、d=保底可见、g/A/I/E=旧版读取、
 //   w=旧版清理、T=解析、v/S=校验、L=构建、R=保存 detailPage、Z=保存 valueControl、B=写入、_=读取+迁移
-import { readDisplaySettings, saveDisplaySettings } from './statsDisplayStorage';
-import { isPortalGuideDismissed } from './portalGuide';
+import { readDisplaySettings, saveDisplaySettings } from './statsDisplayStorage.js';
+import { isPortalGuideDismissed } from './portalGuide.js';
 
 export const DEFAULT_PITCHER_FIELDS = [
   { key: 'ip', label: 'IP', visible: true },
@@ -146,6 +146,33 @@ function normalizeRateDisplayStyle(value, fallback) {
   return value === 'dot' || value === 'leadingZero' ? value : fallback;
 }
 
+// 按键读取并归一化一份字段设置状态（无窗/无值/损坏/结构非法 → null）
+function readKeyedFieldSettings(key, defaults) {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const stored = parseStored(raw);
+    if (!stored?.batterFields || !stored?.pitcherFields) return null;
+    return {
+      batterFields: ensureMinVisible(mergeFields(stored.batterFields, defaults.defaultBatterFields), MIN_VISIBLE_FIELDS),
+      pitcherFields: ensureMinVisible(mergeFields(stored.pitcherFields, defaults.defaultPitcherFields), MIN_VISIBLE_FIELDS),
+      decimalPlaces: normalizeDecimalPlaces(stored.decimalPlaces, defaults.defaultDecimalPlaces),
+      rateDisplayStyle: normalizeRateDisplayStyle(stored.rateDisplayStyle, defaults.defaultRateDisplayStyle),
+      showTrailingZeros: typeof stored.showTrailingZeros === 'boolean' ? stored.showTrailingZeros : defaults.defaultShowTrailingZeros
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeKeyedFieldSettings(key, state) {
+  try {
+    if (typeof window === 'undefined') return;
+    const payload = { v: FIELD_SETTINGS_VERSION, ...state };
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {}
+}
+
 export function buildInitialFieldSettings(options) {
   const { defaultBatterFields, defaultPitcherFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros, tenantCode } = options;
   const display = readDisplaySettings();
@@ -180,31 +207,16 @@ export function saveValueControlSettings(settings) {
 }
 
 export function writeFieldSettings(state) {
-  try {
-    if (typeof window === 'undefined') return;
-    const payload = { v: FIELD_SETTINGS_VERSION, ...state };
-    window.localStorage.setItem(FIELD_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
-  } catch {}
+  writeKeyedFieldSettings(FIELD_SETTINGS_STORAGE_KEY, state);
 }
 
 export function readFieldSettings(options) {
   const { defaultBatterFields, defaultPitcherFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros } = options;
-  try {
-    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(FIELD_SETTINGS_STORAGE_KEY) : null;
-    if (raw) {
-      const stored = parseStored(raw);
-      if (stored?.batterFields && stored?.pitcherFields) {
-        clearLegacyKeys(LEGACY_KEYS);
-        return {
-          batterFields: ensureMinVisible(mergeFields(stored.batterFields, defaultBatterFields), MIN_VISIBLE_FIELDS),
-          pitcherFields: ensureMinVisible(mergeFields(stored.pitcherFields, defaultPitcherFields), MIN_VISIBLE_FIELDS),
-          decimalPlaces: normalizeDecimalPlaces(stored.decimalPlaces, defaultDecimalPlaces),
-          rateDisplayStyle: normalizeRateDisplayStyle(stored.rateDisplayStyle, defaultRateDisplayStyle),
-          showTrailingZeros: typeof stored.showTrailingZeros === 'boolean' ? stored.showTrailingZeros : defaultShowTrailingZeros
-        };
-      }
-    }
-  } catch {}
+  const storedSettings = readKeyedFieldSettings(FIELD_SETTINGS_STORAGE_KEY, options);
+  if (storedSettings) {
+    clearLegacyKeys(LEGACY_KEYS);
+    return storedSettings;
+  }
   const batterFields = readLegacyArray(LEGACY_KEYS[0], defaultBatterFields) ?? defaultBatterFields;
   const pitcherFields = readLegacyArray(LEGACY_KEYS[1], defaultPitcherFields) ?? defaultPitcherFields;
   const decimalPlaces = readLegacyNumber(LEGACY_KEYS[2], defaultDecimalPlaces) ?? defaultDecimalPlaces;
@@ -220,4 +232,19 @@ export function readFieldSettings(options) {
   writeFieldSettings(migrated);
   clearLegacyKeys(LEGACY_KEYS);
   return migrated;
+}
+
+// —— #211 观赛页「数据项调整」独立设置 ——
+// 独立键：不影响门户/管理端比赛详情页的任何设置；新键优先，
+// 未设置时回退现有取值链（管理端键 + 旧键迁移）作为初始展示，首次在观赛页保存后才真正独立。
+export const LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY = 'bsball.admin.liveWatch.fieldSettings';
+
+export function readWatchFieldSettings(options) {
+  const stored = readKeyedFieldSettings(LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY, options);
+  if (stored) return stored;
+  return readFieldSettings(options);
+}
+
+export function writeWatchFieldSettings(state) {
+  writeKeyedFieldSettings(LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY, state);
 }
