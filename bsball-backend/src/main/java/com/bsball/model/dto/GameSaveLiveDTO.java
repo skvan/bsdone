@@ -122,6 +122,8 @@ public class GameSaveLiveDTO {
         private Integer pitchSo;
         private Integer pitchHr;
         private Integer pitchInsideParkHr;
+        private Integer pitchPa;
+        private Integer pitchBf;
         private Integer np;
         private Integer wp;
         private Integer bk;
@@ -301,6 +303,16 @@ public class GameSaveLiveDTO {
         @Generated
         public Integer getPitchInsideParkHr() {
             return this.pitchInsideParkHr;
+        }
+
+        @Generated
+        public Integer getPitchPa() {
+            return this.pitchPa;
+        }
+
+        @Generated
+        public Integer getPitchBf() {
+            return this.pitchBf;
         }
 
         @Generated
@@ -501,6 +513,16 @@ public class GameSaveLiveDTO {
         @Generated
         public void setPitchInsideParkHr(Integer pitchInsideParkHr) {
             this.pitchInsideParkHr = pitchInsideParkHr;
+        }
+
+        @Generated
+        public void setPitchPa(Integer pitchPa) {
+            this.pitchPa = pitchPa;
+        }
+
+        @Generated
+        public void setPitchBf(Integer pitchBf) {
+            this.pitchBf = pitchBf;
         }
 
         @Generated

@@ -306,13 +306,17 @@ public class GameService {
         if (operatorId == null) {
             throw new BusinessException(401, "未登录");
         }
+        Long fieldingTeamId = "top".equals(request.getHalf())
+                ? game.getHomeTeamId()
+                : game.getAwayTeamId();
         return this.earnedRunReconstructionService.replaceHalfInning(
                 game.getTenantId(),
                 gameId,
                 request.getInning(),
                 request.getHalf(),
                 operatorId,
-                request.getPlays());
+                request.getPlays(),
+                fieldingTeamId);
     }
 
     /** Resolves a pending earned-run decision and records the reviewing operator. */
@@ -765,6 +769,8 @@ public class GameService {
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(part.getPitchInsideParkHr());
+        stat.setPitchPa(part.getPitchPa());
+        stat.setPitchBf(part.getPitchBf());
         stat.setNp(part.getNp());
         stat.setWp(part.getWp());
         stat.setBk(part.getBk());
