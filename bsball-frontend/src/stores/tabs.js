@@ -358,6 +358,21 @@ export const useTabsStore = defineStore('tabs', () => {
       }
     }
 
+    // 「确认先发阵容（带比赛 ID）」与实时录入家族合并：优先并入同赛事的新建录入页签，
+    // 否则并入同一场次的录入页签（#207 中途保存后路由同步与「开始录入」往返均保持单页签）
+    let mergeLineupGameIndex = -1;
+    if (existingIndex < 0 && mergeResumeIndex < 0 && mergeLineupIndex < 0 && route.name === 'AdminGameLiveLineupGame') {
+      const ids = parseLiveLineupPath(path);
+      if (ids) {
+        mergeLineupGameIndex = list.findIndex((t) => {
+          const listen = parseLiveListenPath(t.path);
+          if (listen != null && listen.eventId === ids.eventId) return true;
+          const resume = parseLiveResumePath(t.path);
+          return resume != null && resume.eventId === ids.eventId && resume.gameId === ids.gameId;
+        });
+      }
+    }
+
     let next;
     if (mergeResumeIndex >= 0) {
       const copy = [...list];
@@ -366,6 +381,10 @@ export const useTabsStore = defineStore('tabs', () => {
     } else if (mergeLineupIndex >= 0) {
       const copy = [...list];
       copy[mergeLineupIndex] = { ...copy[mergeLineupIndex], path, title, name: route.name };
+      next = orderTabs(ensureDashboard(copy, tenant), tenant);
+    } else if (mergeLineupGameIndex >= 0) {
+      const copy = [...list];
+      copy[mergeLineupGameIndex] = { ...copy[mergeLineupGameIndex], path, title, name: route.name };
       next = orderTabs(ensureDashboard(copy, tenant), tenant);
     } else if (existingIndex < 0) {
       next = orderTabs(ensureDashboard([...list, { path, title, name: route.name }], tenant), tenant);
