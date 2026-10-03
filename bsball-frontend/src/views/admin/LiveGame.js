@@ -398,14 +398,17 @@ function au(u,f){
   return S&&R?`${o}击出${S}到${R}。${_}`:S?`${o}击出${S}。${_}`:R?`${o}击出滚地球到${R}。${_}`:u
 }
 var sl=[{
-  id:"safe_last_play",en:"On Last Play",cn:"上一棒内推进"
+  id:"safe_last_play",en:"On Last Play (No RBI)",cn:"上一棒内推进（不计打点）",emph:"不计打点"
+}
+,{
+  id:"safe_last_play_rbi",en:"On Last Play (RBI)",cn:"上一棒内推进（有打点）",emph:"有打点"
 }
 ,{
   id:"safe_last_play_sac",en:"On Last Play (Sacrifice)",cn:"上一棒内推进（牺牲打）"
 }
 ];
 function Nd(u){
-  return u==="safe_last_play"||u==="safe_last_play_sac"
+  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"
 }
 function Ve(u){
   return u===1?"一垒":u===2?"二垒":u===3?"三垒":"本垒"
@@ -6039,7 +6042,7 @@ var sg={
         return
       }
       const m=r<4&&l.runners[r]?fr(r):[];
-      wp(a,s,r,e.cn,e.id),e.id==="safe_last_play_sac"&&wf(r),Ge([...m,{
+      wp(a,s,r,e.cn,e.id),e.id==="safe_last_play_sac"&&wf(r),e.id==="safe_last_play_rbi"&&r===4&&creditLastBatterRbi(),Ge([...m,{
         playerId:p,from:s,to:r
       }
       ])
@@ -6081,7 +6084,7 @@ var sg={
           ab:0,r:0,h:0,rbi:0,bb:0,hbp:0,so:0,so_swing:0,so_looking:0,sf:0,sh:0,sb:0,cs:0,doubles:0,triples:0,hr:0
         }
         ,pitching:{
-          ip:0,np:0,pitchH:0,er:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
+          ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
         }
         ,fielding:{
           po:0,a:0,e:0
@@ -6922,6 +6925,14 @@ var sg={
       const a=Ar.value.find(s=>Number(s.id)===Number(t.batterPlayerId))??null;
       a&&(ue(a),e===4?(a.stats.batting.sf=(a.stats.batting.sf??0)+1,a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.resultCode="SF",t.rbi=(t.rbi??0)+1):(a.stats.batting.sh=(a.stats.batting.sh??0)+1,t.resultCode="SH"))
     }
+    // 「上一棒内推进（有打点）」：给上一棒打者记 1 分打点（#206；与 wf 的牺牲打记账同机制）
+    function creditLastBatterRbi(){
+      const e=El.value,t=l.isTop?"top":"bottom";
+      if(!e||e.inning!==l.inning||e.half!==t)return!1;
+      const a=Ar.value.find(s=>Number(s.id)===Number(e.batterPlayerId))??null;
+      if(!a)return!1;
+      return ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1,!0
+    }
     function Sf(){
       const e=ke.value[0];
       if(e==null)return"";
@@ -7051,11 +7062,20 @@ var sg={
           }
           =Ee(e),m=t.value,y=a.value,b=s.value,w=r.value,P=e==="away"?_.awayTeamId:_.homeTeamId;
           if(m==null||oa(y)){
-            p.value=null;
+            const benchFp=m!=null&&b.some(E=>Number(E.id)===Number(m)),sameRow=p.value!=null&&Number(p.value.id)===Number(m);
+            if(!benchFp){
+              retireFieldingPitcherRow(s,g,p.value),
+              p.value=null;
+              const cp=y.find(E=>Nn(E.position)==="P");
+              cp&&(t.value==null||Number(t.value)!==Number(cp.id))&&(t.value=Number(cp.id));
+              return
+            }
+            sameRow?ue(p.value):(retireFieldingPitcherRow(s,g,p.value),p.value=null);
             return
           }
           const A=b.find(E=>Number(E.id)===Number(m)),T=y.find(E=>Number(E.id)===Number(m)),Y=w.find(E=>Number(E.id)===Number(m)),j=p.value!=null&&Number(p.value.id)===Number(m)?p.value:null,ee=Y??A??T??j;
           if(!ee){
+            retireFieldingPitcherRow(s,g,p.value),
             p.value=null;
             return
           }
@@ -7063,12 +7083,13 @@ var sg={
             ue(p.value);
             return
           }
+          const V=b.filter(E=>Number(E.id)!==Number(m));
+          V.length!==b.length&&(s.value=V,g.bench=V),
+          retireFieldingPitcherRow(s,g,p.value),
           p.value={
             ...ee,teamId:P??ee.teamId,position:"",stats:j?.stats??A?.stats??T?.stats??Pt()
           }
-          ,ue(p.value);
-          const V=b.filter(E=>Number(E.id)!==Number(m));
-          V.length!==b.length&&(s.value=V,g.bench=V)
+          ,ue(p.value)
         }
         finally{
           ts=!1
@@ -7076,6 +7097,14 @@ var sg={
         
       }
       
+    }
+    // 守备投手行下线（换投/被清空）时，把旧投手（含累计统计对象）回落到板凳，避免成为孤儿导致显示 0 / 落库缺行（#203/#204）
+    function retireFieldingPitcherRow(s,g,row){
+      if(!row?.id)return;
+      const V=Number(row.id);
+      if(!Number.isFinite(V)||V<=0||!Oo(row))return;
+      const arr=s.value;
+      arr.some(E=>Number(E.id)===V)||(s.value=[...arr,{...row,position:""}],g.bench=s.value)
     }
     Ce(te,()=>{
       nt()||ft("home")
@@ -10555,7 +10584,7 @@ var sg={
       ,"Out",-1)])])])):ge.value.phase==="safePick"?(h(),C("div",Jb,[n("p",Qb,H(c(Dd)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(np.value,d=>(h(),C("button",{
         key:d.id,type:"button",class:"rdm__item",onClick:z=>Sp(d)
       }
-      ,[n("span",e_,H(d.cn),1),n("span",t_,H(d.en),1)],8,Zb))),128))])):ge.value.phase==="outPick"?(h(),C("div",n_,[n("p",a_,H(c(Md)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(ap.value,d=>(h(),C("button",{
+      ,[n("span",e_,[H(d.emph?d.cn.replace(`（${d.emph}）`,"（"):d.cn),d.emph?(h(),C("strong",{key:0,class:"rdm__cn-emph"},H(d.emph),1)):W("",!0),d.emph?n("span",null,"）",-1):W("",!0)]),n("span",t_,H(d.en),1)],8,Zb))),128))])):ge.value.phase==="outPick"?(h(),C("div",n_,[n("p",a_,H(c(Md)(ge.value.fromBase,ge.value.toBase)),1),(h(!0),C(me,null,et(ap.value,d=>(h(),C("button",{
         key:d.id,type:"button",class:"rdm__item",onClick:z=>kp(d)
       }
       ,[n("span",i_,H(d.cn),1),n("span",s_,H(d.en),1)],8,l_))),128))])):W("",!0)])):W("",!0),n("footer",{

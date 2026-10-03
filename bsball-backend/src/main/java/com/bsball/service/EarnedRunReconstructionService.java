@@ -46,7 +46,8 @@ public class EarnedRunReconstructionService {
             int inning,
             String half,
             long operatorId,
-            List<EarnedRunPlay> plays) {
+            List<EarnedRunPlay> plays,
+            Long fieldingTeamId) {
         validateIdentity(tenantId, gameId, inning, half, operatorId);
         EarnedRunReconstructionResult result = engine.reconstruct(plays);
         List<EarnedRunPlayEntity> existing = playRepository
@@ -58,7 +59,7 @@ public class EarnedRunReconstructionService {
         playRepository.deleteByTenantIdAndGameIdAndInningAndHalf(
                 tenantId, gameId, inning, half);
         persistReconstruction(tenantId, gameId, inning, half, operatorId, plays, result);
-        applyPitcherStatDeltas(tenantId, gameId, oldDecisions, result.decisions());
+        applyPitcherStatDeltas(tenantId, gameId, fieldingTeamId, oldDecisions, result.decisions());
         return result;
     }
 
@@ -119,6 +120,7 @@ public class EarnedRunReconstructionService {
     private void applyPitcherStatDeltas(
             long tenantId,
             long gameId,
+            Long fieldingTeamId,
             List<EarnedRunDecisionEntity> oldDecisions,
             List<EarnedRunDecision> newDecisions) {
         Map<Long, int[]> deltas = new HashMap<>();
@@ -150,8 +152,8 @@ public class EarnedRunReconstructionService {
         for (Map.Entry<Long, int[]> entry : deltas.entrySet()) {
             GamePlayerStat stat = pitcherStats.get(entry.getKey());
             if (stat == null) {
-                throw new IllegalStateException(
-                        "Missing pitcher stat row for responsible pitcher " + entry.getKey());
+                stat = createPitcherStatRow(tenantId, gameId, fieldingTeamId, entry.getKey());
+                pitcherStats.put(entry.getKey(), stat);
             }
             int[] delta = entry.getValue();
             stat.setPitchR(Math.max(0, valueOrZero(stat.getPitchR()) + delta[0]));
@@ -160,6 +162,26 @@ public class EarnedRunReconstructionService {
             stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + delta[3]));
             gamePlayerStatRepository.save(stat);
         }
+    }
+
+    /**
+     * 责任投手缺少投手统计行时补建：teamId 取该半局守备方（上半局主队、下半局客队）。
+     * 中途登场或“仅守备”投手在落库前先被引擎记账时不至于整半局重建失败（#203）。
+     */
+    private GamePlayerStat createPitcherStatRow(
+            long tenantId, long gameId, Long fieldingTeamId, long pitcherId) {
+        GamePlayerStat stat = new GamePlayerStat();
+        stat.setTenantId(tenantId);
+        stat.setGameId(gameId);
+        stat.setTeamId(fieldingTeamId);
+        stat.setPlayerId(pitcherId);
+        stat.setIsPitcher(1);
+        stat.setPosition("P");
+        stat.setPitchR(0);
+        stat.setEr(0);
+        stat.setUnearnedR(0);
+        stat.setPendingR(0);
+        return stat;
     }
 
     private void addDelta(

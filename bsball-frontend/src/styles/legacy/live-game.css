@@ -16,3 +16,6 @@
 .live-lineup-rail__item--current[data-v-78b7b6a8]{background:var(--el-color-primary-light-9);border-left-color:var(--el-color-primary);font-weight:700;color:var(--el-text-color-primary)}
 .live-lineup-rail__item--current .live-lineup-rail__order[data-v-78b7b6a8],.live-lineup-rail__item--current .live-lineup-rail__num[data-v-78b7b6a8]{color:var(--el-text-color-primary)}
 @media (width<=1279px){.live-lineup-rail[data-v-78b7b6a8]{display:none}}
+
+/* ===== #206 实时录入 · 拖拽得分原因「有打点/不计打点」文字强调（Issue #206，2026-10-03） ===== */
+.rdm__cn-emph[data-v-78b7b6a8]{font-weight:800;color:var(--el-color-primary)}

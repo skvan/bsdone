@@ -52,6 +52,8 @@ class EarnedRunReconstructionServiceTest {
                     entity.setId(900L);
                     return entity;
                 });
+        lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -69,7 +71,7 @@ class EarnedRunReconstructionServiceTest {
                 List.of(ScoringRunner.normal(55L, 700L)));
 
         EarnedRunReconstructionResult result = service.replaceHalfInning(
-                1L, 20L, 3, "top", 9L, List.of(play));
+                1L, 20L, 3, "top", 9L, List.of(play), 500L);
 
         assertEquals(1, result.pitcherTotals().get(700L).earnedRuns());
         ArgumentCaptor<EarnedRunDecisionEntity> captor =
@@ -98,7 +100,7 @@ class EarnedRunReconstructionServiceTest {
                 com.bsball.stats.earnedrun.UnearnedRunReason.MANUAL_OVERRIDE);
 
         service.replaceHalfInning(1L, 20L, 3, "bottom", 9L, List.of(
-                new EarnedRunPlay(102L, 1, 0, 0, false, List.of(runner))));
+                new EarnedRunPlay(102L, 1, 0, 0, false, List.of(runner))), 500L);
 
         ArgumentCaptor<EarnedRunDecisionEntity> captor =
                 ArgumentCaptor.forClass(EarnedRunDecisionEntity.class);
@@ -115,7 +117,7 @@ class EarnedRunReconstructionServiceTest {
         when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                 1L, 20L, 4, "top")).thenReturn(List.of(oldPlay));
 
-        service.replaceHalfInning(1L, 20L, 4, "top", 9L, List.of());
+        service.replaceHalfInning(1L, 20L, 4, "top", 9L, List.of(), 500L);
 
         verify(decisionRepository).deleteByTenantIdAndGameIdAndPlayIdIn(
                 1L, 20L, List.of(800L));
@@ -128,7 +130,7 @@ class EarnedRunReconstructionServiceTest {
     @DisplayName("非法半局值不得访问数据库")
     void rejectsInvalidHalfBeforeRepositoryAccess() {
         assertThrows(IllegalArgumentException.class, () -> service.replaceHalfInning(
-                1L, 20L, 1, "middle", 9L, List.of()));
+                1L, 20L, 1, "middle", 9L, List.of(), 500L));
 
         verifyNoInteractions(playRepository, decisionRepository, gamePlayerStatRepository);
     }
@@ -152,7 +154,7 @@ class EarnedRunReconstructionServiceTest {
                 play(101L, 1, 0, 0, false,
                         ScoringRunner.reachedOnError(501L, 901L)),
                 play(102L, 2, 0, 0, false,
-                        ScoringRunner.normal(502L, 901L))));
+                        ScoringRunner.normal(502L, 901L))), 500L);
 
         assertEquals(6, pitcher.getPitchR());
         assertEquals(4, pitcher.getEr());
@@ -160,14 +162,23 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
-    @DisplayName("责任投手统计列不存在时回绝不完整的累计更新")
-    void rejectsMissingResponsiblePitcherStat() {
+    @DisplayName("责任投手统计行缺失时自动补建（teamId 取该半局守备方）并累计失分")
+    void createsMissingPitcherStatForResponsiblePitcher() {
         when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
 
-        assertThrows(IllegalStateException.class, () -> service.replaceHalfInning(
-                10L, 20L, 3, "top", 30L,
+        service.replaceHalfInning(10L, 20L, 3, "top", 30L,
                 List.of(play(101L, 1, 0, 0, false,
-                        ScoringRunner.normal(501L, 901L)))));
+                        ScoringRunner.normal(501L, 901L))),
+                333L);
+
+        verify(gamePlayerStatRepository).save(captor.capture());
+        GamePlayerStat created = captor.getValue();
+        assertEquals(901L, created.getPlayerId());
+        assertEquals(333L, created.getTeamId());
+        assertEquals(1, created.getIsPitcher());
+        assertEquals(1, created.getPitchR());
+        assertEquals(1, created.getEr());
     }
 
     private EarnedRunPlay play(
