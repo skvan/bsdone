@@ -6004,7 +6004,7 @@ var sg={
         t>=1&&t<=3?m(bn(t,e.name??"跑者",t)):m(`跑者 ${e.name??"跑者"} 留在垒上`),Qa(!1);
         return
       }
-      t>0&&(l.runners[t]=null),a===4?(Ct(1),e.stats.batting.r=(e.stats.batting.r??0)+1,addLivePitcherEarnedRuns(p),t>=1&&t<=3?m(bn(t,e.name??"跑者",4)):m(`${e.name??"跑者"} 回本垒得分`)):(l.runners[a]&&ds(a),l.runners[a]=e,t>=1&&t<=3?m(bn(t,e.name??"跑者",a)):m(`${e.name??"跑者"} 进${{1:"一垒",2:"二垒",3:"三垒"}[a]??""}`)),Qa(!1)
+      t>0&&(l.runners[t]=null),a===4?(Ct(1),e.stats.batting.r=(e.stats.batting.r??0)+1,addLivePitcherEarnedRuns(p),Nd(r)&&ls(1,{runner:e,pitcher:p,erDelta:1,origin:"NORMAL"}),t>=1&&t<=3?m(bn(t,e.name??"跑者",4)):m(`${e.name??"跑者"} 回本垒得分`)):(l.runners[a]&&ds(a),l.runners[a]=e,t>=1&&t<=3?m(bn(t,e.name??"跑者",a)):m(`${e.name??"跑者"} 进${{1:"一垒",2:"二垒",3:"三垒"}[a]??""}`)),Qa(!1)
     }
     function fr(e){
       const t=[];
@@ -6956,6 +6956,7 @@ var sg={
       }
       
     }
+    // 打席落定：组装的 playEvent 已包含悬挂得分，随即清空悬挂列表，避免同一分被挂入后续打席导致决策重复（#204 根因修复）
     function Qr(){
       if(!F.value)return;
       const e=be.value;
@@ -6981,7 +6982,7 @@ var sg={
       const E={
         id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
       };
-      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
+      Me.value.push(w),f.playEvents.push(E),Jl(),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
     }
     function syncEarnedRunHalfInning(event){
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
