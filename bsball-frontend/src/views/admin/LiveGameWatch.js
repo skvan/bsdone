@@ -1,6 +1,7 @@
 // LiveGameWatch —— 行为保真移植自编译产物 LiveGameWatch-BpPdtrjK（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { ElRadioGroup as sa, ElCollapse as na, ElCollapseItem as la, ElRadioButton as oa, ElButton as ra, ElCard as ua, vLoading as ha } from 'element-plus';
+import { ElRadioGroup as sa, ElCollapse as na, ElCollapseItem as la, ElRadioButton as oa, ElButton as ra, ElCard as ua, vLoading as ha, ElIcon as watchIcon, ElMessage as watchMessage } from 'element-plus';
+import { Setting as watchSettingIcon } from '@element-plus/icons-vue';
 import { createElementBlock as h, defineComponent as ia, createTextVNode as ee, computed as I, toDisplayString as u, createElementVNode as i, normalizeClass as P, vShow as wt, createBlock as q, ref as f, createVNode as M, withDirectives as Re, openBlock as c, withCtx as S, Fragment as L, triggerRef as Ne, watch as Be, onMounted as ca, renderList as O, onBeforeUnmount as pa, reactive as Ge, createCommentVNode as F } from 'vue';
 import { useRouter as da, useRoute as ba } from 'vue-router';
 import { exportSfc as ma } from '../../utils/exportSfc';
@@ -10,7 +11,11 @@ import { gameApi as yt } from '../../api/business';
 import { teamApi as St } from '../../api/business';
 import { buildTeamPlayersMap } from '../../utils/teamPlayersMap';
 import fa from '../../components/admin/GameDetailContent.js';
-import { readFieldSettings as kt } from '../../utils/gameDetailFieldSettingsStorage';
+import FieldSettingsDrawer from '../../components/admin/GameDetailFieldSettingsDrawer.js';
+import { readWatchFieldSettings as kt } from '../../utils/gameDetailFieldSettingsStorage';
+import { writeWatchFieldSettings as watchWriteSettings } from '../../utils/gameDetailFieldSettingsStorage';
+import { LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY as watchSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
+import { FIELD_SETTINGS_STORAGE_KEY as adminFieldSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
 import { DEFAULT_PITCHER_FIELDS as _a } from '../../utils/gameDetailFieldSettingsStorage';
 import { POSITION_CODE_MAP as Ue } from '../../utils/starterFieldingValidation';
 import { buildPitchBlocks as ga } from '../../utils/liveGameFieldLayout';
@@ -389,7 +394,18 @@ var Ta={
       Je.value=e.batterFields,Ye.value=e.pitcherFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
     }
     function tt(e){
-      e.key==="bsball.admin.gameDetail.fieldSettings"&&et()
+      (e.key===adminFieldSettingsKey||e.key===watchSettingsKey)&&et()
+    }
+    // #211 观赛页「数据项调整」：右侧齿轮 + 独立列设置抽屉（不落其他页面的存储键）
+    const watchSettingsOpen=f(!1),watchSmallScreen=f(typeof window<"u"&&window.innerWidth<768);
+    function watchOnResize(){
+      watchSmallScreen.value=window.innerWidth<768
+    }
+    function watchSaveSettings(e){
+      Je.value=e.batterItems,Ye.value=e.pitcherItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
+        batterFields:Je.value,pitcherFields:Ye.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
+      }
+      ),watchMessage.success("保存成功")
     }
     const E=f([]),D=f([]),he=f([]),de=f([]),ae=f(null),se=f(null),be=f([]),me=f([]),_=Ge({
       inning:1,isTop:!0,outs:0,balls:0,strikes:0,batterIndex:{
@@ -1039,7 +1055,7 @@ var Ta={
       
     }
     return ca(()=>{
-      window.addEventListener("message",_t),window.addEventListener("storage",tt),aa(),Se=window.setInterval(()=>{
+      window.addEventListener("message",_t),window.addEventListener("storage",tt),window.addEventListener("resize",watchOnResize),watchOnResize(),aa(),Se=window.setInterval(()=>{
         Q.value?.status!=="final"&&($.value?We().then(e=>{
           e||Ie()
         }
@@ -1051,7 +1067,7 @@ var Ta={
       ,300):ke()
     }
     ),pa(()=>{
-      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),Se!=null&&(clearInterval(Se),Se=null)
+      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),window.removeEventListener("resize",watchOnResize),Se!=null&&(clearInterval(Se),Se=null)
     }
     ),(e,t)=>{
       const a=ra,l=oa,r=sa,d=la,m=na,b=ua,w=ha;
@@ -1286,7 +1302,7 @@ var Ta={
         }
         ,8,["modelValue"]))])])])])])]))]),_:1
       }
-      )),[[w,pe.value]])],2)
+      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"default-batter-items":Ze,"default-pitcher-items":qe,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
     }
     
   }

@@ -1,6 +1,6 @@
 // 门户引导状态（field settings guide）——行为保真移植自编译产物入口 chunk index-ByOnov1B.js
 // 逐字对应：ei=存储键、$e=默认结构、ti=读取、ai=写入、ii=旧版迁移、xn=判断、Wn=标记
-import { readDisplaySettings } from './statsDisplayStorage';
+import { readDisplaySettings } from './statsDisplayStorage.js';
 
 export const FIELD_SETTINGS_GUIDE_KEY = 'bsball.portal.fieldSettingsGuide.v1';
 
