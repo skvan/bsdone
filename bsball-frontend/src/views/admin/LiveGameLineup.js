@@ -1,7 +1,7 @@
 // LiveGameLineup —— 行为保真移植自编译产物 LiveGameLineup-CRlH9wMS（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
 import { nextTick as de, createElementBlock as b, defineComponent as vl, createTextVNode as N, computed as w, toDisplayString as R, createElementVNode as u, unref as I, normalizeClass as ne, createBlock as _, ref as f, createVNode as v, withDirectives as hl, openBlock as s, withCtx as i, Fragment as P, onMounted as _l, renderList as B, reactive as Tl, createCommentVNode as O, watch as WATCH } from 'vue';
-import { ElDialog as dl, ElCol as ml, ElDivider as cl, ElIcon as pl, ElRow as fl, ElFormItem as yl, ElMessage as X, ElOption as wl, ElButton as gl, ElCard as bl, ElSelect as Il, vLoading as Ll, ElForm as Sl } from 'element-plus';
+import { ElDialog as dl, ElCol as ml, ElDivider as cl, ElIcon as pl, ElRow as fl, ElFormItem as yl, ElMessage as X, ElOption as wl, ElButton as gl, ElCard as bl, ElSelect as Il, vLoading as Ll, ElForm as Sl, ElDatePicker as Dp } from 'element-plus';
 import { Rank as $e } from '@element-plus/icons-vue';
 import { useRouter as Pl, useRoute as Bl } from 'vue-router';
 import { useMediaQuery as kl } from '../../composables/useMediaQuery';
@@ -11,6 +11,7 @@ import { eventApi as Fl } from '../../api/business';
 import { fetchAllStadiums as Cl } from '../../api/business';
 import { fetchPlayersByTeam as ze } from '../../api/business';
 import { gameApi as Al } from '../../api/business';
+import { gameStatsApi as Wo } from '../../api/business';
 import { teamApi as Dl } from '../../api/business';
 import { lineupTemplateApi as Me } from '../../api/business';
 import { usePermission as xl } from '../../composables/usePermission';
@@ -18,6 +19,12 @@ import { formatPosition as Ge } from '../../utils/playerOptions';
 import { writeEntryBootstrap as Ul } from '../../utils/liveGameStorage';
 import { getValidPositionOptions as El } from '../../utils/starterFieldingValidation';
 import { validateRosterPositions as Nl } from '../../utils/starterFieldingValidation';
+import { buildLineupDraft as Ld } from '../../utils/lineupDraft';
+import { parseLineupDraft as Pd } from '../../utils/lineupDraft';
+import { resolveLineupResumeInit as Rd } from '../../utils/lineupDraft';
+import { splitGameTime as Sd } from '../../utils/lineupDraft';
+import { toLocalGameTime as Td } from '../../utils/lineupDraft';
+import { useTabsStore as Tt } from '../../stores/tabs';
 import '../../styles/legacy/live-game-lineup.css';
 var Rl={
   class:"admin-page live-game-lineup-page"
@@ -102,10 +109,10 @@ var Rl={
     const{
       hasPerm:ve
     }
-    =xl(),j=kl("(max-width: 768px)"),me=Bl(),Xe=Pl(),ee=w(()=>Number(me.params.eventId)),ce=f(""),pe=f(!0),te=f(!1),Q=f([]),H=f([]),z=f([]),fe=f([]),d=Tl({
+    =xl(),j=kl("(max-width: 768px)"),me=Bl(),Xe=Pl(),ee=w(()=>Number(me.params.eventId)),rr=w(()=>{const t=Number(me.params.gameId);return Number.isFinite(t)&&t>0?t:null}),ce=f(""),pe=f(!0),te=f(!1),Q=f([]),H=f([]),z=f([]),fe=f([]),d=Tl({
       homeTeamId:void 0,awayTeamId:void 0,venue:""
     }
-    ),W=f(!1),he=f("away"),Y=f(null),ue=f([]);
+    ),W=f(!1),he=f("away"),Y=f(null),ue=f([]),os=f(rr.value),ts=f(""),as=f(""),Ht=f(null),Ct=Tt();
     function M(){
       return{
         batting:{
@@ -398,22 +405,163 @@ var Rl={
       }
       )
     }
+    function qi(l){
+      const e=l??{
+        
+      };
+      return{
+        eventId:e.eventId,homeTeamId:e.homeTeamId,awayTeamId:e.awayTeamId,gameTime:e.gameTime,gameday:e.gameday,gameEndTime:e.gameEndTime??void 0,gameNumber:e.gameNumber??void 0,stadiumId:e.stadiumId??void 0,homeScore:e.homeScore??void 0,awayScore:e.awayScore??void 0,homeScoreByInning:e.homeScoreByInning??void 0,awayScoreByInning:e.awayScoreByInning??void 0,totalInnings:e.totalInnings??void 0,homeH:e.homeH??void 0,awayH:e.awayH??void 0,homeE:e.homeE??void 0,awayE:e.awayE??void 0,spectatorCount:e.spectatorCount??void 0,umpireHp:e.umpireHp??void 0,umpire1b:e.umpire1b??void 0,umpire2b:e.umpire2b??void 0,umpire3b:e.umpire3b??void 0,recorders:e.recorders??void 0,gameTag:e.gameTag??void 0,remark:e.remark??void 0,isSpecialResult:e.isSpecialResult??!1,showRemarkInCard:e.showRemarkInCard??!1,includeStatsInRanking:e.includeStatsInRanking??!0
+      }
+      
+    }
+    function zs(){
+      const l=as.value?Sd(as.value):Sd(Td()),e=l.gameTime&&l.gameday?l:Sd(Td()),n=fe.value.find(t=>t.value===d.venue)?.stadiumId??(Ht.value&&Ht.value.venue===d.venue?Ht.value.stadiumId??null:null);
+      return{
+        gameTime:e.gameTime,gameday:e.gameday,stadiumId:n
+      }
+      
+    }
+    async function Es(l){
+      try{
+        const e=await Al.get(l);
+        if(e==null||e.id==null){
+          X.warning("比赛不存在或已删除"),await Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          );
+          return
+        }
+        ts.value=e.status??"";
+        if(e.status==="final"){
+          X.warning("该比赛已结束，无法编辑先发阵容"),await Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          );
+          return
+        }
+        if(e.status==="live"){
+          const r=await Wo.listByGame(l).catch(()=>null);
+          if(r&&(r.list??[]).some(u=>(u.battingOrder??0)>0)){
+            X.warning("该比赛已开始录入，请从列表点「继续录入」进入录入页"),await Xe.replace({
+              name:"AdminGameLiveResume",params:{
+                eventId:String(ee.value),gameId:String(l)
+              }
+              
+            }
+            );
+            return
+          }
+        }
+        const n=Pd(await Al.getLiveSnapshot(l).catch(()=>"")),t=Rd(e,n);
+        Ht.value=e,os.value=l,d.homeTeamId=t.homeTeamId??void 0,d.awayTeamId=t.awayTeamId??void 0,d.venue=t.venue??"",t.gameMode&&(V.value=t.gameMode),t.gameTime&&(as.value=Sd(t.gameTime).gameTime);
+        if(Te.value){
+          await re();
+          n&&(Array.isArray(n.homeLineup)&&(h.value=n.homeLineup),Array.isArray(n.awayLineup)&&(y.value=n.awayLineup),Array.isArray(n.homeBench)&&(T.value=n.homeBench),Array.isArray(n.awayBench)&&(k.value=n.awayBench),n.awayFieldingPitcherId!==void 0&&(G.value=n.awayFieldingPitcherId),n.homeFieldingPitcherId!==void 0&&(q.value=n.homeFieldingPitcherId),n.awayLastDhAddedFromPoolId!==void 0&&(A.value=n.awayLastDhAddedFromPoolId),n.homeLastDhAddedFromPoolId!==void 0&&(D.value=n.homeLastDhAddedFromPoolId),Array.isArray(n.awayUnavailablePlayerIds)&&(ge.value=n.awayUnavailablePlayerIds),Array.isArray(n.homeUnavailablePlayerIds)&&(be.value=n.homeUnavailablePlayerIds))
+        }
+      }
+      catch(err){
+        X.error(err?.message??"加载已保存阵容失败")
+      }
+      
+    }
+    async function Ns(l){
+      if(d.homeTeamId==null||d.awayTeamId==null){
+        X.warning("请先选择主客队");
+        return
+      }
+      if(d.homeTeamId===d.awayTeamId){
+        X.warning("主队与客队不能相同");
+        return
+      }
+      te.value=!0;
+      try{
+        const cu=zs();
+        let n=os.value;
+        if(n==null){
+          const t=await Al.create({
+            eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"scheduled"
+          }
+          );
+          n=t?.data?.id??null;
+          if(n==null){
+            X.error(t?.msg||"保存失败");
+            return
+          }
+          os.value=n,Ht.value={
+            id:n,eventId:ee.value,venue:d.venue,stadiumId:cu.stadiumId??void 0
+          }
+        }
+        else{
+          await Al.saveResult(n,{
+            game:{
+              ...qi(Ht.value),eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"scheduled"
+            }
+          }
+          )
+        }
+        const t=Ld({
+          gameId:n,gameMode:V.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue,gameTime:cu.gameTime,gameday:cu.gameday,homeLineup:h.value,awayLineup:y.value,homeBench:T.value,awayBench:k.value,homeFieldingPitcherId:q.value,awayFieldingPitcherId:G.value,homeLastDhAddedFromPoolId:D.value,awayLastDhAddedFromPoolId:A.value,homeUnavailablePlayerIds:be.value,awayUnavailablePlayerIds:ge.value
+        }
+        );
+        await Al.saveLiveSnapshot(n,JSON.stringify(t)),X.success("已保存，可在赛程/结果页继续录入");
+        if(l){
+          Ct.removeTab(me.path),Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          )
+        }
+        else if(me.name!=="AdminGameLiveLineupGame"||String(me.params.gameId)!==String(n))Xe.replace({
+          name:"AdminGameLiveLineupGame",params:{
+            eventId:String(ee.value),gameId:String(n)
+          }
+          
+        }
+        )
+      }
+      catch(err){
+        X.error(err?.message??"保存失败")
+      }
+      finally{
+        te.value=!1
+      }
+      
+    }
     async function rl(){
       if(Pe.value){
         te.value=!0;
         try{
-          const apiRes=await Al.create({
-            eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,status:"live",gameMode:V.value,gameday:new Date().toISOString().slice(0,10),gameTime:new Date().toISOString().slice(0,19).replace("T"," ")
+          const cu=zs();
+          let l=os.value;
+          if(l==null){
+            const apiRes=await Al.create({
+              eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,status:"live",gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime
+            }
+            );
+            l=apiRes?.data?.id??null;
+            if(!l){
+              X.error(apiRes?.msg||"创建比赛失败");
+              return
+            }
+            os.value=l
+          }
+          else await Al.saveResult(l,{
+            game:{
+              ...qi(Ht.value),eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"live"
+            }
           }
           );
-          const l=apiRes?.data?.id??null;
-          if(!l){
-            X.error(apiRes?.msg||"创建比赛失败");
-            return
-          }
           const e={
             v:1,savedAt:Date.now(),gameId:l,gameMode:V.value,gameStarted:!0,setupForm:{
-              homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue
+              homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue,gameTime:cu.gameTime,gameday:cu.gameday
             }
             ,homeLineup:h.value,awayLineup:y.value,homeBench:T.value,awayBench:k.value,awayFieldingPitcherId:G.value,homeFieldingPitcherId:q.value,awayLastDhAddedFromPoolId:A.value,homeLastDhAddedFromPoolId:D.value,awayUnavailablePlayerIds:ge.value,homeUnavailablePlayerIds:be.value,gameState:{
               inning:1,isTop:!0,outs:0,balls:V.value==="SOFTBALL"?1:0,strikes:V.value==="SOFTBALL"?1:0,runsAway:0,runsHome:0,runners:[null,null,null,null]
@@ -460,11 +608,14 @@ var Rl={
         ce.value=e?.name??"",V.value=e?.gameMode??"BASEBALL";
         const[n,t]=await Promise.all([Dl.selectOptions(),Cl().catch(()=>[])]);
         Q.value=n??[],fe.value=(t??[]).map(c=>({
-          value:c.name,label:c.name
+          value:c.name,label:c.name,stadiumId:c.id
         }
-        ));
-        const o=me.query;
-        o.homeTeamId&&(d.homeTeamId=Number(o.homeTeamId)),o.awayTeamId&&(d.awayTeamId=Number(o.awayTeamId)),o.venue&&(d.venue=String(o.venue)),Te.value&&await re()
+        )),as.value=Td();
+        if(rr.value!=null)await Es(rr.value);
+        else{
+          const o=me.query;
+          o.homeTeamId&&(d.homeTeamId=Number(o.homeTeamId)),o.awayTeamId&&(d.awayTeamId=Number(o.awayTeamId)),o.venue&&(d.venue=String(o.venue)),Te.value&&await re()
+        }
       }
       finally{
         pe.value=!1
@@ -474,7 +625,19 @@ var Rl={
     ),(l,e)=>{
       const n=gl,t=wl,o=Il,c=yl,r=ml,L=fl,S=cl,g=pl,F=Sl,$=bl,m=dl,E=Ll;
       return s(),b("div",Rl,[hl((s(),_($,null,{
-        header:i(()=>[u("div",Ol,[u("span",null,"确认先发阵容 · "+R(ce.value),1)]),u("div",$l,[v(n,{
+        header:i(()=>[u("div",Ol,[u("span",null,"确认先发阵容 · "+R(ce.value),1)]),u("div",$l,[ts.value!=="live"?(s(),_(n,{
+          key:0,size:"default",disabled:!Te.value||te.value,onClick:()=>Ns(!1)
+        }
+        ,{
+          default:i(()=>[N(" 保存 ")]),_:1
+        }
+        ,8,["disabled"])):O("",!0),ts.value!=="live"?(s(),_(n,{
+          key:1,size:"default",disabled:!Te.value||te.value,onClick:()=>Ns(!0)
+        }
+        ,{
+          default:i(()=>[N(" 保存并退出 ")]),_:1
+        }
+        ,8,["disabled"])):O("",!0),v(n,{
           type:"primary",disabled:!Pe.value,loading:te.value,onClick:rl
         }
         ,{
@@ -590,6 +753,30 @@ var Rl={
                   ,null,8,["label","value"]))),128))]),_:1
                 }
                 ,8,["modelValue"])]),_:1
+              }
+              )]),_:1
+            }
+            )]),_:1
+          }
+          ),v(L,{
+            gutter:16
+          }
+          ,{
+            default:i(()=>[v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"比赛时间"
+              }
+              ,{
+                default:i(()=>[v(Dp,{
+                  "model-value":as.value,"onUpdate:modelValue":e[32]||(e[32]=a=>as.value=a),type:"datetime","value-format":"YYYY-MM-DD HH:mm:ss",style:{
+                    width:"100%"
+                  }
+                  ,placeholder:"选择比赛时间"
+                }
+                ,null,8,["model-value"])]),_:1
               }
               )]),_:1
             }
