@@ -711,6 +711,9 @@ function Wd(u,f,l){
       id:"safe_pb",en:"Passed Ball",cn:"捕逸 (PB)"
     }
     ,{
+      id:"safe_pk_err",en:"Pickoff Error",cn:"牵制失误推进"
+    }
+    ,{
       id:"safe_same_err",en:"On Same Play Error",cn:"同一play内失误推进"
     }
     ].filter(x=>!o.some(y=>y.id===x.id));
@@ -848,6 +851,9 @@ function Yd(u,f){
     id:"safe_te",en:"Throwing Error",cn:"传球失误推进"
   }
   ,{
+    id:"safe_pk_err",en:"Pickoff Error",cn:"牵制失误推进"
+  }
+  ,{
     id:"safe_same_err",en:"On Same Error",cn:"同一失误推进"
   }
   ,{
@@ -861,6 +867,9 @@ function Yd(u,f){
   }
   ,{
     id:"safe_te",en:"Throwing Error",cn:"传球失误"
+  }
+  ,{
+    id:"safe_pk_err",en:"Pickoff Error",cn:"牵制失误推进"
   }
   ,{
     id:"safe_same_err",en:"On Same Error",cn:"同一失误推进"
@@ -888,15 +897,15 @@ function Kd(u,f){
   }
   ]:null
 }
-var zd=new Set(["safe_te","safe_fe","safe_same_err","safe_diff_err"]);
+var zd=new Set(["safe_te","safe_fe","safe_pk_err","safe_same_err","safe_diff_err"]);
 function lu(u){
   return{
-    safe_te:"传球失误推进：请点击失误责任守备员",safe_fe:"守备失误推进：请点击失误责任守备员",safe_same_err:"同一play内失误推进：请点击失误责任守备员",safe_diff_err:"失误后推进：请点击失误责任守备员"
+    safe_te:"传球失误推进：请点击失误责任守备员",safe_fe:"守备失误推进：请点击失误责任守备员",safe_pk_err:"牵制失误推进：请点击失误责任守备员",safe_same_err:"同一play内失误推进：请点击失误责任守备员",safe_diff_err:"失误后推进：请点击失误责任守备员"
   }
   [u]??"请点击失误责任守备员"
 }
 function iu(u,f){
-  return u==="safe_te"?`传球失误：${f} 失误`:u==="safe_fe"?`守备失误：${f} 失误`:u==="safe_same_err"?`同一play内失误：${f} 失误`:u==="safe_diff_err"?`失误后推进：${f} 失误`:`暴传失误：${f} 失误`
+  return u==="safe_te"?`传球失误：${f} 失误`:u==="safe_fe"?`守备失误：${f} 失误`:u==="safe_pk_err"?`牵制失误：${f} 失误`:u==="safe_same_err"?`同一play内失误：${f} 失误`:u==="safe_diff_err"?`失误后推进：${f} 失误`:`暴传失误：${f} 失误`
 }
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);

@@ -362,7 +362,7 @@ function Lt(e){
 }
 function Bt(e){
   const t=e.trim();
-  return/^(?:守备失误|传球失误|同一play内失误|失误后推进|暴传失误)[：:]/.test(t)
+  return/^(?:守备失误|传球失误|同一play内失误|失误后推进|暴传失误|牵制失误)[：:]/.test(t)
 }
 function w(e){
   return Lt(e)||Bt(e)
