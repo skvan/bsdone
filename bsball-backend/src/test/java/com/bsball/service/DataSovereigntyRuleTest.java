@@ -123,7 +123,8 @@ class DataSovereigntyRuleTest {
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
                 playerTeamService, teamRepository, teamManagerRepository, apiPermissionService);
         leagueService = new LeagueService(leagueRepository, accountScopeService, scopeQuerySupport, guard,
-                personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService);
+                personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService,
+                teamRepository);
         teamService = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
                 apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);

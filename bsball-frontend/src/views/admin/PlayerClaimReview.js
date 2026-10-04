@@ -66,10 +66,10 @@ var Se={
     async function c(){
       h.value=!0;
       try{
-        const i=await j.pendingPlayerClaims({
+        const r=await j.pendingPlayerClaims({
           page:m.page,pageSize:m.pageSize,keyword:u.keyword.trim()||void 0,reviewerType:u.reviewerType||void 0,status:u.status||void 0
         }
-        );
+        ),i=(r&&r.data)||{};
         S.value=i.list??[],m.total=i.total??0
       }
       finally{

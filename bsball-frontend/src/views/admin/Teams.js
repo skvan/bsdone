@@ -13,6 +13,8 @@ import { leagueApi as ya } from '../../api/business';
 import { playerApi as _a } from '../../api/business';
 import { fetchPlayersByTeam as ba } from '../../api/business';
 import { teamApi as T } from '../../api/business';
+import { teamManagerApi as qn } from '../../api/business';
+import { userApi as un } from '../../api/system';
 import { onTeamLogoError as re } from '../../utils/placeholderAssets';
 import { DEFAULT_TEAM_SVG_PATH as wa } from '../../utils/placeholderAssets';
 import ka from '../../components/admin/AdminListScaffold.js';
@@ -219,6 +221,110 @@ var Ta={
         
       }
       )
+    }
+    async function UeDissolve(o){
+      await pe(async()=>{
+        try{
+          await ne.confirm(`确定要解散球队「${o.name}」吗？队员将离队、球队解散（数据留存）。`,"解散确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await T.delete(o.id),c.success("已解散"),k()
+        }
+        catch(e){
+          e!=="cancel"&&c.error(e?.message||"解散失败")
+        }
+        
+      }
+      )
+    }
+    // ---- 球队负责人管理（指派/解除；主办方限无主队） ----
+    const mgDlg=g(!1),mgRows=g([]),mgTeam=g(null),mgPick=g(null),mgOpts=g([]),mgBusy=g(!1),mgNames=g({});
+    async function openMg(o){
+      mgTeam.value=o,mgDlg.value=!0,mgPick.value=null,await Promise.all([loadMg(),searchMgUsers("")])
+    }
+    async function resolveMgNames(){
+      const o={...mgNames.value};
+      await Promise.all(mgRows.value.map(async e=>{
+        if(o[e.userId])return;
+        try{
+          const t=await un.get(e.userId);o[e.userId]=t?.nickname||t?.username||""
+        }
+        catch{
+          
+        }
+      }
+      )),mgNames.value=o
+    }
+    async function loadMg(){
+      try{
+        mgRows.value=await qn.list(mgTeam.value.id)??[],await resolveMgNames()
+      }
+      catch(e){
+        c.error(e?.message||"加载失败")
+      }
+    }
+    async function searchMgUsers(o){
+      try{
+        const{
+          list:e
+        }
+        =await un.list({
+          keyword:o||void 0,page:1,pageSize:20
+        }
+        );
+        mgOpts.value=e??[]
+      }
+      catch{
+        mgOpts.value=[]
+      }
+    }
+    async function doAssignMg(){
+      if(mgBusy.value)return;
+      const o=mgPick.value;
+      if(!o){
+        c.warning("请先选择用户");return
+      }
+      try{
+        await ne.confirm(`确认指派用户 #${o} 为球队「${mgTeam.value.name}」负责人？`,"指派确认",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      mgBusy.value=!0;
+      try{
+        await qn.assign(mgTeam.value.id,o),c.success("已指派"),mgPick.value=null,await loadMg()
+      }
+      catch(e){
+        c.error(e?.message||"指派失败")
+      }
+      finally{
+        mgBusy.value=!1
+      }
+    }
+    async function doRemoveMg(o){
+      if(mgBusy.value)return;
+      try{
+        await ne.confirm(`确认解除${(mgNames.value[o.userId]?"「"+mgNames.value[o.userId]+"」 ":"")}用户 #${o.userId} 的球队负责人绑定？`,"解除确认",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      mgBusy.value=!0;
+      try{
+        await qn.remove(mgTeam.value.id,o.userId),c.success("已解除"),await loadMg()
+      }
+      catch(e){
+        c.error(e?.message||"解除失败")
+      }
+      finally{
+        mgBusy.value=!1
+      }
     }
     async function ze(){
       if(U.value)return;
@@ -449,7 +555,19 @@ var Ta={
               ,{
                 default:t(()=>[...e[41]||(e[41]=[i("归还",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):E("",!0)]),_:1
+              ,8,["disabled","onClick"])):E("",!0),n(C)("business:team:dissolve")?(r(),v(d,{
+                key:4,link:"",type:"danger",disabled:n(me),onClick:q=>UeDissolve(p)
+              }
+              ,{
+                default:t(()=>[...e[42]||(e[42]=[i("解散",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):E("",!0),n(C)("business:team:managers")?(r(),v(d,{
+                key:5,link:"",type:"primary",onClick:q=>openMg(p)
+              }
+              ,{
+                default:t(()=>[...e[43]||(e[43]=[i("负责人",-1)])]),_:1
+              }
+              ,8,["onClick"])):E("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }
@@ -787,7 +905,50 @@ var Ta={
         }
         ,8,["data","max-height"])])]),_:1
       }
-      ,8,["modelValue","width","close-on-click-modal"])])
+      ,8,["modelValue","width","close-on-click-modal"]),a(oe,{
+        modelValue:mgDlg.value,"onUpdate:modelValue":q=>mgDlg.value=q,title:`球队负责人：${mgTeam.value?.name??""}`,width:"640"
+      }
+      ,{
+        default:t(()=>[m("div",{
+          class:"owner-toolbar",style:{display:"flex",gap:"8px",marginBottom:"8px"}
+        }
+        ,[a(Me,{modelValue:mgPick.value,"onUpdate:modelValue":q=>mgPick.value=q,filterable:"",remote:"",clearable:"",placeholder:"搜索用户名/昵称并选择","remote-method":searchMgUsers,style:{flex:"1"}
+        }
+        ,{
+          default:t(()=>[(r(!0),v(la,null,da(mgOpts.value,q=>(r(),v(Ne,{
+            key:q.id,label:(q.username||"")+(q.nickname?"（"+q.nickname+"）":""),value:q.id
+          }
+          ,null,8,["label","value"]))),128))]),_:1
+        }
+        ,8,["modelValue","remote-method"]),a(d,{type:"primary",disabled:mgBusy.value,onClick:doAssignMg},{
+          default:t(()=>[i("指派",-1)]),_:1
+        }
+        ,8,["disabled","onClick"])]),a(ae,{data:mgRows.value,"max-height":320},{
+          default:t(()=>[a(f,{prop:"userId",label:"用户",width:"150"},{
+            default:t(({
+              row:s
+            }
+            )=>[i((mgNames.value[s.userId]?mgNames.value[s.userId]+" ":"")+"#"+s.userId,1)]),_:1}),a(f,{prop:"status",label:"状态",width:"90"},{
+            default:t(({
+              row:s
+            }
+            )=>[i(s.status==="active"?"生效":s.status,1)]),_:1}),a(f,{prop:"createdAt",label:"绑定时间",width:"160"},{
+            default:t(({
+              row:s
+            }
+            )=>[i(h(n(ie)(s.createdAt)),1)]),_:1}),a(f,{label:"操作",width:"90"},{
+            default:t(({
+              row:s
+            }
+            )=>[a(d,{link:"",type:"danger",disabled:mgBusy.value,onClick:q=>doRemoveMg(s)},{
+              default:t(()=>[i("解除",-1)]),_:1
+            }
+            ,8,["disabled","onClick"])]),_:1})]),_:1
+        }
+        ,8,["data"])])
+      }
+      ,8,["modelValue"])
+      ])
     }
     
   }

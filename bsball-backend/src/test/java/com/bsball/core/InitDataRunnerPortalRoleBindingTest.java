@@ -209,9 +209,9 @@ class InitDataRunnerPortalRoleBindingTest {
         assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L), menuIdsOf(LEAGUE_ORGANIZER_ROLE_ID),
                 "league_organizer 精确菜单/id 集：team_manager 菜单集 + /admin/leagues、/admin/events 及赛事按钮");
 
-        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 10L, 11L, 12L, 15L, 16L, 17L, 19L, 20L),
+        assertEquals(Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 10L, 11L, 12L, 15L, 16L, 17L, 19L, 20L, 21L, 22L),
                 apiIdsOf(LEAGUE_ORGANIZER_ROLE_ID),
-                "league_organizer 精确 API/id 集：含 /league/*、/event/*、/game/* 与认领审核面；不含 /team/delete、/league/:id/owners、/league/create-request/*");
+                "league_organizer 精确 API/id 集：含 /league/*、/event/*、/game/*、认领审核面与用户检索（/sys/user 只读两端点）；不含 /team/delete、/league/:id/owners、/league/create-request/*");
     }
 
     @Test
@@ -241,6 +241,20 @@ class InitDataRunnerPortalRoleBindingTest {
     }
 
     @Test
+    @DisplayName("端点种子：ensureTeamManagerApisIfNeeded 首次补录 3 条球队负责人端点，第二次零 insert（计数不变）")
+    void teamManagerApisIdempotent() throws Exception {
+        invokeTeamManagerApis();
+        int afterFirst = apiStore.size();
+        assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/managers".equals(a.getPath()) && "POST".equals(a.getMethod())),
+                "应补录 POST /team/:teamId/managers");
+        assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/managers/:userId".equals(a.getPath())),
+                "应补录 DELETE /team/:teamId/managers/:userId");
+
+        invokeTeamManagerApis();
+        assertEquals(afterFirst, apiStore.size(), "第二次调用不得新增 sys_api（幂等判存）");
+    }
+
+    @Test
     @DisplayName("按钮种子：6 条新按钮（球员增删改导入/建联盟/认领审核）各落库一次")
     void portalButtonSeedsInserted() throws Exception {
         invokeButtonSeeds();
@@ -264,6 +278,12 @@ class InitDataRunnerPortalRoleBindingTest {
 
     private void invokePortalProvisionApis() throws Exception {
         Method m = InitDataRunner.class.getDeclaredMethod("ensurePortalProvisionApisIfNeeded");
+        m.setAccessible(true);
+        m.invoke(runner);
+    }
+
+    private void invokeTeamManagerApis() throws Exception {
+        Method m = InitDataRunner.class.getDeclaredMethod("ensureTeamManagerApisIfNeeded");
         m.setAccessible(true);
         m.invoke(runner);
     }
@@ -353,6 +373,8 @@ class InitDataRunnerPortalRoleBindingTest {
         list.add(api(18L, "/player/create", "POST"));
         list.add(api(19L, "/account/player-claims/:id/approve", "POST"));
         list.add(api(20L, "/account/player-claims/:id/reject", "POST"));
+        list.add(api(21L, "/sys/user/list", "GET"));
+        list.add(api(22L, "/sys/user/:id", "GET"));
         return list;
     }
 }

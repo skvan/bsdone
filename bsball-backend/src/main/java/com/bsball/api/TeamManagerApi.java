@@ -31,6 +31,7 @@ import com.bsball.repository.TeamRepository;
 import com.bsball.service.AccountScopeService;
 import com.bsball.service.ApiPermissionService;
 import com.bsball.service.JwtService;
+import com.bsball.service.ResourceGuard;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ public class TeamManagerApi {
     private final ApiPermissionService apiPermissionService;
     private final AccountScopeService accountScopeService;
     private final JwtService jwtService;
+    private final ResourceGuard resourceGuard;
 
     @GetMapping(value={"/team/{teamId}/managers"})
     public Result<List<TeamManager>> list(@PathVariable Long teamId) {
@@ -62,7 +64,9 @@ public class TeamManagerApi {
         Object object;
         Long opId = this.requireUserId(auth);
         if (!this.apiPermissionService.isSuperAdmin(opId) && !this.apiPermissionService.isTenantAdmin(opId)) {
-            throw new BusinessException(403, "\u4ec5\u7ba1\u7406\u5458\u53ef\u6307\u5b9a\u7403\u961f\u8d1f\u8d23\u4eba");
+            // 主办方（联盟域）可对「无主球队」指派负责人；有主球队只读（权属随接管转移，spec §6.9）。
+            // 受限角色由守卫统一裁定：球队负责人限自有球队（canManageTeam）；球队不存在/无主非本盟/越权一律 403。
+            this.resourceGuard.assertCanStewardOrManageTeam(teamId);
         }
         if (body != null && (object = body.get("userId")) instanceof Number) {
             Number n = (Number)object;
@@ -94,7 +98,8 @@ public class TeamManagerApi {
     public Result<Object> remove(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @PathVariable Long userId) {
         Long opId = this.requireUserId(auth);
         if (!this.apiPermissionService.isSuperAdmin(opId) && !this.apiPermissionService.isTenantAdmin(opId)) {
-            throw new BusinessException(403, "\u4ec5\u7ba1\u7406\u5458\u53ef\u79fb\u9664\u7403\u961f\u8d1f\u8d23\u4eba");
+            // 与 assign 同源：受限角色由守卫统一裁定（主办方限「无主球队」；球队负责人限自有球队）。
+            this.resourceGuard.assertCanStewardOrManageTeam(teamId);
         }
         TeamManager tm = (TeamManager)this.teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(teamId, userId).orElseThrow(() -> new BusinessException(404, "\u8d1f\u8d23\u4eba\u4e0d\u5b58\u5728"));
         tm.setStatus("inactive");
@@ -114,12 +119,13 @@ public class TeamManagerApi {
     }
 
     @Generated
-    public TeamManagerApi(TeamManagerRepository teamManagerRepository, TeamRepository teamRepository, ApiPermissionService apiPermissionService, AccountScopeService accountScopeService, JwtService jwtService) {
+    public TeamManagerApi(TeamManagerRepository teamManagerRepository, TeamRepository teamRepository, ApiPermissionService apiPermissionService, AccountScopeService accountScopeService, JwtService jwtService, ResourceGuard resourceGuard) {
         this.teamManagerRepository = teamManagerRepository;
         this.teamRepository = teamRepository;
         this.apiPermissionService = apiPermissionService;
         this.accountScopeService = accountScopeService;
         this.jwtService = jwtService;
+        this.resourceGuard = resourceGuard;
     }
 }
 
