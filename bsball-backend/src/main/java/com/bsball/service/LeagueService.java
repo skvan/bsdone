@@ -29,6 +29,7 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.League;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +53,7 @@ public class LeagueService {
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final LeagueProvisionService leagueProvisionService;
     private final ApiPermissionService apiPermissionService;
+    private final TeamRepository teamRepository;
 
     public PageResult<League> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -182,6 +184,9 @@ public class LeagueService {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8054\u76df");
         }
         this.resourceGuard.assertCanManageLeague(id);
+        if (this.teamRepository.countByLeagueIdAndDeletedAtIsNull(id) > 0L) {
+            throw new BusinessException(400, "\u8bf7\u5148\u89e3\u6563\u8054\u76df\u5185\u7403\u961f");
+        }
         if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
             // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
             existing.setPlatformOwned(Boolean.TRUE);
@@ -189,6 +194,7 @@ public class LeagueService {
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.leagueRepository.save(existing);
+        this.personnelHistoryRecorder.afterLeagueDissolve(existing);
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {
@@ -202,7 +208,7 @@ public class LeagueService {
     }
 
     @Generated
-    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, LeagueProvisionService leagueProvisionService, ApiPermissionService apiPermissionService) {
+    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, LeagueProvisionService leagueProvisionService, ApiPermissionService apiPermissionService, TeamRepository teamRepository) {
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
         this.scopeQuerySupport = scopeQuerySupport;
@@ -211,6 +217,7 @@ public class LeagueService {
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.leagueProvisionService = leagueProvisionService;
         this.apiPermissionService = apiPermissionService;
+        this.teamRepository = teamRepository;
     }
 }
 

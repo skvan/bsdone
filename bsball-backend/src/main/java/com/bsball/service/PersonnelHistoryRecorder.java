@@ -402,6 +402,15 @@ public class PersonnelHistoryRecorder {
         this.persist(r);
     }
 
+    /** 记录联盟解散事件（建盟链路：主办方/管理员解散）：eventType={@code dissolved}、targetType={@code league}。 */
+    public void afterLeagueDissolve(League dissolved) {
+        if (dissolved == null || dissolved.getId() == null || dissolved.getTenantId() == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("league", dissolved.getId().longValue(), dissolved.getTenantId().longValue(), "dissolved");
+        this.persist(r);
+    }
+
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {
         LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
         LinkedHashMap<String, Object> afterMap = new LinkedHashMap<>();

@@ -68,5 +68,8 @@ extends JpaRepository<Team, Long> {
 
     /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的球队计数。 */
     public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
+
+    /** 联盟解散前置校验（建盟链路）：联盟下现存（未解散）球队计数。 */
+    public long countByLeagueIdAndDeletedAtIsNull(Long var1);
 }
 

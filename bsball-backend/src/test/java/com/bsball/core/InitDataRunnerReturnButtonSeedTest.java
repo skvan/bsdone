@@ -2,9 +2,9 @@
  * 账号权限重构（批次 4b，Task 4b-1）：InitDataRunner 归还/下架按钮种子与联盟删除名目单测。
  *
  * 覆盖：
- *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；9 条新按钮各落库一次；
+ *  - ① 按钮种子幂等：ensureMenuDirectoryTypesAndDefaultButtons 二次调用零新增；13 条新按钮各落库一次；
  *  - ② tenant_admin 默认集合（collectTenantAdminDefaultMenuIds）：含 5 个 business:*:return、排除 5 个 business:*:delete（含 league:delete）；
- *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 9 条新按钮）；
+ *  - ③ 超管全量绑定（ensureAdminRoleBindsAllMenusIfNeeded）：纳入全部菜单（含 13 条新按钮）；
  *  - ④ tenant_admin 角色创建路径（ensureTenantAdminRoleIfNeeded）：落库绑定含 5 个 return、不含 5 个 delete；
  *  - ⑤ 收窄（ensureTenantAdminRoleExcludesBusinessDeleteButtons）：仅移除 delete 绑定、保留 return。
  *  - ⑥ 升级补绑（ensureTenantAdminRoleRebindsDefaultMenusIfNeeded，批次 4b-2）：角色存在缺 5 个 return → 恰补 5；
@@ -79,9 +79,12 @@ class InitDataRunnerReturnButtonSeedTest {
             "business:player:delete", "business:team:delete", "business:event:delete",
             "business:game:delete", "business:league:delete");
 
-    /** 本次新增（种子）按钮权限共 9 条：5 个 return + league:delete + player:release-claim + league:requestReview + league:owners。 */
+    /** 本次新增（种子）按钮权限共 13 条：5 return + league:delete + release-claim + requestReview + owners + league:apply + league:dissolve + team:dissolve + team:managers。 */
     private static final Set<String> BATCH_NEW_PERMS = Stream
-            .concat(RETURN_PERMS.stream(), Stream.of("business:league:delete", "business:player:release-claim", "business:league:requestReview", "business:league:owners"))
+            .concat(RETURN_PERMS.stream(),
+                    Stream.of("business:league:delete", "business:player:release-claim", "business:league:requestReview",
+                            "business:league:owners", "business:league:apply", "business:league:dissolve",
+                            "business:team:dissolve", "business:team:managers"))
             .collect(Collectors.toSet());
 
     @Mock
@@ -179,7 +182,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("① 按钮种子幂等：二次调用零新增，9 条新按钮各落库一次")
+    @DisplayName("① 按钮种子幂等：二次调用零新增，13 条新按钮各落库一次")
     void buttonSeedIdempotent() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -219,7 +222,7 @@ class InitDataRunnerReturnButtonSeedTest {
     }
 
     @Test
-    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 9 条新按钮）")
+    @DisplayName("③ 超管全量绑定：ensureAdminRoleBindsAllMenusIfNeeded 纳入全部菜单（含 13 条新按钮）")
     void adminBindsAllMenusIncludingNewButtons() throws Exception {
         menuStore.addAll(pageFixtures());
         apiStore.addAll(deleteApis());
@@ -238,8 +241,8 @@ class InitDataRunnerReturnButtonSeedTest {
                 .filter(m -> m.getPermission() != null && BATCH_NEW_PERMS.contains(m.getPermission()))
                 .map(SysMenu::getId)
                 .collect(Collectors.toSet());
-        assertEquals(9, newIds.size(), "应检出 9 条新按钮");
-        assertTrue(bound.containsAll(newIds), "超管应绑定 9 条新按钮（含 owners 等）");
+        assertEquals(13, newIds.size(), "应检出 13 条新按钮");
+        assertTrue(bound.containsAll(newIds), "超管应绑定 13 条新按钮（含 dissolve/managers/apply 等）");
     }
 
     @Test
@@ -420,6 +423,74 @@ class InitDataRunnerReturnButtonSeedTest {
         return a;
     }
 
+    @Test
+    @DisplayName("⑫ 新增四按钮的 apiBinding 解析：apply(1)/leagueDissolve(1)/teamDissolve(1)/teamManagers(3)")
+    void newBatchButtonsBindResolvedApis() throws Exception {
+        menuStore.addAll(pageFixtures());
+        apiStore.add(api(9020L, "/portal/league-create", "POST"));
+        apiStore.add(api(9021L, "/league/delete/:id", "DELETE"));
+        apiStore.add(api(9022L, "/team/delete/:id", "DELETE"));
+        apiStore.add(api(9023L, "/team/:teamId/managers", "GET"));
+        apiStore.add(api(9024L, "/team/:teamId/managers", "POST"));
+        apiStore.add(api(9025L, "/team/:teamId/managers/:userId", "DELETE"));
+
+        invokeButtonSeeds();
+
+        assertEquals(Set.of(9020L), linkIds("business:league:apply"));
+        assertEquals(Set.of(9021L), linkIds("business:league:dissolve"));
+        assertEquals(Set.of(9022L), linkIds("business:team:dissolve"));
+        assertEquals(Set.of(9023L, 9024L, 9025L), linkIds("business:team:managers"));
+    }
+
+    @Test
+    @DisplayName("⑬ 排除集扩展：apply/league:dissolve/team:dissolve 不入默认集，升级路径移除既有绑定")
+    void tenantAdminExcludesPortalActionButtons() throws Exception {
+        long roleId = 500L;
+        menuStore.addAll(tenantAdminFixture());
+        lenient().when(sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin"))
+                .thenReturn(Optional.of(role(roleId, "tenant_admin")));
+
+        Set<Long> defaults = collectTenantAdminDefaultMenuIds(menuStore);
+        for (long id : new long[]{40L, 41L, 42L}) {
+            assertFalse(defaults.contains(id), "默认集合不得纳入门户动作按钮 id=" + id);
+        }
+        assertTrue(defaults.containsAll(RETURN_IDS), "默认集合仍应含 5 个 return");
+
+        List<SysRoleMenu> existing = new ArrayList<>();
+        for (long mid : new long[]{10L, 40L, 41L, 42L}) {
+            existing.add(roleMenu(roleId, mid));
+        }
+        roleMenus.put(roleId, existing);
+
+        List<Long> deleted = new ArrayList<>();
+        doAnswer(inv -> {
+            deleted.add(((SysRoleMenu) inv.getArgument(0)).getMenuId());
+            return null;
+        }).when(sysRoleMenuRepository).delete(any(SysRoleMenu.class));
+
+        invokeNoArg("ensureTenantAdminRoleExcludesBusinessDeleteButtons");
+
+        assertEquals(new HashSet<>(List.of(40L, 41L, 42L)), new HashSet<>(deleted), "应移除三条门户动作按钮绑定且保留 return");
+    }
+
+    private Set<Long> linkIds(String perm) {
+        SysMenu btn = menuStore.stream()
+                .filter(m -> perm.equals(m.getPermission()))
+                .findFirst().orElseThrow();
+        return menuApiStore.stream()
+                .filter(x -> btn.getId().equals(x.getMenuId()))
+                .map(SysMenuApi::getApiId)
+                .collect(Collectors.toSet());
+    }
+
+    private static SysApi api(Long id, String path, String method) {
+        SysApi a = new SysApi();
+        a.setId(id);
+        a.setPath(path);
+        a.setMethod(method);
+        return a;
+    }
+
     private static SysApi releaseClaimApi() {
         SysApi a = new SysApi();
         a.setId(9001L);
@@ -506,6 +577,10 @@ class InitDataRunnerReturnButtonSeedTest {
         list.add(menu(24L, 5L, null, "business:league:delete", 3));
         // 普通按钮
         list.add(menu(30L, 2L, null, "business:player:create", 3));
+        // 门户专属动作按钮（应被排除：apply / league:dissolve / team:dissolve）
+        list.add(menu(40L, 5L, null, "business:league:apply", 3));
+        list.add(menu(41L, 5L, null, "business:league:dissolve", 3));
+        list.add(menu(42L, 3L, null, "business:team:dissolve", 3));
         return list;
     }
 

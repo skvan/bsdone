@@ -18,6 +18,13 @@ export const leagueApi = {
   revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`)
 };
 
+// 球队负责人管理（建盟链路批次：指派球队管理员；超管/租管；主办方限无主队）
+export const teamManagerApi = {
+  list: (teamId) => getData(`/api/team/${teamId}/managers`).then((d) => d ?? []),
+  assign: (teamId, userId) => post(`/api/team/${teamId}/managers`, { userId }),
+  remove: (teamId, userId) => del(`/api/team/${teamId}/managers/${userId}`)
+};
+
 export const regionApi = {
   chinaChildren: (parentAdcode) =>
     getData(

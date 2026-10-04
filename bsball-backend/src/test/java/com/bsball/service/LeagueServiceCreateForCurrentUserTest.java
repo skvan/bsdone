@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.model.entity.League;
 import com.bsball.repository.LeagueRepository;
+import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -55,13 +56,17 @@ class LeagueServiceCreateForCurrentUserTest {
     @Mock
     private ApiPermissionService apiPermissionService;
 
+    @Mock
+    private TeamRepository teamRepository;
+
     private LeagueService service;
 
     @BeforeEach
     void setUp() {
         CurrentUserHolder.clear();
         service = new LeagueService(leagueRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService);
+                personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService,
+                teamRepository);
     }
 
     @AfterEach

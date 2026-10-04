@@ -55,7 +55,7 @@ var Ae={
     ),i=E({
       page:1,pageSize:10,total:0
     }
-    ),M=f("id"),U=f("asc");
+    ),M=f("id"),U=f("asc"),applyMode=f(!1);
     function G({
       prop:n,order:e
     }
@@ -63,12 +63,26 @@ var Ae={
       M.value=n||"id",U.value=e==="descending"?"desc":"asc",i.page=1,u()
     }
     function h(n){
-      _.value=n?.id??null,o.name=n?.name??"",o.nameEn=n?.nameEn??"",o.description=n?.description??"",o.verified=n?.verified?1:0,o.sort=n?.sort??0,g.value=!0,oe(()=>b.value?.clearValidate())
+      applyMode.value=!1,_.value=n?.id??null,o.name=n?.name??"",o.nameEn=n?.nameEn??"",o.description=n?.description??"",o.verified=n?.verified?1:0,o.sort=n?.sort??0,g.value=!0,oe(()=>b.value?.clearValidate())
     }
     async function j(){
       await A(async()=>{
         if(b.value)try{
-          await b.value.validate(),_.value?(await k.update(_.value,o),v.success("修改成功")):(await k.create(o),v.success("新增成功")),g.value=!1,u()
+          await b.value.validate();
+          if(applyMode.value){
+            const e=await k.portalCreate(o),a=e&&e.data||e||{};
+            a.pending?v.success("已提交申请，待上级审核"):v.success("创建成功"),applyMode.value=!1
+          }
+          else{
+            if(_.value){
+              await k.update(_.value,o),v.success("修改成功")
+            }
+            else{
+              const e=await k.create(o),a=e&&e.data||e||{};
+              a.pending?v.success("已提交申请，待上级审核"):v.success("新增成功")
+            }
+          }
+          g.value=!1,u()
         }
         catch(n){
           v.error(n?.message||"保存失败")
@@ -77,10 +91,30 @@ var Ae={
       }
       )
     }
+    function hApply(){
+      h(),applyMode.value=!0
+    }
+    async function JDissolve(n){
+      try{
+        await ke.confirm(`确定要解散联盟「${n.name}」吗？需先解散联盟内球队；解散后联盟不可用（数据留存）。`,"解散确认",{
+          confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        }
+        )
+      }
+      catch{
+        return
+      }
+      try{
+        await k.delete(n.id),v.success("已解散"),u()
+      }
+      catch(e){
+        v.error(e?.message||"解散失败")
+      }
+    }
     async function J(n){
       await P(async()=>{
         try{
-          await ke.confirm(`确定要删除联盟「${n.name}」吗？关联的球队与赛事将变为未分组。`,"删除确认",{
+          await ke.confirm(`确定要删除联盟「${n.name}」吗？需先解散联盟内球队；删除后联盟不可用（数据留存）。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
           ),await k.delete(n.id),v.success("删除成功"),u()
@@ -300,6 +334,12 @@ var Ae={
         ,{
           default:a(()=>[s("建盟申请",-1)]),_:1
         }
+        )):Ee("",!0),d(Ab)("business:league:apply")&&!d(Ab)("business:league:create")?(C(),D(m,{
+          key:10,type:"default",style:{float:"right",marginRight:"8px"},onClick:R4=>hApply()
+        }
+        ,{
+          default:a(()=>[s("申请成立联盟",-1)]),_:1
+        }
         )):Ee("",!0)]),default:a(()=>[t(Ue,{
           class:"league-list-scaffold","fill-mode":K.value
         }
@@ -411,6 +451,12 @@ var Ae={
               ,{
                 default:a(()=>[s("主办方",-1)]),_:1
               }
+              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:dissolve")?(C(),D(m,{
+                key:3,link:"",type:"danger",onClick:R4=>JDissolve(c)
+              }
+              ,{
+                default:a(()=>[s("解散",-1)]),_:1
+              }
               ,8,["onClick"])):Ee("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
@@ -423,7 +469,7 @@ var Ae={
         ,8,["fill-mode"])]),_:1
       }
       ),t(te,{
-        modelValue:g.value,"onUpdate:modelValue":e[10]||(e[10]=l=>g.value=l),title:_.value?"编辑联盟":"新增联盟",width:"480","close-on-click-modal":d(R)
+        modelValue:g.value,"onUpdate:modelValue":e[10]||(e[10]=l=>g.value=l),title:_.value?"编辑联盟":applyMode.value?"申请成立联盟":"新增联盟",width:"480","close-on-click-modal":d(R)
       }
       ,{
         footer:a(()=>[t(m,{
@@ -494,7 +540,7 @@ var Ae={
         }
         ,8,["model"])]),_:1
       }
-      ,8,["modelValue","title","close-on-click-modal"]),d(te,{
+      ,8,["modelValue","title","close-on-click-modal"]),t(te,{
         modelValue:reqDlg.value,"onUpdate:modelValue":R2=>reqDlg.value=R2,title:"建盟申请审核",width:"720"
       }
       ,{
@@ -517,7 +563,7 @@ var Ae={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"]),d(te,{
+      ,8,["modelValue"]),t(te,{
         modelValue:ownDlg.value,"onUpdate:modelValue":R4=>ownDlg.value=R4,title:`联盟主办方：${ownLeague.value?.name??""}`,width:"640"
       }
       ,{
