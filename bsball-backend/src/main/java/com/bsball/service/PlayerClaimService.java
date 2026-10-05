@@ -39,6 +39,7 @@ package com.bsball.service;
 
 import com.bsball.common.PageResult;
 import com.bsball.config.AccountProperties;
+import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.entity.Player;
@@ -165,9 +166,16 @@ public class PlayerClaimService {
             preds.add(cb.equal((Expression)root.get("status"), "pending"));
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             if (superAdmin || tenantAdmin) {
-                // 管理员列表仅呈平台认领；team_manager 认领由球队管理员的范围内列表呈现；
-                // 管理员仍可按 id 审任意认领（守卫对 unrestricted 直通）。
-                preds.add(cb.equal((Expression)root.get("reviewerType"), "platform_admin"));
+                // 管理员列表呈本租户全部待办（含 team_manager 类，兜底代审）；
+                // 租户管理员限本租户（防跨租户可见），超管全局；审批守卫对 unrestricted 直通。
+                if (!superAdmin) {
+                    Long tid = CurrentUserHolder.getTenantId();
+                    if (tid != null && tid > 0L) {
+                        preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
+                    } else {
+                        preds.add(cb.disjunction());
+                    }
+                }
             } else if (!managedTeamIds.isEmpty()) {
                 preds.add(cb.equal((Expression)root.get("reviewerType"), "team_manager"));
                 preds.add(root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}));
