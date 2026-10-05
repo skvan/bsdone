@@ -19,7 +19,8 @@ const {
   readWatchFieldSettings,
   writeWatchFieldSettings,
   readFieldSettings,
-  writeFieldSettings
+  writeFieldSettings,
+  DEFAULT_PITCHER_FIELDS
 } = await import('../src/utils/gameDetailFieldSettingsStorage.js');
 
 const DEFAULTS = {
@@ -120,4 +121,23 @@ test('观赛键可见列少于 6 时按序补足保底', () => {
   const result = readWatchFieldSettings(DEFAULTS);
   assert.equal(result.batterFields.filter((item) => item.visible).length, 6);
   assert.equal(result.pitcherFields.filter((item) => item.visible).length, 6);
+});
+
+test('取消勾选投手 PA/BF 后回读仍为隐藏（#211 回归：不再被夹取回默认可见）', () => {
+  const hidden = DEFAULT_PITCHER_FIELDS.map((item) =>
+    item.key === 'pitchPa' || item.key === 'pitchBf' ? { ...item, visible: false } : { ...item });
+  const opts = { ...DEFAULTS, defaultPitcherFields: DEFAULT_PITCHER_FIELDS };
+
+  // 观赛键路径（观赛页保存 → 每次快照回读）
+  store.clear();
+  writeWatchFieldSettings(makeState({ pitcherFields: hidden }));
+  const watch = readWatchFieldSettings(opts);
+  assert.equal(watch.pitcherFields.find((x) => x.key === 'pitchPa').visible, false, '观赛键：取消勾选 pitchPa 后回读应保持隐藏');
+  assert.equal(watch.pitcherFields.find((x) => x.key === 'pitchBf').visible, false, '观赛键：取消勾选 pitchBf 后回读应保持隐藏');
+
+  // 管理端键路径（管理端比赛详情页同源读链）
+  store.clear();
+  writeFieldSettings(makeState({ pitcherFields: hidden }));
+  const admin = readFieldSettings(opts);
+  assert.equal(admin.pitcherFields.find((x) => x.key === 'pitchPa').visible, false, '管理端键：取消勾选 pitchPa 后回读应保持隐藏');
 });
