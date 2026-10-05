@@ -5392,6 +5392,7 @@ var sg={
     }
     let Ai=!1;
     function $a(e,t){
+      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
       it.value||Ai||(Ai=!0,Wu(e),requestAnimationFrame(()=>{
         try{
           Yu(t,e)
@@ -5922,6 +5923,10 @@ var sg={
       (t.pointerType==="touch"&&t.moved||t.moved)&&e.preventDefault(),t.moved&&vp()
     }
     function gp(e,t){
+      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady()){
+        warnFlowBusy(l.flow),t.preventDefault(),t.stopPropagation();
+        return
+      }
       if(nn.value&&!l.flow){
         t.preventDefault(),t.stopPropagation();
         return
@@ -6464,10 +6469,10 @@ var sg={
       ji.value=!1
     }
     function Dp(){
-      Lr(),Vp()
+      l.flow&&!settleChainIfReady()?warnFlowBusy(l.flow):(Lr(),Vp())
     }
     function Mp(){
-      Lr(),Up()
+      l.flow&&!settleChainIfReady()?warnFlowBusy(l.flow):(Lr(),Up())
     }
     function Up(){
       na();
@@ -6838,10 +6843,18 @@ var sg={
         const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后即为出局":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
         return s?`界内击出：${s} → ${r}；${p}`:`界内击出 → ${r}；${p}`
       }
-      return["G","F","L","TAG","SF","SH","DP","FC"].includes(e.type)?{
+      const S0=["G","F","L","TAG","SF","SH","DP","FC"].includes(e.type)?{
         G:e.steps?.length===0?`滚地球：${a}（接球；独力接杀可再点同一守位）`:`滚地球：${a}（封杀传杀；再点同一守位记接杀）`,F:`飞球：${a}（接杀；左飞/中飞由守位决定）`,L:`平飞球：${a}（接杀）`,TAG:`${a}（接杀触杀）`,SF:`高飞牺牲：${a}（接杀）`,SH:e.steps?.length===0?`牺牲触击：${a}（接球；独力接杀可再点同一守位）`:`牺牲触击：${a}（封杀传杀；再点同一守位记接杀）`,FC:e.steps?.length===0?`野手选择：1.${a}`:`野手选择：2.${a}`,DP:e.steps?.length===0?`双杀：1.${a}(第一传)`:e.steps?.length===1?`双杀：2.${a}(第二传)`:`双杀：3.${a}(封杀)`
       }
-      [e.type]??"":""
+      [e.type]??"":"";
+      if(CHAIN_TYPES.has(e.type)){
+        const R0=e.steps?.length??0,T0=e.required??us(e.type),D0=_i(e.steps??[]).map(N0=>vi[N0]??N0).join("-"),M0={
+G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
+}[e.type]??ou(e.type);
+        if(R0>=hu)return `${M0}：${D0}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
+        if(R0>=T0)return `${M0}：${D0}（已可完成）— 可继续点选延长传球链，或点「完成记录」；开始下一动作也会自动收尾`
+      }
+      return S0
     }
     ),df=$(()=>{
       const e=l.flow;
@@ -7486,7 +7499,7 @@ var sg={
       }
       )(),ke.value=e.log??[],e.atBatSummaries&&(Me.value=JSON.parse(JSON.stringify(e.atBatSummaries))),e.playEvents&&(f.playEvents=JSON.parse(JSON.stringify(e.playEvents)));
       for(const t of pn)clearTimeout(t);
-      pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,Jl(),pt()
+      pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,Jl(),pt(),syncChainVisualFromFlow()
     }
     function io(e){
       const t=e;
@@ -7749,8 +7762,8 @@ var sg={
         J("比赛已结束","warning");
         return
       }
-      if(l.flow){
-        J("请先完成或取消当前流程，再执行强制换局","warning");
+      if(l.flow&&!settleChainIfReady()){
+        warnFlowBusy(l.flow);
         return
       }
       if(kt.value!=null||qe.value){
@@ -8103,7 +8116,8 @@ var sg={
       ho.has(e.type)&&(Array.isArray(e.steps)||(e.steps=[]),e.required==null&&(e.required=us(e.type)))
     }
     function Vf(e){
-      it.value||(wt(),Ha.value=null,aa.value=!0)
+      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
+      it.value||(nextPitchCleanup(),wt(),Ha.value=null,aa.value=!0)
     }
     function wo(){
       Nt!=null&&clearTimeout(Nt),Nt=setTimeout(()=>{
@@ -8112,6 +8126,8 @@ var sg={
       ,V_)
     }
     function Wf(e){
+      const a=l.flow;
+      a&&CHAIN_TYPES.has(a.type)&&(a.steps?.length??0)>=(a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
       if(l.flow){
         Ro("P",e);
         return
@@ -8215,7 +8231,8 @@ var sg={
       
     }
     function ko(e,t){
-      return l.flow?(J("请先完成或取消当前流程","warning"),!1):Gf()?(l.flow={
+      if(l.flow&&!settleChainIfReady())return warnFlowBusy(l.flow),!1;
+      return Gf()?(l.flow={
         type:"BIP_HIT_PENDING",bipCode:e||void 0,resolveType:t
       }
       ,J("点击守备位置确认落点，或拖拽调整落点位置","info"),!0):!1
@@ -8359,6 +8376,89 @@ var sg={
       }
       Ra=requestAnimationFrame(p)
     }
+    const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP"]);
+    let chainAnimSeq=0;
+    const chainTrail=x([]),chainHl=x(null);
+    function ballTargetOf(e){
+      return e==="P"?{
+        x:240,y:448
+      }
+      :pi[e]
+    }
+    function ballAppearAt(e,t){
+      chainAnimSeq+=1,Xn.value=e,Yn.value=t,ka.value=!0,He(()=>{
+        const a=Rn.value?.querySelector(".hit-spray-fly-anim");
+        a&&(a.style.transition="none",a.style.opacity="0",requestAnimationFrame(()=>{
+          a.style.transition="opacity .22s ease",a.style.opacity="1"
+        }
+        ))
+      }
+      )
+    }
+    function ballFlyTo(e,t,a){
+      const s=++chainAnimSeq,r=Xn.value,p=Yn.value,g=performance.now();
+      (function m(y){
+        if(s!==chainAnimSeq)return;
+        const b=Math.min((y-g)/a,1),w=1-Math.pow(1-b,3);
+        Xn.value=r+(e-r)*w,Yn.value=p+(t-p)*w,b<1?requestAnimationFrame(m):0
+      }
+      )(performance.now())
+    }
+    function pushChainTrail(e,t){
+      chainTrail.value=[...chainTrail.value,{
+        key:`ct-${chainTrail.value.length}-${e.x}-${e.y}`,x1:e.x,y1:e.y,x2:t.x,y2:t.y
+      }
+      ]
+    }
+    function markChainHl(e,t,a){
+      const s=chainHl.value?.seq??0;
+      chainHl.value={
+        x:e,y:t,seq:a?s+1:s
+      }
+    }
+    const chainDone=x(null);
+    function clearChainVisual(){
+      chainAnimSeq+=1,chainTrail.value=[],chainHl.value=null,chainDone.value=null,ka.value=!1
+    }
+    function syncChainVisualFromFlow(){
+      clearChainVisual();
+      const e=l.flow;
+      if(!e||!CHAIN_TYPES.has(e.type))return;
+      const a=e.steps??[];
+      if(!a.length)return;
+      const s=e.bipSpray,t=s?.sprayX!=null&&s?.sprayY!=null?{
+        x:s.sprayX,y:s.sprayY
+      }
+      :ballTargetOf(a[0]);
+      let r=t;
+      for(const p of a){
+        const g=ballTargetOf(p);
+        (g.x!==r.x||g.y!==r.y)&&(pushChainTrail(r,g),r=g)
+      }
+      const p=ballTargetOf(a[a.length-1]);
+      Xn.value=p.x,Yn.value=p.y,ka.value=!0,markChainHl(p.x,p.y,!1)
+    }
+    function settleChainIfReady(){
+      const e=l.flow;
+      if(!e||!CHAIN_TYPES.has(e.type))return!1;
+      const t=e.required??us(e.type);
+      if((e.steps?.length??0)<t)return!1;
+      const a=_i(e.steps),s=a[a.length-1];
+      return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainDone.value=ballTargetOf(s),markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+    }
+    let chainClearTimer=null;
+    function nextPitchCleanup(){
+      if(!chainDone.value&&!chainTrail.value.length&&!ka.value)return;
+      chainClearTimer!=null&&(clearTimeout(chainClearTimer),chainClearTimer=null);
+      const e=Rn.value?.querySelector(".hit-spray-fly-anim"),t=chainAnimSeq;
+      e&&ka.value?(e.style.transition="opacity .5s ease",e.style.opacity="0",chainClearTimer=setTimeout(()=>{
+        chainClearTimer=null,t===chainAnimSeq&&(clearChainVisual(),e.style.transition="",e.style.opacity="")
+      }
+      ,520)):clearChainVisual()
+    }
+    function warnFlowBusy(e){
+      e&&CHAIN_TYPES.has(e.type)?J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):J("请先完成或取消当前流程","warning")
+    }
     function Bo(e,t,a,s){
       const r=s?.trim().toUpperCase();
       return r&&ya[r]?r:yd(e,t,pi)
@@ -8376,7 +8476,7 @@ var sg={
         resolveType:g
       }
       =p,m=p.bipCode??"";
-      t!=null&&a!=null&&Zf(t,a),pt();
+      clearChainVisual(),t!=null&&a!=null&&(CHAIN_TYPES.has(g)?(ballAppearAt(t,a),markChainHl(t,a,!1)):Zf(t,a)),pt();
       const y=Io(e,r),b=t!=null&&a!=null&&y?Bo(t,a,y,r):r?.trim().toUpperCase(),w={
         sprayZone:y,sprayFieldPos:b,...t!=null&&a!=null?{
           sprayX:t,sprayY:a
@@ -8417,7 +8517,7 @@ var sg={
     }
     function Fo(){
       if(l.flow?.type!=="BIP_HIT_PENDING")return;
-      l.flow=null,pt();
+      l.flow=null,pt(),clearChainVisual();
       const e=$e.value[0];
       if(e?.nextAction==="界内击出投球"||e?.nextAction==="隐含投球（击出或守备）"){
         as(),J("已取消界内击出记录","info");
@@ -8451,8 +8551,8 @@ var sg={
         ko(e,r)
       }
       ,a=()=>{
-        if(l.flow){
-          J("请先完成或取消当前流程","warning");
+        if(l.flow&&!settleChainIfReady()){
+          warnFlowBusy(l.flow);
           return
         }
         l.flow={
@@ -8527,7 +8627,9 @@ var sg={
       return!!(l.needNextBatter||l.flow)
     }
     function $o(e){
+      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
       if(!it.value){
+        nextPitchCleanup();
         if(nc(e)){
           To()&&cs();
           return
@@ -8683,7 +8785,7 @@ var sg={
       else l.runners[a]&&ds(a),l.runners[a]=t
     }
     function ms(){
-      na();
+      na(),clearChainVisual();
       const e=l.flow;
       if(e?.type==="DK3_FIELDER_PICK"){
         l.flow=null,pt();
@@ -8763,9 +8865,22 @@ var sg={
         return
       }
       if(a&&!a.selectRunner&&ho.has(a.type)){
-        yo(a),a.steps.push(e);
-        const s=a.required??us(a.type);
-        s>0&&a.steps.length>=s&&(bt(a.type,_i(a.steps),Sr(a)),l.flow=null)
+        yo(a);
+        if(!CHAIN_TYPES.has(a.type)){
+          a.steps.push(e);
+          const s=a.required??us(a.type);
+          s>0&&a.steps.length>=s&&(bt(a.type,_i(a.steps),Sr(a)),l.flow=null,pt());
+          return
+        }
+        if(a.steps.length>=hu){
+          J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
+          return
+        }
+        const s={
+          x:Xn.value,y:Yn.value
+        }
+        ,r=ballTargetOf(e);
+        a.steps.push(e),r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
       }
       else if(!a){
         if(nn.value)return;
@@ -9039,6 +9154,10 @@ var sg={
       if(l.flow?.type==="ADVANCE"&&l.flow.selectRunner){
         const a=be.value;
         l.flow.runner=a,l.flow.runnerBase=0,l.flow.selectRunner=!1;
+        return
+      }
+      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady()){
+        warnFlowBusy(l.flow);
         return
       }
       if(ef.value){
@@ -10003,6 +10122,21 @@ var sg={
         ,{
           default:L(()=>[...t[76]||(t[76]=[Q("取消",-1)])]),_:1
         }
+        )],64)):c(l).flow?.type&&CHAIN_TYPES.has(c(l).flow.type)?(h(),C(me,{
+          key:"chain"
+        }
+        ,[(c(l).flow.steps?.length??0)>=(c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
+          key:0,size:"small",type:"primary",onClick:settleChainIfReady
+        }
+        ,{
+          default:L(()=>[Q(" 完成记录 ")]),_:1
+        }
+        )):W("",!0),v(s,{
+          size:"small",onClick:ms
+        }
+        ,{
+          default:L(()=>[Q("取消")]),_:1
+        }
         )],64)):c(l).flow?.type==="BIP_HIT_PENDING"?(h(),C(me,{
           key:2
         }
@@ -10198,7 +10332,10 @@ var sg={
         ,null,-1),n("circle",{
           class:"field-home",cx:"240",cy:"555",r:"12",opacity:"0"
         }
-        ,null,-1)])]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
+        ,null,-1)])]),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
+          key:td.key,x1:td.x1,y1:td.y1,x2:td.x2,y2:td.y2,class:re(["chain-trail",ti===c(chainTrail).length-1?"chain-trail--solid":`chain-trail--l${Math.min(4,c(chainTrail).length-1-ti)}`])
+        }
+        ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
           key:d,class:re(["defender-hit",{
             "field-player-hit--disabled":nn.value
           }
@@ -10222,7 +10359,13 @@ var sg={
         ,H(qa.value[d].bottom),9,Yg)],64)):(h(),C("tspan",{
           key:1,x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,dy:"3",class:"field-svg-label__line"
         }
-        ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),n("g",{
+        ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),c(chainHl)?(h(),C("circle",{
+          key:`chl-${c(chainHl).seq}`,class:"chain-hl-ring",cx:c(chainHl).x,cy:c(chainHl).y,r:19
+        }
+        ,null,8,["cx","cy"])):W("",!0),c(chainDone)?(h(),C("g",{
+          class:"lgb-done-badge",transform:`translate(${c(chainDone).x},${c(chainDone).y-27})`
+        }
+        ,[n("circle",{r:"14",fill:"rgba(20,60,36,.92)",stroke:"#7ee2a0","stroke-width":"2"}),n("text",{y:"5","text-anchor":"middle","font-size":"15","font-weight":"700",fill:"#7ee2a0"},"✓")],8,["transform"])):W("",!0),n("g",{
           class:re(["pitcher-ball-trigger",{
             "pitcher-ball-trigger--disabled":it.value
           }
