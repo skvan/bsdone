@@ -56,7 +56,9 @@ function mergeFields(saved, defaults) {
     if (!item?.key || seen.has(item.key)) continue;
     const known = byKey.get(item.key);
     if (known) {
-      result.push({ ...known, visible: item.key === 'pitchPa' || item.key === 'pitchBf' ? known.visible : item.visible ?? known.visible });
+      // #211 修复：不再强制 pitchPa/pitchBf 恒显（遗留夹取丢弃用户保存的可见性，
+      // 导致观赛页/比赛详情页取消勾选 PA/BF 保存后，任何回读都被夹回默认可见）
+      result.push({ ...known, visible: item.visible ?? known.visible });
       seen.add(item.key);
     }
   }
