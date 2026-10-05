@@ -19,6 +19,7 @@ import { dictDataApi as Vn } from '../../api/system';
 import { uploadResource as gt } from '../../api/system';
 import { fetchAllPlayers as pt } from '../../api/business';
 import { playerApi as Ve } from '../../api/business';
+import { useAuthStore as hA } from '../../stores/auth';
 import { teamApi as Bn } from '../../api/business';
 import { DEFAULT_AVATAR_SVG_PATH as xn } from '../../utils/placeholderAssets';
 import Cn from '../../components/admin/AdminListScaffold.js';
@@ -455,6 +456,15 @@ var $n={
       return e.length?e.map(c=>Ma(c)).join(", "):"-"
     }
     const He=v(!1),Se=v("");
+    const hAuth=hA(),hCtxTeam=N(()=>{const a=Number(se.query?.teamId);return Number.isFinite(a)&&a>0?a:null}),hPrivileged=N(()=>!!hAuth.user?.superAdmin||hAuth.user?.tenantAdmin===!0);
+    function hHasCurrent(a){
+      return(Array.isArray(a)?a:[]).some(e=>e&&e.teamId!=null&&e.teamId!==""&&e.current!==!1)
+    }
+    function hApplyCtx(a){
+      const zz=Number(r.teamId??hCtxTeam.value),e=Number.isFinite(zz)&&zz>0?zz:null;
+      if(!e||!Array.isArray(a)||a.length===0)return;
+      a.every(u=>u.teamId==null||u.teamId==="")&&(a[0].teamId=e,a[0].current=!0)
+    }
     let _e=null,Ke=0;
     function ba(){
       _e&&(clearTimeout(_e),_e=null),Ke+=1,He.value=!1,Se.value=""
@@ -495,7 +505,7 @@ var $n={
       l.teamEntries=eu.length?eu.map(te=>({
         id:te.id??null,teamId:te.teamId??null,number:te.number!=null?String(te.number):"",positions:Array.isArray(te.positions)?[...te.positions]:[],current:!!te.current
       }
-      )):a?[]:[Zc()],ce.value=a?.id??null,De.value=!0,Oe(()=>ge.value?.clearValidate())
+      )):a?[]:(()=>{const zt=[Zc()];return hApplyCtx(zt),zt})(),ce.value=a?.id??null,De.value=!0,Oe(()=>ge.value?.clearValidate())
     }
     const M=v(!1),Ne=v(!1),te=v(null),k=v(""),he=v(null),$a=v(null),B=v("desktop"),x=v(0),S=v(0),ya=v(470),_a=v(Math.round(470/wt)),j=v(1),F=v(1),W=v(0),X=v(0),I=v({
       
@@ -996,8 +1006,9 @@ var $n={
         
       }
       );
+      const hCur=tg.find(z=>z.current)?.teamId??tg[0]?.teamId??null;
       return delete u.bgFocusBundle,{
-        ...u,teamId:l.teamId==null?null:l.teamId,positions:l.positions,shortName:l.shortName||void 0,nickname:l.nickname||void 0,throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthPlace:l.birthPlace||void 0,avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:e,contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0,teamEntries:tg
+        ...u,teamId:l.teamId==null?(ce.value?null:hCur):l.teamId,positions:l.positions,shortName:l.shortName||void 0,nickname:l.nickname||void 0,throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthPlace:l.birthPlace||void 0,avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:e,contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0,teamEntries:tg
       }
       
     }
@@ -1005,6 +1016,10 @@ var $n={
       await le(async()=>{
         if(ge.value)try{
           M.value&&Ie(),await ge.value.validate();
+          if(!ce.value&&!g(hPrivileged)&&!hHasCurrent(l.teamEntries)){
+            p.warning("请先在「球队经历」中添加当前球队后再保存");
+            return
+          }
           const a=it();
           ce.value?(await Ve.update(ce.value,a),p.success("修改成功")):(await Ve.create(a),p.success("新增成功")),De.value=!1,L()
         }
@@ -1019,6 +1034,10 @@ var $n={
       await le(async()=>{
         if(ge.value)try{
           M.value&&Ie(),await ge.value.validate();
+          if(!ce.value&&!g(hPrivileged)&&!hHasCurrent(l.teamEntries)){
+            p.warning("请先在「球队经历」中添加当前球队后再保存");
+            return
+          }
           const a=it();
           await Ve.create(a),p.success("保存成功，可继续添加"),hl(),L()
         }
