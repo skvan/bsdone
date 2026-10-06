@@ -95,7 +95,14 @@ function gd(u){
           onClick:()=>q("stay")
         }
         ,()=>M),da(mi,{
-          type:"danger",plain:!0,onClick:async()=>{
+          type:"danger",plain:!0,onClick:async Xt=>{
+            try{
+              const Ve=Xt?.currentTarget,Ke=Ve?.querySelector?.("span");
+              Ve&&(Ve.disabled=!0,Ve.classList.add("is-disabled")),Ke&&(Ke.textContent=u.directLeaveLoadingText??"正在保存现场…")
+            }
+            catch{
+              
+            }
             try{
               await u.onDirectLeave?.(),q("directLeave")
             }
@@ -7307,6 +7314,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    async function ZrLite(){
+      // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行
+      if(!R.value||!F.value)return;
+      Tn(),to();
+      const e=pa({
+        includeUndoStacks:!1
+      }
+      );
+      if(e)try{
+        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e)),new Promise(rr=>{
+          setTimeout(rr,1e4)
+        }
+        )])
+      }
+      catch{
+        
+      }
+      
+    }
     async function Pf(){
       fa!=null&&(clearTimeout(fa),fa=null),await Zr()
     }
@@ -9923,8 +9949,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       skipNextRouteLeaveOnce:hc
     }
     =gd({
-      enabled:()=>F.value,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
-        await Zr(),_l()
+      enabled:()=>F.value,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",directLeaveLoadingText:"正在保存现场…",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
+        await ZrLite(),_l()
       }
       ,onSaveAndLeave:async()=>{
         await hs({
