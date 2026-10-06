@@ -6917,7 +6917,7 @@ var sg={
         return e.errorMode==="foul_error"?r===0?"界外球+失误：点击失误责任守备员，完成后点「完成记录」":`界外球+失误：已选 ${p}；可继续点守备添加或点「完成记录」`:r===0?`${g}点击失误责任守备员（可多选），完成后点「完成记录」`:`${g}已选 ${p}；可继续点守备添加，或点「完成记录」`
       }
       if(e.type==="BIP_HIT_PENDING"){
-        const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后即为出局":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
+        const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后可点「完成记录」":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
         return s?`界内击出：${s} → ${r}；${p}`:`界内击出 → ${r}；${p}`
       }
       const S0=["G","F","L","TAG","SF","SH","DP","FC"].includes(e.type)?{
@@ -6929,7 +6929,7 @@ var sg={
 G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
 }[e.type]??ou(e.type);
         if(R0>=hu)return `${M0}：${D0}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
-        if(R0>=T0)return `${M0}：${D0}（已可完成）— 可继续点选延长传球链，或点「完成记录」；开始下一动作也会自动收尾`
+        if(R0>=T0)return e.type==="DP"&&R0<3?`${M0}：${D0}（已可完成）— 若为三守位双杀可继续点选第三传（如 6-4-3），或点「完成记录」；开始下一动作也会自动收尾`:ru.has(e.type)?`${M0}：${D0}（已可完成）— 可继续点选记录接杀回传（如 8-3），或点「完成记录」；开始下一动作也会自动收尾`:`${M0}：${D0}（已可完成）— 可继续点选延长传球链，或点「完成记录」；开始下一动作也会自动收尾`
       }
       return S0
     }
@@ -8190,7 +8190,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Yt(e,zv(e))
     }
     function us(e){
-      return e==="G"||e==="SH"||e==="FC"?2:e==="DP"?3:e==="TP"?4:1
+      return e==="G"||e==="SH"||e==="FC"?2:e==="DP"?2:e==="TP"?4:1
     }
     const ho=new Set(["G","F","L","TAG","SF","SH","DP","TP","FC"]);
     function yo(e){
@@ -8334,6 +8334,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(`界内击出：${g}；${It[p]??p} 已接球，请点选封杀传杀守备员（独力接杀可再点同一守位）`,"info");
         return
       }
+      if(p&&ru.has(e)){
+        J(`界内击出：${g}；${It[p]??p} 已接球 — 可点「完成记录」，或继续点选记录接杀后回传`,"info");
+        return
+      }
       if(e==="E"){
         pt();
         return
@@ -8461,7 +8465,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       Ra=requestAnimationFrame(p)
     }
-    const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP"]);
+    const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP","F","L","TAG","SF"]);
     let chainAnimSeq=0;
     const chainTrail=x([]),chainHl=x(null);
     function ballTargetOf(e){
@@ -8542,7 +8546,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,520)):clearChainVisual()
     }
     function warnFlowBusy(e){
-      e&&CHAIN_TYPES.has(e.type)?J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):J("请先完成或取消当前流程","warning")
+      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):J("请先完成或取消当前流程","warning")
     }
     function Bo(e,t,a,s){
       const r=s?.trim().toUpperCase();
@@ -8588,10 +8592,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(ru.has(g)&&b){
-        l.flow=null,bt(g,[b],{
-          bipCode:m,...w
-        }
-        );
+        Po(g,m,w,b);
         return
       }
       if(Cs.has(g)&&b){
@@ -8972,12 +8973,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       if(a&&!a.selectRunner&&ho.has(a.type)){
         yo(a);
-        if(!CHAIN_TYPES.has(a.type)){
-          a.steps.push(e);
-          const s=a.required??us(a.type);
-          s>0&&a.steps.length>=s&&(bt(a.type,_i(a.steps),Sr(a)),l.flow=null,pt());
-          return
-        }
         if(a.steps.length>=hu){
           J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
           return
@@ -8985,8 +8980,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const s={
           x:Xn.value,y:Yn.value
         }
-        ,r=ballTargetOf(e);
-        a.steps.push(e),r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
+        ,r=ballTargetOf(e)
+        ,C0=a.steps.length;
+        a.steps.push(e),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),ru.has(a.type)&&C0===1&&J("接杀回传如造成跑者出局（双杀），请取消后改用「双杀」类型记录","warning")
       }
       else if(!a){
         if(nn.value)return;
