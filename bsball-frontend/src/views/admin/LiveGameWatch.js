@@ -431,7 +431,7 @@ var Ta={
     ),At=I(()=>{
       const e=ne.value.length;
       return ne.value.map((t,a)=>({
-        seq:e-a,meta:wa(It(t)),text:ya(It(t),Pa(t)),logOnly:Ba(t)
+        seq:e-a,meta:wa(It(t)),text:ya(It(t),Pa(t)),logOnly:Ba(t),lines:typeof t=="object"&&t&&Array.isArray(t.lines)?t.lines:null
       }
       ))
     }
@@ -1138,7 +1138,7 @@ var Ta={
           }
           ])
         }
-        ,[i("span",Qa,u(n.seq),1),n.logOnly?(c(),h("span",Xa,"仅日志")):F("",!0),n.meta?(c(),h("span",Ka," ["+u(n.meta.time)+"] ["+u(n.meta.inning)+u(n.meta.half==="top"?"上":"下")+"] ",1)):F("",!0),i("span",es,u(n.text),1)],2))),128))],512),[[wt,fe.value==="timeline"]]),Re(i("div",ts,[Z.value.inningNumbers.length===0&&Z.value.unc.length===0?(c(),h("p",as,"暂无事件")):(c(),q(m,{
+        ,[i("span",Qa,u(n.seq),1),n.logOnly?(c(),h("span",Xa,"仅日志")):F("",!0),n.meta?(c(),h("span",Ka," ["+u(n.meta.time)+"] ["+u(n.meta.inning)+u(n.meta.half==="top"?"上":"下")+"] ",1)):F("",!0),i("span",es,u(n.text),1),n.lines&&n.lines.length?(c(!0),h(L,{key:"lg-members"},O(n.lines,(ml,mi)=>(c(),h("div",{key:mi,class:"log-row__member",style:{paddingLeft:"22px",color:"#64748b",marginTop:"2px"}},[i("span",es,u(ml),1)]))),128)):F("",!0)],2))),128))],512),[[wt,fe.value==="timeline"]]),Re(i("div",ts,[Z.value.inningNumbers.length===0&&Z.value.unc.length===0?(c(),h("p",as,"暂无事件")):(c(),q(m,{
           key:1,modelValue:ie.value,"onUpdate:modelValue":t[2]||(t[2]=n=>ie.value=n),class:"pbp-half-inning-collapse"
         }
         ,{
