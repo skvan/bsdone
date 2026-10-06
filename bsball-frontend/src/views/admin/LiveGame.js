@@ -5434,7 +5434,7 @@ var sg={
     }
     let Ai=!1;
     function $a(e,t){
-      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
+      if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
       it.value||Ai||(Ai=!0,Wu(e),requestAnimationFrame(()=>{
         try{
           Yu(t,e)
@@ -5965,7 +5965,7 @@ var sg={
       (t.pointerType==="touch"&&t.moved||t.moved)&&e.preventDefault(),t.moved&&vp()
     }
     function gp(e,t){
-      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady()){
+      if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady()){
         warnFlowBusy(l.flow),t.preventDefault(),t.stopPropagation();
         return
       }
@@ -6145,10 +6145,10 @@ var sg={
         return
       }
       if(e.id==="out_tag"||e.id==="out_force"){
-        de(`拖拽-触杀或封杀[${s}>${r}]`),l.flow={
-          type:e.id==="out_tag"?"RUNNER_OUT_TAG":"RUNNER_OUT_FORCE",runner:a,runnerBase:s,outAtBase:r,outType:e.id==="out_tag"?"tag":"force"
+        de(`拖拽-触杀或封杀[${s}>${r}]`),clearChainVisual(),l.flow={
+          type:e.id==="out_tag"?"RUNNER_OUT_TAG":"RUNNER_OUT_FORCE",runner:a,runnerBase:s,outAtBase:r,outType:e.id==="out_tag"?"tag":"force",steps:[]
         }
-        ,J("请点击完成该出局的守备员");
+        ,J("请点击完成该出局的守备员（夹杀可继续点选记录多传）");
         return
       }
       if(e.id==="out_pk"){
@@ -6909,8 +6909,11 @@ var sg={
       if(e.type==="PK")return e.selectRunner?`投手牵制：${t}`:e.pkFailOptionsShown?"牵制失败后局面：":"牵制成功还是失败？";
       if(e.type==="PK_PE")return"牵制暴传：选择失误者，再选择目标垒";
       if(e.type==="DK3_FIELDER_PICK")return"漏接三振：请选择完成处理的守备员";
-      if(e.type==="RUNNER_OUT_TAG")return"点击触杀者";
-      if(e.type==="RUNNER_OUT_FORCE")return"点击封杀者";
+      if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
+        const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
+        if(C2.length>=hu)return`${Y2}出局：${nu(C2)}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
+        return C2.length===0?`点击${Y2}者`:`${Y2}出局：${nu(C2)}（已可完成）— 可继续点选记录夹杀多传（如 5-6-2），或点「完成记录」；开始下一动作也会自动收尾`
+      }
       if(e.type==="PICKOFF_OUT")return"牵制出局：点击接球触杀的守备员";
       if(e.type==="E"){
         const s=e.steps??[],r=s.length,p=Qd(s),g=ff(e);
@@ -8201,7 +8204,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ho.has(e.type)&&(Array.isArray(e.steps)||(e.steps=[]),e.required==null&&(e.required=us(e.type)))
     }
     function Vf(e){
-      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
+      if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
       it.value||(nextPitchCleanup(),wt(),Ha.value=null,aa.value=!0)
     }
     function wo(){
@@ -8212,7 +8215,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function Wf(e){
       const a=l.flow;
-      a&&CHAIN_TYPES.has(a.type)&&(a.steps?.length??0)>=(a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
+      a&&isChainFlow(a)&&(a.steps?.length??0)>=(a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
       if(l.flow){
         Ro("P",e);
         return
@@ -8466,6 +8469,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Ra=requestAnimationFrame(p)
     }
     const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP","F","L","TAG","SF"]);
+    const isChainFlow=e=>!!e&&(CHAIN_TYPES.has(e.type)||e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE");
     let chainAnimSeq=0;
     const chainTrail=x([]),chainHl=x(null);
     function ballTargetOf(e){
@@ -8512,7 +8516,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function syncChainVisualFromFlow(){
       clearChainVisual();
       const e=l.flow;
-      if(!e||!CHAIN_TYPES.has(e.type))return;
+      if(!e||!isChainFlow(e))return;
       const a=e.steps??[];
       if(!a.length)return;
       const s=e.bipSpray,t=s?.sprayX!=null&&s?.sprayY!=null?{
@@ -8529,7 +8533,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function settleChainIfReady(){
       const e=l.flow;
-      if(!e||!CHAIN_TYPES.has(e.type))return!1;
+      if(!e)return!1;
+      if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
+        if(!(e.steps?.length??0))return!1;
+        return settleRunnerOut(e),!0
+      }
+      if(!CHAIN_TYPES.has(e.type))return!1;
       const t=e.required??us(e.type);
       if((e.steps?.length??0)<t)return!1;
       const a=_i(e.steps),s=a[a.length-1];
@@ -8546,7 +8555,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,520)):clearChainVisual()
     }
     function warnFlowBusy(e){
-      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):J("请先完成或取消当前流程","warning")
+      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
     }
     function Bo(e,t,a,s){
       const r=s?.trim().toUpperCase();
@@ -8713,7 +8722,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return!!(l.needNextBatter||l.flow)
     }
     function $o(e){
-      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
+      if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady())return warnFlowBusy(l.flow),void 0;
       if(!it.value){
         nextPitchCleanup();
         if(nc(e)){
@@ -8813,17 +8822,28 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function cs(){
       setTimeout(()=>gt(),0)
     }
-    function ac(e){
-      const t=l.flow;
-      if(!t||!["RUNNER_OUT_TAG","RUNNER_OUT_FORCE"].includes(t.type)||!t.runner)return;
-      const a=t.runner,s=t.runnerBase,r=t.outAtBase??s,p=t.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",m=Vt(e);
-      de(p==="tag"?"触杀出局":"封杀出局"),Jl(),l.flow=null,l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,y+"出局").trim()),l.outs++,Ipy();
-      m?.stats?.fielding&&(m.stats.fielding.po=(m.stats.fielding.po??0)+1);
-      const b=LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,fielderCode:e,fielder:m,outsCum:1,total:l.outs});
-      D(b),l.outs>=3&&(is(void 0,{
+    function settleRunnerOut(e){
+      const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]);
+      de(p==="tag"?"触杀出局":"封杀出局"),Jl(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,y+"出局").trim()),l.outs++,Ipy(),Dn(C1);
+      const b=C1.length>1?LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
+      D(b),chainDone.value=ballTargetOf(C1[C1.length-1]),markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"
       }
       ),Je("THIRD_OUT",b),Qe())
+    }
+    function ac(e){
+      const t=l.flow;
+      if(!t||!["RUNNER_OUT_TAG","RUNNER_OUT_FORCE"].includes(t.type)||!t.runner)return;
+      Array.isArray(t.steps)||(t.steps=[]);
+      if(t.steps.length>=hu){
+        J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
+        return
+      }
+      const a={
+        x:Xn.value,y:Yn.value
+      }
+      ,s=ballTargetOf(e);
+      t.steps.push(e),t.steps.length===1?(ballAppearAt(s.x,s.y),markChainHl(s.x,s.y,!1)):s.x===a.x&&s.y===a.y?markChainHl(s.x,s.y,!0):(pushChainTrail(a,s),ballFlyTo(s.x,s.y,450),markChainHl(s.x,s.y,!1))
     }
     function lc(e){
       const t=l.flow;
@@ -9258,7 +9278,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.flow.runner=a,l.flow.runnerBase=0,l.flow.selectRunner=!1;
         return
       }
-      if(l.flow&&CHAIN_TYPES.has(l.flow.type)&&!settleChainIfReady()){
+      if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady()){
         warnFlowBusy(l.flow);
         return
       }
@@ -10246,7 +10266,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[76]||(t[76]=[Q("取消",-1)])]),_:1
         }
-        )],64)):c(l).flow?.type&&CHAIN_TYPES.has(c(l).flow.type)?(h(),C(me,{
+        )],64)):c(l).flow?.type&&isChainFlow(c(l).flow)?(h(),C(me,{
           key:"chain"
         }
         ,[(c(l).flow.steps?.length??0)>=(c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
