@@ -19,7 +19,7 @@ test('存在统一帮手 syncFieldingPitcher：fpId 落位 → ft → Ka → 换
   assert.match(body, /g\.value=Number\(P\.id\)/, '必须设置 fpId 为新投手');
   assert.match(body, /ft\(e\)/, '必须调用 ft 同步守备投手行');
   assert.match(body, /Ka\(\)/, '必须调用 Ka 刷新投手解析');
-  assert.match(body, /pc\(Y,P\.name\)/, '必须输出「投手 X 更换为 Y」日志');
+  assert.match(body, /pc\(Y,logPlayerName\(P\)\)/, '必须输出「投手 X 更换为 Y」日志（含背号）');
 });
 
 test('分支②（板凳替换+DH 制 P 位=换投）改调统一帮手且行为链保留', () => {
@@ -32,7 +32,7 @@ test('分支①（守备组互换）：涉及 P 时调用统一帮手（b 或对
   const body = pick('if(e.groupKey==="fielders"){', 'const w=m.findIndex');
   assert.match(body, /b==="P"\?"P"|b==="P"\?T:Y==="P"/, '须判定哪一侧为 P');
   assert.match(body, /P\?syncFieldingPitcher\(a,b==="P"\?t:T,P\)/, 'P 易主后须调用统一帮手（三元式保证非 P 互换不触发）');
-  assert.match(body, /fc\(b,t\.name,Y,Y,T\.name,b\)/, '互换标签与既有日志保持');
+  assert.match(body, /fc\(b,logPlayerName\(t\),Y,Y,logPlayerName\(T\),b\)/, '互换标签与既有日志保持（含背号）');
 });
 
 test('分支③（板凳替换非 DH 制 P 位）：以统一帮手替代单独 Ka()', () => {

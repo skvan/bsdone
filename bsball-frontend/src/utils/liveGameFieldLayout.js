@@ -112,7 +112,7 @@ var ut={
 };
 function M(e,t,n){
   const r=ut[e],s=t.trim()||"跑者";
-  return n===4?`${r} ${s} 回本垒得分`:n===e?`${r} ${s} 留在${C[n]}`:`${r} ${s} 进${C[n]}`
+  return n===4?`${r} ${s} 回本垒得分`:n===e?`${r} ${s} 留在${C[n]}`:`${r} ${s} 进${C[n]} — 安全`
 }
 function ft(e){
   const t=e.match(/^拖拽进垒 · (?:安全|出局) · (.+?)(?: — .*)?$/);

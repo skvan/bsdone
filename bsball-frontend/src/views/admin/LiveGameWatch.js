@@ -493,7 +493,7 @@ var Ta={
       const r=ve.value.filter(d=>d.inning===e&&d.half===t&&d.batterOrder===l);
       if(r.length){
         if(a.batterName){
-          const d=r.filter(m=>m.batterName===a.batterName);
+          const d=r.filter(m=>m.batterName===(a.batterName??"").replace(/\s*\(#\d+\)$/,""));
           if(d.length)return d[d.length-1]
         }
         return r[r.length-1]
