@@ -38,21 +38,22 @@ export function appendOuts(text, outsCum, total) {
   return s ? `${text}，${s}` : text;
 }
 
-/** C1/C2 安全进垒单行：{原因}：{jv垒}跑者 {名} (#N) {进X — 安全|回本垒得分|回到X|留在X} */
-export function advanceText({ reasonCn, runner, from, to }) {
+/** C1/C2 安全进垒单行：{原因}：{jv垒}跑者 {名} (#N) {进X — 安全|回本垒得分|回到X|留在X}（rbiNote 可选：#224 打点注记「{打者}：{N}打点」，仅得分分支追加）*/
+export function advanceText({ reasonCn, runner, from, to, rbiNote }) {
   const label = runnerLabel(from, runner);
   const verb = to === 4 ? "回本垒得分"
     : to === from ? `留在${BASE_CN[from] ?? ""}`
     : to < from ? `回到${BASE_CN[to] ?? ""}`
     : `进${BASE_CN[to] ?? ""} — 安全`;
-  return `${reasonCn}：${label} ${verb}`;
+  return `${reasonCn}：${label} ${verb}${to === 4 && rbiNote ? `（${rbiNote}）` : ""}`;
 }
 
-/** 出局单行：{原因}：{jv垒}跑者 {名} (#N) 于{垒}出局（{链|守备员}）[，累计] */
-export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielder, outsCum = 0, total = 0 }) {
+/** 出局单行：{原因}：{jv垒}跑者 {名} (#N) 于{垒}出局（{链|守备员}[，note]）[，累计]（note 可选：#223 如「接杀回传双杀 DP」）*/
+export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielder, note, outsCum = 0, total = 0 }) {
   const base = BASE_CN[to] ?? BASE_CN[from] ?? "";
-  const chainTxt = Array.isArray(chain) && chain.length ? `（${chain.join("-")}）`
+  const chainTxt = Array.isArray(chain) && chain.length ? `（${chain.join("-")}${note ? `，${note}` : ""}）`
     : fielder ? `（${POS_CN[fielderCode] ?? fielderCode} ${nameWithNumber(fielder, "守备员")}）`
+    : note ? `（${note}）`
     : "";
   return appendOuts(`${reasonCn}：${runnerLabel(from, runner)} 于${base}出局${chainTxt}`, outsCum, total);
 }

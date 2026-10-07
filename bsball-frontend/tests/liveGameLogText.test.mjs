@@ -50,7 +50,7 @@ test('P1/§228：牵制链（PICKOFF_OUT 三态）+ CS/触杀封杀归一', () =
   assert.match(src, /if\(e\.id==="out_pk"\)\{[\s\S]{0,160}?PICKOFF_OUT/, '拖拽「牵制出局」改走链');
   assert.match(src, /LgPickoff\(\{\s*\n\s*pitcher:Se\.value,runner:P1,from:P2,fielderCode:e,fielder:P0,chain:\["P",e\]/, '三行组生成（投手→守备→跑者）');
   assert.match(src, /LgCs\(\{fielderPos:/, '盗垒死归一（自X盗Y+累计）');
-  assert.match(src, /reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:e,fielder:m/, '触杀/封杀归一');
+  assert.match(src, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:C1\[0\],fielder:m,outsCum:1,total:l\.outs\}\)/, '触杀/封杀归一（H51 链化：单点带名经生成器）');
 });
 
 test('换投/互换/补位行：名字带背号（logPlayerName 统一）', () => {
@@ -69,11 +69,16 @@ test('击球出局行：守备位名 + 守备员名(背号)（Un2 注入名字�
   assert.match(src, /function Un\(u,f,g\)\{[\s\S]*?Array\.isArray\(g\)&&g\.length===l\.length\?g\.join\("→"\)/, 'Un 支持名字串（长度对齐保护）');
 });
 
-test('触身/触杀挂接（P1 归一）：ac() 经 LgOut 生成（名(背号)由生成器保证），单行无 Bt 双写', () => {
-  const i = src.indexOf('function ac(e){');
-  const body = src.slice(i, src.indexOf('D(b)', i));
-  assert.match(body, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:e,fielder:m/, '出局行经生成器（含跑者/守备员要素）');
+test('触身/触杀挂接（P1 归一 / H51 链化）：settleRunnerOut 经 LgOut 生成（单点带名+多传数字链），单行无 Bt 双写', () => {
+  const i = src.indexOf('function settleRunnerOut(e){');
+  assert.ok(i >= 0, 'settleRunnerOut 存在');
+  const body = src.slice(i, src.indexOf('function ac(e){', i));
+  assert.match(body, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:C1\[0\],fielder:m/, '出局行经生成器（单点带名）');
+  assert.match(body, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,chain:LgNum\(C1\)/, '多传链数字制（如 5-6-2）');
   assert.doesNotMatch(body, /Bt\(Gt\(/, '不得再经 Bt 双写日志');
+  const j = src.indexOf('function ac(e){');
+  const acBody = src.slice(j, src.indexOf('\n    function ', j + 25));
+  assert.ok(!/LgOut\(/.test(acBody), 'ac 为纯推链（完成记账归 settleRunnerOut）');
 });
 
 test('触身/四坏推进尾串：强制进垒规则（一垒无人时二垒跑者不生成 2B→3B）', () => {
@@ -91,7 +96,7 @@ test('评审回归：棒次注入带背号后，_f 匹配与 Watch 解析先归�
   assert.ok(watch.includes('(a.batterName??"").replace(/\\s*\\(#\\d+\\)$/,"")'), 'Watch $e 比较前同样剥离背号');
 });
 
-test('评审采纳（P1 更新）：ac() 归一走生成器；TAG 出局可用名字串', () => {
-  assert.match(src, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:e,fielder:m/, 'ac 行经生成器归一（名(背号)内联）');
+test('评审采纳（P1 更新 / H51 链化）：出局完成归 settleRunnerOut 走生成器；TAG 出局可用名字串', () => {
+  assert.match(src, /LgOut\(\{reasonCn:`\$\{y\}出局`,runner:a,from:s,to:r,fielderCode:C1\[0\],fielder:m,outsCum:1,total:l\.outs\}\)/, '出局完成经生成器归一（名(背号)内联）');
   assert.ok(src.includes('o||nu([S])'), 'TAG 分支优先名字串（缺省回退数字形态）');
 });

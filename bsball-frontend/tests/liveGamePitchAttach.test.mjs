@@ -22,7 +22,7 @@ test('Qr()：playEvent 组装后立即清空悬挂得分列表（防决策重复
 });
 
 test('wp() 回本垒分支：「上一棒内推进」族挂接 ER 决策（origin=NORMAL）', () => {
-  const body = pick('function wp(e,t,a,s,r){', 'function fr(e){');
+  const body = pick('function wp(e,t,a,s,r,rbiNote){', 'function fr(e){');
   assert.match(body, /addLivePitcherEarnedRuns\(p\),Nd\(r\)&&ls\(1,\{runner:e,pitcher:p,erDelta:1,origin:"NORMAL"\}\)/,
     '回本垒分支须以 Nd(r) 判定「上一棒内推进」族并 ls 挂接');
   assert.match(body, /const p=Se\.value/, '当前投手来源仍为 Se.value');
