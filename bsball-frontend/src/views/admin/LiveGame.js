@@ -8640,7 +8640,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=e.required??us(e.type);
       if((e.steps?.length??0)<t)return!1;
       const a=_i(e.steps),s=a[a.length-1];
-      return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainDone.value=ballTargetOf(s),markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+      return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
     }
     let chainClearTimer=null;
     function nextPitchCleanup(){
@@ -8924,7 +8924,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]);
       de(p==="tag"?"触杀出局":"封杀出局"),Jl(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,y+"出局").trim()),l.outs++,Ipy(),Dn(C1);
       const b=C1.length>1?LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
-      D(b),chainDone.value=ballTargetOf(C1[C1.length-1]),markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
+      D(b),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(C1[C1.length-1]),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"
       }
       ),Je("THIRD_OUT",b),Qe())
