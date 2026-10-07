@@ -1,4 +1,4 @@
-// P2 批次1 回归断言（#223 接杀回传双杀 / #224 RBI 打点注记）
+// P2 批次1 回归断言（#223 接杀回传 / #224 RBI 打点注记）
 // 运行：node --test tests/liveGameLogTextsP2.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,14 +22,14 @@ test('advanceText：#224 打点注记（rbiNote 仅 to=4 得分分支生效）',
   );
 });
 
-test('outText：#223 接杀回传双杀注记（链内融合 / 无链兜底 / 无 note 不回归）', () => {
+test('outText：#223 接杀回传注记（链内融合 / 无链兜底 / 无 note 不回归）', () => {
   assert.equal(
-    outText({ reasonCn: '离垒过远出局', runner: { name: '李四', number: 21 }, from: 2, to: 2, chain: ['1', '6'], note: '接杀回传双杀 DP', outsCum: 2, total: 2 }),
-    '离垒过远出局：二垒跑者 李四 (#21) 于二垒出局（1-6，接杀回传双杀 DP），本棒次2人出局，已累计2人出局'
+    outText({ reasonCn: '离垒过远出局', runner: { name: '李四', number: 21 }, from: 2, to: 2, chain: ['1', '6'], note: '接杀回传', outsCum: 2, total: 2 }),
+    '离垒过远出局：二垒跑者 李四 (#21) 于二垒出局（1-6，接杀回传），本棒次2人出局，已累计2人出局'
   );
   assert.equal(
-    outText({ reasonCn: '离垒过远出局', runner: { name: '李四', number: 21 }, from: 2, to: 2, note: '接杀回传双杀 DP', outsCum: 1, total: 1 }),
-    '离垒过远出局：二垒跑者 李四 (#21) 于二垒出局（接杀回传双杀 DP），本棒次1人出局，已累计1人出局'
+    outText({ reasonCn: '离垒过远出局', runner: { name: '李四', number: 21 }, from: 2, to: 2, note: '接杀回传', outsCum: 1, total: 1 }),
+    '离垒过远出局：二垒跑者 李四 (#21) 于二垒出局（接杀回传），本棒次1人出局，已累计1人出局'
   );
   assert.equal(
     outText({ reasonCn: '离垒过远出局', runner: { name: '李四', number: 21 }, from: 2, to: 2, outsCum: 1, total: 1 }),
@@ -47,9 +47,9 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
   assert.match(src, /if\(a\?\.type==="CATCH_BACK_DP"\)\{/, 'Ro 完成分支');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP"].includes'), 'mf 集合含新类型');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP","G"'), 'bf 集合含新类型');
-  assert.ok(src.includes('CATCH_BACK_DP")return"接杀回传双杀：点击回踩垒守备员"'), '流程提示文案');
+  assert.ok(src.includes('CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员"'), '流程提示文案（去双杀）');
   assert.match(src, /Dn\(cbChain\)/, 'Dn 记账（A=链首接杀者 / PO=链末踩垒者）');
-  assert.match(src, /note:"接杀回传双杀 DP"/, 'outText note 注入');
+  assert.match(src, /note:"接杀回传"/, 'outText note 注入（去 DP 字样）');
 });
 
 test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账缺口）', () => {
@@ -62,4 +62,17 @@ test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账
   assert.match(src, /wp\(a,s,r,e\.cn,e\.id,rbiWho\?/, 'wp 注记注入');
   assert.match(src, /fc_forced\[3\]\?\(D\(LgAdvance\(\{\r?\n\s+reasonCn:"野选推进得分",runner:fc_old\[3\],from:3,to:4,rbiNote:/, 'fcApply 被迫得分：先落文本（含打点注记）');
   assert.match(src, /\)\),Ct\(1\),r\.stats\.batting\.rbi=/, '随后 Ct(1)+RBI 记账');
+});
+
+test('LiveGame.js：双杀/三杀显示条件按强迫进垒口径 + 接杀回传去 DP 字样（2026-10-07 口径修正）', () => {
+  assert.match(src, /Be=\$\(\(\)=>Number\(_\.currentOuts\?\?0\)<2&&!!_\.firstBaseOccupied\)/, '双杀=出局<2且一垒有人');
+  assert.match(src, /oe=\$\(\(\)=>Number\(_\.currentOuts\?\?0\)===0&&!!_\.firstBaseOccupied&&!!_\.secondBaseOccupied\)/, '三杀=出局=0且一二垒均有人');
+  assert.ok(src.includes('currentOuts:{'), 'props 新增 currentOuts');
+  assert.ok(src.includes('firstBaseOccupied:{'), 'props 新增 firstBaseOccupied');
+  assert.ok(src.includes('secondBaseOccupied:{'), 'props 新增 secondBaseOccupied');
+  assert.ok(src.includes('"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2]'), '父组件传参（出局数/一垒/二垒占用）');
+  assert.ok(src.includes('"current-outs","first-base-occupied","second-base-occupied"'), 'patchFlag 动态数组同步');
+  assert.ok(!src.includes('接杀回传如造成跑者出局'), '防漏账旧提示已删除');
+  assert.ok(!src.includes('接杀回传双杀'), '源码不再含「接杀回传双杀」字样');
+  assert.ok(src.includes('J("请点击回传踩垒的守备员（接杀回传）")'), '回传提示文案去双杀');
 });

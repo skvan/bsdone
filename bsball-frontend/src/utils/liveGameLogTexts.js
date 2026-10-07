@@ -48,7 +48,7 @@ export function advanceText({ reasonCn, runner, from, to, rbiNote }) {
   return `${reasonCn}：${label} ${verb}${to === 4 && rbiNote ? `（${rbiNote}）` : ""}`;
 }
 
-/** 出局单行：{原因}：{jv垒}跑者 {名} (#N) 于{垒}出局（{链|守备员}[，note]）[，累计]（note 可选：#223 如「接杀回传双杀 DP」）*/
+/** 出局单行：{原因}：{jv垒}跑者 {名} (#N) 于{垒}出局（{链|守备员}[，note]）[，累计]（note 可选：#223 如「接杀回传」）*/
 export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielder, note, outsCum = 0, total = 0 }) {
   const base = BASE_CN[to] ?? BASE_CN[from] ?? "";
   const chainTxt = Array.isArray(chain) && chain.length ? `（${chain.join("-")}${note ? `，${note}` : ""}）`
