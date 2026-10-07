@@ -1586,6 +1586,9 @@ var hm=["aria-label"],ym={
     ,secondBaseOccupied:{
       type:Boolean,default:!1
     }
+    ,runnerOnThird:{
+      type:Boolean,default:!1
+    }
     
   }
   ,emits:["close","command","undo"],setup(u,{
@@ -2751,7 +2754,22 @@ var hm=["aria-label"],ym={
       ,"›",-1))]),i[239]||(i[239]=n("div",{
         class:"lgpfm__sep"
       }
-      ,null,-1)),n("button",{
+      ,null,-1)),u.runnerOnThird?(h(),C("button",{
+        key:3,type:"button",class:"lgpfm__item",onClick:i[307]||(i[307]=k=>I("bip:fly:sf"))
+      }
+      ,[v(B,{
+        variant:c(o)("bip:fly:sf")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"牺牲高飞打（SF）"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Sacrifice Fly")])])):W("",!0),n("button",{
         type:"button",class:"lgpfm__item",onClick:i[66]||(i[66]=k=>I("bip:fly:1b"))
       }
       ,[v(B,{
@@ -3318,7 +3336,22 @@ var hm=["aria-label"],ym={
       ,"Sac Bunt (Safe)")],-1)),i[267]||(i[267]=n("span",{
         class:"lgpfm__more"
       }
-      ,"›",-1))])):W("",!0),n("button",{
+      ,"›",-1))])):W("",!0),he.value?(h(),C("button",{
+        key:4,type:"button",class:"lgpfm__item",onClick:i[308]||(i[308]=k=>I("bip:b:sh"))
+      }
+      ,[v(B,{
+        variant:c(o)("bip:b:sh")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"牺牲触击（SH）"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Sacrifice Bunt")])])):W("",!0),n("button",{
         type:"button",class:"lgpfm__item",onClick:i[103]||(i[103]=k=>I("bip:b:1b"))
       }
       ,[v(B,{
@@ -8834,6 +8867,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return;
         case"bip:g:iphr":case"bip:hg:iphr":case"bip:fly:iphr":case"bip:ld:iphr":case"bip:b:iphr":case"bip:pop:iphr":t("IPHR");
         return;
+        case"bip:fly:sf":Yt(e,"SF");
+        return;
+        case"bip:b:sh":Yt(e,"SH");
+        return;
         case"bip:g:fc":case"bip:hg:fc":case"bip:fly:fc":case"bip:ld:fc":case"bip:b:fc":case"bip:pop:fc":rt("FC");
         return;
         case"bip:g:e":case"bip:hg:e":case"bip:fly:e":case"bip:ld:e":case"bip:b:e":case"bip:pop:e":case"bip:fly:sac:e":case"bip:ld:sac:e":case"bip:b:sac:e":case"bip:pop:sac:e":rt("E");
@@ -11375,9 +11412,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,8,["records"])]),_:1
       }
       ,8,["modelValue","style"]),v(zm,{
-        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,onClose:gt,onUndo:Kf,onCommand:$o
+        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"runner-on-third":!!l.runners[3],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,onClose:gt,onUndo:Kf,onCommand:$o
       }
-      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
+      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"show-append-button":!0,"append-button-label":"追加新球员","block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc,onAppend:t[56]||(t[56]=d=>oc(ia.value))
       }
       ,null,8,["visible","title","prompt","groups","center-offset-x"])])
