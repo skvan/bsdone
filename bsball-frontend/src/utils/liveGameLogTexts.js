@@ -105,3 +105,57 @@ export function fcGroup({ batter, ballDesc, chain = [], chainPlayers = [], outRu
   lines.push(`${batter?.name ?? "打者"}: 上${BASE_CN[batterTo] ?? "一垒"}（${reasonCn}）`);
   return { lines };
 }
+
+// ===== P2 批次2（模板收敛·纯迁移）：投球/换人/特例行（输出与既有文案逐字一致） =====
+
+/** A 组投球行：{主体}: {文案}[ {计数}]；kind 语义见 LABELS（balk_ball 为「投手犯规（记坏球 X）」特例） */
+export function pitchText({ who, kind, count }) {
+  if (kind === "balk_ball") return `${who}: 投手犯规（记坏球 ${count}）`;
+  if (kind === "foul_k") return `${who}: 击出界外球（两好球后界外三振）${count}`;
+  const LABELS = {
+    ball: "坏球",
+    strike_called: "好球",
+    strike_swing: "挥空",
+    strikeout_called: "第三好球（判进）",
+    strikeout_swing: "第三好球（挥空）",
+    strikeout_dropped: "第三好球（漏接三振）",
+    foul: "击出界外球",
+    hit_by_pitch: "触身球",
+    balk: "投手犯规",
+    wild_pitch: "暴投 (WP)",
+    passed_ball: "捕逸 (PB)",
+    walk: "四坏保送"
+  };
+  const base = LABELS[kind] ?? kind;
+  return `${who}: ${base}${count ? ` ${count}` : ""}`;
+}
+
+/** A12 教练暂停：教练暂停：{方队名}（缺省 进攻方） */
+export function coachTimeoutText(teamName) {
+  return `教练暂停：${teamName ?? "进攻方"}`;
+}
+
+/** E1 换人：换人: 代跑/代打 {入} 换下 {出}（P2b 纯迁移保留现用词） */
+export function subText({ kind, inName, outName }) {
+  return `换人: ${kind === "hit" ? "代打" : "代跑"} ${inName} 换下 ${outName}`;
+}
+
+/** E2 垒况设置：设置跑者: {名} -> {垒名} */
+export function setRunnerText({ name, baseCn }) {
+  return `设置跑者: ${name} -> ${baseCn}`;
+}
+
+/** C3 牵制·未造成进垒/出局：投手 {名} (#N): 牵制{垒}（未造成进垒/出局） */
+export function pickoffNoneText({ pitcher, base }) {
+  return `投手 ${nameWithNumber(pitcher, "跑者")}: 牵制${BASE_CN[base] ?? ""}（未造成进垒/出局）`;
+}
+
+/** B4 野选推进·未得分：野选推进 · {名} (#N) {判定} — 未得分（保留 #- 降级形态） */
+export function fpMissText({ runner, verdict }) {
+  return `野选推进 · ${runner?.name} (#${runner?.number ?? "-"}) ${verdict} — 未得分`;
+}
+
+/** B6 界外球+失误：界外球+失误：{链串|守备失误} */
+export function foulErrorText({ chainText }) {
+  return `界外球+失误：${chainText || "守备失误"}`;
+}

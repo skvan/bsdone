@@ -49,7 +49,7 @@ import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr } from '../../utils/liveGameLogTexts';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -5820,7 +5820,7 @@ var sg={
       }
       ),addLivePitcherEarnedRuns(s),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,D(LgAdvance({
           reasonCn:"野选推进得分",runner:p,from:3,to:4,rbiNote:`${a.name??"打者"}：1打点`
-        }))):(Bt(Gt(p,"野选本垒出局")),m=1,D(`野选推进 · ${p.name} (#${p.number??"-"}) ${g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"} — 未得分`))),ni(a,e.outsToAdd);
+        }))):(Bt(Gt(p,"野选本垒出局")),m=1,D(LgFpMiss({runner:p,verdict:g==="out_int"?"妨碍守备出局 (Int.)":g==="out_force"?"封杀出局 (FO)":g==="out_tag"?"触杀出局 (TO)":"本垒出局 (Out)"})))),ni(a,e.outsToAdd);
       const y=Math.max(0,e.outsToAdd-m),b=e.playType==="FC"?"野选出局":e.playType==="DP"?"双杀出局":"三杀出局";
       os(y,Gt(a,b),b,{
         pbp:!1
@@ -6121,7 +6121,7 @@ var sg={
         }
         ],"投手牵制","请选择牵制结果（未造成进垒·出局 / 牵制出局 / 暴传失误推进）：").then(pk=>{
           if(pk==="none"){
-            D(`投手 ${logPlayerName(Se.value)}: 牵制${{1:"一垒",2:"二垒",3:"三垒"}[s]??""}（未造成进垒/出局）`);
+            D(LgPickoffNone({pitcher:Se.value,base:s}));
             return
           }
           if(pk==="out"){
@@ -8032,42 +8032,42 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Ea();
       const a=t?.name??"投手";
       if(e==="B"){
-        if(l.balls++,l.balls>=4)return D(`${a}: 四坏保送`),bt("BB",[]);
-        D(`${a}: 坏球 ${_n(l.balls,l.strikes)}`)
+        if(l.balls++,l.balls>=4)return D(LgPitch({who:a,kind:"walk"})),bt("BB",[]);
+        D(LgPitch({who:a,kind:"ball",count:_n(l.balls,l.strikes)}))
       }
       else if(e==="S"){
         if(l.strikes++,l.strikes>=3){
-          D(`${a}: 第三好球（判进） ${_n(l.balls,l.strikes)}`),l.flow={
+          D(LgPitch({who:a,kind:"strikeout_called",count:_n(l.balls,l.strikes)})),l.flow={
             type:"K_CHOOSE"
           }
           ,J("第三好球：请选择三振类型","info");
           return
         }
-        D(`${a}: 好球 ${_n(l.balls,l.strikes)}`)
+        D(LgPitch({who:a,kind:"strike_called",count:_n(l.balls,l.strikes)}))
       }
       else if(e==="SM"){
         l.strikes++;
         const s=be.value?.name??"击球员";
         if(l.strikes>=3){
-          D(`${s}: 第三好球（挥空） ${_n(l.balls,l.strikes)}`),l.flow={
+          D(LgPitch({who:s,kind:"strikeout_swing",count:_n(l.balls,l.strikes)})),l.flow={
             type:"K_CHOOSE"
           }
           ,J("第三好球：请选择三振类型","info");
           return
         }
-        D(`${s}: 挥空 ${_n(l.balls,l.strikes)}`)
+        D(LgPitch({who:s,kind:"strike_swing",count:_n(l.balls,l.strikes)}))
       }
       else if(e==="F"){
         if(N.value==="SOFTBALL"&&l.strikes>=2){
-          l.strikes++,D(`${be.value?.name??"击球员"}: 击出界外球（两好球后界外三振）${_n(l.balls,l.strikes)}`),l.flow={
+          l.strikes++,D(LgPitch({who:be.value?.name??"击球员",kind:"foul_k",count:_n(l.balls,l.strikes)})),l.flow={
             type:"K_CHOOSE"
           }
           ,J("第三好球（界外球）：请选择三振类型","info");
           return
         }
-        l.strikes<2&&l.strikes++,D(`${be.value?.name??"击球员"}: 击出界外球 ${_n(l.balls,l.strikes)}`)
+        l.strikes<2&&l.strikes++,D(LgPitch({who:be.value?.name??"击球员",kind:"foul",count:_n(l.balls,l.strikes)}))
       }
-      else if(e==="HBP")return D(`${a}: 触身球`),bt("HBP",[])
+      else if(e==="HBP")return D(LgPitch({who:a,kind:"hit_by_pitch"})),bt("HBP",[])
     }
     function Hf(){
       l.abCatchRecorded=null;
@@ -8117,7 +8117,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       l.flow?.type==="K_CHOOSE"&&(wt(),Ha.value=["root","dropped_3rd"],aa.value=!0)
     }
     function Uf(){
-      l.isGameEnd||(de("教练暂停"),D(`教练暂停：${(l.isTop?At:xt).value?.name??"进攻方"}`),gt())
+      l.isGameEnd||(de("教练暂停"),D(LgCoach((l.isTop?At:xt).value?.name)),gt())
     }
     function Xt(e){
       if(["OBST","SB","CS","PK","ADVANCE_FE"].includes(e)&&Ut()===0){
@@ -8169,18 +8169,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         t?.stats?.pitching&&(t.stats.pitching.bk=(t.stats.pitching.bk??0)+1);
         if(Ut()>0){
           const s=ca();
-        D(`${a}: 投手犯规`,s??void 0),ai({resultCode:"BK",resultText:`${a}: 投手犯规`})
+        D(LgPitch({who:a,kind:"balk"}),s??void 0),ai({resultCode:"BK",resultText:`${a}: 投手犯规`})
         }
-        else if(l.balls++,D(`${a}: 投手犯规（记坏球 ${_n(l.balls,l.strikes)}）`),l.balls>=4)return l.flow=null,bt("BB",[]);
+        else if(l.balls++,D(LgPitch({who:a,kind:"balk_ball",count:_n(l.balls,l.strikes)})),l.balls>=4)return l.flow=null,bt("BB",[]);
         l.flow=null
       }
       else if(e==="WP"){
         const s=ca();
-        D(`${a}: 暴投 (WP)`,s??void 0),ai({resultCode:"WP",resultText:`${a}: 暴投 (WP)`}),t?.stats?.pitching&&(t.stats.pitching.wp=(t.stats.pitching.wp??0)+1),l.flow=null
+        D(LgPitch({who:a,kind:"wild_pitch"}),s??void 0),ai({resultCode:"WP",resultText:`${a}: 暴投 (WP)`}),t?.stats?.pitching&&(t.stats.pitching.wp=(t.stats.pitching.wp??0)+1),l.flow=null
       }
       else if(e==="PB"){
         const s=Vt("C"),r=ca();
-        D(`${s?.name??"捕手"}: 捕逸 (PB)`,r??void 0),ai({resultCode:"PB",origin:"PASSED_BALL",resultText:`${s?.name??"捕手"}: 捕逸 (PB)`}),l.flow=null
+        D(LgPitch({who:s?.name??"捕手",kind:"passed_ball"}),r??void 0),ai({resultCode:"PB",origin:"PASSED_BALL",resultText:`${s?.name??"捕手"}: 捕逸 (PB)`}),l.flow=null
       }
       
     }
@@ -8293,7 +8293,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(l.strikes===2){
         l.hasPitchThisAB=!0,Ea();
         const e=dn();
-        l.strikes=3,D(`${e?.name??"投手"}: 第三好球（漏接三振）`)
+        l.strikes=3,D(LgPitch({who:e?.name??"投手",kind:"strikeout_dropped"}))
       }
       
     }
@@ -8303,11 +8303,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(ue(s),ue(r??void 0),s.stats.batting.so=(s.stats.batting.so??0)+1,s.stats.batting.ab=(s.stats.batting.ab??0)+1,t?s.stats.batting.so_looking=(s.stats.batting.so_looking??0)+1:s.stats.batting.so_swing=(s.stats.batting.so_swing??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchSo=(r.stats.pitching.pitchSo??0)+1),e){
         r?.stats?.pitching&&(r.stats.pitching.wp=(r.stats.pitching.wp??0)+1);
         const w=ca();
-        D(`${r?.name??"投手"}: 暴投 (WP)`,w??void 0)
+        D(LgPitch({who:r?.name??"投手",kind:"wild_pitch"}),w??void 0)
       }
       else{
         const w=Vt("C"),P=ca();
-        D(`${w?.name??"捕手"}: 捕逸 (PB)`,P??void 0)
+        D(LgPitch({who:w?.name??"捕手",kind:"passed_ball"}),P??void 0)
       }
       const p=lg(l.runners,s);
       ti(),l.runners[1]=s,Ge(p),l.balls=0,l.strikes=0;
@@ -8962,7 +8962,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           const a=Vt(t);
           a?.stats?.fielding&&(a.stats.fielding.e=(a.stats.fielding.e??0)+1)
         }
-        D(`界外球+失误：${e.steps.map(t=>It[t]??t).join("→")||"守备失误"}`),l.flow=null,pt();
+        D(LgFoulErr({chainText:e.steps.map(t=>It[t]??t).join("→")})),l.flow=null,pt();
         return
       }
       bt("E",[...e.steps],Sr(e)),l.flow=null,pt()
@@ -9336,7 +9336,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.runners[b]={
           ...P,position:""
         }
-        ,ri(a),D(`换人: 代跑 ${P.name} 换下 ${t.name}`),Kt();
+        ,ri(a),D(LgSub({kind:"run",inName:P.name,outName:t.name})),Kt();
         return
       }
       if(mt.value==="pinchHit"){
@@ -9352,7 +9352,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         P>=0&&_r(a,P,t.id),P>=0&&(y[P]={
           ...w,position:t.position,stats:w.stats
         }
-        ),ri(a),D(`换人: 代打 ${w.name} 换下 ${t.name}`),Kt();
+        ),ri(a),D(LgSub({kind:"hit",inName:w.name,outName:t.name})),Kt();
         return
       }
       if(mt.value==="setRunner"){
@@ -9370,7 +9370,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.runners[b]={
           ...w,position:""
         }
-        ,D(`设置跑者: ${w.name} -> ${fi(b)}`),Kt();
+        ,D(LgSetRunner({name:w.name,baseCn:fi(b)})),Kt();
         return
       }
       
