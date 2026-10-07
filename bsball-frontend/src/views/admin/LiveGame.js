@@ -8975,7 +8975,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return
         }
         const P1=a.runner,P2=a.runnerBase;
-        l.flow=null,Jl(),l.runners[P2]=null,yl(P1.id??P1.name??"?",P2,P2+1),l.halfInningOuts.push(Gt(P1,"牵制出局").trim()),l.outs++,Ipy();
+        l.flow=null,Jl(),pt(),l.runners[P2]=null,yl(P1.id??P1.name??"?",P2,P2+1),l.halfInningOuts.push(Gt(P1,"牵制出局").trim()),l.outs++,Ipy();
         P0.stats?.fielding&&(P0.stats.fielding.po=(P0.stats.fielding.po??0)+1);
         const P3=LgPickoff({
           pitcher:Se.value,runner:P1,from:P2,fielderCode:e,fielder:P0,chain:["P",e],outsCum:1,total:l.outs
@@ -9006,7 +9006,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const p=Vt(e);
         p?.stats?.fielding&&(p.stats.fielding.po=(p.stats.fielding.po??0)+1);
         const g=LgCs({fielderPos:It[e]??e,runner:a.runner,from:a.runnerBase??1,to:s,outsCum:1,total:l.outs});
-        D(g),l.flow=null,l.outs>=3&&(Je("THIRD_OUT",g),Qe());
+        D(g),l.flow=null,pt(),l.outs>=3&&(Je("THIRD_OUT",g),Qe());
         return
       }
       if(a&&!a.selectRunner&&a.type==="E"){
