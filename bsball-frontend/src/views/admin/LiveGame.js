@@ -1573,6 +1573,15 @@ var hm=["aria-label"],ym={
     ,runnerCountOnBase:{
       default:0
     }
+    ,currentOuts:{
+      default:0
+    }
+    ,firstBaseOccupied:{
+      type:Boolean,default:!1
+    }
+    ,secondBaseOccupied:{
+      type:Boolean,default:!1
+    }
     
   }
   ,emits:["close","command","undo"],setup(u,{
@@ -1581,7 +1590,7 @@ var hm=["aria-label"],ym={
   ){
     const l="/bs-ball/icons/baseball-color.svg",o=Fu,_=u,S=f,R=x(["root"]),F=x(!1);
     let N=null,K=0;
-    const M=$(()=>R.value[R.value.length-1]??"root"),Le=$(()=>R.value.length>1),he=$(()=>Number(_.runnerCountOnBase??0)>=1),Be=$(()=>Number(_.runnerCountOnBase??0)>=2),oe=$(()=>Number(_.runnerCountOnBase??0)>=3),q=bi(_,"centerOffsetX"),{
+    const M=$(()=>R.value[R.value.length-1]??"root"),Le=$(()=>R.value.length>1),he=$(()=>Number(_.runnerCountOnBase??0)>=1),Be=$(()=>Number(_.currentOuts??0)<2&&!!_.firstBaseOccupied),oe=$(()=>Number(_.currentOuts??0)===0&&!!_.firstBaseOccupied&&!!_.secondBaseOccupied),q=bi(_,"centerOffsetX"),{
       panelStyle:X,dragCursorClass:ye,bindPanel:ae,onHeaderMouseDown:O,onHeaderDblClick:te
     }
     =Tu("pitch-menu",bi(_,"visible"),q),De={
@@ -6185,7 +6194,7 @@ var sg={
         de(`拖拽-出局[${s}>${r}]`),l.flow={
           type:"CATCH_BACK_DP",runner:a,runnerBase:s,outAtBase:r,catchPos:l.abCatchRecorded.pos??"P"
         }
-        ,J("请点击回传踩垒的守备员（接杀回传双杀）");
+        ,J("请点击回传踩垒的守备员（接杀回传）");
         return
       }
       de(`拖拽-出局[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"出局").trim()),l.outs++,Ipy();
@@ -6939,7 +6948,7 @@ var sg={
         return C2.length===0?`点击${Y2}者`:`${Y2}出局：${nu(C2)}（已可完成）— 可继续点选记录夹杀多传（如 5-6-2），或点「完成记录」；开始下一动作也会自动收尾`
       }
       if(e.type==="PICKOFF_OUT")return"牵制出局：点击接球触杀的守备员";
-      if(e.type==="CATCH_BACK_DP")return"接杀回传双杀：点击回踩垒守备员";
+      if(e.type==="CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员";
       if(e.type==="E"){
         const s=e.steps??[],r=s.length,p=Qd(s),g=ff(e);
         return e.errorMode==="foul_error"?r===0?"界外球+失误：点击失误责任守备员，完成后点「完成记录」":`界外球+失误：已选 ${p}；可继续点守备添加或点「完成记录」`:r===0?`${g}点击失误责任守备员（可多选），完成后点「完成记录」`:`${g}已选 ${p}；可继续点守备添加，或点「完成记录」`
@@ -9062,7 +9071,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.flow=null,Jl(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
         const cbChain=[a.catchPos??"P",e];
         Dn(cbChain);
-        const cbTxt=LgOut({reasonCn:"离垒过远出局",runner:Q1,from:Q2,to:a.outAtBase??Q2,chain:LgNum(cbChain),note:"接杀回传双杀 DP",outsCum:1,total:l.outs});
+        const cbTxt=LgOut({reasonCn:"离垒过远出局",runner:Q1,from:Q2,to:a.outAtBase??Q2,chain:LgNum(cbChain),note:"接杀回传",outsCum:1,total:l.outs});
         D(cbTxt),l.abCatchRecorded=null,l.outs>=3&&(Je("THIRD_OUT",cbTxt),Qe());
         return
       }
@@ -9105,7 +9114,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,r=ballTargetOf(e)
         ,C0=a.steps.length;
-        a.steps.push(e),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),ru.has(a.type)&&C0===1&&J("接杀回传如造成跑者出局（双杀），请取消后改用「双杀」类型记录","warning")
+        a.steps.push(e),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
       }
       else if(!a){
         if(nn.value)return;
@@ -11285,9 +11294,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,8,["records"])]),_:1
       }
       ,8,["modelValue","style"]),v(zm,{
-        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,onClose:gt,onUndo:Kf,onCommand:$o
+        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,onClose:gt,onUndo:Kf,onCommand:$o
       }
-      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
+      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"show-append-button":!0,"append-button-label":"追加新球员","block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc,onAppend:t[56]||(t[56]=d=>oc(ia.value))
       }
       ,null,8,["visible","title","prompt","groups","center-offset-x"])])
