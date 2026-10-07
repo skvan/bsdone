@@ -11,6 +11,7 @@
 .chain-trail--l2[data-v-78b7b6a8]{opacity:.44;stroke-width:1.9}
 .chain-trail--l3[data-v-78b7b6a8]{opacity:.3;stroke-width:1.7}
 .chain-trail--l4[data-v-78b7b6a8]{opacity:.22;stroke-width:1.6}
+.batted-trail[data-v-78b7b6a8]{stroke:#38bdf8;fill:none;stroke-width:1.7;stroke-linecap:round;opacity:.85;pointer-events:none}
 .chain-hl-ring[data-v-78b7b6a8]{fill:none;stroke:#ffd24d;stroke-width:2.6;pointer-events:none;transform-box:fill-box;transform-origin:center;animation:chainHlPulse78b7 .55s ease-out}
 .lgb-done-badge[data-v-78b7b6a8]{pointer-events:none;animation:chainDoneFade78b7 .25s ease-out}
 @keyframes chainDoneFade78b7{0%{opacity:0}100%{opacity:1}}

@@ -8504,17 +8504,51 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const w=eu(y,b);
       fs(w,y,b,tu(b,w),Bo(y,b,w))
     }
-    function Zf(e,t){
-      Ra!==0&&(cancelAnimationFrame(Ra),Ra=0),yi.value=e,wn.value=t,ln.value=.8,ka.value=!0,Xn.value=240,Yn.value=555,Js=performance.now();
-      const a=240,s=555,r=ln.value*1e3;
-      function p(g){
-        const m=g-Js,y=Math.min(m/r,1),b=1-Math.pow(1-y,3);
-        Xn.value=a+(e-a)*b,Yn.value=s+(t-s)*b,y<1?Ra=requestAnimationFrame(p):setTimeout(()=>{
-          ka.value=!1
-        }
-        ,200)
+    const BAT_SHAPES={
+      g:[0,450],hg:[0,450],b:[0,450],ld:[.14,600],fly:[.32,850],pop:[.32,700]
+    }
+    ,battedTrail=x(null);
+    function battedShapeOf(e){
+      const t=BAT_SHAPES[Ls(e??"")??""]??[.14,600];
+      return {
+        k:t[0],ms:t[1]
       }
-      Ra=requestAnimationFrame(p)
+    }
+    function battedGeo(e,t,a){
+      return {
+        cx:(240+e)/2,cy:(555+t)/2-Math.max(0,a)*Math.hypot(e-240,t-555)
+      }
+    }
+    function battedFlyTo(e,t,a,s){
+      const r=battedShapeOf(a),p=battedGeo(e,t,r.k),g=++chainAnimSeq,m=performance.now(),y=q=>r.k===0?{
+        x:240+(e-240)*q,y:555+(t-555)*q
+      }
+      :{
+        x:(1-q)*(1-q)*240+2*(1-q)*q*p.cx+q*q*e,y:(1-q)*(1-q)*555+2*(1-q)*q*p.cy+q*q*t
+      }
+      ,b=q=>{
+        const w=y(q);
+        return r.k===0?`M 240 555 L ${w.x} ${w.y}`:`M 240 555 Q ${240+(p.cx-240)*q} ${555+(p.cy-555)*q} ${w.x} ${w.y}`
+      };
+      Xn.value=240,Yn.value=555,ka.value=!0,(function w(q){
+        if(g!==chainAnimSeq){
+          battedTrail.value&&(battedTrail.value={
+            d:b(1)
+          });
+          return
+        }
+        const x=Math.min((q-m)/r.ms,1),k=1-Math.pow(1-x,3),C0=y(k);
+        Xn.value=C0.x,Yn.value=C0.y,battedTrail.value={
+          d:b(k)
+        },x<1?requestAnimationFrame(w):(battedTrail.value={
+          d:b(1)
+        }
+        ,s||setTimeout(()=>{
+          g===chainAnimSeq&&(ka.value=!1)
+        }
+        ,200))
+      }
+      )(performance.now())
     }
     const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP","F","L","TAG","SF"]);
     const isChainFlow=e=>!!e&&(CHAIN_TYPES.has(e.type)||e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE");
@@ -8559,12 +8593,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     const chainDone=x(null);
     function clearChainVisual(){
-      chainAnimSeq+=1,chainTrail.value=[],chainHl.value=null,chainDone.value=null,ka.value=!1
+      chainAnimSeq+=1,chainTrail.value=[],chainHl.value=null,chainDone.value=null,battedTrail.value=null,ka.value=!1
     }
     function syncChainVisualFromFlow(){
       clearChainVisual();
       const e=l.flow;
       if(!e||!isChainFlow(e))return;
+      const T2=e.bipSpray;
+      if(T2?.sprayX!=null&&T2?.sprayY!=null){
+        const S2=battedShapeOf(e.bipCode),G2=battedGeo(T2.sprayX,T2.sprayY,S2.k);
+        battedTrail.value={
+          d:S2.k===0?`M 240 555 L ${T2.sprayX} ${T2.sprayY}`:`M 240 555 Q ${G2.cx} ${G2.cy} ${T2.sprayX} ${T2.sprayY}`
+        }
+      }
       const a=e.steps??[];
       if(!a.length)return;
       const s=e.bipSpray,t=s?.sprayX!=null&&s?.sprayY!=null?{
@@ -8594,7 +8635,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     let chainClearTimer=null;
     function nextPitchCleanup(){
-      if(!chainDone.value&&!chainTrail.value.length&&!ka.value)return;
+      if(!chainDone.value&&!chainTrail.value.length&&!battedTrail.value&&!ka.value)return;
       chainClearTimer!=null&&(clearTimeout(chainClearTimer),chainClearTimer=null);
       const e=Rn.value?.querySelector(".hit-spray-fly-anim"),t=chainAnimSeq;
       e&&ka.value?(e.style.transition="opacity .5s ease",e.style.opacity="0",chainClearTimer=setTimeout(()=>{
@@ -8622,7 +8663,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         resolveType:g
       }
       =p,m=p.bipCode??"";
-      clearChainVisual(),t!=null&&a!=null&&(CHAIN_TYPES.has(g)?(ballAppearAt(t,a),markChainHl(t,a,!1)):Zf(t,a)),pt();
+      clearChainVisual(),t!=null&&a!=null&&(battedFlyTo(t,a,m,CHAIN_TYPES.has(g)),CHAIN_TYPES.has(g)&&markChainHl(t,a,!1)),pt();
       const y=Io(e,r),b=t!=null&&a!=null&&y?Bo(t,a,y,r):r?.trim().toUpperCase(),w={
         sprayZone:y,sprayFieldPos:b,...t!=null&&a!=null?{
           sprayX:t,sprayY:a
@@ -10549,7 +10590,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,-1),n("circle",{
           class:"field-home",cx:"240",cy:"555",r:"12",opacity:"0"
         }
-        ,null,-1)])]),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
+        ,null,-1)])]),c(battedTrail)?(h(),C("path",{key:"batted",class:"batted-trail",d:c(battedTrail).d},null,8,["d"])):W("",!0),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
           key:td.key,x1:td.x1,y1:td.y1,x2:td.x2,y2:td.y2,class:re(["chain-trail",ti===c(chainTrail).length-1?"chain-trail--solid":`chain-trail--l${Math.min(4,c(chainTrail).length-1-ti)}`])
         }
         ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
