@@ -5572,7 +5572,7 @@ var sg={
     }
     ],Rn=x(null),ne=ys(null),ze=ys(null);
     let Jt=0;
-    const ce=ys(null);
+    const ce=ys(null),hh=ys(null);
     let Zn=0;
     function zu(){
       Zn===0&&(Zn=requestAnimationFrame(()=>{
@@ -5613,7 +5613,7 @@ var sg={
     function ar(){
       kl&&(kl=!1,er.removeEventListener("touchmove",nr,Zs))
     }
-    let ta=0;
+    let ta=0,tSuppressClick=0;
     const Ju=$(()=>{
       const e=ne.value?.base;
       if(e==null)return[];
@@ -8422,8 +8422,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         pos:e,flowType:a?.type,button:t.button,pointerType:t.pointerType
       }
       ),a?.type!=="BIP_HIT_PENDING"){
-        console.log("[FielderDrag] Aborted: not in BIP_HIT_PENDING state");
-        return
+        const _st=a?.steps??[];
+        if(!(a&&ho.has(a.type)&&_st[_st.length-1]===e)){
+          console.log("[FielderDrag] Aborted: not BIP and not ball-carrier in chain");
+          return
+        }
       }
       if(t.button!==0){
         console.log("[FielderDrag] Aborted: not primary button");
@@ -8434,11 +8437,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         console.log("[FielderDrag] Aborted: no default position for",e);
         return
       }
-      if(a.resolveType==="HR"&&!["LF","CF","RF","XF1","XF2"].includes(e)){
+      if(a?.type==="BIP_HIT_PENDING"&&a.resolveType==="HR"&&!["LF","CF","RF","XF1","XF2"].includes(e)){
         console.log("[FielderDrag] Aborted: HR restriction");
         return
       }
-      t.stopPropagation(),t.pointerType!=="touch"&&t.preventDefault();
+      t.stopPropagation(),a?.type==="BIP_HIT_PENDING"&&t.pointerType!=="touch"&&t.preventDefault();
       const r=Rn.value;
       if(!r){
         console.log("[FielderDrag] Aborted: no svg ref");
@@ -8448,16 +8451,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         pos:e,startX:s.x,startY:s.y
       }
       ),ce.value={
-        pos:e,pointerId:t.pointerId,startX:s.x,startY:s.y,currentX:s.x,currentY:s.y,hasMoved:!1,isDragging:!0
+        pos:e,pointerId:t.pointerId,startX:s.x,startY:s.y,currentX:s.x,currentY:s.y,hasMoved:!1,isDragging:!0,mode:a?.type==="BIP_HIT_PENDING"?"bip":"chain"
       }
       ,Mn(ce);
       try{
-        r.setPointerCapture(t.pointerId),console.log("[FielderDrag] Pointer capture set")
+        a?.type==="BIP_HIT_PENDING"&&r.setPointerCapture(t.pointerId),console.log("[FielderDrag] Pointer capture set")
       }
       catch(p){
         console.warn("[FielderDrag] Pointer capture failed:",p)
       }
-      ps(),document.addEventListener("pointermove",Co,{
+      ps(),a?.type!=="BIP_HIT_PENDING"&&window.addEventListener("blur",Yh,{
+        once:!0
+      }
+      ),document.addEventListener("pointermove",Co,{
         passive:!1,capture:!0
       }
       ),document.addEventListener("pointerup",si,{
@@ -8478,7 +8484,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),document.removeEventListener("pointercancel",si,{
         capture:!0
       }
-      )
+      ),window.removeEventListener("blur",Yh)
+    }
+    function Yh(){
+      console.log("[FielderDrag] blur cleanup"),ce.value=null,hh.value=null,Mn(ce),Mn(hh),ps()
     }
     function Co(e){
       const t=ce.value;
@@ -8489,7 +8498,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const s=a.createSVGPoint();
       s.x=e.clientX,s.y=e.clientY;
       const r=s.matrixTransform(a.getScreenCTM()?.inverse()),p=Math.max(0,Math.min(480,r.x)),g=Math.max(0,Math.min(640,r.y)),m=p-t.startX,y=g-t.startY,b=Math.sqrt(m*m+y*y);
-      !t.hasMoved&&b>5&&(t.hasMoved=!0,console.log("[FielderDrag] Move threshold exceeded, hasMoved = true")),t.currentX=p,t.currentY=g,t.hasMoved&&(zu(),console.log("[FielderDrag] Moving",{
+      !t.hasMoved&&b>(t.mode==="chain"?10:5)&&(t.hasMoved=!0,console.log("[FielderDrag] Move threshold exceeded, hasMoved = true")),t.currentX=p,t.currentY=g,t.hasMoved&&(t.mode==="chain"&&(hh.value=hlBaseNear(p,g),Mn(hh)),zu(),console.log("[FielderDrag] Moving",{
         x:p,y:g
       }
       ))
@@ -8500,8 +8509,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         hasDragState:!!t,isDragging:t?.isDragging,pointerIdMatch:e.pointerId===t?.pointerId
       }
       ),!t||!t.isDragging||e.pointerId!==t.pointerId)return;
-      if(l.flow?.type!=="BIP_HIT_PENDING"){
-        console.log("[FielderDrag] Aborted in pointerup: not in BIP_HIT_PENDING"),ce.value=null,ps();
+      const _f=l.flow,_okBip=_f?.type==="BIP_HIT_PENDING"&&t.mode==="bip",_okChain=!!_f&&ho.has(_f.type)&&t.mode==="chain";
+      if(!_okBip&&!_okChain){
+        console.log("[FielderDrag] Aborted in pointerup: flow state mismatch"),ce.value=null,hh.value=null,ps();
         return
       }
       const a=Rn.value;
@@ -8521,9 +8531,57 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       );
       const y=m?p:s,b=m?g:r;
-      e.preventDefault(),e.stopPropagation(),ta=performance.now()+150;
+      e.stopPropagation(),t.mode==="bip"&&e.preventDefault(),m&&t.mode==="chain"&&(tSuppressClick=performance.now()+300),ta=performance.now()+150;
+      if(t.mode==="chain"){
+        chainSelfStep(t.pos);
+        return
+      }
+      hh.value=null,Mn(hh);
       const w=eu(y,b);
       fs(w,y,b,tu(b,w),Bo(y,b,w))
+    }
+    function hlBaseNear(e,t){
+      const a=[[1,Ke[1]?.x,Ke[1]?.y],[2,Ke[2]?.x,Ke[2]?.y],[3,Ke[3]?.x,Ke[3]?.y],[4,Qo?.x,Qo?.y]];
+      let s=null,r=30;
+      for(const p of a){
+        const g=Number(p[1]),m=Number(p[2]);
+        if(!Number.isFinite(g)||!Number.isFinite(m))continue;
+        const y=Math.hypot(e-g,t-m);
+        y<r&&(r=y,s=p[0])
+      }
+      return s
+    }
+    function chainSelfStep(e){
+      const s=hh.value;
+      if(s==null)return;
+      const r=l.flow;
+      if(!r||!ho.has(r.type))return;
+      if((r.steps?.length??0)>=hu){
+        hh.value=null,Mn(hh),J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
+        return
+      }
+      hh.value=null,Mn(hh);
+      LgPick([{
+        key:"force",label:"封杀出局"
+      }
+      ,{
+        key:"tag",label:"触杀出局"
+      }
+      ],"自踩动作","该动作记录为：").then(p=>{
+        if(p!=="force"&&p!=="tag")return;
+        const g=l.flow;
+        if(g!==r||!ho.has(g.type))return;
+        const m=ballTargetOf(e),y=s===4?{
+          x:Qo?.x??240,y:Qo?.y??555
+        }:{x:Ke[s]?.x??m.x,y:Ke[s]?.y??m.y
+        }
+        ,b={
+          x:Xn.value,y:Yn.value
+        };
+        (y.x!==b.x||y.y!==b.y)&&pushChainTrail(b,y),ballFlyTo(y.x,y.y,450),markChainHl(y.x,y.y,!1),Xn.value=y.x,Yn.value=y.y;
+        g.steps.push(e),Array.isArray(g.stepActions)||(g.stepActions=new Array(g.steps.length-1).fill(null)),g.stepActions.push(p),pt()
+      }
+      )
     }
     const BAT_SHAPES={
       g:[0,450],hg:[0,450],b:[0,450],ld:[.14,600],fly:[.32,850],pop:[.32,700]
@@ -8953,7 +9011,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         x:Xn.value,y:Yn.value
       }
       ,s=ballTargetOf(e);
-      t.steps.push(e),t.steps.length===1?(ballAppearAt(s.x,s.y),markChainHl(s.x,s.y,!1)):s.x===a.x&&s.y===a.y?markChainHl(s.x,s.y,!0):(pushChainTrail(a,s),ballFlyTo(s.x,s.y,450),markChainHl(s.x,s.y,!1))
+      t.steps.push(e),Array.isArray(t.stepActions)&&t.stepActions.push(null),t.steps.length===1?(ballAppearAt(s.x,s.y),markChainHl(s.x,s.y,!1)):s.x===a.x&&s.y===a.y?markChainHl(s.x,s.y,!0):(pushChainTrail(a,s),ballFlyTo(s.x,s.y,450),markChainHl(s.x,s.y,!1))
     }
     function lc(e){
       const t=l.flow;
@@ -9025,6 +9083,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),Ii()
     }
     function Ro(e,t){
+      if(performance.now()<tSuppressClick){
+        tSuppressClick=0,t&&t.stopPropagation&&t.stopPropagation();
+        return
+      }
       const a=l.flow;
       if(a?.type==="BIP_HIT_PENDING"){
         if(a.resolveType==="HR"&&!["LF","CF","RF","XF1","XF2"].includes(e)){
@@ -9112,7 +9174,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           J(`单次最多记录 ${hu} 名失误责任者，请点「完成记录」或取消`,"warning");
           return
         }
-        a.steps.push(e),pt();
+        a.steps.push(e),Array.isArray(a.stepActions)&&a.stepActions.push(null),pt();
         return
       }
       if(a&&!a.selectRunner&&ho.has(a.type)){
@@ -9126,7 +9188,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,r=ballTargetOf(e)
         ,C0=a.steps.length;
-        a.steps.push(e),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
+        a.steps.push(e),Array.isArray(a.stepActions)&&a.stepActions.push(null),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
       }
       else if(!a){
         if(nn.value)return;
@@ -10645,6 +10707,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),c(chainHl)?(h(),C("circle",{
           key:`chl-${c(chainHl).seq}`,class:"chain-hl-ring",cx:c(chainHl).x,cy:c(chainHl).y,r:19
+        }
+        ,null,8,["cx","cy"])):W("",!0),c(hh)?(h(),C("circle",{
+          key:`ssb-${c(hh)}`,class:"selfstep-base-hl",cx:c(hh)===4?c(Qo)?.x??240:c(Ke)[c(hh)]?.x??240,cy:c(hh)===4?c(Qo)?.y??555:c(Ke)[c(hh)]?.y??555,r:30
         }
         ,null,8,["cx","cy"])):W("",!0),c(chainDone)?(h(),C("g",{
           class:"lgb-done-badge",transform:`translate(${c(chainDone).x},${c(chainDone).y-27})`
