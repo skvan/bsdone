@@ -159,3 +159,39 @@ export function fpMissText({ runner, verdict }) {
 export function foulErrorText({ chainText }) {
   return `界外球+失误：${chainText || "守备失误"}`;
 }
+
+// ===== P3（F 系统类归口 + 特例归口；除纠偏前缀统一外逐字保留） =====
+
+/** F 系统行（换局/攻守/纠偏/隐藏注记/guard）；kind 见 switch（adjust_score/adjust_bases 为 F2 统一前缀） */
+export function sysText({ kind, detail, runs, inning, isTop, team, nextBatter, who, code }) {
+  switch (kind) {
+    case "adjust_score": return `纠偏（得分）：${detail}`;
+    case "adjust_bases": return `纠偏（垒况）：${detail}`;
+    case "third_out_note": return `第三出局为封杀：本 play ${runs} 分不计入`;
+    case "inning_header": return `--- ${inning}局${isTop ? "上" : "下"} ---`;
+    case "switch_sides": return `攻守交换，进攻方：${team}，下一棒：${nextBatter}`;
+    case "np_backfill": return `${who}: 先前未记该球球数，已为本次击出/守备补记 1 球（NP）`;
+    case "dk3_guard": return `漏接三振：未识别代码 ${code}`;
+    case "game_start": return "比赛开始";
+    case "game_end": return "比赛已结束";
+    case "force_half": return "强制换局：本半局提前结束（特殊换局规则）";
+    case "extend_inning": return "进入延长局";
+    case "tp_placeholder": return "滚地球：三杀（示意）";
+    case "illegal_pitch":
+      return detail === "walk_ab_end" ? "不合法投球：已记为坏球；当前打席因四坏结束。"
+        : detail === "walk_no_runner" ? "不合法投球：记为坏球（垒上无跑者，未推进）"
+        : detail === "walk_no_advance" ? "不合法投球：记为坏球；跑者不推进（示意记录）"
+        : "不合法投球：垒上跑者各推进一垒";
+    default: return "";
+  }
+}
+
+/** C2 失误推进（纯迁移逐字：逗号+裸名）：{原因}，{名} 进{垒|"本垒得分"} */
+export function errorAdvanceText({ reasonCn, runnerName, to }) {
+  return `${reasonCn}，${runnerName} 进${to}`;
+}
+
+/** 盗垒成功单选（纯迁移逐字）：{名}: 盗垒成功 / 盗本垒成功 */
+export function stealSingleText({ name, home = false }) {
+  return `${name}: ${home ? "盗本垒成功" : "盗垒成功"}`;
+}

@@ -24,7 +24,7 @@ test('存在统一帮手 syncFieldingPitcher：fpId 落位 → ft → Ka → 换
 
 test('分支②（板凳替换+DH 制 P 位=换投）改调统一帮手且行为链保留', () => {
   const body = pick('if(b==="P"&&!oa(y)){', 'de("换守备");');
-  assert.match(body, /de\("换投"\),syncFieldingPitcher\(a,t,P\),Kt\(\)/, '换投分支须走统一帮手后收尾');
+  assert.match(body, /de\("换投"\),syncFieldingPitcher\(a,t,P,fieldingIpNote\(t\)\),Kt\(\)/, '换投分支须走统一帮手（P3：附守备局数结清注记）后收尾');
   assert.doesNotMatch(body, /ft\(a\),Ka\(\)/, '旧的内联链不得残留（切片仅覆盖换投分支）');
 });
 
@@ -38,7 +38,7 @@ test('分支①（守备组互换）：涉及 P 时调用统一帮手（b 或对
 test('分支③（板凳替换非 DH 制 P 位）：以统一帮手替代单独 Ka()', () => {
   const i = src.indexOf('b==="P"&&Ka()');
   assert.equal(i, -1, '不得残留 b==="P"&&Ka() 半吊子形态');
-  assert.match(src, /b==="P"&&syncFieldingPitcher\(a,t,P\)/, 'P 位替换须走统一帮手');
+  assert.match(src, /b==="P"&&syncFieldingPitcher\(a,t,P,fieldingIpNote\(t\)\)/, 'P 位替换须走统一帮手（P3：附结清注记）');
 });
 
 test('非 P 的守位互换保持纯标签（不出换投日志）；只出不进时清空投手引用', () => {
