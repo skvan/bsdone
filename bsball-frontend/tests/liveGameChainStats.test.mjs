@@ -87,3 +87,26 @@ test('LiveGame.js 接入点（静态断言，防回退）', () => {
   assert.match(src, /const a=e\.type==="DP"\|\|e\.type==="TP"\?e\.steps:_i\(e\.steps\),s=a\[a\.length-1\]/, 'settle 对 DP/TP 保持原始链');
   assert.match(src, /includes\(e\)&&e!=="DP"&&e!=="TP"&&\(t=_i\(t\)\)/, 'bt 对 DP/TP 跳过压缩');
 });
+
+test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
+  const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
+  assert.match(src, /_st\[_st\.length-1\]===e/, 'Qf 链尾持球者判定');
+  assert.match(src, /function chainSelfStep\(e\)\{/, 'chainSelfStep 存在');
+  assert.match(src, /function hlBaseNear\(e,t\)\{/, 'hlBaseNear 垒包邻近判定');
+  assert.match(src, /key:"force",label:"封杀出局"/, '封杀/触杀弹层选项');
+  assert.match(src, /Array\.isArray\(g\.stepActions\)\|\|\(g\.stepActions=new Array\(g\.steps\.length-1\)\.fill\(null\)\)/, 'stepActions 对齐补 null');
+  assert.match(src, /g\.stepActions\.push\(p\)/, 'stepActions 写入');
+  assert.match(src, /key:`ssb-\$\{c\(hh\)\}`/, '垒包高亮渲染');
+  assert.match(src, /class:"selfstep-base-hl"/, '垒包高亮 class');
+  assert.match(src, /a\.steps\.push\(e\),Array\.isArray\(a\.stepActions\)&&a\.stepActions\.push\(null\),pt\(\);/, '点选 push 成对补位（E 链）');
+  assert.match(src, /a\.steps\.push\(e\),Array\.isArray\(a\.stepActions\)&&a\.stepActions\.push\(null\),ru\.has/, '点选 push 成对补位（主链）');
+  assert.match(src, /t\.steps\.push\(e\),Array\.isArray\(t\.stepActions\)&&t\.stepActions\.push\(null\),t\.steps\.length===1\?/, '点选 push 成对补位（跑者出局链）');
+  assert.match(src, /if\(\(r\.steps\?\.length\?\?0\)>=hu\)\{/, '拖拽自踩 hu 上限守卫');
+  assert.match(src, /if\(g!==r\|\|!ho\.has\(g\.type\)\)return;/, '弹层回调同实例校验');
+  assert.match(src, /window\.addEventListener\("blur",Yh,\{/, '链模式拖拽 blur 兑底挂载');
+  assert.match(src, /function Yh\(\)\{/, 'blur 清理函数');
+  assert.match(src, /b>\(t\.mode==="chain"\?10:5\)/, '链模式拖动阈值 10px');
+  assert.match(src, /tSuppressClick=0,t&&t\.stopPropagation/, 'tSuppressClick 一次性消费');
+  const css = fs.readFileSync(new URL('../src/styles/legacy/live-game.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.selfstep-base-hl[data-v-78b7b6a8]{'), '垒包高亮样式');
+});
