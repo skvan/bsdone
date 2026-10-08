@@ -8703,7 +8703,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         Po(g,m,w,b);
         return
       }
-      Po(g,m,w)
+      Po(g,m,w,b)
     }
     function Fo(){
       if(l.flow?.type!=="BIP_HIT_PENDING")return;
