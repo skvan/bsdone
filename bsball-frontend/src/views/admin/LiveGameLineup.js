@@ -1,0 +1,989 @@
+// LiveGameLineup —— 行为保真移植自编译产物 LiveGameLineup-CRlH9wMS（recon-gen-b3.mjs 生成，勿手改）
+// 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
+import { nextTick as de, createElementBlock as b, defineComponent as vl, createTextVNode as N, computed as w, toDisplayString as R, createElementVNode as u, unref as I, normalizeClass as ne, createBlock as _, ref as f, createVNode as v, withDirectives as hl, openBlock as s, withCtx as i, Fragment as P, onMounted as _l, renderList as B, reactive as Tl, createCommentVNode as O, watch as WATCH } from 'vue';
+import { ElDialog as dl, ElCol as ml, ElDivider as cl, ElIcon as pl, ElRow as fl, ElFormItem as yl, ElMessage as X, ElOption as wl, ElButton as gl, ElCard as bl, ElSelect as Il, vLoading as Ll, ElForm as Sl, ElDatePicker as Dp } from 'element-plus';
+import { Rank as $e } from '@element-plus/icons-vue';
+import { useRouter as Pl, useRoute as Bl } from 'vue-router';
+import { useMediaQuery as kl } from '../../composables/useMediaQuery';
+import { exportSfc as Vl } from '../../utils/exportSfc';
+import He from 'sortablejs';
+import { eventApi as Fl } from '../../api/business';
+import { fetchAllStadiums as Cl } from '../../api/business';
+import { fetchPlayersByTeam as ze } from '../../api/business';
+import { gameApi as Al } from '../../api/business';
+import { gameStatsApi as Wo } from '../../api/business';
+import { teamApi as Dl } from '../../api/business';
+import { lineupTemplateApi as Me } from '../../api/business';
+import { usePermission as xl } from '../../composables/usePermission';
+import { formatPosition as Ge } from '../../utils/playerOptions';
+import { writeEntryBootstrap as Ul } from '../../utils/liveGameStorage';
+import { getValidPositionOptions as El } from '../../utils/starterFieldingValidation';
+import { validateRosterPositions as Nl } from '../../utils/starterFieldingValidation';
+import { buildLineupDraft as Ld } from '../../utils/lineupDraft';
+import { parseLineupDraft as Pd } from '../../utils/lineupDraft';
+import { resolveLineupResumeInit as Rd } from '../../utils/lineupDraft';
+import { splitGameTime as Sd } from '../../utils/lineupDraft';
+import { toLocalGameTime as Td } from '../../utils/lineupDraft';
+import { useTabsStore as Tt } from '../../stores/tabs';
+import '../../styles/legacy/live-game-lineup.css';
+var Rl={
+  class:"admin-page live-game-lineup-page"
+}
+,Ol={
+  class:"header-left"
+}
+,$l={
+  class:"list-header-actions"
+}
+,Hl={
+  class:"card-body-wrap"
+}
+,zl={
+  class:"setup-section"
+}
+,Ml={
+  class:"lineup-setup"
+}
+,Gl={
+  class:"lineup-table-block"
+}
+,ql={
+  class:"lineup-table-header"
+}
+,Xl={
+  class:"lineup-header-actions"
+}
+,Zl={
+  class:"lineup-table"
+}
+,jl={
+  class:"col-drag"
+}
+,Jl={
+  key:0,class:"lineup-warn"
+}
+,Ql={
+  class:"fielding-pitcher-row"
+}
+,Wl={
+  class:"fielding-pitcher-label"
+}
+,Yl={
+  key:0,class:"fielding-pitcher-warn"
+}
+,Kl={
+  class:"bench-block"
+}
+,ea={
+  class:"lineup-table-block"
+}
+,la={
+  class:"lineup-table-header"
+}
+,aa={
+  class:"lineup-header-actions"
+}
+,na={
+  class:"lineup-table"
+}
+,ta={
+  class:"col-drag"
+}
+,ua={
+  key:0,class:"lineup-warn"
+}
+,oa={
+  class:"fielding-pitcher-row"
+}
+,sa={
+  class:"fielding-pitcher-label"
+}
+,ia={
+  key:0,class:"fielding-pitcher-warn"
+}
+,ra={
+  class:"bench-block"
+}
+,qe=7,da=vl({
+  name:"AdminLiveGameLineup",__name:"LiveGameLineup",setup(va){
+    const{
+      hasPerm:ve
+    }
+    =xl(),j=kl("(max-width: 768px)"),me=Bl(),Xe=Pl(),ee=w(()=>Number(me.params.eventId)),rr=w(()=>{const t=Number(me.params.gameId);return Number.isFinite(t)&&t>0?t:null}),ce=f(""),pe=f(!0),te=f(!1),Q=f([]),H=f([]),z=f([]),fe=f([]),d=Tl({
+      homeTeamId:void 0,awayTeamId:void 0,venue:""
+    }
+    ),W=f(!1),he=f("away"),Y=f(null),ue=f([]),os=f(rr.value),ts=f(""),as=f(""),Ht=f(null),Ct=Tt();
+    function M(){
+      return{
+        batting:{
+          ab:0,r:0,h:0,rbi:0,bb:0,hbp:0,so:0,so_swing:0,so_looking:0,sf:0,sh:0,sb:0,cs:0,doubles:0,triples:0,hr:0
+        }
+        ,pitching:{
+          ip:0,np:0,pitchH:0,er:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,wp:0,bk:0,pk:0
+        }
+        ,fielding:{
+          po:0,a:0,e:0
+        }
+        
+      }
+      
+    }
+    const V=f("BASEBALL"),C=w(()=>V.value==="SOFTBALL"?10:9),J=w(()=>V.value==="SOFTBALL"?11:10),ye=f(null),we=f(null),h=f([]),y=f([]),T=f([]),k=f([]),G=f(null),q=f(null),Ze=f(null),je=f(null),A=f(null),D=f(null),ge=f([]),be=f([]),Ie=f(null),_e=f(null);
+    WATCH([()=>y.value,()=>h.value],([We,pe])=>{
+      const te=(We||[]).find(Xe=>(Xe.position??"").toString().toUpperCase()==="P");
+      if(te){
+        const Xa=te.playerId??te.id;
+        if(Xa!=null){
+          const Za=z.value.find(Ze=>String(Ze.id)===String(Xa));
+          Za&&(G.value!==Za.id&&(G.value=Za.id))
+        }
+        
+      }
+      const re=(pe||[]).find(Xe=>(Xe.position??"").toString().toUpperCase()==="P");
+      if(re){
+        const Va=re.playerId??re.id;
+        if(Va!=null){
+          const Ya=H.value.find(_e=>String(_e.id)===String(Va));
+          Ya&&(q.value!==Ya.id&&(q.value=Ya.id))
+        }
+        
+      }
+      
+    }
+    ,{
+      immediate:true
+    }
+    );
+    function K(l){
+      return l!=null&&l.id<0
+    }
+    function __filledPitcherRow(l){
+      return l!=null&&!K(l)&&String(l.position??"").trim().toUpperCase()==="P"
+    }
+    function le(l,e,n){
+      const t=String(e??"").trim(),o=t?t.toUpperCase():"";
+      return{
+        id:-1e4-n,name:"",number:"",teamId:l,position:o,stats:M()
+      }
+      
+    }
+    function Le(l){
+      const e=V.value==="SOFTBALL"?10:9;
+      return Array.from({
+        length:e
+      }
+      ,(n,t)=>le(l,"",t))
+    }
+    function Je(l){
+      const e=String(l??"").trim().toUpperCase();
+      return e==="P"||e==="DH"?e:e||"P"
+    }
+    const Te=w(()=>d.homeTeamId!=null&&d.awayTeamId!=null&&d.homeTeamId!==d.awayTeamId),Qe=w(()=>Q.value.find(l=>l.id===d.homeTeamId)),We=w(()=>Q.value.find(l=>l.id===d.awayTeamId)),Ye=w(()=>z.value),Ke=w(()=>H.value);
+    function ke(l){
+      const e=Nl(l,V.value),n=C.value;
+      return l.length===n&&l.every(t=>!(t.position??"").toString().trim())&&!e.ok&&(e.msg??"").includes("未指定守备位置")?{
+        ok:!1,msg:void 0,errorRowIndices:[]
+      }
+      :e
+    }
+    const x=w(()=>ke(y.value)),U=w(()=>ke(h.value)),el=w(()=>V.value==="SOFTBALL"?"阵容确认（垒球：10-11 人；10 人为「P+八守位+XF」或「DH+八守位+XF」；11 人为再加 DH 都上场打击）":"阵容确认（棒球：9-10 人；9 人可为「P+八守位」或「DH+八守位」；10 人为「P+八守位+DH」）");
+    function oe(l){
+      return l.some(e=>Je(e.position)==="P")
+    }
+    const se=w(()=>y.value.length===C.value&&x.value.ok&&!oe(y.value)),ie=w(()=>h.value.length===C.value&&U.value.ok&&!oe(h.value)),ll=w(()=>se.value?"先发投手（仅守备，不占打序）":"先发投手"),al=w(()=>ie.value?"先发投手（仅守备，不占打序）":"先发投手"),nl=w(()=>z.value),tl=w(()=>H.value);
+    function Se(l){
+      const e=l==="away"?y.value:h.value;
+      return!(l==="away"?x.value:U.value).ok||e.length!==C.value||oe(e)?!0:(l==="away"?G.value:q.value)!=null
+    }
+    const Pe=w(()=>Te.value&&h.value.length>=C.value&&h.value.length<=J.value&&y.value.length>=C.value&&y.value.length<=J.value&&x.value.ok&&U.value.ok&&Se("away")&&Se("home")),Be=w(()=>{
+      const l=new Set([...y.value,...k.value].map(e=>e.id));
+      return z.value.filter(e=>!l.has(e.id))
+    }
+    ),Ve=w(()=>{
+      const l=new Set([...h.value,...T.value].map(e=>e.id));
+      return H.value.filter(e=>!l.has(e.id))
+    }
+    ),ul=w(()=>{
+      const l=new Set(y.value.map(n=>n.id)),e=se.value?G.value:null;
+      return z.value.filter(n=>!l.has(n.id)&&(e==null||n.id!==e))
+    }
+    ),ol=w(()=>{
+      const l=new Set(h.value.map(n=>n.id)),e=ie.value?q.value:null;
+      return H.value.filter(n=>!l.has(n.id)&&(e==null||n.id!==e))
+    }
+    );
+    function Fe(l,e){
+      const n=l==="away"?z.value:H.value,t=l==="away"?k.value:T.value,o=e.map(c=>{
+        const r=t.find(L=>L.id===c)??n.find(L=>L.id===c);
+        return r||{
+          id:c,name:"",number:"",teamId:0,position:"",stats:M()
+        }
+        
+      }
+      );
+      l==="away"?k.value=o:T.value=o
+    }
+    const Ce=w({
+      get:()=>k.value.map(l=>l.id),set:l=>Fe("away",l)
+    }
+    ),Ae=w({
+      get:()=>T.value.map(l=>l.id),set:l=>Fe("home",l)
+    }
+    );
+    function De(l){
+      const e=l?.recommended??l?.missing??[],n=[...El(V.value)];
+      if(e.length===0)return n;
+      const t=new Set(e);
+      return n.sort((o,c)=>(t.has(o)?0:1)-(t.has(c)?0:1))
+    }
+    function ae(l,e){
+      return(l?.recommended??l?.missing??[]).includes(e)
+    }
+    function xe(l){
+      de(()=>{
+        l?.states&&(l.states.inputValue="",l.states.query="")
+      }
+      )
+    }
+    function Ue(l,e,n){
+      const t=l==="away"?y.value:h.value,o=l==="away"?k.value:T.value,c=l==="away"?d.awayTeamId:d.homeTeamId,r=t[e];
+      if(n==null){
+        const m=[...t];
+        if(m[e]=le(c,"",e),r&&!K(r)){
+          const E=l==="away"?A.value:D.value;
+          if(E!=null&&Number(r.id)===Number(E)&&(r.position??"").toString().toUpperCase()==="DH")l==="away"?A.value=null:D.value=null,l==="away"?y.value=m:h.value=m;
+          else{
+            const a=[...o,{
+              ...r,teamId:c,position:"",stats:r.stats??M()
+            }
+            ];
+            l==="away"?(y.value=m,k.value=a):(h.value=m,T.value=a)
+          }
+          
+        }
+        else l==="away"?y.value=m:h.value=m;
+        return
+      }
+      if(r?.id===n)return;
+      if(r&&!K(r)){
+        const m=l==="away"?A.value:D.value;
+        m!=null&&Number(r.id)===Number(m)&&(r.position??"").toString().toUpperCase()==="DH"&&Number(n)!==Number(m)&&(l==="away"?A.value=null:D.value=null)
+      }
+      const L=l==="away"?z.value:H.value,S=[...t,...o].find(m=>m.id===n)??L.find(m=>m.id===n);
+      if(!S)return;
+      const g=r?.position??"P",F={
+        ...S,teamId:c,position:g,stats:S.stats??M()
+      }
+      ,$=t.findIndex(m=>m.id===n);
+      if($>=0){
+        const m=[...t];
+        m[e]=F,m[$]={
+          ...r,teamId:c,position:r.position??"P",stats:r.stats??M()
+        }
+        ,l==="away"?y.value=m:h.value=m
+      }
+      else{
+        const m=o.filter(a=>a.id!==n);
+        K(r)||m.push({
+          ...r,teamId:c,position:"",stats:r.stats??M()
+        }
+        );
+        const E=[...t];
+        E[e]=F,l==="away"?(y.value=E,k.value=m):(h.value=E,T.value=m)
+      }
+      
+    }
+    function Ee(l){
+      const e=l==="away"?y.value:h.value;
+      if(e.length>=J.value)return;
+      const n=l==="away"?Be.value:Ve.value,t=l==="away"?k.value:T.value,o=n[0]??t[0];
+      if(!o)return;
+      const c=n.length>0,r=l==="away"?d.awayTeamId:d.homeTeamId;
+      if(!r)return;
+      const L={
+        ...o,teamId:r,position:"DH",stats:M()
+      }
+      ,S=t.filter(F=>F.id!==o.id),g=[...e,L];
+      l==="away"?(y.value=g,k.value=S,A.value=c?Number(L.id):null):(h.value=g,T.value=S,D.value=c?Number(L.id):null)
+    }
+    function Ne(l){
+      const e=l==="away"?y.value:h.value,n=l==="away"?k.value:T.value,t=e.findIndex(g=>(g.position??"").toString().toUpperCase()==="DH");
+      if(t<0||e.length<=C.value)return;
+      const o=e[t],c=e.filter((g,F)=>F!==t),r=l==="away"?A.value:D.value,L=r!=null&&Number(o.id)===Number(r);
+      l==="away"?A.value=null:D.value=null;
+      const S=L?n:[...n,{
+        ...o,position:""
+      }
+      ];
+      l==="away"?(y.value=c,k.value=S):(h.value=c,T.value=S)
+    }
+    async function re(){
+      if(!d.homeTeamId||!d.awayTeamId)return;
+      const[l,e]=await Promise.all([ze(d.homeTeamId),ze(d.awayTeamId)]);
+      H.value=l,z.value=e,h.value=Le(d.homeTeamId),y.value=Le(d.awayTeamId),T.value=[],k.value=[],G.value=null,q.value=null,Ze.value=null,je.value=null,A.value=null,D.value=null,ge.value=[],be.value=[],de(()=>Oe());
+      de(()=>{
+        const p=h.value.find(__filledPitcherRow);
+        p&&(q.value=p.id);
+        const a=y.value.find(__filledPitcherRow);
+        a&&(G.value=a.id)
+      }
+      )
+    }
+    async function Re(l){
+      const e=l==="away"?d.awayTeamId:d.homeTeamId;
+      if(!e){
+        X.warning("请先选择主客队");
+        return
+      }
+      he.value=l,Y.value=null;
+      try{
+        if(ue.value=await Me.list(e)??[],!ue.value.length){
+          X.info("该球队暂无阵容模板，请先在「阵容模板」菜单中创建");
+          return
+        }
+        W.value=!0
+      }
+      catch(n){
+        X.error(n?.message??"加载模板列表失败")
+      }
+      
+    }
+    async function sl(l,e,n,t){
+      const o=l==="away"?z.value:H.value,c=l==="away"?d.awayTeamId:d.homeTeamId,r=e.slice(0,J.value).map((g,F)=>{
+        const $=o.find(E=>E.id===g.playerId),m=String(g.position??"").trim().toUpperCase();
+        return $?{
+          ...$,teamId:c,position:m,stats:$.stats?{
+            ...$.stats
+          }
+          :M()
+        }
+        :le(c,m,F)
+      }
+      );
+      for(;
+      r.length<C.value;
+      )r.push(le(c,"",r.length));
+      const L=new Set((n??[]).filter(g=>g!=null&&g>0)),S=o.filter(g=>L.has(g.id)&&!r.some(F=>F.id===g.id));
+      l==="away"?(y.value=r,k.value=S,G.value=t!=null&&o.some(g=>g.id===t)?t:null,A.value=null):(h.value=r,T.value=S,q.value=t!=null&&o.some(g=>g.id===t)?t:null,D.value=null),de(()=>Oe())
+    }
+    async function il(){
+      const l=he.value,e=l==="away"?d.awayTeamId:d.homeTeamId,n=Y.value;
+      if(!(!e||n==null))try{
+        const t=await Me.get(e,n);
+        if(!t?.slots?.length){
+          X.warning("模板数据为空");
+          return
+        }
+        W.value=!1,sl(l,t.slots,t.benchPlayerIds,t.startingPitcherPlayerId)
+      }
+      catch(t){
+        X.error(t?.message??"加载模板失败")
+      }
+      
+    }
+    function Oe(){
+      const l=ye.value,e=we.value;
+      l&&He.create(l,{
+        handle:".drag-handle",animation:150,onEnd(n){
+          if(n.oldIndex!=null&&n.newIndex!=null&&n.oldIndex!==n.newIndex){
+            const t=[...y.value],[o]=t.splice(n.oldIndex,1);
+            t.splice(n.newIndex,0,o),y.value=t
+          }
+          
+        }
+        
+      }
+      ),e&&He.create(e,{
+        handle:".drag-handle",animation:150,onEnd(n){
+          if(n.oldIndex!=null&&n.newIndex!=null&&n.oldIndex!==n.newIndex){
+            const t=[...h.value],[o]=t.splice(n.oldIndex,1);
+            t.splice(n.newIndex,0,o),h.value=t
+          }
+          
+        }
+        
+      }
+      )
+    }
+    function qi(l){
+      const e=l??{
+        
+      };
+      return{
+        eventId:e.eventId,homeTeamId:e.homeTeamId,awayTeamId:e.awayTeamId,gameTime:e.gameTime,gameday:e.gameday,gameEndTime:e.gameEndTime??void 0,gameNumber:e.gameNumber??void 0,stadiumId:e.stadiumId??void 0,homeScore:e.homeScore??void 0,awayScore:e.awayScore??void 0,homeScoreByInning:e.homeScoreByInning??void 0,awayScoreByInning:e.awayScoreByInning??void 0,totalInnings:e.totalInnings??void 0,homeH:e.homeH??void 0,awayH:e.awayH??void 0,homeE:e.homeE??void 0,awayE:e.awayE??void 0,spectatorCount:e.spectatorCount??void 0,umpireHp:e.umpireHp??void 0,umpire1b:e.umpire1b??void 0,umpire2b:e.umpire2b??void 0,umpire3b:e.umpire3b??void 0,recorders:e.recorders??void 0,gameTag:e.gameTag??void 0,remark:e.remark??void 0,isSpecialResult:e.isSpecialResult??!1,showRemarkInCard:e.showRemarkInCard??!1,includeStatsInRanking:e.includeStatsInRanking??!0
+      }
+      
+    }
+    function zs(){
+      const l=as.value?Sd(as.value):Sd(Td()),e=l.gameTime&&l.gameday?l:Sd(Td()),n=fe.value.find(t=>t.value===d.venue)?.stadiumId??(Ht.value&&Ht.value.venue===d.venue?Ht.value.stadiumId??null:null);
+      return{
+        gameTime:e.gameTime,gameday:e.gameday,stadiumId:n
+      }
+      
+    }
+    async function Es(l){
+      try{
+        const e=await Al.get(l);
+        if(e==null||e.id==null){
+          X.warning("比赛不存在或已删除"),await Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          );
+          return
+        }
+        ts.value=e.status??"";
+        if(e.status==="final"){
+          X.warning("该比赛已结束，无法编辑先发阵容"),await Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          );
+          return
+        }
+        if(e.status==="live"){
+          const r=await Wo.listByGame(l).catch(()=>null);
+          if(r&&(r.list??[]).some(u=>(u.battingOrder??0)>0)){
+            X.warning("该比赛已开始录入，请从列表点「继续录入」进入录入页"),await Xe.replace({
+              name:"AdminGameLiveResume",params:{
+                eventId:String(ee.value),gameId:String(l)
+              }
+              
+            }
+            );
+            return
+          }
+        }
+        const n=Pd(await Al.getLiveSnapshot(l).catch(()=>"")),t=Rd(e,n);
+        Ht.value=e,os.value=l,d.homeTeamId=t.homeTeamId??void 0,d.awayTeamId=t.awayTeamId??void 0,d.venue=t.venue??"",t.gameMode&&(V.value=t.gameMode),t.gameTime&&(as.value=Sd(t.gameTime).gameTime);
+        if(Te.value){
+          await re();
+          n&&(Array.isArray(n.homeLineup)&&(h.value=n.homeLineup),Array.isArray(n.awayLineup)&&(y.value=n.awayLineup),Array.isArray(n.homeBench)&&(T.value=n.homeBench),Array.isArray(n.awayBench)&&(k.value=n.awayBench),n.awayFieldingPitcherId!==void 0&&(G.value=n.awayFieldingPitcherId),n.homeFieldingPitcherId!==void 0&&(q.value=n.homeFieldingPitcherId),n.awayLastDhAddedFromPoolId!==void 0&&(A.value=n.awayLastDhAddedFromPoolId),n.homeLastDhAddedFromPoolId!==void 0&&(D.value=n.homeLastDhAddedFromPoolId),Array.isArray(n.awayUnavailablePlayerIds)&&(ge.value=n.awayUnavailablePlayerIds),Array.isArray(n.homeUnavailablePlayerIds)&&(be.value=n.homeUnavailablePlayerIds))
+        }
+      }
+      catch(err){
+        X.error(err?.message??"加载已保存阵容失败")
+      }
+      
+    }
+    async function Ns(l){
+      if(d.homeTeamId==null||d.awayTeamId==null){
+        X.warning("请先选择主客队");
+        return
+      }
+      if(d.homeTeamId===d.awayTeamId){
+        X.warning("主队与客队不能相同");
+        return
+      }
+      te.value=!0;
+      try{
+        const cu=zs();
+        let n=os.value;
+        if(n==null){
+          const t=await Al.create({
+            eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"scheduled"
+          }
+          );
+          n=t?.data?.id??null;
+          if(n==null){
+            X.error(t?.msg||"保存失败");
+            return
+          }
+          os.value=n,Ht.value={
+            id:n,eventId:ee.value,venue:d.venue,stadiumId:cu.stadiumId??void 0
+          }
+        }
+        else{
+          await Al.saveResult(n,{
+            game:{
+              ...qi(Ht.value),eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"scheduled"
+            }
+          }
+          )
+        }
+        const t=Ld({
+          gameId:n,gameMode:V.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue,gameTime:cu.gameTime,gameday:cu.gameday,homeLineup:h.value,awayLineup:y.value,homeBench:T.value,awayBench:k.value,homeFieldingPitcherId:q.value,awayFieldingPitcherId:G.value,homeLastDhAddedFromPoolId:D.value,awayLastDhAddedFromPoolId:A.value,homeUnavailablePlayerIds:be.value,awayUnavailablePlayerIds:ge.value
+        }
+        );
+        await Al.saveLiveSnapshot(n,JSON.stringify(t)),X.success("已保存，可在赛程/结果页继续录入");
+        if(l){
+          Ct.removeTab(me.path),Xe.replace({
+            name:"AdminGames",params:{
+              eventId:String(ee.value)
+            }
+            
+          }
+          )
+        }
+        else if(me.name!=="AdminGameLiveLineupGame"||String(me.params.gameId)!==String(n))Xe.replace({
+          name:"AdminGameLiveLineupGame",params:{
+            eventId:String(ee.value),gameId:String(n)
+          }
+          
+        }
+        )
+      }
+      catch(err){
+        X.error(err?.message??"保存失败")
+      }
+      finally{
+        te.value=!1
+      }
+      
+    }
+    async function rl(){
+      if(Pe.value){
+        te.value=!0;
+        try{
+          const cu=zs();
+          let l=os.value;
+          if(l==null){
+            const apiRes=await Al.create({
+              eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,status:"live",gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime
+            }
+            );
+            l=apiRes?.data?.id??null;
+            if(!l){
+              X.error(apiRes?.msg||"创建比赛失败");
+              return
+            }
+            os.value=l
+          }
+          else await Al.saveResult(l,{
+            game:{
+              ...qi(Ht.value),eventId:ee.value,homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue||void 0,stadiumId:cu.stadiumId??void 0,gameMode:V.value,gameday:cu.gameday,gameTime:cu.gameTime,status:"live"
+            }
+          }
+          );
+          const e={
+            v:1,savedAt:Date.now(),gameId:l,gameMode:V.value,gameStarted:!0,setupForm:{
+              homeTeamId:d.homeTeamId,awayTeamId:d.awayTeamId,venue:d.venue,gameTime:cu.gameTime,gameday:cu.gameday
+            }
+            ,homeLineup:h.value,awayLineup:y.value,homeBench:T.value,awayBench:k.value,awayFieldingPitcherId:G.value,homeFieldingPitcherId:q.value,awayLastDhAddedFromPoolId:A.value,homeLastDhAddedFromPoolId:D.value,awayUnavailablePlayerIds:ge.value,homeUnavailablePlayerIds:be.value,gameState:{
+              inning:1,isTop:!0,outs:0,balls:V.value==="SOFTBALL"?1:0,strikes:V.value==="SOFTBALL"?1:0,runsAway:0,runsHome:0,runners:[null,null,null,null]
+            }
+            ,teamsData:{
+              home:{
+                score:0,innings:Array(qe).fill(0)
+              }
+              ,away:{
+                score:0,innings:Array(qe).fill(0)
+              }
+              
+            }
+            
+          };
+          Ul(ee.value,l,e);
+          try{
+            await Al.saveLiveSnapshot(l,JSON.stringify(e))
+          }
+          catch(error){
+            console.warn('[LiveGameLineup] initial snapshot save failed',error),X.warning("初始阵容未同步到服务器，切换页面后可能需要重排阵容")
+          }
+          X.success("阵容与对战信息已保存，正在进入录入…"),Xe.replace({
+            name:"AdminGameLiveResume",params:{
+              eventId:String(ee.value),gameId:String(l)
+            }
+            
+          }
+          )
+        }
+        catch(l){
+          X.error(l?.message??"保存阵容失败")
+        }
+        finally{
+          te.value=!1
+        }
+        
+      }
+      
+    }
+    return _l(async()=>{
+      try{
+        const l=ee.value,e=await Fl.get(l);
+        ce.value=e?.name??"",V.value=e?.gameMode??"BASEBALL";
+        const[n,t]=await Promise.all([Dl.selectOptions(),Cl().catch(()=>[])]);
+        Q.value=n??[],fe.value=(t??[]).map(c=>({
+          value:c.name,label:c.name,stadiumId:c.id
+        }
+        )),as.value=Td();
+        if(rr.value!=null)await Es(rr.value);
+        else{
+          const o=me.query;
+          o.homeTeamId&&(d.homeTeamId=Number(o.homeTeamId)),o.awayTeamId&&(d.awayTeamId=Number(o.awayTeamId)),o.venue&&(d.venue=String(o.venue)),Te.value&&await re()
+        }
+      }
+      finally{
+        pe.value=!1
+      }
+      
+    }
+    ),(l,e)=>{
+      const n=gl,t=wl,o=Il,c=yl,r=ml,L=fl,S=cl,g=pl,F=Sl,$=bl,m=dl,E=Ll;
+      return s(),b("div",Rl,[hl((s(),_($,null,{
+        header:i(()=>[u("div",Ol,[u("span",null,"确认先发阵容 · "+R(ce.value),1)]),u("div",$l,[ts.value!=="live"?(s(),_(n,{
+          key:0,size:"default",disabled:!Te.value||te.value,onClick:()=>Ns(!1)
+        }
+        ,{
+          default:i(()=>[N(" 保存 ")]),_:1
+        }
+        ,8,["disabled"])):O("",!0),ts.value!=="live"?(s(),_(n,{
+          key:1,size:"default",disabled:!Te.value||te.value,onClick:()=>Ns(!0)
+        }
+        ,{
+          default:i(()=>[N(" 保存并退出 ")]),_:1
+        }
+        ,8,["disabled"])):O("",!0),v(n,{
+          type:"primary",disabled:!Pe.value,loading:te.value,onClick:rl
+        }
+        ,{
+          default:i(()=>[...e[19]||(e[19]=[N(" 开始录入 ",-1)])]),_:1
+        }
+        ,8,["disabled","loading"])])]),default:i(()=>[u("div",Hl,[u("div",zl,[v(F,{
+          model:I(d),"label-width":"90px",class:"setup-form"
+        }
+        ,{
+          default:i(()=>[v(L,{
+            gutter:16
+          }
+          ,{
+            default:i(()=>[v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"比赛模式"
+              }
+              ,{
+                default:i(()=>[v(o,{
+                  modelValue:V.value,"onUpdate:modelValue":e[0]||(e[0]=a=>V.value=a),placeholder:"比赛模式",disabled:"",style:{
+                    width:"100%"
+                  }
+                  
+                }
+                ,{
+                  default:i(()=>[v(t,{
+                    label:"棒球",value:"BASEBALL"
+                  }
+                  ),v(t,{
+                    label:"垒球",value:"SOFTBALL"
+                  }
+                  )]),_:1
+                }
+                ,8,["modelValue"])]),_:1
+              }
+              )]),_:1
+            }
+            ),v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"场地"
+              }
+              ,{
+                default:i(()=>[v(o,{
+                  modelValue:I(d).venue,"onUpdate:modelValue":e[1]||(e[1]=a=>I(d).venue=a),placeholder:"选择球场",clearable:"",filterable:"",style:{
+                    width:"100%"
+                  }
+                  
+                }
+                ,{
+                  default:i(()=>[(s(!0),b(P,null,B(fe.value,a=>(s(),_(t,{
+                    key:a.value,label:a.label,value:a.value
+                  }
+                  ,null,8,["label","value"]))),128))]),_:1
+                }
+                ,8,["modelValue"])]),_:1
+              }
+              )]),_:1
+            }
+            )]),_:1
+          }
+          ),v(L,{
+            gutter:16
+          }
+          ,{
+            default:i(()=>[v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"客队",required:""
+              }
+              ,{
+                default:i(()=>[v(o,{
+                  modelValue:I(d).awayTeamId,"onUpdate:modelValue":e[2]||(e[2]=a=>I(d).awayTeamId=a),placeholder:"选择客队",filterable:"",style:{
+                    width:"100%"
+                  }
+                  ,onChange:re
+                }
+                ,{
+                  default:i(()=>[(s(!0),b(P,null,B(Q.value,a=>(s(),_(t,{
+                    key:a.id,label:a.name,value:a.id
+                  }
+                  ,null,8,["label","value"]))),128))]),_:1
+                }
+                ,8,["modelValue"])]),_:1
+              }
+              )]),_:1
+            }
+            ),v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"主队",required:""
+              }
+              ,{
+                default:i(()=>[v(o,{
+                  modelValue:I(d).homeTeamId,"onUpdate:modelValue":e[3]||(e[3]=a=>I(d).homeTeamId=a),placeholder:"选择主队",filterable:"",style:{
+                    width:"100%"
+                  }
+                  ,onChange:re
+                }
+                ,{
+                  default:i(()=>[(s(!0),b(P,null,B(Q.value,a=>(s(),_(t,{
+                    key:a.id,label:a.name,value:a.id
+                  }
+                  ,null,8,["label","value"]))),128))]),_:1
+                }
+                ,8,["modelValue"])]),_:1
+              }
+              )]),_:1
+            }
+            )]),_:1
+          }
+          ),v(L,{
+            gutter:16
+          }
+          ,{
+            default:i(()=>[v(r,{
+              span:12
+            }
+            ,{
+              default:i(()=>[v(c,{
+                label:"比赛时间"
+              }
+              ,{
+                default:i(()=>[v(Dp,{
+                  "model-value":as.value,"onUpdate:modelValue":e[32]||(e[32]=a=>as.value=a),type:"datetime","value-format":"YYYY-MM-DD HH:mm:ss",style:{
+                    width:"100%"
+                  }
+                  ,placeholder:"选择比赛时间"
+                }
+                ,null,8,["model-value"])]),_:1
+              }
+              )]),_:1
+            }
+            )]),_:1
+          }
+          ),v(S,{
+            "content-position":"left"
+          }
+          ,{
+            default:i(()=>[N(R(el.value),1)]),_:1
+          }
+          ),u("div",Ml,[u("div",Gl,[u("div",ql,[u("h4",null,R(We.value?.name??"客队")+" 阵容",1),u("div",Xl,[y.value.length<J.value&&(Be.value.length>0||k.value.length>0)?(s(),_(n,{
+            key:0,size:"small",onClick:e[4]||(e[4]=a=>Ee("away"))
+          }
+          ,{
+            default:i(()=>[...e[20]||(e[20]=[N("添加DH",-1)])]),_:1
+          }
+          )):O("",!0),I(ve)("business:lineup-template:manage")?(s(),_(n,{
+            key:1,size:"small",type:"primary",plain:"",onClick:e[5]||(e[5]=a=>Re("away"))
+          }
+          ,{
+            default:i(()=>[...e[21]||(e[21]=[N("应用阵容模板",-1)])]),_:1
+          }
+          )):O("",!0),y.value.length>C.value?(s(),_(n,{
+            key:2,size:"small",type:"danger",plain:"",onClick:e[6]||(e[6]=a=>Ne("away"))
+          }
+          ,{
+            default:i(()=>[...e[22]||(e[22]=[N("移除DH",-1)])]),_:1
+          }
+          )):O("",!0)])]),u("table",Zl,[e[23]||(e[23]=u("thead",null,[u("tr",null,[u("th",{
+            class:"col-drag"
+          }
+          ),u("th",null,"棒次"),u("th",null,"球员"),u("th",null,"守备位置")])],-1)),u("tbody",{
+            ref_key:"awayLineupTbodyRef",ref:ye
+          }
+          ,[(s(!0),b(P,null,B(y.value,(a,Z)=>(s(),b("tr",{
+            key:a.id,class:ne({
+              "lineup-row-error":x.value.errorRowIndices?.includes(Z)
+            }
+            )
+          }
+          ,[u("td",jl,[v(g,{
+            class:"drag-handle"
+          }
+          ,{
+            default:i(()=>[v(I($e))]),_:1
+          }
+          )]),u("td",null,R(Z+1),1),u("td",null,[v(o,{
+            "model-value":K(a)?void 0:a.id,filterable:"",clearable:"",placeholder:"输入姓名检索",size:"small",class:"lineup-player-select","popper-class":"lineup-player-select-dropdown",onChange:p=>Ue("away",Z,p)
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(Ye.value,p=>(s(),_(t,{
+              key:p.id,label:`${p.name} #${p.number??"-"}`,value:p.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["model-value","onChange"])]),u("td",null,[v(o,{
+            modelValue:a.position,"onUpdate:modelValue":p=>a.position=p,placeholder:"位置",size:"small",class:"pos-select"
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(De(x.value),p=>(s(),_(t,{
+              key:p,label:(ae(x.value,p)?"★ ":"")+I(Ge)(p),value:p,class:ne({
+                "pos-option-missing":ae(x.value,p)
+              }
+              )
+            }
+            ,null,8,["label","value","class"]))),128))]),_:1
+          }
+          ,8,["modelValue","onUpdate:modelValue"])])],2))),128))],512)]),!x.value.ok&&x.value.msg?(s(),b("div",Jl,R(x.value.msg),1)):O("",!0),u("div",Ql,[u("span",Wl,R(ll.value),1),v(o,{
+            modelValue:G.value,"onUpdate:modelValue":e[7]||(e[7]=a=>G.value=a),filterable:"",clearable:"",placeholder:"选填先发投手",size:"small",class:"fielding-pitcher-select"
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(nl.value,a=>(s(),_(t,{
+              key:a.id,label:`${a.name} #${a.number??"-"}`,value:a.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["modelValue"]),G.value==null&&se.value?(s(),b("span",Yl,"须指定后才可开始比赛")):O("",!0)]),u("div",Kl,[e[24]||(e[24]=u("div",{
+            class:"bench-header"
+          }
+          ,[u("span",null,"替补名单")],-1)),v(o,{
+            ref_key:"awayBenchSelectRef",ref:Ie,modelValue:Ce.value,"onUpdate:modelValue":e[8]||(e[8]=a=>Ce.value=a),multiple:"","collapse-tags":I(j),"collapse-tags-tooltip":I(j),"max-collapse-tags":I(j)?2:void 0,placeholder:"从名册多选替补",filterable:"",clearable:"",size:"small",class:"live-bench-multi-select",onChange:e[9]||(e[9]=a=>xe(Ie.value))
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(ul.value,a=>(s(),_(t,{
+              key:a.id,label:`${a.name} #${a.number??"-"}`,value:a.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["modelValue","collapse-tags","collapse-tags-tooltip","max-collapse-tags"])])]),u("div",ea,[u("div",la,[u("h4",null,R(Qe.value?.name??"主队")+" 阵容",1),u("div",aa,[h.value.length<J.value&&(Ve.value.length>0||T.value.length>0)?(s(),_(n,{
+            key:0,size:"small",onClick:e[10]||(e[10]=a=>Ee("home"))
+          }
+          ,{
+            default:i(()=>[...e[25]||(e[25]=[N("添加DH",-1)])]),_:1
+          }
+          )):O("",!0),I(ve)("business:lineup-template:manage")?(s(),_(n,{
+            key:1,size:"small",type:"primary",plain:"",onClick:e[11]||(e[11]=a=>Re("home"))
+          }
+          ,{
+            default:i(()=>[...e[26]||(e[26]=[N("应用阵容模板",-1)])]),_:1
+          }
+          )):O("",!0),h.value.length>C.value?(s(),_(n,{
+            key:2,size:"small",type:"danger",plain:"",onClick:e[12]||(e[12]=a=>Ne("home"))
+          }
+          ,{
+            default:i(()=>[...e[27]||(e[27]=[N("移除DH",-1)])]),_:1
+          }
+          )):O("",!0)])]),u("table",na,[e[28]||(e[28]=u("thead",null,[u("tr",null,[u("th",{
+            class:"col-drag"
+          }
+          ),u("th",null,"棒次"),u("th",null,"球员"),u("th",null,"守备位置")])],-1)),u("tbody",{
+            ref_key:"homeLineupTbodyRef",ref:we
+          }
+          ,[(s(!0),b(P,null,B(h.value,(a,Z)=>(s(),b("tr",{
+            key:a.id,class:ne({
+              "lineup-row-error":U.value.errorRowIndices?.includes(Z)
+            }
+            )
+          }
+          ,[u("td",ta,[v(g,{
+            class:"drag-handle"
+          }
+          ,{
+            default:i(()=>[v(I($e))]),_:1
+          }
+          )]),u("td",null,R(Z+1),1),u("td",null,[v(o,{
+            "model-value":K(a)?void 0:a.id,filterable:"",clearable:"",placeholder:"输入姓名检索",size:"small",class:"lineup-player-select","popper-class":"lineup-player-select-dropdown",onChange:p=>Ue("home",Z,p)
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(Ke.value,p=>(s(),_(t,{
+              key:p.id,label:`${p.name} #${p.number??"-"}`,value:p.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["model-value","onChange"])]),u("td",null,[v(o,{
+            modelValue:a.position,"onUpdate:modelValue":p=>a.position=p,placeholder:"位置",size:"small",class:"pos-select"
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(De(U.value),p=>(s(),_(t,{
+              key:p,label:(ae(U.value,p)?"★ ":"")+I(Ge)(p),value:p,class:ne({
+                "pos-option-missing":ae(U.value,p)
+              }
+              )
+            }
+            ,null,8,["label","value","class"]))),128))]),_:1
+          }
+          ,8,["modelValue","onUpdate:modelValue"])])],2))),128))],512)]),!U.value.ok&&U.value.msg?(s(),b("div",ua,R(U.value.msg),1)):O("",!0),u("div",oa,[u("span",sa,R(al.value),1),v(o,{
+            modelValue:q.value,"onUpdate:modelValue":e[13]||(e[13]=a=>q.value=a),filterable:"",clearable:"",placeholder:"选填先发投手",size:"small",class:"fielding-pitcher-select"
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(tl.value,a=>(s(),_(t,{
+              key:a.id,label:`${a.name} #${a.number??"-"}`,value:a.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["modelValue"]),q.value==null&&ie.value?(s(),b("span",ia,"须指定后才可开始比赛")):O("",!0)]),u("div",ra,[e[29]||(e[29]=u("div",{
+            class:"bench-header"
+          }
+          ,[u("span",null,"替补名单")],-1)),v(o,{
+            ref_key:"homeBenchSelectRef",ref:_e,modelValue:Ae.value,"onUpdate:modelValue":e[14]||(e[14]=a=>Ae.value=a),multiple:"","collapse-tags":I(j),"collapse-tags-tooltip":I(j),"max-collapse-tags":I(j)?2:void 0,placeholder:"从名册多选替补",filterable:"",clearable:"",size:"small",class:"live-bench-multi-select",onChange:e[15]||(e[15]=a=>xe(_e.value))
+          }
+          ,{
+            default:i(()=>[(s(!0),b(P,null,B(ol.value,a=>(s(),_(t,{
+              key:a.id,label:`${a.name} #${a.number??"-"}`,value:a.id
+            }
+            ,null,8,["label","value"]))),128))]),_:1
+          }
+          ,8,["modelValue","collapse-tags","collapse-tags-tooltip","max-collapse-tags"])])])])]),_:1
+        }
+        ,8,["model"])])])]),_:1
+      }
+      )),[[E,pe.value]]),v(m,{
+        modelValue:W.value,"onUpdate:modelValue":e[18]||(e[18]=a=>W.value=a),title:"应用阵容模板",width:"420px","close-on-click-modal":!1
+      }
+      ,{
+        footer:i(()=>[v(n,{
+          onClick:e[17]||(e[17]=a=>W.value=!1)
+        }
+        ,{
+          default:i(()=>[...e[30]||(e[30]=[N("取消",-1)])]),_:1
+        }
+        ),v(n,{
+          type:"primary",disabled:Y.value==null,onClick:il
+        }
+        ,{
+          default:i(()=>[...e[31]||(e[31]=[N("应用",-1)])]),_:1
+        }
+        ,8,["disabled"])]),default:i(()=>[v(o,{
+          modelValue:Y.value,"onUpdate:modelValue":e[16]||(e[16]=a=>Y.value=a),placeholder:"选择阵容模板",filterable:"",style:{
+            width:"100%"
+          }
+          
+        }
+        ,{
+          default:i(()=>[(s(!0),b(P,null,B(ue.value,a=>(s(),_(t,{
+            key:a.id,label:a.name,value:a.id
+          }
+          ,null,8,["label","value"]))),128))]),_:1
+        }
+        ,8,["modelValue"])]),_:1
+      }
+      ,8,["modelValue"])])
+    }
+    
+  }
+  
+}
+),Ta=Vl(da,[["__scopeId","data-v-0ec7bfb5"]]);
+
+export default Ta;

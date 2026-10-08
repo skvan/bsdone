@@ -23,14 +23,13 @@
  */
 package com.bsball.service;
 
+import com.bsball.core.CurrentUserHolder;
 import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysMenuApi;
 import com.bsball.model.entity.SysRole;
-import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.repository.SysApiRepository;
 import com.bsball.repository.SysMenuApiRepository;
 import com.bsball.repository.SysRoleApiRepository;
-import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysRoleRepository;
 import com.bsball.repository.SysUserRoleRepository;
 import com.bsball.service.ApiPermissionService;
@@ -38,13 +37,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -63,10 +62,10 @@ public class ApiPermissionService {
     private static final ThreadLocal<Map<Long, List<Long>>> USER_ROLE_IDS_REQ_CACHE = ThreadLocal.withInitial(HashMap::new);
     private final SysRoleRepository sysRoleRepository;
     private final SysRoleApiRepository sysRoleApiRepository;
-    private final SysRoleMenuRepository sysRoleMenuRepository;
     private final SysMenuApiRepository sysMenuApiRepository;
     private final SysApiRepository sysApiRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
+    private final TenantRoleConfigService tenantRoleConfigService;
     @Value(value="${server.servlet.context-path:}")
     private String contextPath;
     @Value(value="${app.api-permission.guest-cache-ttl-sec:60}")
@@ -139,6 +138,22 @@ public class ApiPermissionService {
         return roles.stream().anyMatch(r -> "tenant_admin".equals(r.getCode()));
     }
 
+    /**
+     * 判定用户是否拥有给定角色码中的任意一个。
+     * 用于「新增账号类型只扩展一个 Provider」之外的轻量角色判定场景。
+     */
+    public boolean hasAnyRoleCode(Long userId, String... codes) {
+        if (userId == null || codes == null || codes.length == 0) {
+            return false;
+        }
+        List<Long> roleIds = this.getRoleIdsByUserId(userId);
+        if (roleIds.isEmpty()) {
+            return false;
+        }
+        Set<String> wanted = new HashSet<>(Arrays.asList(codes));
+        return this.sysRoleRepository.findAllById(roleIds).stream().anyMatch(r -> r.getCode() != null && wanted.contains(r.getCode()));
+    }
+
     public boolean canUserAccessApi(Long userId, String requestPath, String method) {
         if (userId == null) {
             return false;
@@ -162,9 +177,13 @@ public class ApiPermissionService {
             return Set.of();
         }
         Set<Long> out = this.sysRoleApiRepository.findByRoleIdIn(roleIds).stream().map(ra -> ra.getApiId()).collect(HashSet::new, Set::add, Set::addAll);
-        List<Long> rawMenuIds = this.sysRoleMenuRepository.findByRoleIdIn(roleIds).stream().map(SysRoleMenu::getMenuId).filter(Objects::nonNull).distinct().toList();
-        if (!rawMenuIds.isEmpty()) {
-            for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(rawMenuIds)) {
+        // I1 口径：授权按生效请求租户（CurrentUserHolder 由 X-Tenant-Id/Host/JWT 解析链写入）裁定；
+        // 菜单路径按会话租户（toAuthUser 入参）。跨租户浏览的非超管 /sys 已被 filter 拦截、数据隔离由 AccountScope 约束；
+        // 两者口径差异为批 4 前端对齐点。
+        // 覆盖口径：role_api 为角色基线能力（预设）不受租户覆盖影响；覆盖通过生效菜单调整 menu_api 派生面（菜单/按钮导航 + 其绑定 API）。
+        Set<Long> effectiveMenuIds = this.tenantRoleConfigService.resolveEffectiveMenuIds(CurrentUserHolder.getTenantId(), roleIds);
+        if (!effectiveMenuIds.isEmpty()) {
+            for (SysMenuApi ma : this.sysMenuApiRepository.findByMenuIdIn(new ArrayList<>(effectiveMenuIds))) {
                 if (ma.getApiId() == null) continue;
                 out.add(ma.getApiId());
             }
@@ -273,13 +292,13 @@ public class ApiPermissionService {
     }
 
     @Generated
-    public ApiPermissionService(SysRoleRepository sysRoleRepository, SysRoleApiRepository sysRoleApiRepository, SysRoleMenuRepository sysRoleMenuRepository, SysMenuApiRepository sysMenuApiRepository, SysApiRepository sysApiRepository, SysUserRoleRepository sysUserRoleRepository) {
+    public ApiPermissionService(SysRoleRepository sysRoleRepository, SysRoleApiRepository sysRoleApiRepository, SysMenuApiRepository sysMenuApiRepository, SysApiRepository sysApiRepository, SysUserRoleRepository sysUserRoleRepository, TenantRoleConfigService tenantRoleConfigService) {
         this.sysRoleRepository = sysRoleRepository;
         this.sysRoleApiRepository = sysRoleApiRepository;
-        this.sysRoleMenuRepository = sysRoleMenuRepository;
         this.sysMenuApiRepository = sysMenuApiRepository;
         this.sysApiRepository = sysApiRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
+        this.tenantRoleConfigService = tenantRoleConfigService;
     }
 
     private record GuestPermissionSnapshot(List<SysApi> allApis, Set<Long> guestApiIds) {

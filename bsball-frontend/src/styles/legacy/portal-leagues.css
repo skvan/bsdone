@@ -1,0 +1,71 @@
+/* 门户「联盟一览」页样式（建盟链路批次①，与门户既有卡片风格对齐） */
+.portal-leagues {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.leagues-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.leagues-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.league-card {
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--el-bg-color, #fff);
+  transition: box-shadow 0.2s ease;
+}
+
+.league-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.league-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.league-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.league-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #909399);
+}
+
+.league-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--el-text-color-regular, #606266);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.leagues-pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}

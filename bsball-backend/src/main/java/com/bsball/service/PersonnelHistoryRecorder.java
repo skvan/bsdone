@@ -21,6 +21,7 @@ import com.bsball.model.entity.Coach;
 import com.bsball.model.entity.HistoryRecord;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.HistoryRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +31,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.Generated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,15 +65,17 @@ public class PersonnelHistoryRecorder {
         return "active".equalsIgnoreCase(status.trim());
     }
 
-    private void persist(HistoryRecord r) {
+    private HistoryRecord persist(HistoryRecord r) {
         try {
-            this.historyRecordRepository.save(r);
+            HistoryRecord saved = (HistoryRecord)this.historyRecordRepository.save(r);
             if (log.isDebugEnabled()) {
                 log.debug("\u6cbf\u9769\u81ea\u52a8\u8bb0\u5f55\u5df2\u5199\u5165: type={} targetType={} targetId={}", new Object[]{r.getType(), r.getTargetType(), r.getTargetId()});
             }
+            return saved;
         }
         catch (Exception e) {
             log.warn("\u6cbf\u9769\u81ea\u52a8\u8bb0\u5f55\u5199\u5165\u5931\u8d25: type={} targetType={} targetId={} \u2014 {}", new Object[]{r.getType(), r.getTargetType(), r.getTargetId(), e.toString(), e});
+            return null;
         }
     }
 
@@ -95,21 +100,86 @@ public class PersonnelHistoryRecorder {
         return r;
     }
 
-    public void afterPlayerCreate(Player saved) {
-        if (saved == null || saved.getId() == null) {
-            return;
+    /**
+     * 记录球员“当前球队”集合的流转：
+     * 恰好 1→1 记 transfer；否则新增记 join、移除记 leave（每队一条）。
+     *
+     * @return 最新 join/transfer 记录 ID（无则 null），供调用方回写 player.currentJoinRecordId
+     */
+    public Long recordPlayerTeamTransitions(Player player, Set<Long> oldCurrentTeamIds, Set<Long> newCurrentTeamIds) {
+        if (player == null || player.getId() == null || player.getTenantId() == null) {
+            return null;
         }
-        Long tid = saved.getTenantId();
-        if (tid == null) {
-            return;
+        Set<Long> oldSet = oldCurrentTeamIds == null ? Set.of() : oldCurrentTeamIds;
+        Set<Long> newSet = newCurrentTeamIds == null ? Set.of() : newCurrentTeamIds;
+        if (oldSet.equals(newSet)) {
+            return null;
         }
-        Long team = PersonnelHistoryRecorder.normTeam((Long)saved.getTeamId());
-        if (team != null) {
-            HistoryRecord r = this.baseEvent("player", saved.getId().longValue(), tid.longValue(), "join");
+        long pid = player.getId();
+        long tid = player.getTenantId();
+        if (oldSet.size() == 1 && newSet.size() == 1) {
+            Long from = oldSet.iterator().next();
+            Long to = newSet.iterator().next();
+            HistoryRecord r = this.baseEvent("player", pid, tid, "transfer");
             r.setRelatedObjectType("team");
-            r.setRelatedObjectId(team);
+            r.setRelatedObjectId(to);
+            LinkedHashMap<String, Object> payload = new LinkedHashMap<String, Object>();
+            payload.put("fromTeamId", from);
+            payload.put("toTeamId", to);
+            r.setChangePayloadJson(this.jsonPayload(payload));
+            HistoryRecord saved = this.persist(r);
+            return saved == null ? null : saved.getId();
+        }
+        Long latestJoinRecordId = null;
+        TreeSet<Long> added = new TreeSet<Long>(newSet);
+        added.removeAll(oldSet);
+        for (Long teamId : added) {
+            HistoryRecord r = this.baseEvent("player", pid, tid, "join");
+            r.setRelatedObjectType("team");
+            r.setRelatedObjectId(teamId);
+            HistoryRecord saved = this.persist(r);
+            if (saved != null) {
+                latestJoinRecordId = saved.getId();
+            }
+        }
+        TreeSet<Long> removed = new TreeSet<Long>(oldSet);
+        removed.removeAll(newSet);
+        for (Long teamId : removed) {
+            HistoryRecord r = this.baseEvent("player", pid, tid, "leave");
+            r.setRelatedObjectType("team");
+            r.setRelatedObjectId(teamId);
             this.persist(r);
         }
+        return latestJoinRecordId;
+    }
+
+    /**
+     * 记录一条球队经历被移除（软删）的审计事件：eventType=profile_update、target=player、
+     * relatedObject=team；变更载荷含 changedFields=[teamEntries.removed] 与移除前值（teamId/number/positions/current）。
+     * <p>本 payload 形态（{@code changedFields:["teamEntries.removed"]} + {@code before}{teamId,number,positions,current}、
+     * relatedObject=team）为 spec §6.6 / T3.10 定义的<b>有意形态</b>，非通用档案差分（无 after）；勿按 wrapProfilePayload 改写。
+     *
+     * @param playerId 球员档案 ID
+     * @param tenantId 租户 ID
+     * @param removed  被移除的球队经历行
+     */
+    public void recordPlayerTeamEntryRemoval(Long playerId, Long tenantId, PlayerTeam removed) {
+        if (playerId == null || tenantId == null || removed == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("player", playerId, tenantId, "profile_update");
+        r.setRelatedObjectType("team");
+        r.setRelatedObjectId(removed.getTeamId());
+        LinkedHashMap<String, Object> beforeMap = new LinkedHashMap<>();
+        beforeMap.put("teamId", removed.getTeamId());
+        beforeMap.put("number", removed.getNumber());
+        beforeMap.put("positions", removed.getPositionsList());
+        beforeMap.put("current", Boolean.TRUE.equals(removed.getCurrent()));
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+        payload.put("changedFields", List.of("teamEntries.removed"));
+        payload.put("before", beforeMap);
+        r.setChangePayloadJson(this.jsonPayload(payload));
+        this.persist(r);
     }
 
     public void afterPlayerUpdate(Player before, Player after) {
@@ -134,28 +204,6 @@ public class PersonnelHistoryRecorder {
                 r.setRelatedObjectId(oldTeam);
             }
             this.persist(r);
-        }
-        if (!Objects.equals(oldTeam, newTeam)) {
-            if (oldTeam == null && newTeam != null) {
-                r = this.baseEvent("player", pid, tid, "join");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(newTeam);
-                this.persist(r);
-            } else if (oldTeam != null && newTeam == null) {
-                r = this.baseEvent("player", pid, tid, "leave");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(oldTeam);
-                this.persist(r);
-            } else if (oldTeam != null) {
-                r = this.baseEvent("player", pid, tid, "transfer");
-                r.setRelatedObjectType("team");
-                r.setRelatedObjectId(newTeam);
-                payload = new LinkedHashMap<>();
-                payload.put("fromTeamId", oldTeam);
-                payload.put("toTeamId", newTeam);
-                r.setChangePayloadJson(this.jsonPayload(payload));
-                this.persist(r);
-            }
         }
         if (PersonnelHistoryRecorder.playerProfileFieldsChanged((Player)before, (Player)after)) {
             r = this.baseEvent("player", pid, tid, "profile_update");
@@ -303,6 +351,64 @@ public class PersonnelHistoryRecorder {
 
     private static boolean teamProfileFieldsChanged(Team a, Team b) {
         return !Objects.equals(PersonnelHistoryRecorder.str(a.getName()), PersonnelHistoryRecorder.str(b.getName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getNameEn()), PersonnelHistoryRecorder.str((String)b.getNameEn())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getShortName()), PersonnelHistoryRecorder.str((String)b.getShortName())) || !Objects.equals(PersonnelHistoryRecorder.str((String)a.getLogo()), PersonnelHistoryRecorder.str((String)b.getLogo()));
+    }
+
+    /**
+     * 记录球队解散事件（spec §6.7）：eventType={@code dissolved}、targetType={@code team}、targetId=球队ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param dissolved 已软删（解散）的球队实体
+     */
+    public void afterTeamDissolve(Team dissolved) {
+        if (dissolved == null || dissolved.getId() == null || dissolved.getTenantId() == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", dissolved.getId().longValue(), dissolved.getTenantId().longValue(), "dissolved");
+        this.persist(r);
+    }
+
+    /**
+     * 球队负责人失效（解散等场景，spec §6.7 第 3 条）：eventType={@code manager_removed}、targetType={@code team}、
+     * targetId=球队ID、relatedObjectType={@code user}、relatedObjectId=被失效的负责人账号ID，
+     * changeDate=当天、remark=系统自动记录。复用 baseEvent/persist，写入失败按现有容错策略（记 warn、返回 null）。
+     *
+     * @param teamId   球队 ID
+     * @param tenantId 租户 ID
+     * @param userId   被失效的负责人账号 ID
+     */
+    public void recordTeamManagerRemoved(Long teamId, Long tenantId, Long userId) {
+        if (teamId == null || tenantId == null || userId == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("team", teamId.longValue(), tenantId.longValue(), "manager_removed");
+        r.setRelatedObjectType("user");
+        r.setRelatedObjectId(userId);
+        this.persist(r);
+    }
+
+    /** 解除认领（Feature 解除认领）：清空 player.userId 的审计词条（player 域，claim_released）。 */
+    public void recordPlayerClaimReleased(Player player, Long releasedUserId, Long operatorId, boolean self) {
+        if (player == null || player.getId() == null || player.getTenantId() == null || releasedUserId == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("player", player.getId().longValue(), player.getTenantId().longValue(), "claim_released");
+        r.setRelatedObjectType("user");
+        r.setRelatedObjectId(releasedUserId);
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<String, Object>();
+        payload.put("releasedUserId", releasedUserId);
+        payload.put("operatorId", operatorId);
+        payload.put("self", Boolean.valueOf(self));
+        r.setChangePayloadJson(this.jsonPayload(payload));
+        this.persist(r);
+    }
+
+    /** 记录联盟解散事件（建盟链路：主办方/管理员解散）：eventType={@code dissolved}、targetType={@code league}。 */
+    public void afterLeagueDissolve(League dissolved) {
+        if (dissolved == null || dissolved.getId() == null || dissolved.getTenantId() == null) {
+            return;
+        }
+        HistoryRecord r = this.baseEvent("league", dissolved.getId().longValue(), dissolved.getTenantId().longValue(), "dissolved");
+        this.persist(r);
     }
 
     private static Map<String, Object> teamProfilePayload(Team before, Team after) {

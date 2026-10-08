@@ -48,7 +48,7 @@ Svc -.-> AUD
 
 ## 核心组件
 - 球队管理API：提供球队选项、分页列表、详情、创建、更新、删除等接口
-- 球员管理API：提供选项、分页列表、详情、统计数据、赛季统计、比赛日志、击球/投球/防守钻取、批量删除、批量导入等接口
+- 球员管理API：提供选项、分页列表、详情、统计数据、赛季统计、比赛日志、击球/投球/防守钻取、批量删除、批量导入等接口；球员档案支持“球员-球队经历”多队注册（teamEntries）
 - 教练管理API：提供选项、分页列表、详情、创建、更新、删除等接口
 - 阵容模板API：按球队维度提供模板列表、详情、创建、从比赛复制、更新、删除
 - 球队负责人API：按球队维度列出、指派、移除负责人（需管理员权限）
@@ -116,25 +116,27 @@ class Team {
 ### 球员管理（Player）
 - 接口概览
   - GET /player/select-options：下拉选项
-  - GET /player/list：分页列表（支持按球队、ID集合、关键字、号码、位置、投打惯用手、状态、加入日期区间筛选）
+  - GET /player/list：分页列表（支持按球队、ID集合、关键字、号码、位置、投打惯用手、状态、加入日期区间筛选）；球队筛选=存在该队“当前”经历，号码/位置筛选按经历段匹配；返回项含 teamEntries
   - GET /player/check-full-name：全名重复性检查
-  - GET /player/team-options?teamId=：某队可选项（含号码、位置、投打手、状态）
-  - GET /player/{id}：详情
+  - GET /player/team-options?teamId=：某队“当前注册”球员可选项（号码/位置取自该队注册段，含投打手、状态，供阵容编辑选择）
+  - GET /player/{id}：详情（含 teamEntries 球队经历）
   - GET /player/{id}/stats：综合统计（可按比赛模式过滤）
   - GET /player/{id}/stats/by-season：按赛季统计
   - GET /player/{id}/stats/game-log：比赛日志（默认最近30条）
   - GET /player/{id}/stats/drill-down/batting|pitching|fielding：击球/投球/防守钻取（支持分页、赛事、赛季、比赛模式）
-  - POST /player/create：创建
-  - PUT /player/update/{id}：更新
+  - POST /player/create：创建（请求体可携带 teamEntries）
+  - PUT /player/update/{id}：更新（请求体可携带 teamEntries）
   - DELETE /player/delete/{id}：删除
   - POST /player/delete-batch：批量删除
   - POST /player/import：批量导入（支持重复策略）
 - 关键行为
-  - 列表与选项均受租户与数据范围限制；支持自由球员与指定球队两种视图
-  - 统计与钻取通过服务聚合计算并按模式过滤
-  - 导入支持重复处理策略
+  - 列表与选项均受租户与数据范围限制；支持自由球员（无“当前”经历）与指定球队（存在该队“当前”经历）两种视图
+  - 数据范围判定：受限用户按“当前经历是否落在授权球队”判定可见性（列表、ID集合查询、详情一致）
+  - 统计与钻取通过服务聚合计算并按模式过滤；统计按 playerId 聚合，不受多队注册影响
+  - 导入与旧页面更新会按旧字段确保/更新一条“当前球队”经历
 - 数据模型要点
-  - 关联用户ID、球队ID、租户ID；包含姓名、昵称、号码、位置（JSON）、头像、背景配置、出生信息、身高体重、投打手、选秀/首秀、学历、当前加入记录ID、状态、联系方式、简介、排序等
+  - 关联用户ID、租户ID；包含姓名、昵称、号码镜像、位置镜像、头像、背景配置、出生信息、身高体重、投打手、选秀/首秀、学历、当前加入记录ID、状态、联系方式、简介、排序等
+  - 多队注册：teamId/number/positions 为“主注册”镜像字段；完整球队经历见 bs_player_team（下表）
 
 ```mermaid
 classDiagram
@@ -169,6 +171,33 @@ class Player {
 +Integer sort
 }
 ```
+
+#### 球员-球队经历（PlayerTeam / bs_player_team）
+一位球员可注册多支球队（简历式多段），每段包含：球队、该队背号、该队守备位置、是否“当前球队”（可多选）。
+
+```mermaid
+classDiagram
+class PlayerTeam {
++Long playerId
++Long teamId
++Long tenantId
++String number
++String positions
++Boolean current
++Integer sort
+}
+```
+
+- 接口约定（随球员档案嵌套，无独立路由）：
+  - 详情/列表输出：GET /player/{id}、GET /player/list 返回项均含 `teamEntries: [{id, teamId, teamName, number, positions[], current, sort}]`
+  - 创建/更新：POST /player/create、PUT /player/update/{id} 请求体可携带 `teamEntries`
+    - 提供 teamEntries：全量替换语义——缺失段被移除（软删）；`current=false` 表示保留经历但不再“当前”
+    - 未提供 teamEntries（旧页面兼容）：teamId>0 时确保该队一段“当前”经历并按请求体号码/守备位置更新该段（其他段不动）；teamId 为空时取消全部“当前”标记（自由球员）
+  - 镜像回写：保存后 teamId/number/positions 取“主注册”（“当前”段按 sort,id 排序取第一段）；无“当前”段时三者置空
+  - 校验：段内球队重复 → 400；球队不存在或跨租户 → 400
+- 演进记录联动：“当前”集合变化时写 join/leave/transfer 事件，并回写 currentJoinRecordId
+- 阵容选择：GET /player/team-options?teamId= 返回该队“当前注册”球员，号码/守备位置取该队注册段（旧版阵容/模板页无需前端改动即受益）
+- 过渡期说明：旧编译版页面（球员列表/详情等）按镜像字段展示，仅显示主队/主背号；新工程（前端重建 B4 批次）将按 teamEntries 完整展示与编辑
 
 ### 教练管理（Coach）
 - 接口概览
@@ -328,10 +357,22 @@ bigint team_id FK
 bigint user_id
 string status
 }
+PLAYER_TEAM {
+bigint id PK
+bigint player_id FK
+bigint team_id FK
+bigint tenant_id
+string number
+text positions
+boolean is_current
+int sort
+}
 TEAM ||--o{ PLAYER : "拥有"
 TEAM ||--o{ COACH : "拥有"
 TEAM ||--o{ TEAM_LINEUP_TEMPLATE : "拥有"
 TEAM ||--o{ TEAM_MANAGER : "负责人"
+PLAYER ||--o{ PLAYER_TEAM : "注册"
+TEAM ||--o{ PLAYER_TEAM : "多队经历"
 ```
 
 ## 依赖关系分析
@@ -371,8 +412,9 @@ LTSvc --> Repo
 - 定位思路
   - 确认请求是否携带正确的Authorization头（负责人相关接口）
   - 检查租户上下文是否正确解析（过滤器设置）
-  - 核对数据范围是否允许访问目标对象
+  - 核对数据范围是否允许访问目标对象（受限用户按“当前经历球队”判定球员可见性）
   - 查看服务层抛出的业务异常与日志堆栈
+  - 球队经历相关 400：重复球队/球队不存在/跨租户不匹配（核对 teamEntries 内容与球队归属）
 
 ## 结论
 本套API围绕球队、球员、教练与阵容模板构建了完整的生命周期管理能力，并通过统一的租户解析与数据范围机制保障多租户环境下的数据安全与隔离。建议在实际使用中：

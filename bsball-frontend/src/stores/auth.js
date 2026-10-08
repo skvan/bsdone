@@ -61,6 +61,13 @@ export const MENU_PARENT_IDS = {
   19: 4, 26: 4, 20: 4, 21: 4, 22: 4, 23: 4, 24: 4, 25: 4, 37: 4, 38: 4
 };
 
+// 登录落地候选顺序（T4.2）：受限角色按此顺序回落到第一个可访问菜单
+const FIRST_MENU_ORDER = [
+  '/admin/dashboard', '/admin/leagues', '/admin/teams', '/admin/players', '/admin/player-claims',
+  '/admin/lineup-templates', '/admin/events', '/admin/stadiums', '/admin/coaches', '/admin/history-records',
+  '/admin/highlight-moments', '/admin/content', '/admin/users', '/admin/roles', '/admin/config'
+];
+
 // 用户对象规范化：ID 类字段统一转为数字
 function normalizeUser(user) {
   if (!user) return null;
@@ -231,6 +238,34 @@ export const useAuthStore = defineStore('auth', () => {
     return '/admin/leagues';
   });
 
+  // 登录落地（T4.2）：两遍法选取登录后首个可访问的管理端菜单路径
+  // 裁定：显式授权优先（避免 canAccess 的「父级兜底」把受限角色误导向兄弟页）。
+  // 第一遍（显式授权优先）：按 FIRST_MENU_ORDER 顺序返回首个被 menuPaths 显式包含的候选，
+  //   口径与 businessFirstPath 一致（menuPaths.has(path)）；team_manager 仅显式授予 /admin/teams
+  //   而未授予 /admin/leagues，故不会因 menuIds 含业务根目录 id=4（leagues 父级）而被兜底放行。
+  //   该遍不依赖菜单映射，保持既有行为不变。
+  // 第二遍（兜底）：同样按顺序回退到首个 canAccess 放行的候选，但**仅映射存在的候选参与**——
+  //   canAccess 对「MENU_PATH_IDS 无映射且 getBasePath 未归一」的未知路径一律放行（未知路径放行），
+  //   若不过滤，无第一遍命中的受限角色（纯运维/审计类菜单）会被 /admin/player-claims 这类幽灵候选
+  //   短路落到未被授予的页面，并绕过下方的 dashboard 兜底。
+  // 无 user 或两遍均无命中 → /admin/dashboard（保持既有兜底不变）。
+  function firstAccessibleMenuPath() {
+    if (!user.value) return '/admin/dashboard';
+    const paths = menuPaths.value;
+    if (paths != null && paths.size > 0) {
+      for (const path of FIRST_MENU_ORDER) {
+        if (paths.has(path)) return path;
+      }
+    }
+    for (const path of FIRST_MENU_ORDER) {
+      // 仅映射存在的候选参与 canAccess 兜底：无菜单映射的候选会被「未知路径放行」短路，
+      // 从而误导向未被授予的页面（如 /admin/player-claims）并绕过 dashboard 兜底。
+      if (MENU_PATH_IDS[path] == null) continue;
+      if (canAccess(path)) return path;
+    }
+    return '/admin/dashboard';
+  }
+
   // 更新用户对象（可选切换租户）
   function setUser(userData, tenantCode) {
     const tenant = normalizeTenantCode(tenantCode ?? activeTenantStorageCode.value);
@@ -283,7 +318,7 @@ export const useAuthStore = defineStore('auth', () => {
       window.location.assign(redirect);
       return;
     }
-    window.location.assign(`/${tenant}/admin/dashboard`);
+    window.location.assign(`/${tenant}${firstAccessibleMenuPath()}`);
   }
 
   // 跨标签页同步
@@ -345,6 +380,7 @@ export const useAuthStore = defineStore('auth', () => {
     systemFirstPath,
     monitorFirstPath,
     businessFirstPath,
+    firstAccessibleMenuPath,
     hydrateForTenant,
     completeLogin,
     setNoTenantLimit,

@@ -6,7 +6,7 @@ import { ElSelect as Bt, ElOption as Wt, ElInput as pt, ElButton as Ut, ElIcon a
 import { Close as dt, Monitor as Ct, Trophy as Tt, ArrowDown as ot, Setting as _e, ArrowUp as pn, Menu as hn } from '@element-plus/icons-vue';
 import { useRoute as je } from 'vue-router';
 import { useRouter as Ft } from 'vue-router';
-import { useSettingsStore as Ht } from '../../stores/settings';
+import { useSettingsStore as Ht, DEFAULT_SETTINGS } from '../../stores/settings';
 import { useAppConfigStore as qn } from '../../stores/appConfig';
 import { useTabsStore as ft } from '../../stores/tabs';
 import { normalizeAdminPath as Ye } from '../../utils/tenantRoute';
@@ -27,6 +27,8 @@ import it from './AdminTagsView.vue';
 import Ot from './AdminWatermark.js';
 import hl from './AdminSettingsDrawer.js';
 import Ge from './AdminMenu.js';
+// H41：新旧版切换按钮组件化接入（原全局 DOM 注入已下线；3 套顶栏变体均内联渲染于用户下拉之前）
+import FrontendSwitchButton from '../common/FrontendSwitchButton.vue';
 // 值解包（等价编译产物 Gn：兼容 ref 与普通值）
 const Gn = (value) => (value && typeof value === "object" && "value" in value ? value.value : value);
 import '../../styles/legacy/admin-layout.css';
@@ -477,6 +479,39 @@ var Cl={
       }
       
     }
+    // —— H31：侧边栏宽度拖拽 / 双击复位（统一「侧边栏宽度」设置口径；范围与设置滑块一致 170–400）——
+    const SIDEBAR_MIN_WIDTH=170,SIDEBAR_MAX_WIDTH=400,sidebarResizing=$(!1);
+    let sidebarResizeStartX=0,sidebarResizeStartWidth=0;
+    function inSidebarResizeZone(e){
+      const i=e.currentTarget;
+      if(!i)return!1;
+      const r=i.getBoundingClientRect(),sb=i.offsetWidth-i.clientWidth;
+      return e.clientX>=r.right-18&&e.clientX<=r.right-10&&(sb<=1||e.clientX<=r.right-sb)
+    }
+    function onSidebarResizeMove(e){
+      if(!(e.buttons&1)){
+        stopSidebarResize(!0);
+        return
+      }
+      p.setSidebarWidth(Math.min(SIDEBAR_MAX_WIDTH,Math.max(SIDEBAR_MIN_WIDTH,sidebarResizeStartWidth+(e.clientX-sidebarResizeStartX))))
+    }
+    function stopSidebarResize(save){
+      if(!sidebarResizing.value)return;
+      sidebarResizing.value=!1,document.removeEventListener("mousemove",onSidebarResizeMove),document.removeEventListener("mouseup",onSidebarResizeUp),window.removeEventListener("blur",onSidebarResizeBlur),document.body.style.userSelect="",document.body.style.cursor="",save&&p.apply()
+    }
+    function onSidebarResizeUp(){
+      stopSidebarResize(!0)
+    }
+    function onSidebarResizeBlur(){
+      stopSidebarResize(!0)
+    }
+    function onSidebarResizeStart(e){
+      if(e.button!==0||!inSidebarResizeZone(e))return;
+      e.preventDefault(),sidebarResizing.value=!0,sidebarResizeStartX=e.clientX,sidebarResizeStartWidth=Number(p.sidebarWidth)||DEFAULT_SETTINGS.sidebarWidth,document.body.style.userSelect="none",document.body.style.cursor="col-resize",document.addEventListener("mousemove",onSidebarResizeMove),document.addEventListener("mouseup",onSidebarResizeUp),window.addEventListener("blur",onSidebarResizeBlur)
+    }
+    function onSidebarResizeReset(e){
+      inSidebarResizeZone(e)&&(p.setSidebarWidth(DEFAULT_SETTINGS.sidebarWidth),p.apply())
+    }
     return ct(async()=>{
       p.init(),p.apply(),xe(),window.addEventListener("resize",xe),J.ensureLoaded();
       const{
@@ -486,7 +521,7 @@ var Cl={
       V.value=i||[],Jt(),ye(()=>m())
     }
     ),vt(()=>{
-      window.removeEventListener("resize",xe),N&&(clearTimeout(N),N=null)
+      window.removeEventListener("resize",xe),N&&(clearTimeout(N),N=null),stopSidebarResize(!1)
     }
     ),(i,o)=>{
       const c=Re("router-view"),k=mt,I=Ut,Z=Re("router-link"),ee=En,tt=gn,nt=rn,en=fn,Be=un,tn=Fn,nn=kn,an=xn,at=dn,ln=Lt,yt=Wt,on=Bt,ze=Tn,kt=In,xt=vn,lt=pt;
@@ -558,7 +593,7 @@ var Cl={
             }
             )]),_:1
           }
-          )),t(nt,{
+          )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
             trigger:se.value,onCommand:et
           }
           ,{
@@ -602,9 +637,9 @@ var Cl={
         ),t(at,null,{
           default:a(()=>[t(tn,{
             width:`${r(p).sidebarWidth}px`,class:te(["admin-aside-mix",{
-              "sidebar-scroll-visible":R.value
+              "sidebar-scroll-visible":R.value,"resizing":sidebarResizing.value
             }
-            ]),onMouseenter:o[3]||(o[3]=g=>R.value=!0),onMouseleave:o[4]||(o[4]=g=>R.value=!1)
+            ]),onMousedown:onSidebarResizeStart,onDblclick:onSidebarResizeReset,onMouseenter:o[3]||(o[3]=g=>R.value=!0),onMouseleave:o[4]||(o[4]=g=>R.value=!1)
           }
           ,{
             default:a(()=>[t(Be,{
@@ -703,7 +738,7 @@ var Cl={
         }
         )]),_:1
       }
-      )),t(nt,{
+      )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
         trigger:se.value,onCommand:et
       }
       ,{
@@ -886,7 +921,7 @@ var Cl={
         }
         )]),_:1
       }
-      )),t(nt,{
+      )),t(FrontendSwitchButton,{variant:"admin"}),t(nt,{
         trigger:se.value,onCommand:et
       }
       ,{

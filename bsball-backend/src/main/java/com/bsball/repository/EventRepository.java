@@ -16,6 +16,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface EventRepository
 extends JpaRepository<Event, Long> {
@@ -34,5 +36,11 @@ extends JpaRepository<Event, Long> {
     public Page<Event> findByTenantIdAndLeagueIdIn(Long var1, Collection<Long> var2, Pageable var3);
 
     public List<Event> findByTenantIdAndLeagueIdIn(Long var1, Collection<Long> var2);
+
+    @Query(value="select e.id from Event e where e.deletedAt is null and e.tenantId = :tenantId and e.leagueId in :leagueIds")
+    public List<Long> findIdsByLeagueIdInAndTenantId(@Param(value="leagueIds") Collection<Long> var1, @Param(value="tenantId") Long var2);
+
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的赛事计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

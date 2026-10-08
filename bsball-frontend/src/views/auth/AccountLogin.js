@@ -63,7 +63,7 @@ var la={
     }
     =ta(),v=W(()=>Je(j)),ke=W(()=>`/${v.value}/account/register`),ye=W(()=>`/${v.value}/account/forgot-password`),ne=W(()=>{
       let r=typeof j.query.redirect=="string"?j.query.redirect:`/${v.value}/`;
-      return r!==`/${v.value}/`&&r!==`/${v.value}`||(r=`/${v.value}/admin/dashboard`),r
+      return r!==`/${v.value}/`&&r!==`/${v.value}`||(r=`/${v.value}${le.firstAccessibleMenuPath()}`),r
     }
     ),J=m("password"),L=m(""),z=m(!1),U=m(!1),A=m(0);
     let T=null;

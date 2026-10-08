@@ -125,12 +125,43 @@ function isPublicPath(url) {
   );
 }
 
+// 管理上下文判定（T4.1）：当前页面是否处于「管理视图」窄域。
+// 口径对齐 utils/tenantRoute 的部署基址剥离约定：先剥掉已知部署基址前缀，再判断 /{tenant}/admin 开头。
+// 基址集合（长前缀优先，避免 '/bs-ball' 误剥 '/bs-ball-next'）：dev '/'、新版 '/bs-ball-next/'、默认 '/bs-ball/'。
+// 注：硬编码前缀与 utils/tenantRoute.js 部署基址约定同源（BASE_URL / currentRoutePath 口径），改动需两处同步以防漂移。
+const DEPLOY_BASE_PREFIXES = Array.from(
+  new Set([BASE_URL, '/bs-ball-next', '/bs-ball'])
+)
+  .map((p) => String(p || '').replace(/\/+$/, ''))
+  .filter((p) => p && p !== '/')
+  .sort((a, b) => b.length - a.length);
+
+// 剥离部署基址前缀（仅按整段边界匹配；无基址即原样返回）
+function stripDeployBase(pathname) {
+  const p = pathname || '/';
+  for (const prefix of DEPLOY_BASE_PREFIXES) {
+    if (p === prefix) return '/';
+    if (p.startsWith(prefix + '/')) return p.slice(prefix.length);
+  }
+  return p;
+}
+
+// 当前页面是否管理区：剥离部署基址后以 /{tenant}/admin 开头
+function isManageContext() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  return /^\/[^/]+\/admin(\/|$)/.test(stripDeployBase(window.location.pathname || '/'));
+}
+
 function buildHeaders(fullUrl, custom) {
   const needAuth = !isPublicPath(fullUrl);
   return {
     'Content-Type': 'application/json',
     ...tenantHeaders(),
     ...(needAuth ? authHeaders() : {}),
+    // 管理上下文头仅随「已认证的管理区请求」附加（isManageContext() && needAuth）：
+    // needAuth 由 isPublicPath 独立判定，二者正交——管理区内的公开路径（如 /{t}/admin/login 页的登录/验证码）不再携带；
+    // 管理区业务请求（needAuth=true）仍照常携带。
+    ...(isManageContext() && needAuth ? { 'X-Scope-Context': 'manage' } : {}),
     ...custom
   };
 }
@@ -268,6 +299,37 @@ function httpErrorMessage(status, body) {
   return body.msg || body.message || `请求失败（${status}）`;
 }
 
+// 租户不可用门户「找不到」404 口径（批次 4b Task 4b-4；批次 b5 头优先升级 / #154）
+// 后端对不可用租户码通路已统一终态响应：404（带响应头 X-Tenant-Unavailable: 1；404 与 403 两通路均带）。
+// 此处单点处理（头优先、msg 兜底）：
+// - 仅 HTTP 404 触发跳转；403 即便带同头也保持既有 403 处理（防误跳）；
+// - 优先判定响应头 X-Tenant-Unavailable === '1'；缺头时回退 msg 精确匹配（trim，兼容旧后端）；
+// - BASE_URL 为 '/'、'/bs-ball-next/' 时分别产出 '/404'、'/bs-ball-next/404'（尾斜杠归一，防双斜杠）；
+// - 同一会话只跳一次（模块级防抖），跳转后仍 throw 以防调用方重复处理。
+const TENANT_NOT_FOUND_MSG = '租户不存在';
+let tenantUnavailableRedirected = false;
+// 判定「租户不可用终态」：仅 404；头优先（X-Tenant-Unavailable === '1'），msg 精确匹配为兜底
+function isTenantUnavailableResponse(res, body) {
+  if (!res || res.status !== 404) return false;
+  const flag = res.headers && typeof res.headers.get === 'function'
+    ? res.headers.get('X-Tenant-Unavailable')
+    : null;
+  if (flag === '1') return true;
+  // 兜底：msg 取值补 trim（防未来后端 msg 首尾空白导致精确匹配漏判）；
+  // 仍维持精确匹配语义——不做前缀/包含匹配，避免误伤其它 404（如「资源不存在」）。
+  const msg = String((body && (body.msg || body.message)) || '').trim();
+  return msg === TENANT_NOT_FOUND_MSG;
+}
+function redirectTenantUnavailableToNotFound(res, body) {
+  if (!isTenantUnavailableResponse(res, body)) return false;
+  if (typeof window !== 'undefined' && !tenantUnavailableRedirected) {
+    tenantUnavailableRedirected = true;
+    const base = String(BASE_URL || '/').replace(/\/+$/, ''); // '/' → ''，'/bs-ball-next/' → '/bs-ball-next'
+    window.location.replace(`${base}/404`);
+  }
+  return true;
+}
+
 // ---------- 核心请求 ----------
 export async function request(url, options = {}, retried = false) {
   const fullUrl = rewriteUrl(url);
@@ -311,6 +373,11 @@ export async function request(url, options = {}, retried = false) {
       const retriedRequest = retryAfterSessionLoss();
       if (retriedRequest) return retriedRequest;
       throwAuthError(msg, detail);
+    }
+    // 租户不可用：后端 404 终态（头 X-Tenant-Unavailable: 1；兼容 msg「租户不存在」）→ 重定向平台「找不到」页
+    // （单点最小改动：头优先、msg 兜底，仅 404 触发；随后仍 throw 防重复处理）
+    if (redirectTenantUnavailableToNotFound(res, body)) {
+      throw new Error(httpErrorMessage(res.status, body));
     }
     let message = httpErrorMessage(res.status, body);
     if (res.status === 403) {
@@ -362,6 +429,19 @@ export const patch = (url, data, headers) => request(url, { method: 'PATCH', bod
 export const put = (url, data) => request(url, { method: 'PUT', body: JSON.stringify(data) });
 export const del = (url) => request(url, { method: 'DELETE' });
 
+// 实体 GET（旧版 request 层 mt 语义，H30）：解包 data ?? null、自动拼接 params、失败 toast 后返回 null（不 reject）
+export async function getData(url, params) {
+  const full = params && Object.keys(params).length ? withQuery(url, params) : url;
+  try {
+    return (await get(full)).data ?? null;
+  } catch (e) {
+    if (!isAuthSessionError(e) && !(e instanceof ApiBizError && e.apiCode === 404)) {
+      ElMessage.error(e?.message ?? '加载失败');
+    }
+    return null;
+  }
+}
+
 // ---------- 列表/详情辅助 ----------
 function withQuery(url, params) {
   if (!params || !Object.keys(params).length) return url;
@@ -383,18 +463,6 @@ export async function fetchList(url, params) {
     if (isAuthSessionError(e)) return { list: [], total: 0 };
     ElMessage.error(e?.message ?? '加载失败');
     return { list: [], total: 0 };
-  }
-}
-
-// 详情（静默鉴权错误与 404；其他错误 toast）
-export async function fetchData(url, params) {
-  try {
-    return (await get(withQuery(url, params))).data ?? null;
-  } catch (e) {
-    if (!isAuthSessionError(e) && !(e instanceof ApiBizError && e.apiCode === 404)) {
-      ElMessage.error(e?.message ?? '加载失败');
-    }
-    return null;
   }
 }
 

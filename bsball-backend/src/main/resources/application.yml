@@ -73,8 +73,8 @@ mybatis:
 --- #################### 业务自定义（非 Spring 标准键，代码里 @Value 读取） ####################
 
 app:
-  # Maven 资源过滤写入，供门户反馈等接口记录服务端版本；未过滤时运行时代码回落为 unknown
-  release-version: 1.0.0
+  # 发布版本：由 Maven 资源过滤写入（pom 属性 app.release.version；CI 部署可用 -Dapp.release.version=... 覆盖，留空沿用基线）。加引号保证未过滤时为合法 YAML（运行时按无效值降级）。Issue #123
+  release-version: "@app.release.version@"
   # 空库种子：详见 InitSeedProperties、InitDataRunner、ImportTestDataRunner（此处仅允许一个 app.init，禁止重复键）
   init:
     # 种子数据写入的租户：0=使用 app.tenant.default-id；否则为指定租户 ID（APP_INIT_SEED_TENANT_ID）
@@ -195,6 +195,8 @@ app:
     default-id: ${APP_TENANT_DEFAULT_ID:1}
     # 按租户 code 解析行的短期缓存（秒），合并 Filter/Controller 链内重复查询
     code-cache-ttl-sec: ${APP_TENANT_CODE_CACHE_TTL_SEC:60}
+    # 租户可用性判定（TenantAccessGuard）缓存（秒）；退租/续租/新建/改码显式失效，此为兜底 TTL
+    access-cache-ttl-sec: ${APP_TENANT_ACCESS_CACHE_TTL_SEC:60}
     # 用户在某租户下无数据范围行时：true=严格按空范围；false=视为不限制（见 DataScopeService）
     strict-data-scope: ${APP_TENANT_STRICT_DATA_SCOPE:false}
     # 子域租户：如 tenant.example.com 从子域解析租户编码（需配 base-host）

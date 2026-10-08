@@ -94,6 +94,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.locationtech.jts.geom.Coordinate;
@@ -132,6 +133,13 @@ implements CommandLineRunner {
     private final InitSeedProperties initSeedProperties;
     private final SysMenuApiRepository sysMenuApiRepository;
 
+    /* 账号权限重构（批次 7 / #154）：门户角色「预设集」单一来源——菜单路径 + 按钮权限清单。
+     * 补绑（ensurePortalRoleBindingsIfNeeded）与收敛（ensurePortalRolesPruneExtraMenusIfNeeded）共用，杜绝第二套口径。 */
+    private static final List<String> PORTAL_TEAM_MANAGER_MENU_PATHS = List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates");
+    private static final List<String> PORTAL_TEAM_MANAGER_PERMISSIONS = List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:lineup-template:manage", "business:player:create", "business:player:delete", "business:team:dissolve", "business:claim:review");
+    private static final List<String> PORTAL_LEAGUE_ORGANIZER_MENU_PATHS = List.of("/business", "/admin/teams", "/admin/players", "/admin/player-claims", "/admin/lineup-templates", "/admin/leagues", "/admin/events");
+    private static final List<String> PORTAL_LEAGUE_ORGANIZER_PERMISSIONS = List.of("business:team:create", "business:team:edit", "business:team:managePlayers", "business:player:import", "business:team:batchCreate", "business:lineup-template:manage", "business:event:create", "business:event:edit", "business:event:delete", "business:event:games", "business:event:bracket", "business:game:import", "business:game:create", "business:game:edit", "business:game:delete", "business:game:export", "business:game:saveResult", "business:game:collage", "business:player:create", "business:player:delete", "business:team:dissolve", "business:team:managers", "business:league:apply", "business:league:dissolve", "business:claim:review");
+
     @Transactional
     public void run(String ... args) {
         try {
@@ -140,11 +148,23 @@ implements CommandLineRunner {
                 long adminId = this.createAdminUserAndReturnId();
                 this.seedMenus(adminId);
                 this.seedApis(adminId);
+                this.ensurePortalProvisionApisIfNeeded();
+                this.ensurePlatformAssetApisIfNeeded();
+                // 批次 4b Task 4b-4：平台资产页菜单种子（首装分支，与既有 ensure 并列）
+                this.ensurePlatformAssetMenuIfNeeded();
+                this.ensureBatchAndTenantRoleConfigApisIfNeeded();
+                this.ensurePlayerClaimReleaseApiIfNeeded();
+                this.ensurePortalLeagueCreateApiIfNeeded();
+                // 建盟链路批次③：球队负责人管理端点先于按钮种子注册（menu_api 绑定可解析）
+                this.ensureTeamManagerApisIfNeeded();
                 this.ensureMenuDirectoryTypesAndDefaultButtons();
                 this.seedDict(adminId);
                 this.seedConfig(adminId);
                 this.seedAdminRoleAndBindUser(adminId);
                 this.ensurePortalRolesIfNeeded(adminId);
+                this.ensurePortalRoleBindingsIfNeeded(adminId);
+                // 批次 4b Task 4b-2：首装分支对称兜底（无 tenant_admin 角色时为安全 no-op）
+                this.ensureTenantAdminRoleRebindsDefaultMenusIfNeeded();
                 if (this.initSeedProperties.isSeedDefaultStadiums()) {
                     this.ensureDefaultStadiumsIfEmpty(adminId);
                 }
@@ -166,13 +186,28 @@ implements CommandLineRunner {
                 this.ensureMediaIconGalleryMenusAndApisIfNeeded();
                 this.ensureLineupTemplateMenuIfNeeded();
                 this.ensurePlayerClaimMenuIfNeeded();
+                // 建盟链路批次③：球队负责人管理端点先于按钮种子注册（menu_api 绑定可解析）
+                this.ensureTeamManagerApisIfNeeded();
                 this.ensureMenuDirectoryTypesAndDefaultButtons();
+                this.ensurePortalProvisionApisIfNeeded();
                 this.ensureAdminRoleBindsAllMenusIfNeeded();
                 this.ensureAdminRoleBindsAllApisIfNeeded();
                 this.ensureTenantAdminRoleIfNeeded();
+                this.ensureTenantAdminRoleExcludesBusinessDeleteButtons();
+                // 批次 4b Task 4b-2：升级分支在排除 delete 后补绑默认菜单（修复升级后新按钮不可见）
+                this.ensureTenantAdminRoleRebindsDefaultMenusIfNeeded();
+                this.ensurePlatformAssetApisIfNeeded();
+                // 批次 4b Task 4b-4：平台资产页菜单种子（升级分支，靠近端点 ensure）
+                this.ensurePlatformAssetMenuIfNeeded();
+                this.ensureBatchAndTenantRoleConfigApisIfNeeded();
+                this.ensurePlayerClaimReleaseApiIfNeeded();
+                this.ensurePortalLeagueCreateApiIfNeeded();
                 this.ensureTenantAdminRoleBindsAllowedApisIfNeeded();
                 long opIdForRoles = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 this.ensurePortalRolesIfNeeded(opIdForRoles);
+                // 批次 7 / #154：升级分支先收敛历史超集、再补绑预设（双保险，确保刚补的不会被删）
+                this.ensurePortalRolesPruneExtraMenusIfNeeded();
+                this.ensurePortalRoleBindingsIfNeeded(opIdForRoles);
                 long operatorId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
                 if (this.initSeedProperties.isSeedDefaultStadiums()) {
                     this.ensureDefaultStadiumsIfEmpty(operatorId);
@@ -562,9 +597,243 @@ implements CommandLineRunner {
         }
     }
 
+    /**
+     * 历史数据处置权收窄（批次 3b，spec §6.10）：从 tenant_admin 既有菜单绑定中移除 business:*:delete 类按钮
+     * （删除权收窄为仅超管）。幂等：无绑定则无操作；admin 全量绑定保持不动。
+     */
+    private void ensureTenantAdminRoleExcludesBusinessDeleteButtons() {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin").orElse(null);
+        if (role == null) {
+            return;
+        }
+        Set<Long> deleteButtonIds = this.sysMenuRepository.findAll().stream()
+                .filter(m -> InitDataRunner.isTenantAdminExcludedPermission(m.getPermission()))
+                .map(BaseEntity::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        if (deleteButtonIds.isEmpty()) {
+            return;
+        }
+        int removed = 0;
+        for (SysRoleMenu rm : this.sysRoleMenuRepository.findByRoleId(role.getId())) {
+            if (deleteButtonIds.contains(rm.getMenuId())) {
+                this.sysRoleMenuRepository.delete(rm);
+                ++removed;
+            }
+        }
+        if (removed > 0) {
+            log.info("\u5386\u53f2\u6570\u636e\u5904\u7f6e\u6743\u6536\u7a84\uff1a\u5df2\u4ece\u79df\u6237\u7ba1\u7406\u5458\u89d2\u8272\u79fb\u9664 {} \u6761 delete \u7c7b\u6309\u94ae\u7ed1\u5b9a", (Object)removed);
+        }
+    }
+
+    /**
+     * 升级路径默认菜单补绑（批次 4b，Task 4b-2）：tenant_admin 角色已存在时，确保默认菜单/按钮集合内的
+     * 新增节点（如本批新增的 business:*:return 归还按钮）随升级补绑可见，修复「仅创建时才绑定」导致的
+     * 升级后新按钮入库但租管不可见的缺口。与 ensureAdminRoleBindsAllMenusIfNeeded（超管每启动全量补绑）对称。
+     * 幂等：仅对默认集合按既有绑定判存后插入缺失行，绝不删除/不重写任何既有绑定；二次调用零插入。
+     * 排除语义由 collectTenantAdminDefaultMenuIds 保证（business:*:delete 不纳入）。
+     * 角色不存在 → 直接返回（首装路径由既有创建流程负责）。
+     */
+    private void ensureTenantAdminRoleRebindsDefaultMenusIfNeeded() {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode("tenant_admin").orElse(null);
+        if (role == null) {
+            return;
+        }
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<SysMenu> menus = this.sysMenuRepository.findAll();
+        Set<Long> allowedMenuIds = InitDataRunner.collectTenantAdminDefaultMenuIds(menus);
+        Set<Long> bound = this.sysRoleMenuRepository.findByRoleId(role.getId()).stream().map(SysRoleMenu::getMenuId).collect(Collectors.toCollection(HashSet::new));
+        int added = 0;
+        for (Long mid : allowedMenuIds) {
+            if (mid == null || bound.contains(mid)) continue;
+            SysRoleMenu rm = new SysRoleMenu();
+            rm.setRoleId(role.getId());
+            rm.setMenuId(mid);
+            rm.setCreatedBy(Long.valueOf(opId));
+            rm.setUpdatedBy(Long.valueOf(opId));
+            this.sysRoleMenuRepository.save(rm);
+            bound.add(mid);
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已为租户管理员角色补绑 {} 个默认菜单/按钮节点（含新增按钮，幂等判存）", (Object)added);
+        }
+    }
+
+    /**
+     * 平台资产页菜单种子（批次 4b，Task 4b-4）：在「系统管理」目录下补插「平台资产」叶菜单。
+     *
+     * 挂载点：读现有「系统管理」目录（path=/system 或 title=系统管理，即 users/roles 所在目录）作为 parentId，
+     *         不另建目录；该目录缺失（异常库）直接返回，避免产生悬挂菜单。
+     * 字段风格：对齐该目录既有子菜单（Users/Roles/…）——叶菜单 menuType=2，permission 留空
+     *         （既有系统区叶菜单均不带 permission；按钮菜单才带），故按 path 判存（permission 为空不能作判存键）。
+     * 幂等：按 path=/admin/platform-asset 判存；已存在则仅确保超管绑定，零插入。
+     * 双分支：run() 首装分支与升级分支均调用本方法（与 ensurePlatformAssetApisIfNeeded 同源端点）。
+     * 可见性：插入/命中后显式绑定超管（admin）角色，保证两分支超管均可见；tenant_admin 不在
+     *         collectTenantAdminDefaultMenuIds 采集范围内（该 path 属 /system 子树而非 /business 子树，
+     *         且 leafPaths 白名单未含之），故天然不获得（详见报告绑定论证）。
+     */
+    private void ensurePlatformAssetMenuIfNeeded() {
+        String path = "/admin/platform-asset";
+        List<SysMenu> all = this.sysMenuRepository.findAll();
+        SysMenu existed = all.stream().filter(m -> path.equals(m.getPath())).findFirst().orElse(null);
+        SysRole adminRole = this.sysRoleRepository.findByTenantIdIsNullAndCode("admin").orElse(null);
+        if (existed != null) {
+            if (adminRole != null) {
+                this.bindMenuToAdminIfNeeded(adminRole.getId().longValue(), existed.getId().longValue());
+            }
+            return;
+        }
+        SysMenu systemRoot = all.stream().filter(m -> "/system".equals(m.getPath()) || "系统管理".equals(m.getTitle())).findFirst().orElse(null);
+        if (systemRoot == null) {
+            return;
+        }
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        int maxSort = all.stream().filter(m -> systemRoot.getId().equals(m.getParentId())).mapToInt(m -> m.getSort() != null ? m.getSort() : 0).max().orElse(0);
+        SysMenu platformAssetMenu = this.menu(systemRoot.getId(), "平台资产", "平台资产", path, "AdminPlatformAsset", "views/admin/PlatformAsset.js", "Coin", maxSort + 1, opId);
+        SysMenu savedMenu = (SysMenu)this.sysMenuRepository.save(platformAssetMenu);
+        if (adminRole != null) {
+            this.bindMenuToAdminIfNeeded(adminRole.getId().longValue(), savedMenu.getId().longValue());
+        }
+        log.info("已补插菜单：平台资产");
+    }
+
+    /**
+     * 平台资产归还汇总 API 注册（批次 3b，spec §6.10）：仅超管端点 /sys/platform-asset/summary（GET）。
+     * 幂等：已存在同 path+method 则不重复写入；不绑定任何角色（过滤器层仅超管可访问）。
+     */
+    private void ensurePlatformAssetApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        String path = "/sys/platform-asset/summary";
+        boolean exists = this.sysApiRepository.findAll().stream()
+                .anyMatch(e -> path.equals(e.getPath()) && "GET".equalsIgnoreCase(e.getMethod()));
+        if (exists) {
+            return;
+        }
+        SysApi api = new SysApi();
+        api.setPath(path);
+        api.setMethod("GET");
+        api.setDescription("\u5e73\u53f0\u8d44\u4ea7\u5f52\u8fd8\u6c47\u603b");
+        api.setGroupName("\u5e73\u53f0\u8d44\u4ea7");
+        api.setCreatedBy(Long.valueOf(opId));
+        api.setUpdatedBy(Long.valueOf(opId));
+        this.sysApiRepository.save(api);
+    }
+
+    /**
+     * 门户自助建联盟 API 注册（建盟链路批次①）：首装与升级双路径均调用。
+     *  - POST /portal/league-create  门户申请创建联盟（登录用户；member/门户角色白名单自动补绑）
+     */
+    private void ensurePortalLeagueCreateApiIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        String path = "/portal/league-create";
+        boolean exists = this.sysApiRepository.findAll().stream()
+                .anyMatch(e -> path.equals(e.getPath()) && "POST".equalsIgnoreCase(e.getMethod()));
+        if (exists) {
+            return;
+        }
+        SysApi api = new SysApi();
+        api.setPath(path);
+        api.setMethod("POST");
+        api.setDescription("\u95e8\u6237\u7533\u8bf7\u521b\u5efa\u8054\u76df");
+        api.setGroupName("\u8054\u76df\u7ba1\u7406");
+        api.setCreatedBy(Long.valueOf(opId));
+        api.setUpdatedBy(Long.valueOf(opId));
+        this.sysApiRepository.save(api);
+    }
+
+    /*
+     * 建盟链路批次③：球队负责人管理端点收录（幂等，先判存）。
+     * 路径对齐 sys_api 既有 :id 模板格式（与 ApiPermissionService.pathMatches 一致）：
+     *  - /team/:teamId/managers            GET    球队负责人列表
+     *  - /team/:teamId/managers            POST   指派球队负责人
+     *  - /team/:teamId/managers/:userId    DELETE 解除球队负责人
+     * 须在 ensureMenuDirectoryTypesAndDefaultButtons 之前调用（首装/升级双路径），保证按钮种子 menu_api 绑定可解析。
+     */
+    private void ensureTeamManagerApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<ApiDef> apis = List.of(new ApiDef("/team/:teamId/managers", "GET", "查询球队负责人列表", "球队管理"), new ApiDef("/team/:teamId/managers", "POST", "指派球队负责人", "球队管理"), new ApiDef("/team/:teamId/managers/:userId", "DELETE", "解除球队负责人", "球队管理"));
+        ArrayList<SysApi> existing = new ArrayList<SysApi>(this.sysApiRepository.findAll());
+        int added = 0;
+        for (ApiDef a : apis) {
+            boolean exists = existing.stream().anyMatch(e -> a.path.equals(e.getPath()) && a.method.equalsIgnoreCase(e.getMethod()));
+            if (exists) continue;
+            SysApi api = new SysApi();
+            api.setPath(a.path);
+            api.setMethod(a.method);
+            api.setDescription(a.desc);
+            api.setGroupName(a.group);
+            api.setCreatedBy(Long.valueOf(opId));
+            api.setUpdatedBy(Long.valueOf(opId));
+            existing.add((SysApi)this.sysApiRepository.save(api));
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已补录球队负责人管理端点 {} 条（幂等判存）", (Object)added);
+        }
+    }
+
+    /**
+     * 解除认领 API 注册（Feature 解除认领）：首装与升级双路径均调用。
+     *  - POST /account/player-profile/:playerId/release-claim  解除球员认领（超管 / 租户管理员 / 球员本人）
+     * 路径置于 /account 前缀：门户默认角色 member 的自助端点白名单（/account/*）内，本人通道可达。
+     */
+    private void ensurePlayerClaimReleaseApiIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        String path = "/account/player-profile/:playerId/release-claim";
+        boolean exists = this.sysApiRepository.findAll().stream()
+                .anyMatch(e -> path.equals(e.getPath()) && "POST".equalsIgnoreCase(e.getMethod()));
+        if (exists) {
+            return;
+        }
+        SysApi api = new SysApi();
+        api.setPath(path);
+        api.setMethod("POST");
+        api.setDescription("\u89e3\u9664\u7403\u5458\u8ba4\u9886");
+        api.setGroupName("\u7403\u5458\u7ba1\u7406");
+        api.setCreatedBy(Long.valueOf(opId));
+        api.setUpdatedBy(Long.valueOf(opId));
+        this.sysApiRepository.save(api);
+    }
+
+    /**
+     * 批次 3b 新增端点注册（spec §6.10）：首装与升级双路径均调用，保证既有库升级后亦完成 sys_api 注册。
+     * 幂等：逐条按 (method, path) 判存，缺失才插入；不绑定任何角色（绑定由后续角色种子处理）。
+     *  - POST   /team/batch-create               批量创建球队（球队管理）
+     *  - GET    /sys/role/tenant-config          查询租户级目录覆盖（权限管理）
+     *  - PUT    /sys/role/tenant-config          保存租户级目录覆盖（权限管理）
+     *  - DELETE /sys/role/tenant-config          清除租户级目录覆盖（权限管理）
+     */
+    private void ensureBatchAndTenantRoleConfigApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<ApiDef> apis = List.of(new ApiDef("/team/batch-create", "POST", "\u6279\u91cf\u521b\u5efa\u7403\u961f", "\u7403\u961f\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "GET", "\u67e5\u8be2\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "PUT", "\u4fdd\u5b58\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"), new ApiDef("/sys/role/tenant-config", "DELETE", "\u6e05\u9664\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6", "\u6743\u9650\u7ba1\u7406"));
+        ArrayList<SysApi> existing = new ArrayList<SysApi>(this.sysApiRepository.findAll());
+        int added = 0;
+        for (ApiDef a : apis) {
+            boolean exists = existing.stream().anyMatch(e -> a.path.equals(e.getPath()) && a.method.equalsIgnoreCase(e.getMethod()));
+            if (exists) continue;
+            SysApi api = new SysApi();
+            api.setPath(a.path);
+            api.setMethod(a.method);
+            api.setDescription(a.desc);
+            api.setGroupName(a.group);
+            api.setCreatedBy(Long.valueOf(opId));
+            api.setUpdatedBy(Long.valueOf(opId));
+            existing.add((SysApi)this.sysApiRepository.save(api));
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已补录批次 3b 端点 {} 条（幂等判存）", (Object)added);
+        }
+    }
+
     private static boolean isApiAllowedForTenantAdmin(SysApi a) {
         String p = a.getPath();
         if (p == null || p.isBlank()) {
+            return false;
+        }
+        if (p.startsWith("/sys/platform-asset")) {
+            // 平台资产归还汇总（GET /sys/platform-asset/summary）：仅系统超管，租户管理员显式排除
+            // （服务层 PlatformAssetService 已有 isSuperAdmin 守卫兜底；此处提前短路，防未来规则重排漂移）
             return false;
         }
         if (p.startsWith("/sys/monitor")) {
@@ -587,6 +856,10 @@ implements CommandLineRunner {
         }
         if (p.startsWith("/sys/user-tenant")) {
             return false;
+        }
+        if (p.startsWith("/account/")) {
+            // 解除认领：管理台（超管/租管）与门户本人共用端点；member 由 /account 前缀直通，此处显式放行租管
+            return "/account/player-profile/:playerId/release-claim".equals(p) && "POST".equalsIgnoreCase(a.getMethod());
         }
         if (p.startsWith("/auth/")) {
             return true;
@@ -641,6 +914,9 @@ implements CommandLineRunner {
                 direct.add(m2.getId());
             }
             if (businessRootId == null || !InitDataRunner.menuIsSelfOrDescendantOf((Long)m2.getId(), (Long)businessRootId, byId)) continue;
+            // 历史数据处置权（spec §6.10）：business:*:delete 类按钮不再默认授予租户管理员（收窄为仅超管）；
+            // 另排除门户专属动作按钮（apply/dissolve，租管走「归还」口径，避免重复入口）。
+            if (InitDataRunner.isTenantAdminExcludedPermission((String)m2.getPermission())) continue;
             direct.add(m2.getId());
         }
         HashSet<Long> withAncestors = new HashSet<Long>(direct);
@@ -648,6 +924,22 @@ implements CommandLineRunner {
             InitDataRunner.addMenuAncestors((Long)mid, byId, withAncestors);
         }
         return withAncestors;
+    }
+
+    /** 是否「business:*:delete」类按钮权限（spec §6.10 处置权收窄：租户管理员默认集合排除）。 */
+    private static boolean isBusinessDeletePermission(String permission) {
+        return permission != null && permission.startsWith("business:") && permission.endsWith(":delete");
+    }
+
+    /**
+     * 租户管理员默认集合排除集：delete 类（处置权收窄）
+     * + 门户专属动作按钮（business:league:apply / business:league:dissolve / business:team:dissolve，归属主办方口径，租管以「归还」代替）。
+     */
+    private static boolean isTenantAdminExcludedPermission(String permission) {
+        if (InitDataRunner.isBusinessDeletePermission(permission)) {
+            return true;
+        }
+        return "business:league:apply".equals(permission) || "business:league:dissolve".equals(permission) || "business:team:dissolve".equals(permission);
     }
 
     private static boolean menuIsSelfOrDescendantOf(Long menuId, Long rootId, Map<Long, SysMenu> byId) {
@@ -693,6 +985,240 @@ implements CommandLineRunner {
             this.sysRoleRepository.save(role);
             log.info("\u5df2\u521b\u5efa\u5e73\u53f0\u89d2\u8272\uff1a{} ({})", (Object)r.name(), (Object)r.code());
         }
+    }
+
+    /*
+     * 账号权限重构（批次 3a，Task 3.8）：门户建联盟相关新端点收录（幂等，先判存）。
+     * 覆盖 T3.3/T3.4/T3.6 交付端点，路径对齐 sys_api 既有 :id 模板格式（与 ApiPermissionService.pathMatches 一致）：
+     *  - /league/create-request/list            GET
+     *  - /league/create-request/:id/approve     POST
+     *  - /league/create-request/:id/reject      POST
+     *  - /league/:id/owners                     GET
+     *  - /league/:id/owner/assign               POST
+     *  - /league/:id/owner/:userId              DELETE
+     *  - /account/player-profile                GET / POST
+     *  - /account/player-profile/:playerId      PUT
+     */
+    private void ensurePortalProvisionApisIfNeeded() {
+        long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
+        List<ApiDef> apis = List.of(new ApiDef("/league/create-request/list", "GET", "查询门户建联盟申请列表", "联盟管理"), new ApiDef("/league/create-request/:id/approve", "POST", "审核通过门户建联盟申请", "联盟管理"), new ApiDef("/league/create-request/:id/reject", "POST", "审核驳回门户建联盟申请", "联盟管理"), new ApiDef("/league/:id/owners", "GET", "查询联盟主办方列表", "联盟管理"), new ApiDef("/league/:id/owner/assign", "POST", "指派联盟主办方", "联盟管理"), new ApiDef("/league/:id/owner/:userId", "DELETE", "解除联盟主办方", "联盟管理"), new ApiDef("/account/player-profile", "GET", "查询本人球员档案", "球员管理"), new ApiDef("/account/player-profile", "POST", "球员自助建档", "球员管理"), new ApiDef("/account/player-profile/:playerId", "PUT", "编辑本人球员档案", "球员管理"));
+        ArrayList<SysApi> existing = new ArrayList<SysApi>(this.sysApiRepository.findAll());
+        int added = 0;
+        for (ApiDef a : apis) {
+            boolean exists = existing.stream().anyMatch(e -> a.path.equals(e.getPath()) && a.method.equalsIgnoreCase(e.getMethod()));
+            if (exists) continue;
+            SysApi api = new SysApi();
+            api.setPath(a.path);
+            api.setMethod(a.method);
+            api.setDescription(a.desc);
+            api.setGroupName(a.group);
+            api.setCreatedBy(Long.valueOf(opId));
+            api.setUpdatedBy(Long.valueOf(opId));
+            existing.add((SysApi)this.sysApiRepository.save(api));
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已补录门户建联盟端点 {} 条（幂等判存）", (Object)added);
+        }
+    }
+
+    /*
+     * 账号权限重构（批次 3a，Task 3.8）：门户角色（member / team_manager / league_organizer）绑定。
+     * 幂等、仅补绑不清理：role_menu / role_api 均按既有绑定判存后插入，绝不删除/覆盖既有绑定。
+     * 初始分支与升级分支均调用（见 run）。
+     */
+    private void ensurePortalRoleBindingsIfNeeded(long opId) {
+        this.bindRoleMenusAndButtons(opId, "team_manager", PORTAL_TEAM_MANAGER_MENU_PATHS, PORTAL_TEAM_MANAGER_PERMISSIONS);
+        this.bindRoleMenusAndButtons(opId, "league_organizer", PORTAL_LEAGUE_ORGANIZER_MENU_PATHS, PORTAL_LEAGUE_ORGANIZER_PERMISSIONS);
+        this.bindRoleApis(opId, "member", InitDataRunner::isApiAllowedForMember);
+        this.bindRoleApis(opId, "team_manager", InitDataRunner::isApiAllowedForTeamManager);
+        this.bindRoleApis(opId, "league_organizer", InitDataRunner::isApiAllowedForLeagueOrganizer);
+    }
+
+    /*
+     * 账号权限重构（批次 7 / #154）：门户角色菜单「预设收敛」。
+     * 背景：存量库（生产备份恢复）中 team_manager / league_organizer 残留大量历史 role_menu 绑定，
+     *       致受限角色可见菜单远超设计、登录落点错。此处在引导启动时硬删「不在设计集」的绑定行。
+     * 边界：仅动平台门户角色（tenantId NULL）的 sys_role_menu；不触碰 member/admin/guest/tenant_admin；
+     *       不触碰租户级覆盖表（bs_tenant_role_menu / bs_tenant_role_menu_config）；不删 sys_menu 本体。
+     * 幂等：设计集内保留、超集移除；二次启动零删除。
+     */
+    private void ensurePortalRolesPruneExtraMenusIfNeeded() {
+        this.prunePortalRoleExtraMenus("team_manager", PORTAL_TEAM_MANAGER_MENU_PATHS, PORTAL_TEAM_MANAGER_PERMISSIONS);
+        this.prunePortalRoleExtraMenus("league_organizer", PORTAL_LEAGUE_ORGANIZER_MENU_PATHS, PORTAL_LEAGUE_ORGANIZER_PERMISSIONS);
+    }
+
+    private void prunePortalRoleExtraMenus(String roleCode, List<String> menuPaths, List<String> permissions) {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode(roleCode).orElse(null);
+        if (role == null) {
+            return;
+        }
+        List<SysMenu> all = this.sysMenuRepository.findAll();
+        Set<Long> designSet = InitDataRunner.resolveDesignMenuIds(all, menuPaths, permissions);
+        if (designSet.isEmpty()) {
+            log.warn("门户角色预设菜单设计集为空，跳过收敛以防误删全部绑定（role={}）", (Object)roleCode);
+            return;
+        }
+        List<SysRoleMenu> bound = this.sysRoleMenuRepository.findByRoleId(role.getId());
+        List<SysRoleMenu> extra = bound.stream().filter(rm -> rm.getMenuId() == null || !designSet.contains(rm.getMenuId())).collect(Collectors.toList());
+        if (extra.isEmpty()) {
+            return;
+        }
+        this.sysRoleMenuRepository.deleteAllInBatch(extra);
+        log.info("已收敛门户角色超出预设的菜单绑定 {} 条（role={}）", (Object)extra.size(), (Object)roleCode);
+    }
+
+    /*
+     * 计算「预设设计集」菜单 ID 全集：path 清单 + 按钮 permission 清单 → 种子菜单 id → 沿 parentId 展开祖先目录。
+     * 补绑（bindRoleMenusAndButtons）与收敛（prunePortalRoleExtraMenus）共用同一口径，杜绝第二套解析。
+     * path/permission 须与菜单种子逐字一致（精确匹配，大小写敏感）；祖先展开复用 addMenuAncestors。
+     */
+    private static Set<Long> resolveDesignMenuIds(List<SysMenu> all, List<String> menuPaths, List<String> permissions) {
+        Map<Long, SysMenu> byId = all.stream().filter(m -> m.getId() != null).collect(Collectors.toMap(BaseEntity::getId, m -> m, (a, b) -> a));
+        HashSet<String> pathSet = new HashSet<String>(menuPaths);
+        HashSet<String> permSet = new HashSet<String>(permissions);
+        HashSet<Long> seedIds = new HashSet<Long>();
+        for (SysMenu m : all) {
+            if (m.getId() == null) continue;
+            if (m.getPath() != null && pathSet.contains(m.getPath())) {
+                seedIds.add(m.getId());
+            }
+            if (m.getPermission() != null && permSet.contains(m.getPermission())) {
+                seedIds.add(m.getId());
+            }
+        }
+        HashSet<Long> withAncestors = new HashSet<Long>(seedIds);
+        for (Long mid : seedIds) {
+            InitDataRunner.addMenuAncestors(mid, byId, withAncestors);
+        }
+        return withAncestors;
+    }
+
+    /*
+     * 按菜单 path 与按钮 permission 收集种子菜单 id → 沿 parentId 展开父级目录 → role_menu 判存插入（仅增不删）。
+     * 父级展开复用 addMenuAncestors（与 collectTenantAdminDefaultMenuIds 同源）；设计集解析复用 resolveDesignMenuIds。
+     */
+    private void bindRoleMenusAndButtons(long opId, String roleCode, List<String> menuPaths, List<String> permissions) {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode(roleCode).orElse(null);
+        if (role == null) {
+            return;
+        }
+        List<SysMenu> all = this.sysMenuRepository.findAll();
+        /* 预设设计集解析与收敛同源：resolveDesignMenuIds（path/permission → 种子 id → 祖先展开）。 */
+        Set<Long> withAncestors = InitDataRunner.resolveDesignMenuIds(all, menuPaths, permissions);
+        Set<Long> bound = this.sysRoleMenuRepository.findByRoleId(role.getId()).stream().map(SysRoleMenu::getMenuId).collect(Collectors.toCollection(HashSet::new));
+        int added = 0;
+        for (Long mid : withAncestors) {
+            if (mid == null || bound.contains(mid)) continue;
+            SysRoleMenu rm = new SysRoleMenu();
+            rm.setRoleId(role.getId());
+            rm.setMenuId(mid);
+            rm.setCreatedBy(Long.valueOf(opId));
+            rm.setUpdatedBy(Long.valueOf(opId));
+            this.sysRoleMenuRepository.save(rm);
+            bound.add(mid);
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已为门户角色补绑 {} 个菜单/按钮节点（role={}）", (Object)added, (Object)roleCode);
+        }
+    }
+
+    /*
+     * 遍历 sys_api，按谓词判存补绑 role_api（幂等，仅增不删）。
+     */
+    private void bindRoleApis(long opId, String roleCode, Predicate<SysApi> allowed) {
+        SysRole role = this.sysRoleRepository.findByTenantIdIsNullAndCode(roleCode).orElse(null);
+        if (role == null) {
+            return;
+        }
+        Set<Long> bound = this.sysRoleApiRepository.findByRoleId(role.getId()).stream().map(SysRoleApi::getApiId).collect(Collectors.toCollection(HashSet::new));
+        List<SysApi> all = this.sysApiRepository.findAll();
+        int added = 0;
+        for (SysApi a : all) {
+            if (a.getId() == null || bound.contains(a.getId()) || !allowed.test(a)) continue;
+            SysRoleApi ra = new SysRoleApi();
+            ra.setRoleId(role.getId());
+            ra.setApiId(a.getId());
+            ra.setCreatedBy(Long.valueOf(opId));
+            ra.setUpdatedBy(Long.valueOf(opId));
+            this.sysRoleApiRepository.save(ra);
+            bound.add(a.getId());
+            ++added;
+        }
+        if (added > 0) {
+            log.info("已为门户角色补绑 {} 个 API（role={}）", (Object)added, (Object)roleCode);
+        }
+    }
+
+    /*
+     * 认领审核面判定：/account/player-claims/:id/approve|reject。
+     * 设计意图（§8.2）：球员认领审核授予球队管理员 + 管理员，会员不授——
+     * 故 member 谓词显式排除之；tm/lo 谓词显式包含之（见 isApiAllowedForTeamManager）。
+     */
+    private static boolean isPlayerClaimReviewPath(String p) {
+        return p != null && p.startsWith("/account/player-claims/") && (p.endsWith("/approve") || p.endsWith("/reject"));
+    }
+
+    /* member：仅自助端点（本人档案 /account/*、门户公开能力 /portal/*）；显式排除认领审核面（会员不授审核）。 */
+    private static boolean isApiAllowedForMember(SysApi a) {
+        String p = a.getPath();
+        if (p == null || p.isBlank()) {
+            return false;
+        }
+        if (InitDataRunner.isPlayerClaimReviewPath(p)) {
+            return false;
+        }
+        return p.startsWith("/account/") || p.startsWith("/portal/");
+    }
+
+    /* team_manager：member 集 + 阵容模板 + 球员只读（/player/list、/player/team-options）+ /team/ 前缀（排除 /team/delete，不授删除）。 */
+    private static boolean isApiAllowedForTeamManager(SysApi a) {
+        String p = a.getPath();
+        if (p == null || p.isBlank()) {
+            return false;
+        }
+        /* 认领审核面：授予球队管理员/赛事主办方（勿随 member 排除而丢失）——须置于 member 判定之前。 */
+        if (InitDataRunner.isPlayerClaimReviewPath(p)) {
+            return true;
+        }
+        if (InitDataRunner.isApiAllowedForMember(a)) {
+            return true;
+        }
+        if (p.startsWith("/lineup-template")) {
+            return true;
+        }
+        if (p.startsWith("/team/")) {
+            /* 不授删除；不授批量建队（仅联盟主办方，见 league_organizer 谓词）。 */
+            return !p.startsWith("/team/delete") && !p.startsWith("/team/batch-create");
+        }
+        return "/player/team-options".equals(p) || "/player/list".equals(p) || "/player/import".equals(p);
+    }
+
+    /* league_organizer：team_manager 集 + 联盟/赛事/比赛；排除联盟主办方管理（/league/*owner*）与建联盟审核（/league/create-request/*，仅管理员）。 */
+    private static boolean isApiAllowedForLeagueOrganizer(SysApi a) {
+        String p = a.getPath();
+        if (p == null || p.isBlank()) {
+            return false;
+        }
+        if (p.startsWith("/league/create-request")) {
+            return false;
+        }
+        if (p.startsWith("/league/") && p.contains("/owner")) {
+            return false;
+        }
+        /* 球队负责人管理弹窗：主办方需检索用户（/sys/user/list 与 /sys/user/:id 只读两端点，最小放开）。 */
+        if ("/sys/user/list".equals(p) || "/sys/user/:id".equals(p)) {
+            return "GET".equalsIgnoreCase(a.getMethod());
+        }
+        /* 批量建队：仅联盟主办方（上方已排除 /team/delete；team_manager 谓词不授该端点）。 */
+        if (p.startsWith("/team/batch-create")) {
+            return true;
+        }
+        if (InitDataRunner.isApiAllowedForTeamManager(a)) {
+            return true;
+        }
+        return p.startsWith("/league") || p.startsWith("/event") || p.startsWith("/game");
     }
 
     private void ensureAdminRoleBindsAllApisIfNeeded() {
@@ -1167,7 +1693,7 @@ implements CommandLineRunner {
         Map<String, SysMenu> byPath = this.sysMenuRepository.findAll().stream().filter(x -> x.getPath() != null && !x.getPath().isBlank()).collect(Collectors.toMap(SysMenu::getPath, x -> x, (a, b) -> a));
         Map apiLookup = this.buildApiPathMethodLookup();
         long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
-        List<ButtonSeed> seeds = List.of(new ButtonSeed("/admin/events", "\u53d1\u5e03\u8d5b\u4e8b", "business:event:create", 1, new String[]{"POST|/event/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u8d5b\u4e8b", "business:event:edit", 2, new String[]{"PUT|/event/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u8d5b\u4e8b", "business:event:delete", 3, new String[]{"DELETE|/event/delete/:id"}), new ButtonSeed("/admin/events", "\u8d5b\u7a0b\u4e0e\u7ed3\u679c", "business:event:games", 4, new String[]{"GET|/game/list"}), new ButtonSeed("/admin/events", "\u5bf9\u6218\u8be6\u60c5", "business:event:bracket", 5, new String[]{"GET|/event/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u5165\u6bd4\u8d5b\u6570\u636e", "business:game:import", 6, new String[]{"POST|/event/:eventId/import-game-result"}), new ButtonSeed("/admin/events", "\u65b0\u589e\u6bd4\u8d5b", "business:game:create", 7, new String[]{"POST|/game/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u6bd4\u8d5b", "business:game:edit", 8, new String[]{"PUT|/game/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u6bd4\u8d5b", "business:game:delete", 9, new String[]{"DELETE|/game/delete/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u51fa\u6bd4\u8d5b\u6570\u636e", "business:game:export", 10, new String[0]), new ButtonSeed("/admin/events", "\u4fdd\u5b58\u6bd4\u8d5b\u7ed3\u679c", "business:game:saveResult", 11, new String[]{"POST|/game/:id/save-result"}), new ButtonSeed("/admin/events", "\u4e00\u952e\u62fc\u56fe", "business:game:collage", 12, new String[0]), new ButtonSeed("/admin/teams", "\u65b0\u589e\u7403\u961f", "business:team:create", 1, new String[]{"POST|/team/create"}), new ButtonSeed("/admin/teams", "\u7f16\u8f91\u7403\u961f", "business:team:edit", 2, new String[]{"PUT|/team/update/:id"}), new ButtonSeed("/admin/teams", "\u5220\u9664\u7403\u961f", "business:team:delete", 3, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/teams", "\u7ba1\u7406\u7403\u5458", "business:team:managePlayers", 4, new String[]{"GET|/player/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5206\u9875\u5217\u8868", "business:lineup-template:manage", 1, new String[]{"GET|/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5217\u8868", "business:lineup-template:manage", 2, new String[]{"GET|/team/:teamId/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u8be6\u60c5", "business:lineup-template:manage", 3, new String[]{"GET|/team/:teamId/lineup-template/:id"}), new ButtonSeed("/admin/lineup-templates", "\u65b0\u589e\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 4, new String[]{"POST|/team/:teamId/lineup-template/create"}), new ButtonSeed("/admin/lineup-templates", "\u4ece\u6bd4\u8d5b\u590d\u5236\u6a21\u677f", "business:lineup-template:manage", 5, new String[]{"POST|/team/:teamId/lineup-template/copy-from-game"}), new ButtonSeed("/admin/lineup-templates", "\u7f16\u8f91\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 6, new String[]{"PUT|/team/:teamId/lineup-template/update/:id"}), new ButtonSeed("/admin/lineup-templates", "\u5220\u9664\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 7, new String[]{"DELETE|/team/:teamId/lineup-template/delete/:id"}), new ButtonSeed("/admin/lineup-templates", "\u7403\u961f\u7403\u5458\u9009\u9879", "business:lineup-template:manage", 8, new String[]{"GET|/player/team-options"}), new ButtonSeed("/admin/users", "\u65b0\u589e\u7528\u6237", "sys:user:create", 1, new String[]{"POST|/sys/user/create"}), new ButtonSeed("/admin/users", "\u7f16\u8f91\u7528\u6237", "sys:user:edit", 2, new String[]{"PUT|/sys/user/update/:id"}), new ButtonSeed("/admin/users", "\u5220\u9664\u7528\u6237", "sys:user:delete", 3, new String[]{"DELETE|/sys/user/delete/:id"}), new ButtonSeed("/admin/roles", "\u65b0\u589e\u89d2\u8272", "sys:role:create", 1, new String[]{"POST|/sys/role/create"}), new ButtonSeed("/admin/roles", "\u7f16\u8f91\u89d2\u8272", "sys:role:edit", 2, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/roles", "\u8bbe\u7f6e\u6743\u9650", "sys:role:permission", 3, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/menus", "\u65b0\u589e\u83dc\u5355", "sys:menu:create", 1, new String[]{"POST|/sys/menu/create"}), new ButtonSeed("/admin/menus", "\u7f16\u8f91\u83dc\u5355", "sys:menu:edit", 2, new String[]{"PUT|/sys/menu/update/:id"}), new ButtonSeed("/admin/menus", "\u5220\u9664\u83dc\u5355", "sys:menu:delete", 3, new String[]{"DELETE|/sys/menu/delete/:id"}));
+        List<ButtonSeed> seeds = List.of(new ButtonSeed("/admin/events", "\u53d1\u5e03\u8d5b\u4e8b", "business:event:create", 1, new String[]{"POST|/event/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u8d5b\u4e8b", "business:event:edit", 2, new String[]{"PUT|/event/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u8d5b\u4e8b", "business:event:delete", 3, new String[]{"DELETE|/event/delete/:id"}), new ButtonSeed("/admin/events", "\u8d5b\u7a0b\u4e0e\u7ed3\u679c", "business:event:games", 4, new String[]{"GET|/game/list"}), new ButtonSeed("/admin/events", "\u5bf9\u6218\u8be6\u60c5", "business:event:bracket", 5, new String[]{"GET|/event/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u5165\u6bd4\u8d5b\u6570\u636e", "business:game:import", 6, new String[]{"POST|/event/:eventId/import-game-result"}), new ButtonSeed("/admin/events", "\u65b0\u589e\u6bd4\u8d5b", "business:game:create", 7, new String[]{"POST|/game/create"}), new ButtonSeed("/admin/events", "\u7f16\u8f91\u6bd4\u8d5b", "business:game:edit", 8, new String[]{"PUT|/game/update/:id"}), new ButtonSeed("/admin/events", "\u5220\u9664\u6bd4\u8d5b", "business:game:delete", 9, new String[]{"DELETE|/game/delete/:id"}), new ButtonSeed("/admin/events", "\u5bfc\u51fa\u6bd4\u8d5b\u6570\u636e", "business:game:export", 10, new String[0]), new ButtonSeed("/admin/events", "\u4fdd\u5b58\u6bd4\u8d5b\u7ed3\u679c", "business:game:saveResult", 11, new String[]{"POST|/game/:id/save-result"}), new ButtonSeed("/admin/events", "\u4e00\u952e\u62fc\u56fe", "business:game:collage", 12, new String[0]), new ButtonSeed("/admin/teams", "\u65b0\u589e\u7403\u961f", "business:team:create", 1, new String[]{"POST|/team/create"}), new ButtonSeed("/admin/teams", "\u7f16\u8f91\u7403\u961f", "business:team:edit", 2, new String[]{"PUT|/team/update/:id"}), new ButtonSeed("/admin/teams", "\u5220\u9664\u7403\u961f", "business:team:delete", 3, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/teams", "\u7ba1\u7406\u7403\u5458", "business:team:managePlayers", 4, new String[]{"GET|/player/list"}), new ButtonSeed("/admin/teams", "\u6279\u91cf\u5efa\u961f", "business:team:batchCreate", 5, new String[]{"POST|/team/batch-create"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5206\u9875\u5217\u8868", "business:lineup-template:manage", 1, new String[]{"GET|/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u5217\u8868", "business:lineup-template:manage", 2, new String[]{"GET|/team/:teamId/lineup-template/list"}), new ButtonSeed("/admin/lineup-templates", "\u9635\u5bb9\u6a21\u677f\u8be6\u60c5", "business:lineup-template:manage", 3, new String[]{"GET|/team/:teamId/lineup-template/:id"}), new ButtonSeed("/admin/lineup-templates", "\u65b0\u589e\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 4, new String[]{"POST|/team/:teamId/lineup-template/create"}), new ButtonSeed("/admin/lineup-templates", "\u4ece\u6bd4\u8d5b\u590d\u5236\u6a21\u677f", "business:lineup-template:manage", 5, new String[]{"POST|/team/:teamId/lineup-template/copy-from-game"}), new ButtonSeed("/admin/lineup-templates", "\u7f16\u8f91\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 6, new String[]{"PUT|/team/:teamId/lineup-template/update/:id"}), new ButtonSeed("/admin/lineup-templates", "\u5220\u9664\u9635\u5bb9\u6a21\u677f", "business:lineup-template:manage", 7, new String[]{"DELETE|/team/:teamId/lineup-template/delete/:id"}), new ButtonSeed("/admin/lineup-templates", "\u7403\u961f\u7403\u5458\u9009\u9879", "business:lineup-template:manage", 8, new String[]{"GET|/player/team-options"}), new ButtonSeed("/admin/users", "\u65b0\u589e\u7528\u6237", "sys:user:create", 1, new String[]{"POST|/sys/user/create"}), new ButtonSeed("/admin/users", "\u7f16\u8f91\u7528\u6237", "sys:user:edit", 2, new String[]{"PUT|/sys/user/update/:id"}), new ButtonSeed("/admin/users", "\u5220\u9664\u7528\u6237", "sys:user:delete", 3, new String[]{"DELETE|/sys/user/delete/:id"}), new ButtonSeed("/admin/roles", "\u65b0\u589e\u89d2\u8272", "sys:role:create", 1, new String[]{"POST|/sys/role/create"}), new ButtonSeed("/admin/roles", "\u7f16\u8f91\u89d2\u8272", "sys:role:edit", 2, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/roles", "\u8bbe\u7f6e\u6743\u9650", "sys:role:permission", 3, new String[]{"PUT|/sys/role/update/:id"}), new ButtonSeed("/admin/menus", "\u65b0\u589e\u83dc\u5355", "sys:menu:create", 1, new String[]{"POST|/sys/menu/create"}), new ButtonSeed("/admin/menus", "\u7f16\u8f91\u83dc\u5355", "sys:menu:edit", 2, new String[]{"PUT|/sys/menu/update/:id"}), new ButtonSeed("/admin/menus", "\u5220\u9664\u83dc\u5355", "sys:menu:delete", 3, new String[]{"DELETE|/sys/menu/delete/:id"}), new ButtonSeed("/admin/players", "新增球员", "business:player:create", 1, new String[]{"POST|/player/create"}), new ButtonSeed("/admin/players", "编辑球员", "business:player:edit", 2, new String[]{"PUT|/player/update/:id"}), new ButtonSeed("/admin/players", "删除球员", "business:player:delete", 3, new String[]{"DELETE|/player/delete/:id"}), new ButtonSeed("/admin/players", "导入球员", "business:player:import", 4, new String[]{"POST|/player/import"}), new ButtonSeed("/admin/leagues", "创建联盟", "business:league:create", 1, new String[]{"POST|/league/create"}), new ButtonSeed("/admin/player-claims", "审核认领", "business:claim:review", 1, new String[]{"POST|/account/player-claims/:id/approve", "POST|/account/player-claims/:id/reject"}), new ButtonSeed("/admin/players", "归还球员", "business:player:return", 5, new String[]{"DELETE|/player/delete/:id"}), new ButtonSeed("/admin/teams", "归还球队", "business:team:return", 6, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/events", "归还赛事", "business:event:return", 13, new String[]{"DELETE|/event/delete/:id"}), new ButtonSeed("/admin/events", "归还比赛", "business:game:return", 14, new String[]{"DELETE|/game/delete/:id"}), new ButtonSeed("/admin/leagues", "归还联盟", "business:league:return", 2, new String[]{"DELETE|/league/delete/:id"}), new ButtonSeed("/admin/leagues", "删除联盟", "business:league:delete", 3, new String[]{"DELETE|/league/delete/:id"}), new ButtonSeed("/admin/coaches", "删除教练", "business:coach:delete", 1, new String[]{"DELETE|/coach/delete/:id"}), new ButtonSeed("/admin/coaches", "归还教练", "business:coach:return", 2, new String[]{"DELETE|/coach/delete/:id"}), new ButtonSeed("/admin/highlight-moments", "删除高光", "business:highlight-moment:delete", 1, new String[]{"DELETE|/highlight-moment/delete/{id}"}), new ButtonSeed("/admin/highlight-moments", "归还高光", "business:highlight-moment:return", 2, new String[]{"DELETE|/highlight-moment/delete/{id}"}), new ButtonSeed("/admin/stadiums", "删除球场", "business:stadium:delete", 1, new String[]{"DELETE|/stadium/delete/:id"}), new ButtonSeed("/admin/stadiums", "归还球场", "business:stadium:return", 2, new String[]{"DELETE|/stadium/delete/:id"}), new ButtonSeed("/admin/players", "\u89e3\u9664\u8ba4\u9886", "business:player:release-claim", 6, new String[]{"POST|/account/player-profile/:playerId/release-claim"}), new ButtonSeed("/admin/leagues", "\u8054\u76df\u7533\u8bf7\u5ba1\u6838", "business:league:requestReview", 4, new String[]{"POST|/league/create-request/:id/approve", "POST|/league/create-request/:id/reject"}), new ButtonSeed("/admin/leagues", "\u4e3b\u529e\u65b9\u7ba1\u7406", "business:league:owners", 5, new String[]{"POST|/league/:id/owner/assign", "DELETE|/league/:id/owner/:userId"}), new ButtonSeed("/admin/leagues", "\u7533\u8bf7\u6210\u7acb\u8054\u76df", "business:league:apply", 6, new String[]{"POST|/portal/league-create"}), new ButtonSeed("/admin/leagues", "\u89e3\u6563\u8054\u76df", "business:league:dissolve", 7, new String[]{"DELETE|/league/delete/:id"}), new ButtonSeed("/admin/teams", "\u89e3\u6563\u7403\u961f", "business:team:dissolve", 7, new String[]{"DELETE|/team/delete/:id"}), new ButtonSeed("/admin/teams", "\u8d1f\u8d23\u4eba\u7ba1\u7406", "business:team:managers", 8, new String[]{"GET|/team/:teamId/managers", "POST|/team/:teamId/managers", "DELETE|/team/:teamId/managers/:userId"}));
         int inserted = 0;
         for (ButtonSeed s : seeds) {
             boolean exists;

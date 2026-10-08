@@ -15,7 +15,7 @@ const OUTER_WIDTH_DELTA = 110;
 const DETECT_THROTTLE_MS = 4000;
 const REPORT_THROTTLE_KEY = 'bsball_devtools_report_at';
 const REPORT_THROTTLE_MS = 480 * 1000;
-const APP_VERSION = '1.1.1';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 
 // 运行态
 let overlayEl = null;
@@ -33,6 +33,9 @@ function isAdminPath(path) {
 }
 
 function guardEnabled() {
+  // 本地 vite dev 关闭防护：IDE 嵌入式预览面板/检查器使 outerWidth-innerWidth>110 误报命中，
+  // 全屏遮挡层会阻断页面操作导致无法本地验收；生产构建（DEV=false）行为与编译产物一致
+  if (import.meta.env.DEV) return false;
   try {
     return useAppConfigStore().portalDevtoolsGuard !== false;
   } catch {

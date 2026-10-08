@@ -48,6 +48,16 @@ public class SysConfigService {
         return map;
     }
 
+    public boolean getBoolean(long tenantId, String key, boolean defaultValue) {
+        Object raw = this.getConfig(tenantId).get(key);
+        String v = raw == null ? null : String.valueOf(raw);
+        if (v == null || v.isBlank()) {
+            return defaultValue;
+        }
+        v = v.trim();
+        return "true".equalsIgnoreCase(v) || "1".equals(v);
+    }
+
     @CacheEvict(value={"config"}, key="'t:' + #tenantId")
     public void updateConfig(long tenantId, Map<String, Object> updates) {
         for (Map.Entry<String, Object> e : updates.entrySet()) {

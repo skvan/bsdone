@@ -18,6 +18,7 @@ import com.bsball.model.dto.PlayerOptionDto;
 import com.bsball.model.entity.Player;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,6 +36,10 @@ JpaSpecificationExecutor<Player> {
     public List<Player> findByDeletedAtIsNull();
 
     public List<Player> findByDeletedAtIsNullAndIdIn(List<Long> var1);
+
+    public Optional<Player> findFirstByUserIdAndDeletedAtIsNull(Long userId);
+
+    public List<Player> findByNameAndBirthDateAndTenantIdAndDeletedAtIsNull(String name, String birthDate, Long tenantId);
 
     @Query(value="select new com.bsball.model.dto.PlayerOptionDto(p.id, p.name, p.number, p.teamId) from Player p where p.deletedAt is null order by coalesce(p.sort, 0) asc, p.id asc")
     public List<PlayerOptionDto> findAllForSelect();
@@ -59,7 +64,7 @@ JpaSpecificationExecutor<Player> {
     @Query(value="select count(p) from Player p where p.deletedAt is null and p.tenantId = :tenantId and trim(p.name) = :name and p.id <> :excludeId")
     public long countActiveByTenantIdAndFullNameExcludingId(@Param(value="tenantId") long var1, @Param(value="name") String var3, @Param(value="excludeId") long var4);
 
-    @Query(value="select p.id, p.name, p.number, p.positions, p.batHand, p.throwHand, p.status from Player p where p.deletedAt is null and p.tenantId = :tid and p.teamId = :teamId order by coalesce(p.sort, 0) asc, p.id asc")
-    public List<Object[]> findTeamPlayerOptionFields(@Param(value="tid") long var1, @Param(value="teamId") long var3);
+    /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的球员计数。 */
+    public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 }
 

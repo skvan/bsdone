@@ -39,16 +39,20 @@ package com.bsball.service;
 
 import com.bsball.common.PageResult;
 import com.bsball.config.AccountProperties;
+import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
 import com.bsball.model.entity.PlayerClaimInvite;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.SysUser;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.PlayerClaimInviteRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
@@ -66,8 +70,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -91,6 +97,12 @@ public class PlayerClaimService {
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
     private final SysUserRepository sysUserRepository;
+    private final PlayerTeamService playerTeamService;
+    private final AccountScopeService accountScopeService;
+    private final ResourceGuard resourceGuard;
+    private final PlayerService playerService;
+    private final PersonnelHistoryRecorder personnelHistoryRecorder;
+    private final PlayerTeamRepository playerTeamRepository;
 
     @Transactional
     public PlayerClaim submitClaim(Long userId, Long playerId, String remark, Long inviteId) {
@@ -141,7 +153,7 @@ public class PlayerClaimService {
         List kwUserIds;
         boolean superAdmin = this.apiPermissionService.isSuperAdmin(reviewerId);
         boolean tenantAdmin = this.apiPermissionService.isTenantAdmin(reviewerId);
-        List<Long> managedTeamIds = this.teamManagerRepository.findByUserIdAndStatusAndDeletedAtIsNull(reviewerId, "active").stream().map(TeamManager::getTeamId).toList();
+        Collection<Long> managedTeamIds = this.accountScopeService.resolveCurrent().getTeamIds();
         String reviewerTypeFilter = reviewerType != null && !reviewerType.isBlank() ? reviewerType.trim() : null;
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         List kwPlayerIds = hasKeyword ? this.playerRepository.findIdsByNameLike(keyword.trim()) : List.of();
@@ -154,7 +166,16 @@ public class PlayerClaimService {
             preds.add(cb.equal((Expression)root.get("status"), "pending"));
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             if (superAdmin || tenantAdmin) {
-                preds.add(cb.or((Expression)cb.equal((Expression)root.get("reviewerType"), "platform_admin"), (Expression)cb.and((Expression)cb.equal((Expression)root.get("reviewerType"), "team_manager"), (Expression)root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}))));
+                // 管理员列表呈本租户全部待办（含 team_manager 类，兜底代审）；
+                // 租户管理员限本租户（防跨租户可见），超管全局；审批守卫对 unrestricted 直通。
+                if (!superAdmin) {
+                    Long tid = CurrentUserHolder.getTenantId();
+                    if (tid != null && tid > 0L) {
+                        preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
+                    } else {
+                        preds.add(cb.disjunction());
+                    }
+                }
             } else if (!managedTeamIds.isEmpty()) {
                 preds.add(cb.equal((Expression)root.get("reviewerType"), "team_manager"));
                 preds.add(root.get("playerId").in(new Expression[]{this.subqueryPlayerIdsForTeams(cb, q, managedTeamIds)}));
@@ -243,7 +264,7 @@ public class PlayerClaimService {
 
     @Transactional
     public PlayerClaim approve(Long claimId, Long reviewerId, String remark) {
-        PlayerClaim claim = this.requireClaimForReview(claimId, reviewerId);
+        PlayerClaim claim = this.requireClaimForReview(claimId);
         Player player = (Player)this.playerRepository.findById(claim.getPlayerId()).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
         if (player.getUserId() != null) {
             throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
@@ -258,12 +279,13 @@ public class PlayerClaimService {
         player.setUserId(claim.getUserId());
         player.setUpdatedAt(now);
         this.playerRepository.save(player);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(claim.getUserId());
         return claim;
     }
 
     @Transactional
     public PlayerClaim reject(Long claimId, Long reviewerId, String reason) {
-        PlayerClaim claim = this.requireClaimForReview(claimId, reviewerId);
+        PlayerClaim claim = this.requireClaimForReview(claimId);
         LocalDateTime now = LocalDateTime.now();
         claim.setStatus("rejected");
         claim.setReviewerId(reviewerId);
@@ -273,17 +295,60 @@ public class PlayerClaimService {
         return (PlayerClaim)this.playerClaimRepository.save(claim);
     }
 
+    /**
+     * 解除认领（修正错误认领，Feature 解除认领）：守卫三通道（球员本人 / 超管 / 租户管理员）。
+     * 语义：原 approved 认领记录置 revoked（记录操作者与类型），清空 player.userId，
+     * 失效原用户范围缓存，并写沿革词条（claim_released）；档案回到未认领，可重新被邀请/认领。
+     */
+    @Transactional
+    public Map<String, Object> releaseClaim(Long playerId, Long operatorId, String remark) {
+        Player player = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
+        this.resourceGuard.assertCanReleasePlayerClaim(player);
+        if (player.getUserId() == null) {
+            throw new BusinessException(400, "\u8be5\u7403\u5458\u672a\u88ab\u8ba4\u9886");
+        }
+        Long previousUserId = player.getUserId();
+        boolean self = Objects.equals(operatorId, previousUserId);
+        LocalDateTime now = LocalDateTime.now();
+        PlayerClaim claim = this.playerClaimRepository.findTopByPlayerIdAndStatusAndDeletedAtIsNullOrderByIdDesc(playerId, PlayerClaim.STATUS_APPROVED).orElse(null);
+        if (claim != null) {
+            claim.setStatus(PlayerClaim.STATUS_REVOKED);
+            claim.setReviewerId(operatorId);
+            claim.setReviewedAt(now);
+            claim.setUpdatedAt(now);
+            claim.setReviewerType(self ? PlayerClaim.REVIEWER_SELF : PlayerClaim.REVIEWER_PLATFORM_ADMIN);
+            if (remark != null && !remark.isBlank()) {
+                claim.setRemark(remark);
+            }
+            this.playerClaimRepository.save(claim);
+        }
+        player.setUserId(null);
+        player.setUpdatedAt(now);
+        this.playerRepository.save(player);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(previousUserId);
+        this.personnelHistoryRecorder.recordPlayerClaimReleased(player, previousUserId, operatorId, self);
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        out.put("playerId", playerId);
+        out.put("previousUserId", previousUserId);
+        out.put("claimId", claim == null ? null : claim.getId());
+        out.put("self", Boolean.valueOf(self));
+        return out;
+    }
+
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
-        this.requireTeamManagerOrAdmin(creatorId, teamId);
-        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "\u7403\u961f\u4e0d\u5b58\u5728"));
+        // 批 2 沉淀⑩收敛：改用统一写保护守卫（ResourceGuard.assertCanManageTeam），与其它写路径同源。
+        // 语义：租户内不受限（超管/租管）放行；受限身份需命中自有球队集合（super/tenant admin 之外仅团队负责人/联盟派生域），否则 403。
+        this.resourceGuard.assertCanManageTeam(teamId);
+        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
         if (playerId != null) {
-            Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-            if (!teamId.equals(p.getTeamId())) {
-                throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u8be5\u7403\u961f");
+            Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+            // 保留租户一致性：删除 isCurrentlyInTeam 硬校验后，仍需保证受邀球员与球队同租户。
+            if (!Objects.equals(p.getTenantId(), team.getTenantId())) {
+                throw new BusinessException(400, "球员与球队不属于同一租户");
             }
             if (p.getUserId() != null) {
-                throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
+                throw new BusinessException(400, "该球员已被认领");
             }
         }
         int hours = expireHours != null && expireHours > 0 ? expireHours.intValue() : this.accountProperties.getInviteDefaultExpireHours();
@@ -329,26 +394,140 @@ public class PlayerClaimService {
         return out;
     }
 
-    @Transactional
-    public PlayerClaim claimViaInvite(Long userId, String token, Long playerId, String remark) {
-        Long targetPlayerId;
+    /**
+     * 凭邀请接受：
+     * <ul>
+     *   <li>{@code targetPlayerId}（邀请绑定球员 或 入参 playerId）非空 → 原认领关联语义（经 {@link #submitClaim} 落一条待审 PlayerClaim）；</li>
+     *   <li>{@code targetPlayerId} 为空 且 该用户已有档案 → 已在受邀队则幂等早返回；否则直接以存量档案入队
+     *       （不调 {@link PlayerService#createSelfProfile}、不需 {@code draft}）；</li>
+     *   <li>{@code targetPlayerId} 为空 且 该用户无档案 → 需 {@code draft} 非空，自助建档（复用 {@link PlayerService#createSelfProfile} 校验链）
+     *       并写 player_team 入队（{@code current=true}）+ 镜像回写 + join 沿革 + currentJoinRecordId 回写；</li>
+     *   <li>无目标球员且无档案且无草稿 → 400。</li>
+     * </ul>
+     * token 维持单次/限次 + 有效期；仅在真正发生写入的路径消费（建档+入队 / 存量入队 / 认领落库），幂等早返回不消费。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> claimOrRegisterViaInvite(Long userId, String token, Long playerId, Player draft) {
         PlayerClaimInvite invite = this.requireActiveInvite(token);
-        Long l = targetPlayerId = invite.getPlayerId() != null ? invite.getPlayerId() : playerId;
-        if (targetPlayerId == null) {
-            throw new BusinessException(400, "\u8bf7\u6307\u5b9a\u8981\u8ba4\u9886\u7684\u7403\u5458");
+        Long targetPlayerId = invite.getPlayerId() != null ? invite.getPlayerId() : playerId;
+        if (targetPlayerId != null) {
+            return this.claimViaInviteForPlayer(userId, invite, targetPlayerId);
         }
-        Player player = (Player)this.playerRepository.findById(targetPlayerId).orElseThrow(() -> new BusinessException(404, "\u7403\u5458\u4e0d\u5b58\u5728"));
-        if (!invite.getTeamId().equals(player.getTeamId())) {
-            throw new BusinessException(400, "\u7403\u5458\u4e0d\u5c5e\u4e8e\u9080\u8bf7\u7403\u961f");
+        return this.registerAndJoinViaInvite(userId, invite, draft);
+    }
+
+    /** 原认领关联语义：保留租户一致性（跨租户拒绝）与「已认领」校验（由 submitClaim 兜底）。 */
+    private Map<String, Object> claimViaInviteForPlayer(Long userId, PlayerClaimInvite invite, Long targetPlayerId) {
+        Player player = (Player)this.playerRepository.findById(targetPlayerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+        if (!Objects.equals(player.getTenantId(), invite.getTenantId())) {
+            throw new BusinessException(400, "球员与邀请球队不属于同一租户");
         }
-        PlayerClaim claim = this.submitClaim(userId, targetPlayerId, remark, invite.getId());
+        PlayerClaim claim = this.submitClaim(userId, targetPlayerId, null, invite.getId());
+        // 认领落库属写入路径 → 消费邀请（幂等早返回等无写入路径不消费）。
+        this.consumeInvite(invite);
+        LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("mode", "claim");
+        out.put("claimId", claim.getId());
+        out.put("playerId", claim.getPlayerId());
+        out.put("status", claim.getStatus());
+        return out;
+    }
+
+    /**
+     * 邀请入队（两条路径，均复用 {@link #applyInviteJoin} 落库）：
+     * <ul>
+     *   <li>存量档案（{@code existing != null}）：已在受邀队 → 幂等早返回（无写入、不消费令牌）；
+     *       否则直接以存量档案入队（不建档、不需 draft）；</li>
+     *   <li>无档案（{@code existing == null}）：需 draft 非空，自助建档后入队。</li>
+     * </ul>
+     */
+    private Map<String, Object> registerAndJoinViaInvite(Long userId, PlayerClaimInvite invite, Player draft) {
+        Long teamId = invite.getTeamId();
+        Player existing = this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
+        if (existing != null) {
+            if (this.playerTeamService.currentTeamIds(existing.getId()).contains(teamId)) {
+                // 幂等早返回：已在受邀队，无写入 → 不消费令牌。
+                return this.joinResult(existing.getId(), teamId, "already_joined");
+            }
+            // 存量档案直接入队（不调 createSelfProfile、不需 draft）。
+            this.applyInviteJoin(existing, teamId);
+            this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+            this.consumeInvite(invite);
+            return this.joinResult(existing.getId(), teamId, "joined");
+        }
+        if (draft == null) {
+            throw new BusinessException(400, "请指定要认领的球员或提供建档信息");
+        }
+        // TODO(批3b硬化)：并发双击可能双建档（bs_player.user_id 无唯一约束）；见
+        // PlayerService.createSelfProfile 的 ux_bs_player_user_active 唯一索引硬化，本轮不改约束。
+        Player created = this.playerService.createSelfProfile(userId, draft);
+        this.applyInviteJoin(created, teamId);
+        this.accountScopeService.evictUserScopeCacheAfterCommit(userId);
+        this.consumeInvite(invite);
+        return this.joinResult(created.getId(), teamId, "registered");
+    }
+
+    /**
+     * 入队落库：<b>追加语义</b>——desired = 既有全部经历（当前字段原样保留） + 受邀队经历（current=true）。
+     * 受邀队已在经历中则仅置该队 current=true；否则追加新经历。以完整 desired 调 plan，{@code toDelete} 恒为空，
+     * 杜绝“存量档案凭邀请入队时其余经历被静默软删”。落库前对 {@code toDelete} 做防御性删除守卫（双保险）。
+     * 随后写镜像 + join 沿革，并回写 currentJoinRecordId（对齐 PlayerService.create）。
+     */
+    private void applyInviteJoin(Player player, Long teamId) {
+        List<PlayerTeam> existing = player.getId() == null ? List.of()
+                : this.playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(player.getId());
+        List<PlayerTeamEntryDto> desired = new ArrayList<>(existing.size() + 1);
+        boolean invitedPresent = false;
+        for (PlayerTeam e : existing) {
+            if (Objects.equals(e.getTeamId(), teamId)) {
+                // 受邀队已存在：仅置 current=true，余字段原样保留。
+                desired.add(new PlayerTeamEntryDto(e.getId(), e.getTeamId(), null, e.getNumber(),
+                        e.getPositionsList(), Boolean.TRUE, e.getSort()));
+                invitedPresent = true;
+            } else {
+                desired.add(new PlayerTeamEntryDto(e.getId(), e.getTeamId(), null, e.getNumber(),
+                        e.getPositionsList(), Boolean.TRUE.equals(e.getCurrent()), e.getSort()));
+            }
+        }
+        if (!invitedPresent) {
+            desired.add(new PlayerTeamEntryDto(null, teamId, null, null, null, Boolean.TRUE, null));
+        }
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(player, desired, true);
+        // 防御双保险：追加语义下 toDelete 应为空；若非空（异常情形）须过删除守卫，杜绝静默软删（复用 PlayerService 守卫，勿复制）。
+        if (!plan.toDelete().isEmpty()) {
+            this.playerService.assertEntriesDeletable(player.getId(), plan.toDelete());
+        }
+        this.playerTeamService.applyMirror(player, plan);
+        Player saved = (Player)this.playerRepository.save(player);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(
+                saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            this.playerRepository.save(saved);
+        }
+    }
+
+    /**
+     * 邀请入队结果：mode 透传子语义——新建档入队={@code registered}、存量档案直接入队={@code joined}、
+     * 已在队幂等早返回={@code already_joined}（前端据此区分提示与埋点，三者均为终态成功）。
+     */
+    private Map<String, Object> joinResult(Long playerId, Long teamId, String mode) {
+        LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("mode", mode);
+        out.put("playerId", playerId);
+        out.put("teamId", teamId);
+        return out;
+    }
+
+    /** 消费邀请：计数 +1，达上限置 expired（现状机制）。 */
+    private void consumeInvite(PlayerClaimInvite invite) {
         invite.setUsedCount(Integer.valueOf(invite.getUsedCount() + 1));
         if (invite.getUsedCount() >= invite.getMaxUses()) {
             invite.setStatus("expired");
         }
         invite.setUpdatedAt(LocalDateTime.now());
         this.playerClaimInviteRepository.save(invite);
-        return claim;
     }
 
     private void ensureSingleLeagueSingleTeam(Long userId, Player target) {
@@ -365,46 +544,27 @@ public class PlayerClaimService {
         }
     }
 
-    private PlayerClaim requireClaimForReview(Long claimId, Long reviewerId) {
+    /**
+     * 校验认领可审：授权主体恒为 CurrentUserHolder（经范围中枢/守卫判定）；本方法不含 reviewerId 入参，
+     * reviewerId 由调用方在落库时留痕，不参与判定。
+     */
+    private PlayerClaim requireClaimForReview(Long claimId) {
         PlayerClaim claim = (PlayerClaim)this.playerClaimRepository.findByIdAndDeletedAtIsNull(claimId).orElseThrow(() -> new BusinessException(404, "\u7533\u8bf7\u4e0d\u5b58\u5728"));
         if (!"pending".equals(claim.getStatus())) {
             throw new BusinessException(400, "\u8be5\u7533\u8bf7\u5df2\u5904\u7406");
         }
-        if (!this.canReviewClaim(reviewerId, claim)) {
-            throw new BusinessException(403, "\u65e0\u6743\u5ba1\u6838\u8be5\u7533\u8bf7");
-        }
+        this.resourceGuard.assertCanReviewClaim(claim);
         return claim;
     }
 
-    private boolean canReviewClaim(Long reviewerId, PlayerClaim claim) {
-        if (this.apiPermissionService.isSuperAdmin(reviewerId) || this.apiPermissionService.isTenantAdmin(reviewerId)) {
-            return true;
-        }
-        if (!"team_manager".equals(claim.getReviewerType())) {
-            return false;
-        }
-        Player player = this.playerRepository.findById(claim.getPlayerId()).orElse(null);
-        if (player == null || player.getTeamId() == null) {
-            return false;
-        }
-        return this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(player.getTeamId(), reviewerId, "active");
-    }
-
-    private void requireTeamManagerOrAdmin(Long userId, Long teamId) {
-        if (this.apiPermissionService.isSuperAdmin(userId) || this.apiPermissionService.isTenantAdmin(userId)) {
-            return;
-        }
-        if (!this.teamManagerRepository.existsByTeamIdAndUserIdAndStatusAndDeletedAtIsNull(teamId, userId, "active")) {
-            throw new BusinessException(403, "\u4ec5\u7403\u961f\u8d1f\u8d23\u4eba\u6216\u7ba1\u7406\u5458\u53ef\u521b\u5efa\u9080\u8bf7");
-        }
-    }
-
     private String resolveReviewerType(Player player) {
-        if (player.getTeamId() == null) {
-            return "platform_admin";
+        for (Long teamId : this.playerTeamService.currentTeamIds(player.getId())) {
+            List<TeamManager> managers = this.teamManagerRepository.findByTeamIdAndStatusAndDeletedAtIsNull(teamId, "active");
+            if (!managers.isEmpty()) {
+                return "team_manager";
+            }
         }
-        List<TeamManager> managers = this.teamManagerRepository.findByTeamIdAndStatusAndDeletedAtIsNull(player.getTeamId(), "active");
-        return managers.isEmpty() ? "platform_admin" : "team_manager";
+        return "platform_admin";
     }
 
     private PlayerClaimInvite requireActiveInvite(String token) {
@@ -423,23 +583,23 @@ public class PlayerClaimService {
         return invite;
     }
 
-    private Subquery<Long> subqueryPlayerIdsForTeams(CriteriaBuilder cb, CriteriaQuery<?> q, List<Long> teamIds) {
+    private Subquery<Long> subqueryPlayerIdsForTeams(CriteriaBuilder cb, CriteriaQuery<?> q, Collection<Long> teamIds) {
+        Subquery<Long> sq = q.subquery(Long.class);
+        Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
+        sq.select((Expression)entry.get("playerId"));
         if (teamIds == null || teamIds.isEmpty()) {
-            Subquery sq = q.subquery(Long.class);
-            Root p = sq.from(Player.class);
-            sq.select((Expression)p.get("id"));
             sq.where((Expression)cb.disjunction());
             return sq;
         }
-        Subquery sq = q.subquery(Long.class);
-        Root p = sq.from(Player.class);
-        sq.select((Expression)p.get("id"));
-        sq.where((Expression)cb.and((Expression)p.get("teamId").in(teamIds), (Expression)cb.isNull((Expression)p.get("deletedAt"))));
+        sq.where((Expression)cb.and(
+                entry.get("teamId").in(teamIds),
+                cb.isTrue(entry.get("current")),
+                cb.isNull((Expression)entry.get("deletedAt"))));
         return sq;
     }
 
     @Generated
-    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository) {
+    public PlayerClaimService(AccountProperties accountProperties, ApiPermissionService apiPermissionService, PlayerClaimRepository playerClaimRepository, PlayerClaimInviteRepository playerClaimInviteRepository, PlayerRepository playerRepository, TeamRepository teamRepository, TeamManagerRepository teamManagerRepository, SysUserRepository sysUserRepository, PlayerTeamService playerTeamService, AccountScopeService accountScopeService, ResourceGuard resourceGuard, PlayerService playerService, PersonnelHistoryRecorder personnelHistoryRecorder, PlayerTeamRepository playerTeamRepository) {
         this.accountProperties = accountProperties;
         this.apiPermissionService = apiPermissionService;
         this.playerClaimRepository = playerClaimRepository;
@@ -448,6 +608,12 @@ public class PlayerClaimService {
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.sysUserRepository = sysUserRepository;
+        this.playerTeamService = playerTeamService;
+        this.accountScopeService = accountScopeService;
+        this.resourceGuard = resourceGuard;
+        this.playerService = playerService;
+        this.personnelHistoryRecorder = personnelHistoryRecorder;
+        this.playerTeamRepository = playerTeamRepository;
     }
 }
 

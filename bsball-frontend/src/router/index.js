@@ -23,6 +23,58 @@ import ContentEdit from '../views/admin/ContentEdit.js';
 import Resources from '../views/admin/Resources.js';
 import MediaIcons from '../views/admin/MediaIcons.js';
 import MediaGallery from '../views/admin/MediaGallery.js';
+import LoginLogs from '../views/admin/LoginLogs.js';
+import OperationLogs from '../views/admin/OperationLogs.js';
+import PortalDevtoolsReportList from '../views/admin/PortalDevtoolsReportList.js';
+import Home from '../views/portal/Home.js';
+import Welcome from '../views/portal/Welcome.vue';
+import Intro from '../views/portal/Intro.vue';
+import PortalLayout from '../components/portal/PortalLayout.js';
+import News from '../views/portal/News.js';
+import NoticeDetail from '../views/portal/NoticeDetail.js';
+import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
+import PortalEvents from '../views/portal/PortalEvents.js';
+import PortalLeagues from '../views/portal/PortalLeagues.js';
+import PortalTeams from '../views/portal/PortalTeams.js';
+import PortalTeamDetail from '../views/portal/PortalTeamDetail.js';
+import StarPlayers from '../views/portal/StarPlayers.js';
+import PortalPlayerDetail from '../views/portal/PortalPlayerDetail.js';
+import PortalStats from '../views/portal/PortalStats.js';
+import PortalGameDetail from '../views/portal/PortalGameDetail.js';
+import PortalStadiumDetail from '../views/portal/PortalStadiumDetail.js';
+import PortalAccountProfile from '../views/portal/PortalAccountProfile.js';
+import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
+import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
+import IpLocationCache from '../views/admin/IpLocationCache.js';
+import Tenants from '../views/admin/Tenants.js';
+import IpAccessPolicy from '../views/admin/IpAccessPolicy.js';
+import Leagues from '../views/admin/Leagues.js';
+import Stadiums from '../views/admin/Stadiums.js';
+import StadiumDistribution from '../views/admin/StadiumDistribution.js';
+import Teams from '../views/admin/Teams.js';
+import Coaches from '../views/admin/Coaches.js';
+import PlayerList from '../views/admin/PlayerList.js';
+import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
+import PlayerDetail from '../views/admin/PlayerDetail.js';
+import Events from '../views/admin/Events.js';
+import EventBracket from '../views/admin/EventBracket.js';
+import LiveGameLineup from '../views/admin/LiveGameLineup.js';
+import LiveGameWatch from '../views/admin/LiveGameWatch.js';
+import LiveGame from '../views/admin/LiveGame.js';
+import Games from '../views/admin/Games.js';
+import GameDetail from '../views/admin/GameDetail.js';
+import PlatformDocsShell from '../views/portal/PlatformDocsShell.js';
+import PlatformDocsList from '../views/portal/PlatformDocsList.js';
+import DataMonitor from '../views/admin/DataMonitor.js';
+import ServerMonitor from '../views/admin/ServerMonitor.js';
+import CacheMonitor from '../views/admin/CacheMonitor.js';
+import CacheList from '../views/admin/CacheList.js';
+import Dashboard from '../views/admin/Dashboard.js';
+import AppConfig from '../views/admin/AppConfig.js';
+import LineupTemplates from '../views/admin/LineupTemplates.js';
+import HistoryRecordList from '../views/admin/HistoryRecordList.js';
+import HighlightMomentList from '../views/admin/HighlightMomentList.js';
+import PlatformAsset from '../views/admin/PlatformAsset.js';
 import { installRouterGuards } from './guards';
 import { ROUTE_TITLES, ROUTE_TITLE_KEYS } from './legacy-meta';
 
@@ -38,12 +90,19 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 });
 
 const routes = [
-    { path: '/', name: 'PortalHome', ...ph('Home') },
+    // 新版展示/入口页（无门户外壳）：品牌展示 + 门户/管理台入口（Issue #105 双轨体验对齐）
+    { path: '/welcome', name: 'PortalWelcome', component: Welcome },
+    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡与旧版介绍页「进入新版」均指此页）
+    { path: '/intro', name: 'PortalIntro', component: Intro, meta: { title: '系统介绍' } },
+    // 根路径默认落地 welcome
+    { path: '/', redirect: '/welcome' },
     {
       path: '/docs',
-      name: 'PlatformDocsIndex',
-      ...ph('PlatformDocsShell'),
-      children: [{ path: ':id', name: 'PlatformArticleDetail', ...ph('NoticeDetail') }]
+      component: PlatformDocsShell,
+      children: [
+        { path: '', name: 'PlatformDocsIndex', component: PlatformDocsList },
+        { path: ':id', name: 'PlatformArticleDetail', component: NoticeDetail }
+      ]
     },
     { path: '/404', name: 'NotFound', ...ph('NotFound') },
     { path: '/service-unavailable', name: 'ServiceUnavailable', ...ph('ServiceUnavailable') },
@@ -54,24 +113,33 @@ const routes = [
       name: 'TenantShell',
       component: TenantShell,
       children: [
-        { path: '', name: 'TenantIndex', redirect: { name: 'PortalHome' } },
-        { path: 'article', name: 'PortalArticleList', ...ph('News') },
-        { path: 'article/:id', name: 'PortalArticleDetail', ...ph('NoticeDetail') },
-        { path: 'events', name: 'PortalEvents', ...ph('Events') },
+        // 门户外壳（PortalLayout：页头导航/页脚/主题）包裹所有门户页面——与旧版编译产物结构对齐
+        {
+          path: '',
+          name: 'PortalLayoutShell',
+          component: PortalLayout,
+          children: [
+            { path: '', name: 'PortalHome', component: Home },
+            { path: 'article', name: 'PortalArticleList', component: News },
+        { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
+        { path: 'events', name: 'PortalEvents', component: PortalEvents },
+        { path: 'leagues', name: 'PortalLeagues', component: PortalLeagues },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
-        { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', ...ph('GameDetail') },
-        { path: 'teams', name: 'PortalTeams', ...ph('Teams') },
-        { path: 'star-players', name: 'PortalStarPlayers', ...ph('StarPlayers') },
-        { path: 'teams/:id', name: 'PortalTeamDetail', ...ph('TeamDetail') },
-        { path: 'stadiums/:id', name: 'PortalStadiumDetail', ...ph('StadiumDetail') },
-        { path: 'players/:id', name: 'PortalPlayerDetail', ...ph('PlayerDetail') },
-        { path: 'stats', name: 'PortalStats', ...ph('Stats') },
-        { path: 'docs/:id', name: 'PortalAnnouncementDoc', ...ph('AnnouncementDoc') },
-        { path: 'account/profile', name: 'PortalAccountProfile', ...ph('AccountProfile') },
+        { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', component: PortalGameDetail },
+        { path: 'teams', name: 'PortalTeams', component: PortalTeams },
+        { path: 'star-players', name: 'PortalStarPlayers', component: StarPlayers },
+        { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
+        { path: 'stadiums/:id', name: 'PortalStadiumDetail', component: PortalStadiumDetail },
+        { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
+        { path: 'stats', name: 'PortalStats', component: PortalStats },
+        { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
+        { path: 'account/profile', name: 'PortalAccountProfile', component: PortalAccountProfile },
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
         { path: 'account/register', name: 'PortalRegister', component: Register },
         { path: 'account/forgot-password', name: 'PortalForgotPassword', component: ForgotPassword },
-        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite },
+        { path: 'claim/:token', name: 'PortalPlayerClaimInvite', component: PlayerClaimInvite }
+          ]
+        },
         { path: 'admin/login', name: 'AdminLogin', component: Login, meta: { requiresAuth: false } },
         {
           path: 'admin',
@@ -80,7 +148,7 @@ const routes = [
           meta: { requiresAuth: true },
           children: [
             { path: '', redirect: { name: 'AdminDashboard' } },
-            adminChild('dashboard', 'AdminDashboard', 'Dashboard'),
+            { path: 'dashboard', name: 'AdminDashboard', component: Dashboard },
             { path: 'users', name: 'AdminUsers', component: Users },
             { path: 'roles', name: 'AdminRoles', component: Roles },
             { path: 'menus', name: 'AdminMenus', component: Menus },
@@ -93,44 +161,46 @@ const routes = [
             { path: 'content', name: 'AdminContent', component: Content },
             { path: 'content/new', name: 'AdminContentNew', component: ContentEdit },
             { path: 'content/:id/edit', name: 'AdminContentEdit', component: ContentEdit },
-            adminChild('config', 'AdminConfig', 'AppConfig'),
+            { path: 'config', name: 'AdminConfig', component: AppConfig },
             { path: 'resources', name: 'AdminResources', component: Resources },
             { path: 'media-icons', name: 'AdminMediaIcons', component: MediaIcons },
             { path: 'media-gallery', name: 'AdminMediaGallery', component: MediaGallery },
-            adminChild('login-logs', 'AdminLoginLogs', 'LoginLogs'),
-            adminChild('operation-logs', 'AdminOperationLogs', 'OperationLogs'),
-            adminChild('tenants', 'AdminTenants', 'Tenants'),
-            adminChild('monitor/data', 'AdminMonitorData', 'DataMonitor'),
-            adminChild('monitor/server', 'AdminMonitorServer', 'ServerMonitor'),
-            adminChild('monitor/cache', 'AdminMonitorCache', 'CacheMonitor'),
-            adminChild('monitor/cache-list', 'AdminMonitorCacheList', 'CacheList'),
-            adminChild('monitor/portal-devtools-report', 'AdminMonitorPortalDevtoolsReport', 'PortalDevtoolsReportList'),
-            adminChild('monitor/portal-visit-hit', 'AdminMonitorPortalVisitHit', 'PortalVisitHitList'),
-            adminChild('monitor/portal-feedback', 'AdminMonitorPortalFeedback', 'PortalFeedbackList'),
-            adminChild('monitor/ip-access-policy', 'AdminMonitorIpAccessPolicy', 'IpAccessPolicy'),
-            adminChild('ip-location-cache', 'AdminIpLocationCache', 'IpLocationCache'),
-            adminChild('leagues', 'AdminLeagues', 'Leagues'),
-            adminChild('stadiums/distribution', 'AdminStadiumDistribution', 'StadiumDistribution'),
-            adminChild('stadiums', 'AdminStadiums', 'Stadiums'),
-            adminChild('teams', 'AdminTeams', 'Teams'),
-            adminChild('lineup-templates', 'AdminLineupTemplates', 'LineupTemplates'),
-            adminChild('coaches', 'AdminCoaches', 'Coaches'),
-            adminChild('players', 'AdminPlayerList', 'PlayerList'),
-            adminChild('players/:id', 'AdminPlayerDetail', 'PlayerDetail'),
-            adminChild('player-claims', 'AdminPlayerClaimReview', 'PlayerClaimReview'),
-            adminChild('teams/:id/players', 'AdminTeamPlayers', 'PlayerList'),
-            adminChild('events', 'AdminEvents', 'Events'),
-            adminChild('events/:eventId/bracket', 'AdminEventBracket', 'EventBracket'),
-            adminChild('events/:eventId/games', 'AdminGames', 'Games'),
-            adminChild('events/:eventId/games/new', 'AdminGameNew', 'Games'),
-            adminChild('events/:eventId/games/:gameId/edit', 'AdminGameEdit', 'Games'),
-            adminChild('events/:eventId/games/:gameId/live', 'AdminGameLiveResume', 'LiveGame'),
-            adminChild('events/:eventId/games/:gameId/lineup', 'AdminGameLiveLineupGame', 'LiveGameLineup'),
-            adminChild('events/:eventId/games/:gameId/watch', 'AdminGameLiveWatch', 'LiveGameWatch'),
-            adminChild('events/:eventId/games/:gameId', 'AdminGameDetail', 'GameDetail'),
-            adminChild('events/:eventId/games/live', 'AdminGameLiveLineup', 'LiveGameLineup'),
-            adminChild('history-records', 'AdminHistoryRecords', 'HistoryRecordList'),
-            adminChild('highlight-moments', 'AdminHighlightMoments', 'HighlightMomentList')
+            { path: 'login-logs', name: 'AdminLoginLogs', component: LoginLogs },
+            { path: 'operation-logs', name: 'AdminOperationLogs', component: OperationLogs },
+            { path: 'tenants', name: 'AdminTenants', component: Tenants },
+            { path: 'monitor/data', name: 'AdminMonitorData', component: DataMonitor },
+            { path: 'monitor/server', name: 'AdminMonitorServer', component: ServerMonitor },
+            { path: 'monitor/cache', name: 'AdminMonitorCache', component: CacheMonitor },
+            { path: 'monitor/cache-list', name: 'AdminMonitorCacheList', component: CacheList },
+            { path: 'monitor/portal-devtools-report', name: 'AdminMonitorPortalDevtoolsReport', component: PortalDevtoolsReportList },
+            { path: 'monitor/portal-visit-hit', name: 'AdminMonitorPortalVisitHit', component: PortalVisitHitList },
+            { path: 'monitor/portal-feedback', name: 'AdminMonitorPortalFeedback', component: PortalFeedbackList },
+            { path: 'monitor/ip-access-policy', name: 'AdminMonitorIpAccessPolicy', component: IpAccessPolicy },
+            { path: 'ip-location-cache', name: 'AdminIpLocationCache', component: IpLocationCache },
+            { path: 'leagues', name: 'AdminLeagues', component: Leagues },
+            { path: 'stadiums/distribution', name: 'AdminStadiumDistribution', component: StadiumDistribution },
+            { path: 'stadiums', name: 'AdminStadiums', component: Stadiums },
+            { path: 'teams', name: 'AdminTeams', component: Teams },
+            { path: 'lineup-templates', name: 'AdminLineupTemplates', component: LineupTemplates },
+            { path: 'coaches', name: 'AdminCoaches', component: Coaches },
+            { path: 'players', name: 'AdminPlayerList', component: PlayerList },
+            { path: 'players/:id', name: 'AdminPlayerDetail', component: PlayerDetail },
+            { path: 'player-claims', name: 'AdminPlayerClaimReview', component: PlayerClaimReview },
+            { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
+            { path: 'events', name: 'AdminEvents', component: Events },
+            { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
+            { path: 'events/:eventId/games', name: 'AdminGames', component: Games },
+            { path: 'events/:eventId/games/new', name: 'AdminGameNew', component: Games },
+            { path: 'events/:eventId/games/:gameId/edit', name: 'AdminGameEdit', component: Games },
+            { path: 'events/:eventId/games/:gameId/live', name: 'AdminGameLiveResume', component: LiveGame },
+            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineup },
+            { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
+            { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
+            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
+            { path: 'history-records', name: 'AdminHistoryRecords', component: HistoryRecordList },
+            { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList },
+            // 平台资产页（超管；批次 4b Task 4b-4）：菜单 path=/admin/platform-asset 经后端菜单树下发至超管侧边栏
+            { path: 'platform-asset', name: 'AdminPlatformAsset', component: PlatformAsset, meta: { title: '平台资产' } }
           ]
         }
       ]

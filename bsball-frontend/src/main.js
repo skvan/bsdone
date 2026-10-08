@@ -48,3 +48,6 @@ startVersionCheck();
 router.isReady().then(() => {
   installPortalDevtoolsGuard(router);
 });
+
+// H41：新旧版切换按钮已组件化（components/common/FrontendSwitchButton.vue，各布局/页面模板内渲染）；
+// 原全局 DOM 注入（悬浮保底 + 顶栏迁移）已下线，不再在此挂载。

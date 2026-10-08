@@ -15,12 +15,14 @@
 ## 简介
 本文件围绕“球员实体（Player）”的数据模型进行系统化说明，覆盖个人身份信息、职业信息、扩展信息、生命周期字段以及与比赛、统计数据、历史记录的多重关联。同时给出导入导出与批量操作的接口约定与实践建议，帮助开发者快速理解并正确使用该模型。
 
+自本版起，球员档案支持“球员-球队经历”多队注册：一位球员可同时注册多支球队（对应不同背号与守备位置），经历段独立存储于 bs_player_team，而 player 上的 teamId/number/positions 变为“主注册”镜像字段（兼容旧页面与旧接口）。
+
 ## 项目结构
 围绕球员实体的代码主要分布在以下层次：
 - 数据模型层：Player 实体定义所有持久化字段及序列化策略
 - 接口层：PlayerApi 暴露 REST 接口，包含查询、创建、更新、删除、导入等能力
-- 服务层：PlayerService 实现业务逻辑，包括权限校验、数据归一化、统计聚合、历史变更记录等
-- DTO 层：PlayerStatsDTO 等用于对外输出统计数据
+- 服务层：PlayerService 实现业务逻辑，包括权限校验、数据归一化、统计聚合、历史变更记录等；PlayerTeamService 负责多队经历的校验、差异落库与镜像回写
+- DTO 层：PlayerStatsDTO 等用于对外输出统计数据；PlayerTeamEntryDto 输出球队经历条目
 
 ```mermaid
 graph TB
@@ -29,16 +31,20 @@ API["PlayerApi"]
 end
 subgraph "服务层"
 SVC["PlayerService"]
+PTS["PlayerTeamService"]
 REC["PersonnelHistoryRecorder"]
 end
 subgraph "数据模型层"
 ENT["Player"]
+PTE["PlayerTeam"]
 DTO["PlayerStatsDTO"]
 end
 API --> SVC
 SVC --> ENT
+SVC --> PTE
 SVC --> DTO
 SVC --> REC
+SVC --> PTS
 ```
 
 ## 核心组件
@@ -46,6 +52,7 @@ SVC --> REC
 - PlayerApi：提供球员数据的增删改查、统计查询、导入导出等接口
 - PlayerService：封装业务规则（租户隔离、数据范围、去空值、背景图归一化、重复策略、软删除、批量操作等）
 - PersonnelHistoryRecorder：记录球员资料变更的历史轨迹
+- PlayerTeamService / PlayerTeam / PlayerTeamEntryDto：球员-球队经历（多队注册）的计划、落库、镜像回写与输出
 - PlayerStatsDTO：承载击球、投球、防守等多维统计数据
 
 ## 架构总览
@@ -65,7 +72,7 @@ DB-->>SVC : "现有球员集合"
 SVC->>SVC : "校验球队归属/租户一致性"
 SVC->>SVC : "根据重复策略跳过或覆盖"
 SVC->>DB : "保存/更新球员"
-SVC->>REC : "afterPlayerCreate/afterPlayerUpdate"
+SVC->>REC : "recordPlayerTeamTransitions / afterPlayerUpdate"
 REC-->>DB : "写入历史变更记录"
 SVC-->>API : "返回{created, updated, skipped}"
 API-->>Client : "Result<Map>"
@@ -81,9 +88,10 @@ API-->>Client : "Result<Map>"
   - 身高 height、体重 weight
   - 性别 gender：当前实体未直接定义 gender 字段；如需支持可在后续扩展
 - 职业信息
-  - 号码 number
-  - 守备位置 positions：以 JSON 字符串存储，通过 getter/setter 转换为 List<String> 供外部使用
-  - 所属球队 teamId：外键引用球队
+  - 号码 number：镜像字段，取“主注册”经历（“当前”段按 sort,id 排序取第一段）的背号
+  - 守备位置 positions：镜像字段，JSON 字符串存储，通过 getter/setter 转换为 List<String> 供外部使用
+  - 所属球队 teamId：镜像字段，取主注册经历球队；无“当前”经历时置空（自由球员）
+  - 球队经历（多队注册）：完整经历段存于 bs_player_team，见下文“球员-球队经历”小节
   - 所属联赛 leagueId：当前实体未直接定义 leagueId；可通过球队或赛事维度间接关联
   - 投手手 throwHand、打者手 batHand
   - 选秀 draft、首秀 debut
@@ -96,7 +104,7 @@ API-->>Client : "Result<Map>"
 - 生命周期与状态
   - 状态 status：默认 active
   - 继承自 BaseEntity 的生命周期字段（如创建时间、更新时间、删除标记等）由基类提供
-  - 当前加入记录 currentJoinRecordId：指向最近一次加入/转会记录
+  - 当前加入记录 currentJoinRecordId：指向最近一次 join/transfer 演进记录（由球队经历流转统一回写）
 - 其他
   - 认证用户 userId、租户 tenantId、联系方式 contactPhone/contactEmail
 
@@ -136,10 +144,34 @@ class Player {
 }
 ```
 
+#### 球员-球队经历（PlayerTeam / bs_player_team）
+- 字段：playerId、teamId、tenantId、number（该队背号）、positions（该队守备位置 JSON）、current（是否当前球队，可多选）、sort；审计字段继承 BaseEntity
+- 唯一性：同一球员同一球队仅一条未删记录（部分唯一索引）；再次加入时复活已软删记录
+- 生命周期：球员软删除不级联删除经历段（查询侧随球员一起隐藏，可随球员恢复）；经历段移除为软删，重加同队时复用原记录
+- 保存语义：
+  - 提供 teamEntries：全量替换（缺失段软删；current=false 保留经历）
+  - 未提供：旧字段兼容（teamId>0 确保该队“当前”段并按请求体更新其号码/位置；teamId 空则取消全部“当前”标记）
+- 镜像规则：主注册（“当前”段按 sort,id 第一段）回写 player.teamId/number/positions；无“当前”段时三者置空
+- 校验：段内球队重复、球队不存在或跨租户均返回 400
+
+```mermaid
+classDiagram
+class PlayerTeam {
++Long playerId
++Long teamId
++Long tenantId
++String number
++String positions
++Boolean current
++Integer sort
++getPositionsList() String[]
+}
+```
+
 ### 接口与批量操作（导入/导出）
-- 列表查询：支持分页、多条件筛选（关键词、号码、位置、左右手、状态、加入日期区间等）
-- 详情与统计：获取球员详情、总体统计、按赛季统计、逐场日志、细分指标下钻
-- 创建/更新/删除：单条与批量删除（软删除）
+- 列表查询：支持分页、多条件筛选（关键词、号码、位置、左右手、状态、加入日期区间等）；球队筛选=存在该队“当前”经历，号码/位置筛选按经历段匹配；返回项含 teamEntries
+- 详情与统计：获取球员详情（含 teamEntries）、总体统计、按赛季统计、逐场日志、细分指标下钻
+- 创建/更新/删除：单条与批量删除（软删除）；创建/更新请求体可携带 teamEntries（提供=全量替换，不提供=旧字段兼容语义）
 - 导入：批量导入，支持重复策略（跳过或覆盖），返回创建/更新/跳过计数
 - 导出：当前未提供专用导出接口；可复用列表查询接口配合前端导出或自行实现
 
@@ -166,7 +198,7 @@ Done --> |是| Return["返回{created, updated, skipped}"]
 ### 与比赛、统计数据、历史记录的关系
 - 统计数据：通过 StatsService 聚合击球、投球、防守等指标，并以 PlayerStatsDTO 形式返回
 - 比赛日志：提供逐场比赛的明细条目，便于追踪表现趋势
-- 历史记录：通过 PersonnelHistoryRecorder 记录资料变更（如姓名、简称、英文名、昵称、号码等），形成可审计的变更轨迹
+- 历史记录：通过 PersonnelHistoryRecorder 记录资料变更（如姓名、简称、英文名、昵称、号码等）；球队经历“当前”集合变化时记录 join/leave/transfer 事件并回写 currentJoinRecordId，形成可审计的变更轨迹
 
 ```mermaid
 sequenceDiagram
@@ -194,6 +226,8 @@ REC-->>SVC : "记录变更"
 - PlayerService 依赖：
   - PlayerRepository：数据访问
   - TeamRepository：球队存在性与租户一致性校验
+  - PlayerTeamRepository：球队经历数据访问（当前段查询/计数）
+  - PlayerTeamService：经历计划、落库、镜像回写与输出填充
   - StatsService：统计数据聚合
   - DataScopeService/TenantQueryPolicyService：数据范围与租户策略
   - PersonnelHistoryRecorder：变更历史
@@ -210,6 +244,8 @@ SVC --> STAT["StatsService"]
 SVC --> SCOPE["DataScopeService"]
 SVC --> TENANT["TenantQueryPolicyService"]
 SVC --> REC["PersonnelHistoryRecorder"]
+SVC --> PTSVC["PlayerTeamService"]
+PTSVC --> PTREP["PlayerTeamRepository"]
 ```
 
 ## 性能考虑
@@ -224,6 +260,8 @@ SVC --> REC["PersonnelHistoryRecorder"]
 ## 故障排查指南
 - 无权访问：当跨租户或超出数据范围时，会抛出业务异常；请检查当前租户与数据范围
 - 球队不存在或不一致：创建/更新/导入时若球队不存在或不属于当前租户，将报错；请先创建球队并确保归属正确
+- 球队经历校验失败：teamEntries 中出现重复球队、球队不存在或跨租户时返回 400；请核对球队归属与去重
+- 镜像字段与经历不一致：teamId/number/positions 仅在保存时由主注册回写；如不一致请检查经历“当前”标记与排序
 - 重复导入：根据 duplicateStrategy 决定跳过或覆盖；如需覆盖，请确认策略参数
 - 历史变更未记录：确认是否在更新路径中触发了 afterPlayerUpdate；检查 PersonnelHistoryRecorder 是否启用
 
@@ -244,6 +282,7 @@ Player 实体提供了完整的球员信息管理模型，涵盖身份、职业�
   - 删除：DELETE /player/delete/{id}
   - 批量删除：POST /player/delete-batch
   - 批量导入：POST /player/import
+  - 球队经历：随 create/update 请求体嵌套（teamEntries），随详情/列表输出
 
 ---
 

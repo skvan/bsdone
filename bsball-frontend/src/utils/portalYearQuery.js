@@ -1,43 +1,36 @@
-// 门户年度查询参数工具 —— 行为移植自编译产物 portalYearQuery chunk
-// 导出：parseYearsParam（o/n）、defaultPortalYearQuery（i/r）、deriveYearsRange（u/t）、buildYearQuery（l/i）
-
-// 解析 years 参数（支持数组或 "2023,2024" / 中文逗号分隔）→ 去重数字数组或 null
-export function parseYearsParam(raw) {
-  if (raw == null || raw === '') return null;
-  const text = Array.isArray(raw) ? raw[0] : String(raw);
-  const years = text
+// 门户年份查询 —— 行为移植自编译产物 portalYearQuery chunk（逐字）
+export function parseYearList(value) {
+  if (value == null || value === '') return null;
+  const parts = (Array.isArray(value) ? value[0] : String(value))
     .split(/[,，]/)
-    .map((part) => parseInt(String(part).trim(), 10))
-    .filter((n) => !Number.isNaN(n));
-  return years.length ? years : null;
+    .map((token) => parseInt(String(token).trim(), 10))
+    .filter((num) => !Number.isNaN(num));
+  return parts.length ? parts : null;
 }
 
-// 默认查询：当前年份
-export function defaultPortalYearQuery() {
+export function getDefaultYearQuery() {
   return { years: String(new Date().getFullYear()) };
 }
 
-// 依据 startDate/endDate 推导年份区间（无有效年份返回 []）
-export function deriveYearsRange(params) {
+export function deriveYearsFromDateRange(item) {
   const years = new Set();
-  if (params.startDate) {
-    const y = parseInt(params.startDate.slice(0, 4), 10);
-    if (!Number.isNaN(y)) years.add(y);
+  if (item.startDate) {
+    const year = parseInt(item.startDate.slice(0, 4), 10);
+    if (!Number.isNaN(year)) years.add(year);
   }
-  if (params.endDate) {
-    const y = parseInt(params.endDate.slice(0, 4), 10);
-    if (!Number.isNaN(y)) years.add(y);
+  if (item.endDate) {
+    const year = parseInt(item.endDate.slice(0, 4), 10);
+    if (!Number.isNaN(year)) years.add(year);
   }
   if (years.size === 0) return [];
   const min = Math.min(...years);
   const max = Math.max(...years);
-  const out = [];
-  for (let y = min; y <= max; y += 1) out.push(y);
-  return out;
+  const list = [];
+  for (let year = min; year <= max; year++) list.push(year);
+  return list;
 }
 
-// 依据日期区间构建查询（空区间回退默认年份）
-export function buildYearQuery(params) {
-  const range = deriveYearsRange(params);
-  return range.length === 0 ? defaultPortalYearQuery() : { years: range.join(',') };
+export function resolveYearQuery(item) {
+  const years = deriveYearsFromDateRange(item);
+  return years.length === 0 ? getDefaultYearQuery() : { years: years.join(',') };
 }

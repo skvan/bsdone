@@ -9,6 +9,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -19,7 +20,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
-import com.bsball.model.dto.EffectiveDataScope;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
@@ -28,6 +28,7 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -69,20 +70,34 @@ class GameServiceSaveResultTest {
     private StadiumRepository stadiumRepository;
 
     @Mock
-    private DataScopeService dataScopeService;
+    private AccountScopeService accountScopeService;
+
+    @Mock
+    private ScopeQuerySupport scopeQuerySupport;
+
+    @Mock
+    private ResourceGuard resourceGuard;
 
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
 
+    @Mock
+    private EarnedRunReconstructionService earnedRunReconstructionService;
+
     private GameService gameService;
+
+    /** setUp 中由 findById 回傳的既有比賽（供欄位級斷言） */
+    private Game existingGame;
 
     @BeforeEach
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
-                stadiumRepository, dataScopeService, tenantQueryPolicyService);
+                stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
+                tenantQueryPolicyService, earnedRunReconstructionService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
+        existingGame = game;
         game.setId(Long.valueOf(GAME_ID));
         game.setTenantId(Long.valueOf(TENANT_ID));
         game.setEventId(Long.valueOf(EVENT_ID));
@@ -95,7 +110,6 @@ class GameServiceSaveResultTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(Long.valueOf(TENANT_ID));
         when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.of(game));
         when(eventRepository.findById(Long.valueOf(EVENT_ID))).thenReturn(Optional.of(event));
-        when(dataScopeService.resolve(any(), anyLong())).thenReturn(EffectiveDataScope.unrestricted());
         when(gamePlayerStatRepository.save(any(GamePlayerStat.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -164,6 +178,38 @@ class GameServiceSaveResultTest {
         assertEquals(PITCHER_ROW_ID, deleted.get(1).getId().longValue());
     }
 
+    @Test
+    @DisplayName("編輯保存：清空「場次/場地」（傳 null）應真正寫入 null（issue #28）")
+    void saveResult_nullGameNumberAndVenue_clearsThem() {
+        existingGame.setGameNumber(Integer.valueOf(3));
+        existingGame.setVenue("熊貓紀念球場");
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setGame(gamePart(null, null));
+        dto.setStats(new ArrayList<>(List.of(
+                part(null, Long.valueOf(777L), 0, Integer.valueOf(1), null))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(existingGame.getGameNumber(), "清空後 gameNumber 應為 null");
+        assertNull(existingGame.getVenue(), "清空後 venue 應為 null");
+    }
+
+    @Test
+    @DisplayName("編輯保存：帶值時仍正常寫入「場次/場地」")
+    void saveResult_presentGameNumberAndVenue_writesThem() {
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setGame(gamePart(Integer.valueOf(7), "新生公園棒球場"));
+        dto.setStats(new ArrayList<>(List.of(
+                part(null, Long.valueOf(777L), 0, Integer.valueOf(2), null))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(7), existingGame.getGameNumber());
+        assertEquals("新生公園棒球場", existingGame.getVenue());
+    }
+
     /* ---------- fixtures ---------- */
 
     private GamePlayerStat batterRow() {
@@ -201,6 +247,14 @@ class GameServiceSaveResultTest {
         part.setAb(ab);
         part.setIp(ip);
         return part;
+    }
+
+    private SaveGameResultDTO.GamePart gamePart(Integer gameNumber, String venue) {
+        SaveGameResultDTO.GamePart g = new SaveGameResultDTO.GamePart();
+        g.setEventId(Long.valueOf(EVENT_ID));
+        g.setGameNumber(gameNumber);
+        g.setVenue(venue);
+        return g;
     }
 
     private void givenExistingRows(GamePlayerStat... rows) {

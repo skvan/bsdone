@@ -1,7 +1,7 @@
 // MediaGallery —— 行为保真移植自编译产物 MediaGallery-Zev1CiC9（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { withModifiers as ne, createElementBlock as c, normalizeStyle as ue, defineComponent as pe, createTextVNode as p, computed as me, toDisplayString as ve, createElementVNode as m, unref as A, normalizeClass as fe, ref as s, createVNode as l, withDirectives as ce, openBlock as y, withCtx as o, Fragment as ke, withKeys as j, onMounted as Ce, renderList as Se, KeepAlive as Me, reactive as Fe, createCommentVNode as ze } from 'vue';
-import { ElImage as se, ElInputNumber as re, ElDialog as de, ElIcon as ge, ElInput as ye, ElFormItem as _e, ElMessage as _, ElUpload as Ve, ElEmpty as xe, ElButton as Ue, ElCard as be, ElMessageBox as Ee, ElForm as Oe } from 'element-plus';
+import { withModifiers as ne, createElementBlock as c, normalizeStyle as ue, defineComponent as pe, createTextVNode as p, computed as me, toDisplayString as ve, createElementVNode as m, unref as A, normalizeClass as fe, ref as s, createVNode as l, withDirectives as ce, openBlock as y, withCtx as o, Fragment as ke, withKeys as j, onMounted as Ce, renderList as Se, reactive as Fe, createCommentVNode as ze } from 'vue';
+import { ElImage as se, ElInputNumber as re, ElDialog as de, ElIcon as ge, ElInput as ye, ElFormItem as _e, ElMessage as _, ElUpload as Ve, ElEmpty as xe, ElButton as Ue, ElCard as be, ElMessageBox as Ee, vLoading as Me, ElForm as Oe } from 'element-plus';
 import { UploadFilled as we } from '@element-plus/icons-vue';
 import { useMediaQuery as Ne } from '../../composables/useMediaQuery';
 import { resolveAssetUrl as K } from '../../api/request';

@@ -438,7 +438,22 @@
     "confirmRefresh": "立即刷新",
     "cancelLater": "稍后"
   },
+    "portalLeagues": {
+      "title": "联盟一览",
+      "apply": "申请创建联盟",
+      "name": "联盟名称",
+      "nameEn": "英文名",
+      "description": "描述",
+      "submit": "提交申请",
+      "cancel": "取消",
+      "pending": "已提交申请，等待管理员审核",
+      "created": "创建成功",
+      "empty": "暂无联盟",
+      "loginRequired": "请先登录后再申请创建联盟",
+      "failed": "提交失败"
+    },
   "nav": {
+    "leagues": "联盟",
     "home": "首页",
     "expandMenu": "展开菜单",
     "events": "赛事一览",
@@ -567,7 +582,20 @@
     "claimBtn": "提交认领申请",
     "loginHint": "登录或注册后即可提交认领申请",
     "submitted": "认领申请已提交，请等待审核",
-    "invalid": "邀请链接无效或已过期"
+    "invalid": "邀请链接无效或已过期",
+    "draftHint": "该邀请未绑定球员档案，请填写基础信息完成建档并加入球队",
+    "name": "姓名",
+    "namePlaceholder": "请输入姓名",
+    "nameRequired": "请输入姓名",
+    "birthDate": "出生日期",
+    "birthDatePlaceholder": "选填（YYYY-MM-DD）",
+    "positions": "守位",
+    "positionsPlaceholder": "选填，可多选",
+    "createBtn": "建档并入队",
+    "registered": "建档并入队成功，已加入球队",
+    "joined": "已加入球队",
+    "alreadyJoined": "您已加入该球队，无需重复操作",
+    "submitFailed": "提交失败，请稍后重试"
   },
   "playerClaimReview": {
     "title": "球员认证管理",
@@ -647,7 +675,8 @@
       "pending": "待审核",
       "approved": "已通过",
       "rejected": "已拒绝",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "revoked": "已解除"
     },
     "claimRejectReason": "拒绝理由",
     "claimRemark": "备注",
@@ -656,6 +685,10 @@
     "claimCancelConfirm": "确定取消该认领申请吗？取消后需等待 3 个工作日才能重新申请。",
     "claimCancelled": "已取消认领申请",
     "claimCancelFailed": "取消失败",
+        "claimRelease": "解除认领",
+        "claimReleaseConfirm": "确定解除认领吗？解除后档案回到未认领状态，可重新被邀请/认领；你的球队经历与比赛统计仍保留在档案中。",
+        "claimReleased": "已解除认领",
+        "claimReleaseFailed": "解除认领失败",
     "rebindPhone": "改绑手机号",
     "bindPhone": "绑定手机号",
     "rebindEmail": "改绑邮箱",

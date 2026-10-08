@@ -44,11 +44,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class HighlightMomentService {
     private final HighlightMomentRepository highlightMomentRepository;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final ResourceGuard resourceGuard;
 
     public PageResult<HighlightMoment> list(Integer page, Integer pageSize, String sortProp, String sortOrder, String subjectType, Long subjectId, String mediaType, String status) {
         Long tid = this.tenantQueryPolicyService.tenantIdOrNullForQuery();
@@ -106,6 +108,7 @@ public class HighlightMomentService {
         return (HighlightMoment)this.highlightMomentRepository.save(body);
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public void delete(Long id) {
         HighlightMoment existing = this.highlightMomentRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
@@ -114,6 +117,10 @@ public class HighlightMomentService {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u9ad8\u5149\u65f6\u523b");
+        }
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
         }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
@@ -131,9 +138,10 @@ public class HighlightMomentService {
     }
 
     @Generated
-    public HighlightMomentService(HighlightMomentRepository highlightMomentRepository, TenantQueryPolicyService tenantQueryPolicyService) {
+    public HighlightMomentService(HighlightMomentRepository highlightMomentRepository, TenantQueryPolicyService tenantQueryPolicyService, ResourceGuard resourceGuard) {
         this.highlightMomentRepository = highlightMomentRepository;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.resourceGuard = resourceGuard;
     }
 }
 

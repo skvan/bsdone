@@ -35,10 +35,14 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.BaseEntity;
+import com.bsball.model.entity.SysApi;
 import com.bsball.model.entity.SysRole;
 import com.bsball.model.entity.SysRoleApi;
 import com.bsball.model.entity.SysRoleMenu;
 import com.bsball.model.entity.SysTenant;
+import com.bsball.model.entity.TenantRoleMenuConfig;
+import com.bsball.repository.SysApiRepository;
+import com.bsball.repository.SysMenuRepository;
 import com.bsball.repository.SysRoleApiRepository;
 import com.bsball.repository.SysRoleMenuRepository;
 import com.bsball.repository.SysRoleRepository;
@@ -48,10 +52,13 @@ import com.bsball.service.ApiPermissionService;
 import com.bsball.service.MenuExpansionHelper;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -68,6 +75,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class SysRoleService {
     private static final List<Long> ADMIN_REQUIRED_MENU_IDS = List.of(1L, 4L, 5L, 6L);
     private static final List<String> ASSIGN_OPTION_SYSTEM_CODES = List.of("tenant_admin", "guest");
+    /*
+     * 平台级/超管专属菜单路径（spec §8.6，批次 3b T3.15）：租户管理员配置本租户角色时不可授予下级角色（越权配置防护）。
+     * 识别依据 InitDataRunner.isApiAllowedForTenantAdmin 中「超管专属完整排除」的功能域
+     * （/sys/tenant、/sys/menu 写、/sys/api、/sys/monitor）与 spec 明示的「租户管理」；以菜单 path 为稳定标识。
+     */
+    private static final Set<String> PLATFORM_LEVEL_MENU_PATHS = Set.of("/admin/tenants", "/admin/menus", "/admin/apis", "/admin/monitor/data", "/admin/monitor/server", "/admin/monitor/cache", "/admin/monitor/cache-list");
+    /*
+     * 平台级/超管专属 API 路径前缀（spec §8.6，批次 3b T3.15b）：对照 InitDataRunner.isApiAllowedForTenantAdmin
+     * 的「超管专属完整排除」域。租户管理员为角色（含覆盖配置路径）授予 apiIds 时命中即 403「无权授予平台级接口」；
+     * /sys/menu 仅放行 GET /sys/menu/list（与 isApiAllowedForTenantAdmin 一致）。超管不受限。
+     */
+    private static final Set<String> PLATFORM_LEVEL_API_PREFIXES = Set.of("/sys/tenant", "/sys/menu", "/sys/api", "/sys/monitor");
     private final ApiPermissionService apiPermissionService;
     private final MenuExpansionHelper menuExpansionHelper;
     private final SysRoleRepository sysRoleRepository;
@@ -75,6 +94,9 @@ public class SysRoleService {
     private final SysRoleApiRepository sysRoleApiRepository;
     private final SysUserRoleRepository sysUserRoleRepository;
     private final SysTenantRepository sysTenantRepository;
+    private final SysMenuRepository sysMenuRepository;
+    private final SysApiRepository sysApiRepository;
+    private final TenantRoleConfigService tenantRoleConfigService;
 
     public PageResult<SysRole> list(Long operatorUserId, Integer page, Integer pageSize, String keyword) {
         Page result;
@@ -91,13 +113,14 @@ public class SysRoleService {
             if (tid == null) {
                 throw new BusinessException(400, "\u65e0\u6cd5\u786e\u5b9a\u5f53\u524d\u79df\u6237");
             }
-            result = kw == null ? this.sysRoleRepository.findByTenantId(tid, p) : this.sysRoleRepository.findByTenantIdAndKeyword(tid, kw, p);
+            result = this.sysRoleRepository.findForAssignOptions(tid, List.copyOf(TenantRoleConfigService.PORTAL_OVERRIDE_ROLE_CODES), kw, p);
         } else {
             result = Page.empty((Pageable)p);
         }
         List roles = result.getContent();
         this.fillMenuIds(roles);
         this.fillApiIds(roles);
+        this.markTenantOverrideMarkers(operatorUserId, roles);
         return PageResult.of((List)roles, (long)result.getTotalElements());
     }
 
@@ -162,6 +185,8 @@ public class SysRoleService {
         } else {
             throw new BusinessException(403, "\u65e0\u6743\u521b\u5efa\u89d2\u8272");
         }
+        this.assertCanGrantMenus(operatorUserId, entity.getMenuIds());
+        this.assertCanGrantApis(operatorUserId, entity.getApiIds());
         this.validateCodeUniqueForCreate(entity);
         if (entity.getDescription() != null) {
             String d = entity.getDescription().trim();
@@ -180,6 +205,9 @@ public class SysRoleService {
             this.saveRoleApis(saved.getId(), entity.getApiIds());
             saved.setApiIds(entity.getApiIds());
         }
+        if (entity.getMenuIds() != null && !entity.getMenuIds().isEmpty() || entity.getApiIds() != null && !entity.getApiIds().isEmpty()) {
+            this.apiPermissionService.clearUserRoleCache();
+        }
         return saved;
     }
 
@@ -191,6 +219,8 @@ public class SysRoleService {
             return null;
         }
         this.assertCanModifyRole(operatorUserId, existing);
+        this.assertCanGrantMenus(operatorUserId, entity.getMenuIds());
+        this.assertCanGrantApis(operatorUserId, entity.getApiIds());
         if (SysRoleService.isSystemSuperAdminRole((SysRole)existing)) {
             throw new BusinessException(403, "\u8d85\u7ea7\u7ba1\u7406\u5458\u89d2\u8272\u4e0d\u53ef\u4fee\u6539");
         }
@@ -235,6 +265,9 @@ public class SysRoleService {
         } else {
             this.fillMenuIds(List.of(existing));
         }
+        if (entity.getMenuIds() != null || entity.getApiIds() != null) {
+            this.apiPermissionService.clearUserRoleCache();
+        }
         return (SysRole)this.sysRoleRepository.save(existing);
     }
 
@@ -259,10 +292,15 @@ public class SysRoleService {
             return;
         }
         if (this.apiPermissionService.isTenantAdmin(operatorUserId)) {
-            Long tid = CurrentUserHolder.getTenantId();
+            /*
+             * 只读语义放宽（#154）：租户管理员允许只读平台级角色（tenant_id NULL）——
+             * 「租户目录」抽屉需读取平台门户角色详情（GET /sys/role/:id）以初始化全局预设；
+             * 他租户角色仍 403；写入路径零改动（update/delete 仍由 assertCanModifyRole 拦截）。
+             */
             if (role.getTenantId() == null) {
-                throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u7cfb\u7edf\u7ea7\u89d2\u8272");
+                return;
             }
+            Long tid = CurrentUserHolder.getTenantId();
             if (tid == null || !Objects.equals(role.getTenantId(), tid)) {
                 throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u89d2\u8272");
             }
@@ -370,6 +408,175 @@ public class SysRoleService {
         this.sysRoleApiRepository.deleteByRoleId(id);
         this.sysRoleApiRepository.flush();
         this.sysRoleRepository.deleteById(id);
+        this.apiPermissionService.clearUserRoleCache();
+    }
+
+    /**
+     * 越权配置防护（spec §8.6，批次 3b T3.15）：租户管理员配置本租户角色菜单/按钮时，
+     * 可授予集合 = 本租户可用菜单集合（排除平台级/超管专属项）；越界 → 403「无权授予平台级菜单」。超管不受限。
+     */
+    private void assertCanGrantMenus(Long operatorUserId, Collection<Long> menuIds) {
+        if (this.apiPermissionService.isSuperAdmin(operatorUserId)) {
+            return;
+        }
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
+        }
+        Set<Long> platformMenuIds = this.sysMenuRepository.findAll().stream().filter(m -> m.getId() != null && m.getPath() != null && SysRoleService.PLATFORM_LEVEL_MENU_PATHS.contains(m.getPath())).map(BaseEntity::getId).collect(Collectors.toSet());
+        if (platformMenuIds.isEmpty()) {
+            return;
+        }
+        if (menuIds.stream().anyMatch(id -> id != null && platformMenuIds.contains(id))) {
+            throw new BusinessException(403, "\u65e0\u6743\u6388\u4e88\u5e73\u53f0\u7ea7\u83dc\u5355");
+        }
+    }
+
+    /**
+     * 越权授予防护（spec §8.6，批次 3b T3.15b）：租户管理员为角色授予 API 时，
+     * 可授予集合 = 本租户可用 API（排除平台级/超管专属域）；越界 → 403「无权授予平台级接口」。超管不受限。
+     */
+    private void assertCanGrantApis(Long operatorUserId, Collection<Long> apiIds) {
+        if (this.apiPermissionService.isSuperAdmin(operatorUserId)) {
+            return;
+        }
+        if (apiIds == null || apiIds.isEmpty()) {
+            return;
+        }
+        Set<Long> platformApiIds = this.sysApiRepository.findAll().stream().filter(a -> a.getId() != null && SysRoleService.isPlatformLevelApi(a)).map(BaseEntity::getId).collect(Collectors.toSet());
+        if (platformApiIds.isEmpty()) {
+            return;
+        }
+        if (apiIds.stream().anyMatch(id -> id != null && platformApiIds.contains(id))) {
+            throw new BusinessException(403, "\u65e0\u6743\u6388\u4e88\u5e73\u53f0\u7ea7\u63a5\u53e3");
+        }
+    }
+
+    private static boolean isPlatformLevelApi(SysApi api) {
+        String p = api.getPath();
+        if (p == null || p.isBlank()) {
+            return false;
+        }
+        if (p.startsWith("/sys/menu")) {
+            return !("/sys/menu/list".equals(p) && "GET".equalsIgnoreCase(api.getMethod()));
+        }
+        return SysRoleService.PLATFORM_LEVEL_API_PREFIXES.stream().anyMatch(p::startsWith);
+    }
+
+    /**
+     * 租户级目录覆盖（spec §8.6，批次 3b T3.15b）：查询平台门户角色在本租户的覆盖配置（无则 enabled=false）。
+     * 口径：覆盖调整菜单/按钮导航面及由其（menu_api）派生的 API 绑定；角色基线 role_api（预设能力）不受覆盖影响。
+     */
+    public Map<String, Object> getTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId) {
+        SysRole role = this.loadRoleForOverride(roleId);
+        Long tenantId = this.resolveOverrideTenantId(operatorUserId, requestedTenantId);
+        this.assertOverridablePlatformRole(role);
+        return this.buildTenantConfigView(roleId, tenantId, this.tenantRoleConfigService.findConfig(tenantId, roleId));
+    }
+
+    /**
+     * 保存（全量替换）租户级目录覆盖：空数组=启用空覆盖；仅写覆盖两表，绝不触碰全局角色/绑定。缓存失效后返回覆盖视图。
+     * 口径：覆盖调整菜单/按钮导航面及由其（menu_api）派生的 API 绑定；角色基线 role_api（预设能力）不受覆盖影响。
+     */
+    @Transactional
+    public Map<String, Object> saveTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId, List<Long> menuIds) {
+        SysRole role = this.loadRoleForOverride(roleId);
+        Long tenantId = this.resolveOverrideTenantId(operatorUserId, requestedTenantId);
+        this.assertOverridablePlatformRole(role);
+        this.assertCanGrantMenus(operatorUserId, menuIds);
+        TenantRoleMenuConfig config = this.tenantRoleConfigService.saveOverride(tenantId, roleId, menuIds, operatorUserId);
+        this.apiPermissionService.clearUserRoleCache();
+        return this.buildTenantConfigView(roleId, tenantId, Optional.of(config));
+    }
+
+    /**
+     * 清除租户级目录覆盖（回落全局）：仅删覆盖两表。
+     * 口径：清除后菜单/按钮导航面与派生 API 绑定回落全局；角色基线 role_api（预设能力）不受覆盖影响。
+     */
+    @Transactional
+    public void clearTenantConfig(Long operatorUserId, Long requestedTenantId, Long roleId) {
+        SysRole role = this.loadRoleForOverride(roleId);
+        Long tenantId = this.resolveOverrideTenantId(operatorUserId, requestedTenantId);
+        this.assertOverridablePlatformRole(role);
+        this.tenantRoleConfigService.clearOverride(tenantId, roleId);
+        this.apiPermissionService.clearUserRoleCache();
+    }
+
+    private SysRole loadRoleForOverride(Long roleId) {
+        if (roleId == null) {
+            throw new BusinessException(400, "roleId \u4e0d\u80fd\u4e3a\u7a7a");
+        }
+        SysRole role = this.sysRoleRepository.findById(roleId).orElse(null);
+        if (role == null) {
+            throw new BusinessException(404, "\u89d2\u8272\u4e0d\u5b58\u5728");
+        }
+        return role;
+    }
+
+    private void assertOverridablePlatformRole(SysRole role) {
+        if (role.getTenantId() != null) {
+            throw new BusinessException(403, "\u4ec5\u5e73\u53f0\u7ea7\u95e8\u6237\u89d2\u8272\u652f\u6301\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6");
+        }
+        if (!this.tenantRoleConfigService.isOverridableRoleCode(role.getCode())) {
+            throw new BusinessException(403, "\u8be5\u89d2\u8272\u4e0d\u652f\u6301\u79df\u6237\u7ea7\u76ee\u5f55\u8986\u76d6");
+        }
+    }
+
+    private Long resolveOverrideTenantId(Long operatorUserId, Long requestedTenantId) {
+        if (this.apiPermissionService.isSuperAdmin(operatorUserId)) {
+            if (requestedTenantId == null) {
+                throw new BusinessException(400, "tenantId \u4e0d\u80fd\u4e3a\u7a7a");
+            }
+            return requestedTenantId;
+        }
+        if (this.apiPermissionService.isTenantAdmin(operatorUserId)) {
+            Long tid = CurrentUserHolder.getTenantId();
+            if (tid == null) {
+                throw new BusinessException(400, "\u65e0\u6cd5\u786e\u5b9a\u5f53\u524d\u79df\u6237");
+            }
+            if (requestedTenantId != null && !Objects.equals(requestedTenantId, tid)) {
+                throw new BusinessException(403, "\u65e0\u6743\u914d\u7f6e\u4ed6\u79df\u6237\u76ee\u5f55");
+            }
+            return tid;
+        }
+        throw new BusinessException(403, "\u65e0\u6743\u914d\u7f6e\u89d2\u8272\u76ee\u5f55");
+    }
+
+    private Map<String, Object> buildTenantConfigView(Long roleId, Long tenantId, Optional<TenantRoleMenuConfig> config) {
+        HashMap<String, Object> m = new HashMap<String, Object>();
+        m.put("roleId", roleId);
+        m.put("tenantId", tenantId);
+        if (config.isEmpty()) {
+            m.put("enabled", false);
+            m.put("menuIds", List.of());
+            return m;
+        }
+        TenantRoleMenuConfig c = config.get();
+        m.put("enabled", true);
+        m.put("updatedBy", c.getUpdatedBy());
+        m.put("updatedAt", c.getUpdatedAt());
+        m.put("menuIds", this.tenantRoleConfigService.findOverrideMenuIds(c.getId()).stream().sorted().collect(Collectors.toList()));
+        return m;
+    }
+
+    /**
+     * 租管可见列表中标记平台门户行：platform=true（tenant_id NULL）与 hasTenantOverride（本租户是否已启用覆盖）。超管不标记。
+     */
+    private void markTenantOverrideMarkers(Long operatorUserId, List<SysRole> roles) {
+        if (roles == null || roles.isEmpty() || !this.apiPermissionService.isTenantAdmin(operatorUserId)) {
+            return;
+        }
+        Long tid = CurrentUserHolder.getTenantId();
+        if (tid == null) {
+            return;
+        }
+        for (SysRole r : roles) {
+            if (r.getTenantId() == null) {
+                r.setPlatform(Boolean.TRUE);
+                r.setHasTenantOverride(this.tenantRoleConfigService.findConfig(tid, r.getId()).isPresent());
+            } else {
+                r.setPlatform(Boolean.FALSE);
+            }
+        }
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize) {
@@ -383,7 +590,7 @@ public class SysRoleService {
     }
 
     @Generated
-    public SysRoleService(ApiPermissionService apiPermissionService, MenuExpansionHelper menuExpansionHelper, SysRoleRepository sysRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysRoleApiRepository sysRoleApiRepository, SysUserRoleRepository sysUserRoleRepository, SysTenantRepository sysTenantRepository) {
+    public SysRoleService(ApiPermissionService apiPermissionService, MenuExpansionHelper menuExpansionHelper, SysRoleRepository sysRoleRepository, SysRoleMenuRepository sysRoleMenuRepository, SysRoleApiRepository sysRoleApiRepository, SysUserRoleRepository sysUserRoleRepository, SysTenantRepository sysTenantRepository, SysMenuRepository sysMenuRepository, SysApiRepository sysApiRepository, TenantRoleConfigService tenantRoleConfigService) {
         this.apiPermissionService = apiPermissionService;
         this.menuExpansionHelper = menuExpansionHelper;
         this.sysRoleRepository = sysRoleRepository;
@@ -391,6 +598,9 @@ public class SysRoleService {
         this.sysRoleApiRepository = sysRoleApiRepository;
         this.sysUserRoleRepository = sysUserRoleRepository;
         this.sysTenantRepository = sysTenantRepository;
+        this.sysMenuRepository = sysMenuRepository;
+        this.sysApiRepository = sysApiRepository;
+        this.tenantRoleConfigService = tenantRoleConfigService;
     }
 }
 

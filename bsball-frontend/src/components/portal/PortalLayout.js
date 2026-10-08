@@ -20,7 +20,7 @@ import { useAnnouncementNotifications as ta } from '../../composables/useAnnounc
 import { useTenantRouter as aa } from '../../composables/useTenantRouter';
 import la from './PortalDragCaptcha.js';
 import { DEFAULT_AVATAR_SVG_PATH as Ze } from '../../utils/placeholderAssets';
-import { defaultPortalYearQuery as et } from '../../utils/portalYearQuery';
+import { getDefaultYearQuery as et } from '../../utils/portalYearQuery';
 import { markPortalFeedbackGuideSeen as Kt } from '../../utils/portalGuide';
 import { isPortalFeedbackGuideSeen as Qe } from '../../utils/portalGuide';
 import { usePortalThemeStore as jt } from '../../stores/portalTheme';
@@ -31,6 +31,7 @@ import { useAppConfigStore as Jt } from '../../stores/appConfig';
 import { hasMeaningfulText as Zt } from '../../utils/richText';
 import { usePortalStorageBridge as ea } from '../../composables/usePortalStorageBridge';
 import { PORTAL_FEEDBACK_GUIDE_SYNC_EVENT as Je } from '../../composables/usePortalStorageBridge';
+import FrontendSwitchButton from '../common/FrontendSwitchButton.vue';
 import '../../styles/legacy/portal-layout.css';
 
 var oa={
@@ -349,7 +350,7 @@ var oa={
       if(await P.value?.validate().catch(()=>!1)){
         ne.value=!0;
         try{
-          const e=U.value,a="1.0.0",r=i.contactValue.trim();
+          const e=U.value,a=import.meta.env.VITE_APP_VERSION,r=i.contactValue.trim();
           await Ue.submit({
             feedbackId:O.value,feedbackType:i.feedbackType,title:i.title.trim()||void 0,content:i.content.trim(),contactType:r?i.contactType:void 0,contactValue:r||void 0,captchaId:X.value?i.captchaId:void 0,captchaVerifyToken:X.value?i.captchaVerifyToken.trim():void 0,clientVersion:a,pagePath:S.fullPath||void 0
           }
@@ -966,6 +967,12 @@ var oa={
         default:n(()=>[h(d(t(c)("nav.events")),1)]),_:1
       }
       ,8,["to"]),o(r,{
+        to:t(l)("leagues"),"active-class":"nav-active",onClick:R=>b.value=!1
+      }
+      ,{
+        default:n(()=>[h(d(t(c)("nav.leagues")),1)]),_:1
+      }
+      ,8,["to"]),o(r,{
         to:t(l)("teams"),"active-class":"nav-active",onClick:a[2]||(a[2]=R=>b.value=!1)
       }
       ,{
@@ -989,7 +996,7 @@ var oa={
       ,{
         default:n(()=>[h(d(t(c)("nav.news")),1)]),_:1
       }
-      ,8,["to","class"])],2),u("div",Ra,[o(ua),o(g,{
+      ,8,["to","class"])],2),u("div",Ra,[o(FrontendSwitchButton,{variant:"portal"}),o(ua),o(g,{
         trigger:"click",class:"portal-theme-switch","popper-class":"portal-theme-dropdown-popper",onCommand:He
       }
       ,{

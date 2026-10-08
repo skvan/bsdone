@@ -1,12 +1,15 @@
 // 站点配置 —— 默认值与缓存键移植自编译产物入口 chunk（appConfig store）
-// 说明：footerText 默认值保持与编译产物逐字一致（仍含 "By aDz"）。
-// 注意：静态页（webapps/index.html、portal.html）已按 PR #41 移除 aDz 署名——新工程是否同步移除待产品确认。
+// 说明：footer 默认值原与编译产物逐字一致（含 "By aDz"，见 H4）；按产品确认已移除 aDz 署名，
+//       改用品牌文案（对齐静态页 PR #41/#146），门户页脚附构建版本号（VITE_APP_VERSION）。
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { get } from '../api/request';
 import { currentTenantCodeFromUrl, DEFAULT_TENANT_CODE } from '../utils/tenantRoute';
 
 export const APP_CONFIG_CACHE_PREFIX = 'bs-ball-app-config';
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '';
+const FOOTER_BRAND = '© 2026 广州康胜体育棒球 · BSD · Baseball & Softball Database';
 
 export const DEFAULT_APP_CONFIG = {
   siteName: 'BS Ball',
@@ -15,8 +18,8 @@ export const DEFAULT_APP_CONFIG = {
   adminLogoUrl: '/bs-ball-logo.png',
   adminTitle: '棒垒球管理系统',
   faviconIco: '',
-  footerTextPortal: '<p>赛事与数据展示</p><p>© 2026 棒垒球管理系统 By aDz.</p>',
-  footerTextAdmin: '<p>© 2026 棒垒球管理系统 By aDz.</p>',
+  footerTextPortal: `<p>${FOOTER_BRAND}${APP_VERSION ? ' · v' + APP_VERSION : ''}</p>`,
+  footerTextAdmin: `<p>${FOOTER_BRAND}</p>`,
   showFooterPortal: true,
   showFooterAdmin: false,
   authCaptchaEnabled: true,
@@ -30,8 +33,8 @@ export const DEFAULT_APP_CONFIG = {
   portalFooterText: '',
   portalLayoutWidthMode: 'boxed',
   portalContentMaxWidth: 1440,
-  portalHomeSectionOrder: undefined,
-  portalHomeSectionHidden: undefined,
+  portalHomeSectionOrder: ['carousel', 'nav', 'promo', 'events', 'teams', 'news'],
+  portalHomeSectionHidden: [],
   portalPromoAdImageUrl: '',
   portalPromoTicketImageUrl: '',
   portalPromoAdSlides: [],
@@ -166,5 +169,37 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     link.href = href;
   }
 
-  return { config, siteName, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon };
+  // 门户首页区块排序/隐藏（编译产物顶层透传，消费者：Home/AppConfig；默认值对齐产物 ge(void 0) / ve(void 0)）
+  const portalHomeSectionOrder = computed(() => config.value?.portalHomeSectionOrder ?? []);
+  const portalHomeSectionHidden = computed(() => config.value?.portalHomeSectionHidden ?? []);
+
+  // 与编译产物 store 对齐的直通字段（AppConfig 等消费者的配置读取；带默认值兜底）
+  const PASS_THROUGH_KEYS = [
+    'adminLogoUrl', 'adminTitle', 'authCaptchaEnabled', 'authCaptchaType', 'authCaptchaRandomTypes', 'faviconIco',
+    'footerTextAdmin', 'footerTextPortal', 'logoUrl', 'portalContentMaxWidth',
+    'portalDevtoolsGuard', 'portalDevtoolsGuardCopyrightNotice', 'portalDevtoolsGuardDebuggerTrap', 'portalDevtoolsGuardOverlay',
+    'portalFooterBg', 'portalFooterText', 'portalHeaderBg', 'portalHeaderMode', 'portalHeaderText', 'portalLayoutWidthMode',
+    'portalPromoAdSlides', 'portalPromoTicketSlides', 'publicViewCount', 'showFooterAdmin', 'showFooterPortal', 'siteTitle'
+  ];
+  const passThrough = {};
+  for (const key of PASS_THROUGH_KEYS) {
+    passThrough[key] = computed(() => config.value?.[key] ?? DEFAULT_APP_CONFIG[key]);
+  }
+
+  // 恢复默认（编译产物 resetToDefault）
+  function resetToDefault() {
+    config.value = { ...DEFAULT_APP_CONFIG };
+  }
+
+  // 合并服务端设置（编译产物 mergePortalSettingsFromServer：白名单净化后浅合并）
+  function mergePortalSettingsFromServer(raw) {
+    config.value = { ...config.value, ...(sanitizeConfig(raw) || {}) };
+  }
+
+  // 局部更新（编译产物 update：保存后回写 store）
+  function update(partial) {
+    config.value = { ...config.value, ...(partial || {}) };
+  }
+
+  return { config, siteName, portalHomeSectionOrder, portalHomeSectionHidden, ...passThrough, apply, loadFromCache, load, init, initForTenant, fetchPortalSettings, getAdminTitle, resolveAssetUrl, applyFavicon, resetToDefault, mergePortalSettingsFromServer, update };
 });

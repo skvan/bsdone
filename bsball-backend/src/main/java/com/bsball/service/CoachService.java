@@ -7,13 +7,11 @@
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
  *  com.bsball.model.dto.CoachOptionDto
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.Coach
  *  com.bsball.model.entity.Team
  *  com.bsball.repository.CoachRepository
  *  com.bsball.repository.TeamRepository
  *  com.bsball.service.CoachService
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.TenantQueryPolicyService
  *  jakarta.persistence.criteria.Expression
@@ -35,14 +33,14 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.CoachOptionDto;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Coach;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.CoachRepository;
 import com.bsball.repository.TeamRepository;
-import com.bsball.service.DataScopeService;
 import com.bsball.service.PersonnelHistoryRecorder;
 import com.bsball.service.TenantQueryPolicyService;
+import com.bsball.service.query.ScopeQuerySupport;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import java.io.Serializable;
@@ -67,7 +65,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class CoachService {
     private final CoachRepository coachRepository;
     private final TeamRepository teamRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
@@ -76,14 +76,15 @@ public class CoachService {
             return this.coachRepository.findAllForSelect();
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds == null) {
             return this.coachRepository.findAllForSelectByTenantId(tid);
         }
-        if (scope.getTeamIds().isEmpty()) {
-            return this.coachRepository.findAllForSelectByTenantIdAndTeamIdIsNull(tid);
+        if (visibleTeamIds.isEmpty()) {
+            return List.of();
         }
-        return this.coachRepository.findAllForSelectByTenantIdAndFreeOrTeamIdIn(tid, (Collection)scope.getTeamIds());
+        return this.coachRepository.findAllForSelectByTenantIdAndTeamIdIn(tid, (Collection)visibleTeamIds);
     }
 
     public PageResult<Coach> list(Integer page, Integer pageSize, String keyword, Long teamId) {
@@ -104,8 +105,9 @@ public class CoachService {
             return PageResult.of((List)globalResult.getContent(), (long)globalResult.getTotalElements());
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!(scope.isUnrestrictedInTenant() || teamId == null || scope.getTeamIds().isEmpty() || scope.getTeamIds().contains(teamId))) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null && visibleTeamIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         Pageable p = this.buildPageable(page, pageSize, null, null);
@@ -113,12 +115,8 @@ public class CoachService {
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
             preds.add(cb.equal((Expression)root.get("tenantId"), (Object)tid));
-            if (!scope.isUnrestrictedInTenant()) {
-                if (scope.getTeamIds().isEmpty()) {
-                    preds.add(cb.isNull((Expression)root.get("teamId")));
-                } else {
-                    preds.add(cb.or((Expression)cb.isNull((Expression)root.get("teamId")), (Expression)root.get("teamId").in((Collection)scope.getTeamIds())));
-                }
+            if (visibleTeamIds != null) {
+                preds.add(root.get("teamId").in((Collection)visibleTeamIds));
             }
             if (keyword != null && !keyword.isBlank()) {
                 preds.add(cb.like(cb.lower((Expression)root.get("name")), "%" + keyword.toLowerCase() + "%"));
@@ -141,13 +139,11 @@ public class CoachService {
         if (!Objects.equals(c.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
+        if (visibleTeamIds != null) {
             Long coachTeam = c.getTeamId();
-            if (coachTeam == null) {
-                return c;
-            }
-            if (scope.getTeamIds().isEmpty() || !scope.getTeamIds().contains(coachTeam)) {
+            if (coachTeam == null || !visibleTeamIds.contains(coachTeam)) {
                 throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6559\u7ec3");
             }
         }
@@ -158,6 +154,7 @@ public class CoachService {
         CoachService.normalizeCoachTeamId((Coach)entity);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
+        this.resourceGuard.assertCanManageTeam(entity.getTeamId());
         Coach saved = (Coach)this.coachRepository.save(entity);
         this.personnelHistoryRecorder.afterCoachCreate(saved);
         return saved;
@@ -172,9 +169,11 @@ public class CoachService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u6559\u7ec3");
         }
+        this.resourceGuard.assertCanManageTeam(existing.getTeamId());
         CoachService.normalizeCoachTeamId((Coach)entity);
         this.applyTenantFromTeam(entity);
         this.validateTeamId(entity.getTeamId());
+        this.resourceGuard.assertCanManageTeam(entity.getTeamId());
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         Coach before = PersonnelHistoryRecorder.snapshotCoach((Coach)existing);
@@ -191,6 +190,11 @@ public class CoachService {
         }
         if (!Objects.equals(existing.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u6559\u7ec3");
+        }
+        this.resourceGuard.assertCanManageTeam(existing.getTeamId());
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
         }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
@@ -240,10 +244,12 @@ public class CoachService {
     }
 
     @Generated
-    public CoachService(CoachRepository coachRepository, TeamRepository teamRepository, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public CoachService(CoachRepository coachRepository, TeamRepository teamRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
         this.coachRepository = coachRepository;
         this.teamRepository = teamRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }

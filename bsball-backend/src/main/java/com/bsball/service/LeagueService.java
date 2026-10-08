@@ -6,10 +6,8 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.entity.League
  *  com.bsball.repository.LeagueRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.LeagueService
  *  com.bsball.service.PersonnelHistoryRecorder
  *  com.bsball.service.TenantQueryPolicyService
@@ -28,15 +26,14 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.League;
 import com.bsball.repository.LeagueRepository;
-import com.bsball.service.DataScopeService;
-import com.bsball.service.PersonnelHistoryRecorder;
-import com.bsball.service.TenantQueryPolicyService;
+import com.bsball.repository.TeamRepository;
+import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -49,9 +46,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LeagueService {
     private final LeagueRepository leagueRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final PersonnelHistoryRecorder personnelHistoryRecorder;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final LeagueProvisionService leagueProvisionService;
+    private final ApiPermissionService apiPermissionService;
+    private final TeamRepository teamRepository;
 
     public PageResult<League> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -62,14 +64,15 @@ public class LeagueService {
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Pageable p = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (scope.isUnrestrictedInTenant()) {
-            result = this.leagueRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && visibleLeagueIds.isEmpty()) {
+            return PageResult.of((List)List.of(), (long)0L);
+        }
+        if (visibleLeagueIds != null) {
+            result = this.leagueRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), visibleLeagueIds, p);
         } else {
-            if (scope.getLeagueIds().isEmpty()) {
-                return PageResult.of((List)List.of(), (long)0L);
-            }
-            result = this.leagueRepository.findByTenantIdAndIdInAndDeletedAtIsNull(Long.valueOf(tid), (Collection)scope.getLeagueIds(), p);
+            result = this.leagueRepository.findByTenantIdAndDeletedAtIsNull(Long.valueOf(tid), p);
         }
         return PageResult.of((List)result.getContent(), (long)result.getTotalElements());
     }
@@ -83,23 +86,60 @@ public class LeagueService {
         if (!Objects.equals(league.getTenantId(), tid)) {
             return null;
         }
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), tid);
-        if (!scope.isUnrestrictedInTenant() && !scope.canReadLeague(id.longValue())) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleLeagueIds = this.scopeQuerySupport.visibleLeagueIds(scope);
+        if (visibleLeagueIds != null && !visibleLeagueIds.contains(id)) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8054\u76df");
         }
         return league;
     }
 
     public League create(League entity) {
-        String name;
+        return this.createInternal(entity);
+    }
+
+    /**
+     * 门户自助建联盟入口（批次 3a，Task 3.3）：按当前登录用户角色分派。
+     * 门户角色（member / team_manager / league_organizer）且非超管 / 租管 → 走审批链路
+     * （LeagueProvisionService.submitOrCreate，按租户开关落申请或直建）；
+     * 其余（超管 / 租管 / 未登录 / 无门户角色）→ 直建并返回。
+     */
+    public Map<String, Object> createForCurrentUser(League body) {
+        Long uid = CurrentUserHolder.get();
+        if (uid != null
+                && !this.apiPermissionService.isSuperAdmin(uid)
+                && !this.apiPermissionService.isTenantAdmin(uid)
+                && this.apiPermissionService.hasAnyRoleCode(uid, "member", "team_manager", "league_organizer")) {
+            return this.leagueProvisionService.submitOrCreate(uid, body);
+        }
+        League created = this.createInternal(body);
+        return Map.of("pending", false, "id", created.getId());
+    }
+
+    /** 供批次 3 自助建联盟流程复用（本批仅拆分，行为不变）：租户取自当前请求上下文。 */
+    public League createInternal(League entity) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        entity.setTenantId(Long.valueOf(tid));
-        String string = name = entity.getName() == null ? "" : entity.getName().trim();
+        return this.createInternalForTenant(entity, tid);
+    }
+
+    /**
+     * 指定租户建联盟（批次 3a 评审修复 I1）：供跨租户审批（LeagueProvisionService.approve）复用，
+     * 确保联盟落库租户 == 申请租户，而非审核者上下文租户（超管全局 token 下上下文租户为 0）。
+     * createInternal 保持原语义（上下文租户）；本方法仅新增显式租户入参，不改变原路径行为。
+     * 批 3a 沉淀⑪硬化：直建路径补 name 长度守卫（len>200 → 400），与 submitOrCreate 待审分支同口径
+     * （bs_league.name 列定义 length=200）。
+     */
+    public League createInternalForTenant(League entity, long tenantId) {
+        entity.setTenantId(Long.valueOf(tenantId));
+        String name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
         }
+        if (name.length() > 200) {
+            throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u8fc7\u957f");
+        }
         entity.setName(name);
-        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tid), name)) {
+        if (this.leagueRepository.existsByTenantIdAndNameIgnoreCaseAndDeletedAtIsNull(Long.valueOf(tenantId), name)) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u5df2\u5b58\u5728");
         }
         return (League)this.leagueRepository.save(entity);
@@ -115,6 +155,7 @@ public class LeagueService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u8054\u76df");
         }
+        this.resourceGuard.assertCanManageLeague(id);
         String string = name = entity.getName() == null ? "" : entity.getName().trim();
         if (name.isEmpty()) {
             throw new BusinessException(400, "\u8054\u76df\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a");
@@ -142,9 +183,18 @@ public class LeagueService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u8054\u76df");
         }
+        this.resourceGuard.assertCanManageLeague(id);
+        if (this.teamRepository.countByLeagueIdAndDeletedAtIsNull(id) > 0L) {
+            throw new BusinessException(400, "\u8bf7\u5148\u89e3\u6563\u8054\u76df\u5185\u7403\u961f");
+        }
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            // 历史数据处置权（spec §6.10）：非超管删除 = 归还（软删 + 平台资产标记），不改 tenant_id
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.leagueRepository.save(existing);
+        this.personnelHistoryRecorder.afterLeagueDissolve(existing);
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {
@@ -158,11 +208,16 @@ public class LeagueService {
     }
 
     @Generated
-    public LeagueService(LeagueRepository leagueRepository, DataScopeService dataScopeService, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService) {
+    public LeagueService(LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, LeagueProvisionService leagueProvisionService, ApiPermissionService apiPermissionService, TeamRepository teamRepository) {
         this.leagueRepository = leagueRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.personnelHistoryRecorder = personnelHistoryRecorder;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.leagueProvisionService = leagueProvisionService;
+        this.apiPermissionService = apiPermissionService;
+        this.teamRepository = teamRepository;
     }
 }
 

@@ -6,7 +6,6 @@
  *  com.bsball.common.PaginationSupport
  *  com.bsball.core.CurrentUserHolder
  *  com.bsball.exception.BusinessException
- *  com.bsball.model.dto.EffectiveDataScope
  *  com.bsball.model.dto.TeamLineupTemplateCopyFromGameDto
  *  com.bsball.model.dto.TeamLineupTemplateJsonPayload
  *  com.bsball.model.dto.TeamLineupTemplateSaveDto
@@ -18,7 +17,6 @@
  *  com.bsball.repository.GamePlayerStatRepository
  *  com.bsball.repository.GameRepository
  *  com.bsball.repository.TeamLineupTemplateRepository
- *  com.bsball.service.DataScopeService
  *  com.bsball.service.TeamLineupTemplateService
  *  com.bsball.service.TeamLineupTemplateService$ExtractedLineupFromGame
  *  com.bsball.service.TeamService
@@ -43,7 +41,7 @@ import com.bsball.common.PageResult;
 import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
-import com.bsball.model.dto.EffectiveDataScope;
+import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.TeamLineupTemplateCopyFromGameDto;
 import com.bsball.model.dto.TeamLineupTemplateJsonPayload;
 import com.bsball.model.dto.TeamLineupTemplateSaveDto;
@@ -55,7 +53,7 @@ import com.bsball.model.entity.TeamLineupTemplate;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.TeamLineupTemplateRepository;
-import com.bsball.service.DataScopeService;
+import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.service.TeamLineupTemplateService;
 import com.bsball.service.TeamService;
 import com.bsball.service.TenantQueryPolicyService;
@@ -101,7 +99,9 @@ public class TeamLineupTemplateService {
     private final TeamService teamService;
     private final GameRepository gameRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
-    private final DataScopeService dataScopeService;
+    private final AccountScopeService accountScopeService;
+    private final ScopeQuerySupport scopeQuerySupport;
+    private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
     private Team assertTeam(long teamId) {
@@ -120,8 +120,9 @@ public class TeamLineupTemplateService {
     public PageResult<TeamLineupTemplate> listPage(Integer page, Integer pageSize, Long teamId) {
         Long tid = this.tenantQueryPolicyService.tenantIdOrNullForQuery();
         long scopeTid = this.tenantQueryPolicyService.requiredTenantId();
-        EffectiveDataScope scope = this.dataScopeService.resolve(CurrentUserHolder.get(), scopeTid);
-        if (!scope.isUnrestrictedInTenant() && scope.getTeamIds().isEmpty()) {
+        EffectiveScope scope = this.accountScopeService.resolveCurrent();
+        List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, scopeTid);
+        if (visibleTeamIds != null && visibleTeamIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         if (teamId != null) {
@@ -138,8 +139,8 @@ public class TeamLineupTemplateService {
             }
             if (teamId != null) {
                 preds.add(cb.equal((Expression)root.get("teamId"), (Object)teamId));
-            } else if (!scope.isUnrestrictedInTenant()) {
-                preds.add(root.get("teamId").in((Collection)scope.getTeamIds()));
+            } else if (visibleTeamIds != null) {
+                preds.add(root.get("teamId").in((Collection)visibleTeamIds));
             }
             return cb.and(preds.toArray(new Predicate[0]));
         };
@@ -155,6 +156,7 @@ public class TeamLineupTemplateService {
     @Transactional(rollbackFor={Exception.class})
     public TeamLineupTemplate create(long teamId, TeamLineupTemplateSaveDto dto) {
         Team team = this.assertTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         List slots = this.normalizeAndValidateSlots(dto.getSlots());
         List bench = TeamLineupTemplateService.normalizeBenchPlayerIds((List)dto.getBenchPlayerIds());
         this.validateBenchVersusStarters(slots, bench);
@@ -165,6 +167,7 @@ public class TeamLineupTemplateService {
     @Transactional(rollbackFor={Exception.class})
     public TeamLineupTemplate update(long teamId, long id, TeamLineupTemplateSaveDto dto) {
         this.assertTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         TeamLineupTemplate existing = (TeamLineupTemplate)this.templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(Long.valueOf(id), Long.valueOf(teamId)).orElseThrow(() -> new BusinessException(404, "\u6a21\u677f\u4e0d\u5b58\u5728"));
         List slots = this.normalizeAndValidateSlots(dto.getSlots());
         List bench = TeamLineupTemplateService.normalizeBenchPlayerIds((List)dto.getBenchPlayerIds());
@@ -179,7 +182,12 @@ public class TeamLineupTemplateService {
     @Transactional(rollbackFor={Exception.class})
     public void delete(long teamId, long id) {
         this.assertTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         TeamLineupTemplate existing = (TeamLineupTemplate)this.templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(Long.valueOf(id), Long.valueOf(teamId)).orElseThrow(() -> new BusinessException(404, "\u6a21\u677f\u4e0d\u5b58\u5728"));
+        // 历史数据处置权（spec §6.10）：仅置标（保留 business:lineup-template:manage 名目，不收窄 :delete/:return）；非超管删除 = 归还
+        if (!this.resourceGuard.isCurrentUserSuperAdmin()) {
+            existing.setPlatformOwned(Boolean.TRUE);
+        }
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.templateRepository.save(existing);
@@ -189,6 +197,7 @@ public class TeamLineupTemplateService {
     public TeamLineupTemplate copyFromGame(long teamId, TeamLineupTemplateCopyFromGameDto dto) {
         String side;
         Team team = this.assertTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         String string = side = dto.getTeamSide() == null ? "" : dto.getTeamSide().trim().toLowerCase(Locale.ROOT);
         if (!"home".equals(side) && !"away".equals(side)) {
             throw new BusinessException(400, "teamSide \u987b\u4e3a home \u6216 away");
@@ -544,12 +553,14 @@ public class TeamLineupTemplateService {
     }
 
     @Generated
-    public TeamLineupTemplateService(TeamLineupTemplateRepository templateRepository, TeamService teamService, GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, DataScopeService dataScopeService, TenantQueryPolicyService tenantQueryPolicyService) {
+    public TeamLineupTemplateService(TeamLineupTemplateRepository templateRepository, TeamService teamService, GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService) {
         this.templateRepository = templateRepository;
         this.teamService = teamService;
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
-        this.dataScopeService = dataScopeService;
+        this.accountScopeService = accountScopeService;
+        this.scopeQuerySupport = scopeQuerySupport;
+        this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
 

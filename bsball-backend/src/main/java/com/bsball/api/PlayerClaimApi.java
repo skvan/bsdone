@@ -22,10 +22,13 @@ package com.bsball.api;
 
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
+import com.bsball.exception.BusinessException;
 import com.bsball.exception.UnauthorizedException;
+import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaim;
 import com.bsball.service.JwtService;
 import com.bsball.service.PlayerClaimService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import lombok.Generated;
@@ -44,6 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlayerClaimApi {
     private final PlayerClaimService playerClaimService;
     private final JwtService jwtService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping(value={"/account/player-claim"})
     public Result<PlayerClaim> submit(@RequestHeader(value="Authorization", required=false) String auth, @RequestBody Map<String, Object> body) {
@@ -82,6 +86,13 @@ public class PlayerClaimApi {
         return Result.ok(this.playerClaimService.reject(id, this.requireUserId(auth), reason));
     }
 
+    @PostMapping(value={"/account/player-profile/{playerId}/release-claim"})
+    public Result<Map<String, Object>> releaseClaim(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long playerId, @RequestBody(required=false) Map<String, Object> body) {
+        Long userId = this.requireUserId(auth);
+        String remark = body != null && body.get("remark") != null ? body.get("remark").toString() : null;
+        return Result.ok(this.playerClaimService.releaseClaim(playerId, userId, remark));
+    }
+
     @PostMapping(value={"/team/{teamId}/player-claim-invite"})
     public Result<Map<String, Object>> createInvite(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @RequestBody(required=false) Map<String, Object> body) {
         Integer n;
@@ -114,11 +125,28 @@ public class PlayerClaimApi {
     }
 
     @PostMapping(value={"/portal/player-claim-invite/{token}/claim"})
-    public Result<PlayerClaim> claimViaInvite(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable String token, @RequestBody(required=false) Map<String, Object> body) {
+    public Result<Map<String, Object>> claimViaInvite(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable String token, @RequestBody(required=false) Map<String, Object> body) {
         Long userId = this.requireUserId(auth);
         Long playerId = body != null ? PlayerClaimApi.parseLong((Object)body.get("playerId")) : null;
-        String remark = body != null && body.get("remark") != null ? body.get("remark").toString() : null;
-        return Result.ok(this.playerClaimService.claimViaInvite(userId, token, playerId, remark));
+        Player draft = this.parseDraft(body);
+        return Result.ok(this.playerClaimService.claimOrRegisterViaInvite(userId, token, playerId, draft));
+    }
+
+    /** 从 body.draft 解析自助建档草稿（可选）；缺省或非对象时返回 null，交由服务层判定分支。 */
+    private Player parseDraft(Map<String, Object> body) {
+        if (body == null) {
+            return null;
+        }
+        Object raw = body.get("draft");
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return (Player)this.objectMapper.convertValue(raw, Player.class);
+        }
+        catch (IllegalArgumentException e) {
+            throw new BusinessException(400, "\u5efa\u6863\u8349\u7a3f\u683c\u5f0f\u4e0d\u6b63\u786e");
+        }
     }
 
     private Long requireUserId(String auth) {
@@ -147,9 +175,10 @@ public class PlayerClaimApi {
     }
 
     @Generated
-    public PlayerClaimApi(PlayerClaimService playerClaimService, JwtService jwtService) {
+    public PlayerClaimApi(PlayerClaimService playerClaimService, JwtService jwtService, ObjectMapper objectMapper) {
         this.playerClaimService = playerClaimService;
         this.jwtService = jwtService;
+        this.objectMapper = objectMapper;
     }
 }
 

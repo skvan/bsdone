@@ -1,2 +1,3 @@
 # 前端临时产物
 public/__*.html
+build-err.log
