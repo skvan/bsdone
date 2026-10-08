@@ -50,6 +50,7 @@ import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay } from '../../utils/liveGameChainStats';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -324,11 +325,14 @@ function _i(u){
   const f=u.map(l=>l?.trim()).filter(Boolean);
   return f.length>=2&&f.every(l=>l===f[0])?[f[0]]:f
 }
+function chainDisp(u,f){
+  return u==="DP"||u==="TP"?LgChainDisplay(u,f):_i(f)
+}
 function $d(u){
   return _i(u).length>1
 }
 function Un(u,f,g){
-  const l=_i(f),o=l.length?Array.isArray(g)&&g.length===l.length?g.join("→"):nu(l):"",_=$d(f);
+  const l=u==="DP"||u==="TP"?LgChainDisplay(u,f):_i(f),o=l.length?Array.isArray(g)&&g.length===l.length?g.join("→"):nu(l):"",_=$d(f);
   if(u==="F"||u==="L"){
     const S=l[l.length-1]??l[0],R=S?Id[S]??`${vi[S]??S}飞`:"飞球";
     return o?`${o} 接杀 ${R}出局`:`接杀 ${R}出局`
@@ -5834,7 +5838,7 @@ var sg={
       os(y,Gt(a,b),b,{
         pbp:!1
       }
-      ),a.stats.batting.ab=(a.stats.batting.ab??0)+1,Dn(e.fielders);
+      ),a.stats.batting.ab=(a.stats.batting.ab??0)+1,applyChainFieldingStats(e.playType,e.fielders);
       const w=Gn(1,r,a,[g]),P=[];
       P.push({
         playerId:a.id??a.name??"?",base:1
@@ -6962,7 +6966,7 @@ var sg={
       }
       [e.type]??"":"";
       if(CHAIN_TYPES.has(e.type)){
-        const R0=e.steps?.length??0,T0=e.required??us(e.type),D0=_i(e.steps??[]).map(N0=>vi[N0]??N0).join("-"),M0={
+        const R0=e.steps?.length??0,T0=e.required??us(e.type),D0=chainDisp(e.type,e.steps??[]).map(N0=>vi[N0]??N0).join("-"),M0={
 G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
 }[e.type]??ou(e.type);
         if(R0>=hu)return `${M0}：${D0}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
@@ -8009,6 +8013,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    function applyChainFieldingStats(type,fielders){
+      const s=LgChainStats(type,fielders);
+      if(!s){
+        Dn(fielders);
+        return
+      }
+      for(const r of s){
+        const p=Hn.value.find(a=>a.position===r.pos);
+        p?.stats?.fielding&&(p.stats.fielding.po=(p.stats.fielding.po??0)+r.po,p.stats.fielding.a=(p.stats.fielding.a??0)+r.a)
+      }
+    }
     function Vt(e){
       return Hn.value.find(t=>t.position===e)
     }
@@ -8636,7 +8651,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!CHAIN_TYPES.has(e.type))return!1;
       const t=e.required??us(e.type);
       if((e.steps?.length??0)<t)return!1;
-      const a=_i(e.steps),s=a[a.length-1];
+      const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1];
       return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
     }
     let chainClearTimer=null;
@@ -8650,7 +8665,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,520)):clearChainVisual()
     }
     function warnFlowBusy(e){
-      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${_i(e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
+      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${chainDisp(e.type,e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
     }
     function Bo(e,t,a,s){
       const r=s?.trim().toUpperCase();
@@ -9419,7 +9434,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("请先确认半局结束（三出局后的攻守交换）后再记新的击球结果","warning");
         return
       }
-      ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&(t=_i(t));
+      ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&e!=="DP"&&e!=="TP"&&(t=_i(t));
       const s=(b,w=0)=>{
         if(!a?.sprayX||!a?.sprayY)return;
         const P=Io(a.sprayZone,a.sprayFieldPos);
@@ -9555,7 +9570,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ),ni(r,2),Qn(w,P),os(2,Gt(r,"双杀"),"双杀出局",{
           pbp:!1
         }
-        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,Dn(t),g="DP",m=`${r.name}: ${Un("DP",t)||"双杀 (DP)"}`,m=Rt(m)
+        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("DP",t),g="DP",m=`${r.name}: ${Un("DP",t)||"双杀 (DP)"}`,m=Rt(m)
       }
       else if(e==="TP"){
         const w=Gn(1,l.runners,r,["safe"]),P=[];
@@ -9571,7 +9586,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ),ni(r,3),Qn(w,P),os(3,Gt(r,"三杀"),"三杀出局",{
           pbp:!1
         }
-        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,Dn(t),g="DP",m=`${r.name}: 三杀 (TP)`,m=Rt(m)
+        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("TP",t),g="DP",m=`${r.name}: 三杀 (TP)`,m=Rt(m)
       }
       l.balls=0,l.strikes=0,Je(g,m),is(e),Qe()
     }
