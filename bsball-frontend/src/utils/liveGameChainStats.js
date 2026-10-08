@@ -30,6 +30,17 @@ export function normalizeChainForDisplay(type, steps) {
 }
 
 /**
+ * 链完成判定（2026-10-08 用户裁决：三杀=三人参与）
+ * - TP：链中出现 ≥3 名不同守备员即可完成（[3B,3B,2B,1B] 与 [SS,2B,1B] 均可）
+ * - 其他类型：链长 ≥ required（原逻辑）
+ */
+export function chainReadyForSettle(type, steps, required) {
+  const seq = (Array.isArray(steps) ? steps : []).filter(Boolean);
+  if (type === "TP") return new Set(seq).size >= 3;
+  return seq.length >= (required ?? 0);
+}
+
+/**
  * 计算 DP/TP 链的守备统计
  * @param {string} type 击球类型（仅 DP/TP 生效）
  * @param {string[]} steps 守备位链（原始或 _i 压缩后均可）

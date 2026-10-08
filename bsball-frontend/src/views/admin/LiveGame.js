@@ -50,7 +50,7 @@ import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
-import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay } from '../../utils/liveGameChainStats';
+import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -6970,7 +6970,7 @@ var sg={
 G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
 }[e.type]??ou(e.type);
         if(R0>=hu)return `${M0}：${D0}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
-        if(R0>=T0)return e.type==="DP"&&R0<3?`${M0}：${D0}（已可完成）— 若为三守位双杀可继续点选第三传（如 6-4-3），或点「完成记录」；开始下一动作也会自动收尾`:ru.has(e.type)?`${M0}：${D0}（已可完成）— 可继续点选记录接杀回传（如 8-3），或点「完成记录」；开始下一动作也会自动收尾`:`${M0}：${D0}（已可完成）— 可继续点选延长传球链，或点「完成记录」；开始下一动作也会自动收尾`
+        if(LgChainReady(e.type,e.steps??[],T0))return e.type==="DP"&&R0<3?`${M0}：${D0}（已可完成）— 若为三守位双杀可继续点选第三传（如 6-4-3），或点「完成记录」；开始下一动作也会自动收尾`:ru.has(e.type)?`${M0}：${D0}（已可完成）— 可继续点选记录接杀回传（如 8-3），或点「完成记录」；开始下一动作也会自动收尾`:`${M0}：${D0}（已可完成）— 可继续点选延长传球链，或点「完成记录」；开始下一动作也会自动收尾`
       }
       return S0
     }
@@ -8284,7 +8284,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function Wf(e){
       const a=l.flow;
-      a&&isChainFlow(a)&&(a.steps?.length??0)>=(a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
+      a&&isChainFlow(a)&&LgChainReady(a.type,a.steps??[],a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
       if(l.flow){
         Ro("P",e);
         return
@@ -8707,8 +8707,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return settleRunnerOut(e),!0
       }
       if(!CHAIN_TYPES.has(e.type))return!1;
-      const t=e.required??us(e.type);
-      if((e.steps?.length??0)<t)return!1;
+      if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
       const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1];
       return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
     }
@@ -10471,7 +10470,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )],64)):c(l).flow?.type&&isChainFlow(c(l).flow)?(h(),C(me,{
           key:"chain"
         }
-        ,[(c(l).flow.steps?.length??0)>=(c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
+        ,[LgChainReady(c(l).flow.type,c(l).flow.steps??[],c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
           key:0,size:"small",type:"primary",onClick:settleChainIfReady
         }
         ,{

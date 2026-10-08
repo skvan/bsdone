@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { computeChainFieldingStats, normalizeChainForDisplay } from '../src/utils/liveGameChainStats.js';
+import { computeChainFieldingStats, normalizeChainForDisplay, chainReadyForSettle } from '../src/utils/liveGameChainStats.js';
 
 test('DP 标准链：6-3（[SS,1B]）与 6-4-3（[SS,2B,1B]）', () => {
   assert.deepEqual(computeChainFieldingStats('DP', ['SS', '1B']), [
@@ -72,9 +72,29 @@ test('DP/TP 显示链规整：相邻重复合并（独力全同保留）', () =>
   assert.deepEqual(normalizeChainForDisplay('DP', []), []);
 });
 
+test('链完成判定：TP 三人口径（2026-10-08 裁决）', () => {
+  assert.equal(chainReadyForSettle('TP', ['SS', '2B', '1B'], 4), true);
+  assert.equal(chainReadyForSettle('TP', ['3B', '3B', '2B', '1B'], 4), true);
+  assert.equal(chainReadyForSettle('TP', ['SS', 'SS', '1B'], 4), false);
+  assert.equal(chainReadyForSettle('TP', ['SS', 'SS'], 4), false);
+  assert.equal(chainReadyForSettle('DP', ['SS', '1B'], 2), true);
+  assert.equal(chainReadyForSettle('DP', ['SS'], 2), false);
+  assert.equal(chainReadyForSettle('G', ['SS', '1B'], 2), true);
+  assert.equal(chainReadyForSettle('G', ['SS'], 2), false);
+});
+
+test('批C 三杀门槛接入点（静态断言，防回退）', () => {
+  const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
+  assert.match(src, /chainReadyForSettle as LgChainReady/, '导入 LgChainReady');
+  assert.match(src, /if\(LgChainReady\(e\.type,e\.steps\?\?\[\],T0\)\)return/, '提示“已可完成”判定接入');
+  assert.match(src, /a&&isChainFlow\(a\)&&LgChainReady\(a\.type,a\.steps\?\?\[\],a\.required\?\?us\(a\.type\)\)/, 'Wf 自动结算判定接入');
+  assert.match(src, /if\(!LgChainReady\(e\.type,e\.steps\?\?\[\],e\.required\?\?us\(e\.type\)\)\)return!1;/, 'settle 完成门槛接入');
+  assert.match(src, /LgChainReady\(c\(l\)\.flow\.type,c\(l\)\.flow\.steps\?\?\[\],c\(l\)\.flow\.required\?\?us\(c\(l\)\.flow\.type\)\)/, '模板完成按钮判定接入');
+});
+
 test('LiveGame.js 接入点（静态断言，防回退）', () => {
   const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
-  assert.ok(src.includes("import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay } from '../../utils/liveGameChainStats';"), '导入新模块（含显示规整）');
+  assert.ok(src.includes("import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';"), '导入新模块（含显示规整+完成判定）');
   assert.match(src, /function applyChainFieldingStats\(type,fielders\)\{/, 'fp 统计分流函数存在');
   assert.match(src, /a\.stats\.batting\.ab=\(a\.stats\.batting\.ab\?\?0\)\+1,applyChainFieldingStats\(e\.playType,e\.fielders\)/, 'fp 通道已接入分流（不再直接 Dn(e.fielders)）');
   assert.match(src, /applyChainFieldingStats\("DP",t\)/, 'bt DP 回退通道已接入分流');
