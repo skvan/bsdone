@@ -38,12 +38,11 @@ test('教练暂停/换人/设置跑者/牵制 none/野选未得分/界外+失误
   assert.equal(foulErrorText({ chainText: '' }), '界外球+失误：守备失误');
 });
 
-test('P2b 门禁：D( 直写恰为白名单（9 行 / 12 次）+ 白名单片段存在', () => {
-  // 白名单构成：纠偏×2（得分/垒况）/ 第三出局注记 / 换局行×2（同局行含两处）/ NP 注记 / 漏接 guard×2 / 失误推进×2（同类行含两处）/ SB 单选×2（同类行含两处）
-  const n = (src.match(/D\(`/g) || []).length;
-  assert.equal(n, 12, `D( 直写数 ${n} 应恰为白名单 12 次（新增文案请经 liveGameLogTexts 生成器）`);
-  for (const f of ['D(`手动纠偏得分：', 'D(`手动纠偏垒况', 'D(`第三出局为封杀', 'D(`--- ${l.inning}局', 'D(`漏接三振：未识别代码']) {
-    assert.ok(src.includes(f), '白名单片段仍在：' + f);
+test('P3 门禁（承接 P2b）：D( 字面量直写归零（双引号/反引号形态）+ 系统类已归口', () => {
+  const n = (src.match(/D\(\s*[`"']/g) || []).length;
+  assert.equal(n, 0, `D( 字面量直写数 ${n} 应为 0（新增文案请经 liveGameLogTexts 生成器）`);
+  for (const f of ['LgSys({kind:"adjust_score"', 'LgSys({kind:"adjust_bases"', 'LgSys({kind:"inning_header"', 'LgSys({kind:"dk3_guard"', 'LgSys({kind:"game_start"', 'LgSys({kind:"illegal_pitch"', 'LgErr({reasonCn:b', 'LgSteal({name:t.name']) {
+    assert.ok(src.includes(f), '归口断言：' + f);
   }
 });
 
@@ -53,7 +52,7 @@ test('P2b 静态：import 别名与迁移点抽检', () => {
   assert.ok(src.includes('D(LgPitch({who:a,kind:"ball",count:'), '坏球迁移');
   assert.ok(src.includes('D(LgPitch({who:a,kind:"walk"})'), '四坏保送迁移');
   assert.ok(src.includes('D(LgCoach((l.isTop?At:xt).value?.name))'), '教练暂停迁移');
-  assert.ok(src.includes('D(LgSub({kind:"run",inName:P.name,outName:t.name}))'), '代跑迁移');
+  assert.ok(src.includes('LgSub({kind:"run",inName:P.name,outName:t.name})'), '代跑迁移（P3 注记追加后仍以 LgSub 为基）');
   assert.ok(src.includes('D(LgFoulErr({chainText:'), '界外+失误迁移');
   assert.ok(src.includes('D(LgPickoffNone({pitcher:Se.value,base:s}))'), '牵制 none 迁移');
   assert.ok(src.includes('D(LgFpMiss({runner:p,verdict:'), '野选未得分迁移');
