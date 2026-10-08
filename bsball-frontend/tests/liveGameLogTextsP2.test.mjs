@@ -76,3 +76,10 @@ test('LiveGame.js：双杀/三杀显示条件按强迫进垒口径 + 接杀回�
   assert.ok(!src.includes('接杀回传双杀'), '源码不再含「接杀回传双杀」字样');
   assert.ok(src.includes('J("请点击回传踩垒的守备员（接杀回传）")'), '回传提示文案去双杀');
 });
+
+test('LiveGame.js：双杀/三杀/野选落点计步修复 + 链球容器不拦截指针（2026-10-08）', () => {
+  assert.ok(src.includes('Po(g,m,w,b)'), 'fs() 兜底分支已补传落点守备员（DP/TP/FC 落点计步）');
+  assert.ok(!src.includes('Po(g,m,w)'), '兜底不再存在未传落点参数的调用');
+  const css = fs.readFileSync(new URL('../src/styles/legacy/live-game.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.hit-spray-fly-anim[data-v-78b7b6a8]{pointer-events:none}'), '链球容器不拦截指针（解除自踩/独力/回传链首点击遮挡）');
+});
