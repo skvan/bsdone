@@ -127,12 +127,12 @@
 - **安全网**：部署包含安全断言（环境变量绑定 / 端口 / 库名）、自动备份、120 秒健康检查与**失败自动回滚**、生产零影响对照；
 - 结果与取证：Actions 运行页的 Step Summary（commit、双文件 MD5、health、备份路径）。
 
-### 生产环境部署（手动，2026-09-26 起）
+### 生产环境部署（手动，2026-09-26 起；2026-10-08 起双轨发布 + 版本号自动刷写）
 
-- **仅手动触发**：合并到 `main` **不会自动上线**；需要发布时打开仓库 **Actions** 页 →「Deploy Production (manual)」→ **Run workflow**（分支选 `main`）→ 输入 `DEPLOY` 确认；
-- **一次部署同时上线后端与前端**：流程自动构建后端 jar，并**打包 `bsball_project/webapps` 前端包**上传至服务器 staging，随部署脚本 STEP 4 一并切换（不必再手工执行 `upload-frontend-prod.ps1`）；
-- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/bs-ball`）失败自动回滚；
-- **版本号提示**：页脚与 `bs-ball/version.json` 的版本号属于**前端产物**，需前端随部署更新后才会变化（仅重启后端不会改变页脚版本号）。
+- **仅手动触发**：合并到 `main` **不会自动上线**；需要发布时打开仓库 **Actions** 页 →「Deploy Production (manual)」→ **Run workflow**（分支选 `main`）→ 输入**必填发布版本号**（替代原 `DEPLOY` 确认词，兼作防误触门槛）；
+- **一次部署同时上线后端与前端（双轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验）；前端先用 `apply-release-version.mjs` 把发布版本号刷写进旧版产物（页脚 / `APP_VERSION` 注释 / `bs-ball/version.json` / `bs-ball/assets/*.js` 及 `.gz`），再实时构建重建版（`vite build --base=/bs-ball-next/`）并组装**双轨包**（旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`）上传至服务器 staging，随部署脚本 STEP 4 一并切换（不必再手工执行 `upload-frontend-prod.ps1`）；
+- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/bs-ball`、`/bs-ball-next/`）失败自动回滚；
+- **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，其版本号由部署流程按输入版本自动刷写（旧版产物刷写 + 重建版构建注入），前端随部署切换后生效（仅重启后端不会改变页脚版本号）。
 
 ---
 
@@ -192,7 +192,7 @@
 | 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
 | 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
 | 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 生产在切换前保持旧版不动；切换走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 -Dapp.release.version 注入后端 jar）；**测试环境双轨并行**：旧版 /bs-ball/ + 重建版 /bs-ball-next/（部署流水线已集成重建版构建与双轨打包；用户回退按钮见 issue #105）；失败可秒级回滚；未迁移页面显示占位 |
+| 发布 | 双轨发布：**生产与测试均并行** 旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`（域名经 `portal.html` 直通新版；用户回退按钮见 issue #105）；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar 并刷写前端产物）；部署流水线已集成重建版构建与双轨打包；冒烟（含 `/bs-ball-next/`）失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
 ### 与并行开发的共存规则（强制）
