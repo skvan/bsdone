@@ -67,7 +67,6 @@ public class SmsService {
     }
 
     public void sendCode(String phone, String scene, long tenantId, String clientIp) {
-        String template;
         String normalized = SmsService.normalizePhone((String)phone);
         SmsService.validateScene((String)scene);
         this.checkAntiAbuse(normalized, scene, clientIp);
@@ -85,11 +84,27 @@ public class SmsService {
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         this.smsCodeRepository.save(record);
-        boolean sent = false;
-        if (this.smsProperties.isEnabled() && (template = this.resolveTemplate(scene)) != null && !template.isBlank()) {
-            sent = this.aliyunSmsClient.send(normalized, template, Map.of("code", code, "time", String.valueOf(expireMin)));
-        }
-        if (!sent) {
+        if (this.smsProperties.isEnabled()) {
+            String template = this.resolveTemplate(scene);
+            boolean sent = false;
+            if (template != null && !template.isBlank()) {
+                sent = this.aliyunSmsClient.send(normalized, template, Map.of("code", code, "time", String.valueOf(expireMin)));
+            }
+            if (!sent) {
+                String reason;
+                if (template == null || template.isBlank()) {
+                    reason = "template-missing";
+                } else if (this.smsProperties.getAccessKeyId() == null || this.smsProperties.getAccessKeyId().isBlank() || this.smsProperties.getAccessKeySecret() == null || this.smsProperties.getAccessKeySecret().isBlank()) {
+                    reason = "ak-missing";
+                } else {
+                    reason = "aliyun-rejected";
+                }
+                log.error("[SMS-FAIL] phone={} scene={} reason={} tenantId={} ip={} (real send failed; user will NOT receive the code)", new Object[]{normalized, scene, reason, Long.valueOf(tenantId), SmsService.safeIp((String)clientIp)});
+                this.phoneSendCooldown.put(normalized + ":" + scene, Boolean.TRUE);
+                // \u771f\u5b9e\u53d1\u9001\u5931\u8d25\uff1a\u663e\u5f0f\u5931\u8d25\uff08\u4e0d\u518d\u541e\u9519\u5047\u6210\u529f\uff09
+                throw new BusinessException(400, "\u77ed\u4fe1\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5");
+            }
+        } else {
             log.info("[SMS-MOCK] phone={} scene={} code={} (\u914d\u7f6e app.sms.enabled=true \u4e14\u586b\u5199\u963f\u91cc\u4e91\u5bc6\u94a5\u540e\u771f\u5b9e\u53d1\u9001)", new Object[]{normalized, scene, code});
         }
         this.phoneSendCooldown.put(normalized + ":" + scene, Boolean.TRUE);
