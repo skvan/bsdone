@@ -438,32 +438,15 @@ class BatchOnboardingRuleTest {
     }
 
     @Test
-    @DisplayName("球员档案：已认领 → 上级 ROSTER 删除 403 且无写")
-    void deletePlayer_claimed_superiorForbidden() {
-        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
-        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
-        when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, TENANT_ID, 7L)));
+    @DisplayName("球员删除权收窄：受限角色（球队管理员）删除 → 403 且无写（请改用「移除出球队」）")
+    void deletePlayer_restrictedRole_forbidden() {
+        CurrentUserHolder.set(9L, TENANT_ID);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> playerService.delete(5L));
 
         assertEquals(403, ex.getCode());
+        assertTrue(ex.getMessage().contains("移除出球队"));
         verify(playerRepository, never()).save(any(Player.class));
-    }
-
-    @Test
-    @DisplayName("球员档案：未认领 → 本队 ROSTER 删除 ✓（软删）")
-    void deletePlayer_unclaimed_ownTeam_ok() {
-        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
-        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
-        Player existing = player(5L, TENANT_ID, null);
-        when(playerRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(playerTeamService.currentTeamIds(5L)).thenReturn(Set.of(100L));
-        CurrentUserHolder.set(9L, TENANT_ID);
-
-        playerService.delete(5L);
-
-        verify(playerRepository).save(existing);
-        assertNotNull(existing.getDeletedAt());
     }
 
     // ------------------------------------------------------------------ 前置④：saveResult 原域校验

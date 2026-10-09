@@ -216,6 +216,7 @@ class DataSovereigntyRuleTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
         when(apiPermissionService.isSuperAdmin(UID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(UID)).thenReturn(true);
         Player existing = player(5L, TENANT_ID);
         when(playerRepository.findById(5L)).thenReturn(Optional.of(existing));
         CurrentUserHolder.set(UID, TENANT_ID);
@@ -234,6 +235,7 @@ class DataSovereigntyRuleTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
         when(apiPermissionService.isSuperAdmin(UID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(UID)).thenReturn(true);
         Player a = player(6L, TENANT_ID);
         Player b = player(7L, TENANT_ID);
         when(playerRepository.findAllById(any())).thenReturn(List.of(a, b));
