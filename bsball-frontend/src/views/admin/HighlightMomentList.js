@@ -137,13 +137,13 @@ var Ze={
     async function reReturn(i){
       await R(async()=>{
         try{
-          await Pe.confirm(`确认归还高光「${i.title}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await Pe.confirm(`确认删除高光「${i.title}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             type:"warning"
           }
-          ),await k.delete(i.id),y.success("已归还"),V()
+          ),await k.delete(i.id),y.success("删除成功"),V()
         }
         catch(e){
-          e!=="cancel"&&y.error(e?.message||"归还失败")
+          e!=="cancel"&&y.error(e?.message||"删除失败")
         }
         
       }
@@ -294,11 +294,11 @@ var Ze={
               ,{
                 default:a(()=>[...e[19]||(e[19]=[r("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):Lt("",!0),v(Ha)("business:highlight-moment:return")?(b(),T(n,{
+              ,8,["disabled","onClick"])):Lt("",!0),v(Ha)("business:highlight-moment:return")&&!v(Ha)("business:highlight-moment:delete")?(b(),T(n,{
                 key:1,text:"",type:"warning",disabled:v(Q),onClick:ve=>reReturn(j)
               }
               ,{
-                default:a(()=>[...e[26]||(e[26]=[r("归还",-1)])]),_:1
+                default:a(()=>[...e[26]||(e[26]=[r("删除",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):Lt("",!0)]),_:1
             }

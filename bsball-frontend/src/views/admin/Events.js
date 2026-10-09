@@ -127,13 +127,13 @@ var tt={
     async function meReturn(n){
       await j(async()=>{
         try{
-          await Fe.confirm(`确定要归还赛事「${n.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await Fe.confirm(`确定要删除赛事「${n.name}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
-          ),await E.delete(n.id),V.success("已归还"),v()
+          ),await E.delete(n.id),V.success("删除成功"),v()
         }
         catch(e){
-          e!=="cancel"&&V.error(e?.message||"归还失败")
+          e!=="cancel"&&V.error(e?.message||"删除失败")
         }
         
       }
@@ -331,11 +331,11 @@ var tt={
               ,{
                 default:a(()=>[...e[21]||(e[21]=[i("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):y("",!0),d(k)("business:event:return")?(p(),g(f,{
+              ,8,["disabled","onClick"])):y("",!0),d(k)("business:event:return")&&!d(k)("business:event:delete")?(p(),g(f,{
                 key:4,link:"",type:"warning",disabled:d(Q),onClick:B=>meReturn(s)
               }
               ,{
-                default:a(()=>[...e[24]||(e[24]=[i("归还",-1)])]),_:1
+                default:a(()=>[...e[24]||(e[24]=[i("删除",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):y("",!0)]),_:1
             }
