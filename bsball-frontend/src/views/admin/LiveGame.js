@@ -2754,7 +2754,7 @@ var hm=["aria-label"],ym={
       ,"›",-1))]),i[239]||(i[239]=n("div",{
         class:"lgpfm__sep"
       }
-      ,null,-1)),u.runnerOnThird?(h(),C("button",{
+      ,null,-1)),u.currentOuts<2&&u.runnerOnThird?(h(),C("button",{
         key:3,type:"button",class:"lgpfm__item",onClick:i[307]||(i[307]=k=>I("bip:fly:sf"))
       }
       ,[v(B,{
@@ -2766,7 +2766,7 @@ var hm=["aria-label"],ym={
       ,[n("span",{
         class:"lgpfm__cn"
       }
-      ,"牺牲高飞打（SF）"),n("span",{
+      ,"高飞牺牲（SF）"),n("span",{
         class:"lgpfm__en"
       }
       ,"Sacrifice Fly")])])):W("",!0),n("button",{
@@ -3336,7 +3336,7 @@ var hm=["aria-label"],ym={
       ,"Sac Bunt (Safe)")],-1)),i[267]||(i[267]=n("span",{
         class:"lgpfm__more"
       }
-      ,"›",-1))])):W("",!0),he.value?(h(),C("button",{
+      ,"›",-1))])):W("",!0),u.currentOuts<2&&he.value?(h(),C("button",{
         key:4,type:"button",class:"lgpfm__item",onClick:i[308]||(i[308]=k=>I("bip:b:sh"))
       }
       ,[v(B,{

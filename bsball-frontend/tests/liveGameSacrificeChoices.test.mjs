@@ -14,14 +14,16 @@ function menuSection(start, end) {
 
 test('fly-ball result menu offers SF only with a runner on third and routes to the SF play flow', () => {
   const menu = menuSection('M.value==="bip_fly"?', 'M.value==="bip_fly_bo"?');
-  assert.match(menu, /runnerOnThird\?\([\s\S]*?I\("bip:fly:sf"\)/);
-  assert.match(menu, /牺牲高飞打（SF）/);
+  assert.match(menu, /u\.currentOuts<2&&u\.runnerOnThird\?\([\s\S]*?I\("bip:fly:sf"\)/, 'SF 门控：出局数<2 且三垒有人');
+  assert.ok(!menu.includes(',u.runnerOnThird?(h()'), 'SF 旧形态（无出局数门控）不得回退');
+  assert.match(menu, /高飞牺牲（SF）/);
   assert.match(source, /case"bip:fly:sf":Yt\(e,"SF"\)/);
 });
 
 test('bunt result menu offers SH when runners are aboard and routes to the SH play flow', () => {
   const menu = menuSection('M.value==="bip_bunt"?', 'M.value==="bip_bunt_bo"?');
-  assert.match(menu, /he\.value\?\([\s\S]*?I\("bip:b:sh"\)/);
+  assert.match(menu, /u\.currentOuts<2&&he\.value\?\([\s\S]*?I\("bip:b:sh"\)/, 'SH 门控：出局数<2 且有人上垒');
+  assert.ok(!menu.includes('))])):W("",!0),he.value?(h(),C("button",{'), 'SH 旧形态（无出局数门控）不得回退');
   assert.match(menu, /牺牲触击（SH）/);
   assert.match(source, /case"bip:b:sh":Yt\(e,"SH"\)/);
 });
