@@ -2,7 +2,7 @@
 
 > [简体中文](PROJECT_README.md) | **繁體中文**  
 > **上線網址**: [www.bsdone.com](https://www.bsdone.com)  
-> **文件版本**: 2026-09-09  
+> **文件版本**: 2026-10-09  
 > **專案狀態**: 線上運行中（阿里雲）
 
 ---
@@ -57,7 +57,7 @@ BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
 | 層級 | 技術 | 說明 |
 |------|------|------|
 | **後端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6 + Vue 3 + Element Plus | 原始碼重建中（`bsball-frontend/`，分批次實施）；生產仍為編譯產物 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已隨 v2.0.0 雙軌上線生產（2026-10-08），舊版編譯產物 /bs-ball/ 保留可回退 |
 | **資料庫** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（優先返回 .gz） |
 | **部署** | 阿里雲 ECS | systemd 管理 Java 服務 |
@@ -67,7 +67,7 @@ BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
 ## 3. 目錄結構
 
 ```
-Bsdone-project-backup/
+Bsdone-project/
 ├── bsball-backend/           # 後端 Java 源碼（Spring Boot）
 │   ├── src/main/java/com/bsball/
 │   │   ├── api/              # REST API 控制器（55 檔）
@@ -98,11 +98,11 @@ Bsdone-project-backup/
 │   ├── target/                     # Maven 編譯產物
 │   └── pom.xml                     # Maven 配置
 │
-├── bsball-frontend/          # 前端原始碼工程（Vite + Vue 3 + Element Plus）
-│   ├── index.html            # SPA 入口（base=/bs-ball/）
-│   ├── src/                  # 原始碼（router/views/... 隨批次建設）
-│   ├── scripts/              # 打包腳本（package-webapps.mjs）
-│   ├── vite.config.js        # 正式建置配置（npm run dev/build/package）
+├── bsball-frontend/          # 前端原始碼工程（Vite + Vue 3 + Element Plus；重建版已雙軌上線）
+│   ├── index.html            # SPA 入口
+│   ├── src/                  # 原始碼（router/views/...）
+│   ├── scripts/              # 打包腳本（package-webapps.mjs；--next 雙軌打包）
+│   ├── vite.config.js        # 建置配置（預設 base=/bs-ball/；重建版建置見 build:next）
 │   ├── vite.legacy-preview.config.js  # 舊編譯版對照預覽（npm run preview:legacy，3001）
 │   └── node_modules/         # npm 依賴（可重建）
 │
@@ -117,11 +117,12 @@ Bsdone-project-backup/
 │   │   ├── uploads/            # 上傳檔案
 │   │   └── data/               # 執行期資料
 │   └── webapps/
-│       ├── bs-ball/            # 前端靜態資源
+│       ├── bs-ball/            # 舊版前端靜態資源（/bs-ball/ 軌道）
 │       │   ├── assets/         # Vite 編譯產物（JS/CSS）
 │       │   ├── team-logos/     # 球隊 Logo 圖片
 │       │   ├── index.html      # 後台入口
 │       │   └── *.svg           # 球場 SVG
+│       ├── bs-ball-next/       # 重建版前端（發佈時建置組裝）
 │       ├── home/               # 門戶首頁
 │       ├── static/             # 共用靜態（fonts/logo）
 │       ├── index.html          # 根頁面
@@ -189,13 +190,13 @@ Bsdone-project-backup/
 
 ## 5. 前端 (bsball-frontend)
 
-### 5.1 現狀（原始碼重建中，2026-09 起）
+### 5.1 現狀（重建版已雙軌上線，2026-10-08 起）
 
-原始 `.vue` 原始碼缺失（歷史倉庫與上游均無、無 source map），現以 **編譯產物為規格** 分批次重建原始碼工程：
+原始 `.vue` 原始碼缺失（歷史倉庫與上游均無、無 source map），重建工程以 **編譯產物為規格** 分批次實施，重建版已隨 v2.0.0 雙軌上線生產：
 
-- 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router，`base=/bs-ball/`）
+- 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；預設 `base=/bs-ball/`；重建版建置 `npm run build:next`，產物落 `/bs-ball-next/`）
 - 批次：B0 工程化 → B1 骨架與契約底座 → B2 認證族 → B3 標準 CRUD 族 → B4 領域族 → B5 LiveGame 家族
-- 生產環境在切換前仍為原編譯產物（`bsball_project/webapps/`，唯讀對照基準）
+- 雙軌現狀：舊版編譯產物 `/bs-ball/` 與重建版 `/bs-ball-next/` 並行（生產與測試一致）；網域經 `portal.html` 直通重建版；舊版保留可回退
 
 ### 5.2 開發與對照
 
@@ -206,9 +207,9 @@ npm run preview:legacy   # 舊編譯版對照預覽（3001）
 npm run package          # 建置 + 打包 webapps-dev.tar.gz（部署包約定：頂層含 webapps/）
 ```
 
-### 5.3 過渡期（生產仍為編譯版時）的應急修改方式
+### 5.3 舊版（/bs-ball/ 編譯產物軌道）的應急修改方式
 
-在重建完成、生產切換之前，如必須快速修復線上舊版，仍沿用「直接修改編譯產物」流程（過渡手段）：
+雙軌期如必須快速修復舊版，仍沿用「直接修改編譯產物」流程（須同步登記 `docs/ops/frontend-hotfix-log.md`）：
 
 1. `grep` 定位特徵字串
 2. Python 腳本 `assert` 精確替換（搭配上下文印出核對）
@@ -235,14 +236,15 @@ java-server/
 ```
 webapps/
 ├── index.html           # 根頁面
-├── portal.html          # 門戶首頁
+├── portal.html          # 門戶首頁（網域訪問直通 /bs-ball-next/）
 ├── static/              # 共用資源（fonts, logo）
 ├── home/                # 門戶子頁面
-└── bs-ball/             # 後台 + 即時比賽前端
-    ├── assets/          # JS + CSS（Vite 編譯）
-    ├── team-logos/      # 球隊 Logo
-    ├── index.html       # 後台 SPA 入口
-    └── *.svg            # 球場、頭像等 SVG
+├── bs-ball/             # 舊版：後台 + 即時比賽前端（/bs-ball/）
+│   ├── assets/          # JS + CSS（Vite 編譯）
+│   ├── team-logos/      # 球隊 Logo
+│   ├── index.html       # 後台 SPA 入口
+│   └── *.svg            # 球場、頭像等 SVG
+└── bs-ball-next/        # 重建版前端（/bs-ball-next/；發佈時建置組裝）
 ```
 
 ---
