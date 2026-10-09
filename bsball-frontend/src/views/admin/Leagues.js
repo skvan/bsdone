@@ -129,13 +129,13 @@ var Ae={
     async function JReturn(n){
       await P(async()=>{
         try{
-          await ke.confirm(`确定要归还联盟「${n.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await ke.confirm(`确定要删除联盟「${n.name}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
-          ),await k.delete(n.id),v.success("已归还"),u()
+          ),await k.delete(n.id),v.success("删除成功"),u()
         }
         catch(e){
-          e!=="cancel"&&v.error(e?.message||"归还失败")
+          e!=="cancel"&&v.error(e?.message||"删除失败")
         }
         
       }
@@ -439,11 +439,11 @@ var Ae={
               ,{
                 default:a(()=>[...e[16]||(e[16]=[s("删除",-1)])]),_:1
               }
-              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:return")?(C(),D(m,{
+              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:return")&&!d(Ab)("business:league:delete")?(C(),D(m,{
                 key:1,link:"",type:"warning",onClick:le=>JReturn(c)
               }
               ,{
-                default:a(()=>[...e[20]||(e[20]=[s("归还",-1)])]),_:1
+                default:a(()=>[...e[20]||(e[20]=[s("删除",-1)])]),_:1
               }
               ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:owners")?(C(),D(m,{
                 key:2,link:"",type:"primary",onClick:R4=>openOwners(c)
