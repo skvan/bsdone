@@ -112,15 +112,20 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     return false;
   }
 
-  async function load(tenantCode) {
+  async function load(tenantCode, options) {
     try {
       const body = await get('/api/portal/settings');
       const sanitized = sanitizeConfig(body?.data);
       apply(sanitized);
-      try {
-        localStorage.setItem(cacheKeyFor(tenantCode || currentTenantCodeFromUrl()), JSON.stringify(sanitized || {}));
-      } catch {
-        // ignore
+      if (!options?.skipCacheWrite) {
+        try {
+          const key = cacheKeyFor(tenantCode || currentTenantCodeFromUrl());
+          const next = JSON.stringify(sanitized || {});
+          // 写前比较：同值跳过 setItem（减少无谓写入与跨标签 storage 事件）
+          if (localStorage.getItem(key) !== next) localStorage.setItem(key, next);
+        } catch {
+          // ignore
+        }
       }
     } catch {
       // 接口失败时保留默认/缓存值
@@ -133,8 +138,9 @@ export const useAppConfigStore = defineStore('appConfig', () => {
   }
 
   // 兼容编译产物命名：重新拉取门户站点配置
-  function fetchPortalSettings() {
-    load();
+  // options.skipCacheWrite：响应 storage 事件时置 true（不写回缓存，防跨版本互写风暴）
+  function fetchPortalSettings(options) {
+    load(undefined, options);
   }
 
   // 指定租户初始化（路由守卫调用：标题/门户壳依赖站点名）
