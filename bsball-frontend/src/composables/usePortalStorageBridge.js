@@ -4,6 +4,7 @@ import { onMounted, onUnmounted } from 'vue';
 import { i18n } from '../i18n';
 import { usePortalThemeStore } from '../stores/portalTheme';
 import { useAppConfigStore } from '../stores/appConfig';
+import { createSingleFlightDebounce } from '../utils/singleFlightDebounce';
 
 export const PORTAL_STATS_PAGE_SIZE_SYNC_EVENT = 'bsball-portal-stats-page-size-sync';
 export const PORTAL_FIELD_SETTINGS_GUIDE_SYNC_EVENT = 'bsball-portal-field-settings-guide-sync';
@@ -14,6 +15,11 @@ function dispatch(eventName, detail) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(detail === undefined ? new CustomEvent(eventName) : new CustomEvent(eventName, { detail }));
 }
+
+// app-config 缓存同步：单飞去抖（窗口 300ms）+ 拉取不写回缓存（2026-10-09 生产 429 断链修复）
+const appConfigSync = createSingleFlightDebounce(() => {
+  useAppConfigStore().fetchPortalSettings({ skipCacheWrite: true });
+}, 300);
 
 function onStorageChange(event) {
   if (!event.key) return;
@@ -40,7 +46,8 @@ function onStorageChange(event) {
   }
   // 展示设置（bsball.portal.display.settings）分发留待 B4 统计模块接入后补全
   if (event.key === APP_CONFIG_KEY || event.key.startsWith(`${APP_CONFIG_KEY}::`)) {
-    useAppConfigStore().fetchPortalSettings();
+    // 防跨版本互写风暴（新旧版写回值形态不同会互相触发）：去抖合并 + 拉取不写回缓存（断链）
+    appConfigSync.schedule();
   }
 }
 
@@ -56,7 +63,10 @@ export function removePortalStorageListener() {
   if (typeof window === 'undefined') return;
   if (refCount <= 0) return;
   refCount -= 1;
-  if (refCount === 0) window.removeEventListener('storage', onStorageChange);
+  if (refCount === 0) {
+    window.removeEventListener('storage', onStorageChange);
+    appConfigSync.cancel();
+  }
 }
 
 // 组件内使用：挂载时 +1，卸载时 -1（对应编译产物 sl）
