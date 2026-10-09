@@ -261,6 +261,40 @@ class PlayerRemoveRestoreRuleTest {
         assertTrue(ex.getMessage().contains("不在该球队"));
     }
 
+    // ------------------------------------------------------------------ listDeleted
+
+    @Test
+    @DisplayName("已删除列表：受限角色 → 403 且不查库")
+    void listDeleted_restrictedRole_forbidden() {
+        CurrentUserHolder.set(UID, TENANT_ID);
+        when(apiPermissionService.isSuperAdmin(UID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(UID)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> playerService.listDeleted(1, 20, null));
+
+        assertEquals(403, ex.getCode());
+        verify(playerRepository, never()).findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class));
+    }
+
+    @Test
+    @DisplayName("已删除列表：租管本租户可见（含删除标记字段）")
+    void listDeleted_tenantAdmin_ok() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
+        Player p = deletedPlayer(5L, TENANT_ID);
+        when(playerRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(p)));
+        when(playerTeamRepository.findByPlayerIdInAndDeletedAtIsNullOrderBySortAscIdAsc(any())).thenReturn(List.of());
+        CurrentUserHolder.set(UID, TENANT_ID);
+        when(apiPermissionService.isSuperAdmin(UID)).thenReturn(false);
+        when(apiPermissionService.isTenantAdmin(UID)).thenReturn(true);
+
+        var result = playerService.listDeleted(1, 20, null);
+
+        assertEquals(1L, result.getTotal());
+        assertEquals(1, result.getList().size());
+    }
+
     private static Player player(long id, long tenantId, Long userId) {
         Player p = new Player();
         p.setId(id);

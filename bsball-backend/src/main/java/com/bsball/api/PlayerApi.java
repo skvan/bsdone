@@ -61,7 +61,10 @@ public class PlayerApi {
     }
 
     @GetMapping(value={"/list"})
-    public Result<PageResult<Player>> list(@RequestParam(required=false) Integer page, @RequestParam(required=false) Integer pageSize, @RequestParam(required=false) String sortProp, @RequestParam(required=false) String sortOrder, @RequestParam(required=false) Long teamId, @RequestParam(required=false) String ids, @RequestParam(required=false) String keyword, @RequestParam(required=false) String number, @RequestParam(required=false) String position, @RequestParam(required=false) String throwHand, @RequestParam(required=false) String batHand, @RequestParam(required=false) String status, @RequestParam(required=false) String joinDateFrom, @RequestParam(required=false) String joinDateTo) {
+    public Result<PageResult<Player>> list(@RequestParam(required=false) Integer page, @RequestParam(required=false) Integer pageSize, @RequestParam(required=false) String sortProp, @RequestParam(required=false) String sortOrder, @RequestParam(required=false) Long teamId, @RequestParam(required=false) String ids, @RequestParam(required=false) String keyword, @RequestParam(required=false) String number, @RequestParam(required=false) String position, @RequestParam(required=false) String throwHand, @RequestParam(required=false) String batHand, @RequestParam(required=false) String status, @RequestParam(required=false) String joinDateFrom, @RequestParam(required=false) String joinDateTo, @RequestParam(required=false) Boolean deleted) {
+        if (Boolean.TRUE.equals(deleted)) {
+            return Result.ok(this.playerService.listDeleted(page, pageSize, keyword));
+        }
         List idList = null;
         if (ids != null && !ids.isBlank()) {
             idList = Arrays.stream(ids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::parseLong).toList();

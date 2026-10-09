@@ -1022,6 +1022,39 @@ public class PlayerService {
         }
     }
 
+    /**
+     * 已删除球员分页（2026-10-09）：仅超管/租户管理员。超管全局模式跨租户，租管限本租户。
+     * 支持 keyword（姓名/英文名/简称/昵称模糊）；固定按 deletedAt 倒序。
+     */
+    public PageResult<Player> listDeleted(Integer page, Integer pageSize, String keyword) {
+        if (!this.resourceGuard.isCurrentUserSuperAdmin() && !this.resourceGuard.isCurrentUserTenantAdmin()) {
+            throw new BusinessException(403, "仅租户管理员/超级管理员可查看已删除球员");
+        }
+        int p = page == null || page < 1 ? 1 : page;
+        int ps = pageSize == null || pageSize < 1 ? 20 : Math.min(pageSize, 200);
+        boolean global = this.tenantQueryPolicyService.isGlobalQueryMode();
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        String kw = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Specification<Player> spec = (root, q, cb) -> {
+            ArrayList<Predicate> preds = new ArrayList<Predicate>();
+            preds.add(cb.isNotNull((Expression)root.get("deletedAt")));
+            if (!global) {
+                preds.add(cb.equal((Expression)root.get("tenantId"), (Object)Long.valueOf(tid)));
+            }
+            if (kw != null) {
+                String like = "%" + kw + "%";
+                preds.add(cb.or(cb.like((Expression)root.get("name"), like), cb.like((Expression)root.get("nameEn"), like),
+                        cb.like((Expression)root.get("shortName"), like), cb.like((Expression)root.get("nickname"), like)));
+            }
+            return cb.and(preds.toArray(new Predicate[0]));
+        };
+        Pageable pg = PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.DESC, "deletedAt").and(Sort.by(Sort.Direction.DESC, "id")));
+        Page<Player> result = this.playerRepository.findAll(spec, pg);
+        List<Player> content = result.getContent();
+        this.playerTeamService.attachEntries(content);
+        return PageResult.of((List)content, (long)result.getTotalElements());
+    }
+
     private void validateTeamId(Long teamId) {
         if (teamId != null && teamId > 0L && !this.teamRepository.existsById(teamId)) {
             throw new BusinessException(400, "\u7403\u961f\u4e0d\u5b58\u5728\uff0c\u8bf7\u5148\u521b\u5efa\u7403\u961f");
