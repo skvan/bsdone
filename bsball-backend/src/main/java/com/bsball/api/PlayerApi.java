@@ -143,6 +143,20 @@ public class PlayerApi {
         return Result.ok(Map.of());
     }
 
+    @PostMapping(value={"/restore/{id}"})
+    public Result<Object> restore(@PathVariable Long id) {
+        this.playerService.restore(id);
+        return Result.ok(Map.of());
+    }
+
+    @PostMapping(value={"/remove-from-team/{id}"})
+    public Result<Object> removeFromTeam(@PathVariable Long id, @RequestBody(required=false) Map<String, Object> body) {
+        Object v = body == null ? null : body.get("teamId");
+        Long teamId = v instanceof Number n ? n.longValue() : null;
+        this.playerService.removeFromTeam(id, teamId);
+        return Result.ok(Map.of());
+    }
+
     @PostMapping(value={"/import"})
     public Result<Map<String, Object>> importBatch(@RequestBody PlayerImportRequest body) {
         List items = body != null && body.items() != null ? body.items() : List.of();
