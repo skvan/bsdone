@@ -566,6 +566,16 @@ public class PlayerService {
     }
 
     /**
+     * 球员删除权收窄（2026-10-09）：删除/批量删除仅限超级管理员/租户管理员；
+     * 球队管理员/赛事主办方请使用「移除出球队」（POST /player/remove-from-team/:id）。
+     */
+    private void assertRoleCanDeletePlayer() {
+        if (!this.resourceGuard.isCurrentUserSuperAdmin() && !this.resourceGuard.isCurrentUserTenantAdmin()) {
+            throw new BusinessException(403, "删除球员仅限租户管理员/超级管理员；球队侧请使用「移除出球队」");
+        }
+    }
+
+    /**
      * 自助经历变更白名单：仅放行 ① 本人经历 current true→false；② 删除无比赛记录经历（守卫另处）。
      * 新增行 / 复活 / current→true / 改 number / 改 positions 一律 403 并给出明确指引。
      */
@@ -883,6 +893,7 @@ public class PlayerService {
 
     @Transactional(rollbackFor={Exception.class})
     public void delete(Long id) {
+        this.assertRoleCanDeletePlayer();
         Player existing = this.playerRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
             return;
@@ -907,6 +918,7 @@ public class PlayerService {
         if (ids == null || ids.isEmpty()) {
             return;
         }
+        this.assertRoleCanDeletePlayer();
         List<Long> validIds = ids.stream().filter(Objects::nonNull).distinct().toList();
         if (validIds.isEmpty()) {
             return;

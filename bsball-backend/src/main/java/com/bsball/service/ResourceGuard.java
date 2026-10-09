@@ -209,6 +209,13 @@ public class ResourceGuard {
         return apiPermissionService.isSuperAdmin(CurrentUserHolder.get());
     }
 
+    /**
+     * 当前调用者是否租户管理员（独立于 effective scope）：球员删除/恢复的角色边界判定（2026-10-09 收窄）。
+     */
+    public boolean isCurrentUserTenantAdmin() {
+        return apiPermissionService.isTenantAdmin(CurrentUserHolder.get());
+    }
+
     @Generated
     public ResourceGuard(AccountScopeService accountScopeService, EventRepository eventRepository,
             GameRepository gameRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService,
