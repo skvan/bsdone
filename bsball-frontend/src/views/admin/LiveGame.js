@@ -6189,7 +6189,7 @@ var sg={
         return
       }
       if(e.id==="out_oi"){
-        de(`拖拽-妨碍[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"妨碍出局").trim()),l.outs++,Ipy(),a.stats.batting.ab=(a.stats.batting.ab??0)+1;
+        de(`拖拽-妨碍[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"妨碍出局").trim()),l.outs++,Ipy();
         const m=LgOut({reasonCn:e.cn,runner:a,from:s,to:r,outsCum:1,total:l.outs});
         D(m),l.outs>=3&&(Je("THIRD_OUT",m),Qe());
         return
@@ -9214,7 +9214,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(a?.type==="INT"&&a.selectRunner){
-        l.runners[e]=null,Bt(Gt(t,"妨碍守备出局")),t.stats.batting.ab=(t.stats.batting.ab??0)+1;
+        l.runners[e]=null,Bt(Gt(t,"妨碍守备出局"));
         const s=`${t.name}: 跑垒员妨碍守备出局`;
         D(s),l.flow=null,l.outs>=3&&(Je("THIRD_OUT",s),Qe());
         return

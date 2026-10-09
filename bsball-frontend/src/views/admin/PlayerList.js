@@ -17,6 +17,7 @@ import { resourceApi as In } from '../../api/system';
 import { dictTypeApi as En } from '../../api/system';
 import { dictDataApi as Vn } from '../../api/system';
 import { uploadResource as gt } from '../../api/system';
+import { userApi as uq } from '../../api/system';
 import { fetchAllPlayers as pt } from '../../api/business';
 import { playerApi as Ve } from '../../api/business';
 import { useAuthStore as hA } from '../../stores/auth';
@@ -274,7 +275,7 @@ var $n={
       da.value=a,ma.value=e==="ascending"?"asc":e==="descending"?"desc":void 0,L()
     }
     function Pt(){
-      r.keyword="",r.number="",r.teamId=void 0,r.status=void 0,r.joinDateRange=void 0,r.position=void 0,r.throwHand=void 0,r.batHand=void 0,oe.page=1,ne.value=!1,L()
+      r.keyword="",r.number="",r.teamId=void 0,r.status=void 0,r.joinDateRange=void 0,r.position=void 0,r.throwHand=void 0,r.batHand=void 0,oe.page=1,ne.value=!1,delMode.value=!1,L()
     }
     function Ut(a){
       if(a==="export"){
@@ -287,6 +288,7 @@ var $n={
       
     }
     ),fa=v(new Map),ca=v(!1),Ae=v(void 0);
+    const delMode=v(!1),delNames=v({});
     function ae(a){
       return`${a.name??""}|${a.number??""}`
     }
@@ -1195,14 +1197,69 @@ var $n={
       }
       )
     }
+    async function hResolveDelNames(){
+      const m={...delNames.value};
+      await Promise.all(ia.value.map(async a=>{
+        const e=a.deletedBy;
+        if(!e||m[e])return;
+        try{
+          const u=await uq.get(e);m[e]=u?.nickname||u?.username||""
+        }
+        catch{
+          
+        }
+      }
+      )),delNames.value=m
+    }
+    const hCurEntry=a=>{
+      const es=(a.teamEntries??[]).filter(e=>e&&e.current),t=Number(r.teamId);
+      return (Number.isFinite(t)&&t>0?es.find(e=>Number(e.teamId)===t):void 0)??es[0]??null
+    };
+    async function hRemoveFromTeam(a){
+      const e=hCurEntry(a);
+      if(!e){
+        p.warning("该球员当前不在球队");return
+      }
+      const u=e.teamName?`球队「${e.teamName}」`:`球队 #${e.teamId}`;
+      await fe(async()=>{
+        try{
+          await vn.confirm(`确定将球员「${a.name}」移出${u}吗？无比赛记录将删除该球队经历；已有比赛记录将保留历史并记为离队。`,"移出确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await Ve.removeFromTeam(a.id,e.teamId),p.success("已移出球队"),L()
+        }
+        catch(o){
+          o!=="cancel"&&p.error(o?.message||"移出失败")
+        }
+        
+      }
+      )
+    }
+    async function hRestorePlayer(a){
+      await fe(async()=>{
+        try{
+          await vn.confirm(`确定要恢复球员「${a.name}」吗？恢复后该球员将回到球员列表。`,"恢复确认",{
+            confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+          }
+          ),await Ve.restore(a.id),p.success("已恢复"),L()
+        }
+        catch(e){
+          e!=="cancel"&&p.error(e?.message||"恢复失败")
+        }
+        
+      }
+      )
+    }
     async function L(){
       ra.value=!0;
       const a={
         teamId:r.teamId??void 0,page:oe.page,pageSize:oe.pageSize
       };
       r.keyword&&(a.keyword=r.keyword),r.number&&(a.number=r.number),r.status&&(a.status=r.status),r.position&&(a.position=r.position),r.throwHand&&(a.throwHand=r.throwHand),r.batHand&&(a.batHand=r.batHand),r.joinDateRange?.length===2&&(a.joinDateFrom=r.joinDateRange[0],a.joinDateTo=r.joinDateRange[1]),da.value&&ma.value&&(a.sortProp=da.value,a.sortOrder=ma.value);
+      delMode.value&&(a.deleted=!0,a.teamId=void 0);
       const e=await Ve.list(a);
-      ia.value=e.list??[],oe.total=e.total??0,ra.value=!1
+      ia.value=e.list??[],oe.total=e.total??0,ra.value=!1;
+      delMode.value&&await hResolveDelNames();
     }
     return kt(async()=>{
       window.addEventListener("mousemove",tt,{
@@ -1353,7 +1410,33 @@ var $n={
               }
               ,8,["modelValue"])]),_:1
             }
-            )]),f("div",jn,[t(T,null,{
+            ),g(Zi)("business:player:restore")?(m(),R(c,{
+              key:"del-mode",label:"数据范围"
+            }
+            ,{
+              default:n(()=>[t(Pl,{
+                modelValue:delMode.value?"deleted":"normal","onUpdate:modelValue":o=>{
+                  delMode.value=o==="deleted",oe.page=1,o==="deleted"&&(r.teamId=void 0,r.number=void 0,r.status=void 0,r.position=void 0,r.throwHand=void 0,r.batHand=void 0,r.joinDateRange=void 0),L()
+                }
+              }
+              ,{
+                default:n(()=>[t(ql,{
+                  label:"normal"
+                }
+                ,{
+                  default:n(()=>[s("在册",-1)]),_:1
+                }
+                ),t(ql,{
+                  label:"deleted"
+                }
+                ,{
+                  default:n(()=>[s("已删除",-1)]),_:1
+                }
+                )]),_:1
+              }
+              ,8,["modelValue"])]),_:1
+            }
+            )):H("",!0)]),f("div",jn,[t(T,null,{
               default:n(()=>[ft(f("div",qn,[f("div",Yn,[t(c,{
                 label:"加入日期",class:"query-form-more-join-date"
               }
@@ -1560,42 +1643,72 @@ var $n={
               }
               )=>[s(V(g(ct)(h.updatedAt)),1)]),_:1
             }
-            ),t(P,{
+            ),delMode.value?(m(),R(P,{
+              key:"del-time",prop:"deletedAt",label:"删除时间",width:"160"
+            }
+            ,{
+              default:n(({
+                row:h
+              }
+              )=>[s(V(g(ct)(h.deletedAt)),1)]),_:1
+            }
+            )):H("",!0),delMode.value?(m(),R(P,{
+              key:"del-by",label:"删除人",width:"140"
+            }
+            ,{
+              default:n(({
+                row:h
+              }
+              )=>[s(V(delNames.value[h.deletedBy]||(h.deletedBy?"#"+h.deletedBy:"-")),1)]),_:1
+            }
+            )):H("",!0),t(P,{
               label:"操作","min-width":"100",fixed:g(Vt),"class-name":"col-operation"
             }
             ,{
               default:n(({
                 row:h
               }
-              )=>[t(i,{
-                link:"",type:"primary",onClick:mt=>Ft(h)
+              )=>[delMode.value?H("",!0):(m(),R(i,{
+                key:"view",link:"",type:"primary",onClick:mt=>Ft(h)
               }
               ,{
                 default:n(()=>[...e[56]||(e[56]=[s("查看详情",-1)])]),_:1
               }
-              ,8,["onClick"]),t(i,{
-                link:"",type:"primary",onClick:mt=>We(h)
+              ,8,["onClick"])),delMode.value?H("",!0):(m(),R(i,{
+                key:"edit",link:"",type:"primary",onClick:mt=>We(h)
               }
               ,{
                 default:n(()=>[...e[57]||(e[57]=[s("编辑",-1)])]),_:1
               }
-              ,8,["onClick"]),g(Zi)("business:player:delete")?(m(),R(i,{
+              ,8,["onClick"])),!delMode.value&&g(Zi)("business:player:removeFromTeam")&&hCurEntry(h)?(m(),R(i,{
+                key:"remove-team",link:"",type:"warning",disabled:g(Ce),onClick:mt=>hRemoveFromTeam(h)
+              }
+              ,{
+                default:n(()=>[s("移除出球队",-1)]),_:1
+              }
+              ,8,["disabled","onClick"])):H("",!0),!delMode.value&&g(Zi)("business:player:delete")?(m(),R(i,{
                 key:0,link:"",type:"danger",disabled:g(Ce),onClick:mt=>Bl(h)
               }
               ,{
                 default:n(()=>[...e[58]||(e[58]=[s("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):H("",!0),g(Zi)("business:player:return")?(m(),R(i,{
+              ,8,["disabled","onClick"])):H("",!0),!delMode.value&&g(Zi)("business:player:return")?(m(),R(i,{
                 key:1,link:"",type:"warning",disabled:g(Ce),onClick:mt=>BlReturn(h)
               }
               ,{
                 default:n(()=>[...e[98]||(e[98]=[s("归还",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):H("",!0),h.userId&&g(Zi)("business:player:release-claim")?(m(),R(i,{
+              ,8,["disabled","onClick"])):H("",!0),!delMode.value&&h.userId&&g(Zi)("business:player:release-claim")?(m(),R(i,{
                 key:2,link:"",type:"danger",disabled:g(Ce),onClick:mt=>BlReleaseClaim(h)
               }
               ,{
                 default:n(()=>[...e[99]||(e[99]=[s("解除认领",-1)])]),_:1
+              }
+              ,8,["disabled","onClick"])):H("",!0),delMode.value&&g(Zi)("business:player:restore")?(m(),R(i,{
+                key:"restore",link:"",type:"primary",disabled:g(Ce),onClick:mt=>hRestorePlayer(h)
+              }
+              ,{
+                default:n(()=>[s("恢复",-1)]),_:1
               }
               ,8,["disabled","onClick"])):H("",!0)]),_:1
             }

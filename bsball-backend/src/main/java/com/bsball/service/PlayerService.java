@@ -566,6 +566,16 @@ public class PlayerService {
     }
 
     /**
+     * 球员删除权收窄（2026-10-09）：删除/批量删除仅限超级管理员/租户管理员；
+     * 球队管理员/赛事主办方请使用「移除出球队」（POST /player/remove-from-team/:id）。
+     */
+    private void assertRoleCanDeletePlayer() {
+        if (!this.resourceGuard.isCurrentUserSuperAdmin() && !this.resourceGuard.isCurrentUserTenantAdmin()) {
+            throw new BusinessException(403, "删除球员仅限租户管理员/超级管理员；球队侧请使用「移除出球队」");
+        }
+    }
+
+    /**
      * 自助经历变更白名单：仅放行 ① 本人经历 current true→false；② 删除无比赛记录经历（守卫另处）。
      * 新增行 / 复活 / current→true / 改 number / 改 positions 一律 403 并给出明确指引。
      */
@@ -883,6 +893,7 @@ public class PlayerService {
 
     @Transactional(rollbackFor={Exception.class})
     public void delete(Long id) {
+        this.assertRoleCanDeletePlayer();
         Player existing = this.playerRepository.findById(id).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
             return;
@@ -904,6 +915,7 @@ public class PlayerService {
 
     @Transactional(rollbackFor={Exception.class})
     public void deleteBatch(List<Long> ids) {
+        this.assertRoleCanDeletePlayer();
         if (ids == null || ids.isEmpty()) {
             return;
         }
@@ -926,6 +938,122 @@ public class PlayerService {
             p2.setDeletedBy(uid);
         }
         this.playerRepository.saveAll(toSoftDelete);
+    }
+
+    /**
+     * 恢复已删除球员（2026-10-09）：仅超管/租户管理员；租管限本租户。
+     * 清 deletedAt/deletedBy 并还原 platformOwned（归还标记撤销），球员回到正常列表。
+     */
+    @Transactional(rollbackFor={Exception.class})
+    public void restore(Long id) {
+        boolean superAdmin = this.resourceGuard.isCurrentUserSuperAdmin();
+        if (!superAdmin && !this.resourceGuard.isCurrentUserTenantAdmin()) {
+            throw new BusinessException(403, "仅租户管理员/超级管理员可恢复球员");
+        }
+        Player existing = this.playerRepository.findById(id).orElse(null);
+        if (existing == null || existing.getDeletedAt() == null) {
+            throw new BusinessException(400, "该球员未被删除");
+        }
+        if (!superAdmin && !Objects.equals(existing.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
+            throw new BusinessException(403, "无权恢复该球员");
+        }
+        existing.setDeletedAt(null);
+        existing.setDeletedBy(null);
+        existing.setPlatformOwned(Boolean.FALSE);
+        this.playerRepository.save(existing);
+    }
+
+    /**
+     * 移除球员出球队（2026-10-09）：球队管理员（自有球队）/赛事主办方（域内）与租管/超管可用。
+     * 语义：无有效比赛记录 → 删除该球队经历（写删经历沿革）；有记录 → 取消当前球队（current=false，写离队沿革）。
+     * 不限制认领状态（确认口径：已认领球员同样可被移除）。
+     */
+    @Transactional(rollbackFor={Exception.class})
+    public void removeFromTeam(Long playerId, Long teamId) {
+        if (teamId == null || teamId <= 0L) {
+            throw new BusinessException(400, "缺少球队 ID");
+        }
+        Player player = this.playerRepository.findById(playerId).orElse(null);
+        if (player == null || player.getDeletedAt() != null) {
+            throw new BusinessException(404, "球员不存在");
+        }
+        boolean superAdmin = this.resourceGuard.isCurrentUserSuperAdmin();
+        if (!superAdmin && !Objects.equals(player.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
+            throw new BusinessException(403, "无权移除该球员");
+        }
+        Team team = this.teamRepository.findById(teamId).orElse(null);
+        if (team == null) {
+            throw new BusinessException(400, "球队不存在");
+        }
+        EffectiveScope s = this.accountScopeService.resolveCurrent();
+        boolean allowed = s.isUnrestrictedInTenant()
+                || s.canManageTeam(teamId)
+                || team.getLeagueId() != null && s.canManageLeague(team.getLeagueId());
+        if (!allowed) {
+            throw new BusinessException(403, "无权将该球员移出该球队");
+        }
+        List<PlayerTeam> existing = this.playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(playerId);
+        PlayerTeam target = existing.stream()
+                .filter(e -> Objects.equals(e.getTeamId(), teamId) && Boolean.TRUE.equals(e.getCurrent()))
+                .findFirst().orElse(null);
+        if (target == null) {
+            throw new BusinessException(400, "该球员当前不在该球队");
+        }
+        long played = this.gamePlayerStatRepository.countValidByPlayerIdAndTeamId(playerId, teamId);
+        ArrayList<PlayerTeamEntryDto> incoming = new ArrayList<PlayerTeamEntryDto>();
+        for (PlayerTeam e : existing) {
+            boolean isTarget = Objects.equals(e.getTeamId(), teamId);
+            if (isTarget && played <= 0L) {
+                continue;
+            }
+            Boolean cur = isTarget ? Boolean.FALSE : Boolean.valueOf(Boolean.TRUE.equals(e.getCurrent()));
+            incoming.add(new PlayerTeamEntryDto(e.getId(), e.getTeamId(), null, e.getNumber(), e.getPositionsList(), cur, e.getSort()));
+        }
+        PlayerTeamService.PlayerTeamSyncPlan plan = this.playerTeamService.plan(player, incoming, true);
+        this.playerTeamService.applyMirror(player, plan);
+        Player saved = this.playerRepository.save(player);
+        this.playerTeamService.persistPlan(saved.getId(), plan);
+        Long joinRecordId = this.personnelHistoryRecorder.recordPlayerTeamTransitions(saved, plan.beforeCurrentTeamIds(), plan.afterCurrentTeamIds());
+        if (joinRecordId != null) {
+            saved.setCurrentJoinRecordId(joinRecordId);
+            this.playerRepository.save(saved);
+        }
+        for (PlayerTeam removed : plan.toDelete()) {
+            this.personnelHistoryRecorder.recordPlayerTeamEntryRemoval(saved.getId(), saved.getTenantId(), removed);
+        }
+    }
+
+    /**
+     * 已删除球员分页（2026-10-09）：仅超管/租户管理员。超管全局模式跨租户，租管限本租户。
+     * 支持 keyword（姓名/英文名/简称/昵称模糊）；固定按 deletedAt 倒序。
+     */
+    public PageResult<Player> listDeleted(Integer page, Integer pageSize, String keyword) {
+        if (!this.resourceGuard.isCurrentUserSuperAdmin() && !this.resourceGuard.isCurrentUserTenantAdmin()) {
+            throw new BusinessException(403, "仅租户管理员/超级管理员可查看已删除球员");
+        }
+        int p = page == null || page < 1 ? 1 : page;
+        int ps = pageSize == null || pageSize < 1 ? 20 : Math.min(pageSize, 200);
+        boolean global = this.tenantQueryPolicyService.isGlobalQueryMode();
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        String kw = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Specification<Player> spec = (root, q, cb) -> {
+            ArrayList<Predicate> preds = new ArrayList<Predicate>();
+            preds.add(cb.isNotNull((Expression)root.get("deletedAt")));
+            if (!global) {
+                preds.add(cb.equal((Expression)root.get("tenantId"), (Object)Long.valueOf(tid)));
+            }
+            if (kw != null) {
+                String like = "%" + kw + "%";
+                preds.add(cb.or(cb.like((Expression)root.get("name"), like), cb.like((Expression)root.get("nameEn"), like),
+                        cb.like((Expression)root.get("shortName"), like), cb.like((Expression)root.get("nickname"), like)));
+            }
+            return cb.and(preds.toArray(new Predicate[0]));
+        };
+        Pageable pg = PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.DESC, "deletedAt").and(Sort.by(Sort.Direction.DESC, "id")));
+        Page<Player> result = this.playerRepository.findAll(spec, pg);
+        List<Player> content = result.getContent();
+        this.playerTeamService.attachEntries(content);
+        return PageResult.of((List)content, (long)result.getTotalElements());
     }
 
     private void validateTeamId(Long teamId) {
