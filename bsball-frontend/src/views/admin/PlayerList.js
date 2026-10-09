@@ -1211,7 +1211,10 @@ var $n={
       }
       )),delNames.value=m
     }
-    const hCurEntry=a=>(a.teamEntries??[]).find(e=>e&&e.current)??null;
+    const hCurEntry=a=>{
+      const es=(a.teamEntries??[]).filter(e=>e&&e.current),t=Number(r.teamId);
+      return (Number.isFinite(t)&&t>0?es.find(e=>Number(e.teamId)===t):void 0)??es[0]??null
+    };
     async function hRemoveFromTeam(a){
       const e=hCurEntry(a);
       if(!e){
@@ -1413,7 +1416,7 @@ var $n={
             ,{
               default:n(()=>[t(Pl,{
                 modelValue:delMode.value?"deleted":"normal","onUpdate:modelValue":o=>{
-                  delMode.value=o==="deleted",oe.page=1,L()
+                  delMode.value=o==="deleted",oe.page=1,o==="deleted"&&(r.teamId=void 0,r.number=void 0,r.status=void 0,r.position=void 0,r.throwHand=void 0,r.batHand=void 0,r.joinDateRange=void 0),L()
                 }
               }
               ,{

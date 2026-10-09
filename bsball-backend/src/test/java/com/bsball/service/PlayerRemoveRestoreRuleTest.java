@@ -295,6 +295,24 @@ class PlayerRemoveRestoreRuleTest {
         assertEquals(1, result.getList().size());
     }
 
+    @Test
+    @DisplayName("移除出球队：超管全局（跨租户）放行")
+    void removeFromTeam_superAdmin_global_ok() {
+        Player p = player(5L, TENANT_ID, null);
+        Team t = team(100L, TENANT_ID, 10L);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.unrestricted());
+        when(playerRepository.findById(5L)).thenReturn(Optional.of(p));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(t));
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(5L))
+                .thenReturn(new ArrayList<>(List.of(entry(50L, 5L, 100L, TENANT_ID, true, "7"))));
+        when(gamePlayerStatRepository.countValidByPlayerIdAndTeamId(5L, 100L)).thenReturn(0L);
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+        CurrentUserHolder.set(1L, 0L);
+        when(apiPermissionService.isSuperAdmin(1L)).thenReturn(true);
+
+        assertDoesNotThrow(() -> playerService.removeFromTeam(5L, 100L));
+    }
+
     private static Player player(long id, long tenantId, Long userId) {
         Player p = new Player();
         p.setId(id);

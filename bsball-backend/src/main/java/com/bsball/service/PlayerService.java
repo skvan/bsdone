@@ -915,10 +915,10 @@ public class PlayerService {
 
     @Transactional(rollbackFor={Exception.class})
     public void deleteBatch(List<Long> ids) {
+        this.assertRoleCanDeletePlayer();
         if (ids == null || ids.isEmpty()) {
             return;
         }
-        this.assertRoleCanDeletePlayer();
         List<Long> validIds = ids.stream().filter(Objects::nonNull).distinct().toList();
         if (validIds.isEmpty()) {
             return;
@@ -977,7 +977,8 @@ public class PlayerService {
         if (player == null || player.getDeletedAt() != null) {
             throw new BusinessException(404, "球员不存在");
         }
-        if (!Objects.equals(player.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
+        boolean superAdmin = this.resourceGuard.isCurrentUserSuperAdmin();
+        if (!superAdmin && !Objects.equals(player.getTenantId(), this.tenantQueryPolicyService.requiredTenantId())) {
             throw new BusinessException(403, "无权移除该球员");
         }
         Team team = this.teamRepository.findById(teamId).orElse(null);
