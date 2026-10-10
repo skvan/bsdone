@@ -21,6 +21,7 @@
     "element-plus": "^2.9.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
+    "interactjs": "^1.10.28",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "md-editor-v3": "^7.0.0",
