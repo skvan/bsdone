@@ -29,6 +29,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel } = {}) {
   let lastDragEndAt = 0; // 供「拖拽后浏览器补发 click」的互斥判断（Task 1 spike 实测）
 
   function bind(elements, getLayout) {
+    unbind(); // 幂等：interactjs 按元素缓存 interactable，重复 bind 会叠加监听 → 先清理
     interactables = (elements ?? []).filter(Boolean).map((el) =>
       interact(el).draggable({
         delay: DRAG_DELAY_MS,
