@@ -63,7 +63,14 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel } = {}) {
             if (target) onDrop?.(event.target, target);
             else onCancel?.(event.target);
           },
-          cancel() {
+          cancel(event) {
+            const el = event?.target;
+            if (el) {
+              el.classList.remove('lineup-card--dragging');
+              el.style.transform = '';
+              delete el.dataset.dragX;
+              delete el.dataset.dragY;
+            }
             document.body.classList.remove('lineup-dragging');
             onCancel?.();
           },
@@ -75,6 +82,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel } = {}) {
   function unbind() {
     interactables.forEach((it) => it.unset());
     interactables = [];
+    lastDragEndAt = 0;
   }
 
   /** 拖拽结束后的一小段窗口内忽略 click（浏览器会在 mouseup 后补发一次卡片 click） */

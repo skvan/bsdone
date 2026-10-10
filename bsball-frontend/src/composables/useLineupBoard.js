@@ -53,10 +53,13 @@ export function useLineupBoard(mode, teamId) {
     return slotRow(rows.value, code);
   }
 
-  /** rows 含 P 行时同步守备投手（沿用旧件 WATCH 语义） */
+  /** rows 含 P 行时同步守备投手；若「仅守备投手」已被放到其他守备位则清除该身份（避免同一球员双槽渲染） */
   function syncPitcher() {
     const p = slotRow(rows.value, 'P');
     if (p) fieldingPitcherId.value = p.id;
+    else if (fieldingPitcherId.value != null && findRowIndex(rows.value, fieldingPitcherId.value) >= 0) {
+      fieldingPitcherId.value = null;
+    }
   }
 
   function reset() {
@@ -262,11 +265,15 @@ export function useLineupBoard(mode, teamId) {
     rows.value = [...filled, ...empties];
   }
 
-  /** 移除 DH（决策 16：仅守备投手自动回打线） */
+  /** 移除 DH（决策 16：仅守备投手自动回打线；决策 10：DH 球员回替补区） */
   function removeDh() {
     const dh = slotRow(rows.value, 'DH');
     if (!dh) return;
+    const dhPlayer = roster.value.find((x) => String(x.id) === String(dh.id)) ?? { ...dh, position: '' };
     detachPlayer(dh.id);
+    if (!hasPlayer(bench.value, dhPlayer.id)) {
+      bench.value = [...bench.value, { ...dhPlayer, teamId: teamId.value, position: '', stats: dhPlayer.stats ?? emptyStats() }];
+    }
     normalize();
     const pitcher = fieldingPitcherId.value;
     if (!slotRow(rows.value, 'P') && pitcher != null) {

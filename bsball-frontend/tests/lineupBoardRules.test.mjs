@@ -132,7 +132,7 @@ test('8 守位 + DH 且投手未指定 → fieldingPitcherRequired 为真，指�
   assert.equal(b.lineupComplete.value, true);
 });
 
-test('移除 DH → 投手自动回打线（9 行投手制）', () => {
+test('移除 DH → 投手自动回打线（9 行投手制）且 DH 球员回替补', () => {
   const b = board();
   b.placeAtSlot(P(3), 'P');
   fill8(b);
@@ -142,6 +142,21 @@ test('移除 DH → 投手自动回打线（9 行投手制）', () => {
   assert.equal(b.slotOfRow('DH'), null);
   assert.equal(b.slotOfRow('P').id, 3);
   assert.equal(b.validation.value.ok, true);
+  assert.equal(b.bench.value.length, 1); // 决策 10：移出一律回替补
+  assert.equal(b.bench.value[0].id, 12);
+});
+
+test('仅守备投手被拖到守备位 → fieldingPitcherId 清除（不双槽渲染）', () => {
+  const b = board();
+  b.placeAtSlot(P(3), 'P');
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 决策 6b：投手转仅守备（fp=3）
+  assert.equal(b.fieldingPitcherId.value, 3);
+  b.placeAtSlot(P(3), 'C'); // 仅守备投手拖到已占的 C → 顶替，原 C 回池
+  assert.equal(b.fieldingPitcherId.value, null);
+  assert.equal(b.slotOfRow('P'), null);
+  assert.equal(b.slotOfRow('C').id, 3);
+  assert.equal(b.fieldingPitcherRequired.value, true); // 不再有仅守备投手，需重新指定
 });
 
 test('已有 DH 时拖人上投手丘 → 仅守备不进打线', () => {

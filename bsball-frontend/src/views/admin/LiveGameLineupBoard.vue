@@ -410,7 +410,9 @@ function panelMoveTo(code) {
 function panelRemove() {
   const p = panel.value?.player;
   if (!p) return;
-  board.value.sendBackToBench(p.id);
+  const dh = board.value.slotOfRow('DH');
+  if (dh && String(dh.id) === String(p.id)) board.value.removeDh();
+  else board.value.sendBackToBench(p.id);
   showNotice(board.value);
   closePanel();
 }
