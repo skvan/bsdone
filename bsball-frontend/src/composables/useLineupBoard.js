@@ -34,7 +34,8 @@ export function useLineupBoard(mode, teamId) {
   const fieldingPitcherRequired = computed(
     () => rows.value.length === baseCount.value && validation.value.ok && !hasP.value && fieldingPitcherId.value == null
   );
-  const fieldingPitcherOk = computed(() => !fieldingPitcherRequired.value || fieldingPitcherId.value != null);
+  // required 已蕴含「投手未指定」→ 「已就绪」即「不再需要指定」
+  const fieldingPitcherOk = computed(() => !fieldingPitcherRequired.value);
   const lineupComplete = computed(() => validation.value.ok && fieldingPitcherOk.value);
   const battingFull = computed(() => rows.value.filter((r) => !isPlaceholder(r)).length >= maxCount.value);
 
