@@ -4,6 +4,7 @@
     :class="[`lineup-card--${variant}`, `is-${state}`, { 'lineup-card--empty': !player }]"
     :data-player-id="player?.id"
     data-drag-handle
+    @click="onClick"
   >
     <template v-if="player">
       <span v-if="orderIndex" class="lineup-card__order">{{ orderIndex }}</span>
@@ -31,4 +32,11 @@ const props = defineProps({
   placeholderText: { type: String, default: '' },
 });
 const emit = defineEmits(['pick', 'open']);
+
+// 单击消歧（设计稿 §四.3/§四.4）：池/替补卡片 → 进入待放置态（点选点放）；
+// 已落位卡片（球场）→ 打开操作面板（面板内含「移到其他位置」，覆盖触屏移位场景）
+function onClick() {
+  if (props.variant === 'pool' || props.variant === 'bench') emit('pick', props.player);
+  else emit('open', props.player);
+}
 </script>
