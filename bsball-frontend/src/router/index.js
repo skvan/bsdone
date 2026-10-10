@@ -59,6 +59,7 @@ import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
 import LiveGameLineup from '../views/admin/LiveGameLineup.js';
+import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
 import Games from '../views/admin/Games.js';
@@ -193,10 +194,10 @@ const routes = [
             { path: 'events/:eventId/games/new', name: 'AdminGameNew', component: Games },
             { path: 'events/:eventId/games/:gameId/edit', name: 'AdminGameEdit', component: Games },
             { path: 'events/:eventId/games/:gameId/live', name: 'AdminGameLiveResume', component: LiveGame },
-            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineup },
+            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineupBoard },
             { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
             { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
-            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
+            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineupBoard },
             { path: 'history-records', name: 'AdminHistoryRecords', component: HistoryRecordList },
             { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList },
             // 平台资产页（超管；批次 4b Task 4b-4）：菜单 path=/admin/platform-asset 经后端菜单树下发至超管侧边栏

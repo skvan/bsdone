@@ -1,0 +1,80 @@
+/* 编辑阵容拖拽页样式（沿用 field-svg 配色语汇：草地 #2d7a32 系、土区 #d98a4a 系） */
+.live-game-lineup-board { padding: 16px; }
+
+.lineup-board-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.lineup-board-header .header-left { font-size: 16px; font-weight: 600; }
+
+.team-switch { margin: 8px 0 16px; }
+
+.lineup-board { display: grid; grid-template-columns: minmax(360px, 1.2fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr); gap: 16px; align-items: start; }
+
+/* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中） */
+.lineup-field { position: relative; width: 100%; }
+.lineup-field__bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.field-grass { fill: #2d7a32; }
+.field-grass-infield { fill: #2f8b36; }
+.field-dirt { fill: #d98a4a; opacity: 0.92; }
+.field-base-line { stroke: #fff; stroke-width: 2; fill: none; opacity: 0.9; }
+.field-base { fill: #fff; stroke: #8a5a2b; }
+.field-mound { fill: #c97f43; stroke: #fff; stroke-width: 1; }
+
+.lineup-slot {
+  position: absolute; transform: translate(-50%, -50%);
+  min-width: 84px; min-height: 52px; padding: 4px;
+  border: 2px dashed rgba(255, 255, 255, 0.85); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  cursor: pointer;
+}
+.lineup-slot__label { font-size: 11px; opacity: 0.9; }
+.lineup-slot--empty.lineup-slot--dh { border-color: #ffe08a; }
+.lineup-slot.is-pending { border-color: #67c23a; box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.35); animation: lineup-breath 1.1s ease-in-out infinite; }
+.lineup-slot.is-error { border-color: #f56c6c; animation: lineup-shake 0.3s 1; }
+@keyframes lineup-breath { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+@keyframes lineup-shake { 0%, 100% { transform: translate(-50%, -50%); } 25% { transform: translate(calc(-50% - 3px), -50%); } 75% { transform: translate(calc(-50% + 3px), -50%); } }
+
+/* 卡片 */
+.lineup-card {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 8px; border-radius: 8px; background: #fff; color: #303133;
+  border: 1px solid #dcdfe6; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  touch-action: none; user-select: none; cursor: grab;
+  font-size: 12px; line-height: 1.2;
+}
+.lineup-card--field { min-width: 76px; justify-content: center; }
+.lineup-card__number { font-weight: 700; color: #409eff; }
+.lineup-card__order { font-size: 10px; background: #409eff; color: #fff; border-radius: 6px; padding: 0 4px; }
+.lineup-card__badge { font-size: 10px; background: #fdf6ec; color: #e6a23c; border: 1px solid #f5dab1; border-radius: 6px; padding: 0 4px; }
+.lineup-card.is-pending { outline: 2px solid #67c23a; }
+.lineup-card.is-error { border-color: #f56c6c; }
+.lineup-card--dragging { opacity: 0.85; z-index: 9999; position: relative; }
+body.lineup-dragging { cursor: grabbing; }
+body.lineup-dragging .lineup-slot:not(.is-error) { border-color: rgba(103, 194, 58, 0.9); }
+body.lineup-dragging .lineup-slot--filled:not(.is-error) { border-color: #409eff; }
+
+/* 打线列表 */
+.lineup-batting__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-height: 96px; }
+.lineup-batting__row { display: grid; grid-template-columns: 20px 28px 1fr auto auto; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #e4e7ed; border-radius: 8px; background: #fff; }
+.lineup-batting__row.is-error { border-color: #f56c6c; background: #fef0f0; }
+.lineup-batting__handle { width: 14px; height: 18px; background: linear-gradient(#c0c4cc 0 2px, transparent 2px 6px, #c0c4cc 6px 8px, transparent 8px 12px, #c0c4cc 12px 14px, transparent 14px 18px); cursor: grab; }
+.lineup-batting__order { font-weight: 700; color: #409eff; }
+.lineup-batting__hint { color: #909399; font-size: 12px; }
+.lineup-batting__empty, .lineup-pool__empty { color: #909399; font-size: 12px; }
+
+/* 池与替补 */
+.lineup-pool { display: flex; flex-direction: column; gap: 12px; }
+.lineup-pool__section { border: 1px dashed #dcdfe6; border-radius: 10px; padding: 8px; min-height: 120px; }
+.lineup-pool__section--bench { border-style: solid; background: #fafcff; }
+.lineup-pool__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lineup-pool__cards { display: flex; flex-wrap: wrap; gap: 6px; }
+.lineup-pool__count { color: #909399; font-size: 12px; }
+
+.lineup-warn { margin-top: 10px; color: #f56c6c; font-size: 13px; }
+
+/* 移动端：球场撑满、上下堆叠、卡片字号上调 */
+@media (max-width: 768px) {
+  .lineup-board { grid-template-columns: 1fr; }
+  .lineup-card { font-size: 13px; padding: 8px 10px; }
+  .lineup-slot { min-width: 72px; min-height: 46px; }
+  .lineup-slot__label { font-size: 10px; }
+}
