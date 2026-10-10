@@ -28,6 +28,7 @@
 BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
 
 - 賽事即時錄入（Live Scoring）
+- 先發陣容編輯（拖放排兵：球員卡拖放至卡槽）
 - 球員 / 球隊管理
 - 比賽數據統計（打擊、投球、守備）
 - 多租戶架構（每支隊伍 / 聯盟獨立租戶）
@@ -195,6 +196,7 @@ Bsdone-project/
 原始 `.vue` 原始碼缺失（歷史倉庫與上游均無、無 source map），重建工程以 **編譯產物為規格** 分批次實施，重建版已隨 v2.0.0 雙軌上線生產：
 
 - 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；預設 `base=/bs-ball/`；重建版建置 `npm run build:next`，產物落 `/bs-ball-next/`）
+- 前端依賴：`interactjs`（^1.10.28）—— 編輯先發陣容頁的球員卡拖放與卡槽落點判定（`sortablejs` 等既有依賴保持不變）
 - 批次：B0 工程化 → B1 骨架與契約底座 → B2 認證族 → B3 標準 CRUD 族 → B4 領域族 → B5 LiveGame 家族
 - 雙軌現狀：舊版編譯產物 `/bs-ball/` 與重建版 `/bs-ball-next/` 並行（生產與測試一致）；網域經 `portal.html` 直通重建版；舊版保留可回退
 
