@@ -236,3 +236,39 @@ test('loadDraft：快照恢复（含占位行、替补、投手）', () => {
   assert.equal(b.bench.value.length, 1);
   assert.equal(b.fieldingPitcherId.value, 3);
 });
+
+test('sendToBench：DH 卡拖到替补区 → 走 removeDh，投手自动回打线、校验恢复', () => {
+  const b = board();
+  b.placeAtSlot(P(3), 'P');
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 决策 6b：投手转仅守备（fp=3）
+  b.sendToBench(12);          // 缺陷修复：走统一入口，不得绕过 removeDh
+  assert.equal(b.slotOfRow('DH'), null);
+  assert.ok(b.bench.value.some((p) => p.id === 12));
+  assert.equal(b.slotOfRow('P').id, 3); // 决策 16：仅守备投手自动回打线
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.fieldingPitcherId.value, 3);
+});
+
+test('sendToBench：纯池球员拖到替补区 → 直接进替补名单，打线不受影响', () => {
+  const b = board();
+  b.placeAtSlot(P(2), 'C');
+  const filled = b.rows.value.filter((r) => !isPlaceholder(r)).length;
+  b.sendToBench(5); // 5 既不在打线也不在替补（纯池球员）
+  assert.ok(b.bench.value.some((p) => p.id === 5));
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, filled);
+  assert.equal(b.slotOfRow('C').id, 2);
+});
+
+test('sendToBench：打线内普通球员拖到替补区 → 回替补、原行位还原为占位', () => {
+  const b = board();
+  b.placeAtSlot(P(2), 'C');
+  b.placeAtSlot(P(3), '1B');
+  b.sendToBench(2);
+  assert.ok(b.bench.value.some((p) => p.id === 2));
+  assert.equal(b.slotOfRow('C'), null);
+  assert.equal(b.slotOfRow('1B').id, 3);
+  // 原 C 行落为占位：非空行仅剩 1B 一人，占位行补足 9 行且恒排尾部
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 1);
+  assert.ok(b.rows.value.slice(1).every(isPlaceholder));
+});

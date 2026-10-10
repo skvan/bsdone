@@ -315,11 +315,8 @@ function handleDrop(player, target) {
   if (target.kind === 'slot') b.placeAtSlot(player, target.code);
   else if (target.kind === 'batting') b.addToBatting(player);
   else if (target.kind === 'bench') {
-    // 池球员 → 加入替补（sendBackToBench 只处理「在打线内 / 仅守备投手」，对纯池球员是空操作）
-    const inRows = b.rows.value.some((r) => !isPlaceholder(r) && String(r.id) === String(player.id));
-    const isFieldingPitcher = b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id);
-    if (inRows || isFieldingPitcher) b.sendBackToBench(player.id);
-    else b.setBench([...b.bench.value.map((p) => p.id), player.id]);
+    // 决策（DH / 打线内 / 仅守备投手 / 纯池球员）由规则层统一处理
+    b.sendToBench(player.id);
   }
   else if (target.kind === 'pool') {
     // 替补卡片拖回池 = 从替补名单移除（sendBackToBench 是「加入替补」，不可混用）
