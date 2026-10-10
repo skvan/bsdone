@@ -256,6 +256,20 @@ export function useLineupBoard(mode, teamId) {
     normalize();
   }
 
+  /** 放回替补区（统一入口）：DH 走 removeDh（含决策 16「仅守备投手自动回打线」联动）；
+   *  打线内 / 仅守备投手 → sendBackToBench；纯池球员 → 直接入替补名单 */
+  function sendToBench(playerId) {
+    const dh = slotRow(rows.value, 'DH');
+    if (dh && String(dh.id) === String(playerId)) return removeDh();
+    const inRows = findRowIndex(rows.value, playerId) >= 0;
+    const isFieldingPitcher =
+      fieldingPitcherId.value != null && String(fieldingPitcherId.value) === String(playerId);
+    if (inRows || isFieldingPitcher) return sendBackToBench(playerId);
+    if (!hasPlayer(bench.value, playerId)) {
+      setBench([...bench.value.map((p) => p.id), playerId]);
+    }
+  }
+
   function reorderBatting(from, to) {
     const filled = rows.value.filter((r) => !isPlaceholder(r));
     const empties = rows.value.filter((r) => isPlaceholder(r));
@@ -327,7 +341,7 @@ export function useLineupBoard(mode, teamId) {
     baseCount, maxCount, hasDh, hasP,
     validation, fieldingPitcherRequired, fieldingPitcherOk, lineupComplete, battingFull,
     slotOfRow, setRoster, loadDraft, reset,
-    placeAtSlot, addToBatting, sendBackToBench, reorderBatting,
+    placeAtSlot, addToBatting, sendBackToBench, sendToBench, reorderBatting,
     removeDh, setFieldingPitcher, setBench, applyTemplate, consumeNotice,
   };
 }
