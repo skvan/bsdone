@@ -4,7 +4,7 @@
     :class="[`lineup-card--${variant}`, `is-${state}`, { 'lineup-card--empty': !player }]"
     :data-player-id="player?.id"
     data-drag-handle
-    @click="onClick"
+    @click.stop="onClick"
   >
     <template v-if="player">
       <span v-if="orderIndex" class="lineup-card__order">{{ orderIndex }}</span>

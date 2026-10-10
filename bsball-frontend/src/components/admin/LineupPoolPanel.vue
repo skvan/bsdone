@@ -11,6 +11,7 @@
           :key="`pool-${p.id}`"
           :player="p"
           variant="pool"
+          @pick="emit('pick', $event)"
           @open="emit('open-panel', { player: p, from: 'pool' })"
         />
       </div>
@@ -28,6 +29,7 @@
           :key="`bench-${p.id}`"
           :player="p"
           variant="bench"
+          @pick="emit('pick', $event)"
           @open="emit('open-panel', { player: p, from: 'bench' })"
         />
       </div>
