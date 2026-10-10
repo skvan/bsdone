@@ -11,6 +11,7 @@
           :key="`pool-${p.id}`"
           :player="p"
           variant="pool"
+          :state="String(pendingPlayerId ?? '') === String(p.id) ? 'pending' : 'idle'"
           @pick="emit('pick', $event)"
           @open="emit('open-panel', { player: p, from: 'pool' })"
         />
@@ -29,6 +30,7 @@
           :key="`bench-${p.id}`"
           :player="p"
           variant="bench"
+          :state="String(pendingPlayerId ?? '') === String(p.id) ? 'pending' : 'idle'"
           @pick="emit('pick', $event)"
           @open="emit('open-panel', { player: p, from: 'bench' })"
         />
@@ -72,6 +74,8 @@ const props = defineProps({
   bench: { type: Array, default: () => [] },
   roster: { type: Array, default: () => [] },
   lineupIds: { type: Array, default: () => [] },
+  // 点选点放待放置的球员 id（用于卡片待放描边，设计稿 §四.3）
+  pendingPlayerId: { type: [Number, String], default: null },
 });
 const emit = defineEmits(['pick', 'open-panel', 'batch-change']);
 
