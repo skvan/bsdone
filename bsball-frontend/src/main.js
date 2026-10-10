@@ -2,6 +2,9 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import ElementPlus, { ElDialog, ElMessageBox } from 'element-plus';
 import 'element-plus/dist/index.css';
+// 暗色主题变量表（全部规则以 html.dark 门控，亮色零影响）；对齐旧版编译产物，
+// 缺失会导致深色主题下 --el-* 变量不切换，卡片/文字仍为亮色值（首页等门户页白底不可读）。
+import 'element-plus/theme-chalk/dark/css-vars.css';
 import App from './App.vue';
 import router from './router';
 import { i18n } from './i18n';
