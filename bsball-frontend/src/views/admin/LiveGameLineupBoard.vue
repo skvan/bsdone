@@ -168,7 +168,6 @@ import { FIELD_SLOTS, DH_SLOT } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
-import { getValidPositionOptions } from '../../utils/starterFieldingValidation';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
 import LineupPoolPanel from '../../components/admin/LineupPoolPanel.vue';
@@ -230,8 +229,6 @@ const homeTeamName = computed(() => teams.value.find((t) => t.id === setupForm.v
 const awayTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.awayTeamId)?.name ?? '客队');
 
 const errorIndices = computed(() => board.value.validation.value.errorRowIndices ?? []);
-const positionOptions = computed(() => [...getValidPositionOptions(mode.value)]);
-void positionOptions;
 
 // R1：球场卡槽视图（9 守备位 + DH）
 const fieldSlotViews = computed(() => {

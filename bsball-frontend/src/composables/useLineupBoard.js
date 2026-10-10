@@ -167,7 +167,8 @@ export function useLineupBoard(mode, teamId) {
   function placeAtSlot(player, code) {
     const target = String(code ?? '').toUpperCase();
     if (!target || player == null) return;
-    const inRows = findRowIndex(rows.value, player.id) >= 0;
+    const i = findRowIndex(rows.value, player.id);
+    const inRows = i >= 0;
 
     if (target === 'DH') {
       placeDh(player);
@@ -183,7 +184,6 @@ export function useLineupBoard(mode, teamId) {
       return;
     }
     if (inRows) {
-      const i = findRowIndex(rows.value, player.id);
       const cur = rows.value[i];
       if (posOf(cur) === target) return;
       const occ = slotRow(rows.value, target);
