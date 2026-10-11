@@ -141,7 +141,8 @@ MapRows --> Return["返回PageResult"]
   - GET /hit-spray/game/{gameId}：按比赛查询
   - GET /hit-spray/player/{playerId}/game/{gameId}：按选手+比赛查询
   - GET /hit-spray/team/{teamId}/game/{gameId}：按队伍+比赛查询
-- 用途：记录每次击球的落点坐标，用于可视化与分析
+- 用途：记录每次击球的落点坐标，用于可视化与分析（管理端热力图、管理端与门户的比赛详情「打击落点回放」）
+- 权限：`GET /hit-spray/game/{gameId}` 已注册至 sys_api 并对游客角色（guest）及全部角色授权（Flyway `V20261011090000__hit_spray_api_guest_grant.sql`），门户匿名访客可读；其余 hit-spray 接口未注册（对登录用户默认放行，游客不可访问）
 
 ### 数据钻取与多维分析
 - 钻取能力通过PlayerStatsMapper提供的分页接口实现，支持按事件/赛季/位置/主客场/左右打者/左右投手/比赛模式等多维切分
