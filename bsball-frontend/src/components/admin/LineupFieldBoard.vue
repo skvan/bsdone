@@ -23,6 +23,7 @@
         'lineup-slot--dh': slot.code === 'DH',
         'is-error': slot.error,
         'is-pending': slot.pending,
+        'is-drop-over': slot.code === hoverCode,
       }"
       :data-slot-code="slot.code"
       :ref="(el) => registerSlotEl(slot.code, el)"
@@ -54,7 +55,8 @@ import LineupPlayerCard from './LineupPlayerCard.vue';
 // 内野俯视图球场：SVG 背景铺满，卡槽用绝对定位（卡片是 DOM，便于拖拽与命中）
 const props = defineProps({
   slots: { type: Array, default: () => [] }, // [{code, player, orderIndex, badge, error, pending}]
-  mode: { type: String, default: '' },
+  // 拖拽悬停的卡槽代码（通知「松手会落在哪个卡槽」）
+  hoverCode: { type: String, default: '' },
 });
 const emit = defineEmits(['slot-click', 'card-open']);
 

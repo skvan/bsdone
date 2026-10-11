@@ -73,9 +73,14 @@ body.lineup-dragging { cursor: grabbing; }
 body.lineup-dragging .lineup-slot:not(.is-error) { border-color: rgba(103, 194, 58, 0.9); }
 body.lineup-dragging .lineup-slot--filled:not(.is-error) { border-color: #409eff; }
 
-/* 打线列表：收窄，行内只显示「N棒 名字 #号」；行是白底 → 必须显式深色文字（后台深色主题下继承字色为白，会看不见） */
-.lineup-batting__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; min-height: 96px; }
-.lineup-batting__row { display: grid; grid-template-columns: 14px auto 1fr auto; align-items: center; gap: 4px; padding: 5px 6px; border: 1px solid #e4e7ed; border-radius: 8px; background: #fff; color: #303133; font-size: 12px; }
+/* 打线列表：加可见边框标出「拖入 / 拖离」区域；行内只显示「N棒 名字 #号」；
+   行是白底 → 必须显式深色文字（后台深色主题下继承字色为白，会看不见） */
+.lineup-batting__list {
+  list-style: none; margin: 0; padding: 6px;
+  border: 2px dashed #c0c4cc; border-radius: 10px; min-height: 96px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.lineup-batting__row { display: grid; grid-template-columns: 14px auto 1fr auto; align-items: center; gap: 4px; padding: 5px 6px; border: 1px solid #e4e7ed; border-radius: 8px; background: #fff; color: #303133; font-size: 12px; user-select: none; }
 .lineup-batting__row.is-error { border-color: #f56c6c; background: #fef0f0; }
 .lineup-batting__handle { width: 14px; height: 18px; color: #909399; cursor: grab; }
 .lineup-batting__handle:hover { color: #409eff; }
@@ -84,6 +89,13 @@ body.lineup-dragging .lineup-slot--filled:not(.is-error) { border-color: #409eff
 .lineup-batting__number { color: #409eff; font-weight: 600; white-space: nowrap; }
 .lineup-batting__hint { color: #909399; font-size: 12px; }
 .lineup-batting__empty, .lineup-pool__empty { color: #909399; font-size: 12px; }
+.lineup-batting__empty { text-align: center; padding: 10px 4px; line-height: 1.6; }
+
+/* 拖拽中：可释放区域提示；指针当前所在区域加强为「选中」态（告诉用户松手会落在哪） */
+body.lineup-dragging .lineup-batting__list { border-color: #67c23a; }
+body.lineup-dragging .lineup-batting__list.is-drop-over { border-style: solid; box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.35); }
+body.lineup-dragging .lineup-slot.is-drop-over { border-color: #67c23a; border-style: solid; background: rgba(103, 194, 58, 0.28); box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.45); }
+body.lineup-dragging .lineup-pool__section.is-drop-over { border-color: #67c23a; border-style: solid; box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.35); }
 
 /* 池与替补：替补区是浅底 → 显式深色文字（深色主题下继承白字会看不见标题） */
 .lineup-pool { display: flex; flex-direction: column; gap: 12px; }

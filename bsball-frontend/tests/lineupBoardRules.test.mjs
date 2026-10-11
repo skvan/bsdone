@@ -62,15 +62,15 @@ test('池球员拖到已占用卡槽 → 顶替，原占用者回池（不在替
   assert.ok(b.pool.value.some((p) => p.id === 2));
 });
 
-test('打线内两行拖到占用槽 → 整体对调（棒次与位置一起换）', () => {
+test('打线内两行拖到占用槽 → 只换守备位，棒次（行序）不变', () => {
   const b = board();
   b.placeAtSlot(P(2), 'C');
   b.placeAtSlot(P(3), '1B');
   b.placeAtSlot(P(2), '1B');
-  assert.equal(b.rows.value[0].id, 3);
-  assert.equal(b.rows.value[0].position, 'C');
-  assert.equal(b.rows.value[1].id, 2);
-  assert.equal(b.rows.value[1].position, '1B');
+  assert.equal(b.rows.value[0].id, 2);
+  assert.equal(b.rows.value[0].position, '1B');
+  assert.equal(b.rows.value[1].id, 3);
+  assert.equal(b.rows.value[1].position, 'C');
 });
 
 test('打线内拖到空槽 → 只改守备位，棒次不变', () => {
@@ -80,6 +80,30 @@ test('打线内拖到空槽 → 只改守备位，棒次不变', () => {
   b.placeAtSlot(P(2), 'SS');
   assert.equal(b.rows.value[0].id, 2);
   assert.equal(b.rows.value[0].position, 'SS');
+});
+
+test('交换守备位后 fieldingPitcherId 跟随 P 位（棒次不变）', () => {
+  const b = board();
+  b.placeAtSlot(P(3), 'P');
+  b.placeAtSlot(P(2), '1B');
+  b.placeAtSlot(P(3), '1B');
+  assert.equal(b.slotOfRow('P').id, 2);
+  assert.equal(b.slotOfRow('1B').id, 3);
+  assert.equal(b.fieldingPitcherId.value, 2);
+  assert.equal(b.rows.value[0].id, 3);
+});
+
+test('打线内拖到已占用 DH 槽 → 对调守备位（棒次不动），原 DH 留在打线', () => {
+  const b = board();
+  b.placeAtSlot(P(2), '1B');
+  b.placeAtSlot(P(1), '2B');
+  b.placeAtSlot(P(5), 'DH'); // 池 → DH（placeDh 路径）
+  b.placeAtSlot(P(2), 'DH'); // 打线内 → 占用 DH 槽：应走对调而非 placeDh
+  assert.equal(b.slotOfRow('DH').id, 2);
+  assert.equal(b.slotOfRow('1B').id, 5);
+  assert.deepEqual(b.rows.value.slice(0, 3).map((r) => r.id), [2, 1, 5]); // 棒次不动
+  assert.equal(b.bench.value.length, 0); // 原 DH 未被移出
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 3);
 });
 
 test('移出 → 回替补、行数不变、空行归位尾部且校验报未指定守备位置', () => {

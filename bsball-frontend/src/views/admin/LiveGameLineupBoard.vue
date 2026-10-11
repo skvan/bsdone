@@ -84,12 +84,19 @@
       </el-radio-group>
 
       <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
-        <LineupFieldBoard ref="fieldBoard" :slots="fieldSlotViews" @slot-click="onSlotClick" @card-open="openPanel" />
+        <LineupFieldBoard
+          ref="fieldBoard"
+          :slots="fieldSlotViews"
+          :hover-code="hoverSlotCode"
+          @slot-click="onSlotClick"
+          @card-open="openPanel"
+        />
         <LineupBattingOrder
           ref="battingRef"
           :rows="board.rows.value"
           :error-indices="errorIndices"
           :max-count="board.maxCount.value"
+          :drop-hover="isBattingHover"
           @reorder="({ from, to }) => board.reorderBatting(from, to)"
           @row-open="(id) => openPanel({ player: findPlayer(id), from: 'batting' })"
         />
@@ -99,6 +106,7 @@
           :bench="board.bench.value"
           :roster="board.roster.value"
           :pending-player-id="pending ? pending.player.id : null"
+          :hover-kind="hoverPanelKind"
           :lineup-ids="board.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id)"
           @pick="onPick"
           @open-panel="openPanel"
@@ -165,7 +173,7 @@ import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
 import { FIELD_SLOTS, DH_SLOT } from '../../utils/lineupFieldPositions';
-import { isPlaceholder, posOf } from '../../utils/lineupBoardRules';
+import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
@@ -206,6 +214,7 @@ const panel = ref(null);            // 操作面板：{ player, from, code }
 const panelReplaceId = ref(null);   // 面板「更换球员」选择
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
+const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 
 // 与旧件 el() 文案逐字一致
 const rosterHint = computed(() => mode.value === 'SOFTBALL'
@@ -271,6 +280,13 @@ const fieldBoard = ref(null);
 const battingRef = ref(null);
 const poolRef = ref(null);
 
+// 拖拽悬停态分发：指针所在区域高亮「松手会落在这里」（无高亮 = 松手即移出阵容）
+const hoverSlotCode = computed(() => (dragHover.value?.kind === 'slot' ? dragHover.value.code : ''));
+const isBattingHover = computed(() => dragHover.value?.kind === 'batting');
+const hoverPanelKind = computed(() =>
+  dragHover.value?.kind === 'bench' || dragHover.value?.kind === 'pool' ? dragHover.value.kind : ''
+);
+
 const { bind, unbind, wasRecentDrag } = useLineupDrag({
   onDrop(el, target) {
     const playerId = el.dataset.playerId;
@@ -279,6 +295,7 @@ const { bind, unbind, wasRecentDrag } = useLineupDrag({
     if (!player) return;
     handleDrop(player, target);
   },
+  onHover(target) { dragHover.value = target; },
   onCancel() { clearPending(); },
 });
 
@@ -323,6 +340,15 @@ function handleDrop(player, target) {
     if (b.bench.value.some((p) => String(p.id) === String(player.id))) {
       b.setBench(b.bench.value.filter((p) => String(p.id) !== String(player.id)).map((p) => p.id));
     }
+  }
+  else if (target.kind === 'outside') {
+    // 松手处不在任何可释放区域（无高亮）= 移出：阵容内球员（含 DH / 仅守备投手）回替补；
+    // 池/替补卡片落在空白处 = 取消（与旧 onCancel 路径一致）
+    const inLineup =
+      findRowIndex(b.rows.value, player.id) >= 0 ||
+      (b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id));
+    if (inLineup) b.sendToBench(player.id);
+    else clearPending();
   }
   showNotice(b);
 }
@@ -787,8 +813,9 @@ onMounted(async () => {
     loading.value = false;
   }
   await nextTick();
-  // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）
-  bind(['.lineup-card'], getLayout);
+  // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）；
+  // 打线行亦可拖起（拖到卡槽=落位、拖离所有区域=移出打线），行内把手由 sortablejs 接管（ignoreFrom）
+  bind(['.lineup-card', '.lineup-batting__row'], getLayout);
 });
 
 onBeforeUnmount(() => unbind());

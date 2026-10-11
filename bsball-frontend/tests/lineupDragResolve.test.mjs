@@ -23,8 +23,9 @@ test('落到打线列表 / 替补区 / 池', () => {
   assert.deepEqual(resolveDropTarget(600, 100, layout), { kind: 'pool' });
 });
 
-test('都不命中返回 null', () => {
-  assert.equal(resolveDropTarget(700, 700, layout), null);
+test('不落入任何可释放区域 = outside（拖离选中区域即移除，无需离开画布）', () => {
+  assert.deepEqual(resolveDropTarget(150, 150, layout), { kind: 'outside' }); // 画布内草地
+  assert.deepEqual(resolveDropTarget(700, 700, layout), { kind: 'outside' }); // 页面空白
 });
 
 test('容差命中卡槽（触屏放大 1.2 倍）', () => {
@@ -33,7 +34,7 @@ test('容差命中卡槽（触屏放大 1.2 倍）', () => {
   assert.deepEqual(resolveDropTarget(130, 144, layout), { kind: 'slot', code: 'P' });
 });
 
-test('layout 缺省字段安全', () => {
-  assert.equal(resolveDropTarget(10, 10, {}), null);
+test('layout 缺省字段安全（无任何 rect = outside）', () => {
+  assert.deepEqual(resolveDropTarget(10, 10, {}), { kind: 'outside' });
   assert.deepEqual(resolveDropTarget(10, 10, { battingRect: rect(0, 0, 50, 50) }), { kind: 'batting' });
 });
