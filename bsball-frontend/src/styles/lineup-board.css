@@ -6,6 +6,12 @@
 
 .team-switch { margin: 8px 0 16px; }
 
+/* 待放置提示条：说明「卡槽呼吸闪烁」的含义与出口；深绿字兼顾深浅底对比 */
+.lineup-pending-hint {
+  margin: -8px 0 12px; padding: 6px 10px; border-radius: 8px;
+  background: rgba(103, 194, 58, 0.12); color: #529b2e; font-size: 13px;
+}
+
 /* 球场地带尽量宽（用户反馈：画布再大一点）；打线列表收窄 */
 .lineup-board { display: grid; grid-template-columns: minmax(460px, 2.2fr) minmax(170px, 0.55fr) minmax(240px, 0.85fr); gap: 14px; align-items: start; }
 

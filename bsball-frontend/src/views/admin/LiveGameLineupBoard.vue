@@ -83,6 +83,10 @@
         <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
       </el-radio-group>
 
+      <div v-if="pending" class="lineup-pending-hint">
+        待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
+      </div>
+
       <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
         <LineupFieldBoard
           ref="fieldBoard"
@@ -295,8 +299,11 @@ const { bind, unbind, wasRecentDrag } = useLineupDrag({
     if (!player) return;
     handleDrop(player, target);
   },
-  onHover(target) { dragHover.value = target; },
-  onCancel() { clearPending(); },
+  // 指针一移动即进入拖拽语境 → 退出待放置（纯长按原地释放 = 点击，不在此清，保证点选的切换/取消语义）
+  onHover(target) {
+    if (pending.value) clearPending();
+    dragHover.value = target;
+  },
 });
 
 function findPlayer(playerId) {
@@ -343,12 +350,11 @@ function handleDrop(player, target) {
   }
   else if (target.kind === 'outside') {
     // 松手处不在任何可释放区域（无高亮）= 移出：阵容内球员（含 DH / 仅守备投手）回替补；
-    // 池/替补卡片落在空白处 = 取消（与旧 onCancel 路径一致）
+    // 池/替补卡片落在空白处 = 取消（无副作用）
     const inLineup =
       findRowIndex(b.rows.value, player.id) >= 0 ||
       (b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id));
     if (inLineup) b.sendToBench(player.id);
-    else clearPending();
   }
   showNotice(b);
 }
@@ -358,6 +364,11 @@ function onPick(player) {
   if (wasRecentDrag()) return; // 拖拽结束后浏览器会补发一次 click → 与点选点放互斥（Task 1 spike 实测）
   if (pending.value && String(pending.value.player.id) === String(player.id)) return clearPending();
   pending.value = { player };
+}
+// 点卡片/卡槽以外区域 = 取消待放置（设计稿 §四.3；卡片 click 已 stop、卡槽在自身处理中清除，此处无需排除）
+function onDocClick() {
+  if (!pending.value) return;
+  clearPending();
 }
 function onSlotClick(code) {
   if (!pending.value) return;
@@ -375,6 +386,8 @@ function showNotice(b) {
 function openPanel(payloadOrCode) {
   // 拖拽结束后浏览器会补发一次 click → 与被拖卡片互斥（与 onPick 同源，Task 1 spike 实测）
   if (wasRecentDrag()) return;
+  // 打开面板 = 进入另一交互语境，退出待放置（球场卡片 click 带 .stop，document 监听收不到）
+  clearPending();
   let payload = payloadOrCode;
   // 球场卡片 card-open 只带 code，需回查球员
   if (typeof payloadOrCode === 'string') {
@@ -816,9 +829,13 @@ onMounted(async () => {
   // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）；
   // 打线行亦可拖起（拖到卡槽=落位、拖离所有区域=移出打线），行内把手由 sortablejs 接管（ignoreFrom）
   bind(['.lineup-card', '.lineup-batting__row'], getLayout);
+  document.addEventListener('click', onDocClick);
 });
 
-onBeforeUnmount(() => unbind());
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick);
+  unbind();
+});
 </script>
 
 <style scoped>

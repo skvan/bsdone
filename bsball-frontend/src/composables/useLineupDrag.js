@@ -28,7 +28,8 @@ export const DRAG_DELAY_MS = 180;
  */
 export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
   let interactables = [];
-  let lastDragEndAt = 0; // 供「拖拽后浏览器补发 click」的互斥判断（Task 1 spike 实测）
+  let lastDragEndAt = 0; // 供「拖拽后浏览器补发 click」的互斥判断（仅在真正拖动过时刷新）
+  let dragMoved = false; // 本次是否产生实际位移：interactjs delay 下「长按不动」也会 start，须与点击区分
   let moveLayout = null; // 拖起后布局已稳定 → 缓存一次，避免 move 高频全量取 rect
   let lastHoverKey = '';
 
@@ -58,6 +59,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             event.target.dataset.dragY = '0';
             event.target.classList.add('lineup-card--dragging');
             document.body.classList.add('lineup-dragging');
+            dragMoved = false;
             moveLayout = null;
             window.addEventListener('scroll', invalidateLayout, true);
             window.addEventListener('resize', invalidateLayout);
@@ -69,6 +71,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             el.dataset.dragX = String(Number(el.dataset.dragX ?? 0) + event.dx);
             el.dataset.dragY = String(Number(el.dataset.dragY ?? 0) + event.dy);
             el.style.transform = `translate(${el.dataset.dragX}px, ${el.dataset.dragY}px)`;
+            if (!dragMoved && Math.abs(Number(el.dataset.dragX)) + Math.abs(Number(el.dataset.dragY)) > 5) dragMoved = true;
             if (!moveLayout) moveLayout = getLayout?.() ?? null;
             const x = event.clientX ?? event.client?.x ?? 0;
             const y = event.clientY ?? event.client?.y ?? 0;
@@ -79,7 +82,6 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             document.body.classList.remove('lineup-dragging');
             window.removeEventListener('scroll', invalidateLayout, true);
             window.removeEventListener('resize', invalidateLayout);
-            lastDragEndAt = Date.now();
             event.target.style.transform = '';
             delete event.target.dataset.dragX;
             delete event.target.dataset.dragY;
@@ -87,6 +89,9 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             const y = event.clientY ?? event.client?.y ?? 0;
             const target = resolveDropTarget(x, y, getLayout?.());
             emitHover(null);
+            // 零位移（长按原地释放）= 点击：不吞浏览器 click、不触发落点动作
+            if (!dragMoved) return;
+            lastDragEndAt = Date.now();
             onDrop?.(event.target, target);
           },
           cancel(event) {
@@ -118,7 +123,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
     window.removeEventListener('resize', invalidateLayout);
   }
 
-  /** 拖拽结束后的一小段窗口内忽略 click（浏览器会在 mouseup 后补发一次卡片 click） */
+  /** 真正拖动过（有位移）的拖拽结束后的一小段窗口内忽略 click（浏览器会在 mouseup 后补发一次卡片 click） */
   function wasRecentDrag(thresholdMs = 250) {
     return Date.now() - lastDragEndAt < thresholdMs;
   }
