@@ -220,6 +220,7 @@ const selected = ref(null);
 const teamKey = ref('all');
 const batterKey = ref('all');
 const showTrails = ref(true);
+const focusMode = ref('none');
 const animIds = ref(new Set());
 const animTrails = ref([]);
 const animBalls = ref([]);
@@ -252,6 +253,7 @@ watch(() => props.gameId, (id) => load(id), { immediate: true });
 function resetView() {
   cancelAnim();
   selected.value = null;
+  focusMode.value = 'none';
   teamKey.value = 'all';
   batterKey.value = 'all';
 }
@@ -306,29 +308,38 @@ const visibleRecords = computed(() => {
 function onFilterChange() {
   cancelAnim();
   selected.value = null;
+  focusMode.value = 'none';
   if (batterKey.value !== 'all') {
     const batterStillVisible = batterOptions.value.some((b) => b.key === batterKey.value);
     if (!batterStillVisible) batterKey.value = 'all';
   }
 }
 
-const staticTrails = computed(() =>
-  visibleRecords.value
+// 聚焦模式（2026-10-11 用户裁定）：none=仅落点标记；single=仅选中球的轨迹；
+// group=「同时重播」后当前筛选下全部球的轨迹同屏
+const staticTrails = computed(() => {
+  let base = [];
+  if (focusMode.value === 'single' && selected.value) base = [selected.value];
+  else if (focusMode.value === 'group') base = visibleRecords.value;
+  return base
     .filter((r) => !animIds.value.has(r.id))
     .map((r) => ({
       id: r.id,
       d: battedPathD(r.sprayX, r.sprayY, battedShapeOf(r.bipCode).k),
       color: battedShapeColor(r.bipCode),
-    })),
-);
+    }));
+});
 
 function playSingle(record) {
   selected.value = record;
+  focusMode.value = 'single';
   startFlight([record]);
 }
 
 function playGroup() {
   if (!visibleRecords.value.length) return;
+  focusMode.value = 'group';
+  selected.value = null;
   startFlight(visibleRecords.value);
 }
 
