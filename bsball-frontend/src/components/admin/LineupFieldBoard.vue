@@ -23,17 +23,20 @@
         'lineup-slot--dh': slot.code === 'DH',
         'is-error': slot.error,
         'is-pending': slot.pending,
+        'is-drop-over': slot.code === hoverCode,
       }"
       :data-slot-code="slot.code"
       :ref="(el) => registerSlotEl(slot.code, el)"
       :style="slotStyle(slot.code)"
       @click="emit('slot-click', slot.code)"
     >
-      <span class="lineup-slot__label">{{ slot.label }}</span>
+      <template v-if="!slot.player">
+        <span class="lineup-slot__code">{{ slot.code }}</span>
+        <span class="lineup-slot__label">{{ slot.label }}</span>
+      </template>
       <LineupPlayerCard
-        v-if="slot.player"
+        v-else
         :player="slot.player"
-        :position="slot.code"
         :order-index="slot.orderIndex"
         :badge="slot.badge"
         variant="field"
@@ -52,15 +55,17 @@ import LineupPlayerCard from './LineupPlayerCard.vue';
 // 内野俯视图球场：SVG 背景铺满，卡槽用绝对定位（卡片是 DOM，便于拖拽与命中）
 const props = defineProps({
   slots: { type: Array, default: () => [] }, // [{code, player, orderIndex, badge, error, pending}]
-  mode: { type: String, default: '' },
+  // 拖拽悬停的卡槽代码（通知「松手会落在哪个卡槽」）
+  hoverCode: { type: String, default: '' },
 });
 const emit = defineEmits(['slot-click', 'card-open']);
 
 // 卡槽 = 9 个守备位 + DH；命中父组件传入的同 code 数据后合并
+// label 仅中文名（空槽时与 code 一起显示；已落位不显示任何位置文字）
 const renderSlots = computed(() =>
   [...FIELD_SLOTS, DH_SLOT].map((s) => ({
     code: s.code,
-    label: `${s.code} ${s.label}`,
+    label: s.label,
     ...(props.slots.find((x) => x.code === s.code) ?? {}),
   }))
 );

@@ -4,35 +4,39 @@
       <h4>打线顺序</h4>
       <span class="lineup-batting__hint">{{ filledCount }} / {{ maxCount }} 人</span>
     </div>
-    <ul ref="listEl" class="lineup-batting__list">
+    <ul ref="listEl" class="lineup-batting__list" :class="{ 'is-drop-over': dropHover }">
+      <li v-if="!filledRows.length" class="lineup-batting__empty">把球员拖到球场上，或直接拖进这里（不占守备位）</li>
       <li
         v-for="(row, index) in filledRows"
         :key="`p-${row.id}`"
         class="lineup-batting__row"
         :class="{ 'is-error': errorIndices.includes(index) }"
+        :data-player-id="row.id"
         @click="emit('row-open', row.id)"
       >
-        <span class="lineup-batting__handle drag-handle" />
-        <span class="lineup-batting__order">{{ index + 1 }}</span>
+        <el-icon class="lineup-batting__handle drag-handle" title="按住拖动排序"><Rank /></el-icon>
+        <span class="lineup-batting__order">{{ index + 1 }}棒</span>
         <span class="lineup-batting__name">{{ row.name }}</span>
         <span class="lineup-batting__number">#{{ row.number ?? '-' }}</span>
-        <span class="lineup-batting__pos">{{ posOf(row) }}</span>
       </li>
     </ul>
-    <p v-if="!filledRows.length" class="lineup-batting__empty">把球员拖到球场上，或直接拖进这里（不占守备位）</p>
   </div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Sortable from 'sortablejs';
-import { isPlaceholder, posOf } from '../../utils/lineupBoardRules';
+import { Rank } from '@element-plus/icons-vue';
+import { isPlaceholder } from '../../utils/lineupBoardRules';
 
 // 打线列表：只渲染非空行（下标即棒次），故 onEnd 的 oldIndex/newIndex 可直接喂 reorderBatting
+// 行可被页面绑定的 interactjs 拖起（data-player-id 供落点取人）；列表内排序走把手的 sortablejs
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   errorIndices: { type: Array, default: () => [] },
   maxCount: { type: Number, default: 10 },
+  // 拖拽悬停在本区域（页面下发，用于「松手会落在这里」高亮）
+  dropHover: { type: Boolean, default: false },
 });
 const emit = defineEmits(['reorder', 'row-open']);
 const listEl = ref(null);

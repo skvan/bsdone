@@ -1,6 +1,6 @@
 <template>
   <div class="lineup-pool">
-    <section ref="poolEl" class="lineup-pool__section">
+    <section ref="poolEl" class="lineup-pool__section" :class="{ 'is-drop-over': hoverKind === 'pool' }">
       <div class="lineup-pool__header">
         <h4>可用球员</h4>
         <span class="lineup-pool__count">{{ pool.length }}</span>
@@ -19,7 +19,7 @@
       <p v-if="!pool.length" class="lineup-pool__empty">该队名册已全部安排</p>
     </section>
 
-    <section ref="benchEl" class="lineup-pool__section lineup-pool__section--bench">
+    <section ref="benchEl" class="lineup-pool__section lineup-pool__section--bench" :class="{ 'is-drop-over': hoverKind === 'bench' }">
       <div class="lineup-pool__header">
         <h4>替补名单</h4>
         <el-button size="small" @click="batchVisible = true">批量添加</el-button>
@@ -76,6 +76,8 @@ const props = defineProps({
   lineupIds: { type: Array, default: () => [] },
   // 点选点放待放置的球员 id（用于卡片待放描边，设计稿 §四.3）
   pendingPlayerId: { type: [Number, String], default: null },
+  // 拖拽悬停的区域（'pool' | 'bench' | ''），用于「松手会落在这里」高亮
+  hoverKind: { type: String, default: '' },
 });
 const emit = defineEmits(['pick', 'open-panel', 'batch-change']);
 

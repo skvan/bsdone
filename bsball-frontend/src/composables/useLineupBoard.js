@@ -174,10 +174,16 @@ export function useLineupBoard(mode, teamId) {
     const inRows = i >= 0;
 
     if (target === 'DH') {
-      placeDh(player);
-      normalize();
-      syncPitcher();
-      return;
+      const dh = slotRow(rows.value, 'DH');
+      const dhOccupiedByOther = dh != null && String(dh.id) !== String(player.id);
+      // 已在打线 + DH 槽已被他人占用 → 落入下方通用「占用槽对调」分支（决策 #5 修订：棒次不动）；
+      // 其余情形（空 DH 槽 / 池 / 替补）走 placeDh（含决策 6b「放 DH → 投手移出打线」联动）
+      if (!inRows || !dhOccupiedByOther) {
+        placeDh(player);
+        normalize();
+        syncPitcher();
+        return;
+      }
     }
     // 决策 15：拖人上投手丘且已有 DH → 仅守备（不进打线）
     if (target === 'P' && !inRows && hasDh.value) {
@@ -194,12 +200,10 @@ export function useLineupBoard(mode, teamId) {
       if (!occ) {
         next[i] = { ...cur, position: target };
       } else {
-        // 两行整体对调：球员互换、各自带走的守备位 = 对方原来的守备位（棒次随之互换）
+        // 只换守备位：两行各自的棒次（行下标）保持不动（负责人口径：场上换位不连打序一起换）
         const j = findRowIndex(rows.value, occ.id);
-        const a = next[i];
-        const b = next[j];
-        next[i] = { ...b, position: posOf(a) };
-        next[j] = { ...a, position: posOf(b) };
+        next[i] = { ...cur, position: target };
+        next[j] = { ...occ, position: posOf(cur) };
       }
       rows.value = next;
     } else {
@@ -254,6 +258,20 @@ export function useLineupBoard(mode, teamId) {
     if (fieldingPitcherId.value != null && String(fieldingPitcherId.value) === String(player.id)) fieldingPitcherId.value = null;
     if (lastDhAddedFromPoolId.value != null && String(lastDhAddedFromPoolId.value) === String(player.id)) lastDhAddedFromPoolId.value = null;
     normalize();
+  }
+
+  /** 放回替补区（统一入口）：DH 走 removeDh（含决策 16「仅守备投手自动回打线」联动）；
+   *  打线内 / 仅守备投手 → sendBackToBench；纯池球员 → 直接入替补名单 */
+  function sendToBench(playerId) {
+    const dh = slotRow(rows.value, 'DH');
+    if (dh && String(dh.id) === String(playerId)) return removeDh();
+    const inRows = findRowIndex(rows.value, playerId) >= 0;
+    const isFieldingPitcher =
+      fieldingPitcherId.value != null && String(fieldingPitcherId.value) === String(playerId);
+    if (inRows || isFieldingPitcher) return sendBackToBench(playerId);
+    if (!hasPlayer(bench.value, playerId)) {
+      setBench([...bench.value.map((p) => p.id), playerId]);
+    }
   }
 
   function reorderBatting(from, to) {
@@ -327,7 +345,7 @@ export function useLineupBoard(mode, teamId) {
     baseCount, maxCount, hasDh, hasP,
     validation, fieldingPitcherRequired, fieldingPitcherOk, lineupComplete, battingFull,
     slotOfRow, setRoster, loadDraft, reset,
-    placeAtSlot, addToBatting, sendBackToBench, reorderBatting,
+    placeAtSlot, addToBatting, sendBackToBench, sendToBench, reorderBatting,
     removeDh, setFieldingPitcher, setBench, applyTemplate, consumeNotice,
   };
 }

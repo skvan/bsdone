@@ -83,13 +83,24 @@
         <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
       </el-radio-group>
 
+      <div v-if="pending" class="lineup-pending-hint">
+        待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
+      </div>
+
       <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
-        <LineupFieldBoard ref="fieldBoard" :slots="fieldSlotViews" @slot-click="onSlotClick" @card-open="openPanel" />
+        <LineupFieldBoard
+          ref="fieldBoard"
+          :slots="fieldSlotViews"
+          :hover-code="hoverSlotCode"
+          @slot-click="onSlotClick"
+          @card-open="openPanel"
+        />
         <LineupBattingOrder
           ref="battingRef"
           :rows="board.rows.value"
           :error-indices="errorIndices"
           :max-count="board.maxCount.value"
+          :drop-hover="isBattingHover"
           @reorder="({ from, to }) => board.reorderBatting(from, to)"
           @row-open="(id) => openPanel({ player: findPlayer(id), from: 'batting' })"
         />
@@ -99,6 +110,7 @@
           :bench="board.bench.value"
           :roster="board.roster.value"
           :pending-player-id="pending ? pending.player.id : null"
+          :hover-kind="hoverPanelKind"
           :lineup-ids="board.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id)"
           @pick="onPick"
           @open-panel="openPanel"
@@ -165,7 +177,7 @@ import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
 import { FIELD_SLOTS, DH_SLOT } from '../../utils/lineupFieldPositions';
-import { isPlaceholder, posOf } from '../../utils/lineupBoardRules';
+import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
@@ -206,6 +218,7 @@ const panel = ref(null);            // 操作面板：{ player, from, code }
 const panelReplaceId = ref(null);   // 面板「更换球员」选择
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
+const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 
 // 与旧件 el() 文案逐字一致
 const rosterHint = computed(() => mode.value === 'SOFTBALL'
@@ -271,6 +284,13 @@ const fieldBoard = ref(null);
 const battingRef = ref(null);
 const poolRef = ref(null);
 
+// 拖拽悬停态分发：指针所在区域高亮「松手会落在这里」（无高亮 = 松手即移出阵容）
+const hoverSlotCode = computed(() => (dragHover.value?.kind === 'slot' ? dragHover.value.code : ''));
+const isBattingHover = computed(() => dragHover.value?.kind === 'batting');
+const hoverPanelKind = computed(() =>
+  dragHover.value?.kind === 'bench' || dragHover.value?.kind === 'pool' ? dragHover.value.kind : ''
+);
+
 const { bind, unbind, wasRecentDrag } = useLineupDrag({
   onDrop(el, target) {
     const playerId = el.dataset.playerId;
@@ -279,7 +299,11 @@ const { bind, unbind, wasRecentDrag } = useLineupDrag({
     if (!player) return;
     handleDrop(player, target);
   },
-  onCancel() { clearPending(); },
+  // 指针一移动即进入拖拽语境 → 退出待放置（纯长按原地释放 = 点击，不在此清，保证点选的切换/取消语义）
+  onHover(target) {
+    if (pending.value) clearPending();
+    dragHover.value = target;
+  },
 });
 
 function findPlayer(playerId) {
@@ -315,17 +339,22 @@ function handleDrop(player, target) {
   if (target.kind === 'slot') b.placeAtSlot(player, target.code);
   else if (target.kind === 'batting') b.addToBatting(player);
   else if (target.kind === 'bench') {
-    // 池球员 → 加入替补（sendBackToBench 只处理「在打线内 / 仅守备投手」，对纯池球员是空操作）
-    const inRows = b.rows.value.some((r) => !isPlaceholder(r) && String(r.id) === String(player.id));
-    const isFieldingPitcher = b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id);
-    if (inRows || isFieldingPitcher) b.sendBackToBench(player.id);
-    else b.setBench([...b.bench.value.map((p) => p.id), player.id]);
+    // 决策（DH / 打线内 / 仅守备投手 / 纯池球员）由规则层统一处理
+    b.sendToBench(player.id);
   }
   else if (target.kind === 'pool') {
     // 替补卡片拖回池 = 从替补名单移除（sendBackToBench 是「加入替补」，不可混用）
     if (b.bench.value.some((p) => String(p.id) === String(player.id))) {
       b.setBench(b.bench.value.filter((p) => String(p.id) !== String(player.id)).map((p) => p.id));
     }
+  }
+  else if (target.kind === 'outside') {
+    // 松手处不在任何可释放区域（无高亮）= 移出：阵容内球员（含 DH / 仅守备投手）回替补；
+    // 池/替补卡片落在空白处 = 取消（无副作用）
+    const inLineup =
+      findRowIndex(b.rows.value, player.id) >= 0 ||
+      (b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id));
+    if (inLineup) b.sendToBench(player.id);
   }
   showNotice(b);
 }
@@ -335,6 +364,11 @@ function onPick(player) {
   if (wasRecentDrag()) return; // 拖拽结束后浏览器会补发一次 click → 与点选点放互斥（Task 1 spike 实测）
   if (pending.value && String(pending.value.player.id) === String(player.id)) return clearPending();
   pending.value = { player };
+}
+// 点卡片/卡槽以外区域 = 取消待放置（设计稿 §四.3；卡片 click 已 stop、卡槽在自身处理中清除，此处无需排除）
+function onDocClick() {
+  if (!pending.value) return;
+  clearPending();
 }
 function onSlotClick(code) {
   if (!pending.value) return;
@@ -352,6 +386,8 @@ function showNotice(b) {
 function openPanel(payloadOrCode) {
   // 拖拽结束后浏览器会补发一次 click → 与被拖卡片互斥（与 onPick 同源，Task 1 spike 实测）
   if (wasRecentDrag()) return;
+  // 打开面板 = 进入另一交互语境，退出待放置（球场卡片 click 带 .stop，document 监听收不到）
+  clearPending();
   let payload = payloadOrCode;
   // 球场卡片 card-open 只带 code，需回查球员
   if (typeof payloadOrCode === 'string') {
@@ -790,11 +826,16 @@ onMounted(async () => {
     loading.value = false;
   }
   await nextTick();
-  // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）
-  bind(['.lineup-card'], getLayout);
+  // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）；
+  // 打线行亦可拖起（拖到卡槽=落位、拖离所有区域=移出打线），行内把手由 sortablejs 接管（ignoreFrom）
+  bind(['.lineup-card', '.lineup-batting__row'], getLayout);
+  document.addEventListener('click', onDocClick);
 });
 
-onBeforeUnmount(() => unbind());
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick);
+  unbind();
+});
 </script>
 
 <style scoped>
