@@ -12,7 +12,7 @@
         :class="{ 'is-error': errorIndices.includes(index) }"
         @click="emit('row-open', row.id)"
       >
-        <span class="lineup-batting__handle drag-handle" />
+        <el-icon class="lineup-batting__handle drag-handle" title="按住拖动排序"><Rank /></el-icon>
         <span class="lineup-batting__order">{{ index + 1 }}棒</span>
         <span class="lineup-batting__name">{{ row.name }}</span>
         <span class="lineup-batting__number">#{{ row.number ?? '-' }}</span>
@@ -25,6 +25,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Sortable from 'sortablejs';
+import { Rank } from '@element-plus/icons-vue';
 import { isPlaceholder } from '../../utils/lineupBoardRules';
 
 // 打线列表：只渲染非空行（下标即棒次），故 onEnd 的 oldIndex/newIndex 可直接喂 reorderBatting
