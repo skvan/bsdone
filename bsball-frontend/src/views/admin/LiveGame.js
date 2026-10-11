@@ -51,6 +51,8 @@ import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
+import { BAT_SHAPES, battedShapeColor } from '../../utils/battedBallFlight';
+import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -5856,6 +5858,7 @@ var sg={
       de("击球结果"),Jl(),l.flow=null;
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
+      pushHitSpray(e.playType,0,e.opts);
       const r={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
@@ -5905,6 +5908,7 @@ var sg={
       de("击球结果"),l.flow=null;
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
+      pushHitSpray(e.playType,0,e.opts);
       const r={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
@@ -8616,10 +8620,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       )
     }
-    const BAT_SHAPES={
-      g:[0,450],hg:[0,450],b:[0,450],ld:[.14,600],fly:[.32,850],pop:[.32,700]
-    }
-    ,battedTrail=x(null);
+    const battedTrail=x(null);
     function battedShapeOf(e){
       const t=BAT_SHAPES[Ls(e??"")??""]??[.14,600];
       return {
@@ -8632,7 +8633,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
     }
     function battedFlyTo(e,t,a,s){
-      const r=battedShapeOf(a),p=battedGeo(e,t,r.k),g=++chainAnimSeq,m=performance.now(),y=q=>r.k===0?{
+      const r=battedShapeOf(a),p=battedGeo(e,t,r.k),clr=battedShapeColor(a),g=++chainAnimSeq,m=performance.now(),y=q=>r.k===0?{
         x:240+(e-240)*q,y:555+(t-555)*q
       }
       :{
@@ -8645,15 +8646,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Xn.value=240,Yn.value=555,ka.value=!0,(function w(q){
         if(g!==chainAnimSeq){
           battedTrail.value&&(battedTrail.value={
-            d:b(1)
+            d:b(1),color:clr
           });
           return
         }
         const x=Math.min((q-m)/r.ms,1),k=1-Math.pow(1-x,3),C0=y(k);
         Xn.value=C0.x,Yn.value=C0.y,battedTrail.value={
-          d:b(k)
+          d:b(k),color:clr
         },x<1?requestAnimationFrame(w):(battedTrail.value={
-          d:b(1)
+          d:b(1),color:clr
         }
         ,s||setTimeout(()=>{
           g===chainAnimSeq&&(ka.value=!1)
@@ -8715,7 +8716,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(T2?.sprayX!=null&&T2?.sprayY!=null){
         const S2=battedShapeOf(e.bipCode),G2=battedGeo(T2.sprayX,T2.sprayY,S2.k);
         battedTrail.value={
-          d:S2.k===0?`M 240 555 L ${T2.sprayX} ${T2.sprayY}`:`M 240 555 Q ${G2.cx} ${G2.cy} ${T2.sprayX} ${T2.sprayY}`
+          d:S2.k===0?`M 240 555 L ${T2.sprayX} ${T2.sprayY}`:`M 240 555 Q ${G2.cx} ${G2.cy} ${T2.sprayX} ${T2.sprayY}`,color:battedShapeColor(e.bipCode)
         }
       }
       const a=e.steps??[];
@@ -9525,6 +9526,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       )
     }
+    function pushHitSpray(resultCode,rbi,spray){
+      const record=LgHitSprayRecord({
+        gameId:Lt.value??R.value??0,
+        batter:be.value,
+        teamId:Pa.value[l.isTop?"away":"home"]?.id??0,
+        inning:l.inning,
+        isTop:l.isTop,
+        batterOrder:l.batterIndex[l.isTop?"away":"home"]+1,
+        outs:l.outs,
+        runners:l.runners
+      }
+      ,resultCode,rbi,spray);
+      record&&l.hitSprayQueue.push(record)
+    }
     function bt(e,t,a){
       l.abCatchRecorded=null;
       if(!["BB","HBP"].includes(e)&&!_o())return;
@@ -9533,20 +9548,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&e!=="DP"&&e!=="TP"&&(t=_i(t));
-      const s=(b,w=0)=>{
-        if(!a?.sprayX||!a?.sprayY)return;
-        const P=Io(a.sprayZone,a.sprayFieldPos);
-        if(!P)return;
-        const A=be.value;
-        if(Se.value,!A)return;
-        const T=l.isTop?"away":"home",Y=Pa.value[T]?.id??0,j=l.batterIndex[T]+1,ee=[];
-        l.runners[1]&&ee.push(1),l.runners[2]&&ee.push(2),l.runners[3]&&ee.push(3);
-        const V=ee.length>0?ee.join(","):void 0;
-        l.hitSprayQueue.push({
-          gameId:Lt.value??R.value??0,playerId:Number(A.id),teamId:Y,inning:l.inning,half:l.isTop?"top":"bottom",batterOrder:j,outsBefore:l.outs,runnersBefore:V,resultCode:b,bipCode:a.bipCode,rbi:w,sprayX:a.sprayX,sprayY:a.sprayY,sprayZone:P,sprayDepth:a.sprayDepth
-        }
-        )
-      };
+      const s=(b,w=0)=>pushHitSpray(b,w,a);
       if(e==="H1"&&$l("H1",1,t,a)||e==="H2"&&$l("H2",2,t,a)||e==="H3"&&$l("H3",3,t,a)||e==="E"&&$l("E",1,t,a)||e==="FC"&&!1||e==="DP"&&Mi("DP",2,t,a)||e==="TP"&&Mi("TP",3,t,a)||e==="BB"&&rr("BB",t,a)||e==="HBP"&&rr("HBP",t,a))return;
       ["BB","HBP"].includes(e)||(de(e==="HR"?"击球结果-HR":e==="IPHR"?"击球结果-IPHR":"击球结果"),Jl()),l.flow=null;
       const r=be.value,p=Se.value;
@@ -9600,7 +9602,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           r.stats.batting.r=(r.stats.batting.r??0)+1
         }
-        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}（${r.name}：${b}打点）`),D(m)
+        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}（${r.name}：${b}打点）`),D(m),s("IPHR",b)
       }
       else if(e==="BB"){
         const b=ei();
@@ -9628,16 +9630,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         Ge(b),l.outs++,Ipy(),r.stats.batting.sf=(r.stats.batting.sf??0)+1,Dn(t),l.abCatchRecorded={
           pos:t[0]??null,chain:[...t],inning:l.inning,half:l.isTop
         }
-        ,g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}${sfRbi?`（${r.name}：1打点）`:""}`,m=Rt(m)
+        ,g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}${sfRbi?`（${r.name}：1打点）`:""}`,m=Rt(m),s("SF",sfRbi?1:0)
       }
-      else if(e==="SH")bo(r),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m);
+      else if(e==="SH")bo(r),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m),s("SH",0);
       else if(e==="E"){
         Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const b of t){
           const w=Vt(b);
           w?.stats?.fielding&&(w.stats.fielding.e=(w.stats.fielding.e??0)+1)
         }
-        g="E",m=String(a?.bipCode??"").includes(":sac:e")?y(`${r.name}: 失误 + 牺牲打 (Error + Sac)`):`${r.name}: ${Un("E",t)||"失误 (E) 上垒"}`,D(m)
+        g="E",m=String(a?.bipCode??"").includes(":sac:e")?y(`${r.name}: 失误 + 牺牲打 (Error + Sac)`):`${r.name}: ${Un("E",t)||"失误 (E) 上垒"}`,D(m),s("E",0)
       }
       else if(e==="FC"){
         const fc_options=[];
@@ -9668,7 +9670,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ),ni(r,2),Qn(w,P),os(2,Gt(r,"双杀"),"双杀出局",{
           pbp:!1
         }
-        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("DP",t),g="DP",m=`${r.name}: ${Un("DP",t)||"双杀 (DP)"}`,m=Rt(m)
+        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("DP",t),g="DP",m=`${r.name}: ${Un("DP",t)||"双杀 (DP)"}`,m=Rt(m),s("DP",0)
       }
       else if(e==="TP"){
         const w=Gn(1,l.runners,r,["safe"]),P=[];
@@ -9684,13 +9686,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ),ni(r,3),Qn(w,P),os(3,Gt(r,"三杀"),"三杀出局",{
           pbp:!1
         }
-        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("TP",t),g="DP",m=`${r.name}: 三杀 (TP)`,m=Rt(m)
+        ),r.stats.batting.ab=(r.stats.batting.ab??0)+1,applyChainFieldingStats("TP",t),g="DP",m=`${r.name}: 三杀 (TP)`,m=Rt(m),s("TP",0)
       }
       l.balls=0,l.strikes=0,Je(g,m),is(e),Qe()
     }
     function fcApply(fc_choice,r,t,a){
       if(fc_choice==null)return;
       if(fc_choice==="0"){
+        pushHitSpray("E",0,a);
         Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const fc_b of t){
           const fc_w=Vt(fc_b);
@@ -9705,6 +9708,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("无效选择","warning");
         return
       }
+      pushHitSpray("FC",0,a);
       const fc_out=l.runners[fc_base],fc_old={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
@@ -10714,7 +10718,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,-1),n("circle",{
           class:"field-home",cx:"240",cy:"555",r:"12",opacity:"0"
         }
-        ,null,-1)])]),c(battedTrail)?(h(),C("path",{key:"batted",class:"batted-trail",d:c(battedTrail).d},null,8,["d"])):W("",!0),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
+        ,null,-1)])]),c(battedTrail)?(h(),C("path",{key:"batted",class:"batted-trail",d:c(battedTrail).d,style:c(battedTrail).color?{
+          stroke:c(battedTrail).color
+        }:null},null,8,["d","style"])):W("",!0),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
           key:td.key,x1:td.x1,y1:td.y1,x2:td.x2,y2:td.y2,class:re(["chain-trail",ti===c(chainTrail).length-1?"chain-trail--solid":`chain-trail--l${Math.min(4,c(chainTrail).length-1-ti)}`])
         }
         ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
