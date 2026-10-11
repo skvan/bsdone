@@ -17,19 +17,29 @@ export const FIELD_SLOTS = [
 /** DH 卡槽固定在本垒侧（打击位，不守备） */
 export const DH_SLOT = { code: 'DH', label: '指定打击', x: 348, y: 424 };
 
-export const ALL_SLOT_CODES = [...FIELD_SLOTS.map((s) => s.code), DH_SLOT.code];
+/** XF 卡槽：垒球第 10 守备位（自由人），中列、二垒身后与外野之间（对齐旧件观赛页 field 布局的相对位置） */
+export const XF_SLOT = { code: 'XF', label: '自由人', x: 200, y: 192 };
 
-const SLOT_MAP = new Map([...FIELD_SLOTS, DH_SLOT].map((s) => [s.code, s]));
+const ALL_SLOTS = [...FIELD_SLOTS, XF_SLOT, DH_SLOT];
+
+/** 该赛制下球场上的全部卡槽：垒球含 XF（自由人）；DH 恒在末位 */
+export function slotsForMode(mode) {
+  return mode === 'SOFTBALL' ? [...ALL_SLOTS] : [...FIELD_SLOTS, DH_SLOT];
+}
+
+export const ALL_SLOT_CODES = ALL_SLOTS.map((s) => s.code);
+
+const SLOT_MAP = new Map(ALL_SLOTS.map((s) => [s.code, s]));
 
 /** @returns {{code:string,label:string,x:number,y:number}|null} */
 export function slotDef(code) {
   return SLOT_MAP.get(String(code ?? '').toUpperCase()) ?? null;
 }
 
-/** 9 个守备位（不含 DH） */
+/** 守备位（9 常规位 + 垒球 XF；不含 DH） */
 export function isFieldCode(code) {
   const c = String(code ?? '').toUpperCase();
-  return FIELD_SLOTS.some((s) => s.code === c);
+  return c === XF_SLOT.code || FIELD_SLOTS.some((s) => s.code === c);
 }
 
 /**

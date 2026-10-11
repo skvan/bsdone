@@ -3,27 +3,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FIELD_VIEWBOX, FIELD_SLOTS, DH_SLOT, ALL_SLOT_CODES,
+  FIELD_VIEWBOX, FIELD_SLOTS, DH_SLOT, XF_SLOT, ALL_SLOT_CODES, slotsForMode,
   slotDef, isFieldCode, hitTestSlot,
 } from '../src/utils/lineupFieldPositions.js';
 
-test('10 个卡槽：9 守备位 + DH，代码唯一', () => {
+test('卡槽全集：9 守备位 + XF + DH，代码唯一；slotsForMode 按赛制取列', () => {
   assert.equal(FIELD_SLOTS.length, 9);
+  assert.equal(XF_SLOT.code, 'XF');
+  assert.equal(XF_SLOT.label, '自由人');
   assert.equal(DH_SLOT.code, 'DH');
-  assert.equal(ALL_SLOT_CODES.length, 10);
-  assert.equal(new Set(ALL_SLOT_CODES).size, 10);
+  assert.equal(ALL_SLOT_CODES.length, 11);
+  assert.equal(new Set(ALL_SLOT_CODES).size, 11);
+  const baseball = slotsForMode('BASEBALL');
+  assert.equal(baseball.length, 10);
+  assert.equal(baseball.at(-1).code, 'DH');
+  assert.ok(!baseball.some((s) => s.code === 'XF'));
+  const softball = slotsForMode('SOFTBALL');
+  assert.equal(softball.length, 11);
+  assert.deepEqual(softball.slice(-2).map((s) => s.code), ['XF', 'DH']);
 });
 
 test('坐标全部落在 viewBox 内', () => {
-  for (const s of [...FIELD_SLOTS, DH_SLOT]) {
+  for (const s of [...FIELD_SLOTS, XF_SLOT, DH_SLOT]) {
     assert.ok(s.x >= 0 && s.x <= FIELD_VIEWBOX.width, `${s.code} x 越界`);
     assert.ok(s.y >= 0 && s.y <= FIELD_VIEWBOX.height, `${s.code} y 越界`);
   }
 });
 
-test('isFieldCode：守备位 true、DH false', () => {
+test('isFieldCode：守备位（含垒球 XF）true、DH false', () => {
   assert.equal(isFieldCode('P'), true);
   assert.equal(isFieldCode('SS'), true);
+  assert.equal(isFieldCode('XF'), true);
   assert.equal(isFieldCode('DH'), false);
   assert.equal(isFieldCode('EP'), false);
 });

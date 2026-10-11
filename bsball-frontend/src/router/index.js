@@ -58,7 +58,6 @@ import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
-import LiveGameLineup from '../views/admin/LiveGameLineup.js';
 import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
