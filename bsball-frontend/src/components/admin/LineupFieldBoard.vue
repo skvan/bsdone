@@ -29,11 +29,13 @@
       :style="slotStyle(slot.code)"
       @click="emit('slot-click', slot.code)"
     >
-      <span class="lineup-slot__label">{{ slot.label }}</span>
+      <template v-if="!slot.player">
+        <span class="lineup-slot__code">{{ slot.code }}</span>
+        <span class="lineup-slot__label">{{ slot.label }}</span>
+      </template>
       <LineupPlayerCard
-        v-if="slot.player"
+        v-else
         :player="slot.player"
-        :position="slot.code"
         :order-index="slot.orderIndex"
         :badge="slot.badge"
         variant="field"
@@ -57,10 +59,11 @@ const props = defineProps({
 const emit = defineEmits(['slot-click', 'card-open']);
 
 // 卡槽 = 9 个守备位 + DH；命中父组件传入的同 code 数据后合并
+// label 仅中文名（空槽时与 code 一起显示；已落位不显示任何位置文字）
 const renderSlots = computed(() =>
   [...FIELD_SLOTS, DH_SLOT].map((s) => ({
     code: s.code,
-    label: `${s.code} ${s.label}`,
+    label: s.label,
     ...(props.slots.find((x) => x.code === s.code) ?? {}),
   }))
 );

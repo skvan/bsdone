@@ -13,10 +13,9 @@
         @click="emit('row-open', row.id)"
       >
         <span class="lineup-batting__handle drag-handle" />
-        <span class="lineup-batting__order">{{ index + 1 }}</span>
+        <span class="lineup-batting__order">{{ index + 1 }}棒</span>
         <span class="lineup-batting__name">{{ row.name }}</span>
         <span class="lineup-batting__number">#{{ row.number ?? '-' }}</span>
-        <span class="lineup-batting__pos">{{ posOf(row) }}</span>
       </li>
     </ul>
     <p v-if="!filledRows.length" class="lineup-batting__empty">把球员拖到球场上，或直接拖进这里（不占守备位）</p>
@@ -26,7 +25,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Sortable from 'sortablejs';
-import { isPlaceholder, posOf } from '../../utils/lineupBoardRules';
+import { isPlaceholder } from '../../utils/lineupBoardRules';
 
 // 打线列表：只渲染非空行（下标即棒次），故 onEnd 的 oldIndex/newIndex 可直接喂 reorderBatting
 const props = defineProps({
