@@ -1,168 +1,164 @@
 <template>
   <div v-loading="loading" class="admin-page live-game-lineup-board">
-    <template v-if="mode === 'SOFTBALL'">
-      <LegacyLineup />
-    </template>
-    <template v-else>
-      <div class="lineup-board-header">
-        <span class="header-left">确认先发阵容 · {{ eventName }}</span>
-        <div class="header-actions">
-          <el-button v-if="hasPerm('business:lineup-template:manage')" @click="openTemplates(activeTeam)">应用阵容模板</el-button>
-          <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(false)">保存</el-button>
-          <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(true)">保存并退出</el-button>
-          <el-button type="primary" :disabled="!canStartEntry" :loading="saving" @click="startEntry">开始录入</el-button>
-        </div>
+    <div class="lineup-board-header">
+      <span class="header-left">确认先发阵容 · {{ eventName }}</span>
+      <div class="header-actions">
+        <el-button v-if="hasPerm('business:lineup-template:manage')" @click="openTemplates(activeTeam)">应用阵容模板</el-button>
+        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(false)">保存</el-button>
+        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(true)">保存并退出</el-button>
+        <el-button type="primary" :disabled="!canStartEntry" :loading="saving" @click="startEntry">开始录入</el-button>
       </div>
+    </div>
 
-      <!-- 设置区：与旧件同字段同校验 -->
-      <el-form :model="setupForm" label-width="90px" class="setup-form">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="比赛模式">
-              <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
-                <el-option label="棒球" value="BASEBALL" />
-                <el-option label="垒球" value="SOFTBALL" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="场地">
-              <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
-                <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="客队" required>
-              <el-select
-                v-model="setupForm.awayTeamId"
-                placeholder="选择客队"
-                filterable
-                style="width: 100%"
-                @change="loadRosters"
-              >
-                <el-option v-for="t in teams" :key="t.id" :label="t.name" :value="t.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="主队" required>
-              <el-select
-                v-model="setupForm.homeTeamId"
-                placeholder="选择主队"
-                filterable
-                style="width: 100%"
-                @change="loadRosters"
-              >
-                <el-option v-for="t in teams" :key="t.id" :label="t.name" :value="t.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="比赛时间">
-              <el-date-picker
-                v-model="gameTime"
-                type="datetime"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                placeholder="选择比赛时间"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-
-      <el-divider content-position="left">{{ rosterHint }}</el-divider>
-
-      <el-radio-group v-model="activeTeam" class="team-switch">
-        <el-radio-button value="away">{{ awayTeamName }}（客）</el-radio-button>
-        <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
-      </el-radio-group>
-
-      <div v-if="pending" class="lineup-pending-hint">
-        待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
-      </div>
-
-      <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
-        <LineupFieldBoard
-          ref="fieldBoard"
-          :slots="fieldSlotViews"
-          :hover-code="hoverSlotCode"
-          @slot-click="onSlotClick"
-          @card-open="openPanel"
-        />
-        <LineupBattingOrder
-          ref="battingRef"
-          :rows="board.rows.value"
-          :error-indices="errorIndices"
-          :max-count="board.maxCount.value"
-          :drop-hover="isBattingHover"
-          @reorder="({ from, to }) => board.reorderBatting(from, to)"
-          @row-open="(id) => openPanel({ player: findPlayer(id), from: 'batting' })"
-        />
-        <LineupPoolPanel
-          ref="poolRef"
-          :pool="board.pool.value"
-          :bench="board.bench.value"
-          :roster="board.roster.value"
-          :pending-player-id="pending ? pending.player.id : null"
-          :hover-kind="hoverPanelKind"
-          :lineup-ids="board.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id)"
-          @pick="onPick"
-          @open-panel="openPanel"
-          @batch-change="(ids) => board.setBench(ids)"
-        />
-      </div>
-
-      <div v-if="!board.validation.value.ok && board.validation.value.msg" class="lineup-warn">{{ board.validation.value.msg }}</div>
-      <div v-if="board.fieldingPitcherRequired.value && !board.fieldingPitcherOk.value" class="lineup-warn">须指定先发投手后才可开始录入</div>
-
-      <!-- 操作面板：更换球员 / 移到其他位置 / 移出 -->
-      <el-dialog :model-value="!!panel" :title="panelTitle" width="420px" @close="closePanel">
-        <div class="lineup-panel">
-          <section class="lineup-panel__block">
-            <h4>更换球员</h4>
-            <el-select
-              v-model="panelReplaceId"
-              filterable
-              clearable
-              placeholder="从名册选择替换球员"
-              style="width: 100%"
-              @change="panelReplace"
-            >
-              <el-option v-for="p in panelRosterOptions" :key="p.id" :label="`${p.name} #${p.number ?? '-'}`" :value="p.id" />
+    <!-- 设置区：与旧件同字段同校验 -->
+    <el-form :model="setupForm" label-width="90px" class="setup-form">
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="比赛模式">
+            <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
+              <el-option label="棒球" value="BASEBALL" />
+              <el-option label="垒球" value="SOFTBALL" />
             </el-select>
-          </section>
-          <section class="lineup-panel__block">
-            <h4>移到其他位置</h4>
-            <div class="lineup-panel__slots">
-              <el-button v-for="s in panelEmptySlots" :key="s.code" size="small" @click="panelMoveTo(s.code)">
-                {{ s.code }} {{ s.label }}
-              </el-button>
-              <span v-if="!panelEmptySlots.length" class="lineup-panel__empty">当前没有空余守备位</span>
-            </div>
-          </section>
-          <section class="lineup-panel__block">
-            <el-button type="danger" plain @click="panelRemove">移出（回替补）</el-button>
-          </section>
-        </div>
-      </el-dialog>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="场地">
+            <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
+              <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="客队" required>
+            <el-select
+              v-model="setupForm.awayTeamId"
+              placeholder="选择客队"
+              filterable
+              style="width: 100%"
+              @change="loadRosters"
+            >
+              <el-option v-for="t in teams" :key="t.id" :label="t.name" :value="t.id" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="主队" required>
+            <el-select
+              v-model="setupForm.homeTeamId"
+              placeholder="选择主队"
+              filterable
+              style="width: 100%"
+              @change="loadRosters"
+            >
+              <el-option v-for="t in teams" :key="t.id" :label="t.name" :value="t.id" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="比赛时间">
+            <el-date-picker
+              v-model="gameTime"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选择比赛时间"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
 
-      <!-- 模板对话框：应用前二次确认 -->
-      <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
-        <el-select v-model="templateDialog.selected" placeholder="选择阵容模板" filterable style="width: 100%">
-          <el-option v-for="t in templateDialog.list" :key="t.id" :label="t.name" :value="t.id" />
-        </el-select>
-        <template #footer>
-          <el-button @click="templateDialog.visible = false">取消</el-button>
-          <el-button type="primary" :disabled="templateDialog.selected == null" @click="applyTemplate">应用</el-button>
-        </template>
-      </el-dialog>
-    </template>
+    <el-divider content-position="left">{{ rosterHint }}</el-divider>
+
+    <el-radio-group v-model="activeTeam" class="team-switch">
+      <el-radio-button value="away">{{ awayTeamName }}（客）</el-radio-button>
+      <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
+    </el-radio-group>
+
+    <div v-if="pending" class="lineup-pending-hint">
+      待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
+    </div>
+
+    <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
+      <LineupFieldBoard
+        ref="fieldBoard"
+        :mode="mode"
+        :slots="fieldSlotViews"
+        :hover-code="hoverSlotCode"
+        @slot-click="onSlotClick"
+        @card-open="openPanel"
+      />
+      <LineupBattingOrder
+        ref="battingRef"
+        :rows="board.rows.value"
+        :error-indices="errorIndices"
+        :max-count="board.maxCount.value"
+        :drop-hover="isBattingHover"
+        @reorder="({ from, to }) => board.reorderBatting(from, to)"
+        @row-open="(id) => openPanel({ player: findPlayer(id), from: 'batting' })"
+      />
+      <LineupPoolPanel
+        ref="poolRef"
+        :pool="board.pool.value"
+        :bench="board.bench.value"
+        :roster="board.roster.value"
+        :pending-player-id="pending ? pending.player.id : null"
+        :hover-kind="hoverPanelKind"
+        :lineup-ids="board.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id)"
+        @pick="onPick"
+        @open-panel="openPanel"
+        @batch-change="(ids) => board.setBench(ids)"
+      />
+    </div>
+
+    <div v-if="!board.validation.value.ok && board.validation.value.msg" class="lineup-warn">{{ board.validation.value.msg }}</div>
+    <div v-if="board.fieldingPitcherRequired.value && !board.fieldingPitcherOk.value" class="lineup-warn">须指定先发投手后才可开始录入</div>
+
+    <!-- 操作面板：更换球员 / 移到其他位置 / 移出 -->
+    <el-dialog :model-value="!!panel" :title="panelTitle" width="420px" @close="closePanel">
+      <div class="lineup-panel">
+        <section class="lineup-panel__block">
+          <h4>更换球员</h4>
+          <el-select
+            v-model="panelReplaceId"
+            filterable
+            clearable
+            placeholder="从名册选择替换球员"
+            style="width: 100%"
+            @change="panelReplace"
+          >
+            <el-option v-for="p in panelRosterOptions" :key="p.id" :label="`${p.name} #${p.number ?? '-'}`" :value="p.id" />
+          </el-select>
+        </section>
+        <section class="lineup-panel__block">
+          <h4>移到其他位置</h4>
+          <div class="lineup-panel__slots">
+            <el-button v-for="s in panelEmptySlots" :key="s.code" size="small" @click="panelMoveTo(s.code)">
+              {{ s.code }} {{ s.label }}
+            </el-button>
+            <span v-if="!panelEmptySlots.length" class="lineup-panel__empty">当前没有空余守备位</span>
+          </div>
+        </section>
+        <section class="lineup-panel__block">
+          <el-button type="danger" plain @click="panelRemove">移出（回替补）</el-button>
+        </section>
+      </div>
+    </el-dialog>
+
+    <!-- 模板对话框：应用前二次确认 -->
+    <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
+      <el-select v-model="templateDialog.selected" placeholder="选择阵容模板" filterable style="width: 100%">
+        <el-option v-for="t in templateDialog.list" :key="t.id" :label="t.name" :value="t.id" />
+      </el-select>
+      <template #footer>
+        <el-button @click="templateDialog.visible = false">取消</el-button>
+        <el-button type="primary" :disabled="templateDialog.selected == null" @click="applyTemplate">应用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -176,14 +172,13 @@ import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
-import { FIELD_SLOTS, DH_SLOT } from '../../utils/lineupFieldPositions';
+import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
 import LineupPoolPanel from '../../components/admin/LineupPoolPanel.vue';
-import LegacyLineup from './LiveGameLineup.js';
 import '../../styles/lineup-board.css';
 
 // 兜底：保证 v-loading 指令在 <script setup> 下可解析（与全局注册等价）
@@ -249,7 +244,7 @@ const fieldSlotViews = computed(() => {
   const rows = b.rows.value;
   const filledRows = rows.filter((r) => !isPlaceholder(r));
   const errIdx = b.validation.value.errorRowIndices ?? [];
-  return [...FIELD_SLOTS, DH_SLOT].map((slot) => {
+  return slotsForMode(mode.value).map((slot) => {
     const code = slot.code;
     const rowIndex = rows.findIndex((r) => !isPlaceholder(r) && posOf(r) === code);
     const row = rowIndex >= 0 ? rows[rowIndex] : null;
@@ -424,7 +419,7 @@ const panelRosterOptions = computed(() => {
 });
 const panelEmptySlots = computed(() => {
   const b = board.value;
-  return [...FIELD_SLOTS, DH_SLOT].filter((s) => b.slotOfRow(s.code) == null);
+  return slotsForMode(mode.value).filter((s) => b.slotOfRow(s.code) == null);
 });
 
 function panelReplace(playerId) {

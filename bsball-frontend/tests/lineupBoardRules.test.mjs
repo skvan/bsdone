@@ -296,3 +296,33 @@ test('sendToBench：打线内普通球员拖到替补区 → 回替补、原行�
   assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 1);
   assert.ok(b.rows.value.slice(1).every(isPlaceholder));
 });
+
+test('垒球：XF 自由人落位，10 人（P+八守位+XF）投手制校验通过', () => {
+  const b = board('SOFTBALL');
+  b.placeAtSlot(P(3), 'P');
+  fill8(b);
+  b.placeAtSlot(P(12), 'XF');
+  assert.equal(b.rows.value.length, 10);
+  assert.equal(b.slotOfRow('XF').id, 12);
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.fieldingPitcherRequired.value, false);
+  assert.equal(b.lineupComplete.value, true);
+});
+
+test('垒球：DH 制 10 人需指定先发投手；补投手回打线即 11 人打击', () => {
+  const b = board('SOFTBALL');
+  fill8(b);
+  b.placeAtSlot(P(12), 'XF');
+  b.placeAtSlot(P(9), 'DH');
+  assert.equal(b.rows.value.length, 10);
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.fieldingPitcherRequired.value, true);
+  assert.equal(b.lineupComplete.value, false);
+  b.setFieldingPitcher(3);
+  assert.equal(b.lineupComplete.value, true);
+  b.addToBatting(P(3));
+  assert.equal(b.rows.value.length, 11);
+  assert.equal(posOf(b.rows.value[10]), 'P');
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.lineupComplete.value, true);
+});

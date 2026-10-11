@@ -226,7 +226,7 @@ export function useLineupBoard(mode, teamId) {
       String(fieldingPitcherId.value) === String(player.id) &&
       !slotRow(rows.value, 'P');
     if (!isFieldingPitcher && slotRow(rows.value, 'DH')) {
-      notice.value = `DH 已有人；棒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
+      notice.value = `DH 已有人；${mode.value === 'SOFTBALL' ? '垒球' : '棒球'}现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
       return;
     }
     takeFirstEmpty(makeRow(player, teamId.value, isFieldingPitcher ? 'P' : 'DH'));
