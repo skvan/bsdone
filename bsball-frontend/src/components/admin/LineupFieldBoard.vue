@@ -49,21 +49,23 @@
 
 <script setup>
 import { computed } from 'vue';
-import { FIELD_VIEWBOX, FIELD_SLOTS, DH_SLOT, slotDef } from '../../utils/lineupFieldPositions';
+import { FIELD_VIEWBOX, slotsForMode, slotDef } from '../../utils/lineupFieldPositions';
 import LineupPlayerCard from './LineupPlayerCard.vue';
 
 // 内野俯视图球场：SVG 背景铺满，卡槽用绝对定位（卡片是 DOM，便于拖拽与命中）
 const props = defineProps({
   slots: { type: Array, default: () => [] }, // [{code, player, orderIndex, badge, error, pending}]
+  // 赛制：垒球在球场上多一个 XF（自由人）卡槽
+  mode: { type: String, default: '' },
   // 拖拽悬停的卡槽代码（通知「松手会落在哪个卡槽」）
   hoverCode: { type: String, default: '' },
 });
 const emit = defineEmits(['slot-click', 'card-open']);
 
-// 卡槽 = 9 个守备位 + DH；命中父组件传入的同 code 数据后合并
+// 卡槽 = slotsForMode 按赛制取列（棒球 9 守备位 + DH；垒球再加 XF）；命中父组件传入的同 code 数据后合并
 // label 仅中文名（空槽时与 code 一起显示；已落位不显示任何位置文字）
 const renderSlots = computed(() =>
-  [...FIELD_SLOTS, DH_SLOT].map((s) => ({
+  slotsForMode(props.mode).map((s) => ({
     code: s.code,
     label: s.label,
     ...(props.slots.find((x) => x.code === s.code) ?? {}),

@@ -25,7 +25,8 @@
       </div>
       <div class="ghr-body">
         <div class="ghr-field">
-          <svg viewBox="0 0 480 640" class="ghr-svg" role="img" aria-label="击球落点场地视图">
+          <!-- viewBox 与录入页场地一致（-300 -150 1080 780）：保证左/右外野边线、界外区域完整显示 -->
+          <svg viewBox="-300 -150 1080 780" class="ghr-svg" role="img" aria-label="击球落点场地视图">
             <defs>
               <linearGradient id="ghr-grass" x1="0%" y1="100%" x2="0%" y2="0%">
                 <stop offset="0%" stop-color="#2d7a32" />
@@ -472,16 +473,14 @@ function zoneText(r) {
 }
 
 .ghr-field {
-  flex: 0 0 320px;
-  max-width: 320px;
+  flex: 0 0 430px;
+  max-width: 430px;
 }
 
 .ghr-svg {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 8px;
-  background: #1d6a22;
 }
 
 .ghr-trail--static {
@@ -624,7 +623,7 @@ function zoneText(r) {
 
   .ghr-field {
     flex: 0 0 auto;
-    max-width: 420px;
+    max-width: 100%;
     width: 100%;
   }
 

@@ -12,8 +12,9 @@
   background: rgba(103, 194, 58, 0.12); color: #529b2e; font-size: 13px;
 }
 
-/* 球场地带尽量宽（用户反馈：画布再大一点）；打线列表收窄 */
-.lineup-board { display: grid; grid-template-columns: minmax(460px, 2.2fr) minmax(170px, 0.55fr) minmax(240px, 0.85fr); gap: 14px; align-items: start; }
+/* 球场一屏自适应：列宽由「屏内可用高度」反推上限（球场高 = 宽 × 470/400 ≤ 100vh − 445，445 为页头/表单/队伍切换等上方固定占用）
+   → 全部守位卡槽一屏可见：矮屏自动变小、高屏自动变大；右侧两列设上限防高屏过宽，整版居中 */
+.lineup-board { display: grid; grid-template-columns: minmax(300px, calc((100vh - 445px) * 400 / 470)) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
 
 /* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中） */
 .lineup-field { position: relative; width: 100%; }
@@ -28,7 +29,7 @@
 /* 卡槽：小正方形（用户反馈）；空槽显示代号+中文，已落位只放卡片、不显示位置文字 */
 .lineup-slot {
   position: absolute; transform: translate(-50%, -50%);
-  width: 64px; height: 64px; padding: 3px; box-sizing: border-box;
+  width: clamp(56px, 15%, 72px); aspect-ratio: 1 / 1; padding: 3px; box-sizing: border-box;
   border: 2px dashed rgba(255, 255, 255, 0.85); border-radius: 8px;
   background: rgba(0, 0, 0, 0.18); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
@@ -117,6 +118,5 @@ body.lineup-dragging .lineup-pool__section.is-drop-over { border-color: #67c23a;
 @media (max-width: 768px) {
   .lineup-board { grid-template-columns: 1fr; }
   .lineup-card--pool, .lineup-card--bench { font-size: 13px; padding: 8px 10px; }
-  .lineup-slot { width: 58px; height: 58px; }
   .lineup-slot__label { font-size: 8px; }
 }
