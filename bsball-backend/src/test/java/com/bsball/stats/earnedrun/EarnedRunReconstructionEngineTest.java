@@ -101,25 +101,67 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
-    @DisplayName("捕逸造成的得分保留非自責原因")
-    void marksPassedBallRunUnearned() {
+    @DisplayName("捕逸後無失誤仍會得分時判為自責分")
+    void marksPassedBallRunEarnedWhenItWouldScoreWithoutPassedBall() {
+        ScoringRunner runner = new ScoringRunner(
+                11, 101, RunnerOrigin.PASSED_BALL, null, null, true);
         EarnedRunDecision decision = engine.reconstruct(List.of(
-                play(1, 1, 0, 0, false, ScoringRunner.passedBall(11, 101))))
+                play(1, 1, 0, 0, false, runner)))
                 .decisions().get(0);
+
+        assertEquals(EarnedRunStatus.EARNED, decision.status());
+        assertEquals(null, decision.reason());
+    }
+
+    @Test
+    @DisplayName("捕逸是得分必要原因時判為非自責分")
+    void marksPassedBallRunUnearnedWhenItWouldNotScoreWithoutPassedBall() {
+        ScoringRunner runner = new ScoringRunner(
+                11, 101, RunnerOrigin.PASSED_BALL, null, null, false);
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, runner))).decisions().get(0);
 
         assertEquals(EarnedRunStatus.UNEARNED, decision.status());
         assertEquals(UnearnedRunReason.PASSED_BALL, decision.reason());
     }
 
     @Test
-    @DisplayName("暴投與捕逸使用不同的非自責原因")
-    void distinguishesWildPitchFromPassedBall() {
+    @DisplayName("未判斷捕逸影響時列為待覆核，不臆測自責狀態")
+    void keepsPassedBallRunPendingWhenMisplayImpactIsUnknown() {
+        EarnedRunDecision decision = engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, ScoringRunner.passedBall(11, 101))))
+                .decisions().get(0);
+
+        assertEquals(EarnedRunStatus.PENDING, decision.status());
+        assertEquals(1, engine.reconstruct(List.of(
+                play(1, 1, 0, 0, false, ScoringRunner.passedBall(11, 101))))
+                .pitcherTotals().get(101L).pendingRuns());
+    }
+
+    @Test
+    @DisplayName("正常局面下暴投造成的得分應為自責分")
+    void marksWildPitchRunEarnedWithoutErrorExtendedInning() {
         EarnedRunDecision decision = engine.reconstruct(List.of(
                 play(1, 1, 0, 0, false, ScoringRunner.wildPitch(11, 101))))
                 .decisions().get(0);
 
+        assertEquals(EarnedRunStatus.EARNED, decision.status());
+        assertEquals(null, decision.reason());
+    }
+
+    @Test
+    @DisplayName("失誤已造成理論第三出局後，暴投得分仍為非自責分")
+    void marksWildPitchRunUnearnedAfterErrorExtendedInning() {
+        List<EarnedRunPlay> plays = List.of(
+                play(1, 1, 1, 1, false),
+                play(2, 2, 0, 1, false),
+                play(3, 3, 1, 1, false),
+                play(4, 4, 0, 0, false, ScoringRunner.wildPitch(11, 101)));
+
+        EarnedRunDecision decision = engine.reconstruct(plays).decisions().get(0);
+
         assertEquals(EarnedRunStatus.UNEARNED, decision.status());
-        assertEquals(UnearnedRunReason.WILD_PITCH, decision.reason());
+        assertEquals(UnearnedRunReason.ERROR_EXTENDED_INNING, decision.reason());
     }
 
     @Test
@@ -193,14 +235,13 @@ class EarnedRunReconstructionEngineTest {
     }
 
     @Test
-    @DisplayName("第三好球捕逸造成的得分，應保留捕逸的非自責原因")
-    void marksDroppedThirdStrikeRunUnearned() {
+    @DisplayName("第三好球捕逸得分未判明無捕逸結果時列待覆核")
+    void keepsDroppedThirdStrikeRunPendingUntilReviewed() {
         EarnedRunDecision decision = engine.reconstruct(List.of(
                 play(1, 1, 0, 0, false,
                         ScoringRunner.passedBall(61, 101)))).decisions().get(0);
 
-        assertEquals(EarnedRunStatus.UNEARNED, decision.status());
-        assertEquals(UnearnedRunReason.PASSED_BALL, decision.reason());
+        assertEquals(EarnedRunStatus.PENDING, decision.status());
     }
 
     @Test

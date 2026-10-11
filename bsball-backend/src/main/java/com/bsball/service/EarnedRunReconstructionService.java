@@ -254,6 +254,7 @@ public class EarnedRunReconstructionService {
         entity.setRunnerId(decision.runnerId());
         entity.setResponsiblePitcherId(decision.responsiblePitcherId());
         entity.setRunnerOrigin(runner.origin().name());
+        entity.setWouldScoreWithoutMisplay(runner.wouldScoreWithoutMisplay());
         entity.setEarnedStatus(decision.status().name());
         entity.setUnearnedReason(decision.reason() == null ? null : decision.reason().name());
         if (runner.overrideStatus() != null) {

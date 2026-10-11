@@ -19,6 +19,7 @@ public class EarnedRunDecisionEntity {
     private Long runnerId;
     private Long responsiblePitcherId;
     private String runnerOrigin;
+    private Boolean wouldScoreWithoutMisplay;
     private String earnedStatus;
     private String unearnedReason;
     private Long overriddenBy;
@@ -40,6 +41,10 @@ public class EarnedRunDecisionEntity {
     }
     public String getRunnerOrigin() { return runnerOrigin; }
     public void setRunnerOrigin(String runnerOrigin) { this.runnerOrigin = runnerOrigin; }
+    public Boolean getWouldScoreWithoutMisplay() { return wouldScoreWithoutMisplay; }
+    public void setWouldScoreWithoutMisplay(Boolean wouldScoreWithoutMisplay) {
+        this.wouldScoreWithoutMisplay = wouldScoreWithoutMisplay;
+    }
     public String getEarnedStatus() { return earnedStatus; }
     public void setEarnedStatus(String earnedStatus) { this.earnedStatus = earnedStatus; }
     public String getUnearnedReason() { return unearnedReason; }

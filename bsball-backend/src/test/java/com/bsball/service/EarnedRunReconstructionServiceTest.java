@@ -80,6 +80,7 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(700L, captor.getValue().getResponsiblePitcherId());
         assertEquals("EARNED", captor.getValue().getEarnedStatus());
         assertEquals("NORMAL", captor.getValue().getRunnerOrigin());
+        assertEquals(null, captor.getValue().getWouldScoreWithoutMisplay());
     }
 
     @Test
@@ -95,9 +96,10 @@ class EarnedRunReconstructionServiceTest {
         ScoringRunner runner = new ScoringRunner(
                 55L,
                 700L,
-                com.bsball.stats.earnedrun.RunnerOrigin.NORMAL,
+                com.bsball.stats.earnedrun.RunnerOrigin.PASSED_BALL,
                 com.bsball.stats.earnedrun.EarnedRunStatus.UNEARNED,
-                com.bsball.stats.earnedrun.UnearnedRunReason.MANUAL_OVERRIDE);
+                com.bsball.stats.earnedrun.UnearnedRunReason.MANUAL_OVERRIDE,
+                false);
 
         service.replaceHalfInning(1L, 20L, 3, "bottom", 9L, List.of(
                 new EarnedRunPlay(102L, 1, 0, 0, false, List.of(runner))), 500L);
@@ -107,6 +109,7 @@ class EarnedRunReconstructionServiceTest {
         verify(decisionRepository).save(captor.capture());
         assertEquals(9L, captor.getValue().getOverriddenBy());
         assertNotNull(captor.getValue().getOverriddenAt());
+        assertEquals(false, captor.getValue().getWouldScoreWithoutMisplay());
     }
 
     @Test

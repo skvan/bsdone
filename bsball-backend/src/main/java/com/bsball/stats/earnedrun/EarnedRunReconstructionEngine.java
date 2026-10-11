@@ -58,17 +58,19 @@ public final class EarnedRunReconstructionEngine {
         if (runner.origin() == RunnerOrigin.TIE_BREAK) {
             return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.TIE_BREAK_RUNNER);
         }
-        if (runner.origin() == RunnerOrigin.PASSED_BALL) {
-            return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.PASSED_BALL);
-        }
-        if (runner.origin() == RunnerOrigin.WILD_PITCH) {
-            return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.WILD_PITCH);
-        }
         if (runner.origin() == RunnerOrigin.INTERFERENCE) {
             return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.INTERFERENCE);
         }
         if (inningExtendedByError) {
             return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.ERROR_EXTENDED_INNING);
+        }
+        if (runner.origin() == RunnerOrigin.PASSED_BALL) {
+            if (runner.wouldScoreWithoutMisplay() == null) {
+                return decision(play, runner, EarnedRunStatus.PENDING, null);
+            }
+            if (!runner.wouldScoreWithoutMisplay()) {
+                return decision(play, runner, EarnedRunStatus.UNEARNED, UnearnedRunReason.PASSED_BALL);
+            }
         }
         return decision(play, runner, EarnedRunStatus.EARNED, null);
     }

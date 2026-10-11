@@ -54,7 +54,10 @@ function normalizeScoringRunners(runners, pitcherId, resultCode) {
     overrideStatus: PENDING_RULINGS.has(runner.overrideStatus)
       ? 'PENDING'
       : runner.overrideStatus ?? null,
-    overrideReason: runner.overrideReason ?? null
+    overrideReason: runner.overrideReason ?? null,
+    wouldScoreWithoutMisplay: typeof runner.wouldScoreWithoutMisplay === 'boolean'
+      ? runner.wouldScoreWithoutMisplay
+      : null
   })).filter((runner) => runner.runnerId && runner.responsiblePitcherId);
 }
 
