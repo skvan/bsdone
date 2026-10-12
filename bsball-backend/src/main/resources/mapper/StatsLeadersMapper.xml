@@ -114,7 +114,7 @@
         COALESCE(MAX(tsg.scheduled_games), 0) * 3
     </sql>
 
-    <!-- 位置筛选时（positionCode 非空）仅汇总该位置出场的比赛，样本天然较小，故放宽规定打席资格线 -->
+    <!-- 位置筛选榜只按实际出赛守位决定入榜，不套用打击资格线。 -->
     <sql id="battingLeaderHaving">
         <if test="applyQualification != null and applyQualification and (positionCode == null or positionCode == '')">
             HAVING COALESCE(SUM(s.pa), SUM(s.ab), 0) &gt;= <include refid="battingMinPaThresholdExpr"/>
@@ -122,8 +122,10 @@
     </sql>
 
     <sql id="pitchingLeaderHaving">
-        HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
-        <if test="applyQualification != null and applyQualification">
+        <if test="positionCode == null or positionCode == ''">
+            HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+        </if>
+        <if test="applyQualification != null and applyQualification and (positionCode == null or positionCode == '')">
             AND COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt;= <include refid="pitchingMinIpOutsThresholdExpr"/>
         </if>
     </sql>
@@ -141,22 +143,16 @@
         </if>
     </sql>
 
-    <!-- 投球榜：按球员资料 positions 筛选（保留旧逻辑） -->
+    <!-- 位置资格按每场实际守位记录判断；EXISTS 防止多条守位记录重复放大统计。 -->
     <sql id="positionFilterRoster">
         <if test="positionCode != null and positionCode != ''">
-            AND p.positions IS NOT NULL AND (
-                p.positions LIKE CONCAT('%"', #{positionCode}, '"%')
-                OR p.positions LIKE CONCAT('%', #{positionCode}, '%')
+            AND EXISTS (
+                SELECT 1 FROM bs_game_player_stat position_stat
+                WHERE position_stat.game_id = s.game_id
+                  AND position_stat.team_id = s.team_id
+                  AND position_stat.player_id = s.player_id
+                  AND position_stat.position = #{positionCode}
             )
-        </if>
-    </sql>
-
-    <!-- 打击榜：按球员实际上场位置（game_player_stat.position）筛选，且仅统计该场该位置的先发（fielding_gs=1）。
-         不再使用档案 p.positions，避免漏掉档案未登记位置、却实际打过该位置的球员（防守榜同样基于 s.position）。 -->
-    <sql id="positionFilterStat">
-        <if test="positionCode != null and positionCode != ''">
-            AND s.position = #{positionCode}
-            AND COALESCE(s.fielding_gs, 0) = 1
         </if>
     </sql>
 
@@ -232,12 +228,26 @@
             <include refid="teamScheduledGamesSubquery"/>
         ) tsg ON tsg.team_id = p.team_id
         WHERE (
-            (s.ab IS NOT NULL AND s.ab &gt;= 0) OR (s.pa IS NOT NULL AND s.pa &gt;= 0)
+            (
+                ((s.ab IS NOT NULL AND s.ab &gt;= 0) OR (s.pa IS NOT NULL AND s.pa &gt;= 0))
+                AND COALESCE(s.is_pitcher, 0) = 0
+            )
+            <if test="positionCode != null and positionCode != ''">
+                OR (
+                    COALESCE(s.is_pitcher, 0) = 0
+                    OR NOT EXISTS (
+                        SELECT 1 FROM bs_game_player_stat batting_stat
+                        WHERE batting_stat.game_id = s.game_id
+                          AND batting_stat.team_id = s.team_id
+                          AND batting_stat.player_id = s.player_id
+                          AND COALESCE(batting_stat.is_pitcher, 0) = 0
+                    )
+                )
+            </if>
         )
-        AND COALESCE(s.is_pitcher, 0) = 0
         <include refid="gameFilter"/>
         <include refid="playerLeaderFilter"/>
-        <include refid="positionFilterStat"/>
+        <include refid="positionFilterRoster"/>
         <include refid="teamSplitFilter"/>
         GROUP BY s.player_id, p.name, p.short_name, p.team_id, p.positions, p.number, t.name
         <include refid="battingLeaderHaving"/>
@@ -289,9 +299,16 @@
             COALESCE(NULLIF(TRIM(p.name), ''), p.short_name) AS playerName,
             p.team_id AS teamId,
             t.name AS teamName,
-            (CASE WHEN p.positions IS NOT NULL AND p.positions != '' AND p.positions != '[]'
-                THEN TRIM(REPLACE(REPLACE(REPLACE(SUBSTR(p.positions, 2, LENGTH(p.positions)-2), '"', ''), '[', ''), ']', ''))
-                ELSE NULL END) AS position,
+            <choose>
+                <when test="positionCode != null and positionCode != ''">
+                    #{positionCode} AS position,
+                </when>
+                <otherwise>
+                    (CASE WHEN p.positions IS NOT NULL AND p.positions != '' AND p.positions != '[]'
+                        THEN TRIM(REPLACE(REPLACE(REPLACE(SUBSTR(p.positions, 2, LENGTH(p.positions)-2), '"', ''), '[', ''), ']', ''))
+                        ELSE NULL END) AS position,
+                </otherwise>
+            </choose>
             p.number AS number,
             COUNT(DISTINCT s.game_id) AS gp,
             COALESCE(SUM(s.gs), 0) AS gs,
@@ -347,7 +364,18 @@
         LEFT JOIN (
             <include refid="teamScheduledGamesSubquery"/>
         ) tsg ON tsg.team_id = p.team_id
-        WHERE s.is_pitcher = 1 AND s.ip IS NOT NULL AND s.ip > 0
+        WHERE (
+            (s.is_pitcher = 1 AND s.ip IS NOT NULL AND s.ip > 0)
+            <if test="positionCode != null and positionCode != ''">
+                OR EXISTS (
+                    SELECT 1 FROM bs_game_player_stat position_stat
+                    WHERE position_stat.game_id = s.game_id
+                      AND position_stat.team_id = s.team_id
+                      AND position_stat.player_id = s.player_id
+                      AND position_stat.position = #{positionCode}
+                )
+            </if>
+        )
         <include refid="gameFilter"/>
         <include refid="playerLeaderFilter"/>
         <include refid="positionFilterRoster"/>
@@ -406,8 +434,13 @@
         JOIN bs_event e ON g.event_id = e.id
         JOIN bs_player p ON s.player_id = p.id AND p.deleted_at IS NULL
         LEFT JOIN bs_team t ON p.team_id = t.id
-        WHERE s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL)
+        WHERE (
+            (s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
+             AND (COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL))
+            <if test="positionCode != null and positionCode != ''">
+                OR s.position = #{positionCode}
+            </if>
+        )
         <if test="positionCode != null and positionCode != ''">
             AND s.position = #{positionCode}
         </if>
