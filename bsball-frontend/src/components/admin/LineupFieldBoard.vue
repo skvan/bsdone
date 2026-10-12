@@ -28,7 +28,7 @@
       :data-slot-code="slot.code"
       :ref="(el) => registerSlotEl(slot.code, el)"
       :style="slotStyle(slot.code)"
-      @click="emit('slot-click', slot.code)"
+      @click.stop="emit('slot-click', slot.code)"
     >
       <template v-if="!slot.player">
         <span class="lineup-slot__code">{{ slot.code }}</span>
@@ -40,8 +40,7 @@
         :order-index="slot.orderIndex"
         :badge="slot.badge"
         variant="field"
-        :state="slot.error ? 'error' : 'idle'"
-        @open="emit('card-open', slot.code)"
+        :state="cardState(slot)"
       />
     </div>
   </div>
@@ -54,13 +53,20 @@ import LineupPlayerCard from './LineupPlayerCard.vue';
 
 // 内野俯视图球场：SVG 背景铺满，卡槽用绝对定位（卡片是 DOM，便于拖拽与命中）
 const props = defineProps({
-  slots: { type: Array, default: () => [] }, // [{code, player, orderIndex, badge, error, pending}]
+  slots: { type: Array, default: () => [] }, // [{code, player, orderIndex, badge, error, pending, selfPending}]
   // 赛制：垒球在球场上多一个 XF（自由人）卡槽
   mode: { type: String, default: '' },
   // 拖拽悬停的卡槽代码（通知「松手会落在哪个卡槽」）
   hoverCode: { type: String, default: '' },
 });
-const emit = defineEmits(['slot-click', 'card-open']);
+const emit = defineEmits(['slot-click']);
+
+// 球场卡状态：校验错误 > 拿起（该槽球员正是当前持牌者）> 常态
+function cardState(slot) {
+  if (slot.error) return 'error';
+  if (slot.selfPending) return 'pending';
+  return 'idle';
+}
 
 // 卡槽 = slotsForMode 按赛制取列（棒球 9 守备位 + DH；垒球再加 XF）；命中父组件传入的同 code 数据后合并
 // label 仅中文名（空槽时与 code 一起显示；已落位不显示任何位置文字）
