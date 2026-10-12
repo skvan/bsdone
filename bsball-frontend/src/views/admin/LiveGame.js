@@ -17,6 +17,7 @@ import { fetchPlayersByTeam as Qc } from '../../api/business';
 import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
+import { decideRbiForRun, isDoublePlayThrowingErrorException } from '../../domain/liveGameRbi';
 import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -4465,8 +4466,10 @@ function pu(u,f,l){
     if(l.runners[3]&&l.runners[3]!==H){
       const N=l.runners[3],M=f[S++]??"safe";
       if(l.ensureBatting(N),M==="safe"){
-        const Rb=l.creditRBI!==!1;
-        l.addScore(1),Rb&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1,Rc++),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(LgAdvance({
+        const runCause=l.runCause??"BATTER_ACTION",wouldScoreWithoutError=l.wouldScoreWithoutError??null;
+        const Rb=decideRbiForRun({runCause,wouldScoreWithoutError,manualRbi:l.manualRbi});
+        const run={runner:N,batter:o,rbiDelta:Rb?1:0,pitcher:_,erDelta:1,origin:N.origin??"NORMAL",runCause,wouldScoreWithoutError,rbiCredit:Rb,rbiReason:runCause==="ERROR"?(Rb?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"):"BATTER_ACTION"};
+        l.recordRun?l.recordRun(1,run):l.addScore(1),Rb&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1,Rc++),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(LgAdvance({
           reasonCn:"安打得分",runner:N,from:3,to:4,rbiNote:Rb?`${o.name??"打者"}：${Rc}打点`:void 0
         }
         ))
@@ -4539,7 +4542,10 @@ function cu(u,f){
   const o=f.pitcher,_=f.runners;
   if(_[1]&&_[2]&&_[3]){
     const S=_[3],R=u[0]??"safe";
-    if(f.ensureBatting(S),R==="safe")f.addScore(1),l.stats.batting.rbi=(l.stats.batting.rbi??0)+1,S.stats.batting.r=(S.stats.batting.r??0)+1,addLivePitcherEarnedRuns(o);
+    if(f.ensureBatting(S),R==="safe"){
+      f.recordRun?f.recordRun(1,{runner:S,batter:l,rbiDelta:1,pitcher:o,erDelta:1,origin:"NORMAL",runCause:"WALK",rbiCredit:true,rbiReason:"FORCED_RUN"}):f.addScore(1);
+      l.stats.batting.rbi=(l.stats.batting.rbi??0)+1,S.stats.batting.r=(S.stats.batting.r??0)+1,addLivePitcherEarnedRuns(o)
+    }
     else{
       f.handleOut();
       const F=R==="out_int"?"妨碍守备出局 (Int.)":R==="out_force"?"封杀出局 (FO)":R==="out_tag"?"触杀出局 (TO)":R==="viol"?"跑垒违规 (Viol.)":"本垒出局 (Out)";
@@ -5866,11 +5872,11 @@ var sg={
       }
       
     }
-    function up(){
+    async function up(){
       const e=kt.value;
       if(!e)return;
       const t=at.value.map(a=>a.outcome==="out"&&a.outReason?"out_"+a.outReason:a.outcome);
-      qe.value=!1,kt.value=null,at.value=[],St.value=0,pp(e,t),fn.value=!1,cn.value=null
+      qe.value=!1,kt.value=null,at.value=[],St.value=0,await pp(e,t),fn.value=!1,cn.value=null
     }
     function $l(e,t,a,s){
       const r=$s(t,l.runners);
@@ -5918,7 +5924,7 @@ var sg={
       }
       )),St.value=0,cn.value=fu(1,l.runners,p,["safe"]),fn.value=!1,qe.value=!0,!0):!1
     }
-    function pp(e,t){
+    async function pp(e,t){
       if(e.kind==="walk"){
         cp(e,t);
         return
@@ -5927,7 +5933,7 @@ var sg={
         fp(e,t);
         return
       }
-      dp(e,t)
+      await dp(e,t)
     }
     function fp(e,t){
       de("击球结果"),Jl(),l.flow=null;
@@ -5973,13 +5979,13 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
       cu(t,{
-        runners:l.runners,batter:s,pitcher:r,addScore:Ct,handleOut:Bt,ensureBatting:y=>ue(y),addLog:D
+        runners:l.runners,batter:s,pitcher:r,addScore:Ct,recordRun:ls,handleOut:Bt,ensureBatting:y=>ue(y),addLog:D
       }
       ),fn.value||Ge(di(p,s));
       let g="OTHER",m="";
       e.playType==="BB"?(s.stats.batting.bb=(s.stats.batting.bb??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchBbHp=(r.stats.pitching.pitchBbHp??0)+1),g="BB",m=`${s.name}: 四坏 (BB)`,D(m,a??void 0),a&&(m=`${m} · ${a}`)):(s.stats.batting.hbp=(s.stats.batting.hbp??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchBbHp=(r.stats.pitching.pitchBbHp??0)+1),g="HBP",m=`${s.name}: 死球 (HBP)`,D(m,a??void 0),a&&(m=`${m} · ${a}`)),l.balls=0,l.strikes=0,Je(g,m),Qe()
     }
-    function dp(e,t){
+    async function dp(e,t){
       de("击球结果"),l.flow=null;
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
@@ -5988,10 +5994,30 @@ var sg={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
       ,p=e.playType==="H1"||e.playType==="H2"||e.playType==="H3"?uu(e.bases,r,t):null;
+      let dpException=!1,wouldScoreWithoutError=null;
+      if(e.playType==="E"&&r[1]&&l.outs<2&&!t.some(outcome=>String(outcome).startsWith("out"))){
+        const answer=await LgPick([
+          {key:"yes",label:"是：先造成一個出局，之後傳球失誤未完成雙殺"},
+          {key:"no",label:"否：不是此雙殺特例"}
+        ],"雙殺機會失誤","一壘有人且不到兩出局。請確認本球是否實際先造成一個出局，再因傳球失誤未完成雙殺。取消會放棄本次記錄。");
+        if(answer==null)return;
+        dpException=answer==="yes"&&isDoublePlayThrowingErrorException({
+          firstBaseOccupied:Boolean(r[1]),outsBefore:l.outs,outsAdded:1,throwingError:true,doublePlayCompleted:false
+        });
+      }
+      if(e.playType==="E"&&!dpException&&r[3]&&t[0]==="safe"){
+        const decision=await askErrorRunRbiDecision(r[3]);
+        if(decision==null)return;
+        wouldScoreWithoutError=decision.wouldScoreWithoutError
+      }
       pu(e.bases,t,{
-        creditRBI:e.playType!=="E",runners:l.runners,batter:a,pitcher:s,addScore:Ct,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
+        creditRBI:e.playType!=="E"||dpException,runCause:e.playType==="E"&&!dpException?"ERROR":dpException?"FC":"HIT",wouldScoreWithoutError,runners:l.runners,batter:a,pitcher:s,addScore:Ct,recordRun:ls,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
       }
       ),fn.value||Ge(Gn(e.bases,r,a,t));
+      if(dpException){
+        for(const base of [1,2,3])if(l.runners[base]===r[1])l.runners[base]=null;
+        Bt(Gt(r[1],"雙殺機會先取得一出局（後續傳球失誤，未完成雙殺）")),is("FC")
+      }
       const g=w=>au(w,{
         bipCode:e.opts?.bipCode,sprayZone:e.opts?.sprayZone,sprayFieldPos:e.opts?.sprayFieldPos,sprayX:e.opts?.sprayX,sprayY:e.opts?.sprayY,sprayDepth:e.opts?.sprayDepth
       }
@@ -6003,13 +6029,16 @@ var sg={
       else if(e.playType==="H3")a.stats.batting.h=(a.stats.batting.h??0)+1,a.stats.batting.triples=(a.stats.batting.triples??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchH=(s.stats.pitching.pitchH??0)+1),m="H3",y=g(`${a.name}: ${hn("H3")}`),D(y,p??void 0),p&&(y=`${y}，${p}`);
       else if(e.playType==="E"){
         a.stats.batting.ab=(a.stats.batting.ab??0)+1;
-        for(const w of e.fielders){
+        for(const w of dpException?[]:e.fielders){
           const P=Vt(w);
           P?.stats?.fielding&&(P.stats.fielding.e=(P.stats.fielding.e??0)+1)
         }
-        m="E",y=g(b?`${a.name}: 失误 + 牺牲打 (Error + Sac)`:`${a.name}: ${Un("E",e.fielders)||"失误 (E) 上垒"}`),D(y)
+        if(dpException){
+          applyChainFieldingStats("FC",e.fielders),m="FC",y=`${a.name}: 双杀机会传球失误，实际一出局，按野手选择记录（不计 E）`
+        }else m="E",y=g(b?`${a.name}: 失误 + 牺牲打 (Error + Sac)`:`${a.name}: ${Un("E",e.fielders)||"失误 (E) 上垒"}`);
+        D(y)
       }
-      l.balls=0,l.strikes=0,Je(m,y),Qe()
+      l.balls=0,l.strikes=0,Je(m,y,dpException?{doublePlayThrowingErrorException:!0}:null),Qe()
     }
     function La(e,t,a,s){
       const r=s??e.getBoundingClientRect(),p={
@@ -7193,8 +7222,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=ll(e),a=t.match(/\[[^\]]+\]\s*\[[^\]]+\]\s*(.*)$/),s=(a?a[1]:t).trim(),r=ks(e);
       return r?`${s}，${r}`:s
     }
-    function Je(e,t){
-      ve.value=e,i.value=t
+    let pendingPlayOptions=null;
+    function Je(e,t,options=null){
+      ve.value=e,i.value=t,pendingPlayOptions=options
     }
     function Zi(){
       const e=be.value;
@@ -7234,9 +7264,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         
       };
       const E={
-        id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null,wouldScoreWithoutMisplay:t.wouldScoreWithoutMisplay??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:w.options??null
+        id:w.id,inning:w.inning,half:w.half,sequence:Me.value.length+1,batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:jl.flatMap(t=>t.runner?.id!=null?[Number(t.runner.id)]:[]),scoringRunners:jl.flatMap(t=>t.runner?.id!=null?[{runnerId:Number(t.runner.id),responsiblePitcherId:Number(t.pitcher?.id??w.pitcherPlayerId??0),origin:t.origin??null,overrideStatus:t.overrideStatus??null,overrideReason:t.overrideReason??null,wouldScoreWithoutMisplay:t.wouldScoreWithoutMisplay??null,runCause:t.runCause??null,wouldScoreWithoutError:t.wouldScoreWithoutError??null,rbiCredit:typeof t.rbiCredit==="boolean"?t.rbiCredit:null,rbiReason:t.rbiReason??null}]:[]),scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:pendingPlayOptions??w.options??null
       };
-      Me.value.push(w),f.playEvents.push(E),Jl(),syncEarnedRunHalfInning(E),ve.value=null,i.value=null
+      Me.value.push(w),f.playEvents.push(E),Jl(),syncEarnedRunHalfInning(E),ve.value=null,i.value=null,pendingPlayOptions=null
     }
     function syncEarnedRunHalfInning(event){
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
@@ -7930,9 +7960,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     ){
       e<=0||(Ct(e),jl.push({
-        runs:e,...t
+      runs:e,...t,runCause:t.runCause??(t.origin==="ERROR"?"ERROR":"BATTER_ACTION"),wouldScoreWithoutError:t.wouldScoreWithoutError??null,rbiCredit:typeof t.rbiCredit==="boolean"?t.rbiCredit:Number(t.rbiDelta??0)>0,rbiReason:t.rbiReason??null
       }
       ))
+    }
+    function recordHomeRunRuns(batter,pitcher){
+      for(const base of [1,2,3]){
+        const runner=l.runners[base];
+        runner&&ls(1,{runner,batter,rbiDelta:1,pitcher,origin:runner.origin??"NORMAL",runCause:"HOME_RUN",rbiCredit:true,rbiReason:"BATTER_ACTION"})
+      }
+      ls(1,{runner:batter,batter,rbiDelta:1,pitcher,origin:"NORMAL",runCause:"HOME_RUN",rbiCredit:true,rbiReason:"BATTER_ACTION"})
     }
     const $f=new Set(["G","SH","FC","DP","TP"]);
     function Rf(e){
@@ -8039,16 +8076,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function Qa(e){
       l.isGameEnd||e&&(l.inning>=yn&&!l.isTop&&o.home.score===o.away.score&&D(LgSys({kind:"extend_inning"})),Af())
     }
-    function Ql(e,r=!0){
+    function Ql(e,r=!0,runDecision=null){
       const t=be.value;
       ue(t);
       const a={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
       pu(e,qv(e,l.runners).map(()=>"safe"),{
-        creditRBI:r,runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
+        creditRBI:runDecision?.creditRbi??r,runCause:runDecision?.runCause??(r?"HIT":"ERROR"),wouldScoreWithoutError:runDecision?.wouldScoreWithoutError??null,runners:l.runners,batter:t,pitcher:Se.value,addScore:Ct,recordRun:ls,handleOut:Bt,ensureBatting:s=>ue(s),addLog:D
       }
       ),Ge(Gn(e,a,t))
+    }
+    async function askErrorRunRbiDecision(runner){
+      const answer=await LgPick([
+        {key:"yes",label:"是：正常防守下仍會得分（記 1 RBI）"},
+        {key:"no",label:"否：得分是失誤造成（不記 RBI）"}
+      ],"失誤得分 RBI 判定",`${logPlayerName(runner)} 因失誤相關事件得分。依一般記分原則，正常防守下仍會得分嗎？`);
+      if(answer==null)return null;
+      const wouldScoreWithoutError=answer==="yes";
+      return {creditRbi:wouldScoreWithoutError,runCause:"ERROR",wouldScoreWithoutError,rbiReason:wouldScoreWithoutError?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"};
     }
     function ss(){
       const e=be.value;
@@ -8057,7 +8103,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
       cu([],{
-        runners:l.runners,batter:e,pitcher:Se.value,addScore:Ct,handleOut:Bt,ensureBatting:a=>ue(a),addLog:D
+        runners:l.runners,batter:e,pitcher:Se.value,addScore:Ct,recordRun:ls,handleOut:Bt,ensureBatting:a=>ue(a),addLog:D
       }
       ),Ge(di(t,e))
     }
@@ -8324,7 +8370,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ue(a),a.stats.batting.r=(a.stats.batting.r??0)+1;
         const s=!!(e?.creditRbiToBatter&&e.batter);
         ls(1,{
-          runner:a,batter:s?e.batter:void 0,rbiDelta:s?1:void 0,pitcher:t??void 0,erDelta:1,origin:e?.origin
+          runner:a,batter:s?e.batter:void 0,rbiDelta:s?1:0,pitcher:t??void 0,erDelta:1,origin:e?.origin,runCause:e?.runCause??(e?.origin==="ERROR"?"ERROR":e?.origin==="PASSED_BALL"?"PASSED_BALL":"BATTER_ACTION"),wouldScoreWithoutError:e?.wouldScoreWithoutError??null,rbiCredit:s,rbiReason:e?.rbiReason??(s?"BATTER_ACTION":e?.runCause==="ERROR"?"ERROR_CAUSED_RUN":"NO_RBI_RULE")
         }
         ),addLivePitcherEarnedRuns(t),s&&e.batter?.stats?.batting&&(e.batter.stats.batting.rbi=(e.batter.stats.batting.rbi??0)+1),l.runners[3]=null
       }
@@ -8343,11 +8389,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const moves=Rs(l.runners);
       ti({origin:event?.origin}),Ge(moves),event?.resultCode&&Je(event.resultCode,event.resultText)
     }
-    function bo(e){
+    function bo(e,rbiDecision){
       if(!l.runners[1]&&!l.runners[2]&&!l.runners[3])return;
-      const t=!!l.runners[3],a=Rs(l.runners);
+      const t=rbiDecision?.creditRbi??!!l.runners[3],a=Rs(l.runners);
       ti({
-        batter:e,creditRbiToBatter:t
+        batter:e,creditRbiToBatter:t,origin:rbiDecision?.runCause==="ERROR"?"ERROR":void 0,runCause:rbiDecision?.runCause,wouldScoreWithoutError:rbiDecision?.wouldScoreWithoutError??null,rbiReason:rbiDecision?.rbiReason
       }
       ),Ge(a)
     }
@@ -9878,13 +9924,32 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,resultCode,rbi,spray);
       record&&l.hitSprayQueue.push(record)
     }
-    function bt(e,t,a){
+    function bt(e,t,a,rbiOverride){
       l.abCatchRecorded=null;
       if(!["BB","HBP"].includes(e)&&!_o())return;
       if(l.needNextBatter&&!["BB","HBP"].includes(e)){
         J("请先确认半局结束（三出局后的攻守交换）后再记新的击球结果","warning");
         return
       }
+      if((e==="SF"||e==="SH")&&l.runners[3]&&rbiOverride==null){
+        LgPick([
+          {key:"normal",label:"正常牺牲推进（无传球失误）：计 1 RBI"},
+          {key:"error_still_scores",label:"有传球失误，但正常防守下仍会得分：计 1 RBI"},
+          {key:"error_caused_run",label:"得分是传球失误造成，正常防守下不会得分：不计 RBI"}
+        ],"牺牲打得分 RBI 判定",`${logPlayerName(l.runners[3])} 因牺牲打相关事件得分，请按正常防守下的结果判定 RBI。取消会放弃本次记录。`).then(choice=>{
+          if(choice==null)return;
+          const decision=choice==="normal"
+            ?{creditRbi:true,runCause:"SACRIFICE",wouldScoreWithoutError:null,rbiReason:"SACRIFICE"}
+            :{creditRbi:choice==="error_still_scores",runCause:"ERROR",wouldScoreWithoutError:choice==="error_still_scores",rbiReason:choice==="error_still_scores"?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"};
+          bt(e,t,a,decision)
+        });
+        return
+      }
+      if(e==="E"&&l.runners[3]&&rbiOverride==null){
+        askErrorRunRbiDecision(l.runners[3]).then(decision=>decision!=null&&bt(e,t,a,decision));
+        return
+      }
+      const sacrificeRunDecision=rbiOverride??{creditRbi:true,runCause:"SACRIFICE",wouldScoreWithoutError:null,rbiReason:"SACRIFICE"};
       ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&e!=="DP"&&e!=="TP"&&(t=_i(t));
       const s=(b,w=0)=>pushHitSpray(b,w,a);
       if(e==="H1"&&$l("H1",1,t,a)||e==="H2"&&$l("H2",2,t,a)||e==="H3"&&$l("H3",3,t,a)||e==="E"&&$l("E",1,t,a)||e==="FC"&&!1||e==="DP"&&Mi("DP",2,t,a)||e==="TP"&&Mi("TP",3,t,a)||e==="BB"&&rr("BB",t,a)||e==="HBP"&&rr("HBP",t,a))return;
@@ -9923,7 +9988,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           r.stats.batting.r=(r.stats.batting.r??0)+1
         }
-        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.hr=(r.stats.batting.hr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchHr=(p.stats.pitching.pitchHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="HR",m=y(`${r.name}: ${hn("HR",b)}（${r.name}：${b}打点）`),D(m),s("HR",b)
+        )(),recordHomeRunRuns(r,p),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.hr=(r.stats.batting.hr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchHr=(p.stats.pitching.pitchHr??0)+1),addLivePitcherEarnedRuns(p,b),g="HR",m=y(`${r.name}: ${hn("HR",b)}（${r.name}：${b}打点）`),D(m),s("HR",b)
       }
       else if(e==="IPHR"){
         const b=Ut()+1;
@@ -9940,7 +10005,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           r.stats.batting.r=(r.stats.batting.r??0)+1
         }
-        )(),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),Ct(b),addLivePitcherEarnedRuns(p,b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}（${r.name}：${b}打点）`),D(m),s("IPHR",b)
+        )(),recordHomeRunRuns(r,p),po(),r.stats.batting.h=(r.stats.batting.h??0)+1,r.stats.batting.insideParkHr=(r.stats.batting.insideParkHr??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,r.stats.batting.rbi=(r.stats.batting.rbi??0)+b,p?.stats?.pitching&&(p.stats.pitching.pitchH=(p.stats.pitching.pitchH??0)+1,p.stats.pitching.pitchInsideParkHr=(p.stats.pitching.pitchInsideParkHr??0)+1),addLivePitcherEarnedRuns(p,b),g="IPHR",m=y(`${r.name}: ${hn("IPHR",b)}（${r.name}：${b}打点）`),D(m),s("IPHR",b)
       }
       else if(e==="BB"){
         const b=ei();
@@ -9961,18 +10026,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(l.runners[3]){
           const w=l.runners[3];
           ue(w),w.stats.batting.r=(w.stats.batting.r??0)+1,ls(1,{
-            runner:w,batter:r,rbiDelta:1,pitcher:p??void 0,erDelta:1
+            runner:w,batter:sacrificeRunDecision.creditRbi?r:void 0,rbiDelta:sacrificeRunDecision.creditRbi?1:0,pitcher:p??void 0,erDelta:1,runCause:sacrificeRunDecision.runCause,wouldScoreWithoutError:sacrificeRunDecision.wouldScoreWithoutError,rbiCredit:sacrificeRunDecision.creditRbi,rbiReason:sacrificeRunDecision.rbiReason
           }
-          ),addLivePitcherEarnedRuns(p),r.stats.batting.rbi=(r.stats.batting.rbi??0)+1,l.runners[3]=null,sfRbi=!0
+          ),addLivePitcherEarnedRuns(p),sacrificeRunDecision.creditRbi&&(r.stats.batting.rbi=(r.stats.batting.rbi??0)+1),l.runners[3]=null,sfRbi=sacrificeRunDecision.creditRbi
         }
         Ge(b),l.outs++,Ipy(),r.stats.batting.sf=(r.stats.batting.sf??0)+1,Dn(t),l.abCatchRecorded={
           pos:t[0]??null,chain:[...t],inning:l.inning,half:l.isTop
         }
         ,g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}${sfRbi?`（${r.name}：1打点）`:""}`,m=Rt(m),s("SF",sfRbi?1:0)
       }
-      else if(e==="SH")bo(r),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m),s("SH",0);
+      else if(e==="SH")bo(r,sacrificeRunDecision),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m),s("SH",sacrificeRunDecision.creditRbi?1:0);
       else if(e==="E"){
-        Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+        Ql(1,!1,rbiOverride),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const b of t){
           const w=Vt(b);
           w?.stats?.fielding&&(w.stats.fielding.e=(w.stats.fielding.e??0)+1)
@@ -10028,11 +10093,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       l.balls=0,l.strikes=0,Je(g,m),is(e),Qe()
     }
-    function fcApply(fc_choice,r,t,a){
+    async function fcApply(fc_choice,r,t,a){
       if(fc_choice==null)return;
       if(fc_choice==="0"){
+        const runDecision=l.runners[3]?await askErrorRunRbiDecision(l.runners[3]):null;
+        if(l.runners[3]&&runDecision==null)return;
         pushHitSpray("E",0,a);
-        Ql(1,!1),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+        Ql(1,!1,runDecision),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const fc_b of t){
           const fc_w=Vt(fc_b);
           fc_w?.stats?.fielding&&(fc_w.stats.fielding.e=(fc_w.stats.fielding.e??0)+1)
@@ -10061,7 +10128,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       fc_base!==3&&fc_old[3]&&(fc_forced[3]?(D(LgAdvance({
         reasonCn:"野选推进得分",runner:fc_old[3],from:3,to:4,rbiNote:`${r.name??"打者"}：1打点`
       }
-      )),Ct(1),r.stats.batting.rbi=(r.stats.batting.rbi??0)+1,fc_old[3].stats.batting.r=(fc_old[3].stats.batting.r??0)+1,addLivePitcherEarnedRuns(Se.value),fc_moves.push({
+      )),ls(1,{runner:fc_old[3],batter:r,rbiDelta:1,pitcher:Se.value,erDelta:1,origin:"NORMAL",runCause:"FC",rbiCredit:true,rbiReason:"BATTER_ACTION"}),r.stats.batting.rbi=(r.stats.batting.rbi??0)+1,fc_old[3].stats.batting.r=(fc_old[3].stats.batting.r??0)+1,addLivePitcherEarnedRuns(Se.value),fc_moves.push({
         playerId:fc_old[3].id??fc_old[3].name??"?",from:3,to:4
       }
       )):fc_new[3]=fc_old[3]);
