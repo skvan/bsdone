@@ -270,6 +270,7 @@ EventService --> EventRepository
 - POST /game/{id}/earned-runs/reconstruct
   - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
   - 请求：`inning`、`half`（`top`/`bottom`）及按 `sequence` 严格递增的完整 `plays` 列表
+  - 判定输入：得分跑者可携带 `wouldScoreWithoutMisplay`（布尔，可空）——记录员对「若没有捕逸等防守失误，该跑者是否仍会得分」的判断；传 `null` 或省略时，捕逸得分保留为 `PENDING` 待人工覆核
   - 注意：该接口不是增量追加；判决待定时应传 `rulingPending=true`，结果会保留为 `PENDING`
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验

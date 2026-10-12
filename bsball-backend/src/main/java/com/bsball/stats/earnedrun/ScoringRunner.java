@@ -23,15 +23,6 @@ public record ScoringRunner(
         }
     }
 
-    public ScoringRunner(
-            long runnerId,
-            long responsiblePitcherId,
-            RunnerOrigin origin,
-            EarnedRunStatus overrideStatus,
-            UnearnedRunReason overrideReason) {
-        this(runnerId, responsiblePitcherId, origin, overrideStatus, overrideReason, null);
-    }
-
     public static ScoringRunner normal(long runnerId, long responsiblePitcherId) {
         return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.NORMAL, null, null, null);
     }

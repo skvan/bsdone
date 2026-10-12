@@ -249,7 +249,7 @@ class EarnedRunReconstructionEngineTest {
     void acceptsAuditableManualOverride() {
         ScoringRunner runner = new ScoringRunner(
                 11, 101, RunnerOrigin.NORMAL,
-                EarnedRunStatus.UNEARNED, UnearnedRunReason.MANUAL_OVERRIDE);
+                EarnedRunStatus.UNEARNED, UnearnedRunReason.MANUAL_OVERRIDE, null);
 
         EarnedRunDecision decision = engine.reconstruct(
                 List.of(play(1, 1, 0, 0, false, runner))).decisions().get(0);
