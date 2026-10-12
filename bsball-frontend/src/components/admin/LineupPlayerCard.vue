@@ -4,7 +4,7 @@
     :class="[`lineup-card--${variant}`, `is-${state}`, { 'lineup-card--empty': !player }]"
     :data-player-id="player?.id"
     data-drag-handle
-    @click.stop="onClick"
+    @click="onClick"
   >
     <template v-if="player">
       <!-- 球场卡槽：头像居中、背号在左上角、名字在头像正下方（用户反馈） -->
@@ -42,16 +42,17 @@ const props = defineProps({
   state: { type: String, default: 'idle' },
   placeholderText: { type: String, default: '' },
 });
-const emit = defineEmits(['pick', 'open']);
+const emit = defineEmits(['pick']);
 
 // 头像：沿用全站约定 resolveAssetUrl（内部已对空值兜底）；无头像时 el-avatar 退回插槽内容（姓名首字）
 const avatarUrl = computed(() => resolveAssetUrl(props.player?.avatar));
 const nameInitial = computed(() => (props.player?.name || '?').slice(0, 1));
 
-// 单击消歧（设计稿 §四.3/§四.4）：池/替补卡片 → 进入待放置态（点选点放）；
-// 已落位卡片（球场）→ 打开操作面板（面板内含「移到其他位置」，覆盖触屏移位场景）
-function onClick() {
-  if (props.variant === 'pool' || props.variant === 'bench') emit('pick', props.player);
-  else emit('open', props.player);
+// 单击消歧（2026-10-12 修订）：池/替补卡片 = 进入待放置（点选点放），并阻止冒泡（防被文档级取消点击清掉）；
+// 已落位卡片（球场）= 不在此处理：点击冒泡到卡槽，由页面按「有无持牌」决定（持牌=落位/顶替，无牌=拿起）
+function onClick(ev) {
+  if (props.variant !== 'pool' && props.variant !== 'bench') return;
+  ev.stopPropagation();
+  emit('pick', props.player);
 }
 </script>

@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+// 读文件并归一化行尾（Windows 检出的 CRLF 会让多行字符串匹配失效）
+const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const LIVE = '../src/views/admin/LiveGame.js';
 const UTIL = '../src/utils/liveSubDrag.js';
 const CSS = '../src/styles/legacy/live-game.css';

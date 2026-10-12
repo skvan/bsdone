@@ -90,7 +90,6 @@
         :slots="fieldSlotViews"
         :hover-code="hoverSlotCode"
         @slot-click="onSlotClick"
-        @card-open="openPanel"
       />
       <LineupBattingOrder
         ref="battingRef"
@@ -99,7 +98,7 @@
         :max-count="board.maxCount.value"
         :drop-hover="isBattingHover"
         @reorder="({ from, to }) => board.reorderBatting(from, to)"
-        @row-open="(id) => openPanel({ player: findPlayer(id), from: 'batting' })"
+        @pick="(id) => onPick(findPlayer(id))"
       />
       <LineupPoolPanel
         ref="poolRef"
@@ -110,44 +109,12 @@
         :hover-kind="hoverPanelKind"
         :lineup-ids="board.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id)"
         @pick="onPick"
-        @open-panel="openPanel"
         @batch-change="(ids) => board.setBench(ids)"
       />
     </div>
 
     <div v-if="!board.validation.value.ok && board.validation.value.msg" class="lineup-warn">{{ board.validation.value.msg }}</div>
     <div v-if="board.fieldingPitcherRequired.value && !board.fieldingPitcherOk.value" class="lineup-warn">须指定先发投手后才可开始录入</div>
-
-    <!-- 操作面板：更换球员 / 移到其他位置 / 移出 -->
-    <el-dialog :model-value="!!panel" :title="panelTitle" width="420px" @close="closePanel">
-      <div class="lineup-panel">
-        <section class="lineup-panel__block">
-          <h4>更换球员</h4>
-          <el-select
-            v-model="panelReplaceId"
-            filterable
-            clearable
-            placeholder="从名册选择替换球员"
-            style="width: 100%"
-            @change="panelReplace"
-          >
-            <el-option v-for="p in panelRosterOptions" :key="p.id" :label="`${p.name} #${p.number ?? '-'}`" :value="p.id" />
-          </el-select>
-        </section>
-        <section class="lineup-panel__block">
-          <h4>移到其他位置</h4>
-          <div class="lineup-panel__slots">
-            <el-button v-for="s in panelEmptySlots" :key="s.code" size="small" @click="panelMoveTo(s.code)">
-              {{ s.code }} {{ s.label }}
-            </el-button>
-            <span v-if="!panelEmptySlots.length" class="lineup-panel__empty">当前没有空余守备位</span>
-          </div>
-        </section>
-        <section class="lineup-panel__block">
-          <el-button type="danger" plain @click="panelRemove">移出（回替补）</el-button>
-        </section>
-      </div>
-    </el-dialog>
 
     <!-- 模板对话框：应用前二次确认 -->
     <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
@@ -209,8 +176,6 @@ const setupForm = ref({ homeTeamId: undefined, awayTeamId: undefined, venue: '' 
 const gameTime = ref('');
 const activeTeam = ref('away');
 const pending = ref(null);          // 点选点放：{ player }
-const panel = ref(null);            // 操作面板：{ player, from, code }
-const panelReplaceId = ref(null);   // 面板「更换球员」选择
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
@@ -244,6 +209,8 @@ const fieldSlotViews = computed(() => {
   const rows = b.rows.value;
   const filledRows = rows.filter((r) => !isPlaceholder(r));
   const errIdx = b.validation.value.errorRowIndices ?? [];
+  // 当前「持牌」球员 id：球场卡命中它 = 拿起态描边
+  const pickedId = pending.value?.player ? String(pending.value.player.id) : null;
   return slotsForMode(mode.value).map((slot) => {
     const code = slot.code;
     const rowIndex = rows.findIndex((r) => !isPlaceholder(r) && posOf(r) === code);
@@ -257,7 +224,8 @@ const fieldSlotViews = computed(() => {
     }
     const orderIndex = row ? filledRows.findIndex((r) => String(r.id) === String(row.id)) + 1 : 0;
     const error = rowIndex >= 0 && errIdx.includes(rowIndex);
-    return { code, player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code) };
+    const selfPending = !!player && String(player.id) === pickedId;
+    return { code, player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code), selfPending };
   });
 });
 
@@ -360,92 +328,28 @@ function onPick(player) {
   if (pending.value && String(pending.value.player.id) === String(player.id)) return clearPending();
   pending.value = { player };
 }
-// 点卡片/卡槽以外区域 = 取消待放置（设计稿 §四.3；卡片 click 已 stop、卡槽在自身处理中清除，此处无需排除）
+// 点卡片/卡槽以外区域 = 取消待放置（设计稿 §四.3 修订：池/替补卡、球场卡槽、打线行的点击均已 stop）
 function onDocClick() {
   if (!pending.value) return;
   clearPending();
 }
+// 卡槽单击（球场卡槽 @click.stop 到达）：持牌 → 落位/顶替/对调；无牌且该槽有人 → 「拿起」进入待放置
+// （2026-10-12 负责人口径：单击已落位卡片=拿起；原「操作面板」已移除，功能由拖拽与拿起覆盖）
+// 拿起取「卡槽视图的 player」而非 slotOfRow：覆盖仅守备投手（无打线行、由 fieldingPitcherId 合成）的情形
 function onSlotClick(code) {
-  if (!pending.value) return;
-  board.value.placeAtSlot(pending.value.player, code);
-  showNotice(board.value);
-  clearPending();
+  if (pending.value) {
+    board.value.placeAtSlot(pending.value.player, code);
+    showNotice(board.value);
+    clearPending();
+    return;
+  }
+  const occ = fieldSlotViews.value.find((s) => s.code === code)?.player ?? null;
+  if (occ) onPick(occ);
 }
 function clearPending() { pending.value = null; }
 function showNotice(b) {
   const msg = b.consumeNotice();
   if (msg) ElMessage.warning(msg);
-}
-
-/* ---------------- 操作面板 ---------------- */
-function openPanel(payloadOrCode) {
-  // 拖拽结束后浏览器会补发一次 click → 与被拖卡片互斥（与 onPick 同源，Task 1 spike 实测）
-  if (wasRecentDrag()) return;
-  // 打开面板 = 进入另一交互语境，退出待放置（球场卡片 click 带 .stop，document 监听收不到）
-  clearPending();
-  let payload = payloadOrCode;
-  // 球场卡片 card-open 只带 code，需回查球员
-  if (typeof payloadOrCode === 'string') {
-    const code = payloadOrCode;
-    const view = fieldSlotViews.value.find((s) => s.code === code);
-    payload = { player: view?.player ?? null, from: 'field', code };
-  }
-  if (!payload?.player) return;
-  panel.value = { player: payload.player, from: payload.from, code: payload.code || null };
-  panelReplaceId.value = null;
-}
-function closePanel() {
-  panel.value = null;
-  panelReplaceId.value = null;
-}
-
-const panelTitle = computed(() => {
-  const p = panel.value?.player;
-  if (!p) return '球员操作';
-  return `${p.name ?? ''} #${p.number ?? '-'}`;
-});
-// 当前面板球员所在守备位（球场卡片带 code；打线行按其守备位）
-const panelCode = computed(() => {
-  if (!panel.value) return '';
-  if (panel.value.code) return panel.value.code;
-  const row = board.value.rows.value.find((r) => !isPlaceholder(r) && String(r.id) === String(panel.value.player.id));
-  return row ? posOf(row) : '';
-});
-const panelRosterOptions = computed(() => {
-  const b = board.value;
-  const inLineup = new Set(b.rows.value.filter((r) => !isPlaceholder(r)).map((r) => String(r.id)));
-  const currentId = panel.value?.player?.id != null ? String(panel.value.player.id) : null;
-  return b.roster.value.filter((p) => !inLineup.has(String(p.id)) && String(p.id) !== currentId);
-});
-const panelEmptySlots = computed(() => {
-  const b = board.value;
-  return slotsForMode(mode.value).filter((s) => b.slotOfRow(s.code) == null);
-});
-
-function panelReplace(playerId) {
-  if (playerId == null) return;
-  const p = board.value.roster.value.find((x) => String(x.id) === String(playerId));
-  const code = panelCode.value;
-  if (!p || !code) return;
-  board.value.placeAtSlot(p, code);
-  showNotice(board.value);
-  closePanel();
-}
-function panelMoveTo(code) {
-  const p = panel.value?.player;
-  if (!p) return;
-  board.value.placeAtSlot(p, code);
-  showNotice(board.value);
-  closePanel();
-}
-function panelRemove() {
-  const p = panel.value?.player;
-  if (!p) return;
-  const dh = board.value.slotOfRow('DH');
-  if (dh && String(dh.id) === String(p.id)) board.value.removeDh();
-  else board.value.sendBackToBench(p.id);
-  showNotice(board.value);
-  closePanel();
 }
 
 /* ---------------- 名册 / 比赛载入 ---------------- */
@@ -832,10 +736,3 @@ onBeforeUnmount(() => {
   unbind();
 });
 </script>
-
-<style scoped>
-.lineup-panel__block { margin-bottom: 16px; }
-.lineup-panel__block h4 { margin: 0 0 8px; font-size: 13px; color: #606266; }
-.lineup-panel__slots { display: flex; flex-wrap: wrap; gap: 8px; }
-.lineup-panel__empty { color: #909399; font-size: 12px; }
-</style>

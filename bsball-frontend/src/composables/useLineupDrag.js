@@ -19,17 +19,19 @@ export function resolveDropTarget(x, y, layout, tolerance = 1.2) {
   return { kind: 'outside' };
 }
 
-export const DRAG_DELAY_MS = 180;
+// 拖拽起步 = 净位移阈值（本文件在 move 内门控；interactjs 1.10 无 distance 选项，delay 置 0）：
+// 指针净位移超过约 12px 才进入真实拖拽（显示拖态 / 发高亮 / 退出待放置 / 松手落点）；
+// 未达阈值一律按点击处理（与「点选点放」共存）；触屏同口径（卡片自身 touch-action:none，不与滚动打架）。
+export const DRAG_START_DISTANCE = 12;
 
 /**
  * interactjs 绑定。elements 为可拖元素数组；getLayout() 在松手瞬间读取各区域 rect。
- * 长按 delay 用 interactjs 原生 delay 选项（Task 1 spike 实测口径）。
  * onHover(target)：拖拽过程中指针当前悬停的落点（null = 无落点），供界面高亮「松手会落在哪」。
  */
 export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
   let interactables = [];
   let lastDragEndAt = 0; // 供「拖拽后浏览器补发 click」的互斥判断（仅在真正拖动过时刷新）
-  let dragMoved = false; // 本次是否产生实际位移：interactjs delay 下「长按不动」也会 start，须与点击区分
+  let dragMoved = false; // 本次是否已突破起步阈值（净位移超过 DRAG_START_DISTANCE）→ 突破后按拖拽处理，否则按点击
   let moveLayout = null; // 拖起后布局已稳定 → 缓存一次，避免 move 高频全量取 rect
   let lastHoverKey = '';
 
@@ -48,30 +50,35 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
     unbind(); // 幂等：interactjs 按元素缓存 interactable，重复 bind 会叠加监听 → 先清理
     interactables = (elements ?? []).filter(Boolean).map((el) =>
       interact(el).draggable({
-        delay: DRAG_DELAY_MS,
+        delay: 0,
         inertia: false,
         modifiers: [],
         // 打线行的拖拽把手交给 sortablejs（列表内排序），interactjs 不抢该手势
         ignoreFrom: '.drag-handle',
         listeners: {
           start(event) {
+            // interactjs 在约 1px 即触发 start → 此处不做任何视觉/回调；待净位移过阈值再「真正起拖」
             event.target.dataset.dragX = '0';
             event.target.dataset.dragY = '0';
-            event.target.classList.add('lineup-card--dragging');
-            document.body.classList.add('lineup-dragging');
             dragMoved = false;
             moveLayout = null;
             window.addEventListener('scroll', invalidateLayout, true);
             window.addEventListener('resize', invalidateLayout);
-            onDragStart?.(event.target);
           },
           move(event) {
-            // 注意：interactjs 的 event.dx/dy 是「相对上一次事件」的增量 → 必须累加（Task 1 spike 实测结论）
+            // 注意：interactjs 的 event.dx/dy 是「相对上一次事件」的增量 → 累加即净位移
             const el = event.target;
             el.dataset.dragX = String(Number(el.dataset.dragX ?? 0) + event.dx);
             el.dataset.dragY = String(Number(el.dataset.dragY ?? 0) + event.dy);
+            if (!dragMoved) {
+              const net = Math.abs(Number(el.dataset.dragX)) + Math.abs(Number(el.dataset.dragY));
+              if (net <= DRAG_START_DISTANCE) return; // 未达起步阈值：不显示拖态、不高亮、不退出待放置
+              dragMoved = true;
+              el.classList.add('lineup-card--dragging');
+              document.body.classList.add('lineup-dragging');
+              onDragStart?.(el);
+            }
             el.style.transform = `translate(${el.dataset.dragX}px, ${el.dataset.dragY}px)`;
-            if (!dragMoved && Math.abs(Number(el.dataset.dragX)) + Math.abs(Number(el.dataset.dragY)) > 5) dragMoved = true;
             if (!moveLayout) moveLayout = getLayout?.() ?? null;
             const x = event.clientX ?? event.client?.x ?? 0;
             const y = event.clientY ?? event.client?.y ?? 0;
@@ -89,7 +96,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             const y = event.clientY ?? event.client?.y ?? 0;
             const target = resolveDropTarget(x, y, getLayout?.());
             emitHover(null);
-            // 零位移（长按原地释放）= 点击：不吞浏览器 click、不触发落点动作
+            // 未达起步阈值（小抖动 / 原地释放）= 点击：不吞浏览器 click、不触发落点动作
             if (!dragMoved) return;
             lastDragEndAt = Date.now();
             onDrop?.(event.target, target);
@@ -128,5 +135,5 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
     return Date.now() - lastDragEndAt < thresholdMs;
   }
 
-  return { bind, unbind, wasRecentDrag, DRAG_DELAY_MS };
+  return { bind, unbind, wasRecentDrag };
 }
