@@ -40,7 +40,7 @@ test('outText：#223 接杀回传注记（链内融合 / 无链兜底 / 无 note
 test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/bf/提示）', () => {
   assert.match(src, /e!=="G"&&\(l\.abCatchRecorded=\{/, 'bt G/F/L/TAG 接杀置位（非 G）');
   assert.match(src, /Dn\(t\),l\.abCatchRecorded=\{\r?\n\s+pos:t\[0\]\?\?null/, 'bt SF 接杀置位');
-  assert.match(src, /function bt\(e,t,a\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
+  assert.match(src, /function bt\(e,t,a,rbiOverride\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
   assert.match(src, /function Wt\(e\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Wt（投球）开头清除');
   assert.match(src, /function Hf\(\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Hf（故意四坏）开头清除');
   assert.match(src, /e\.id==="out_last"&&l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning/, 'kp out_last 分支（含半局校验）');
@@ -61,7 +61,7 @@ test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账
   assert.match(src, /rbiWho=creditLastBatterRbi\(\)/, '上一棒内推进打点人捕获');
   assert.match(src, /wp\(a,s,r,e\.cn,e\.id,rbiWho\?/, 'wp 注记注入');
   assert.match(src, /fc_forced\[3\]\?\(D\(LgAdvance\(\{\r?\n\s+reasonCn:"野选推进得分",runner:fc_old\[3\],from:3,to:4,rbiNote:/, 'fcApply 被迫得分：先落文本（含打点注记）');
-  assert.match(src, /\)\),Ct\(1\),r\.stats\.batting\.rbi=/, '随后 Ct(1)+RBI 记账');
+  assert.match(src, /\)\),ls\(1,\{runner:fc_old\[3\],batter:r,rbiDelta:1/, 'FC 得分通过逐跑者 run ledger 与 RBI 记账');
 });
 
 test('LiveGame.js：双杀/三杀显示条件按强迫进垒口径 + 接杀回传去 DP 字样（2026-10-07 口径修正）', () => {

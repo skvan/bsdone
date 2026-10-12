@@ -29,15 +29,15 @@ test('bt 主链各结果分支均入队（含此前缺失的 7 类）', () => {
   // 本次补齐
   assert.match(source, /s\("IPHR",b\)/, 'IPHR（场内全垒打）应入队');
   assert.match(source, /s\("SF",sfRbi\?1:0\)/, 'SF（高飞牺牲）应入队且打点取实际值');
-  assert.match(source, /s\("SH",0\)/, 'SH（牺牲触击）应入队');
+  assert.match(source, /s\("SH",sacrificeRunDecision\.creditRbi\?1:0\)/, 'SH（牺牲触击）按正常防守判定入队');
   assert.match(source, /s\("E",0\)/, 'E（失误上垒）主链应入队');
   assert.match(source, /s\("DP",0\)/, 'DP（双杀）主链应入队');
   assert.match(source, /s\("TP",0\)/, 'TP（三杀）主链应入队，结果码为 TP');
 });
 
 test('对话框路径均入队：dp / fp / fcApply', () => {
-  const dialogCalls = source.split('pushHitSpray(e.playType,0,e.opts)').length - 1;
-  assert.equal(dialogCalls, 2, 'dp（跑者推进）与 fp（野选系对话框）各一处');
+  assert.match(source, /pushHitSpray\(e\.playType,0,e\.opts\);/, 'fp（野选系对话框）应入队');
+  assert.match(source, /pushHitSpray\(dpException\?"FC":e\.playType,0,e\.opts\);/, 'dp（跑者推进）应入队，双杀特例按 FC 入队');
   assert.match(source, /pushHitSpray\("E",0,a\);/, 'fcApply“没有跑者出局（失误）”分支应入队 E');
   assert.match(source, /pushHitSpray\("FC",0,a\);/, 'fcApply 正常野选路径应入队 FC');
 });
