@@ -49,6 +49,7 @@ import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
+import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
 import { BAT_SHAPES, battedShapeColor } from '../../utils/battedBallFlight';
@@ -5017,7 +5018,81 @@ var sg={
 ,F_=["src"],T_={
   class:"live-watch-float-footer"
 }
-,$_="bs-ball-live-watch-close",R_="bs-ball-live-watch-snapshot-push",x_="bs-ball-live-watch-snapshot-request",mu="bs-ball-live-watch-float-size",vu=500,A_=1680,Is=260,O_="3vh",gu="--live-watch-float-left",bu="--live-watch-float-top",L_=400,E_="bs-ball-live-",_u="bs-ball-live-fullscreen-",N_=1500,yn=7,H_=16,D_=12,M_=220,U_=280,G_=10,V_=120,W_="板凳席无可用球员（已换下球员不可再上场）",X_=8e3,Fs=200,hu=8,Y_=Wn({
+,$_="bs-ball-live-watch-close",R_="bs-ball-live-watch-snapshot-push",x_="bs-ball-live-watch-snapshot-request",mu="bs-ball-live-watch-float-size",vu=500,A_=1680,Is=260,O_="3vh",gu="--live-watch-float-left",bu="--live-watch-float-top",L_=400,E_="bs-ball-live-",_u="bs-ball-live-fullscreen-",N_=1500,yn=7,H_=16,D_=12,M_=220,U_=280,G_=10,V_=120,W_="板凳席无可用球员（已换下球员不可再上场）",X_=8e3,Fs=200,hu=8,LiveBenchPanel=Wn({
+  name:"LiveBenchPanel",
+  props:{
+    side:{type:String,required:!0},items:{type:Array,default:()=>[]},teamName:{type:String,default:""},emptyText:{type:String,default:""},pendingId:{type:String,default:null},draggingId:{type:String,default:null},onCardPointerDown:{type:Function,default:null},onCardClick:{type:Function,default:null},onClearPending:{type:Function,default:null}
+  }
+  ,setup(u){
+    return(f)=>da("section",{
+      class:["live-bench-panel",u.side==="offense"?"live-bench-panel--offense":"live-bench-panel--defense"],role:"group","aria-label":u.side==="offense"?"进攻方替补席":"防守方替补席",onClick:()=>u.onClearPending&&u.onClearPending()
+    }
+    ,[da("div",{
+      class:"live-bench-panel__head"
+    }
+    ,[da("span",{
+      class:"live-bench-panel__title"
+    }
+    ,"替补"),da("span",{
+      class:"live-bench-panel__team"
+    }
+    ,u.teamName||"")]),u.items.length?da("ul",{
+      class:"live-bench-panel__list"
+    }
+    ,u.items.map((p)=>da("li",{
+      key:u.side+"-"+p.id,class:"live-bench-panel__item"
+    }
+    ,[da("button",{
+      type:"button",class:["live-bench-card",{
+        "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id)
+      }
+      ],"data-player-id":p.id,"data-team-side":u.side,onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
+    }
+    ,[da("span",{
+      class:"live-bench-card__num"
+    }
+    ,"#"+H(p.number??"-")),da("span",{
+      class:"live-bench-card__name"
+    }
+    ,H(p.name??"-"))])]))):da("p",{
+      class:"live-bench-panel__empty"
+    }
+    ,u.emptyText)])
+  }
+}
+),LiveBenchGhost=Wn({
+  name:"LiveBenchGhost",
+  props:{
+    ui:{type:Object,default:null}
+  }
+  ,setup(u){
+    return()=>u.ui&&u.ui.moved&&u.ui.mode==="card"?da("div",{
+      class:"live-bench-ghost",style:{
+        left:u.ui.x+"px",top:u.ui.y+"px"
+      }
+    }
+    ,[da("span",{
+      class:"live-bench-ghost__label"
+    }
+    ,u.ui.label||"")]):null
+  }
+}
+),LiveBenchRings=Wn({
+  name:"LiveBenchRings",
+  props:{
+    targets:{type:Array,default:()=>[]}
+  }
+  ,setup(u){
+    return()=>u.targets.length?da("g",{
+      class:"live-sub-rings"
+    }
+    ,u.targets.map((t)=>da("circle",{
+      key:t.key,cx:t.cx,cy:t.cy,r:21,class:["live-sub-drop-ring",t.hot?"live-sub-drop-ring--hot":"live-sub-drop-ring--idle"]
+    }
+    ))):null
+  }
+}
+),Y_=Wn({
   name:"AdminLiveGame",__name:"LiveGame",setup(u){
     const f=Bu(),l=f.gameState,o=f.teamsData,_=f.setupForm,{
       eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
@@ -8454,6 +8529,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       J(`界内击出：${g}；请继续点选守备员完成记录`,"info")
     }
     function Qf(e,t){
+      if(liveBenchStartFieldSwapDrag(e,t))return;
       const a=l.flow;
       if(console.log("[FielderDrag] pointerdown",{
         pos:e,flowType:a?.type,button:t.button,pointerType:t.pointerType
@@ -9124,6 +9200,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         tSuppressClick=0,t&&t.stopPropagation&&t.stopPropagation();
         return
       }
+      if(liveBenchConsumePendingClicks({
+        kind:"fielder",code:e
+      }
+      ))return;
       const a=l.flow;
       if(a?.type==="BIP_HIT_PENDING"){
         if(a.resolveType==="HR"&&!["LF","CF","RF","XF1","XF2"].includes(e)){
@@ -9238,6 +9318,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       
     }
     function vs(e){
+      if(liveBenchConsumePendingClicks({
+        kind:"base",base:e
+      }
+      ))return;
       const t=l.runners[e],a=l.flow;
       if(a?.type==="ADVANCE"&&a.selectRunner){
         a.runner=t,a.runnerBase=e,a.selectRunner=!1;
@@ -9500,7 +9584,261 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    /* ---------------- 替补席拖拽换人（#293）：进攻/防守替补席 + 点选点放 + 守备互拖互换 ----------------
+       纯规则（替补过滤/落点解析/合法性矩阵）在 utils/liveSubDrag.js（含单测）；此处只做页内接线。
+       手势沿用页内既有指针拖拽口径（长按 220ms / 触摸 280ms）；执行统一走 cc()（与换人浮层同一记账路径）。 */
+    const liveBenchPendingCard=x(null);   // 待放置：{ player, side, teamKey } | null
+    const liveBenchDragUi=x(null);        // 拖拽界面态：{ mode, sourceKind, side, playerId, sourcePos, moved, x, y, label }
+    const liveBenchHoverHit=x(null);      // 拖拽中当前悬停的合法落点
+    let liveBenchDragSession=null;        // 拖拽会话（卡 / 守备员）
+    let liveBenchDragEndAt=0;             // 拖拽结束时间戳：抑制浏览器补发的 click
+    function liveBenchTeamKey(side){
+      return side==="offense"?(l.isTop?"away":"home"):(l.isTop?"home":"away")
+    }
+    function liveBenchTeamName(side){
+      return liveBenchTeamKey(side)==="away"?(At.value?.name??"客队"):(xt.value?.name??"主队")
+    }
+    function liveBenchItems(side){
+      const{bench:benchRef,unavail:unavailRef}=Ee(liveBenchTeamKey(side));
+      return buildLiveBenchItems(benchRef.value,unavailRef.value,N.value)
+    }
+    const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>liveBenchEmptyText(N.value));
+    // 换人被禁的原因：文案复用既有 tf（口径不漂移），仅追加「三出局后需先确认半局结束」
+    function liveBenchSubBlockedReason(){
+      return tf.value||(l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")
+    }
+    const liveBenchSubBlocked=()=>!!liveBenchSubBlockedReason();
+    function liveBenchClearPending(){
+      liveBenchPendingCard.value=null
+    }
+    function liveBenchTogglePending(player,side){
+      const e=liveBenchPendingCard.value;
+      e&&String(e.player.id)===String(player.id)&&e.side===side?liveBenchClearPending():liveBenchPendingCard.value={player,side,teamKey:liveBenchTeamKey(side)}
+    }
+    // 执行换人：source={kind,player,code?}，hit=落点命中项；成功返回 true（统一走 cc 记账）
+    function liveBenchApplyDrop(source,hit){
+      const blockReason=liveBenchSubBlockedReason();
+      if(blockReason){
+        J(blockReason,"warning");
+        return!1
+      }
+      const oK=l.isTop?"away":"home",dK=l.isTop?"home":"away";
+      if(source.kind==="offenseBench"){
+        const action=liveSubDropAction("offenseBench",hit,{
+          baseOccupied:hit.kind==="base"&&!!l.runners[hit.base]
+        }
+        );
+        if(action==="pinchHit"){
+          if(!be.value)return!1;
+          mt.value="pinchHit",Ga.value=be.value,ia.value=oK,Qt.value=null,Va.value=null
+        }else if(action==="pinchRun")mt.value="pinchRunner",Ga.value=l.runners[hit.base],ia.value=oK,Qt.value=hit.base,Va.value=null;
+        else if(action==="setRunner")mt.value="setRunner",Ga.value=null,ia.value=oK,Qt.value=hit.base,Va.value=null;
+        else return!1;
+        return cc({
+          id:source.player.id
+        }
+        ),liveBenchClearPending(),!0
+      }
+      if(source.kind==="defenseBench"){
+        if(liveSubDropAction("defenseBench",hit)!=="fieldReplace")return!1;
+        mt.value="fielder",Ga.value=Vt(hit.code)??null,ia.value=dK,Qt.value=null,Va.value=hit.code,cc({
+          id:source.player.id
+        }
+        ),liveBenchClearPending();
+        return!0
+      }
+      if(source.kind==="fielder"){
+        const targetPlayer=Vt(hit.code);
+        if(liveSubDropAction("fielder",hit,{
+          samePlayer:!targetPlayer||String(targetPlayer.id)===String(source.player?.id)
+        }
+        )!=="fieldSwap")return!1;
+        mt.value="fielder",Ga.value=source.player,ia.value=dK,Qt.value=null,Va.value=source.code,cc({
+          id:targetPlayer.id,groupKey:"fielders"
+        }
+        ),liveBenchClearPending();
+        return!0
+      }
+      return!1
+    }
+    // 待放置态消费场上点击：选中卡后点目标=直接换人（不弹原浮层）；非法目标=吞掉不动作
+    function liveBenchConsumePendingClicks(hit){
+      const card=liveBenchPendingCard.value;
+      if(!card)return!1;
+      if(l.flow||kt.value!=null||qe.value||lt.value)return!1;
+      const src=card.side==="offense"?"offenseBench":"defenseBench";
+      if(!liveSubTargetKinds(src).includes(hit.kind))return!0;
+      if(card.teamKey!==liveBenchTeamKey(card.side)){
+        liveBenchClearPending();
+        return!0
+      }
+      return liveBenchApplyDrop({
+        kind:src,player:card.player
+      }
+      ,hit),!0
+    }
+    // 场上可落目标矩形（拖起时快照；滚动/缩放作废）
+    function liveBenchCollectFieldLayout(){
+      const svg=Rn.value;
+      if(!svg)return null;
+      const toRect=(el)=>{
+        const r=el.getBoundingClientRect();
+        return{
+          left:r.left,top:r.top,width:r.width,height:r.height
+        }
+      }
+      ;
+      const defEls=Array.from(svg.querySelectorAll(".defense-group > .defender-hit")),codes=Wr.value;
+      const fielderRects=defEls.length===codes.length?defEls.map((el,i)=>({
+        code:codes[i],rect:toRect(el)
+      }
+      )):[];
+      const runEls=Array.from(svg.querySelectorAll(".runners-group > .runner-draggable-group")),bases=[1,2,3];
+      const runnerRects=runEls.length===bases.length?runEls.map((el,i)=>({
+        base:bases[i],rect:toRect(el)
+      }
+      )):[];
+      const batterEl=svg.querySelector(".batter-at-plate-group");
+      return{
+        fielderRects,runnerRects,batterRect:batterEl?toRect(batterEl):null
+      }
+    }
+    function liveBenchInvalidateDragLayout(){
+      liveBenchDragSession&&(liveBenchDragSession.layout=null)
+    }
+    function liveBenchBindDragListeners(session){
+      const wait=session.pointerType==="touch"?U_:M_;
+      session.timerId=window.setTimeout(()=>{
+        liveBenchDragSession===session&&(session.armed=!0)
+      }
+      ,wait),window.addEventListener("scroll",liveBenchInvalidateDragLayout,!0),window.addEventListener("resize",liveBenchInvalidateDragLayout),window.addEventListener("blur",liveBenchBlurCancel),document.addEventListener("pointermove",liveBenchDragMove,!0),document.addEventListener("pointerup",liveBenchDragEnd,!0),document.addEventListener("pointercancel",liveBenchDragCancel,!0)
+    }
+    // 窗口失焦兜底：拿不到 pointerup/cancel 时也收尾（与既有链条拖拽 Yh 同法）
+    function liveBenchBlurCancel(){
+      liveBenchCleanupDrag()
+    }
+    function liveBenchCardPointerDown(player,side,event){
+      if(event.button!==0||liveBenchDragSession)return;
+      const session={
+        mode:"card",sourceKind:side==="offense"?"offenseBench":"defenseBench",side,player,pointerId:event.pointerId,pointerType:event.pointerType,startX:event.clientX,startY:event.clientY,armed:!1,moved:!1,layout:null,timerId:0
+      }
+      ;
+      liveBenchDragSession=session,liveBenchBindDragListeners(session)
+    }
+    // 守备员互拖互换：仅无流程且允许换人时接管 pointerdown（流程内维持落点/自踩语义）
+    function liveBenchStartFieldSwapDrag(pos,event){
+      if(l.flow||liveBenchDragSession||event.button!==0||liveBenchSubBlocked())return!1;
+      const src=Vt(pos);
+      if(!src)return!1;
+      liveBenchClearPending();
+      const z=za(pos);
+      ce.value={
+        pos,pointerId:event.pointerId,isDragging:!0,hasMoved:!1,currentX:z.x,currentY:z.y,startX:z.x,startY:z.y,mode:"subswap"
+      }
+      ,Mn(ce);
+      const session={
+        mode:"fielder",sourceKind:"fielder",side:"defense",player:src,code:pos,pointerId:event.pointerId,pointerType:event.pointerType,startX:event.clientX,startY:event.clientY,armed:!1,moved:!1,layout:null,timerId:0
+      }
+      ;
+      return liveBenchDragSession=session,liveBenchBindDragListeners(session),!0
+    }
+    function liveBenchDragMove(event){
+      const s=liveBenchDragSession;
+      if(!s||event.pointerId!==s.pointerId||!s.armed)return;
+      const dx=event.clientX-s.startX,dy=event.clientY-s.startY;
+      if(!s.moved&&Math.abs(dx)+Math.abs(dy)<=5)return;
+      s.moved=!0,event.preventDefault(),s.layout||(s.layout=liveBenchCollectFieldLayout());
+      const hits=resolveLiveSubDropHits(event.clientX,event.clientY,s.layout),kinds=liveSubTargetKinds(s.sourceKind);
+      liveBenchHoverHit.value=hits.find((h)=>kinds.includes(h.kind))??null;
+      const ui={
+        mode:s.mode,sourceKind:s.sourceKind,side:s.side??null,playerId:s.player?.id??null,sourcePos:s.code??null,moved:!0,x:event.clientX,y:event.clientY,label:`${s.player?.name??""} #${s.player?.number??"-"}`
+      }
+      ;
+      if(s.mode==="fielder"){
+        const svg=Rn.value;
+        if(svg){
+          const pt=La(svg,event.clientX,event.clientY);
+          ce.value&&(ce.value.currentX=pt.x,ce.value.currentY=pt.y,ce.value.hasMoved=!0,Mn(ce))
+        }
+      }
+      liveBenchDragUi.value=ui
+    }
+    function liveBenchDragEnd(event){
+      const s=liveBenchDragSession;
+      if(!s||event.pointerId!==s.pointerId)return;
+      const moved=s.moved,hit=moved?liveBenchHoverHit.value:null;
+      liveBenchCleanupDrag();
+      if(!moved)return;   // 轻点：交回 click（点选点放 / 原浮层）
+      liveBenchDragEndAt=performance.now()+300,tSuppressClick=performance.now()+300;
+      if(!hit)return;
+      liveBenchApplyDrop(s.mode==="card"?{kind:s.sourceKind,player:s.player}:{kind:"fielder",player:s.player,code:s.code},hit)
+    }
+    function liveBenchDragCancel(event){
+      const s=liveBenchDragSession;
+      if(!s||(event&&event.pointerId!==s.pointerId))return;
+      liveBenchCleanupDrag()
+    }
+    function liveBenchCleanupDrag(){
+      const s=liveBenchDragSession;
+      if(!s)return;
+      s.timerId&&window.clearTimeout(s.timerId),window.removeEventListener("scroll",liveBenchInvalidateDragLayout,!0),window.removeEventListener("resize",liveBenchInvalidateDragLayout),window.removeEventListener("blur",liveBenchBlurCancel),document.removeEventListener("pointermove",liveBenchDragMove,!0),document.removeEventListener("pointerup",liveBenchDragEnd,!0),document.removeEventListener("pointercancel",liveBenchDragCancel,!0),s.mode==="fielder"&&ce.value&&(ce.value=null,Mn(ce)),liveBenchDragSession=null,liveBenchDragUi.value=null,liveBenchHoverHit.value=null
+    }
+    function liveBenchCardClick(player,side){
+      performance.now()<liveBenchDragEndAt||liveBenchTogglePending(player,side)
+    }
+    function liveBenchOnKeydown(e){
+      e.key==="Escape"&&liveBenchPendingCard.value&&liveBenchClearPending()
+    }
+    const liveBenchRingTargets=$(()=>{
+      const ui=liveBenchDragUi.value,pd=liveBenchPendingCard.value;
+      const src=ui?.sourceKind??(pd?(pd.side==="offense"?"offenseBench":"defenseBench"):null);
+      if(!src)return[];
+      const kinds=liveSubTargetKinds(src),hv=liveBenchHoverHit.value,out=[];
+      if(kinds.includes("fielder"))for(const code of Wr.value)ui?.sourcePos===code||out.push({
+        key:"f-"+code,cx:za(code).x,cy:za(code).y,hot:!!hv&&hv.kind==="fielder"&&hv.code===code
+      }
+      );
+      if(kinds.includes("base"))for(const b of[1,2,3])out.push({
+        key:"b-"+b,cx:Ke[b].x,cy:Ke[b].y,hot:!!hv&&hv.kind==="base"&&hv.base===b
+      }
+      );
+      return kinds.includes("batter")&&out.push({
+        key:"batter",cx:Qo.x,cy:Qo.y,hot:!!hv&&hv.kind==="batter"
+      }
+      ),out
+    }
+    );
+    function liveBenchPanelProps(side){
+      const pd=liveBenchPendingCard.value,ui=liveBenchDragUi.value;
+      return{
+        side,items:side==="offense"?liveBenchOffenseItems.value:liveBenchDefenseItems.value,teamName:liveBenchTeamName(side),emptyText:liveBenchEmptyTextValue.value,pendingId:pd&&pd.side===side?String(pd.player.id):null,draggingId:ui&&ui.side===side&&ui.playerId!=null?String(ui.playerId):null,onCardPointerDown:(p,ev)=>liveBenchCardPointerDown(p,side,ev),onCardClick:(p)=>liveBenchCardClick(p,side),onClearPending:()=>liveBenchClearPending()
+      }
+    }
+    Ce(()=>l.inning+"-"+l.isTop,()=>{
+      liveBenchClearPending(),liveBenchCleanupDrag()
+    }
+    ),Ce(()=>l.flow,()=>{
+      l.flow&&liveBenchClearPending()
+    }
+    ),Ce(()=>l.needNextBatter,()=>{
+      l.needNextBatter&&liveBenchClearPending()
+    }
+    ),As(()=>{
+      document.addEventListener("keydown",liveBenchOnKeydown)
+    }
+    ),wu(()=>{
+      document.removeEventListener("keydown",liveBenchOnKeydown),liveBenchCleanupDrag()
+    }
+    );
     function Ao(){
+      if(performance.now()<tSuppressClick){
+        tSuppressClick=0;
+        return
+      }
+      if(liveBenchConsumePendingClicks({
+        kind:"batter"
+      }
+      ))return;
       if(l.flow?.type==="ADVANCE"&&l.flow.selectRunner){
         const a=be.value;
         l.flow.runner=a,l.flow.runnerBase=0,l.flow.selectRunner=!1;
@@ -10747,7 +11085,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,H(qa.value[d].bottom),9,Yg)],64)):(h(),C("tspan",{
           key:1,x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,dy:"3",class:"field-svg-label__line"
         }
-        ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),c(chainHl)?(h(),C("circle",{
+        ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),v(LiveBenchRings,{targets:liveBenchRingTargets.value},null,16),c(chainHl)?(h(),C("circle",{
           key:`chl-${c(chainHl).seq}`,class:"chain-hl-ring",cx:c(chainHl).x,cy:c(chainHl).y,r:19
         }
         ,null,8,["cx","cy"])):W("",!0),c(hh)?(h(),C("circle",{
@@ -10939,7 +11277,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,"安全"),Bl.value.allowDidntScore?(h(),C("button",{
           key:1,type:"button",class:"hsc-inline__btn",onClick:t[10]||(t[10]=d=>Tl("noscore"))
         }
-        ," 不进垒 ")):W("",!0)])])):W("",!0)],2),W("",!0),c(Ll).length?(h(),C("div",{
+        ," 不进垒 ")):W("",!0)])])):W("",!0)],2),W("",!0),c(F)?n("div",{class:"live-bench-left-col"},[v(LiveBenchPanel,liveBenchPanelProps("offense"),null,16),c(Ll).length?(h(),C("div",{
           key:0,class:"live-lineup-rail",role:"group","aria-label":"当前进攻方打线"
         }
         ,[n("div",{class:"live-lineup-rail__head"},[n("span",{class:"live-lineup-rail__title"},"打线"),n("span",{class:"live-lineup-rail__team"},H(c(l).isTop?(At.value?.name??"客队"):(xt.value?.name??"主队")),1)]),n("ol",{class:"live-lineup-rail__list"},[(h(!0),C(me,null,et(c(Ll),(d,z)=>(h(),C("li",{
@@ -10947,7 +11285,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             "live-lineup-rail__item--current":z===c(Dl)
           }]),"aria-current":z===c(Dl)?"true":void 0
         }
-        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current"]))),128))])])):W("",!0),n("div",{
+        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current"]))),128))])])):W("",!0)]):W("",!0),c(F)?v(LiveBenchPanel,liveBenchPanelProps("defense"),null,16):W("",!0),v(LiveBenchGhost,{ui:liveBenchDragUi.value},null,16),n("div",{
           class:"field-quick-pitch",onClick:t[35]||(t[35]=Ze(()=>{
             
           }
