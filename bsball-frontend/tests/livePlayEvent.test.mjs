@@ -71,8 +71,8 @@ test('scoringRunners 归一化：责任投手回退、无效条目过滤、来�
     scoringRunners: [
       { runnerId: 55, responsiblePitcherId: null, origin: null },
       { runnerId: null, responsiblePitcherId: 77 },
-      { runnerId: 56, responsiblePitcherId: 88, origin: 'PASSED_BALL' },
-      { runnerId: 57, responsiblePitcherId: 88, overrideStatus: 'UNKNOWN' }
+      { runnerId: 56, responsiblePitcherId: 88, origin: 'PASSED_BALL', wouldScoreWithoutMisplay: true },
+      { runnerId: 57, responsiblePitcherId: 88, overrideStatus: 'UNKNOWN', wouldScoreWithoutMisplay: false }
     ]
   });
 
@@ -82,10 +82,33 @@ test('scoringRunners 归一化：责任投手回退、无效条目过滤、来�
     responsiblePitcherId: 77,
     origin: 'NORMAL',
     overrideStatus: null,
-    overrideReason: null
+    overrideReason: null,
+    wouldScoreWithoutMisplay: null
   });
   assert.equal(play.scoringRunners[1].origin, 'PASSED_BALL');
+  assert.equal(play.scoringRunners[1].wouldScoreWithoutMisplay, true);
   assert.equal(play.scoringRunners[2].overrideStatus, 'PENDING');
+  assert.equal(play.scoringRunners[2].wouldScoreWithoutMisplay, false);
+});
+
+test('wouldScoreWithoutMisplay：布尔值透传，非布尔（含字符串/缺省）归一为 null', () => {
+  const play = toEarnedRunPlay({
+    inning: 1,
+    half: 'top',
+    sequence: 1,
+    pitcherPlayerId: 77,
+    scoringRunners: [
+      { runnerId: 55, responsiblePitcherId: 77, wouldScoreWithoutMisplay: true },
+      { runnerId: 56, responsiblePitcherId: 77, wouldScoreWithoutMisplay: false },
+      { runnerId: 57, responsiblePitcherId: 77, wouldScoreWithoutMisplay: 'true' },
+      { runnerId: 58, responsiblePitcherId: 77 }
+    ]
+  });
+
+  assert.equal(play.scoringRunners[0].wouldScoreWithoutMisplay, true);
+  assert.equal(play.scoringRunners[1].wouldScoreWithoutMisplay, false);
+  assert.equal(play.scoringRunners[2].wouldScoreWithoutMisplay, null);
+  assert.equal(play.scoringRunners[3].wouldScoreWithoutMisplay, null);
 });
 
 test('与 createLivePlayEvent 输出兼容（富事件路径保留既有值）', () => {
