@@ -192,7 +192,7 @@
 | 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
 | 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
 | 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 双轨发布：**生产与测试均并行** 旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`（域名经 `portal.html` 直通新版；用户回退按钮见 issue #105）；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar 并刷写前端产物）；部署流水线已集成重建版构建与双轨打包；冒烟（含 `/bs-ball-next/`）失败可秒级回滚；未迁移页面显示占位 |
+| 发布 | 双轨发布：**生产与测试均并行** 旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`（域名经 `portal.html` 直通新版）；**旧版入口已封锁（2026-10-12，H60）**：`/bs-ball/*` 与 `/index.html` 改为直通页映射至新版对应路径，新版「切回旧版」按钮已移除，旧版产物仅保留供部署级回滚；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar 并刷写前端产物）；部署流水线已集成重建版构建与双轨打包；冒烟（含 `/bs-ball-next/`）失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
 ### 与并行开发的共存规则（强制）

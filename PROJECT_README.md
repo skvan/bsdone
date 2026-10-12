@@ -58,7 +58,7 @@ BsBall 是一套**棒球 / 垒球赛事数据管理平台**，支持：
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | **后端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已随 v2.0.0 双轨上线生产（2026-10-08），旧版编译产物 /bs-ball/ 保留可回退 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已随 v2.0.0 双轨上线生产（2026-10-08）；旧版入口已封锁（/bs-ball/*、/index.html 直通新版对应页，H60），旧版产物仅保留供部署级回滚 |
 | **数据库** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（优先返回 .gz） |
 | **部署** | 阿里云 ECS | systemd 管理 Java 服务 |
@@ -118,15 +118,15 @@ Bsdone-project/
 │   │   ├── uploads/            # 上传文件
 │   │   └── data/               # 运行期数据
 │   └── webapps/
-│       ├── bs-ball/            # 旧版前端静态资源（/bs-ball/ 轨道）
+│       ├── bs-ball/            # 旧版前端静态资源（/bs-ball/ 轨道；入口已封锁 H60）
 │       │   ├── assets/         # Vite 编译产物（JS/CSS）
 │       │   ├── team-logos/     # 球队 Logo 图片
-│       │   ├── index.html      # 后台入口
+│       │   ├── index.html      # 已改为直通页 → /bs-ball-next/（深链映射）
 │       │   └── *.svg           # 球场 SVG
 │       ├── bs-ball-next/       # 重建版前端（发布时构建组装）
 │       ├── home/               # 门户首页
 │       ├── static/             # 共用静态资源（fonts/logo）
-│       ├── index.html          # 根页面
+│       ├── index.html          # 已改为直通页 → /bs-ball-next/intro
 │       └── portal.html         # 门户页面
 │
 └── bsball_backup.dump        # 数据库备份
@@ -198,7 +198,7 @@ Bsdone-project/
 - 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；默认 `base=/bs-ball/`；重建版构建 `npm run build:next`，产物落 `/bs-ball-next/`）
 - 前端依赖：`interactjs`（^1.10.28）—— 编辑先发阵容页的球员卡拖放与卡槽落点判定（`sortablejs` 等既有依赖保持不变）
 - 批次：B0 工程化 → B1 骨架与契约底座 → B2 认证族 → B3 标准 CRUD 族 → B4 领域族 → B5 LiveGame 家族
-- 双轨现状：旧版编译产物 `/bs-ball/` 与重建版 `/bs-ball-next/` 并行（生产与测试一致）；域名经 `portal.html` 直通重建版；旧版保留可回退
+- 双轨收口（2026-10-12，H60）：旧版入口全部封锁——`/bs-ball/*` 与 `/index.html` 改为直通页映射至新版对应路径（深链前缀互换保留 query/hash），新版「切回旧版」按钮已彻底移除；旧版编译产物仅保留供部署级回滚，不再对外提供入口
 
 ### 5.2 开发与对照
 
@@ -209,9 +209,9 @@ npm run preview:legacy   # 旧编译版对照预览（3001）
 npm run package          # 构建 + 打包 webapps-dev.tar.gz（部署包约定：顶层含 webapps/）
 ```
 
-### 5.3 旧版（/bs-ball/ 编译产物轨道）的应急修改方式
+### 5.3 直通页与静态产物（webapps）的应急修改方式
 
-双轨期如必须快速修复旧版，仍沿用「直接修改编译产物」流程（须同步登记 `docs/ops/frontend-hotfix-log.md`）：
+入口封锁后，webapps 应急修改的对象为各直通页与静态页（`bs-ball/index.html`、`index.html`、`portal.html`；须同步登记 `docs/ops/frontend-hotfix-log.md`）。若遇需部署级回滚旧版入口的极端场景（极少见），沿用「直接修改编译产物」流程：
 
 1. `grep` 定位特征字符串
 2. Python 脚本 `assert` 精确替换（搭配上下文打印核对）
@@ -237,14 +237,14 @@ java-server/
 
 ```
 webapps/
-├── index.html           # 根页面
+├── index.html           # 直通页 → /bs-ball-next/intro（H60）
 ├── portal.html          # 门户首页（域名访问直通 /bs-ball-next/）
 ├── static/              # 共用资源（fonts, logo）
 ├── home/                # 门户子页面
-├── bs-ball/             # 旧版：后台 + 实时比赛前端（/bs-ball/）
+├── bs-ball/             # 旧版：后台 + 实时比赛前端（/bs-ball/；入口已封锁，仅留产物供部署级回滚）
 │   ├── assets/          # JS + CSS（Vite 编译）
 │   ├── team-logos/      # 球队 Logo
-│   ├── index.html       # 后台 SPA 入口
+│   ├── index.html       # 直通页 → /bs-ball-next/（深链前缀互换映射）
 │   └── *.svg            # 球场、头像等 SVG
 └── bs-ball-next/        # 重建版前端（/bs-ball-next/；发布时构建组装）
 ```

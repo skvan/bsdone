@@ -24,8 +24,6 @@
     </main>
 
     <footer v-if="footerText" class="welcome__footer" v-html="footerText"></footer>
-    <!-- H41：新旧版切换按钮组件化接入（无顶栏页面：右上角悬浮胶囊，与原注入保底一致） -->
-    <FrontendSwitchButton variant="floating" />
   </div>
 </template>
 
@@ -37,7 +35,6 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppConfigStore } from '../../stores/appConfig';
 import { DEFAULT_TENANT_CODE } from '../../utils/tenantRoute';
-import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 
 const router = useRouter();
 const config = useAppConfigStore();
@@ -54,7 +51,7 @@ const footerText = computed(() => (config.config && config.config.showFooterPort
 // 不可硬编码 '/租户码/'：剥离 base 后即根路由 '/'，会被 redirect /welcome 拦截（原地打转）或落到旧版
 const portalHref = router.resolve({ name: 'PortalHome', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
 
-// 系统介绍页 = 新版系统介绍页（H27 起为本版 SPA 页面；旧版静态官网 /index.html 保留给旧轨）
+// 系统介绍页 = 新版系统介绍页（H27 起为本版 SPA 页面）
 function goIntro() { location.href = router.resolve({ name: 'PortalIntro' }).href; }
 function goPortal() { location.href = portalHref; }
 </script>

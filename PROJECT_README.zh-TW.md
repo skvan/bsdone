@@ -58,7 +58,7 @@ BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
 | 層級 | 技術 | 說明 |
 |------|------|------|
 | **後端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已隨 v2.0.0 雙軌上線生產（2026-10-08），舊版編譯產物 /bs-ball/ 保留可回退 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已隨 v2.0.0 雙軌上線生產（2026-10-08）；舊版入口已封鎖（/bs-ball/*、/index.html 直通新版對應頁，H60），舊版產物僅保留供部署級回滾 |
 | **資料庫** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（優先返回 .gz） |
 | **部署** | 阿里雲 ECS | systemd 管理 Java 服務 |
@@ -118,15 +118,15 @@ Bsdone-project/
 │   │   ├── uploads/            # 上傳檔案
 │   │   └── data/               # 執行期資料
 │   └── webapps/
-│       ├── bs-ball/            # 舊版前端靜態資源（/bs-ball/ 軌道）
+│       ├── bs-ball/            # 舊版前端靜態資源（/bs-ball/ 軌道；入口已封鎖 H60）
 │       │   ├── assets/         # Vite 編譯產物（JS/CSS）
 │       │   ├── team-logos/     # 球隊 Logo 圖片
-│       │   ├── index.html      # 後台入口
+│       │   ├── index.html      # 已改為直通頁 → /bs-ball-next/（深鏈映射）
 │       │   └── *.svg           # 球場 SVG
 │       ├── bs-ball-next/       # 重建版前端（發佈時建置組裝）
 │       ├── home/               # 門戶首頁
 │       ├── static/             # 共用靜態（fonts/logo）
-│       ├── index.html          # 根頁面
+│       ├── index.html          # 已改為直通頁 → /bs-ball-next/intro
 │       └── portal.html         # 門戶頁面
 │
 └── bsball_backup.dump        # 資料庫備份
@@ -198,7 +198,7 @@ Bsdone-project/
 - 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；預設 `base=/bs-ball/`；重建版建置 `npm run build:next`，產物落 `/bs-ball-next/`）
 - 前端依賴：`interactjs`（^1.10.28）—— 編輯先發陣容頁的球員卡拖放與卡槽落點判定（`sortablejs` 等既有依賴保持不變）
 - 批次：B0 工程化 → B1 骨架與契約底座 → B2 認證族 → B3 標準 CRUD 族 → B4 領域族 → B5 LiveGame 家族
-- 雙軌現狀：舊版編譯產物 `/bs-ball/` 與重建版 `/bs-ball-next/` 並行（生產與測試一致）；網域經 `portal.html` 直通重建版；舊版保留可回退
+- 雙軌收口（2026-10-12，H60）：舊版入口全部封鎖——`/bs-ball/*` 與 `/index.html` 改為直通頁對映至新版對應路徑（深鏈前綴互換保留 query/hash），新版「切回舊版」按鈕已徹底移除；舊版編譯產物僅保留供部署級回滾，不再對外提供入口
 
 ### 5.2 開發與對照
 
@@ -209,9 +209,9 @@ npm run preview:legacy   # 舊編譯版對照預覽（3001）
 npm run package          # 建置 + 打包 webapps-dev.tar.gz（部署包約定：頂層含 webapps/）
 ```
 
-### 5.3 舊版（/bs-ball/ 編譯產物軌道）的應急修改方式
+### 5.3 直通頁與靜態產物（webapps）的應急修改方式
 
-雙軌期如必須快速修復舊版，仍沿用「直接修改編譯產物」流程（須同步登記 `docs/ops/frontend-hotfix-log.md`）：
+入口封鎖後，webapps 應急修改的對象為各直通頁與靜態頁（`bs-ball/index.html`、`index.html`、`portal.html`；須同步登記 `docs/ops/frontend-hotfix-log.md`）。若遇需部署級回滾舊版入口的極端場景（極少見），沿用「直接修改編譯產物」流程：
 
 1. `grep` 定位特徵字串
 2. Python 腳本 `assert` 精確替換（搭配上下文印出核對）
@@ -237,14 +237,14 @@ java-server/
 
 ```
 webapps/
-├── index.html           # 根頁面
+├── index.html           # 直通頁 → /bs-ball-next/intro（H60）
 ├── portal.html          # 門戶首頁（網域訪問直通 /bs-ball-next/）
 ├── static/              # 共用資源（fonts, logo）
 ├── home/                # 門戶子頁面
-├── bs-ball/             # 舊版：後台 + 即時比賽前端（/bs-ball/）
+├── bs-ball/             # 舊版：後台 + 即時比賽前端（/bs-ball/；入口已封鎖，僅留產物供部署級回滾）
 │   ├── assets/          # JS + CSS（Vite 編譯）
 │   ├── team-logos/      # 球隊 Logo
-│   ├── index.html       # 後台 SPA 入口
+│   ├── index.html       # 直通頁 → /bs-ball-next/（深鏈前綴互換映射）
 │   └── *.svg            # 球場、頭像等 SVG
 └── bs-ball-next/        # 重建版前端（/bs-ball-next/；發佈時建置組裝）
 ```
