@@ -13,7 +13,6 @@
           variant="pool"
           :state="String(pendingPlayerId ?? '') === String(p.id) ? 'pending' : 'idle'"
           @pick="emit('pick', $event)"
-          @open="emit('open-panel', { player: p, from: 'pool' })"
         />
       </div>
       <p v-if="!pool.length" class="lineup-pool__empty">该队名册已全部安排</p>
@@ -32,7 +31,6 @@
           variant="bench"
           :state="String(pendingPlayerId ?? '') === String(p.id) ? 'pending' : 'idle'"
           @pick="emit('pick', $event)"
-          @open="emit('open-panel', { player: p, from: 'bench' })"
         />
       </div>
       <p v-if="!bench.length" class="lineup-pool__empty">拖到此处加入替补，或使用「批量添加」</p>
@@ -79,7 +77,7 @@ const props = defineProps({
   // 拖拽悬停的区域（'pool' | 'bench' | ''），用于「松手会落在这里」高亮
   hoverKind: { type: String, default: '' },
 });
-const emit = defineEmits(['pick', 'open-panel', 'batch-change']);
+const emit = defineEmits(['pick', 'batch-change']);
 
 const poolEl = ref(null);
 const benchEl = ref(null);

@@ -12,7 +12,7 @@
         class="lineup-batting__row"
         :class="{ 'is-error': errorIndices.includes(index) }"
         :data-player-id="row.id"
-        @click="emit('row-open', row.id)"
+        @click.stop="emit('pick', row.id)"
       >
         <el-icon class="lineup-batting__handle drag-handle" title="按住拖动排序"><Rank /></el-icon>
         <span class="lineup-batting__order">{{ index + 1 }}棒</span>
@@ -38,7 +38,7 @@ const props = defineProps({
   // 拖拽悬停在本区域（页面下发，用于「松手会落在这里」高亮）
   dropHover: { type: Boolean, default: false },
 });
-const emit = defineEmits(['reorder', 'row-open']);
+const emit = defineEmits(['reorder', 'pick']);
 const listEl = ref(null);
 const filledRows = computed(() => props.rows.filter((r) => !isPlaceholder(r)));
 const filledCount = computed(() => filledRows.value.length);
