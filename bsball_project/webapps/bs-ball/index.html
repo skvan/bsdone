@@ -1,51 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/bs-ball/bs-ball-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>BS Ball</title>
-    <script type="module" crossorigin src="/bs-ball/assets/index-ByOnov1B.js"></script>
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/rolldown-runtime-Bnw7wDfq.js">
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/element-plus-QVmext20.js">
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/md-editor-IN9f0baB.js">
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/vue-vendor-NmoMlVoe.js">
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/tenantRoute-B_0KXvuE.js">
-    <link rel="modulepreload" crossorigin href="/bs-ball/assets/request-DYh6k9hF.js">
-    <link rel="stylesheet" crossorigin href="/bs-ball/assets/element-plus-CMYWrWEF.css">
-    <link rel="stylesheet" crossorigin href="/bs-ball/assets/md-editor-CPO6ItUn.css">
-    <link rel="stylesheet" crossorigin href="/bs-ball/assets/index-C_jLdc2X.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  
-<script>
-/* frontend-switch-mapped-v2：页面级版本映射（H27）——旧版→新版按当前路径互换；
-   特例：旧版介绍页(/index.html) → 新版介绍页；旧版首页(/bs-ball/、/bs-ball) → 新版门户首页 */
-(function () {
-  function newTarget() {
-    var p = window.location.pathname || '/';
-    if (p === '/index.html') return '/bs-ball-next/intro';
-    if (p === '/bs-ball' || p === '/bs-ball/') return '/bs-ball-next/bs-ball/';
-    if (p.indexOf('/bs-ball/') === 0) return '/bs-ball-next' + p.slice('/bs-ball'.length);
-    return '/bs-ball-next/';
-  }
-  function mount() {
-    if (document.getElementById('frontend-switch-fallback')) return;
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'frontend-switch-fallback';
-    btn.textContent = '返回新版';
-    btn.title = '返回新版前端（重建版）';
-    btn.style.cssText = 'position:fixed;right:16px;top:16px;z-index:1900;padding:6px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.35);background:rgba(15,32,58,.82);color:#fff;font-size:12px;line-height:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:.72';
-    btn.addEventListener('mouseenter', function () { btn.style.opacity = '1'; });
-    btn.addEventListener('mouseleave', function () { btn.style.opacity = '.72'; });
-    btn.addEventListener('click', function () { location.href = newTarget(); });
-    document.body.appendChild(btn);
-  }
-  if (document.body) mount();
-  else document.addEventListener('DOMContentLoaded', mount, { once: true });
-})();
-</script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 旧版入口封锁（H60）：/bs-ball/* 全部经此页映射至新版对应路径（深链前缀互换，与 H27 映射规则同构）。
+       JS 在 head 同步执行 location.replace（replace 不产生历史残留）；meta refresh 仅作禁用脚本时的兜底。
+       本页非版本注入目标（apply-release-version 不覆盖此文件），故不含版本锚点。 -->
+  <script>
+    (function () {
+      var p = window.location.pathname;
+      var t = '/bs-ball-next/';
+      if (p === '/bs-ball' || p === '/bs-ball/' || p === '/bs-ball/index.html') t = '/bs-ball-next/bs-ball/';
+      else if (p.indexOf('/bs-ball/') === 0) t = '/bs-ball-next' + p.slice('/bs-ball'.length);
+      location.replace(t + window.location.search + window.location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url=/bs-ball-next/" />
+  <title>BS Ball</title>
+  <link rel="icon" type="image/png" href="/bs-ball/bs-ball-logo.png" />
+  <style>
+    /* 直通页（H60）：旧系统入口封锁 —— 不加载旧版任何资源，直达新版对应页。 */
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: #0a1628;
+      color: rgba(255, 255, 255, .78);
+      -webkit-font-smoothing: antialiased;
+    }
+    .mark { font-size: 30px; font-weight: 700; letter-spacing: 6px; color: #fff; }
+    .tip { margin: 0; font-size: 14px; letter-spacing: 1px; }
+    a { color: #c9a227; }
+  </style>
+</head>
+<body>
+  <div class="mark">BS Ball</div>
+  <p class="tip">正在进入新版…</p>
+  <p class="tip">如未自动跳转，请<a href="/bs-ball-next/">点击此处</a></p>
 </body>
 </html>

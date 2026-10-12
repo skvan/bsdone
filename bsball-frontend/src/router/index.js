@@ -92,7 +92,7 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 const routes = [
     // 新版展示/入口页（无门户外壳）：品牌展示 + 门户/管理台入口（Issue #105 双轨体验对齐）
     { path: '/welcome', name: 'PortalWelcome', component: Welcome },
-    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡与旧版介绍页「进入新版」均指此页）
+    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡指此页）
     { path: '/intro', name: 'PortalIntro', component: Intro, meta: { title: '系统介绍' } },
     // 根路径默认落地 welcome
     { path: '/', redirect: '/welcome' },
