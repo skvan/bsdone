@@ -7,7 +7,8 @@ public record ScoringRunner(
         long responsiblePitcherId,
         RunnerOrigin origin,
         EarnedRunStatus overrideStatus,
-        UnearnedRunReason overrideReason) {
+        UnearnedRunReason overrideReason,
+        Boolean wouldScoreWithoutMisplay) {
 
     public ScoringRunner {
         if (runnerId <= 0 || responsiblePitcherId <= 0) {
@@ -22,27 +23,36 @@ public record ScoringRunner(
         }
     }
 
+    public ScoringRunner(
+            long runnerId,
+            long responsiblePitcherId,
+            RunnerOrigin origin,
+            EarnedRunStatus overrideStatus,
+            UnearnedRunReason overrideReason) {
+        this(runnerId, responsiblePitcherId, origin, overrideStatus, overrideReason, null);
+    }
+
     public static ScoringRunner normal(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.NORMAL, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.NORMAL, null, null, null);
     }
 
     public static ScoringRunner reachedOnError(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.ERROR, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.ERROR, null, null, null);
     }
 
     public static ScoringRunner tieBreak(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.TIE_BREAK, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.TIE_BREAK, null, null, null);
     }
 
     public static ScoringRunner passedBall(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.PASSED_BALL, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.PASSED_BALL, null, null, null);
     }
 
     public static ScoringRunner wildPitch(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.WILD_PITCH, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.WILD_PITCH, null, null, null);
     }
 
     public static ScoringRunner interference(long runnerId, long responsiblePitcherId) {
-        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.INTERFERENCE, null, null);
+        return new ScoringRunner(runnerId, responsiblePitcherId, RunnerOrigin.INTERFERENCE, null, null, null);
     }
 }
