@@ -1,6 +1,6 @@
 // LiveGame —— 行为保真移植自编译产物 LiveGame-Bjdd5Cir（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { ElRadioGroup as Sc, ElDropdown as kc, ElInputNumber as Cc, ElDialog as Bc, ElDropdownMenu as Ic, ElRadioButton as Fc, ElIcon as xs, ElRadio as $c, ElPopover as Rc, ElMessage as Fe, ElOption as Ac, ElDropdownItem as Oc, ElEmpty as Lc, ElButton as mi, ElCard as Ec, ElSelect as Nc, ElMessageBox as al, vLoading as Hc, ElSwitch as Mc, ElTooltip as Uc } from 'element-plus';
+import { ElRadioGroup as Sc, ElDropdown as kc, ElInputNumber as Cc, ElDialog as Bc, ElDropdownMenu as Ic, ElRadioButton as Fc, ElIcon as xs, ElPopover as Rc, ElMessage as Fe, ElOption as Ac, ElDropdownItem as Oc, ElEmpty as Lc, ElButton as mi, ElCard as Ec, ElSelect as Nc, ElMessageBox as al, vLoading as Hc, ElSwitch as Mc, ElTooltip as Uc } from 'element-plus';
 import { nextTick as He, withModifiers as Ze, createElementBlock as C, shallowRef as ys, normalizeStyle as ba, defineComponent as Wn, createTextVNode as Q, computed as $, toDisplayString as H, createElementVNode as n, unref as c, Teleport as gi, normalizeClass as re, vShow as _a, createBlock as Oe, ref as x, createVNode as v, createStaticVNode as Tc, withDirectives as Vn, openBlock as h, withCtx as L, onUnmounted as yu, Fragment as me, triggerRef as Mn, toRef as bi, watch as Ce, h as da, onMounted as As, renderList as et, onBeforeUnmount as wu, resolveDynamicComponent as Dc, reactive as ha, isRef as Vo, createCommentVNode as W, toRefs as Kc } from 'vue';
 import { ArrowDown as Go, Close as nl, Setting as xc, ArrowLeft as Su } from '@element-plus/icons-vue';
 import { onBeforeRouteLeave as Vc, useRouter as Wc, isNavigationFailure as Xc, useRoute as zc } from 'vue-router';
@@ -4823,9 +4823,6 @@ var sg={
 ,Eg={
   class:"top-row-left"
 }
-,Ng={
-  class:"live-field-settings-body"
-}
 ,Hg={
   class:"live-field-settings-extra"
 }
@@ -4841,21 +4838,10 @@ var sg={
 ,Gg={
   class:"defense-group"
 }
-,Vg=["onClick","onPointerdown"],Wg=["x","y"],Xg=["x"],Yg=["x"],Kg=["x"],zg=["cx","cy","r"],qg=["x","y","width","height"],jg={
+,Vg=["onClick","onPointerdown"],zg=["cx","cy","r"],qg=["x","y","width","height"],jg={
   class:"runners-group"
 }
-,Jg=["transform","onPointerdown"],Qg=["x","y","width","height"],Zg=["x","y","width","height"],eb=["x","y"],tb=["x"],nb=["x"],ab=["x"],lb={
-  x:"240",y:"558","text-anchor":"middle",class:"runner-text batter-dot-txt"
-}
-,ib={
-  x:"158",dy:"-5",class:"field-svg-label__line"
-}
-,sb={
-  x:"158",dy:"14",class:"field-svg-label__line field-svg-label__line--sub"
-}
-,rb={
-  key:1,x:"158",dy:"3",class:"field-svg-label__line"
-}
+,Jg=["transform","onPointerdown"],Qg=["x","y","width","height"]
 ,ob={
   key:0,class:"runner-path-anim-layer","pointer-events":"none","aria-hidden":"true"
 }
@@ -4877,7 +4863,7 @@ var sg={
 ,gb=["x","y","width","height"],bb=["x1","y1","x2","y2"],_b=["x","y","width","height"],hb=["x","y","width","height"],yb=["x","y"],wb=["x","y"],Sb=["x","y"],kb=["x","y"],Pb={
   key:3,class:"hit-spray-fly-anim"
 }
-,Cb=["x","y"],Bb=["transform"],Ib=["x","y","width","height"],Fb=["x","y"],Tb=["x"],$b=["x"],Rb=["x"],xb={
+,Cb=["x","y"],Bb=["transform"],xb={
   class:"hsc-inline__actions"
 }
 ,Ab={
@@ -5087,7 +5073,7 @@ var sg={
       class:"live-sub-rings"
     }
     ,u.targets.map((t)=>da("circle",{
-      key:t.key,cx:t.cx,cy:t.cy,r:21,class:["live-sub-drop-ring",t.hot?"live-sub-drop-ring--hot":"live-sub-drop-ring--idle"]
+      key:t.key,cx:t.cx,cy:t.cy,r:27,class:["live-sub-drop-ring",t.hot?"live-sub-drop-ring--hot":"live-sub-drop-ring--idle"]
     }
     ))):null
   }
@@ -6870,6 +6856,9 @@ var sg={
       };
       return e==="P"?{
         x:t.x,y:t.y+-18
+      }
+      :e==="C"?{
+        x:t.x,y:t.y+18
       }
       :t
     }
@@ -9603,9 +9592,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return buildLiveBenchItems(benchRef.value,unavailRef.value,N.value)
     }
     const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>liveBenchEmptyText(N.value));
-    // 换人被禁的原因：文案复用既有 tf（口径不漂移），仅追加「三出局后需先确认半局结束」
+    // 换人被禁的原因：文案复用既有 tf（口径不漂移），追加「跑垒待确认（ge）」与「三出局后需先确认半局结束」
     function liveBenchSubBlockedReason(){
-      return tf.value||(l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")
+      return tf.value||(ge.value!=null?"请先完成或取消当前跑垒确认":l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")
     }
     const liveBenchSubBlocked=()=>!!liveBenchSubBlockedReason();
     function liveBenchClearPending(){
@@ -9665,7 +9654,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function liveBenchConsumePendingClicks(hit){
       const card=liveBenchPendingCard.value;
       if(!card)return!1;
-      if(l.flow||kt.value!=null||qe.value||lt.value)return!1;
+      if(l.flow||ge.value!=null||kt.value!=null||qe.value||lt.value)return!1;
       const src=card.side==="offense"?"offenseBench":"defenseBench";
       if(!liveSubTargetKinds(src).includes(hit.kind))return!0;
       if(card.teamKey!==liveBenchTeamKey(card.side)){
@@ -10646,7 +10635,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       pn.length=0,Ye.value=[],Jt!==0&&(cancelAnimationFrame(Jt),Jt=0),ze.value=null,ne.value=null,na(),Fl(),oe.value&&(document.body.classList.remove("live-game-fullscreen-active"),document.body.style.overflow="")
     }
     ),(e,t)=>{
-      const a=xs,s=mi,r=Oc,p=Ic,g=kc,m=Lc,y=Uc,b=$c,w=Sc,P=Mc,A=Rc,T=Ec,Y=Bc,j=Ac,ee=Nc,V=Fc,E=Cc,U=Hc;
+      const a=xs,s=mi,r=Oc,p=Ic,g=kc,m=Lc,y=Uc,w=Sc,P=Mc,A=Rc,T=Ec,Y=Bc,j=Ac,ee=Nc,V=Fc,E=Cc,U=Hc;
       return h(),C("div",sg,[Vn((h(),Oe(T,null,{
         header:L(()=>[n("div",rg,[n("span",null,"实时比赛录入 · "+H(c(S)),1)]),n("div",og,[c(F)&&c(R)?(h(),Oe(g,{
           key:0,trigger:"click",teleported:!1,onCommand:Mu
@@ -10899,60 +10888,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,{
           reference:L(()=>[v(s,{
-            size:"small",icon:c(xc),circle:"",title:"场上显示与标签"
+            size:"small",icon:c(xc),circle:"",title:"场上设置"
           }
-          ,null,8,["icon"])]),default:L(()=>[n("div",Ng,[t[88]||(t[88]=n("div",{
-            class:"live-field-settings-title"
-          }
-          ,"场上标签",-1)),t[89]||(t[89]=n("p",{
-            class:"live-field-settings-hint"
-          }
-          ,"守备位置、垒上跑者与击球员在本垒板旁的显示方式",-1)),v(w,{
-            modelValue:Pe.value,"onUpdate:modelValue":t[3]||(t[3]=d=>Pe.value=d),size:"small",class:"live-field-settings-rg"
-          }
-          ,{
-            default:L(()=>[v(b,{
-              value:"no",border:""
-            }
-            ,{
-              default:L(()=>[...t[81]||(t[81]=[Q("编号",-1)])]),_:1
-            }
-            ),v(b,{
-              value:"abbr",border:""
-            }
-            ,{
-              default:L(()=>[...t[82]||(t[82]=[Q("守位简称",-1)])]),_:1
-            }
-            ),v(b,{
-              value:"back",border:""
-            }
-            ,{
-              default:L(()=>[...t[83]||(t[83]=[Q("仅背号",-1)])]),_:1
-            }
-            ),v(b,{
-              value:"no_back",border:""
-            }
-            ,{
-              default:L(()=>[...t[84]||(t[84]=[Q("编号 + 背号",-1)])]),_:1
-            }
-            ),v(b,{
-              value:"abbr_back",border:""
-            }
-            ,{
-              default:L(()=>[...t[85]||(t[85]=[Q("守位 + 背号",-1)])]),_:1
-            }
-            ),v(b,{
-              value:"name_back",border:""
-            }
-            ,{
-              default:L(()=>[...t[86]||(t[86]=[Q("姓名 + 背号",-1)])]),_:1
-            }
-            )]),_:1
-          }
-          ,8,["modelValue"]),t[90]||(t[90]=n("hr",{
-            class:"live-field-settings-divider"
-          }
-          ,null,-1)),n("div",Hg,[t[87]||(t[87]=n("div",{
+          ,null,8,["icon"])]),default:L(()=>[n("div",Hg,[t[87]||(t[87]=n("div",{
             class:"live-field-settings-extra-text"
           }
           ,[n("div",{
@@ -10964,7 +10902,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,"Pitch 浮层每行左侧的图示（B/K/HP 等）")],-1)),v(P,{
             modelValue:c(Al),"onUpdate:modelValue":t[4]||(t[4]=d=>Vo(Al)?Al.value=d:null)
           }
-          ,null,8,["modelValue"])])])]),_:1
+          ,null,8,["modelValue"])])]),_:1
         }
         ),v(A,{
           visible:ji.value,"onUpdate:visible":t[5]||(t[5]=d=>ji.value=d),placement:"bottom-start",width:ol.value,trigger:"click","popper-class":"live-field-settings-popover live-field-bench-ops-popover"
@@ -11062,30 +11000,36 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           key:td.key,x1:td.x1,y1:td.y1,x2:td.x2,y2:td.y2,class:re(["chain-trail",ti===c(chainTrail).length-1?"chain-trail--solid":`chain-trail--l${Math.min(4,c(chainTrail).length-1-ti)}`])
         }
         ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
-          key:d,class:re(["defender-hit",{
+          key:d,"data-pos":d,class:re(["defender-hit",{
             "field-player-hit--disabled":nn.value
           }
           ]),onClick:Ze(z=>Ro(d,z),["stop"]),onPointerdown:z=>Qf(d,z)
         }
-        ,[n("text",{
-          x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,y:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentY:za(d).y,"text-anchor":"middle",class:re(["defender-text",{
-            "flow-highlight":gf(d),"field-svg-label--dual":Na.value,"defender-text--dragging":ce.value&&ce.value.isDragging&&ce.value.pos===d
+        ,[(h(),C("g",{
+          key:"dcard",transform:ce.value&&ce.value.isDragging&&ce.value.pos===d?`translate(${ce.value.currentX}, ${ce.value.currentY})`:`translate(${za(d).x}, ${za(d).y})`,class:re(["defender-card",{
+            "defender-card--dragging":ce.value&&ce.value.isDragging&&ce.value.pos===d
           }
           ])
         }
-        ,[qa.value[d]?.bottom!=null&&String(qa.value[d]?.bottom).trim()!==""?(h(),C(me,{
-          key:0
+        ,[n("rect",{
+          x:"-22",y:"-22",width:"44",height:"44",rx:"9",class:re(["defender-card__box",{
+            "flow-highlight-box":gf(d)
+          }
+          ])
         }
-        ,[n("tspan",{
-          x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,dy:"-5",class:"field-svg-label__line"
+        ,null,2),n("text",{
+          x:"0",y:"-2","text-anchor":"middle",class:re(["defender-card__pos",{
+            "flow-highlight-box":gf(d)
+          }
+          ])
         }
-        ,H(qa.value[d].top),9,Xg),n("tspan",{
-          x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,dy:"14",class:"field-svg-label__line field-svg-label__line--sub"
+        ,H(d),2),n("text",{
+          x:"0",y:"15","text-anchor":"middle",class:re(["defender-card__num",{
+            "flow-highlight-box":gf(d)
+          }
+          ])
         }
-        ,H(qa.value[d].bottom),9,Yg)],64)):(h(),C("tspan",{
-          key:1,x:ce.value&&ce.value.isDragging&&ce.value.pos===d?ce.value.currentX:za(d).x,dy:"3",class:"field-svg-label__line"
-        }
-        ,H(qa.value[d]?.top??"?"),9,Kg))],10,Wg)],42,Vg))),128)),v(LiveBenchRings,{targets:liveBenchRingTargets.value},null,16),c(chainHl)?(h(),C("circle",{
+        ,"#"+H(tl(nf.value[d])),3)],10,["transform"]))],42,Vg))),128)),v(LiveBenchRings,{targets:liveBenchRingTargets.value},null,16),c(chainHl)?(h(),C("circle",{
           key:`chl-${c(chainHl).seq}`,class:"chain-hl-ring",cx:c(chainHl).x,cy:c(chainHl).y,r:19
         }
         ,null,8,["cx","cy"])):W("",!0),c(hh)?(h(),C("circle",{
@@ -11118,52 +11062,34 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,8,Qg)),ne.value&&ne.value.base===d&&ne.value.moved?W("",!0):(h(),C(me,{
           key:1
         }
-        ,[ja(d)&&!zs(ja(d)?.id)?(h(),C("rect",{
-          key:0,x:(c(Ke)[d]?.x??200)-c(20),y:(c(Ke)[d]?.y??200)-c(20),width:c(40),height:c(40),class:re(["runner-base-marker",{
-            "flow-highlight":df.value
+        ,[ja(d)&&!zs(ja(d)?.id)?(h(),C("g",{
+          key:0,class:"runner-token-g"
+        }
+        ,[n("circle",{
+          cx:c(Ke)[d]?.x??240,cy:(c(Ke)[d]?.y??445)+6,r:"17",class:re(["runner-token-circle",{
+            "flow-highlight-token":df.value
           }
           ])
         }
-        ,null,10,Zg)):W("",!0),ja(d)&&!zs(ja(d)?.id)?(h(),C("text",{
-          key:1,x:c(Ke)[d]?.x??240,y:(c(Ke)[d]?.y??445)+2,"text-anchor":"middle",class:re(["runner-text",{
-            "field-svg-label--dual":Na.value
-          }
-          ])
+        ,null,2),n("text",{
+          x:c(Ke)[d]?.x??240,y:(c(Ke)[d]?.y??445)+12,"text-anchor":"middle",class:"runner-token-num"
         }
-        ,[vn.value[d].bottom!=null?(h(),C(me,{
-          key:0
-        }
-        ,[n("tspan",{
-          x:c(Ke)[d]?.x??200,dy:"-5",class:"field-svg-label__line"
-        }
-        ,H(vn.value[d].top),9,tb),n("tspan",{
-          x:c(Ke)[d]?.x??200,dy:"14",class:"field-svg-label__line field-svg-label__line--sub"
-        }
-        ,H(vn.value[d].bottom),9,nb)],64)):(h(),C("tspan",{
-          key:1,x:c(Ke)[d]?.x??200,dy:"4",class:"field-svg-label__line"
-        }
-        ,H(vn.value[d].top),9,ab))],10,eb)):W("",!0)],64))],42,Jg)),64))]),n("g",{
+        ,"#"+H(tl(ja(d))),1)],2)):W("",!0)],64))],42,Jg)),64))]),n("g",{
           class:re(["batter-at-plate-group",{
             "field-player-hit--disabled":nn.value
           }
           ]),onClick:Ze(Ao,["stop"])
         }
         ,[n("circle",{
-          cx:"240",cy:"555",r:"8",class:re(["runner-dot","batter-dot",{
-            "flow-highlight":qr.value
+          cx:"240",cy:"555",r:"17",class:re(["runner-token-circle","batter-token-circle",{
+            "flow-highlight-token":qr.value
           }
           ])
         }
-        ,null,2),n("text",lb,H(lf.value),1)],2),n("text",{
-          x:"158",y:"562","text-anchor":"middle",class:re(["batter-txt",{
-            "flow-highlight":qr.value,"field-svg-label--dual":Na.value,"field-player-hit--disabled":nn.value
-          }
-          ]),onClick:Ze(Ao,["stop"])
+        ,null,2),n("text",{
+          x:"240",y:"561","text-anchor":"middle",class:"runner-token-num"
         }
-        ,[Ul.value.bottom!=null?(h(),C(me,{
-          key:0
-        }
-        ,[n("tspan",ib,H(Ul.value.top),1),n("tspan",sb,H(Ul.value.bottom),1)],64)):(h(),C("tspan",rb,H(Ul.value.top),1))],2),c(Ye).length?(h(),C("g",ob,[(h(!0),C(me,null,et(c(Ye),d=>(h(),Oe(hv,{
+        ,"#"+H(tl(be.value)),1)],2),c(Ye).length?(h(),C("g",ob,[(h(!0),C(me,null,et(c(Ye),d=>(h(),Oe(hv,{
           key:"rpath-"+d.key,"path-d":d.pathD,dur:d.dur,mode:d.mode,"label-top":d.labelTop,"label-bottom":d.labelBottom,"exit-x":d.exitX,"exit-y":d.exitY
         }
         ,null,8,["path-d","dur","mode","label-top","label-bottom","exit-x","exit-y"]))),128))])):W("",!0),qe.value&&Bl.value?(h(),C("g",ub,[(h(!0),C(me,null,et(ip.value,d=>(h(),C("g",{
@@ -11241,28 +11167,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,8,Cb)])):W("",!0),ne.value&&ne.value.moved&&c(l).runners[ne.value.base]?(h(),C("g",{
           key:4,class:"runner-drag-floater","pointer-events":"none",transform:ur(ne.value.base)
         }
-        ,[n("rect",{
-          x:(c(Ke)[ne.value.base]?.x??200)-c(20),y:(c(Ke)[ne.value.base]?.y??200)-c(20),width:c(40),height:c(40),class:"runner-base-marker runner-base-marker--floater"
+        ,[n("circle",{
+          cx:(c(Ke)[ne.value.base]?.x??200),cy:(c(Ke)[ne.value.base]?.y??200)+6,r:"17",class:"runner-token-circle runner-token-circle--floater"
         }
-        ,null,8,Ib),n("text",{
-          x:c(Ke)[ne.value.base]?.x??200,y:(c(Ke)[ne.value.base]?.y??200)+2,"text-anchor":"middle",class:re(["runner-text",{
-            "field-svg-label--dual":Na.value
-          }
-          ])
+        ,null),n("text",{
+          x:(c(Ke)[ne.value.base]?.x??200),y:(c(Ke)[ne.value.base]?.y??200)+12,"text-anchor":"middle",class:"runner-token-num"
         }
-        ,[vn.value[ne.value.base].bottom!=null?(h(),C(me,{
-          key:0
-        }
-        ,[n("tspan",{
-          x:c(Ke)[ne.value.base]?.x??200,dy:"-5",class:"field-svg-label__line"
-        }
-        ,H(vn.value[ne.value.base].top),9,Tb),n("tspan",{
-          x:c(Ke)[ne.value.base]?.x??200,dy:"14",class:"field-svg-label__line field-svg-label__line--sub"
-        }
-        ,H(vn.value[ne.value.base].bottom),9,$b)],64)):(h(),C("tspan",{
-          key:1,x:c(Ke)[ne.value.base]?.x??200,dy:"4",class:"field-svg-label__line"
-        }
-        ,H(vn.value[ne.value.base].top),9,Rb))],10,Fb)],8,Bb)):W("",!0)],512)),qe.value&&Bl.value?(h(),C("div",{
+        ,"#"+H(tl(ja(ne.value.base))),1)],8,Bb)):W("",!0)],512)),qe.value&&Bl.value?(h(),C("div",{
           key:0,class:"hsc-inline",onClick:t[11]||(t[11]=Ze(()=>{
             
           }
