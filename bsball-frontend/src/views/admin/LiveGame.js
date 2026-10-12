@@ -5989,7 +5989,6 @@ var sg={
       de("击球结果"),l.flow=null;
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
-      pushHitSpray(e.playType,0,e.opts);
       const r={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
@@ -6010,6 +6009,7 @@ var sg={
         if(decision==null)return;
         wouldScoreWithoutError=decision.wouldScoreWithoutError
       }
+      pushHitSpray(dpException?"FC":e.playType,0,e.opts);
       pu(e.bases,t,{
         creditRBI:e.playType!=="E"||dpException,runCause:e.playType==="E"&&!dpException?"ERROR":dpException?"FC":"HIT",wouldScoreWithoutError,runners:l.runners,batter:a,pitcher:s,addScore:Ct,recordRun:ls,handleOut:Bt,ensureBatting:w=>ue(w),addLog:D
       }
@@ -9943,10 +9943,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             :{creditRbi:choice==="error_still_scores",runCause:"ERROR",wouldScoreWithoutError:choice==="error_still_scores",rbiReason:choice==="error_still_scores"?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"};
           bt(e,t,a,decision)
         });
-        return
-      }
-      if(e==="E"&&l.runners[3]&&rbiOverride==null){
-        askErrorRunRbiDecision(l.runners[3]).then(decision=>decision!=null&&bt(e,t,a,decision));
         return
       }
       const sacrificeRunDecision=rbiOverride??{creditRbi:true,runCause:"SACRIFICE",wouldScoreWithoutError:null,rbiReason:"SACRIFICE"};

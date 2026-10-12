@@ -62,7 +62,9 @@ test('雙殺特例不適用無一壘跑者、兩出局、無出局或已完成�
 
 test('LiveGame 要求記分員判定錯誤得分，並將 RBI 判定隨得分跑者保存', () => {
   assert.match(liveGame, /失誤得分 RBI 判定/);
-  assert.match(liveGame, /if\(e==="E"&&l\.runners\[3\]&&rbiOverride==null\)/);
+  assert.ok(!liveGame.includes('askErrorRunRbiDecision(l.runners[3]).then('), 'E 预弹窗答案会被 dp 重问或跳过，已移除');
+  assert.match(liveGame, /await askErrorRunRbiDecision\(r\[3\]\)/);
+  assert.match(liveGame, /pushHitSpray\(dpException\?"FC":e\.playType,0,e\.opts\)/);
   assert.match(liveGame, /async function fcApply/);
   assert.match(liveGame, /const runDecision=l\.runners\[3\]\?await askErrorRunRbiDecision/);
   assert.match(liveGame, /askErrorRunRbiDecision\(l\.runners\[3\]\)/);

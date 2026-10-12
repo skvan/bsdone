@@ -36,8 +36,8 @@ test('bt 主链各结果分支均入队（含此前缺失的 7 类）', () => {
 });
 
 test('对话框路径均入队：dp / fp / fcApply', () => {
-  const dialogCalls = source.split('pushHitSpray(e.playType,0,e.opts)').length - 1;
-  assert.equal(dialogCalls, 2, 'dp（跑者推进）与 fp（野选系对话框）各一处');
+  assert.match(source, /pushHitSpray\(e\.playType,0,e\.opts\);/, 'fp（野选系对话框）应入队');
+  assert.match(source, /pushHitSpray\(dpException\?"FC":e\.playType,0,e\.opts\);/, 'dp（跑者推进）应入队，双杀特例按 FC 入队');
   assert.match(source, /pushHitSpray\("E",0,a\);/, 'fcApply“没有跑者出局（失误）”分支应入队 E');
   assert.match(source, /pushHitSpray\("FC",0,a\);/, 'fcApply 正常野选路径应入队 FC');
 });
