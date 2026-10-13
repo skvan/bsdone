@@ -343,7 +343,7 @@ public class PlayerClaimService {
         // 电子秩序册批 4（Issue #310）：守卫放宽为「接管或代管」——办赛方对旗下无主球队可发起入队邀请；
         // 有主球队的联盟侧仍只读（assertCanStewardOrManageTeam 语义）。
         this.resourceGuard.assertCanStewardOrManageTeam(teamId);
-        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
+        Team team = this.requireTeamInCurrentTenant(teamId);
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
             // 保留租户一致性：删除 isCurrentlyInTeam 硬校验后，仍需保证受邀球员与球队同租户。
