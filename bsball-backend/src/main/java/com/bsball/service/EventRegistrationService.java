@@ -1,0 +1,375 @@
+package com.bsball.service;
+
+import com.bsball.core.CurrentUserHolder;
+import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.EventRosterPlayerDto;
+import com.bsball.model.dto.EventTeamDto;
+import com.bsball.model.entity.Event;
+import com.bsball.model.entity.EventRosterPlayer;
+import com.bsball.model.entity.EventTeam;
+import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
+import com.bsball.model.entity.Team;
+import com.bsball.repository.EventRepository;
+import com.bsball.repository.EventRosterPlayerRepository;
+import com.bsball.repository.EventTeamRepository;
+import com.bsball.repository.PlayerRepository;
+import com.bsball.repository.PlayerTeamRepository;
+import com.bsball.repository.TeamRepository;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 电子秩序册（Issue #310）核心服务：赛事参赛登记、报名名单、锁定与移除。
+ * <p>写守卫：赛事侧（邀请/移除/锁定）= {@link ResourceGuard#assertCanManageEvent(Long)}；
+ * 球队侧（确认/谢绝/提交名单）= {@link ResourceGuard#assertCanStewardOrManageTeam(Long)}
+ * （有主球队联盟侧只读；代管无主球队的办赛方可用）。读端点=登录+同租户（读宽写窄）。
+ */
+@Service
+public class EventRegistrationService {
+    private final EventRepository eventRepository;
+    private final TeamRepository teamRepository;
+    private final PlayerRepository playerRepository;
+    private final PlayerTeamRepository playerTeamRepository;
+    private final EventTeamRepository eventTeamRepository;
+    private final EventRosterPlayerRepository eventRosterPlayerRepository;
+    private final ResourceGuard resourceGuard;
+    private final TenantQueryPolicyService tenantQueryPolicyService;
+
+    public EventRegistrationService(EventRepository eventRepository,
+            TeamRepository teamRepository,
+            PlayerRepository playerRepository,
+            PlayerTeamRepository playerTeamRepository,
+            EventTeamRepository eventTeamRepository,
+            EventRosterPlayerRepository eventRosterPlayerRepository,
+            ResourceGuard resourceGuard,
+            TenantQueryPolicyService tenantQueryPolicyService) {
+        this.eventRepository = eventRepository;
+        this.teamRepository = teamRepository;
+        this.playerRepository = playerRepository;
+        this.playerTeamRepository = playerTeamRepository;
+        this.eventTeamRepository = eventTeamRepository;
+        this.eventRosterPlayerRepository = eventRosterPlayerRepository;
+        this.resourceGuard = resourceGuard;
+        this.tenantQueryPolicyService = tenantQueryPolicyService;
+    }
+
+    /**
+     * 邀请球队参赛（幂等）：不存在→新建 invited；declined→重邀重置（清空确认/谢绝/提交时间）；
+     * invited/confirmed→跳过不写。被邀球队须与本赛事同租户。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> inviteTeams(Long eventId, List<Long> teamIds, String remark) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        this.requireEvent(eventId, tid);
+        int invited = 0;
+        int skipped = 0;
+        for (Long teamId : teamIds == null ? List.<Long>of() : teamIds) {
+            if (teamId == null) {
+                continue;
+            }
+            this.requireTeam(teamId, tid);
+            EventTeam reg = this.eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(eventId, teamId).orElse(null);
+            if (reg == null) {
+                reg = new EventTeam();
+                reg.setTenantId(Long.valueOf(tid));
+                reg.setEventId(eventId);
+                reg.setTeamId(teamId);
+                reg.setStatus(EventTeam.STATUS_INVITED);
+                reg.setInvitedBy(CurrentUserHolder.get());
+                reg.setInvitedAt(LocalDateTime.now());
+                reg.setRemark(remark);
+                this.eventTeamRepository.save(reg);
+                ++invited;
+            } else if (EventTeam.STATUS_DECLINED.equals(reg.getStatus())) {
+                reg.setStatus(EventTeam.STATUS_INVITED);
+                reg.setInvitedBy(CurrentUserHolder.get());
+                reg.setInvitedAt(LocalDateTime.now());
+                reg.setDeclinedAt(null);
+                reg.setConfirmedAt(null);
+                reg.setRosterSubmittedAt(null);
+                if (remark != null) {
+                    reg.setRemark(remark);
+                }
+                this.eventTeamRepository.save(reg);
+                ++invited;
+            } else {
+                ++skipped;
+            }
+        }
+        return Map.of("invited", invited, "skipped", skipped);
+    }
+
+    /** 赛事侧参赛列表（含球队名/徽与名单人数）。 */
+    public List<EventTeamDto> listEventTeams(Long eventId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.requireEvent(eventId, tid);
+        List<EventTeam> regs = this.eventTeamRepository.findByEventIdAndDeletedAtIsNullOrderByIdAsc(eventId);
+        if (regs.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Team> teams = this.teamRepository.findAllById(regs.stream().map(EventTeam::getTeamId).toList())
+                .stream().collect(Collectors.toMap(Team::getId, x -> x, (a, b) -> a));
+        List<EventTeamDto> out = new ArrayList<EventTeamDto>(regs.size());
+        for (EventTeam r : regs) {
+            long count = this.eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(eventId, r.getTeamId());
+            out.add(this.build(r, teams.get(r.getTeamId()), null, count));
+        }
+        return out;
+    }
+
+    /** 球队侧「我的赛事报名」列表（含赛事名/赛季/模式），按登记倒序。 */
+    public List<EventTeamDto> listTeamRegistrations(Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        Team team = this.requireTeam(teamId, tid);
+        List<EventTeam> regs = this.eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(teamId);
+        if (regs.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Event> events = this.eventRepository.findAllById(regs.stream().map(EventTeam::getEventId).toList())
+                .stream().collect(Collectors.toMap(Event::getId, x -> x, (a, b) -> a));
+        List<EventTeamDto> out = new ArrayList<EventTeamDto>(regs.size());
+        for (EventTeam r : regs) {
+            long count = this.eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(r.getEventId(), teamId);
+            out.add(this.build(r, team, events.get(r.getEventId()), count));
+        }
+        return out;
+    }
+
+    /**
+     * 移除参赛（软删登记 + 全部名单行）。守卫：赛事管理；名单已锁定 → 400（须先解锁）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void removeEventTeam(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        EventTeam reg = this.requireRegistration(eventId, teamId, tid);
+        if (Boolean.TRUE.equals(reg.getRosterLocked())) {
+            throw new BusinessException(400, "名单已锁定，请先解锁再移除");
+        }
+        this.softDelete(reg);
+        for (EventRosterPlayer row : this.eventRosterPlayerRepository
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId)) {
+            this.softDelete(row);
+        }
+    }
+
+    /** 锁定/解锁名单（仅办赛方；解锁清空锁定留痕）。 */
+    @Transactional(rollbackFor = Exception.class)
+    public EventTeamDto lockRoster(Long eventId, Long teamId, boolean locked) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        EventTeam reg = this.requireRegistration(eventId, teamId, tid);
+        reg.setRosterLocked(Boolean.valueOf(locked));
+        reg.setLockedBy(locked ? CurrentUserHolder.get() : null);
+        reg.setLockedAt(locked ? LocalDateTime.now() : null);
+        this.eventTeamRepository.save(reg);
+        return this.toDto(reg);
+    }
+
+    /** 查看报名名单明细（含"是否仍在队"提示）。 */
+    public List<EventRosterPlayerDto> roster(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.requireRegistration(eventId, teamId, tid);
+        List<EventRosterPlayer> rows = this.eventRosterPlayerRepository
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = rows.stream().map(EventRosterPlayer::getPlayerId).toList();
+        Map<Long, Player> players = this.playerRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Player::getId, x -> x, (a, b) -> a));
+        Set<Long> currentInTeam = this.playerTeamRepository.findByPlayerIdInAndDeletedAtIsNullAndCurrentTrue(ids).stream()
+                .filter(e -> Objects.equals(e.getTeamId(), teamId))
+                .map(PlayerTeam::getPlayerId)
+                .collect(Collectors.toSet());
+        List<EventRosterPlayerDto> out = new ArrayList<EventRosterPlayerDto>(rows.size());
+        for (EventRosterPlayer r : rows) {
+            Player p = players.get(r.getPlayerId());
+            out.add(new EventRosterPlayerDto(
+                    r.getPlayerId(),
+                    p != null ? p.getName() : null,
+                    r.getNumber() != null ? r.getNumber() : (p != null ? p.getNumber() : null),
+                    p != null ? p.getPositionsList() : List.of(),
+                    p != null ? p.getStatus() : null,
+                    Boolean.valueOf(currentInTeam.contains(r.getPlayerId()))));
+        }
+        return out;
+    }
+
+    /** 确认参加（仅 invited 可操作；confirmed 幂等；declined → 400 引导重邀）。 */
+    @Transactional(rollbackFor = Exception.class)
+    public EventTeamDto confirm(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        EventTeam reg = this.requireRegistration(eventId, teamId, tid);
+        if (EventTeam.STATUS_CONFIRMED.equals(reg.getStatus())) {
+            return this.toDto(reg);
+        }
+        if (EventTeam.STATUS_DECLINED.equals(reg.getStatus())) {
+            throw new BusinessException(400, "已谢绝参赛，请联系办赛方重新邀请");
+        }
+        reg.setStatus(EventTeam.STATUS_CONFIRMED);
+        reg.setConfirmedAt(LocalDateTime.now());
+        this.eventTeamRepository.save(reg);
+        return this.toDto(reg);
+    }
+
+    /** 谢绝参赛（仅 invited 可操作；declined 幂等；confirmed → 400 引导联系办赛方）。 */
+    @Transactional(rollbackFor = Exception.class)
+    public EventTeamDto decline(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        EventTeam reg = this.requireRegistration(eventId, teamId, tid);
+        if (EventTeam.STATUS_DECLINED.equals(reg.getStatus())) {
+            return this.toDto(reg);
+        }
+        if (EventTeam.STATUS_CONFIRMED.equals(reg.getStatus())) {
+            throw new BusinessException(400, "已确认参赛，不能直接谢绝，请联系办赛方");
+        }
+        reg.setStatus(EventTeam.STATUS_DECLINED);
+        reg.setDeclinedAt(LocalDateTime.now());
+        this.eventTeamRepository.save(reg);
+        return this.toDto(reg);
+    }
+
+    /**
+     * 提交/修改报名名单：锁定 403；须已确认；至少 1 人；球员须为本队 current 在役；
+     * 差量同步（新增/更新 sort 与背号快照/软删缺省行），并刷新 roster_submitted_at。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public EventTeamDto submitRoster(Long eventId, Long teamId, List<Long> playerIds) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        EventTeam reg = this.requireRegistration(eventId, teamId, tid);
+        if (Boolean.TRUE.equals(reg.getRosterLocked())) {
+            throw new BusinessException(403, "名单已锁定，无法修改");
+        }
+        if (!EventTeam.STATUS_CONFIRMED.equals(reg.getStatus())) {
+            throw new BusinessException(400, "请先确认参加后再提交名单");
+        }
+        List<Long> incoming = (playerIds == null ? List.<Long>of() : playerIds).stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (incoming.isEmpty()) {
+            throw new BusinessException(400, "请至少选择 1 名球员");
+        }
+        List<String> invalid = new ArrayList<String>();
+        for (Long pid : incoming) {
+            Player p = this.playerRepository.findById(pid).orElse(null);
+            boolean bad = p == null || p.getDeletedAt() != null
+                    || !Objects.equals(p.getTenantId(), Long.valueOf(tid))
+                    || this.playerTeamRepository.countCurrentEntry(pid, teamId) <= 0L;
+            if (bad) {
+                invalid.add(p != null && p.getName() != null ? p.getName() : String.valueOf(pid));
+            }
+        }
+        if (!invalid.isEmpty()) {
+            throw new BusinessException(400, "以下球员当前不在本队：" + String.join("、", invalid));
+        }
+        Map<Long, EventRosterPlayer> existing = this.eventRosterPlayerRepository
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId).stream()
+                .collect(Collectors.toMap(EventRosterPlayer::getPlayerId, x -> x, (a, b) -> a));
+        Map<Long, PlayerTeam> entries = this.playerTeamRepository
+                .findByTeamIdAndDeletedAtIsNullAndPlayerIdIn(teamId, incoming).stream()
+                .collect(Collectors.toMap(PlayerTeam::getPlayerId, x -> x, (a, b) -> a));
+        int sort = 0;
+        for (Long pid : incoming) {
+            EventRosterPlayer row = existing.get(pid);
+            if (row == null) {
+                row = new EventRosterPlayer();
+                row.setTenantId(Long.valueOf(tid));
+                row.setEventId(eventId);
+                row.setTeamId(teamId);
+                row.setPlayerId(pid);
+            }
+            row.setSort(Integer.valueOf(sort++));
+            PlayerTeam entry = entries.get(pid);
+            row.setNumber(entry != null ? entry.getNumber() : null);
+            this.eventRosterPlayerRepository.save(row);
+        }
+        Set<Long> keep = new HashSet<Long>(incoming);
+        for (EventRosterPlayer row : existing.values()) {
+            if (!keep.contains(row.getPlayerId())) {
+                this.softDelete(row);
+            }
+        }
+        reg.setRosterSubmittedAt(LocalDateTime.now());
+        this.eventTeamRepository.save(reg);
+        return this.toDto(reg);
+    }
+
+    private Event requireEvent(Long eventId, long tid) {
+        Event ev = eventId == null ? null : this.eventRepository.findById(eventId).orElse(null);
+        if (ev == null || ev.getDeletedAt() != null || !Objects.equals(ev.getTenantId(), Long.valueOf(tid))) {
+            throw new BusinessException(404, "赛事不存在");
+        }
+        return ev;
+    }
+
+    private Team requireTeam(Long teamId, long tid) {
+        Team team = teamId == null ? null : this.teamRepository.findById(teamId).orElse(null);
+        if (team == null || team.getDeletedAt() != null || !Objects.equals(team.getTenantId(), Long.valueOf(tid))) {
+            throw new BusinessException(400, "球队不存在或不属于当前租户");
+        }
+        return team;
+    }
+
+    private EventTeam requireRegistration(Long eventId, Long teamId, long tid) {
+        EventTeam reg = eventId == null || teamId == null
+                ? null
+                : this.eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(eventId, teamId).orElse(null);
+        if (reg == null || !Objects.equals(reg.getTenantId(), Long.valueOf(tid))) {
+            throw new BusinessException(404, "该球队未参加本赛事");
+        }
+        return reg;
+    }
+
+    private void softDelete(EventTeam reg) {
+        reg.setDeletedAt(LocalDateTime.now());
+        reg.setDeletedBy(CurrentUserHolder.get());
+        this.eventTeamRepository.save(reg);
+    }
+
+    private void softDelete(EventRosterPlayer row) {
+        row.setDeletedAt(LocalDateTime.now());
+        row.setDeletedBy(CurrentUserHolder.get());
+        this.eventRosterPlayerRepository.save(row);
+    }
+
+    private EventTeamDto toDto(EventTeam reg) {
+        Team team = this.teamRepository.findById(reg.getTeamId()).orElse(null);
+        long count = this.eventRosterPlayerRepository
+                .countByEventIdAndTeamIdAndDeletedAtIsNull(reg.getEventId(), reg.getTeamId());
+        return this.build(reg, team, null, count);
+    }
+
+    private EventTeamDto build(EventTeam reg, Team team, Event event, long playerCount) {
+        return new EventTeamDto(
+                reg.getId(),
+                reg.getEventId(),
+                reg.getTeamId(),
+                team != null ? team.getName() : null,
+                team != null ? team.getLogo() : null,
+                reg.getStatus(),
+                reg.getRosterLocked(),
+                playerCount,
+                reg.getConfirmedAt(),
+                reg.getDeclinedAt(),
+                reg.getRosterSubmittedAt(),
+                reg.getRemark(),
+                event != null ? event.getName() : null,
+                event != null ? event.getSeason() : null,
+                event != null ? event.getGameMode() : null);
+    }
+}
