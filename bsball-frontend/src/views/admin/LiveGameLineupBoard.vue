@@ -133,8 +133,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
-import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
-import { filterOutOfRoster, filterTemplateByPool } from '../../utils/rosterPool';
+import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
 import { usePermission } from '../../composables/usePermission';
 import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
@@ -359,10 +359,16 @@ const rosterPools = ref({ home: null, away: null });
 
 async function loadRosters() {
   if (!setupForm.value.homeTeamId || !setupForm.value.awayTeamId) return;
-  const [homePool, awayPool] = await Promise.all([
+  let [homePool, awayPool] = await Promise.all([
     fetchRosterPlayers(eventId.value, setupForm.value.homeTeamId),
     fetchRosterPlayers(eventId.value, setupForm.value.awayTeamId),
   ]);
+  if (homePool.failed || awayPool.failed) {
+    // 秩序册服务不可用：回落本队全名册保持可用（保存时门①/门②仍兜底），并提示
+    ElMessage.warning('未能加载赛事秩序册名单，已回退本队全名册（保存时仍将校验）');
+    homePool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.homeTeamId) };
+    awayPool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.awayTeamId) };
+  }
   rosterPools.value = { home: homePool, away: awayPool };
   homeBoard.setRoster(homePool.players);
   awayBoard.setRoster(awayPool.players);
@@ -492,14 +498,14 @@ async function loadGame(id) {
         homeBoard.loadDraft({
           rows: homeFiltered.keptRows,
           bench: homeFiltered.keptBench,
-          fieldingPitcherId: n.homeFieldingPitcherId,
-          lastDhAddedFromPoolId: n.homeLastDhAddedFromPoolId,
+          fieldingPitcherId: pickPoolId(n.homeFieldingPitcherId, rosterPools.value.home),
+          lastDhAddedFromPoolId: pickPoolId(n.homeLastDhAddedFromPoolId, rosterPools.value.home),
         });
         awayBoard.loadDraft({
           rows: awayFiltered.keptRows,
           bench: awayFiltered.keptBench,
-          fieldingPitcherId: n.awayFieldingPitcherId,
-          lastDhAddedFromPoolId: n.awayLastDhAddedFromPoolId,
+          fieldingPitcherId: pickPoolId(n.awayFieldingPitcherId, rosterPools.value.away),
+          lastDhAddedFromPoolId: pickPoolId(n.awayLastDhAddedFromPoolId, rosterPools.value.away),
         });
         unavailable.value.home = Array.isArray(n.homeUnavailablePlayerIds) ? n.homeUnavailablePlayerIds : [];
         unavailable.value.away = Array.isArray(n.awayUnavailablePlayerIds) ? n.awayUnavailablePlayerIds : [];
@@ -658,6 +664,11 @@ async function startEntry() {
     try {
       await gameApi.saveLineup(id, JSON.stringify(payload));
     } catch (error) {
+      if (error && typeof error.apiCode === 'number') {
+        // 业务校验失败（如秩序册名单外球员 400）：中止进入录入，先修正阵容
+        ElMessage.error(error.message ?? '阵容校验未通过，请修正后重试');
+        return;
+      }
       console.warn('[LiveGameLineup] initial snapshot save failed', error);
       ElMessage.warning('初始阵容未同步到服务器，切换页面后可能需要重排阵容');
     }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -145,10 +147,9 @@ class GameRosterValidationTest {
         gameService.saveLive(GAME_ID, dto);
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<java.util.Collection<EventRegistrationService.StatsRef>> captor =
-                ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(eventRegistrationService).assertStatsPartsInRoster(
-                org.mockito.ArgumentMatchers.eq(EVENT_ID), org.mockito.ArgumentMatchers.eq(GAME_ID), captor.capture());
+        ArgumentCaptor<Collection<EventRegistrationService.StatsRef>> captor =
+                ArgumentCaptor.forClass(Collection.class);
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(EVENT_ID), eq(GAME_ID), captor.capture());
         assertEquals(new EventRegistrationService.StatsRef(HOME_ID, 5L), captor.getValue().iterator().next());
         verify(gamePlayerStatRepository).save(any(GamePlayerStat.class));
     }
@@ -169,9 +170,34 @@ class GameRosterValidationTest {
 
         gameService.saveResult(GAME_ID, dto);
 
-        verify(eventRegistrationService).assertStatsPartsInRoster(
-                org.mockito.ArgumentMatchers.eq(EVENT_ID), org.mockito.ArgumentMatchers.eq(GAME_ID), anyCollection());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<EventRegistrationService.StatsRef>> captor =
+                ArgumentCaptor.forClass(Collection.class);
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(EVENT_ID), eq(GAME_ID), captor.capture());
+        assertEquals(new EventRegistrationService.StatsRef(HOME_ID, 5L), captor.getValue().iterator().next());
         verify(gamePlayerStatRepository).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("门②：saveResult 同请求迁移 eventId 时按目标赛事口径校验")
+    void saveResult_migratesEventId_validatesAgainstTargetEvent() {
+        Game g = game();
+        when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(g));
+        stubWritableContext();
+        when(gamePlayerStatRepository.findByGameId(GAME_ID)).thenReturn(List.of());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setEventId(Long.valueOf(701L));
+        dto.setGame(gamePart);
+        SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
+        part.setTeamId(Long.valueOf(HOME_ID));
+        part.setPlayerId(Long.valueOf(5L));
+        part.setIsPitcher(Integer.valueOf(1));
+        dto.setStats(List.of(part));
+
+        gameService.saveResult(GAME_ID, dto);
+
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(701L), eq(GAME_ID), anyCollection());
     }
 
     @Test
@@ -185,8 +211,11 @@ class GameRosterValidationTest {
 
         statService.create(stat);
 
-        verify(eventRegistrationService).assertStatsPartsInRoster(
-                org.mockito.ArgumentMatchers.eq(EVENT_ID), org.mockito.ArgumentMatchers.eq(GAME_ID), anyCollection());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<EventRegistrationService.StatsRef>> captor =
+                ArgumentCaptor.forClass(Collection.class);
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(EVENT_ID), eq(GAME_ID), captor.capture());
+        assertEquals(new EventRegistrationService.StatsRef(HOME_ID, 5L), captor.getValue().iterator().next());
         verify(gamePlayerStatRepository).save(stat);
     }
 
@@ -206,10 +235,9 @@ class GameRosterValidationTest {
         statService.update(1L, payload);
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<java.util.Collection<EventRegistrationService.StatsRef>> captor =
-                ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(eventRegistrationService).assertStatsPartsInRoster(
-                org.mockito.ArgumentMatchers.eq(EVENT_ID), org.mockito.ArgumentMatchers.eq(GAME_ID), captor.capture());
+        ArgumentCaptor<Collection<EventRegistrationService.StatsRef>> captor =
+                ArgumentCaptor.forClass(Collection.class);
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(EVENT_ID), eq(GAME_ID), captor.capture());
         assertEquals(new EventRegistrationService.StatsRef(HOME_ID, 8L), captor.getValue().iterator().next());
         verify(gamePlayerStatRepository).save(payload);
     }

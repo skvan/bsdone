@@ -2,7 +2,7 @@
 // 运行：在 bsball-frontend 目录执行  node --test "tests/*.test.mjs"
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isInPool, filterOutOfRoster, filterTemplateByPool } from '../src/utils/rosterPool.js';
+import { isInPool, pickPoolId, filterOutOfRoster, filterTemplateByPool } from '../src/utils/rosterPool.js';
 
 const pool = (ids) => ({ restricted: true, players: ids.map((id) => ({ id })) });
 const full = { restricted: false, players: [] };
@@ -35,6 +35,22 @@ test('filterOutOfRoster：受限且池为空时全部剔除；未受限原样放
   const untouched = filterOutOfRoster(rows, [], full);
   assert.equal(untouched.keptRows.length, 1);
   assert.equal(untouched.removed.length, 0);
+});
+
+test('filterOutOfRoster：占位行（负 id / 空 id）原样保留且不计入 removed', () => {
+  const rows = [{ id: -10000, name: '' }, { id: null, name: '' }, { id: 7, name: '外人' }];
+  const out = filterOutOfRoster(rows, [], pool([5, 6]));
+  assert.equal(out.keptRows.length, 2);
+  assert.deepEqual(out.keptRows.map((r) => r.id), [-10000, null]);
+  assert.deepEqual(out.removed, [{ id: 7, name: '外人' }]);
+});
+
+test('pickPoolId：在池保留、不在池置空；未受限/空值放行', () => {
+  assert.equal(pickPoolId(5, pool([5, 6])), 5);
+  assert.equal(pickPoolId(7, pool([5, 6])), null);
+  assert.equal(pickPoolId(null, pool([])), null);
+  assert.equal(pickPoolId(7, full), 7);
+  assert.equal(pickPoolId(7, null), 7);
 });
 
 test('filterTemplateByPool：槽位置空留位、替补与投手剔除并计数；未受限原样', () => {

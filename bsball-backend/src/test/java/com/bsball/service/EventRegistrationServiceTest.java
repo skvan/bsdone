@@ -18,6 +18,7 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventTeamDto;
 import com.bsball.model.dto.RosterPlayersDto;
+import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventRosterPlayer;
 import com.bsball.model.entity.EventTeam;
@@ -73,6 +74,8 @@ class EventRegistrationServiceTest {
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
+    private PlayerService playerService;
+    @Mock
     private ResourceGuard resourceGuard;
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
@@ -83,7 +86,7 @@ class EventRegistrationServiceTest {
     void setUp() {
         service = new EventRegistrationService(eventRepository, teamRepository, playerRepository,
                 playerTeamRepository, eventTeamRepository, eventRosterPlayerRepository,
-                gamePlayerStatRepository, resourceGuard, tenantQueryPolicyService);
+                gamePlayerStatRepository, playerService, resourceGuard, tenantQueryPolicyService);
     }
 
     @AfterEach
@@ -667,13 +670,13 @@ class EventRegistrationServiceTest {
     }
 
     @Test
-    @DisplayName("阵容池：未受限赛事回落本队全量在役（findTeamPlayerOptionFields 同口径）")
+    @DisplayName("阵容池：未受限赛事回落本队全量在役（复用球队球员选项目径）")
     void rosterPlayers_notRestricted_fallsBackToFullTeam() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
         when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(false);
-        when(playerTeamRepository.findTeamPlayerOptionFields(TENANT_ID, TEAM_ID)).thenReturn(List.<Object[]>of(
-                new Object[]{5L, "张三", "7", "[\"P\"]", "R", "R", "active"}));
+        when(playerService.listTeamPlayerOptions(TEAM_ID)).thenReturn(List.of(
+                new TeamPlayerOptionDto(5L, "张三", "7", List.of("P"), "R", "R", "active")));
 
         RosterPlayersDto out = service.rosterPlayers(EVENT_ID, TEAM_ID);
 
@@ -710,6 +713,9 @@ class EventRegistrationServiceTest {
 
         service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, json);
         service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, "not-a-json");
+        // 非法 JSON 应解析失败即短路（仅第一次调用命中名单查询）
+        verify(eventRosterPlayerRepository, org.mockito.Mockito.times(1))
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID);
     }
 
     @Test

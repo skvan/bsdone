@@ -5,6 +5,7 @@ import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventRosterSubmitRequest;
 import com.bsball.model.dto.EventTeamDto;
 import com.bsball.model.dto.EventTeamInviteRequest;
+import com.bsball.model.dto.RosterPlayersDto;
 import com.bsball.service.EventRegistrationService;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +66,12 @@ public class EventRegistrationApi {
     @GetMapping(value = {"/event/{eventId}/teams/{teamId}/roster"})
     public Result<List<EventRosterPlayerDto>> roster(@PathVariable Long eventId, @PathVariable Long teamId) {
         return Result.ok(this.eventRegistrationService.roster(eventId, teamId));
+    }
+
+    /** 阵容选人池（门①支撑）：受限=该队报名名单球员；未受限=本队 current 全量在役。 */
+    @GetMapping(value = {"/event/{eventId}/teams/{teamId}/roster-players"})
+    public Result<RosterPlayersDto> rosterPlayers(@PathVariable Long eventId, @PathVariable Long teamId) {
+        return Result.ok(this.eventRegistrationService.rosterPlayers(eventId, teamId));
     }
 
     /** 球队侧「我的赛事报名」列表。 */
