@@ -53,12 +53,17 @@
               </el-button>
             </template>
           </el-table-column>
-          <template #empty>{{ keyword ? t('invitePlayer.emptySearch') : t('invitePlayer.searchPlaceholder') }}</template>
+          <template #empty>
+            {{ keyword ? t('invitePlayer.emptySearch') : t('invitePlayer.searchPlaceholder') }}
+          </template>
         </el-table>
+        <div v-if="total > candidates.length" class="dialog-hint">
+          {{ t('invitePlayer.moreHint', { total }) }}
+        </div>
         <div class="dialog-hint">{{ t('invitePlayer.genericHint') }}</div>
       </el-tab-pane>
 
-      <el-tab-pane :label="t('invitePlayer.tabInvites')" name="invites">
+      <el-tab-pane v-if="canRevoke" :label="t('invitePlayer.tabInvites')" name="invites">
         <el-table v-loading="listLoading" :data="invites" max-height="380">
           <el-table-column :label="t('invitePlayer.colPlayer')" min-width="110">
             <template #default="{ row }">
@@ -75,13 +80,16 @@
             <template #default="{ row }">{{ row.usedCount ?? 0 }}/{{ row.maxUses ?? 1 }}</template>
           </el-table-column>
           <el-table-column :label="t('invitePlayer.colExpires')" width="150">
-            <template #default="{ row }">{{ formatTime(row.expiresAt) }}</template>
+            <template #default="{ row }">{{ formatDateTimeMinute(row.expiresAt) }}</template>
           </el-table-column>
           <el-table-column :label="t('invitePlayer.colCreated')" width="150">
-            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+            <template #default="{ row }">{{ formatDateTimeMinute(row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column :label="t('orderBook.colActions')" width="100" fixed="right">
+          <el-table-column :label="t('orderBook.colActions')" width="170" fixed="right">
             <template #default="{ row }">
+              <el-button v-if="row.status === 'active'" link type="primary" @click="copyLink(row.token)">
+                {{ t('invitePlayer.copy') }}
+              </el-button>
               <el-button v-if="row.status === 'active'" link type="danger" @click="revokeInvite(row)">
                 {{ t('invitePlayer.revoke') }}
               </el-button>
@@ -95,7 +103,7 @@
     <el-dialog v-model="linkVisible" :title="t('invitePlayer.linkTitle')" width="520px" append-to-body>
       <el-input :model-value="linkPreview" readonly class="link-input">
         <template #append>
-          <el-button @click="copyLink">{{ t('invitePlayer.copy') }}</el-button>
+          <el-button @click="copyLink()">{{ t('invitePlayer.copy') }}</el-button>
         </template>
       </el-input>
       <div class="dialog-hint">{{ t('invitePlayer.linkHint') }}</div>
@@ -108,11 +116,15 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import { accountApi } from '../../api/account';
-import { currentTenantCodeFromUrl } from '../../utils/tenantRoute';
+import { usePermission } from '../../composables/usePermission';
+import { currentTenantCodeFromUrl, DEFAULT_TENANT_CODE } from '../../utils/tenantRoute';
+import { formatDateTimeMinute } from '../../utils/dateExtras';
+import { confirmAction } from '../../utils/confirmAction';
 import '../../styles/admin-page-head.css';
 
 const props = defineProps({
@@ -123,10 +135,15 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const { t } = useI18n();
+const router = useRouter();
+const { hasPerm } = usePermission();
+
+const canRevoke = computed(() => hasPerm('business:team:inviteRevoke'));
 
 const activeTab = ref('search');
 const keyword = ref('');
 const candidates = ref([]);
+const total = ref(0);
 const searching = ref(false);
 const creating = ref(false);
 const invites = ref([]);
@@ -134,41 +151,65 @@ const listLoading = ref(false);
 const linkVisible = ref(false);
 const linkToken = ref('');
 
-const linkPreview = computed(() => {
-  if (!linkToken.value) return '';
+/** 邀请链接：经路由解析携带部署基址（BASE_URL）+ 租户段，与门户领取页路由一致。 */
+function buildLink(token) {
+  if (!token) return '';
+  const tenant = currentTenantCodeFromUrl() || DEFAULT_TENANT_CODE;
+  const href = router.resolve({
+    name: 'PortalPlayerClaimInvite',
+    params: { tenantCode: tenant, token }
+  }).href;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const tenant = currentTenantCodeFromUrl() || '';
-  const prefix = tenant ? `/${tenant}` : '';
-  return `${origin}${prefix}/claim/${linkToken.value}`;
-});
+  return `${origin}${href}`;
+}
+
+const linkPreview = computed(() => buildLink(linkToken.value));
 
 let searchTimer = null;
+
+function clearSearchTimer() {
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+  }
+}
 
 watch(
   () => props.modelValue,
   (visible) => {
-    if (!visible) return;
+    if (!visible) {
+      clearSearchTimer();
+      return;
+    }
     activeTab.value = 'search';
     keyword.value = '';
     candidates.value = [];
     runSearch();
-    loadInvites();
+    if (canRevoke.value) loadInvites();
   }
 );
 
 watch(keyword, () => {
-  if (searchTimer) clearTimeout(searchTimer);
+  clearSearchTimer();
   searchTimer = setTimeout(runSearch, 300);
 });
+
+onBeforeUnmount(clearSearchTimer);
 
 async function runSearch() {
   if (props.teamId == null) return;
   searching.value = true;
   try {
-    const res = await accountApi.inviteCandidates(props.teamId, { keyword: keyword.value || undefined, page: 1, pageSize: 20 });
-    candidates.value = res?.data?.list ?? [];
+    const page = await accountApi.inviteCandidates(props.teamId, {
+      keyword: keyword.value || undefined,
+      page: 1,
+      pageSize: 20
+    });
+    candidates.value = page.list;
+    total.value = page.total;
   } catch {
     candidates.value = [];
+    total.value = 0;
   } finally {
     searching.value = false;
   }
@@ -179,6 +220,9 @@ async function loadInvites() {
   listLoading.value = true;
   try {
     invites.value = await accountApi.listClaimInvites(props.teamId);
+  } catch (e) {
+    invites.value = [];
+    ElMessage.error(e?.message ?? t('invitePlayer.loadFailed'));
   } finally {
     listLoading.value = false;
   }
@@ -192,7 +236,7 @@ async function generateInvite(row) {
     linkToken.value = res?.data?.token ?? '';
     linkVisible.value = true;
     await copyLink();
-    await loadInvites();
+    if (canRevoke.value) await loadInvites();
   } catch (e) {
     ElMessage.error(e?.message ?? t('invitePlayer.createFailed'));
   } finally {
@@ -200,9 +244,10 @@ async function generateInvite(row) {
   }
 }
 
-async function copyLink() {
+async function copyLink(token) {
+  const link = token ? buildLink(token) : linkPreview.value;
   try {
-    await navigator.clipboard.writeText(linkPreview.value);
+    await navigator.clipboard.writeText(link);
     ElMessage.success(t('invitePlayer.copyDone'));
   } catch {
     ElMessage.warning(t('invitePlayer.copyUnsupported'));
@@ -210,11 +255,8 @@ async function copyLink() {
 }
 
 async function revokeInvite(row) {
-  try {
-    await ElMessageBox.confirm(t('invitePlayer.revokeConfirm'), t('invitePlayer.revokeConfirmTitle'), { type: 'warning' });
-  } catch {
-    return;
-  }
+  const ok = await confirmAction(t('invitePlayer.revokeConfirm'), t('invitePlayer.revokeConfirmTitle'));
+  if (!ok) return;
   try {
     await accountApi.revokeClaimInvite(props.teamId, row.id);
     ElMessage.success(t('invitePlayer.revoked'));
@@ -237,10 +279,6 @@ function inviteStatusText(status) {
 
 function inviteStatusType(status) {
   return INVITE_STATUS_TYPE[status] ?? 'info';
-}
-
-function formatTime(value) {
-  return value ? String(value).replace('T', ' ').slice(0, 16) : '-';
 }
 </script>
 

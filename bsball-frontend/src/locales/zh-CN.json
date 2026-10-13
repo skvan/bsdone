@@ -1932,6 +1932,8 @@
     "emptyInvites": "暂无已生成邀请",
     "createFailed": "生成失败",
     "revokeFailed": "撤销失败",
-    "genericHint": "「已在本队」的球员无需邀请；已认领球员将生成通用链接（本人确认后入队）。"
+    "genericHint": "「已在本队」的球员无需邀请；已认领球员将生成通用链接（本人确认后入队）。",
+    "loadFailed": "加载失败",
+    "moreHint": "共 {total} 名球员，请输入关键词缩小范围"
   }
 }

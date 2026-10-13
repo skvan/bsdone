@@ -63,7 +63,9 @@ export const accountApi = {
     if (params?.page != null) query.set('page', String(params.page));
     if (params?.pageSize != null) query.set('pageSize', String(params.pageSize));
     const qs = query.toString();
-    return get(`/api/team/${teamId}/player-invite-candidates${qs ? `?${qs}` : ''}`);
+    return get(`/api/team/${teamId}/player-invite-candidates${qs ? `?${qs}` : ''}`).then(
+      (r) => r?.data ?? { list: [], total: 0 }
+    );
   },
   listClaimInvites: (teamId) => get(`/api/team/${teamId}/player-claim-invites`).then((r) => r?.data ?? []),
   revokeClaimInvite: (teamId, id) => post(`/api/team/${teamId}/player-claim-invites/${id}/revoke`, {}),

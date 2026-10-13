@@ -292,11 +292,10 @@ var $n={
     const delMode=v(!1),delNames=v({});
     // ---- 电子秩序册入口（Issue #310，手工补丁）：邀请球员（球队上下文 teams/:id/players） ----
     const inviteDlg=v(!1),inviteTeam=v(null);
-    function openInvitePlayerByCtx(){
-      const o=Number(se.query?.teamId);
-      if(!Number.isFinite(o)||o<=0)return;
+    function openInvitePlayer(){
+      if(!hCtxTeam.value)return;
       inviteTeam.value={
-        id:o,name:""
+        id:hCtxTeam.value,name:""
       }
       ,inviteDlg.value=!0
     }
@@ -1335,7 +1334,7 @@ var $n={
           }
           )]),_:1
         }
-        ),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayerByCtx},{
+        ),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayer},{
           default:n(()=>[s("邀请球员")]),_:1
         }
         ,8,["onClick"])):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
@@ -1359,7 +1358,7 @@ var $n={
         ,{
           default:n(()=>[...e[51]||(e[51]=[s("导入数据",-1)])]),_:1
         }
-        )):H("",!0),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayerByCtx},{
+        )):H("",!0),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayer},{
           default:n(()=>[s("邀请球员")]),_:1
         }
         ,8,["onClick"])):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{

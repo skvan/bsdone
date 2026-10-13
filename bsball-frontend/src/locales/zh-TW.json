@@ -1922,6 +1922,8 @@
     "emptyInvites": "尚無已產生的邀請",
     "createFailed": "產生失敗",
     "revokeFailed": "撤銷失敗",
-    "genericHint": "「已在本隊」的球員無需邀請；已認領球員將產生通用連結（本人確認後入隊）。"
+    "genericHint": "「已在本隊」的球員無需邀請；已認領球員將產生通用連結（本人確認後入隊）。",
+    "loadFailed": "載入失敗",
+    "moreHint": "共 {total} 名球員，請輸入關鍵字縮小範圍"
   }
 }

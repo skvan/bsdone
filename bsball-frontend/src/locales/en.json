@@ -1923,6 +1923,8 @@
     "emptyInvites": "No invites generated yet",
     "createFailed": "Generate failed",
     "revokeFailed": "Revoke failed",
-    "genericHint": "Players already on this team need no invite; claimed players receive a generic link (join after their confirmation)."
+    "genericHint": "Players already on this team need no invite; claimed players receive a generic link (join after their confirmation).",
+    "loadFailed": "Load failed",
+    "moreHint": "{total} players in total, refine with a keyword"
   }
 }

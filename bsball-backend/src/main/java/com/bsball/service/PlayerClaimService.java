@@ -71,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -383,11 +384,26 @@ public class PlayerClaimService {
      */
     public PageResult<Map<String, Object>> inviteCandidates(Long teamId, String keyword, Integer page, Integer pageSize) {
         this.resourceGuard.assertCanStewardOrManageTeam(teamId);
-        Team team = this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
+        Team team = this.requireTeamInCurrentTenant(teamId);
         Long tid = team.getTenantId();
         int p = page == null || page <= 0 ? 1 : page.intValue();
-        int ps = pageSize == null || pageSize <= 0 ? 20 : pageSize.intValue();
-        Specification<Player> spec = (root, query, cb) -> {
+        int ps = pageSize == null || pageSize <= 0 ? 20 : Math.min(pageSize.intValue(), 100);
+        Page<Player> result = this.playerRepository.findAll(this.inviteCandidateSpec(tid, keyword),
+                PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.ASC, "id")));
+        List<Player> rows = result.getContent();
+        Map<Long, Set<Long>> currentTeams = rows.isEmpty()
+                ? Map.of()
+                : this.playerTeamService.currentTeamIdsByPlayerIds(rows.stream().map(Player::getId).toList());
+        Map<Long, String> teamNames = this.currentTeamNames(currentTeams);
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(rows.size());
+        for (Player player : rows) {
+            out.add(this.candidateRow(player, currentTeams.getOrDefault(player.getId(), Set.of()), teamNames, teamId));
+        }
+        return PageResult.of(out, result.getTotalElements());
+    }
+
+    private Specification<Player> inviteCandidateSpec(Long tid, String keyword) {
+        return (root, query, cb) -> {
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull(root.get("deletedAt")));
             if (tid != null) {
@@ -396,63 +412,63 @@ public class PlayerClaimService {
             if (keyword != null && !keyword.isBlank()) {
                 String k = "%" + keyword.toLowerCase() + "%";
                 preds.add(cb.or(cb.like(cb.lower(root.get("name")), k),
-                        cb.like(cb.lower(cb.coalesce(root.get("nickname"), "")), k),
-                        cb.like(cb.lower(cb.coalesce(root.get("shortName"), "")), k)));
+                        cb.like(cb.lower(root.get("nickname")), k),
+                        cb.like(cb.lower(root.get("shortName")), k)));
             }
             return cb.and(preds.toArray(new Predicate[0]));
         };
-        Page<Player> result = this.playerRepository.findAll(spec, PageRequest.of(p - 1, ps));
-        List<Player> rows = result.getContent();
-        Map<Long, Set<Long>> currentTeams = rows.isEmpty()
-                ? Map.of()
-                : this.playerTeamService.currentTeamIdsByPlayerIds(rows.stream().map(Player::getId).toList());
-        java.util.LinkedHashSet<Long> allTeamIds = new java.util.LinkedHashSet<Long>();
+    }
+
+    private Map<Long, String> currentTeamNames(Map<Long, Set<Long>> currentTeams) {
+        Set<Long> allTeamIds = new LinkedHashSet<Long>();
         for (Set<Long> set : currentTeams.values()) {
             allTeamIds.addAll(set);
         }
-        Map<Long, String> teamNames = allTeamIds.isEmpty()
-                ? Map.of()
-                : this.teamRepository.findAllById(allTeamIds).stream()
-                        .collect(Collectors.toMap(Team::getId, t -> t.getName(), (a, b) -> a));
-        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(rows.size());
-        for (Player player : rows) {
-            Set<Long> teamsOfPlayer = currentTeams.getOrDefault(player.getId(), Set.of());
-            List<Map<String, Object>> teamList = new ArrayList<Map<String, Object>>(teamsOfPlayer.size());
-            for (Long id : teamsOfPlayer) {
-                LinkedHashMap<String, Object> t = new LinkedHashMap<String, Object>();
-                t.put("teamId", id);
-                t.put("teamName", teamNames.getOrDefault(id, ""));
-                teamList.add(t);
-            }
-            LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
-            row.put("id", player.getId());
-            row.put("name", player.getName());
-            row.put("number", player.getNumber());
-            row.put("positions", player.getPositionsList());
-            row.put("status", player.getStatus());
-            row.put("claimed", player.getUserId() != null);
-            row.put("currentTeams", teamList);
-            row.put("inThisTeam", teamsOfPlayer.contains(teamId));
-            out.add(row);
+        if (allTeamIds.isEmpty()) {
+            return Map.of();
         }
-        return PageResult.of(out, result.getTotalElements());
+        return this.teamRepository.findAllById(allTeamIds).stream()
+                .collect(Collectors.toMap(Team::getId, t -> t.getName(), (a, b) -> a));
     }
 
-    /** 球队入队邀请列表（含 token 供复制链接；绑定球员名解析）。守卫同创建邀请。 */
+    private Map<String, Object> candidateRow(Player player, Set<Long> teamsOfPlayer, Map<Long, String> teamNames, Long teamId) {
+        List<Map<String, Object>> teamList = new ArrayList<Map<String, Object>>(teamsOfPlayer.size());
+        for (Long id : teamsOfPlayer) {
+            LinkedHashMap<String, Object> t = new LinkedHashMap<String, Object>();
+            t.put("teamId", id);
+            t.put("teamName", teamNames.getOrDefault(id, ""));
+            teamList.add(t);
+        }
+        LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
+        row.put("id", player.getId());
+        row.put("name", player.getName());
+        row.put("number", player.getNumber());
+        row.put("positions", player.getPositionsList());
+        row.put("status", player.getStatus());
+        row.put("claimed", player.getUserId() != null);
+        row.put("currentTeams", teamList);
+        row.put("inThisTeam", teamsOfPlayer.contains(teamId));
+        return row;
+    }
+
+    /** 球队入队邀请列表（含 token 供复制链接；绑定球员名批量解析）。守卫同创建邀请。 */
     public List<Map<String, Object>> listInvites(Long teamId) {
         this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.requireTeamInCurrentTenant(teamId);
         List<PlayerClaimInvite> invites = this.playerClaimInviteRepository
                 .findByTeamIdAndDeletedAtIsNullOrderByIdDesc(teamId);
+        List<Long> boundIds = invites.stream().map(PlayerClaimInvite::getPlayerId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> names = boundIds.isEmpty()
+                ? Map.of()
+                : this.playerRepository.findAllById(boundIds).stream()
+                        .collect(Collectors.toMap(Player::getId, p -> p.getName() == null ? "" : p.getName(), (a, b) -> a));
         List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(invites.size());
         for (PlayerClaimInvite invite : invites) {
             LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
             row.put("id", invite.getId());
             row.put("token", invite.getToken());
             row.put("playerId", invite.getPlayerId());
-            if (invite.getPlayerId() != null) {
-                this.playerRepository.findById(invite.getPlayerId())
-                        .ifPresent(p -> row.put("playerName", p.getName()));
-            }
+            row.put("playerName", invite.getPlayerId() != null ? names.get(invite.getPlayerId()) : null);
             row.put("status", invite.getStatus());
             row.put("expiresAt", invite.getExpiresAt());
             row.put("maxUses", invite.getMaxUses());
@@ -468,6 +484,7 @@ public class PlayerClaimService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> revokeInvite(Long teamId, Long inviteId) {
         this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.requireTeamInCurrentTenant(teamId);
         PlayerClaimInvite invite = this.playerClaimInviteRepository.findById(inviteId).orElse(null);
         if (invite == null || invite.getDeletedAt() != null || !Objects.equals(invite.getTeamId(), teamId)) {
             throw new BusinessException(404, "邀请不存在");
@@ -480,6 +497,21 @@ public class PlayerClaimService {
         out.put("id", invite.getId());
         out.put("status", invite.getStatus());
         return out;
+    }
+
+    /**
+     * 球队归属校验（防跨租户可见/可写；超管全局豁免）：与 {@code pendingForReviewer} 的
+     * 「防跨租户可见」口径一致——租户内不受限账号亦不得跨租户读取/撤销他租户数据。
+     */
+    private Team requireTeamInCurrentTenant(Long teamId) {
+        Team team = this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
+        Long uid = CurrentUserHolder.get();
+        Long reqTid = CurrentUserHolder.getTenantId();
+        if (uid != null && !this.apiPermissionService.isSuperAdmin(uid) && reqTid != null
+                && team.getTenantId() != null && !reqTid.equals(team.getTenantId())) {
+            throw new BusinessException(404, "球队不存在");
+        }
+        return team;
     }
 
     public Map<String, Object> getInvitePublic(String token) {
