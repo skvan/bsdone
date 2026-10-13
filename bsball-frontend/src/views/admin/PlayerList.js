@@ -18,6 +18,7 @@ import { dictTypeApi as En } from '../../api/system';
 import { dictDataApi as Vn } from '../../api/system';
 import { uploadResource as gt } from '../../api/system';
 import { userApi as uq } from '../../api/system';
+import InvitePlayerDialog from '../../components/admin/InvitePlayerDialog.vue';
 import { fetchAllPlayers as pt } from '../../api/business';
 import { playerApi as Ve } from '../../api/business';
 import { useAuthStore as hA } from '../../stores/auth';
@@ -289,6 +290,16 @@ var $n={
     }
     ),fa=v(new Map),ca=v(!1),Ae=v(void 0);
     const delMode=v(!1),delNames=v({});
+    // ---- 电子秩序册入口（Issue #310，手工补丁）：邀请球员（球队上下文 teams/:id/players） ----
+    const inviteDlg=v(!1),inviteTeam=v(null);
+    function openInvitePlayerByCtx(){
+      const o=Number(se.query?.teamId);
+      if(!Number.isFinite(o)||o<=0)return;
+      inviteTeam.value={
+        id:o,name:""
+      }
+      ,inviteDlg.value=!0
+    }
     function ae(a){
       return`${a.name??""}|${a.number??""}`
     }
@@ -1324,7 +1335,10 @@ var $n={
           }
           )]),_:1
         }
-        ),g(Zi)("business:player:create")?(m(),R(i,{
+        ),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayerByCtx},{
+          default:n(()=>[s("邀请球员")]),_:1
+        }
+        ,8,["onClick"])):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
           key:0,type:"primary",onClick:e[0]||(e[0]=o=>We())
         }
         ,{
@@ -1345,7 +1359,10 @@ var $n={
         ,{
           default:n(()=>[...e[51]||(e[51]=[s("导入数据",-1)])]),_:1
         }
-        )):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
+        )):H("",!0),g(Zi)("business:team:invitePlayer")&&hCtxTeam.value?(m(),R(i,{key:9,onClick:openInvitePlayerByCtx},{
+          default:n(()=>[s("邀请球员")]),_:1
+        }
+        ,8,["onClick"])):H("",!0),g(Zi)("business:player:create")?(m(),R(i,{
           key:1,type:"primary",onClick:e[1]||(e[1]=o=>We())
         }
         ,{
@@ -2510,7 +2527,10 @@ var $n={
         }
         ,8,["data","max-height"])])])):H("",!0)]),_:1
       }
-      ,8,["modelValue","width"])])
+      ,8,["modelValue","width"]),t(InvitePlayerDialog,{
+        modelValue:inviteDlg.value,"onUpdate:modelValue":o=>inviteDlg.value=o,teamId:inviteTeam.value?.id??null,teamName:inviteTeam.value?.name??""
+      }
+      ,8,["modelValue","teamId","teamName"])])
     }
     
   }

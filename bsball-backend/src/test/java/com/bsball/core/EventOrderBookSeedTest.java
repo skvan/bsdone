@@ -111,12 +111,12 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("API 注册幂等：两次调用仅插入 12 条（含阵容池与阵容保存端点）")
+    @DisplayName("API 注册幂等：两次调用仅插入 16 条（含阵容池/阵容保存/邀请管理端点与创建邀请兜底注册）")
     void apiSeedIdempotent() throws Exception {
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(12, apiStore.size());
+        assertEquals(16, apiStore.size());
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(12, apiStore.size(), "二次调用不得重复插入");
+        assertEquals(16, apiStore.size(), "二次调用不得重复插入");
         assertTrue(apiStore.stream().anyMatch(a -> "/event/:eventId/teams/invite".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/event-registrations".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a ->
@@ -125,6 +125,12 @@ class EventOrderBookSeedTest {
                 "/event/:eventId/teams/:teamId/roster-players".equals(a.getPath()) && "GET".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/game/:id/lineup-snapshot".equals(a.getPath()) && "POST".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/team/:teamId/player-invite-candidates".equals(a.getPath()) && "GET".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/team/:teamId/player-claim-invite".equals(a.getPath()) && "POST".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/team/:teamId/player-claim-invites/:id/revoke".equals(a.getPath()) && "POST".equals(a.getMethod())));
     }
 
     @Test
@@ -140,7 +146,9 @@ class EventOrderBookSeedTest {
                 .collect(Collectors.groupingBy(SysMenu::getPermission, Collectors.counting()));
         assertEquals(1L, counts.getOrDefault("business:event:teams", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:eventRegistration", 0L).longValue());
-        assertEquals(11, menuApiStore.size(), "两按钮合计绑定 11 个 API（6+5）");
+        assertEquals(1L, counts.getOrDefault("business:team:invitePlayer", 0L).longValue());
+        assertEquals(1L, counts.getOrDefault("business:team:inviteRevoke", 0L).longValue());
+        assertEquals(15, menuApiStore.size(), "四按钮合计绑定 15 个 API（6+5+2+2）");
         Map<Long, String> pathById = apiStore.stream()
                 .collect(Collectors.toMap(SysApi::getId, a -> a.getMethod() + "|" + a.getPath()));
         Set<String> bound = menuApiStore.stream().map(l -> pathById.get(l.getApiId())).collect(Collectors.toSet());
@@ -149,7 +157,9 @@ class EventOrderBookSeedTest {
                 "POST|/event/:eventId/teams/:teamId/remove", "POST|/event/:eventId/teams/:teamId/lock",
                 "POST|/event/:eventId/teams/:teamId/unlock", "GET|/event/:eventId/teams/:teamId/roster",
                 "GET|/team/:teamId/event-registrations", "POST|/event/:eventId/teams/:teamId/confirm",
-                "POST|/event/:eventId/teams/:teamId/decline", "PUT|/event/:eventId/teams/:teamId/roster"),
+                "POST|/event/:eventId/teams/:teamId/decline", "PUT|/event/:eventId/teams/:teamId/roster",
+                "GET|/team/:teamId/player-invite-candidates", "POST|/team/:teamId/player-claim-invite",
+                "GET|/team/:teamId/player-claim-invites", "POST|/team/:teamId/player-claim-invites/:id/revoke"),
                 bound, "按钮-API 绑定集合须与设计一致");
     }
 
@@ -161,6 +171,8 @@ class EventOrderBookSeedTest {
         @SuppressWarnings("unchecked")
         List<String> tm = (List<String>) f.get(null);
         assertTrue(tm.contains("business:team:eventRegistration"));
+        assertTrue(tm.contains("business:team:invitePlayer"));
+        assertTrue(tm.contains("business:team:inviteRevoke"));
         assertFalse(tm.contains("business:event:teams"), "赛事侧入口不授予球队管理员");
 
         Field f2 = InitDataRunner.class.getDeclaredField("PORTAL_LEAGUE_ORGANIZER_PERMISSIONS");
@@ -169,6 +181,8 @@ class EventOrderBookSeedTest {
         List<String> lo = (List<String>) f2.get(null);
         assertTrue(lo.contains("business:event:teams"));
         assertTrue(lo.contains("business:team:eventRegistration"));
+        assertTrue(lo.contains("business:team:invitePlayer"));
+        assertTrue(lo.contains("business:team:inviteRevoke"));
     }
 
     @Test
