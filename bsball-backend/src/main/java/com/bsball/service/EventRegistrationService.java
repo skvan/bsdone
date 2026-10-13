@@ -163,6 +163,7 @@ public class EventRegistrationService {
     public void removeEventTeam(Long eventId, Long teamId) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         this.resourceGuard.assertCanManageEvent(eventId);
+        this.requireEvent(eventId, tid);
         EventTeam reg = this.requireRegistration(eventId, teamId, tid);
         if (Boolean.TRUE.equals(reg.getRosterLocked())) {
             throw new BusinessException(403, "名单已锁定，请先解锁再移除");
@@ -179,6 +180,7 @@ public class EventRegistrationService {
     public EventTeamDto lockRoster(Long eventId, Long teamId, boolean locked) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         this.resourceGuard.assertCanManageEvent(eventId);
+        this.requireEvent(eventId, tid);
         EventTeam reg = this.requireRegistration(eventId, teamId, tid);
         reg.setRosterLocked(Boolean.valueOf(locked));
         reg.setLockedBy(locked ? CurrentUserHolder.get() : null);
@@ -187,9 +189,10 @@ public class EventRegistrationService {
         return this.toDto(reg);
     }
 
-    /** 查看报名名单明细（含"是否仍在队"提示）。 */
+    /** 查看报名名单明细（含"是否仍在队"提示；赛事已归还/软删 → 404）。 */
     public List<EventRosterPlayerDto> roster(Long eventId, Long teamId) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.requireEvent(eventId, tid);
         this.requireRegistration(eventId, teamId, tid);
         List<EventRosterPlayer> rows = this.eventRosterPlayerRepository
                 .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId);

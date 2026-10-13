@@ -440,6 +440,20 @@ class EventRegistrationServiceTest {
         assertNotNull(invited.getDeclinedAt());
         assertEquals(EventTeam.STATUS_DECLINED, dto.status());
         verify(eventTeamRepository).save(invited);
+        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("谢绝：守卫拒绝（403）时无任何写入")
+    void decline_guardForbidden_noWrite() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.decline(EVENT_ID, TEAM_ID));
+
+        assertEquals(403, ex.getCode());
+        verify(eventTeamRepository, never()).save(any(EventTeam.class));
     }
 
     @Test
@@ -460,6 +474,7 @@ class EventRegistrationServiceTest {
     @DisplayName("移除参赛：名单已锁定 → 403（先解锁）")
     void removeEventTeam_locked_rejected() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
         EventTeam locked = reg(EventTeam.STATUS_CONFIRMED);
         locked.setRosterLocked(Boolean.TRUE);
         when(eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(locked));
@@ -476,6 +491,7 @@ class EventRegistrationServiceTest {
     @DisplayName("移除参赛：软删登记与全部名单行，走过赛事管理守卫")
     void removeEventTeam_softDeletesRegistrationAndRoster() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
         EventTeam confirmed = reg(EventTeam.STATUS_CONFIRMED);
         when(eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(confirmed));
         EventRosterPlayer r1 = rosterRow(11L, 5L, 0);
@@ -500,6 +516,7 @@ class EventRegistrationServiceTest {
     @DisplayName("锁定/解锁：设置与清空锁定留痕")
     void lockRoster_setsFlags_andUnlockClears() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
         EventTeam confirmed = reg(EventTeam.STATUS_CONFIRMED);
         when(eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(confirmed));
         stubToDtoContext();
@@ -583,6 +600,7 @@ class EventRegistrationServiceTest {
     @DisplayName("名单明细：背号快照缺失回落档案背号；已离队球员 currentInTeam=false")
     void roster_marksFormerPlayerAndFallsBackNumber() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
         when(eventTeamRepository.findByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID))
                 .thenReturn(Optional.of(reg(EventTeam.STATUS_CONFIRMED)));
         EventRosterPlayer r1 = rosterRow(11L, 5L, 0);
