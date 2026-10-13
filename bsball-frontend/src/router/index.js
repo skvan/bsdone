@@ -58,6 +58,8 @@ import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
+import EventTeams from '../views/admin/EventTeams.vue';
+import TeamEventRegistrations from '../views/admin/TeamEventRegistrations.vue';
 import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
@@ -188,6 +190,8 @@ const routes = [
             { path: 'player-claims', name: 'AdminPlayerClaimReview', component: PlayerClaimReview },
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             { path: 'events', name: 'AdminEvents', component: Events },
+            { path: 'events/:eventId/teams', name: 'AdminEventTeams', component: EventTeams, meta: { title: '参赛球队' } },
+            { path: 'teams/:id/event-registrations', name: 'AdminTeamEventRegistrations', component: TeamEventRegistrations, meta: { title: '赛事报名' } },
             { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
             { path: 'events/:eventId/games', name: 'AdminGames', component: Games },
             { path: 'events/:eventId/games/new', name: 'AdminGameNew', component: Games },
