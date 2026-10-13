@@ -101,6 +101,15 @@ var Ta={
       }
       )
     }
+    // ---- 电子秩序册入口（Issue #310，手工补丁） ----
+    function openEventRegistrations(o){
+      ke.push({
+        name:"AdminTeamEventRegistrations",params:{
+          id:String(o.id)
+        }
+      }
+      )
+    }
     const Pe=wa,K=g([]),Q=g([]),M=g(!1),P=g(!1),I=g(!1),U=g(!1),z=g(null),x=g([]),w=g([]),J=g(null),A=g(null),returnMode=g(!1),l=W({
       leagueId:void 0,name:"",shortName:"",wordmark:"",city:"",stadium:"",description:"",contactPerson:"",contactPhone:"",contactEmail:"",logo:"",bgImage:"",showInPortal:!0,verified:!1
     }
@@ -566,6 +575,12 @@ var Ta={
               }
               ,{
                 default:t(()=>[...e[43]||(e[43]=[i("负责人",-1)])]),_:1
+              }
+              ,8,["onClick"])):E("",!0),n(C)("business:team:eventRegistration")?(r(),v(d,{
+                key:6,link:"",type:"primary",onClick:q=>openEventRegistrations(p)
+              }
+              ,{
+                default:t(()=>[i("赛事报名")]),_:1
               }
               ,8,["onClick"])):E("",!0)]),_:1
             }

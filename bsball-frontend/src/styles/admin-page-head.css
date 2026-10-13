@@ -1,0 +1,20 @@
+/* 电子秩序册（Issue #310）：管理台新页面共用页头样式（挂 .order-book-page 作用域） */
+.order-book-page .page-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.order-book-page .page-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.order-book-page .page-sub {
+  color: var(--el-text-color-secondary);
+}
+
+.order-book-page .muted {
+  color: var(--el-text-color-secondary);
+}

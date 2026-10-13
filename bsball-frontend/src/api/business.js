@@ -194,6 +194,20 @@ export const eventApi = {
   importGameResult: (id, data) => post(`/api/event/${id}/import-game-result`, data)
 };
 
+// 电子秩序册（Issue #310）：赛事参赛登记（办赛方侧）与球队报名（球队侧）
+export const eventRegistrationApi = {
+  invite: (eventId, data) => post(`/api/event/${eventId}/teams/invite`, data ?? {}).then((r) => r?.data ?? {}),
+  listEventTeams: (eventId) => getData(`/api/event/${eventId}/teams`).then((d) => d ?? []),
+  remove: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/remove`, {}),
+  lock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/lock`, {}),
+  unlock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/unlock`, {}),
+  roster: (eventId, teamId) => getData(`/api/event/${eventId}/teams/${teamId}/roster`).then((d) => d ?? []),
+  myRegistrations: (teamId) => getData(`/api/team/${teamId}/event-registrations`).then((d) => d ?? []),
+  confirm: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/confirm`, {}),
+  decline: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/decline`, {}),
+  submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
+};
+
 export const gameApi = {
   list: (params) => {
     const query = typeof params === 'number' ? { eventId: params } : params;
