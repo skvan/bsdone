@@ -11,6 +11,7 @@ import { exportSfc as va } from '../../utils/exportSfc';
 import { uploadResource as G } from '../../api/system';
 import { leagueApi as ya } from '../../api/business';
 import { playerApi as _a } from '../../api/business';
+import InvitePlayerDialog from '../../components/admin/InvitePlayerDialog.vue';
 import { fetchPlayersByTeam as ba } from '../../api/business';
 import { teamApi as T } from '../../api/business';
 import { teamManagerApi as qn } from '../../api/business';
@@ -248,6 +249,11 @@ var Ta={
     }
     // ---- 球队负责人管理（指派/解除；主办方限无主队） ----
     const mgDlg=g(!1),mgRows=g([]),mgTeam=g(null),mgPick=g(null),mgOpts=g([]),mgBusy=g(!1),mgNames=g({});
+    // ---- 电子秩序册入口（Issue #310，手工补丁）：邀请球员对话框 ----
+    const inviteDlg=g(!1),inviteTeam=g(null);
+    function openInvitePlayer(o){
+      inviteTeam.value=o,inviteDlg.value=!0
+    }
     async function openMg(o){
       mgTeam.value=o,mgDlg.value=!0,mgPick.value=null,await Promise.all([loadMg(),searchMgUsers("")])
     }
@@ -581,6 +587,12 @@ var Ta={
               }
               ,{
                 default:t(()=>[i("赛事报名")]),_:1
+              }
+              ,8,["onClick"])):E("",!0),n(C)("business:team:invitePlayer")?(r(),v(d,{
+                key:7,link:"",type:"primary",onClick:q=>openInvitePlayer(p)
+              }
+              ,{
+                default:t(()=>[i("邀请球员")]),_:1
               }
               ,8,["onClick"])):E("",!0)]),_:1
             }
@@ -962,8 +974,10 @@ var Ta={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"])
-      ])
+      ,8,["modelValue"]),a(InvitePlayerDialog,{
+        modelValue:inviteDlg.value,"onUpdate:modelValue":q=>inviteDlg.value=q,teamId:inviteTeam.value?.id??null,teamName:inviteTeam.value?.name??""
+      }
+      ,8,["modelValue","teamId","teamName"])])
     }
     
   }

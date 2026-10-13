@@ -147,8 +147,8 @@ class PlayerClaimServiceTest {
         assertEquals(50L, ((Number) out.get("id")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
-        // 权限：改由统一写保护守卫判定（同语义）
-        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
+        // 权限：电子秩序册批 4（Issue #310）起改用「接管或代管」守卫（办赛方对无主球队可邀请）
+        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
         // 硬校验已删除：不再查询“球员是否在当前队”
         verify(playerTeamService, never()).isCurrentlyInTeam(any(), any());
     }

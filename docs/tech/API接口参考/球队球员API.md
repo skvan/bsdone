@@ -458,6 +458,10 @@ Exec --> End(["返回结果"])
 | POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
 | GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
 | GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
+| GET | /team/{teamId}/player-invite-candidates | 全量球员候选搜索（keyword 匹配姓名/昵称/简称；附认领状态、现属球队、已在本队标记；分页，pageSize 上限 100，按 id 升序） | 球队管理员/代管办赛方 |
+| POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 球队管理员/代管办赛方 |
+| GET | /team/{teamId}/player-claim-invites | 入队邀请列表（含 token 供复制链接、绑定球员名、状态/使用次数/有效期） | 球队管理员/代管办赛方 |
+| POST | /team/{teamId}/player-claim-invites/{id}/revoke | 撤销入队邀请（幂等；跨队/不存在 404） | 球队管理员/代管办赛方 |
 | GET | /team/{teamId}/event-registrations | 球队侧「我的赛事报名」列表（赛事名/赛季/模式/状态） | 登录+同租户 |
 | POST | /event/{eventId}/teams/{teamId}/confirm | 确认参加（仅 invited 可操作；重复确认幂等） | 球队管理员/代管办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/decline | 谢绝参赛（仅 invited 可操作；重复谢绝幂等） | 球队管理员/代管办赛方 |
@@ -467,6 +471,7 @@ Exec --> End(["返回结果"])
 - 状态机：`invited → confirmed / declined`；declined 可被办赛方重新邀请（重置回 invited，清空确认/谢绝/提交时间）。
 - 名单为快照语义：提交时校验球员为该队当前在役（`bs_player_team.is_current=true`）；提交后球员离队不自动移出，锁定前球队可自行修改；软删 = 移除报名。
 - 代管口径：无主球队（无有效 `bs_team_manager`）且归属办赛方联盟时，办赛方可代为确认/提交名单；有主球队联盟侧只读。
+- 邀请入队（批 4）：候选=本租户全量未删球员（非超管对跨租户球队一律 404，超管全局豁免）；未认领→定向绑定邀请、已认领→通用链接；**撤销后旧链接失效**（领取/认领接口返回 400「邀请链接已失效」）；创建邀请守卫已放宽为「接管或代管」——代管**无主球队**的办赛方可用，有主球队联盟侧仍只读。
 
 ### 阵容限制口径（双门校验，Issue #310）
 - 启用条件：赛事存在任意有效参赛记录（含仅邀请）即对该赛事全部比赛启用；无参赛记录的赛事不受影响。

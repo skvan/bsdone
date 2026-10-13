@@ -23,6 +23,12 @@ export function formatDateYmd(value) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+/** 日期时间 → 'YYYY-MM-DD HH:mm'（电子秩序册批 4：邀请有效期/创建时间展示；非法/空返回 '-'） */
+export function formatDateTimeMinute(value) {
+  if (value == null || value === '') return '-';
+  return String(value).replace('T', ' ').slice(0, 16);
+}
+
 // 入口 chunk Zn —— 'YYYY-MM-DD' → 'M.DD 周X'（非法原样返回，空返回 '-'）
 export function formatMonthDayWithWeek(value) {
   const text = (value || '').trim();

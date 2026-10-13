@@ -56,6 +56,19 @@ export const accountApi = {
   approvePlayerClaim: (id) => post(`/api/account/player-claims/${id}/approve`, {}),
   rejectPlayerClaim: (id, reason) => post(`/api/account/player-claims/${id}/reject`, { reason }),
   createClaimInvite: (teamId, data) => post(`/api/team/${teamId}/player-claim-invite`, data ?? {}),
+  // 电子秩序册批 4（Issue #310）：全量球员候选搜索 / 邀请列表 / 撤销
+  inviteCandidates: (teamId, params) => {
+    const query = new URLSearchParams();
+    if (params?.keyword) query.set('keyword', params.keyword);
+    if (params?.page != null) query.set('page', String(params.page));
+    if (params?.pageSize != null) query.set('pageSize', String(params.pageSize));
+    const qs = query.toString();
+    return get(`/api/team/${teamId}/player-invite-candidates${qs ? `?${qs}` : ''}`).then(
+      (r) => r?.data ?? { list: [], total: 0 }
+    );
+  },
+  listClaimInvites: (teamId) => get(`/api/team/${teamId}/player-claim-invites`).then((r) => r?.data ?? []),
+  revokeClaimInvite: (teamId, id) => post(`/api/team/${teamId}/player-claim-invites/${id}/revoke`, {}),
   getClaimInvite: (token) => get(`/api/portal/player-claim-invite/${token}`),
   claimViaInvite: (token, data) => post(`/api/portal/player-claim-invite/${token}/claim`, data ?? {})
 };
