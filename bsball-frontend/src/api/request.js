@@ -390,7 +390,12 @@ export async function request(url, options = {}, retried = false) {
         warnOnce(message);
       }
     }
-    throw new Error(message);
+    // 附加业务码（Issue #310 批 3）：供调用方区分「业务校验失败」与网络/系统错误（如门① 400 应中止流程）
+    const businessError = new Error(message);
+    if (body && typeof body.code === 'number') {
+      businessError.apiCode = body.code;
+    }
+    throw businessError;
   }
 
   if (body.code === 401) {

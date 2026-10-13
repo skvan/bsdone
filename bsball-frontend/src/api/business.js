@@ -80,7 +80,7 @@ export const highlightMomentApi = {
 export async function fetchRosterPlayers(eventId, teamId) {
   const d = await getData(`/api/event/${eventId}/teams/${teamId}/roster-players`);
   if (d == null) {
-    // 请求失败（getData 已处理提示；404 静默）——显性化 failed，避免被误判为「未受限」
+    // 请求失败（getData 已按统一口径处理提示）——显性化 failed，避免被误判为「未受限」
     return { restricted: null, players: [], failed: true };
   }
   return { restricted: d.restricted === true, players: d.players ?? [] };

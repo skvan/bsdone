@@ -135,6 +135,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
 import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
 import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
+import { isBusinessError } from '../../utils/apiError';
 import { usePermission } from '../../composables/usePermission';
 import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
@@ -660,18 +661,19 @@ async function startEntry() {
         away: { score: 0, innings: Array(7).fill(0) },
       },
     };
-    writeEntryBootstrap(eventId.value, id, payload);
     try {
       await gameApi.saveLineup(id, JSON.stringify(payload));
     } catch (error) {
-      if (error && typeof error.apiCode === 'number') {
-        // 业务校验失败（如秩序册名单外球员 400）：中止进入录入，先修正阵容
+      if (isBusinessError(error)) {
+        // 业务校验失败（如秩序册名单外球员 400）：中止进入录入，先修正阵容（不写 bootstrap）
         ElMessage.error(error.message ?? '阵容校验未通过，请修正后重试');
         return;
       }
       console.warn('[LiveGameLineup] initial snapshot save failed', error);
       ElMessage.warning('初始阵容未同步到服务器，切换页面后可能需要重排阵容');
     }
+    // 保存成功或网络降级均写入录入引导（业务校验失败路径已在上面 return，不写）
+    writeEntryBootstrap(eventId.value, id, payload);
     ElMessage.success('阵容与对战信息已保存，正在进入录入…');
     await router.replace({ name: 'AdminGameLiveResume', params: { eventId: String(eventId.value), gameId: String(id) } });
   } catch (err) {
