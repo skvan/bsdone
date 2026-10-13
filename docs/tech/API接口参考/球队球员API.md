@@ -443,6 +443,35 @@ Query -- 是 --> Exec["执行业务逻辑"]
 Exec --> End(["返回结果"])
 ```
 
+## 电子秩序册（赛事报名，Issue #310）
+
+面向办赛方与球队管理员的赛事报名（秩序册）能力：办赛方在赛事上邀请球队 → 球队确认参加 → 提交本队在役球员报名名单 → 办赛方锁定名单。赛事存在任意参赛记录后，其比赛录入阵容与统计写入仅可使用报名球员（阵容限制细则见《比赛管理API》）。
+
+### 端点清单
+
+| 方法 | 路径 | 用途 | 守卫 |
+|---|---|---|---|
+| POST | /event/{eventId}/teams/invite | 邀请球队参赛（body: `{teamIds:[], remark?}`；幂等：已邀/已确认跳过，已谢绝重邀重置为 invited） | 办赛方（赛事所属联盟） |
+| GET | /event/{eventId}/teams | 赛事参赛列表（球队名/徽、状态、名单人数、锁定态、最近提交时间） | 登录+同租户 |
+| POST | /event/{eventId}/teams/{teamId}/remove | 移除参赛（软删登记+全部名单行；锁定后 403，须先解锁） | 办赛方 |
+| POST | /event/{eventId}/teams/{teamId}/lock | 锁定报名名单（留痕 lockedBy/lockedAt） | 办赛方 |
+| POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
+| GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
+| GET | /team/{teamId}/event-registrations | 球队侧「我的赛事报名」列表（赛事名/赛季/模式/状态） | 登录+同租户 |
+| POST | /event/{eventId}/teams/{teamId}/confirm | 确认参加（仅 invited 可操作；重复确认幂等） | 球队管理员/代管办赛方 |
+| POST | /event/{eventId}/teams/{teamId}/decline | 谢绝参赛（仅 invited 可操作；重复谢绝幂等） | 球队管理员/代管办赛方 |
+| PUT | /event/{eventId}/teams/{teamId}/roster | 提交/修改名单（body: `{playerIds:[]}` 按展示顺序；锁定 403；须已确认；至少 1 人；球员须本队 current 在役） | 球队管理员/代管办赛方 |
+
+### 关键规则
+- 状态机：`invited → confirmed / declined`；declined 可被办赛方重新邀请（重置回 invited，清空确认/谢绝/提交时间）。
+- 名单为快照语义：提交时校验球员为该队当前在役（`bs_player_team.is_current=true`）；提交后球员离队不自动移出，锁定前球队可自行修改；软删 = 移除报名。
+- 代管口径：无主球队（无有效 `bs_team_manager`）且归属办赛方联盟时，办赛方可代为确认/提交名单；有主球队联盟侧只读。
+
+### 典型错误码
+- 400：球队不存在或不属于当前租户 / 请选择要邀请的球队 / 备注不能超过 500 字 / 请先确认参加后再提交名单 / 以下球员当前不在本队：… / 已谢绝参赛，请联系办赛方重新邀请 / 已确认参赛，不能直接谢绝 / 请至少选择 1 名球员
+- 403：无权管理该球队（无权限）/ 名单已锁定，无法修改（提交名单）/ 名单已锁定，请先解锁再移除（移除参赛时）
+- 404：赛事不存在（含赛事已归还/软删）/ 该球队未参加本赛事
+
 ---
 
 > 本文整理自 Qoder RepoWiki（基于代码自动生成），仅供参考，以代码为准。
