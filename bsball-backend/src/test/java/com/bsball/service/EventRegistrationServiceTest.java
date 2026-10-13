@@ -777,22 +777,21 @@ class EventRegistrationServiceTest {
     @Test
     @DisplayName("赛事可邀请球队：返回本租户全部球队并过赛事管理守卫（Issue #315）")
     void listInvitableTeams_returnsTenantTeams() {
-        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
-        when(teamRepository.findForSelectByTenantId(TENANT_ID)).thenReturn(List.of(
+        stubEventContext();
+        List<TeamOptionDto> teams = List.of(
                 new TeamOptionDto(1L, "暴力羊", null, null),
-                new TeamOptionDto(3L, "野钻", null, null)));
+                new TeamOptionDto(3L, "野钻", null, null));
+        when(teamRepository.findForSelectByTenantId(TENANT_ID)).thenReturn(teams);
 
         List<TeamOptionDto> out = service.listInvitableTeams(EVENT_ID);
 
-        assertEquals(2, out.size());
-        assertEquals("暴力羊", out.get(0).name());
+        assertEquals(teams, out);
         verify(resourceGuard).assertCanManageEvent(EVENT_ID);
     }
 
     @Test
     @DisplayName("赛事可邀请球队：守卫拒绝（403）时零查询")
-    void listInvitableTeams_guardForbidden() {
+    void listInvitableTeams_guardForbidden_noQuery() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
         doThrow(new BusinessException(403, "无权管理该赛事")).when(resourceGuard).assertCanManageEvent(EVENT_ID);
 

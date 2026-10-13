@@ -207,6 +207,7 @@ class EventOrderBookSeedTest {
         assertFalse((Boolean) tm.invoke(null, api(3L, "/event/:eventId/teams/invite", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(4L, "/event/:eventId/teams/:teamId/remove", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(5L, "/event/:eventId/teams/:teamId/lock", "POST")));
+        assertFalse((Boolean) tm.invoke(null, api(6L, "/event/:eventId/team-options", "GET")));
     }
 
     private void invokeNoArg(String name) throws Exception {

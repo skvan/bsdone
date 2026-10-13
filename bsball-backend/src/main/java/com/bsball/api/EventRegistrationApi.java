@@ -46,7 +46,7 @@ public class EventRegistrationApi {
 
     /** 赛事可邀请球队（本租户全部未删球队；Issue #315 修复）。 */
     @GetMapping(value = {"/event/{eventId}/team-options"})
-    public Result<List<TeamOptionDto>> teamOptions(@PathVariable Long eventId) {
+    public Result<List<TeamOptionDto>> invitableTeams(@PathVariable Long eventId) {
         return Result.ok(this.eventRegistrationService.listInvitableTeams(eventId));
     }
 

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 /**
  * 电子秩序册（Issue #310）控制器映射守卫：
- * 防「服务/种子就位但控制器漏映射」类缺口（批 3 评审实证教训），对全部 11 个端点做映射存在性断言。
+ * 防「服务/种子就位但控制器漏映射」类缺口（批 3 评审实证教训），对全部 12 个端点做映射存在性断言。
  */
 @DisplayName("电子秩序册 控制器映射守卫（Issue #310）")
 class EventRegistrationApiMappingTest {
@@ -48,7 +48,7 @@ class EventRegistrationApiMappingTest {
         List<Expectation> expectations = List.of(
                 new Expectation("invite", "invite", new Class<?>[]{Long.class, com.bsball.model.dto.EventTeamInviteRequest.class}, "POST", "/event/{eventId}/teams/invite"),
                 new Expectation("listEventTeams", "listEventTeams", new Class<?>[]{Long.class}, "GET", "/event/{eventId}/teams"),
-                new Expectation("teamOptions", "teamOptions", new Class<?>[]{Long.class}, "GET", "/event/{eventId}/team-options"),
+                new Expectation("invitableTeams", "invitableTeams", new Class<?>[]{Long.class}, "GET", "/event/{eventId}/team-options"),
                 new Expectation("remove", "remove", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/remove"),
                 new Expectation("lock", "lock", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/lock"),
                 new Expectation("unlock", "unlock", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/unlock"),

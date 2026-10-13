@@ -136,8 +136,7 @@ public class EventRegistrationService {
 
     /**
      * 赛事可邀请球队（Issue #315 修复）：返回本租户全部未删球队（id/name/shortName/logo）。
-     * 守卫=该赛事管理权（能办赛即可邀请租户内任意球队，含他联盟/无联盟球队）；
-     * 不再复用管理域过滤的 /team/select-options（其窄域=负责球队 ∪ 主办联盟球队，会漏队）。
+     * 守卫=该赛事管理权；不复用管理域过滤的 /team/select-options（其窄域会漏队）。
      */
     public List<TeamOptionDto> listInvitableTeams(Long eventId) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();

@@ -155,7 +155,6 @@ async function openInvite() {
   inviteTeamIds.value = [];
   inviteVisible.value = true;
   if (!allTeamOptions.value.length) {
-    // 赛事可邀请球队（Issue #315）：本租户全部未删球队（不受管理域过滤）
     allTeamOptions.value = await eventRegistrationApi.invitableTeams(eventId.value);
   }
 }
