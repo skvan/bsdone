@@ -15,7 +15,7 @@
   - 归属：tenantId、eventId、teamId（同一赛事同一球队唯一，软删行除外）。
   - 状态：status ∈ {invited, confirmed, declined}；declined 可被重新邀请（重置回 invited 并清空确认/谢绝/提交时间）。
   - 时间：invitedBy/invitedAt、confirmedAt、declinedAt、rosterSubmittedAt（最近提交名单时间）。
-  - 锁定：rosterLocked + lockedBy/lockedAt；锁定后球队不可修改名单，办赛方移除需先解锁。
+  - 锁定：rosterLocked + lockedBy/lockedAt；锁定后球队不可修改名单（403），办赛方移除需先解锁（锁定中移除 403）。
   - 备注：remark（≤500）。
 - 业务含义
   - 表达"某球队参加某赛事"的登记与报名进度；办赛方移除 = 软删本行 + 该队全部名单行。

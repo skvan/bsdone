@@ -2,7 +2,9 @@ package com.bsball.api;
 
 import com.bsball.common.Result;
 import com.bsball.model.dto.EventRosterPlayerDto;
+import com.bsball.model.dto.EventRosterSubmitRequest;
 import com.bsball.model.dto.EventTeamDto;
+import com.bsball.model.dto.EventTeamInviteRequest;
 import com.bsball.service.EventRegistrationService;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 电子秩序册（Issue #310）API：赛事参赛登记（邀请/列表/移除/锁定）与球队侧报名（确认/谢绝/名单）。
- * 写守卫在服务层：赛事侧 assertCanManageEvent；球队侧 assertCanStewardOrManageTeam（含代管无主球队）。
+ * 写守卫与入参校验在服务层：赛事侧 assertCanManageEvent；球队侧 assertCanStewardOrManageTeam（含代管无主球队）。
  */
 @RestController
 public class EventRegistrationApi {
@@ -27,11 +29,11 @@ public class EventRegistrationApi {
 
     /** 邀请球队参赛（body: teamIds 必填非空、remark 可选）。 */
     @PostMapping(value = {"/event/{eventId}/teams/invite"})
-    public Result<Map<String, Object>> invite(@PathVariable Long eventId, @RequestBody InviteTeamsRequest body) {
-        if (body == null || body.teamIds() == null || body.teamIds().isEmpty()) {
-            return Result.fail("请选择要邀请的球队");
-        }
-        return Result.ok(this.eventRegistrationService.inviteTeams(eventId, body.teamIds(), body.remark()));
+    public Result<Map<String, Object>> invite(@PathVariable Long eventId,
+            @RequestBody(required = false) EventTeamInviteRequest body) {
+        return Result.ok(this.eventRegistrationService.inviteTeams(eventId,
+                body == null ? null : body.teamIds(),
+                body == null ? null : body.remark()));
     }
 
     /** 赛事参赛列表（球队名/徽、状态、名单人数、锁定态）。 */
@@ -40,7 +42,7 @@ public class EventRegistrationApi {
         return Result.ok(this.eventRegistrationService.listEventTeams(eventId));
     }
 
-    /** 移除参赛（软删登记 + 名单；锁定后 400）。 */
+    /** 移除参赛（软删登记 + 名单；锁定后 403）。 */
     @PostMapping(value = {"/event/{eventId}/teams/{teamId}/remove"})
     public Result<Object> remove(@PathVariable Long eventId, @PathVariable Long teamId) {
         this.eventRegistrationService.removeEventTeam(eventId, teamId);
@@ -86,16 +88,8 @@ public class EventRegistrationApi {
     /** 提交/修改报名名单（body: playerIds 按展示顺序）。 */
     @PutMapping(value = {"/event/{eventId}/teams/{teamId}/roster"})
     public Result<EventTeamDto> submitRoster(@PathVariable Long eventId, @PathVariable Long teamId,
-            @RequestBody SubmitRosterRequest body) {
+            @RequestBody(required = false) EventRosterSubmitRequest body) {
         return Result.ok(this.eventRegistrationService.submitRoster(eventId, teamId,
                 body == null ? null : body.playerIds()));
-    }
-
-    /** 邀请请求体。 */
-    public record InviteTeamsRequest(List<Long> teamIds, String remark) {
-    }
-
-    /** 提交名单请求体。 */
-    public record SubmitRosterRequest(List<Long> playerIds) {
     }
 }

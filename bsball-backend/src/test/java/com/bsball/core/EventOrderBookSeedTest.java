@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -136,6 +137,16 @@ class EventOrderBookSeedTest {
         assertEquals(1L, counts.getOrDefault("business:event:teams", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:eventRegistration", 0L).longValue());
         assertEquals(11, menuApiStore.size(), "两按钮合计绑定 11 个 API（6+5）");
+        Map<Long, String> pathById = apiStore.stream()
+                .collect(Collectors.toMap(SysApi::getId, a -> a.getMethod() + "|" + a.getPath()));
+        Set<String> bound = menuApiStore.stream().map(l -> pathById.get(l.getApiId())).collect(Collectors.toSet());
+        assertEquals(Set.of(
+                "GET|/event/:eventId/teams", "POST|/event/:eventId/teams/invite",
+                "POST|/event/:eventId/teams/:teamId/remove", "POST|/event/:eventId/teams/:teamId/lock",
+                "POST|/event/:eventId/teams/:teamId/unlock", "GET|/event/:eventId/teams/:teamId/roster",
+                "GET|/team/:teamId/event-registrations", "POST|/event/:eventId/teams/:teamId/confirm",
+                "POST|/event/:eventId/teams/:teamId/decline", "PUT|/event/:eventId/teams/:teamId/roster"),
+                bound, "按钮-API 绑定集合须与设计一致");
     }
 
     @Test
