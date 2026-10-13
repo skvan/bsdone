@@ -101,6 +101,7 @@ var Ta={
       }
       )
     }
+    // ---- 电子秩序册入口（Issue #310，手工补丁） ----
     function openEventRegistrations(o){
       ke.push({
         name:"AdminTeamEventRegistrations",params:{

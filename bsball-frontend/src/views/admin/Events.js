@@ -109,6 +109,7 @@ var tt={
       }
       )
     }
+    // ---- 电子秩序册入口（Issue #310，手工补丁） ----
     function openEventTeams(n){
       U.push({
         name:"AdminEventTeams",params:{

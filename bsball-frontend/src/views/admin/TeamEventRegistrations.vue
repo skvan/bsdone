@@ -1,41 +1,43 @@
 <template>
-  <div class="team-registrations-page">
+  <div class="order-book-page team-registrations-page">
     <el-card shadow="never" class="team-registrations-card">
       <div class="page-head">
-        <el-button link type="primary" class="back-btn" @click="goBack">← 返回球队</el-button>
-        <span class="page-title">赛事报名</span>
-        <span v-if="teamName" class="team-name">· {{ teamName }}</span>
+        <el-button link type="primary" class="back-btn" @click="goBack">{{ t('orderBook.backTeams') }}</el-button>
+        <span class="page-title">{{ t('orderBook.registrationTitle') }}</span>
+        <span v-if="teamName" class="page-sub">· {{ teamName }}</span>
       </div>
 
-      <el-table v-loading="loading" :data="rows" class="team-registrations-table">
-        <el-table-column label="赛事" min-width="200">
+      <el-table v-loading="loading" v-bind="listTableAttrs" :data="rows" class="team-registrations-table">
+        <el-table-column :label="t('orderBook.colEvent')" min-width="200">
           <template #default="{ row }">
             <div class="event-cell">
-              <span>{{ row.eventName || `赛事 ID:${row.eventId}` }}</span>
+              <span>{{ row.eventName || `ID:${row.eventId}` }}</span>
               <el-tag v-if="row.season" size="small" type="info" effect="plain">{{ row.season }}</el-tag>
-              <el-tag v-if="row.gameMode === 'SOFTBALL'" size="small" type="warning" effect="plain">垒球</el-tag>
+              <el-tag v-if="row.gameMode === 'SOFTBALL'" size="small" type="warning" effect="plain">
+                {{ t('orderBook.softball') }}
+              </el-tag>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="110">
+        <el-table-column :label="t('orderBook.colStatus')" width="110">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+            <el-tag :type="statusTagType(row.status)" effect="light">{{ displayStatus(row.status, t) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="playerCount" label="名单人数" width="100" />
-        <el-table-column label="锁定" width="90">
+        <el-table-column prop="playerCount" :label="t('orderBook.colPlayerCount')" width="100" />
+        <el-table-column :label="t('orderBook.colLocked')" width="90">
           <template #default="{ row }">
-            <el-tag v-if="row.rosterLocked" type="warning" effect="light">已锁定</el-tag>
+            <el-tag v-if="row.rosterLocked" type="warning" effect="light">{{ t('orderBook.locked') }}</el-tag>
             <span v-else class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="250" fixed="right">
+        <el-table-column :label="t('orderBook.colActions')" min-width="250" :fixed="opFixed">
           <template #default="{ row }">
             <el-button v-if="canManage && row.status === 'invited'" link type="primary" @click="confirmJoin(row)">
-              确认参加
+              {{ t('orderBook.confirmJoin') }}
             </el-button>
             <el-button v-if="canManage && row.status === 'invited'" link type="info" @click="declineJoin(row)">
-              谢绝
+              {{ t('orderBook.declineJoin') }}
             </el-button>
             <el-button
               v-if="canManage && row.status === 'confirmed'"
@@ -44,67 +46,57 @@
               :disabled="row.rosterLocked"
               @click="openRoster(row, 'edit')"
             >
-              编辑名单
+              {{ t('orderBook.editRoster') }}
             </el-button>
-            <el-button link type="primary" @click="openRoster(row, 'view')">查看名单</el-button>
+            <el-button link type="primary" @click="openRoster(row, 'view')">{{ t('orderBook.viewRoster') }}</el-button>
           </template>
         </el-table-column>
-        <template #empty>暂无赛事报名记录</template>
+        <template #empty>{{ t('orderBook.emptyRegistrations') }}</template>
       </el-table>
     </el-card>
 
     <el-dialog
       v-model="rosterVisible"
-      :title="`${rosterMode === 'edit' ? '编辑报名名单' : '报名名单'} · ${activeRow?.eventName ?? ''}`"
+      :title="`${t(rosterMode === 'edit' ? 'orderBook.editRosterTitle' : 'orderBook.rosterTitle')} · ${activeRow?.eventName ?? ''}`"
       width="720px"
       destroy-on-close
     >
-      <div v-if="activeRow?.rosterLocked" class="lock-hint">名单已锁定，仅可查看</div>
+      <div v-if="activeRow?.rosterLocked" class="lock-hint">{{ t('orderBook.lockHint') }}</div>
+      <div v-if="rosterMode === 'edit' && departedCount > 0" class="departed-hint">
+        {{ t('orderBook.departedHint', { n: departedCount }) }}
+      </div>
 
-      <el-table
+      <EventRosterTable
         v-if="rosterMode === 'edit'"
-        ref="playerTableRef"
-        v-loading="playersLoading"
-        :data="playerOptions"
-        max-height="420"
+        ref="rosterTableRef"
+        :rows="playerOptions"
+        :loading="playersLoading"
+        selectable
+        :empty-text="t('orderBook.noPlayers')"
         @selection-change="onSelectionChange"
-      >
-        <el-table-column type="selection" width="44" />
-        <el-table-column prop="name" label="球员" min-width="110" />
-        <el-table-column label="背号" width="80">
-          <template #default="{ row }">{{ row.number || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="位置" min-width="120">
-          <template #default="{ row }">{{ (row.positions || []).join(' / ') || '-' }}</template>
-        </el-table-column>
-      </el-table>
+      />
+      <EventRosterTable
+        v-else
+        :rows="rosterRows"
+        :loading="playersLoading"
+        show-current-in-team
+        :empty-text="t('orderBook.emptyRoster')"
+      />
 
-      <el-table v-else v-loading="playersLoading" :data="rosterRows" max-height="420">
-        <el-table-column prop="name" label="球员" min-width="110" />
-        <el-table-column label="背号" width="80">
-          <template #default="{ row }">{{ row.number || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="位置" min-width="120">
-          <template #default="{ row }">{{ (row.positions || []).join(' / ') || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="在队" width="90">
-          <template #default="{ row }">
-            <el-tag v-if="!row.currentInTeam" type="danger" effect="light">已离队</el-tag>
-            <span v-else>在队</span>
-          </template>
-        </el-table-column>
-        <template #empty>尚未提交报名名单</template>
-      </el-table>
+      <div v-if="rosterMode === 'edit' && selectedNames.length" class="selected-panel">
+        <span class="selected-title">{{ t('orderBook.selectedTitle', { n: selectedNames.length }) }}</span>
+        <el-tag v-for="item in selectedNames" :key="item.id" size="small" class="selected-tag">{{ item.name }}</el-tag>
+      </div>
 
       <template #footer>
-        <el-button @click="rosterVisible = false">关闭</el-button>
+        <el-button @click="rosterVisible = false">{{ t('orderBook.close') }}</el-button>
         <el-button
           v-if="rosterMode === 'edit' && !activeRow?.rosterLocked"
           type="primary"
           :loading="saving"
           @click="saveRoster"
         >
-          保存名单
+          {{ t('orderBook.saveRoster') }}
         </el-button>
       </template>
     </el-dialog>
@@ -114,16 +106,25 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 import { eventRegistrationApi, fetchPlayersByTeam, teamApi } from '../../api/business';
 import { usePermission } from '../../composables/usePermission';
+import { useFixedOperationColumn, useListTableAttrs } from '../../composables/useListTable';
+import { displayStatus, statusTagType } from '../../utils/eventRegistrationStatus';
+import { confirmAction } from '../../utils/confirmAction';
+import EventRosterTable from '../../components/admin/EventRosterTable.vue';
+import '../../styles/admin-page-head.css';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const { hasPerm } = usePermission();
 
 const canManage = computed(() => hasPerm('business:team:eventRegistration'));
 const teamId = computed(() => String(route.params.id ?? ''));
+const listTableAttrs = useListTableAttrs();
+const opFixed = useFixedOperationColumn();
 
 const teamName = ref('');
 const loading = ref(false);
@@ -135,24 +136,26 @@ const activeRow = ref(null);
 const playersLoading = ref(false);
 const playerOptions = ref([]);
 const rosterRows = ref([]);
-const playerTableRef = ref(null);
+const currentRosterIds = ref([]);
+const rosterTableRef = ref(null);
 const selectedIds = ref([]);
 const saving = ref(false);
 
-const STATUS_TEXT = { invited: '待确认', confirmed: '已确认', declined: '已谢绝' };
-const STATUS_TYPE = { invited: 'info', confirmed: 'success', declined: 'danger' };
+const selectedNames = computed(() => {
+  const byId = new Map(playerOptions.value.map((p) => [String(p.id), p]));
+  return selectedIds.value.map((id) => ({ id, name: byId.get(String(id))?.name ?? `ID:${id}` }));
+});
 
-function statusText(status) {
-  return STATUS_TEXT[status] ?? status ?? '-';
-}
-
-function statusTagType(status) {
-  return STATUS_TYPE[status] ?? 'info';
-}
+// 上次名单中含已不在池中的球员（已离队）：保存后将自动从名单移除
+const departedCount = computed(() => {
+  if (rosterMode.value !== 'edit') return 0;
+  const pool = new Set(playerOptions.value.map((p) => String(p.id)));
+  return currentRosterIds.value.filter((id) => !pool.has(String(id))).length;
+});
 
 async function load() {
   loading.value = true;
-  rows.value = (await eventRegistrationApi.myRegistrations(teamId.value)) ?? [];
+  rows.value = await eventRegistrationApi.myRegistrations(teamId.value);
   loading.value = false;
 }
 
@@ -166,36 +169,33 @@ function goBack() {
 }
 
 async function confirmJoin(row) {
-  try {
-    await ElMessageBox.confirm(`确认参加「${row.eventName}」？确认后请提交报名名单。`, '确认参加', {
-      type: 'info'
-    });
-  } catch {
-    return;
-  }
+  const ok = await confirmAction(
+    t('orderBook.confirmJoinConfirm', { name: row.eventName }),
+    t('orderBook.confirmJoinTitle'),
+    'info'
+  );
+  if (!ok) return;
   try {
     await eventRegistrationApi.confirm(row.eventId, teamId.value);
-    ElMessage.success('已确认参加');
+    ElMessage.success(t('orderBook.joinedDone'));
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '操作失败');
+    ElMessage.error(e?.message ?? t('orderBook.operationFailed'));
   }
 }
 
 async function declineJoin(row) {
-  try {
-    await ElMessageBox.confirm(`谢绝参加「${row.eventName}」？如需重新参加请联系办赛方重新邀请。`, '谢绝确认', {
-      type: 'warning'
-    });
-  } catch {
-    return;
-  }
+  const ok = await confirmAction(
+    t('orderBook.declineJoinConfirm', { name: row.eventName }),
+    t('orderBook.declineJoinTitle')
+  );
+  if (!ok) return;
   try {
     await eventRegistrationApi.decline(row.eventId, teamId.value);
-    ElMessage.success('已谢绝');
+    ElMessage.success(t('orderBook.declinedDone'));
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '操作失败');
+    ElMessage.error(e?.message ?? t('orderBook.operationFailed'));
   }
 }
 
@@ -205,31 +205,33 @@ async function openRoster(row, mode) {
   rosterVisible.value = true;
   playersLoading.value = true;
   selectedIds.value = [];
+  currentRosterIds.value = [];
   try {
     if (mode === 'edit') {
       const [players, current] = await Promise.all([
         fetchPlayersByTeam(teamId.value),
         eventRegistrationApi.roster(row.eventId, teamId.value)
       ]);
-      playerOptions.value = players ?? [];
-      const orderedIds = (current ?? []).map((r) => r.playerId);
-      await restoreSelection(orderedIds);
+      playerOptions.value = players;
+      currentRosterIds.value = current.map((r) => r.playerId);
+      await restoreSelection(currentRosterIds.value);
     } else {
-      rosterRows.value = (await eventRegistrationApi.roster(row.eventId, teamId.value)) ?? [];
+      rosterRows.value = await eventRegistrationApi.roster(row.eventId, teamId.value);
     }
   } finally {
     playersLoading.value = false;
   }
 }
 
+/**
+ * el-table 勾选态非完全受控：逐个 toggleRowSelection 回填上次名单（按名单顺序），
+ * 回填触发的 selection-change 会把 selectedIds 恢复为真实勾选集合（不再于表格之外预置 id）。
+ */
 async function restoreSelection(orderedIds) {
-  selectedIds.value = [...orderedIds];
   await nextTick();
-  const table = playerTableRef.value;
-  if (!table) return;
   for (const id of orderedIds) {
     const rowData = playerOptions.value.find((p) => String(p.id) === String(id));
-    if (rowData) table.toggleRowSelection(rowData, true);
+    if (rowData) rosterTableRef.value?.toggleRowSelection(rowData, true);
   }
 }
 
@@ -240,25 +242,25 @@ function onSelectionChange(selection) {
 async function saveRoster() {
   if (!activeRow.value) return;
   if (!selectedIds.value.length) {
-    ElMessage.warning('请至少选择 1 名球员');
+    ElMessage.warning(t('orderBook.atLeastOne'));
     return;
   }
   saving.value = true;
   try {
-    await eventRegistrationApi.submitRoster(activeRow.value.eventId, teamId.value, [...selectedIds.value]);
-    ElMessage.success('名单已保存');
+    await eventRegistrationApi.submitRoster(activeRow.value.eventId, teamId.value, selectedIds.value);
+    ElMessage.success(t('orderBook.rosterSaved'));
     rosterVisible.value = false;
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '保存失败');
+    ElMessage.error(e?.message ?? t('orderBook.saveFailed'));
   } finally {
     saving.value = false;
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   loadTeamName();
-  await load();
+  load();
 });
 </script>
 
@@ -267,30 +269,10 @@ onMounted(async () => {
   padding: 12px;
 }
 
-.page-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.page-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.team-name {
-  color: var(--el-text-color-secondary);
-}
-
 .event-cell {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.muted {
-  color: var(--el-text-color-secondary);
 }
 
 .lock-hint {
@@ -300,5 +282,32 @@ onMounted(async () => {
   background: var(--el-color-warning-light-9);
   color: var(--el-color-warning);
   font-size: 12px;
+}
+
+.departed-hint {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
+  font-size: 12px;
+}
+
+.selected-panel {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selected-title {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-right: 4px;
+}
+
+.selected-tag {
+  max-width: 140px;
 }
 </style>

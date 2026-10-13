@@ -196,7 +196,7 @@ export const eventApi = {
 
 // 电子秩序册（Issue #310）：赛事参赛登记（办赛方侧）与球队报名（球队侧）
 export const eventRegistrationApi = {
-  invite: (eventId, data) => post(`/api/event/${eventId}/teams/invite`, data ?? {}),
+  invite: (eventId, data) => post(`/api/event/${eventId}/teams/invite`, data ?? {}).then((r) => r?.data ?? {}),
   listEventTeams: (eventId) => getData(`/api/event/${eventId}/teams`).then((d) => d ?? []),
   remove: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/remove`, {}),
   lock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/lock`, {}),

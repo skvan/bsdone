@@ -1,98 +1,83 @@
 <template>
-  <div class="event-teams-page">
+  <div class="order-book-page event-teams-page">
     <el-card shadow="never" class="event-teams-card">
       <div class="page-head">
-        <el-button link type="primary" class="back-btn" @click="goBack">← 返回赛程</el-button>
-        <span class="page-title">参赛球队</span>
-        <span v-if="eventName" class="event-name">· {{ eventName }}</span>
+        <el-button link type="primary" class="back-btn" @click="goBack">{{ t('orderBook.backSchedule') }}</el-button>
+        <span class="page-title">{{ t('orderBook.teamsTitle') }}</span>
+        <span v-if="eventName" class="page-sub">· {{ eventName }}</span>
         <div class="head-actions">
-          <el-button v-if="canManage" type="primary" @click="openInvite">邀请球队</el-button>
+          <el-button v-if="canManage" type="primary" @click="openInvite">{{ t('orderBook.invite') }}</el-button>
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="rows" class="event-teams-table">
-        <el-table-column label="球队" min-width="180">
+      <el-table v-loading="loading" v-bind="listTableAttrs" :data="rows" class="event-teams-table">
+        <el-table-column :label="t('orderBook.colTeam')" min-width="180">
           <template #default="{ row }">
             <div class="team-cell">
-              <el-avatar :size="28" shape="square" :src="row.teamLogo || undefined">
+              <el-avatar :size="28" shape="square" :src="resolveAssetUrl(row.teamLogo) || undefined">
                 {{ (row.teamName || '?').slice(0, 1) }}
               </el-avatar>
-              <span>{{ row.teamName || `球队 ID:${row.teamId}` }}</span>
+              <span>{{ row.teamName || `ID:${row.teamId}` }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="110">
+        <el-table-column :label="t('orderBook.colStatus')" width="110">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+            <el-tag :type="statusTagType(row.status)" effect="light">{{ displayStatus(row.status, t) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="playerCount" label="名单人数" width="100" />
-        <el-table-column label="最近提交" width="170">
+        <el-table-column prop="playerCount" :label="t('orderBook.colPlayerCount')" width="100" />
+        <el-table-column :label="t('orderBook.colSubmittedAt')" width="170">
           <template #default="{ row }">{{ formatTime(row.rosterSubmittedAt) }}</template>
         </el-table-column>
-        <el-table-column label="锁定" width="90">
+        <el-table-column :label="t('orderBook.colLocked')" width="90">
           <template #default="{ row }">
-            <el-tag v-if="row.rosterLocked" type="warning" effect="light">已锁定</el-tag>
+            <el-tag v-if="row.rosterLocked" type="warning" effect="light">{{ t('orderBook.locked') }}</el-tag>
             <span v-else class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="230" fixed="right">
+        <el-table-column :label="t('orderBook.colActions')" min-width="230" :fixed="opFixed">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openRoster(row)">查看名单</el-button>
+            <el-button link type="primary" @click="openRoster(row)">{{ t('orderBook.viewRoster') }}</el-button>
             <el-button v-if="canManage" link type="primary" @click="toggleLock(row)">
-              {{ row.rosterLocked ? '解锁' : '锁定' }}
+              {{ row.rosterLocked ? t('orderBook.unlock') : t('orderBook.lock') }}
             </el-button>
             <el-button v-if="canManage" link type="danger" :disabled="row.rosterLocked" @click="removeTeam(row)">
-              移除
+              {{ t('orderBook.remove') }}
             </el-button>
           </template>
         </el-table-column>
-        <template #empty>暂无参赛球队，点击「邀请球队」开始报名</template>
+        <template #empty>{{ t('orderBook.emptyTeams') }}</template>
       </el-table>
     </el-card>
 
-    <el-dialog v-model="inviteVisible" title="邀请球队参赛" width="520px" destroy-on-close>
+    <el-dialog v-model="inviteVisible" :title="t('orderBook.inviteTitle')" width="520px" destroy-on-close>
       <el-select
         v-model="inviteTeamIds"
         multiple
         filterable
-        placeholder="选择球队（支持搜索）"
+        :placeholder="t('orderBook.invitePlaceholder')"
         style="width: 100%"
       >
         <el-option
-          v-for="t in teamOptions"
-          :key="t.id"
-          :label="t.name"
-          :value="t.id"
-          :disabled="invitedTeamIds.has(t.id)"
+          v-for="option in inviteOptions"
+          :key="option.id"
+          :label="option.label"
+          :value="option.id"
+          :disabled="option.disabled"
         />
       </el-select>
-      <div class="dialog-hint">已邀请的球队不可重复选择；状态为「已谢绝」的球队重邀将重置为待确认。</div>
+      <div class="dialog-hint">{{ t('orderBook.inviteHint') }}</div>
       <template #footer>
-        <el-button @click="inviteVisible = false">取消</el-button>
+        <el-button @click="inviteVisible = false">{{ t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="inviting" :disabled="!inviteTeamIds.length" @click="submitInvite">
-          邀请
+          {{ t('orderBook.inviteButton') }}
         </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="rosterVisible" :title="`报名名单 · ${rosterTeam?.teamName ?? ''}`" width="600px">
-      <el-table v-loading="rosterLoading" :data="rosterRows" max-height="420">
-        <el-table-column prop="name" label="球员" min-width="110" />
-        <el-table-column label="背号" width="80">
-          <template #default="{ row }">{{ row.number || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="位置" min-width="120">
-          <template #default="{ row }">{{ (row.positions || []).join(' / ') || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="在队" width="90">
-          <template #default="{ row }">
-            <el-tag v-if="!row.currentInTeam" type="danger" effect="light">已离队</el-tag>
-            <span v-else>在队</span>
-          </template>
-        </el-table-column>
-        <template #empty>该球队尚未提交报名名单</template>
-      </el-table>
+    <el-dialog v-model="rosterVisible" :title="`${t('orderBook.rosterTitle')} · ${activeRow?.teamName ?? ''}`" width="600px">
+      <EventRosterTable :rows="rosterRows" :loading="rosterLoading" show-current-in-team :empty-text="t('orderBook.emptyRoster')" />
     </el-dialog>
   </div>
 </template>
@@ -100,41 +85,52 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 import { eventApi, eventRegistrationApi, teamApi } from '../../api/business';
+import { resolveAssetUrl } from '../../api/request';
 import { usePermission } from '../../composables/usePermission';
+import { useFixedOperationColumn, useListTableAttrs } from '../../composables/useListTable';
+import { displayStatus, statusTagType } from '../../utils/eventRegistrationStatus';
+import { confirmAction } from '../../utils/confirmAction';
+import EventRosterTable from '../../components/admin/EventRosterTable.vue';
+import '../../styles/admin-page-head.css';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const { hasPerm } = usePermission();
 
 const canManage = computed(() => hasPerm('business:event:teams'));
 const eventId = computed(() => String(route.params.eventId ?? ''));
+const listTableAttrs = useListTableAttrs();
+const opFixed = useFixedOperationColumn();
 
 const eventName = ref('');
 const loading = ref(false);
 const rows = ref([]);
-const teamOptions = ref([]);
+const allTeamOptions = ref([]);
 const inviteVisible = ref(false);
 const inviteTeamIds = ref([]);
 const inviting = ref(false);
 const rosterVisible = ref(false);
 const rosterLoading = ref(false);
 const rosterRows = ref([]);
-const rosterTeam = ref(null);
+const activeRow = ref(null);
 
-const invitedTeamIds = computed(() => new Set(rows.value.map((r) => r.teamId)));
-
-const STATUS_TEXT = { invited: '待确认', confirmed: '已确认', declined: '已谢绝' };
-const STATUS_TYPE = { invited: 'info', confirmed: 'success', declined: 'danger' };
-
-function statusText(status) {
-  return STATUS_TEXT[status] ?? status ?? '-';
-}
-
-function statusTagType(status) {
-  return STATUS_TYPE[status] ?? 'info';
-}
+// 只禁用"不可重复邀请"的状态（invited/confirmed 幂等跳过）；已谢绝可重邀（将重置为待确认）
+const lockedOptionIds = computed(
+  () => new Set(rows.value.filter((r) => r.status === 'invited' || r.status === 'confirmed').map((r) => r.teamId))
+);
+const inviteOptions = computed(() =>
+  allTeamOptions.value.map((option) => ({
+    id: option.id,
+    label: lockedOptionIds.value.has(option.id)
+      ? `${option.name}（${t('orderBook.inviteDisabledSuffix')}）`
+      : option.name,
+    disabled: lockedOptionIds.value.has(option.id)
+  }))
+);
 
 function formatTime(value) {
   return value ? String(value).replace('T', ' ').slice(0, 16) : '-';
@@ -142,12 +138,12 @@ function formatTime(value) {
 
 async function load() {
   loading.value = true;
-  rows.value = (await eventRegistrationApi.listEventTeams(eventId.value)) ?? [];
+  rows.value = await eventRegistrationApi.listEventTeams(eventId.value);
   loading.value = false;
 }
 
 async function loadEventName() {
-  const ev = await eventApi.get(eventId.value).catch(() => null);
+  const ev = await eventApi.get(eventId.value);
   eventName.value = ev?.name ?? '';
 }
 
@@ -158,8 +154,8 @@ function goBack() {
 async function openInvite() {
   inviteTeamIds.value = [];
   inviteVisible.value = true;
-  if (!teamOptions.value.length) {
-    teamOptions.value = (await teamApi.selectOptions()) ?? [];
+  if (!allTeamOptions.value.length) {
+    allTeamOptions.value = await teamApi.selectOptions();
   }
 }
 
@@ -167,13 +163,12 @@ async function submitInvite() {
   if (!inviteTeamIds.value.length) return;
   inviting.value = true;
   try {
-    const res = await eventRegistrationApi.invite(eventId.value, { teamIds: [...inviteTeamIds.value] });
-    const invited = res?.data?.invited ?? inviteTeamIds.value.length;
-    ElMessage.success(`已邀请 ${invited} 支球队`);
+    const res = await eventRegistrationApi.invite(eventId.value, { teamIds: inviteTeamIds.value });
+    ElMessage.success(t('orderBook.invitedCount', { n: res.invited ?? inviteTeamIds.value.length }));
     inviteVisible.value = false;
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '邀请失败');
+    ElMessage.error(e?.message ?? t('orderBook.inviteFailed'));
   } finally {
     inviting.value = false;
   }
@@ -181,82 +176,56 @@ async function submitInvite() {
 
 async function toggleLock(row) {
   const locking = !row.rosterLocked;
-  try {
-    await ElMessageBox.confirm(
-      locking
-        ? `锁定后球队将无法再修改报名名单，确定锁定「${row.teamName}」？`
-        : `解锁后球队可继续修改报名名单，确定解锁「${row.teamName}」？`,
-      locking ? '锁定确认' : '解锁确认',
-      { type: 'warning' }
-    );
-  } catch {
-    return;
-  }
+  const ok = await confirmAction(
+    t(locking ? 'orderBook.lockConfirm' : 'orderBook.unlockConfirm', { name: row.teamName }),
+    t(locking ? 'orderBook.lockConfirmTitle' : 'orderBook.unlockConfirmTitle')
+  );
+  if (!ok) return;
   try {
     if (locking) {
       await eventRegistrationApi.lock(eventId.value, row.teamId);
     } else {
       await eventRegistrationApi.unlock(eventId.value, row.teamId);
     }
-    ElMessage.success(locking ? '已锁定' : '已解锁');
+    ElMessage.success(t(locking ? 'orderBook.lockedDone' : 'orderBook.unlockedDone'));
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '操作失败');
+    ElMessage.error(e?.message ?? t('orderBook.operationFailed'));
   }
 }
 
 async function removeTeam(row) {
-  try {
-    await ElMessageBox.confirm(
-      `确定将「${row.teamName}」移出本赛事？其报名名单将一并移除。`,
-      '移除确认',
-      { type: 'warning' }
-    );
-  } catch {
-    return;
-  }
+  const ok = await confirmAction(
+    t('orderBook.removeConfirm', { name: row.teamName }),
+    t('orderBook.removeConfirmTitle')
+  );
+  if (!ok) return;
   try {
     await eventRegistrationApi.remove(eventId.value, row.teamId);
-    ElMessage.success('已移除');
+    ElMessage.success(t('orderBook.removedDone'));
     await load();
   } catch (e) {
-    ElMessage.error(e?.message ?? '移除失败');
+    ElMessage.error(e?.message ?? t('orderBook.removeFailed'));
   }
 }
 
 async function openRoster(row) {
-  rosterTeam.value = row;
+  activeRow.value = row;
   rosterVisible.value = true;
   rosterLoading.value = true;
-  rosterRows.value = (await eventRegistrationApi.roster(eventId.value, row.teamId)) ?? [];
+  rosterRows.value = await eventRegistrationApi.roster(eventId.value, row.teamId);
   rosterLoading.value = false;
 }
 
-onMounted(async () => {
+onMounted(() => {
   loadEventName();
-  await load();
+  load();
 });
 </script>
 
 <style scoped>
 .event-teams-page {
   padding: 12px;
-}
-
-.page-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.page-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.event-name {
-  color: var(--el-text-color-secondary);
 }
 
 .head-actions {
@@ -267,10 +236,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.muted {
-  color: var(--el-text-color-secondary);
 }
 
 .dialog-hint {
