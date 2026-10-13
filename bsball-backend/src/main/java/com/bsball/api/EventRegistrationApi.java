@@ -6,6 +6,7 @@ import com.bsball.model.dto.EventRosterSubmitRequest;
 import com.bsball.model.dto.EventTeamDto;
 import com.bsball.model.dto.EventTeamInviteRequest;
 import com.bsball.model.dto.RosterPlayersDto;
+import com.bsball.model.dto.TeamOptionDto;
 import com.bsball.service.EventRegistrationService;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,12 @@ public class EventRegistrationApi {
     @GetMapping(value = {"/event/{eventId}/teams"})
     public Result<List<EventTeamDto>> listEventTeams(@PathVariable Long eventId) {
         return Result.ok(this.eventRegistrationService.listEventTeams(eventId));
+    }
+
+    /** 赛事可邀请球队（本租户全部未删球队；Issue #315 修复）。 */
+    @GetMapping(value = {"/event/{eventId}/team-options"})
+    public Result<List<TeamOptionDto>> invitableTeams(@PathVariable Long eventId) {
+        return Result.ok(this.eventRegistrationService.listInvitableTeams(eventId));
     }
 
     /** 移除参赛（软删登记 + 名单；锁定后 403）。 */

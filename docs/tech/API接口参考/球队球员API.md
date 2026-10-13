@@ -452,6 +452,7 @@ Exec --> End(["返回结果"])
 | 方法 | 路径 | 用途 | 守卫 |
 |---|---|---|---|
 | POST | /event/{eventId}/teams/invite | 邀请球队参赛（body: `{teamIds:[], remark?}`；幂等：已邀/已确认跳过，已谢绝重邀重置为 invited） | 办赛方（赛事所属联盟） |
+| GET | /event/{eventId}/team-options | 赛事可邀请球队：本租户全部未删球队（含他联盟/无联盟，不受管理域过滤；Issue #315 修复） | 办赛方（赛事所属联盟）/租管/超管 |
 | GET | /event/{eventId}/teams | 赛事参赛列表（球队名/徽、状态、名单人数、锁定态、最近提交时间） | 登录+同租户 |
 | POST | /event/{eventId}/teams/{teamId}/remove | 移除参赛（软删登记+全部名单行；锁定后 403，须先解锁） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/lock | 锁定报名名单（留痕 lockedBy/lockedAt） | 办赛方 |

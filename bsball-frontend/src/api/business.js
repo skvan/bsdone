@@ -219,6 +219,8 @@ export const eventApi = {
 export const eventRegistrationApi = {
   invite: (eventId, data) => post(`/api/event/${eventId}/teams/invite`, data ?? {}).then((r) => r?.data ?? {}),
   listEventTeams: (eventId) => getData(`/api/event/${eventId}/teams`).then((d) => d ?? []),
+  // 赛事可邀请球队（Issue #315）：本租户全部未删球队（不受管理域过滤），供办赛方邀请
+  invitableTeams: (eventId) => getData(`/api/event/${eventId}/team-options`).then((d) => d ?? []),
   remove: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/remove`, {}),
   lock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/lock`, {}),
   unlock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/unlock`, {}),

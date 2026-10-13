@@ -902,6 +902,7 @@ implements CommandLineRunner {
         long opId = this.sysUserRepository.findByUsernameAndDeletedAtIsNull("admin").map(BaseEntity::getId).orElse(1L);
         List<ApiDef> apis = List.of(
                 new ApiDef("/event/:eventId/teams/invite", "POST", "邀请球队参赛", "赛事管理"),
+                new ApiDef("/event/:eventId/team-options", "GET", "赛事可邀请球队", "赛事管理"),
                 new ApiDef("/event/:eventId/teams", "GET", "赛事参赛列表", "赛事管理"),
                 new ApiDef("/event/:eventId/teams/:teamId/remove", "POST", "移除参赛", "赛事管理"),
                 new ApiDef("/event/:eventId/teams/:teamId/lock", "POST", "锁定报名名单", "赛事管理"),

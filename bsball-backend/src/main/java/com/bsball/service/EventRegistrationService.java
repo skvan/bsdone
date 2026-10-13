@@ -5,6 +5,7 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventTeamDto;
 import com.bsball.model.dto.RosterPlayersDto;
+import com.bsball.model.dto.TeamOptionDto;
 import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventRosterPlayer;
@@ -131,6 +132,17 @@ public class EventRegistrationService {
             }
         }
         return Map.of("invited", invited, "skipped", skipped);
+    }
+
+    /**
+     * 赛事可邀请球队（Issue #315 修复）：返回本租户全部未删球队（id/name/shortName/logo）。
+     * 守卫=该赛事管理权；不复用管理域过滤的 /team/select-options（其窄域会漏队）。
+     */
+    public List<TeamOptionDto> listInvitableTeams(Long eventId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        this.requireEvent(eventId, tid);
+        return this.teamRepository.findForSelectByTenantId(Long.valueOf(tid));
     }
 
     /** 赛事侧参赛列表（含球队名/徽与名单人数）。 */

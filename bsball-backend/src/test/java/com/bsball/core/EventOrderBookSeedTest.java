@@ -111,13 +111,15 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("API 注册幂等：两次调用仅插入 16 条（含阵容池/阵容保存/邀请管理端点与创建邀请兜底注册）")
+    @DisplayName("API 注册幂等：两次调用仅插入 17 条（含赛事可邀请球队端点）")
     void apiSeedIdempotent() throws Exception {
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(16, apiStore.size());
+        assertEquals(17, apiStore.size());
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(16, apiStore.size(), "二次调用不得重复插入");
+        assertEquals(17, apiStore.size(), "二次调用不得重复插入");
         assertTrue(apiStore.stream().anyMatch(a -> "/event/:eventId/teams/invite".equals(a.getPath())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/event/:eventId/team-options".equals(a.getPath()) && "GET".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/event-registrations".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/teams/:teamId/roster".equals(a.getPath()) && "PUT".equals(a.getMethod())));
@@ -205,6 +207,7 @@ class EventOrderBookSeedTest {
         assertFalse((Boolean) tm.invoke(null, api(3L, "/event/:eventId/teams/invite", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(4L, "/event/:eventId/teams/:teamId/remove", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(5L, "/event/:eventId/teams/:teamId/lock", "POST")));
+        assertFalse((Boolean) tm.invoke(null, api(6L, "/event/:eventId/team-options", "GET")));
     }
 
     private void invokeNoArg(String name) throws Exception {
