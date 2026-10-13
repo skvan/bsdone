@@ -131,7 +131,7 @@
 
 - **仅手动触发**：合并到 `main` **不会自动上线**；需要发布时打开仓库 **Actions** 页 →「Deploy Production (manual)」→ **Run workflow**（分支选 `main`）→ 输入**必填发布版本号**（替代原 `DEPLOY` 确认词，兼作防误触门槛）；
 - **一次部署同时上线后端与前端（双轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验）；前端先用 `apply-release-version.mjs` 把发布版本号刷写进旧版产物（页脚 / `APP_VERSION` 注释 / `bs-ball/version.json` / `bs-ball/assets/*.js` 及 `.gz`），再实时构建重建版（`vite build --base=/bs-ball-next/`）并组装**双轨包**（旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`）上传至服务器 staging，随部署脚本 STEP 4 一并切换（不必再手工执行 `upload-frontend-prod.ps1`）；
-- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/bs-ball`、`/bs-ball-next/`）失败自动回滚；
+- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/bs-ball`、`/bs-ball-next/`、`/premier12/`）失败自动回滚；
 - **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，其版本号由部署流程按输入版本自动刷写（旧版产物刷写 + 重建版构建注入），前端随部署切换后生效（仅重启后端不会改变页脚版本号）。
 
 ---

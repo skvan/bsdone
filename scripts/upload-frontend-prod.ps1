@@ -8,6 +8,11 @@
 # to webapps-prod.tar.gz.deployed-<stamp>, so a stale package is never
 # redeployed silently.
 #
+# NOTE: break-glass channel only. This tarball is packed from the repo
+# webapps/ baseline (not via package-webapps.mjs), so it never carries
+# premier12/; deploying through it keeps the server's existing
+# /premier12/ (prod-only entries are preserved) but cannot update it.
+#
 # Usage (from anywhere):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\upload-frontend-prod.ps1
 # Optional:

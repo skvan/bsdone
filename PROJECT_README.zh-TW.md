@@ -129,6 +129,8 @@ Bsdone-project/
 │       ├── index.html          # 已改為直通頁 → /bs-ball-next/intro
 │       └── portal.html         # 門戶頁面
 │
+├── premier12/                # 十二強賽（Premier12）宣傳微站（靜態頁；部署時併入 webapps/premier12/）
+│
 └── bsball_backup.dump        # 資料庫備份
 ```
 
@@ -241,6 +243,7 @@ webapps/
 ├── portal.html          # 門戶首頁（網域訪問直通 /bs-ball-next/）
 ├── static/              # 共用資源（fonts, logo）
 ├── home/                # 門戶子頁面
+├── premier12/           # 十二強賽微站（打包時併入；/premier12/ 目錄入口）
 ├── bs-ball/             # 舊版：後台 + 即時比賽前端（/bs-ball/；入口已封鎖，僅留產物供部署級回滾）
 │   ├── assets/          # JS + CSS（Vite 編譯）
 │   ├── team-logos/      # 球隊 Logo

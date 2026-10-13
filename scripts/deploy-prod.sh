@@ -155,8 +155,9 @@ if [ -f "$FRONT_NEW" ]; then
     FS2=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/portal.html)
     FS3=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/bs-ball)
     FS4=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball-next/)
-    echo "frontend smoke(https): / -> $FS1  /portal.html -> $FS2  /bs-ball/bs-ball -> $FS3  /bs-ball-next/ -> $FS4 (expect 200)"
-    if [ "$FS1" = "200" ] && [ "$FS2" = "200" ] && [ "$FS3" = "200" ] && [ "$FS4" = "200" ]; then
+    FS5=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/premier12/)
+    echo "frontend smoke(https): / -> $FS1  /portal.html -> $FS2  /bs-ball/bs-ball -> $FS3  /bs-ball-next/ -> $FS4  /premier12/ -> $FS5 (expect 200)"
+    if [ "$FS1" = "200" ] && [ "$FS2" = "200" ] && [ "$FS3" = "200" ] && [ "$FS4" = "200" ] && [ "$FS5" = "200" ]; then
         rm -rf "$OLD"
         mv -f "$FRONT_NEW" "$STAGING/webapps-prod.tar.gz.deployed-$STAMP" || true
         FRONT_RESULT="deployed (backup: $BAK_DIR/webapps.tar.gz)"
