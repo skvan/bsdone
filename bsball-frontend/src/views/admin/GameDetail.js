@@ -12,6 +12,7 @@ import { teamApi as ae } from '../../api/business';
 import { fetchPlayersByTeam } from '../../api/business';
 import { buildTeamPlayersMap, addTeamEntryPlayers } from '../../utils/teamPlayersMap';
 import Ze from '../../components/admin/GameDetailContent.js';
+import GameDetailHitReplay from '../../components/common/GameDetailHitReplay.vue';
 import FieldSettingsDrawer from '../../components/admin/GameDetailFieldSettingsDrawer.js';
 import { readFieldSettings as Ge } from '../../utils/gameDetailFieldSettingsStorage';
 import { writeFieldSettings as xe } from '../../utils/gameDetailFieldSettingsStorage';
@@ -166,7 +167,16 @@ var mt={
         }
         ))]),_:1
       }
-      )),[[e,o.value]]),a(FieldSettingsDrawer,{
+      )),[[e,o.value]]),w.value?(H(),q(s,{
+        key:2,class:"game-detail-card"
+      }
+      ,{
+        default:i(()=>[a(GameDetailHitReplay,{
+          "game-id":O.value,"players-map":F.value,teams:W.value,"home-team-id":w.value.homeTeamId,"away-team-id":w.value.awayTeamId
+        }
+        ,null,8,["game-id","players-map","teams","home-team-id","away-team-id"])]),_:1
+      }
+      )):Ce("",!0),a(FieldSettingsDrawer,{
         modelValue:I.value,"onUpdate:modelValue":b[1]||(b[1]=d=>I.value=d),"batter-items":E.value,"pitcher-items":V.value,"default-batter-items":C,"default-pitcher-items":l(z),"decimal-places":D.value,"default-decimal-places":ie,"rate-display-style":p.value,"default-rate-display-style":se,"show-trailing-zeros":f.value,"default-show-trailing-zeros":ne,"is-small-screen":x.value,onSave:Y
       }
       ,null,8,["modelValue","batter-items","pitcher-items","default-pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])])

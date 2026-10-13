@@ -19,7 +19,6 @@
           <li><a href="#about">关于我们</a></li>
           <li><a href="#contact" class="nav-cta">立即咨询</a></li>
         </ul>
-        <FrontendSwitchButton variant="intro" />
         <button class="nav-toggle" aria-label="菜单" @click="navOpen = !navOpen">☰</button>
       </div>
     </nav>
@@ -417,13 +416,11 @@
 </template>
 
 <script setup>
-// Intro —— 新版系统介绍页（H27：官网介绍页完整移植为新版 SPA 页面；「系统介绍」卡与旧版介绍页「进入新版」均指此页）
+// Intro —— 系统介绍页（H27：官网介绍页完整移植为本版 SPA 页面）
 // 版式沿用官网（src/styles/legacy/portal-intro.css，scoped）；交互（滚动阴影/移动菜单/fade-in/右侧锚点导航）在组件内实现。
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { DEFAULT_TENANT_CODE } from '../../utils/tenantRoute';
-// H41：新旧版切换按钮组件化接入（导航条胶囊，替代原 DOM 注入锚点方式）
-import FrontendSwitchButton from '../../components/common/FrontendSwitchButton.vue';
 
 const router = useRouter();
 // 「查看系统」直指新版门户首页（命名路由自动携带部署 base）

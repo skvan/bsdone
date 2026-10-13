@@ -101,7 +101,7 @@ jobs:
           fi
           cp dist/webapps-dev.tar.gz ../webapps-dev.tar.gz
           echo "== tarball structure check (dual-track) =="
-          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html; do
+          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html webapps/premier12/index.html; do
             tar -tzf ../webapps-dev.tar.gz | grep -qx "$entry" || { echo "::error::missing $entry in tarball"; exit 1; }
           done
           echo "tarball structure OK"

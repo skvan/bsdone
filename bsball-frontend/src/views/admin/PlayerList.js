@@ -1170,13 +1170,13 @@ var $n={
     async function BlReturn(a){
       await fe(async()=>{
         try{
-          await vn.confirm(`确定要归还球员「${a.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await vn.confirm(`确定要删除球员「${a.name}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
-          ),await Ve.delete(a.id),p.success("已归还"),L()
+          ),await Ve.delete(a.id),p.success("删除成功"),L()
         }
         catch(e){
-          e!=="cancel"&&p.error(e?.message||"归还失败")
+          e!=="cancel"&&p.error(e?.message||"删除失败")
         }
         
       }
@@ -1692,11 +1692,11 @@ var $n={
               ,{
                 default:n(()=>[...e[58]||(e[58]=[s("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):H("",!0),!delMode.value&&g(Zi)("business:player:return")?(m(),R(i,{
+              ,8,["disabled","onClick"])):H("",!0),!delMode.value&&g(Zi)("business:player:return")&&!g(Zi)("business:player:delete")?(m(),R(i,{
                 key:1,link:"",type:"warning",disabled:g(Ce),onClick:mt=>BlReturn(h)
               }
               ,{
-                default:n(()=>[...e[98]||(e[98]=[s("归还",-1)])]),_:1
+                default:n(()=>[...e[98]||(e[98]=[s("删除",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):H("",!0),!delMode.value&&h.userId&&g(Zi)("business:player:release-claim")?(m(),R(i,{
                 key:2,link:"",type:"danger",disabled:g(Ce),onClick:mt=>BlReleaseClaim(h)

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>组团观赛报名 ｜ 2027 世界棒球12强赛资格赛（中山赛区）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy-950: #081a33;
+    --navy-900: #0a2140;
+    --navy-800: #0e2a4e;
+    --navy-700: #143862;
+    --gold: #e8c547;
+    --gold-light: #f7dd7a;
+    --gold-dark: #c9a227;
+    --red-dark: #6e1220;
+    --ink: #f4f6fb;
+    --muted: #a9b6cc;
+    --line: rgba(255,255,255,.12);
+    --danger: #ff6b7a;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, var(--navy-700), var(--navy-900) 60%, var(--navy-950));
+    color: var(--ink);
+    line-height: 1.7;
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+  }
+
+  a { color: inherit; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  .gold-text {
+    background: linear-gradient(180deg, var(--gold-light), var(--gold-dark));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* header */
+  .head { text-align: center; margin-bottom: 28px; }
+  .head .back {
+    display: inline-block; font-size: 14px; color: var(--muted);
+    text-decoration: none; margin-bottom: 12px;
+  }
+  .head .back:hover { color: var(--gold); }
+  .head h1 { font-size: 26px; font-weight: 900; letter-spacing: .04em; }
+  .head p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  /* card */
+  .card {
+    background: rgba(14,42,78,.72);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 28px 26px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    backdrop-filter: blur(8px);
+  }
+
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 8px; letter-spacing: .03em; }
+  label .req { color: var(--gold); margin-left: 4px; }
+  label .opt { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+
+  input[type=text], input[type=tel], input[type=number], select, textarea {
+    width: 100%; padding: 12px 14px; font-size: 15px;
+    color: var(--ink); background: var(--navy-950);
+    border: 1.5px solid var(--line); border-radius: 10px;
+    outline: none; transition: border-color .2s, box-shadow .2s;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold); box-shadow: 0 0 0 3px rgba(232,197,71,.18);
+  }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%), linear-gradient(135deg, var(--gold) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; cursor: pointer; }
+  textarea { resize: vertical; min-height: 72px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* price panel */
+  .pricebox {
+    margin: 4px 0 22px; padding: 16px 16px 18px;
+    background: linear-gradient(180deg, rgba(232,197,71,.10), rgba(232,197,71,.02));
+    border: 1px solid rgba(232,197,71,.35); border-radius: 12px;
+  }
+  .pricebox .meta { font-size: 14px; color: var(--gold-light); font-weight: 700; margin-bottom: 10px; }
+  .pricebox .hint { color: var(--muted); font-size: 13px; }
+  .tiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  @media (max-width: 520px) { .tiers { grid-template-columns: repeat(3, 1fr); } }
+  .tier {
+    text-align: center; padding: 10px 4px; border-radius: 10px;
+    background: var(--navy-950); border: 1.5px solid var(--line);
+    transition: border-color .2s, transform .2s;
+  }
+  .tier .t-name { font-size: 12px; color: var(--muted); }
+  .tier .t-price { font-size: 18px; font-weight: 900; color: var(--ink); margin-top: 2px; }
+  .tier.active { border-color: var(--gold); transform: translateY(-2px); }
+  .tier.active .t-price { color: var(--gold); }
+
+  /* total */
+  .total {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 6px 0 22px; padding: 16px 18px; border-radius: 12px;
+    background: var(--navy-950); border: 1px dashed rgba(232,197,71,.4);
+  }
+  .total .lbl { font-size: 14px; color: var(--muted); }
+  .total .amt { font-size: 30px; font-weight: 900; }
+  .total .amt small { font-size: 15px; font-weight: 700; margin-right: 2px; }
+
+  /* submit */
+  .btn-submit {
+    display: block; width: 100%; height: 54px; border: none; cursor: pointer;
+    border-radius: 999px; font-size: 18px; font-weight: 900; letter-spacing: .12em;
+    color: var(--navy-950); background: linear-gradient(180deg, var(--gold-light), var(--gold-dark));
+    transition: transform .2s, box-shadow .2s;
+  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(232,197,71,.45); }
+  .btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .msg { margin-top: 16px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  .msg.ok { display: block; background: rgba(46,204,113,.12); border: 1px solid rgba(46,204,113,.5); color: #b8f2c9; }
+  .msg.err { display: block; background: rgba(255,107,122,.12); border: 1px solid rgba(255,107,122,.5); color: #ffc2c9; }
+
+  .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 22px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <a class="back" href="premier12.html">← 返回首页</a>
+      <h1 class="gold-text">组团观赛 · 立即报名</h1>
+      <p>2027 世界棒球12强赛资格赛（中山赛区）</p>
+    </div>
+
+    <div class="card">
+      <form id="signupForm" novalidate>
+        <!-- Web3Forms 必填项，提交时会自动带上 -->
+        <input type="hidden" name="access_key" id="accessKey" value="5ba5e83d-8e1c-4d8b-ba6b-9a369707f43c" />
+        <input type="hidden" name="subject" value="12强赛观赛报名 - 新提交" />
+        <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
+
+        <div class="row2">
+          <div class="field">
+            <label for="name">姓名<span class="req">*</span></label>
+            <input type="text" id="name" name="name" placeholder="请输入姓名" required />
+          </div>
+          <div class="field">
+            <label for="phone">手机号<span class="req">*</span></label>
+            <input type="tel" id="phone" name="phone" placeholder="用于接收票务通知" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="idcard">身份证号<span class="req">*</span><span class="opt">（必填，实名购票用）</span></label>
+          <input type="text" id="idcard" name="idcard" placeholder="实名购票请填写" required />
+        </div>
+
+        <div class="field">
+          <label for="game">选择场次<span class="req">*</span></label>
+          <select id="game" name="game" required>
+            <option value="" disabled selected>请选择观赛场次</option>
+          </select>
+        </div>
+
+        <!-- 场次对应票价（联动区） -->
+        <div class="pricebox" id="pricebox" style="display:none">
+          <div class="meta" id="priceMeta"></div>
+          <div class="tiers" id="tiers"></div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="tier">选择票档<span class="req">*</span></label>
+            <select id="tier" name="tier" required disabled>
+              <option value="" disabled selected>请先选择场次</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="qty">购买数量<span class="req">*</span></label>
+            <input type="number" id="qty" name="qty" min="1" max="99" value="1" required />
+          </div>
+        </div>
+
+        <div class="total">
+          <span class="lbl">预计金额（单价 × 数量）</span>
+          <span class="amt gold-text"><small>¥</small><span id="totalAmt">0</span></span>
+        </div>
+
+        <div class="field">
+          <label for="note">备注<span class="opt">（选填，如团体名称、发票信息等）</span></label>
+          <textarea id="note" name="note" placeholder="其他需要告知的信息"></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">提交报名</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </div>
+
+    <div class="foot">本表单数据将提交至报名收集端 · 提交即表示同意用于赛事票务联系</div>
+  </div>
+
+<script>
+  /* ===== 票价数据：每个场次对应各自的五档票价 ===== */
+  const GAMES = [
+    { code: "G1", date: "11月26日", time: "12:00", match: "尼加拉瓜 VS 英国", prices: { "VIP": 298, "一等票": 198, "二等票": 128, "三等票": 98,  "四等票": 68  } },
+    { code: "G2", date: "11月26日", time: "18:30", match: "捷克 VS 中国",     prices: { "VIP": 398, "一等票": 288, "二等票": 218, "三等票": 158, "四等票": 98  } },
+    { code: "G3", date: "11月27日", time: "12:00", match: "捷克 VS 尼加拉瓜", prices: { "VIP": 298, "一等票": 198, "二等票": 128, "三等票": 98,  "四等票": 68  } },
+    { code: "G4", date: "11月27日", time: "18:30", match: "中国 VS 英国",     prices: { "VIP": 498, "一等票": 368, "二等票": 278, "三等票": 198, "四等票": 128 } },
+    { code: "G5", date: "11月28日", time: "12:00", match: "英国 VS 捷克",     prices: { "VIP": 338, "一等票": 228, "二等票": 178, "三等票": 128, "四等票": 88  } },
+    { code: "G6", date: "11月28日", time: "18:30", match: "中国 VS 尼加拉瓜", prices: { "VIP": 498, "一等票": 368, "二等票": 278, "三等票": 198, "四等票": 128 } },
+  ];
+  const TIERS = ["VIP", "一等票", "二等票", "三等票", "四等票"];
+
+  const gameSel  = document.getElementById("game");
+  const tierSel  = document.getElementById("tier");
+  const qtyInput = document.getElementById("qty");
+  const pricebox = document.getElementById("pricebox");
+  const priceMeta = document.getElementById("priceMeta");
+  const tiersBox = document.getElementById("tiers");
+  const totalAmt = document.getElementById("totalAmt");
+  const form     = document.getElementById("signupForm");
+  const msg      = document.getElementById("msg");
+  const submitBtn = document.getElementById("submitBtn");
+
+  /* 初始化场次下拉 */
+  GAMES.forEach(g => {
+    const o = document.createElement("option");
+    o.value = g.code;
+    o.textContent = `${g.code} ${g.date} ${g.time}  ${g.match}`;
+    gameSel.appendChild(o);
+  });
+
+  function findGame(code) { return GAMES.find(g => g.code === code); }
+
+  /* 选择场次 → 渲染该场票价 + 填充票档下拉 */
+  gameSel.addEventListener("change", () => {
+    const g = findGame(gameSel.value);
+    if (!g) { pricebox.style.display = "none"; tierSel.disabled = true; return; }
+
+    priceMeta.textContent = `${g.code} ｜ ${g.date} ${g.time} ｜ ${g.match}`;
+    tiersBox.innerHTML = "";
+    TIERS.forEach(t => {
+      const cell = document.createElement("div");
+      cell.className = "tier";
+      cell.dataset.tier = t;
+      cell.innerHTML = `<div class="t-name">${t}</div><div class="t-price">¥${g.prices[t]}</div>`;
+      tiersBox.appendChild(cell);
+    });
+    pricebox.style.display = "block";
+
+    /* 票档下拉：带价格显示 */
+    tierSel.innerHTML = '<option value="" disabled selected>请选择票档</option>';
+    TIERS.forEach(t => {
+      const o = document.createElement("option");
+      o.value = t;
+      o.textContent = `${t}　¥${g.prices[t]}`;
+      tierSel.appendChild(o);
+    });
+    tierSel.disabled = false;
+    updateTotal();
+  });
+
+  /* 选票档 → 高亮对应票价卡 */
+  tierSel.addEventListener("change", () => {
+    document.querySelectorAll(".tier").forEach(el => {
+      el.classList.toggle("active", el.dataset.tier === tierSel.value);
+    });
+    updateTotal();
+  });
+
+  qtyInput.addEventListener("input", updateTotal);
+
+  function updateTotal() {
+    const g = findGame(gameSel.value);
+    const t = tierSel.value;
+    const qty = parseInt(qtyInput.value, 10) || 0;
+    if (!g || !t) { totalAmt.textContent = "0"; return; }
+    totalAmt.textContent = (g.prices[t] * qty).toLocaleString("zh-CN");
+  }
+
+  function showMsg(type, text) {
+    msg.className = "msg " + type;
+    msg.textContent = text;
+  }
+
+  /* 提交 */
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.className = "msg";
+
+    const key = document.getElementById("accessKey").value.trim();
+    if (!key || key === "YOUR_ACCESS_KEY_HERE") {
+      showMsg("err", "尚未配置收集端 Access Key（见教程第 2、3 步）。");
+      return;
+    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    /* 把场次/票档的完整信息（含价格）写进提交数据 */
+    const g = findGame(gameSel.value);
+    const t = tierSel.value;
+    const qty = parseInt(qtyInput.value, 10) || 0;
+    const fd = new FormData(form);
+    fd.set("game", g ? `${g.code} ${g.date} ${g.time} ${g.match}` : "");
+    fd.set("tier", t || "");
+    fd.set("unit_price", g && t ? g.prices[t] : "");
+    fd.set("qty", qty);
+    fd.set("total", g && t ? g.prices[t] * qty : "");
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "提交中…";
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.success) {
+        showMsg("ok", "报名成功！我们已收到你的信息，将尽快与你联系确认票务。");
+        form.reset();
+        pricebox.style.display = "none";
+        tierSel.disabled = true;
+        tierSel.innerHTML = '<option value="" disabled selected>请先选择场次</option>';
+        totalAmt.textContent = "0";
+      } else {
+        showMsg("err", "提交失败：" + (data.message || "请检查网络或稍后重试。"));
+      }
+    } catch (err) {
+      showMsg("err", "网络错误，提交失败，请稍后重试。");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "提交报名";
+    }
+  });
+</script>
+</body>
+</html>

@@ -19,6 +19,7 @@ import { fetchPlayersByTeam } from '../../api/business';
 import { buildTeamPlayersMap, addTeamEntryPlayers } from '../../utils/teamPlayersMap';
 import { useTenantRouter as ot } from '../../composables/useTenantRouter';
 import ut from '../../components/admin/GameDetailContent.js';
+import HitReplay from '../../components/common/GameDetailHitReplay.vue';
 import { buildInitialFieldSettings as pe } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveDetailPageSettings as dt } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveValueControlSettings as ct } from '../../utils/gameDetailFieldSettingsStorage';
@@ -240,7 +241,10 @@ var _t={
       ,8,["description"])):r(U)?tt("",!0):(I(),W(C,{
         key:2,description:r(f)("gameDetail.gameNotFound")
       }
-      ,null,8,["description"]))],8,St)),[[G,r(U)]]),d(gt,{
+      ,null,8,["description"])),b.value?d(HitReplay,{
+        key:3,"game-id":_e.value,"players-map":X.value,teams:K.value,"home-team-id":b.value.homeTeamId,"away-team-id":b.value.awayTeamId
+      }
+      ,null,8,["game-id","players-map","teams","home-team-id","away-team-id"]):tt("",!0)],8,St)),[[G,r(U)]]),d(gt,{
         modelValue:v.value,"onUpdate:modelValue":s[0]||(s[0]=R=>v.value=R),"active-tab":ye.value,scope:ie.value,"include-game-detail-option":!0,onSaveGameDetailSettings:Le
       }
       ,null,8,["modelValue","active-tab","scope"]),d(Y,{

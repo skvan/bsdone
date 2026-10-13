@@ -124,13 +124,13 @@ var Xe={
     async function ieReturn(o){
       await H(async()=>{
         try{
-          await ze.confirm(`确定要归还教练「${o.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await ze.confirm(`确定要删除教练「${o.name}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
-          ),await S.delete(o.id),h.success("已归还"),u()
+          ),await S.delete(o.id),h.success("删除成功"),u()
         }
         catch(e){
-          e!=="cancel"&&h.error(e?.message||"归还失败")
+          e!=="cancel"&&h.error(e?.message||"删除失败")
         }
         
       }
@@ -322,11 +322,11 @@ var Xe={
               ,{
                 default:t(()=>[...e[18]||(e[18]=[i("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):Be("",!0),d(Ca)("business:coach:return")?(g(),b(c,{
+              ,8,["disabled","onClick"])):Be("",!0),d(Ca)("business:coach:return")&&!d(Ca)("business:coach:delete")?(g(),b(c,{
                 key:1,link:"",type:"warning",disabled:d(Y),onClick:fe=>ieReturn(s)
               }
               ,{
-                default:t(()=>[...e[22]||(e[22]=[i("归还",-1)])]),_:1
+                default:t(()=>[...e[22]||(e[22]=[i("删除",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):Be("",!0)]),_:1
             }

@@ -58,7 +58,7 @@ import PlayerClaimReview from '../views/admin/PlayerClaimReview.js';
 import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
-import LiveGameLineup from '../views/admin/LiveGameLineup.js';
+import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
 import LiveGame from '../views/admin/LiveGame.js';
 import Games from '../views/admin/Games.js';
@@ -92,7 +92,7 @@ const adminChild = (path, name, plannedComponent, extra = {}) => ({
 const routes = [
     // 新版展示/入口页（无门户外壳）：品牌展示 + 门户/管理台入口（Issue #105 双轨体验对齐）
     { path: '/welcome', name: 'PortalWelcome', component: Welcome },
-    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡与旧版介绍页「进入新版」均指此页）
+    // 新版系统介绍页（H27：官网介绍页完整移植；入口页「系统介绍」卡指此页）
     { path: '/intro', name: 'PortalIntro', component: Intro, meta: { title: '系统介绍' } },
     // 根路径默认落地 welcome
     { path: '/', redirect: '/welcome' },
@@ -193,10 +193,10 @@ const routes = [
             { path: 'events/:eventId/games/new', name: 'AdminGameNew', component: Games },
             { path: 'events/:eventId/games/:gameId/edit', name: 'AdminGameEdit', component: Games },
             { path: 'events/:eventId/games/:gameId/live', name: 'AdminGameLiveResume', component: LiveGame },
-            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineup },
+            { path: 'events/:eventId/games/:gameId/lineup', name: 'AdminGameLiveLineupGame', component: LiveGameLineupBoard },
             { path: 'events/:eventId/games/:gameId/watch', name: 'AdminGameLiveWatch', component: LiveGameWatch },
             { path: 'events/:eventId/games/:gameId', name: 'AdminGameDetail', component: GameDetail },
-            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineup },
+            { path: 'events/:eventId/games/live', name: 'AdminGameLiveLineup', component: LiveGameLineupBoard },
             { path: 'history-records', name: 'AdminHistoryRecords', component: HistoryRecordList },
             { path: 'highlight-moments', name: 'AdminHighlightMoments', component: HighlightMomentList },
             // 平台资产页（超管；批次 4b Task 4b-4）：菜单 path=/admin/platform-asset 经后端菜单树下发至超管侧边栏

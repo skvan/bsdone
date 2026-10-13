@@ -257,13 +257,13 @@ var J=$e(Il(),1),Ol={
     async function NeReturn(i){
       await ge(async()=>{
         try{
-          await vl.confirm(`确定要归还球场「${i.name}」吗？归还后将从本租户运营面移除，数据由平台留存。`,"归还确认",{
+          await vl.confirm(`确定要删除球场「${i.name}」吗？删除后将从本租户运营面移除。`,"删除确认",{
             confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
           }
-          ),await O.delete(i.id),h.success("已归还"),T()
+          ),await O.delete(i.id),h.success("删除成功"),T()
         }
         catch(e){
-          e!=="cancel"&&h.error(e?.message||"归还失败")
+          e!=="cancel"&&h.error(e?.message||"删除失败")
         }
         
       }
@@ -469,11 +469,11 @@ var J=$e(Il(),1),Ol={
               ,{
                 default:a(()=>[...e[38]||(e[38]=[s("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):N("",!0),m(Sa)("business:stadium:return")?(p(),_(r,{
+              ,8,["disabled","onClick"])):N("",!0),m(Sa)("business:stadium:return")&&!m(Sa)("business:stadium:delete")?(p(),_(r,{
                 key:1,link:"",type:"warning",disabled:m(ce),onClick:qe=>NeReturn(n)
               }
               ,{
-                default:a(()=>[...e[57]||(e[57]=[s("归还",-1)])]),_:1
+                default:a(()=>[...e[57]||(e[57]=[s("删除",-1)])]),_:1
               }
               ,8,["disabled","onClick"])):N("",!0)]),_:1
             }
