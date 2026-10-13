@@ -133,7 +133,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
-import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchPlayersByTeam, lineupTemplateApi } from '../../api/business';
+import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
+import { isBusinessError } from '../../utils/apiError';
 import { usePermission } from '../../composables/usePermission';
 import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
@@ -353,15 +355,34 @@ function showNotice(b) {
 }
 
 /* ---------------- 名册 / 比赛载入 ---------------- */
+// 电子秩序册（Issue #310）：受限赛事选人池=报名名单；未受限回落本队全量在役
+const rosterPools = ref({ home: null, away: null });
+
 async function loadRosters() {
   if (!setupForm.value.homeTeamId || !setupForm.value.awayTeamId) return;
-  const [homeRoster, awayRoster] = await Promise.all([
-    fetchPlayersByTeam(setupForm.value.homeTeamId),
-    fetchPlayersByTeam(setupForm.value.awayTeamId),
+  let [homePool, awayPool] = await Promise.all([
+    fetchRosterPlayers(eventId.value, setupForm.value.homeTeamId),
+    fetchRosterPlayers(eventId.value, setupForm.value.awayTeamId),
   ]);
-  homeBoard.setRoster(homeRoster);
-  awayBoard.setRoster(awayRoster);
+  if (homePool.failed || awayPool.failed) {
+    // 秩序册服务不可用：回落本队全名册保持可用（保存时门①/门②仍兜底），并提示
+    ElMessage.warning('未能加载赛事秩序册名单，已回退本队全名册（保存时仍将校验）');
+    homePool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.homeTeamId) };
+    awayPool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.awayTeamId) };
+  }
+  rosterPools.value = { home: homePool, away: awayPool };
+  homeBoard.setRoster(homePool.players);
+  awayBoard.setRoster(awayPool.players);
   unavailable.value = { home: [], away: [] };
+  warnEmptyPool('主队', homePool);
+  warnEmptyPool('客队', awayPool);
+}
+
+// 受限赛事下池空提示（未报名 / 未提交名单）
+function warnEmptyPool(label, pool) {
+  if (pool?.restricted === true && !(pool.players ?? []).length) {
+    ElMessage.warning(`${label}尚未在本赛事报名或提交名单，暂无可选球员`);
+  }
 }
 
 // 旧件 qi()：保存比赛记录时的字段集合（顺序与默认值逐条对齐）
@@ -466,17 +487,26 @@ async function loadGame(id) {
     if (teamsReady.value) {
       await loadRosters();
       if (n) {
+        // 电子秩序册（Issue #310）：载入存量草稿时剔除名单外球员并提示
+        const homeFiltered = filterOutOfRoster(n.homeLineup, n.homeBench, rosterPools.value.home);
+        const awayFiltered = filterOutOfRoster(n.awayLineup, n.awayBench, rosterPools.value.away);
+        const removedNames = [...homeFiltered.removed, ...awayFiltered.removed]
+          .map((x) => x.name || x.id)
+          .filter((x) => x != null);
+        if (removedNames.length) {
+          ElMessage.warning(`已从阵容中移除未报名球员：${removedNames.join('、')}`);
+        }
         homeBoard.loadDraft({
-          rows: n.homeLineup,
-          bench: n.homeBench,
-          fieldingPitcherId: n.homeFieldingPitcherId,
-          lastDhAddedFromPoolId: n.homeLastDhAddedFromPoolId,
+          rows: homeFiltered.keptRows,
+          bench: homeFiltered.keptBench,
+          fieldingPitcherId: pickPoolId(n.homeFieldingPitcherId, rosterPools.value.home),
+          lastDhAddedFromPoolId: pickPoolId(n.homeLastDhAddedFromPoolId, rosterPools.value.home),
         });
         awayBoard.loadDraft({
-          rows: n.awayLineup,
-          bench: n.awayBench,
-          fieldingPitcherId: n.awayFieldingPitcherId,
-          lastDhAddedFromPoolId: n.awayLastDhAddedFromPoolId,
+          rows: awayFiltered.keptRows,
+          bench: awayFiltered.keptBench,
+          fieldingPitcherId: pickPoolId(n.awayFieldingPitcherId, rosterPools.value.away),
+          lastDhAddedFromPoolId: pickPoolId(n.awayLastDhAddedFromPoolId, rosterPools.value.away),
         });
         unavailable.value.home = Array.isArray(n.homeUnavailablePlayerIds) ? n.homeUnavailablePlayerIds : [];
         unavailable.value.away = Array.isArray(n.awayUnavailablePlayerIds) ? n.awayUnavailablePlayerIds : [];
@@ -537,7 +567,7 @@ async function save(exit) {
       });
     }
     const payload = draftPayload(id);
-    await gameApi.saveLiveSnapshot(id, JSON.stringify(payload));
+    await gameApi.saveLineup(id, JSON.stringify(payload));
     ElMessage.success('已保存，可在赛程/结果页继续录入');
     if (exit) {
       tabs.removeTab(route.path);
@@ -631,13 +661,19 @@ async function startEntry() {
         away: { score: 0, innings: Array(7).fill(0) },
       },
     };
-    writeEntryBootstrap(eventId.value, id, payload);
     try {
-      await gameApi.saveLiveSnapshot(id, JSON.stringify(payload));
+      await gameApi.saveLineup(id, JSON.stringify(payload));
     } catch (error) {
+      if (isBusinessError(error)) {
+        // 业务校验失败（如秩序册名单外球员 400）：中止进入录入，先修正阵容（不写 bootstrap）
+        ElMessage.error(error.message ?? '阵容校验未通过，请修正后重试');
+        return;
+      }
       console.warn('[LiveGameLineup] initial snapshot save failed', error);
       ElMessage.warning('初始阵容未同步到服务器，切换页面后可能需要重排阵容');
     }
+    // 保存成功或网络降级均写入录入引导（业务校验失败路径已在上面 return，不写）
+    writeEntryBootstrap(eventId.value, id, payload);
     ElMessage.success('阵容与对战信息已保存，正在进入录入…');
     await router.replace({ name: 'AdminGameLiveResume', params: { eventId: String(eventId.value), gameId: String(id) } });
   } catch (err) {
@@ -681,10 +717,15 @@ async function applyTemplate() {
       return;
     }
     await ElMessageBox.confirm('将用该模板覆盖当前球队的先发阵容与替补名单，是否继续？', '应用阵容模板');
+    // 电子秩序册（Issue #310）：受限赛事下过滤模板中的名单外球员（槽位置空待选、替补/投手剔除）
+    const filtered = filterTemplateByPool(t, rosterPools.value[team]);
+    if (filtered.removedCount > 0) {
+      ElMessage.warning(`模板中有 ${filtered.removedCount} 名球员不在本赛事报名名单中，已留空或移除，请重新选择`);
+    }
     boardOf(team).applyTemplate({
-      slots: t.slots,
-      benchPlayerIds: t.benchPlayerIds,
-      pitcherId: t.startingPitcherPlayerId,
+      slots: filtered.slots,
+      benchPlayerIds: filtered.benchPlayerIds,
+      pitcherId: filtered.pitcherId,
     });
     templateDialog.value.visible = false;
   } catch (err) {

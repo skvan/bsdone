@@ -59,6 +59,7 @@ public class GameService {
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
+    private final EventRegistrationService eventRegistrationService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
         boolean hasFilter;
@@ -154,6 +155,25 @@ public class GameService {
             return;
         }
         this.assertGameWritable(g);
+        g.setLiveSnapshotJson(json);
+        this.gameRepository.save(g);
+    }
+
+    /**
+     * 阵容专用保存（门①，Issue #310）：受限赛事校验两队列/替补/守备投手 ⊆ 对应球队名单后落快照。
+     * 阵容板 save()/startEntry() 走此端点；比赛进行中的高频自动保存仍走 {@link #saveLiveSnapshot}（不解析校验）。
+     */
+    @Transactional
+    public void saveLineupSnapshot(Long gameId, String json) {
+        Game g = this.gameRepository.findById(gameId).orElse(null);
+        if (g == null) {
+            return;
+        }
+        this.assertGameWritable(g);
+        if (g.getEventId() != null) {
+            this.eventRegistrationService.assertLineupSnapshotInRoster(
+                    g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
+        }
         g.setLiveSnapshotJson(json);
         this.gameRepository.save(g);
     }
@@ -270,6 +290,10 @@ public class GameService {
             this.gameRepository.save(game);
         }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
+            this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), gameId,
+                    dto.getStats().stream()
+                            .map(s -> new EventRegistrationService.StatsRef(s.getTeamId(), s.getPlayerId()))
+                            .toList());
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
             Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> statRichness(a) >= statRichness(b) ? a : b));
             for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
@@ -428,6 +452,14 @@ public class GameService {
         this.assertGameWritable(game);
         if (dto != null && dto.getStats() != null && !Boolean.TRUE.equals(game.getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            // 门②（Issue #310）：统计写入门；若本请求同时迁移 eventId，按目标赛事口径校验
+            Long rosterEventId = dto.getGame() != null && dto.getGame().getEventId() != null
+                    ? dto.getGame().getEventId()
+                    : game.getEventId();
+            this.eventRegistrationService.assertStatsPartsInRoster(rosterEventId, gameId,
+                    dto.getStats().stream()
+                            .map(s -> new EventRegistrationService.StatsRef(s.getTeamId(), s.getPlayerId()))
+                            .toList());
         }
         if (dto.getGame() != null) {
             SaveGameResultDTO.GamePart g = dto.getGame();
@@ -808,7 +840,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.eventRepository = eventRepository;
@@ -818,6 +850,7 @@ public class GameService {
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.earnedRunReconstructionService = earnedRunReconstructionService;
+        this.eventRegistrationService = eventRegistrationService;
     }
 }
 

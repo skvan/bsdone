@@ -4,6 +4,8 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventTeamDto;
+import com.bsball.model.dto.RosterPlayersDto;
+import com.bsball.model.dto.TeamPlayerOptionDto;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventRosterPlayer;
 import com.bsball.model.entity.EventTeam;
@@ -13,12 +15,17 @@ import com.bsball.model.entity.Team;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
+import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EventRegistrationService {
     private static final int REMARK_MAX_LENGTH = 500;
+    /** 快照 JSON 解析（兼容读取，不承载业务状态）。 */
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final EventRepository eventRepository;
     private final TeamRepository teamRepository;
@@ -44,6 +53,8 @@ public class EventRegistrationService {
     private final PlayerTeamRepository playerTeamRepository;
     private final EventTeamRepository eventTeamRepository;
     private final EventRosterPlayerRepository eventRosterPlayerRepository;
+    private final GamePlayerStatRepository gamePlayerStatRepository;
+    private final PlayerService playerService;
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
 
@@ -53,6 +64,8 @@ public class EventRegistrationService {
             PlayerTeamRepository playerTeamRepository,
             EventTeamRepository eventTeamRepository,
             EventRosterPlayerRepository eventRosterPlayerRepository,
+            GamePlayerStatRepository gamePlayerStatRepository,
+            PlayerService playerService,
             ResourceGuard resourceGuard,
             TenantQueryPolicyService tenantQueryPolicyService) {
         this.eventRepository = eventRepository;
@@ -61,6 +74,8 @@ public class EventRegistrationService {
         this.playerTeamRepository = playerTeamRepository;
         this.eventTeamRepository = eventTeamRepository;
         this.eventRosterPlayerRepository = eventRosterPlayerRepository;
+        this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.playerService = playerService;
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
     }
@@ -220,6 +235,139 @@ public class EventRegistrationService {
         return out;
     }
 
+    /** 阵容限制启用判定：赛事存在任意有效参赛记录（含仅邀请）即启用（Issue #310 决策 5）。 */
+    public boolean eventRestricted(Long eventId) {
+        return eventId != null && this.eventTeamRepository.existsByEventIdAndDeletedAtIsNull(eventId);
+    }
+
+    /**
+     * 阵容选人池：受限=该队有效报名名单球员；未受限=本队 current 全量在役
+     * （与 {@code /player/list?teamId=} 同口径，前端单路径接入）。
+     */
+    public RosterPlayersDto rosterPlayers(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.requireEvent(eventId, tid);
+        if (!this.eventRestricted(eventId)) {
+            // 未受限：复用球队球员选项目径（current 在役，单一口径来源）
+            return new RosterPlayersDto(Boolean.FALSE, this.playerService.listTeamPlayerOptions(teamId));
+        }
+        List<EventRosterPlayer> rows = this.eventRosterPlayerRepository
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId);
+        Map<Long, Player> players = this.playerRepository
+                .findAllById(rows.stream().map(EventRosterPlayer::getPlayerId).toList()).stream()
+                .collect(Collectors.toMap(Player::getId, x -> x, (a, b) -> a));
+        List<TeamPlayerOptionDto> out = rows.stream().map(r -> {
+            Player p = players.get(r.getPlayerId());
+            return new TeamPlayerOptionDto(r.getPlayerId(),
+                    p != null ? p.getName() : null,
+                    this.resolveNumber(r, p),
+                    p != null ? p.getPositionsList() : List.of(),
+                    p != null ? p.getBatHand() : null,
+                    p != null ? p.getThrowHand() : null,
+                    p != null ? p.getStatus() : null);
+        }).toList();
+        return new RosterPlayersDto(Boolean.TRUE, out);
+    }
+
+    /**
+     * 门①（阵容保存）：赛事受限时校验快照中两队列/替补/DH 池/守备投手均 ∈ 对应球队名单；
+     * 非法 JSON 或未受限赛事不拦截（兼容旧数据）。
+     */
+    public void assertLineupSnapshotInRoster(Long eventId, Long homeTeamId, Long awayTeamId, String snapshotJson) {
+        if (snapshotJson == null || snapshotJson.isBlank() || !this.eventRestricted(eventId)) {
+            return;
+        }
+        JsonNode root;
+        try {
+            root = MAPPER.readTree(snapshotJson);
+        } catch (Exception e) {
+            return;
+        }
+        this.assertSideLineupInRoster(eventId, homeTeamId, root, "home");
+        this.assertSideLineupInRoster(eventId, awayTeamId, root, "away");
+    }
+
+    private void assertSideLineupInRoster(Long eventId, Long teamId, JsonNode root, String side) {
+        if (teamId == null) {
+            return;
+        }
+        Set<Long> ids = new LinkedHashSet<Long>();
+        for (String field : List.of(side + "Lineup", side + "Bench")) {
+            JsonNode arr = root.path(field);
+            if (!arr.isArray()) {
+                continue;
+            }
+            for (JsonNode node : arr) {
+                long id = node.path("id").asLong(0L);
+                if (id > 0L) {
+                    ids.add(Long.valueOf(id));
+                }
+            }
+        }
+        for (String field : List.of(side + "FieldingPitcherId", side + "LastDhAddedFromPoolId")) {
+            long id = root.path(field).asLong(0L);
+            if (id > 0L) {
+                ids.add(Long.valueOf(id));
+            }
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        Set<Long> rosterIds = this.eventRosterPlayerRepository
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId).stream()
+                .map(EventRosterPlayer::getPlayerId)
+                .collect(Collectors.toSet());
+        for (Long pid : ids) {
+            if (!rosterIds.contains(pid)) {
+                throw new BusinessException(400, this.notInRosterMessage(teamId, pid));
+            }
+        }
+    }
+
+    private String notInRosterMessage(Long teamId, Long playerId) {
+        Player p = this.playerRepository.findById(playerId).orElse(null);
+        Team team = this.teamRepository.findById(teamId).orElse(null);
+        String teamName = team != null && team.getName() != null ? team.getName() : String.valueOf(teamId);
+        return "球员「" + this.playerDisplayName(p, playerId) + "」不在本赛事秩序册名单中（球队：" + teamName + "），请先在赛事报名中提交名单";
+    }
+
+    /** 展示名回落：无姓名时用 id。 */
+    private String playerDisplayName(Player player, Long playerId) {
+        return player != null && player.getName() != null ? player.getName() : String.valueOf(playerId);
+    }
+
+    /** 统计写入门（门②）引用的最小标识。 */
+    public record StatsRef(Long teamId, Long playerId) {
+    }
+
+    /**
+     * 门②（统计写入门）：仅拦截"为本场首次引入名单外球员"——
+     * 已存在 (gameId, teamId, playerId) 有效统计行的更新不受限（保护进行中比赛与历史修正）；
+     * 无赛事/未受限赛事跳过。
+     */
+    public void assertStatsPartsInRoster(Long eventId, Long gameId, Collection<StatsRef> parts) {
+        if (gameId == null || !this.eventRestricted(eventId) || parts == null || parts.isEmpty()) {
+            return;
+        }
+        Set<StatsRef> rosterKeys = this.eventRosterPlayerRepository.findByEventIdAndDeletedAtIsNull(eventId).stream()
+                .map(r -> new StatsRef(r.getTeamId(), r.getPlayerId()))
+                .collect(Collectors.toSet());
+        Set<StatsRef> existingKeys = this.gamePlayerStatRepository.findByGameId(gameId).stream()
+                .filter(s -> s.getDeletedAt() == null)
+                .map(s -> new StatsRef(s.getTeamId(), s.getPlayerId()))
+                .collect(Collectors.toSet());
+        for (StatsRef part : parts) {
+            if (part == null || part.teamId() == null || part.playerId() == null) {
+                continue;
+            }
+            if (!rosterKeys.contains(part) && !existingKeys.contains(part)) {
+                Player p = this.playerRepository.findById(part.playerId()).orElse(null);
+                throw new BusinessException(400,
+                        "球员「" + this.playerDisplayName(p, part.playerId()) + "」未在本赛事秩序册名单中，无法记入比赛数据");
+            }
+        }
+    }
+
     /** 确认参加（仅 invited 可操作；confirmed 幂等；declined → 400 引导重邀）。 */
     @Transactional(rollbackFor = Exception.class)
     public EventTeamDto confirm(Long eventId, Long teamId) {
@@ -306,7 +454,7 @@ public class EventRegistrationService {
                     || !Objects.equals(p.getTenantId(), Long.valueOf(tid))
                     || !currentIds.contains(pid);
             if (bad) {
-                invalid.add(p != null && p.getName() != null ? p.getName() : String.valueOf(pid));
+                invalid.add(this.playerDisplayName(p, pid));
             }
         }
         if (!invalid.isEmpty()) {

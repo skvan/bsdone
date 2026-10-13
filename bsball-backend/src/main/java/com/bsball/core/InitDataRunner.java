@@ -910,7 +910,9 @@ implements CommandLineRunner {
                 new ApiDef("/team/:teamId/event-registrations", "GET", "我的赛事报名", "球队管理"),
                 new ApiDef("/event/:eventId/teams/:teamId/confirm", "POST", "确认参加赛事", "球队管理"),
                 new ApiDef("/event/:eventId/teams/:teamId/decline", "POST", "谢绝参加赛事", "球队管理"),
-                new ApiDef("/event/:eventId/teams/:teamId/roster", "PUT", "提交报名名单", "球队管理"));
+                new ApiDef("/event/:eventId/teams/:teamId/roster", "PUT", "提交报名名单", "球队管理"),
+                new ApiDef("/event/:eventId/teams/:teamId/roster-players", "GET", "阵容选人池", "赛事管理"),
+                new ApiDef("/game/:id/lineup-snapshot", "POST", "保存比赛阵容", "比赛管理"));
         ArrayList<SysApi> existing = new ArrayList<SysApi>(this.sysApiRepository.findAll());
         int added = 0;
         for (ApiDef a : apis) {

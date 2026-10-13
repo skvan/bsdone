@@ -111,16 +111,20 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("API 注册幂等：两次调用仅插入 10 条（含赛事侧与球队侧路径）")
+    @DisplayName("API 注册幂等：两次调用仅插入 12 条（含阵容池与阵容保存端点）")
     void apiSeedIdempotent() throws Exception {
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(10, apiStore.size());
+        assertEquals(12, apiStore.size());
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(10, apiStore.size(), "二次调用不得重复插入");
+        assertEquals(12, apiStore.size(), "二次调用不得重复插入");
         assertTrue(apiStore.stream().anyMatch(a -> "/event/:eventId/teams/invite".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/event-registrations".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/teams/:teamId/roster".equals(a.getPath()) && "PUT".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/event/:eventId/teams/:teamId/roster-players".equals(a.getPath()) && "GET".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/game/:id/lineup-snapshot".equals(a.getPath()) && "POST".equals(a.getMethod())));
     }
 
     @Test

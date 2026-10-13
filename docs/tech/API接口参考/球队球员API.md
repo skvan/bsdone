@@ -457,6 +457,7 @@ Exec --> End(["返回结果"])
 | POST | /event/{eventId}/teams/{teamId}/lock | 锁定报名名单（留痕 lockedBy/lockedAt） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
 | GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
+| GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
 | GET | /team/{teamId}/event-registrations | 球队侧「我的赛事报名」列表（赛事名/赛季/模式/状态） | 登录+同租户 |
 | POST | /event/{eventId}/teams/{teamId}/confirm | 确认参加（仅 invited 可操作；重复确认幂等） | 球队管理员/代管办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/decline | 谢绝参赛（仅 invited 可操作；重复谢绝幂等） | 球队管理员/代管办赛方 |
@@ -466,6 +467,12 @@ Exec --> End(["返回结果"])
 - 状态机：`invited → confirmed / declined`；declined 可被办赛方重新邀请（重置回 invited，清空确认/谢绝/提交时间）。
 - 名单为快照语义：提交时校验球员为该队当前在役（`bs_player_team.is_current=true`）；提交后球员离队不自动移出，锁定前球队可自行修改；软删 = 移除报名。
 - 代管口径：无主球队（无有效 `bs_team_manager`）且归属办赛方联盟时，办赛方可代为确认/提交名单；有主球队联盟侧只读。
+
+### 阵容限制口径（双门校验，Issue #310）
+- 启用条件：赛事存在任意有效参赛记录（含仅邀请）即对该赛事全部比赛启用；无参赛记录的赛事不受影响。
+- 门①（阵容保存）：`POST /game/{id}/lineup-snapshot` 校验两队列+替补+守备投手 ⊆ 对应球队名单（详见《比赛管理API》）。
+- 门②（统计写入）：`save-live`/`save-result`/`/game/stats/*` 逐条校验，仅拦截"为本场首次引入名单外球员"。
+- 前端选人池经 `roster-players` 端点接入：受限时只返回报名球员；未报名/未提交名单的球队池为空（UI 提示区分）。
 
 ### 典型错误码
 - 400：球队不存在或不属于当前租户 / 请选择要邀请的球队 / 备注不能超过 500 字 / 请先确认参加后再提交名单 / 以下球员当前不在本队：… / 已谢绝参赛，请联系办赛方重新邀请 / 已确认参赛，不能直接谢绝 / 请至少选择 1 名球员
