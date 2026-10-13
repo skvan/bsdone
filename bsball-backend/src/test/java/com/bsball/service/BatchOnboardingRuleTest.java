@@ -111,6 +111,8 @@ class BatchOnboardingRuleTest {
     private StadiumRepository stadiumRepository;
     @Mock
     private EarnedRunReconstructionService earnedRunReconstructionService;
+    @Mock
+    private EventRegistrationService eventRegistrationService;
 
     private ResourceGuard guard;
     private TeamService teamService;
@@ -130,7 +132,8 @@ class BatchOnboardingRuleTest {
                 accountScopeService, scopeQuerySupport, guard, personnelHistoryRecorder, playerTeamService,
                 tenantQueryPolicyService, sysConfigService, playerClaimRepository, gamePlayerStatRepository);
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
-                accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService);
+                accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
+                eventRegistrationService);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, tenantQueryPolicyService);
     }

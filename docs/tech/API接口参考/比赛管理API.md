@@ -312,6 +312,28 @@ EventService --> EventRepository
   - 作用：创建历史记录
   - 参考：`HistoryRecordApi.java:46-50`
 
+## 阵容保存与秩序册校验（电子秩序册，Issue #310）
+
+赛事存在任意参赛记录（含仅邀请）后即为「受限赛事」：其比赛录入阵容与统计写入仅可使用各队报名球员。
+
+### 端点
+
+| 方法 | 路径 | 用途 | 说明 |
+|---|---|---|---|
+| POST | /game/{id}/lineup-snapshot | 阵容专用保存（门①） | body `{snapshotJson}` 同 `/{id}/live-snapshot`；受限赛事解析快照中 `homeLineup/awayLineup/homeBench/awayBench/homeFieldingPitcherId/awayFieldingPitcherId/homeLastDhAddedFromPoolId/awayLastDhAddedFromPoolId` 的球员 id，按主客队分别校验 ⊆ 该队有效报名名单；违规 400（消息含球员名与球队名）。阵容板保存/开始录入走此端点；比赛进行中的高频自动保存仍走 `/{id}/live-snapshot`（不解析校验） |
+
+### 统计写入门（门②）
+
+- `POST /game/{id}/save-live`（stats 部分）、`POST /game/{id}/save-result`（stats 部分）、`POST /game/stats/create`、`PUT /game/stats/update/{id}`：受限赛事下逐条校验 `(teamId, playerId)`。
+- **首次引入口径**：仅拦截「为本场首次引入的名单外球员」——若 `(gameId, teamId, playerId)` 已有有效统计行，其更新不受限（保护进行中比赛与历史修正）。
+- 违规 400：「球员「X」未在本赛事秩序册名单中，无法记入比赛数据」。
+- `save-result` 若同请求迁移 eventId，按**目标赛事**口径校验（`dto.game.eventId` 优先）。
+- 无赛事（eventId 为空）或赛事无参赛记录 → 全部跳过（现行为不变）。
+
+### 选人池端点
+
+- `GET /event/{eventId}/teams/{teamId}/roster-players`（见《球队球员API》电子秩序册小节）：受限=报名名单；未受限=本队 current 全量在役。
+
 ---
 
 > 本文整理自 Qoder RepoWiki（基于代码自动生成），仅供参考，以代码为准。

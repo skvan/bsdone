@@ -90,6 +90,13 @@ public class GameApi {
         return Result.ok(Map.of());
     }
 
+    /** 阵容专用保存（门①，Issue #310）：受限赛事校验阵容球员 ⊆ 报名名单后落快照。 */
+    @PostMapping(value={"/{id}/lineup-snapshot"})
+    public Result<Object> saveLineupSnapshot(@PathVariable Long id, @RequestBody LiveSnapshotSaveDTO body) {
+        this.gameService.saveLineupSnapshot(id, body != null ? body.getSnapshotJson() : null);
+        return Result.ok(Map.of());
+    }
+
     @GetMapping(value={"/{gameId}/stats"})
     public Result<PageResult<GamePlayerStat>> listByGame(@PathVariable Long gameId) {
         List<GamePlayerStat> data = this.gamePlayerStatService.listByGame(gameId);

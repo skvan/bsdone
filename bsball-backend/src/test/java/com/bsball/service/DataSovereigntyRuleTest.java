@@ -107,6 +107,8 @@ class DataSovereigntyRuleTest {
     private StadiumRepository stadiumRepository;
     @Mock
     private EarnedRunReconstructionService earnedRunReconstructionService;
+    @Mock
+    private EventRegistrationService eventRegistrationService;
 
     private ResourceGuard guard;
     private LeagueService leagueService;
@@ -134,7 +136,8 @@ class DataSovereigntyRuleTest {
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, tenantQueryPolicyService);
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
-                accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService);
+                accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
+                eventRegistrationService);
         platformAssetService = new PlatformAssetService(leagueRepository, teamRepository, playerRepository,
                 eventRepository, gameRepository, apiPermissionService);
         platformAssetApi = new PlatformAssetApi(platformAssetService);

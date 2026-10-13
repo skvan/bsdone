@@ -10,8 +10,10 @@
  */
 package com.bsball.service;
 
+import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import lombok.Generated;
@@ -20,6 +22,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class GamePlayerStatService {
     private final GamePlayerStatRepository gamePlayerStatRepository;
+    private final GameRepository gameRepository;
+    private final EventRegistrationService eventRegistrationService;
 
     public List<GamePlayerStat> listByGame(Long gameId) {
         List<GamePlayerStat> rows = this.gamePlayerStatRepository.findByGameId(gameId);
@@ -34,6 +38,9 @@ public class GamePlayerStatService {
     }
 
     public GamePlayerStat create(GamePlayerStat entity) {
+        if (entity != null) {
+            this.assertRosterForWrite(entity.getGameId(), entity.getTeamId(), entity.getPlayerId());
+        }
         return (GamePlayerStat)this.gamePlayerStatRepository.save(entity);
     }
 
@@ -42,9 +49,27 @@ public class GamePlayerStatService {
         if (existing == null) {
             return null;
         }
+        // 门②（Issue #310）：按"合并后最终 teamId/playerId"校验（载荷缺省字段沿用既有值）
+        Long finalGameId = entity.getGameId() != null ? entity.getGameId() : existing.getGameId();
+        Long finalTeamId = entity.getTeamId() != null ? entity.getTeamId() : existing.getTeamId();
+        Long finalPlayerId = entity.getPlayerId() != null ? entity.getPlayerId() : existing.getPlayerId();
+        this.assertRosterForWrite(finalGameId, finalTeamId, finalPlayerId);
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         return (GamePlayerStat)this.gamePlayerStatRepository.save(entity);
+    }
+
+    /** 门②：统计单条写入的秩序册校验（首次引入名单外球员 → 400；未受限赛事跳过）。 */
+    private void assertRosterForWrite(Long gameId, Long teamId, Long playerId) {
+        if (gameId == null) {
+            return;
+        }
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
+            return;
+        }
+        this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), gameId,
+                List.of(new EventRegistrationService.StatsRef(teamId, playerId)));
     }
 
     public void delete(Long id) {
@@ -91,8 +116,12 @@ public class GamePlayerStatService {
     }
 
     @Generated
-    public GamePlayerStatService(GamePlayerStatRepository gamePlayerStatRepository) {
+    public GamePlayerStatService(GamePlayerStatRepository gamePlayerStatRepository,
+            GameRepository gameRepository,
+            EventRegistrationService eventRegistrationService) {
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.gameRepository = gameRepository;
+        this.eventRegistrationService = eventRegistrationService;
     }
 }
 

@@ -13,7 +13,7 @@ import { gameStatsApi as Wo } from '../../api/business';
 import { hitSprayApi as Xo } from '../../api/business';
 import { eventApi as jc } from '../../api/business';
 import { fetchAllStadiums as Jc } from '../../api/business';
-import { fetchPlayersByTeam as Qc } from '../../api/business';
+import { fetchEntryPool as Qc } from '../../api/business';
 import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
@@ -7687,7 +7687,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     async function vt(e){
       const t=no.get(e);
       if(t&&Date.now()-t.ts<X_)return t.data;
-      const a=await Qc(e);
+      const a=await Qc(ot?.params?.eventId!=null?String(ot.params.eventId):null,e);
       return no.set(e,{
         data:a,ts:Date.now()
       }

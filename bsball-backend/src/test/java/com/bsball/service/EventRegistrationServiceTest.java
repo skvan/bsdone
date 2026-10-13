@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,15 +17,18 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventTeamDto;
+import com.bsball.model.dto.RosterPlayersDto;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventRosterPlayer;
 import com.bsball.model.entity.EventTeam;
+import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
+import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
@@ -67,6 +71,8 @@ class EventRegistrationServiceTest {
     @Mock
     private EventRosterPlayerRepository eventRosterPlayerRepository;
     @Mock
+    private GamePlayerStatRepository gamePlayerStatRepository;
+    @Mock
     private ResourceGuard resourceGuard;
     @Mock
     private TenantQueryPolicyService tenantQueryPolicyService;
@@ -77,7 +83,7 @@ class EventRegistrationServiceTest {
     void setUp() {
         service = new EventRegistrationService(eventRepository, teamRepository, playerRepository,
                 playerTeamRepository, eventTeamRepository, eventRosterPlayerRepository,
-                resourceGuard, tenantQueryPolicyService);
+                gamePlayerStatRepository, resourceGuard, tenantQueryPolicyService);
     }
 
     @AfterEach
@@ -623,5 +629,141 @@ class EventRegistrationServiceTest {
         assertEquals(Boolean.FALSE, out.get(0).currentInTeam(), "已离队球员应标记不在队");
         assertEquals("8", out.get(1).number());
         assertEquals(Boolean.TRUE, out.get(1).currentInTeam());
+    }
+
+    @Test
+    @DisplayName("限制判定：赛事存在任意参赛记录即启用（含仅邀请）")
+    void eventRestricted_matchesAnyRegistrationRow() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(701L)).thenReturn(false);
+
+        assertTrue(service.eventRestricted(EVENT_ID));
+        assertFalse(service.eventRestricted(701L));
+        assertFalse(service.eventRestricted(null));
+    }
+
+    @Test
+    @DisplayName("阵容池：受限赛事只返回报名球员（背号快照优先、缺失回落档案）")
+    void rosterPlayers_restricted_returnsRosterOnly() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        EventRosterPlayer r1 = rosterRow(11L, 5L, 0);
+        r1.setNumber("7");
+        EventRosterPlayer r2 = rosterRow(12L, 6L, 1);
+        r2.setNumber(null);
+        when(eventRosterPlayerRepository.findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID))
+                .thenReturn(List.of(r1, r2));
+        Player p6 = player(6L, "李四");
+        p6.setNumber("21");
+        when(playerRepository.findAllById(List.of(5L, 6L))).thenReturn(List.of(player(5L, "张三"), p6));
+
+        RosterPlayersDto out = service.rosterPlayers(EVENT_ID, TEAM_ID);
+
+        assertEquals(Boolean.TRUE, out.restricted());
+        assertEquals(2, out.players().size());
+        assertEquals("7", out.players().get(0).number());
+        assertEquals("21", out.players().get(1).number());
+    }
+
+    @Test
+    @DisplayName("阵容池：未受限赛事回落本队全量在役（findTeamPlayerOptionFields 同口径）")
+    void rosterPlayers_notRestricted_fallsBackToFullTeam() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(false);
+        when(playerTeamRepository.findTeamPlayerOptionFields(TENANT_ID, TEAM_ID)).thenReturn(List.<Object[]>of(
+                new Object[]{5L, "张三", "7", "[\"P\"]", "R", "R", "active"}));
+
+        RosterPlayersDto out = service.rosterPlayers(EVENT_ID, TEAM_ID);
+
+        assertEquals(Boolean.FALSE, out.restricted());
+        assertEquals(1, out.players().size());
+        assertEquals(List.of("P"), out.players().get(0).positions());
+    }
+
+    @Test
+    @DisplayName("门①：受限赛事下快照含名单外球员 → 400（消息含姓名与球队名）")
+    void assertLineupSnapshotInRoster_blocksNonRosterPlayer() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventRosterPlayerRepository.findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID))
+                .thenReturn(List.of(rosterRow(11L, 5L, 0)));
+        when(playerRepository.findById(6L)).thenReturn(Optional.of(player(6L, "李四")));
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        String json = "{\"homeLineup\":[{\"id\":5},{\"id\":6}],\"homeBench\":[{\"id\":5}]}";
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, json));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("李四"));
+        assertTrue(ex.getMessage().contains("雷霆队"));
+    }
+
+    @Test
+    @DisplayName("门①：全为报名球员（含替补与守备投手）通过；非法 JSON 不拦")
+    void assertLineupSnapshotInRoster_passesForRosterPlayers() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventRosterPlayerRepository.findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID))
+                .thenReturn(List.of(rosterRow(11L, 5L, 0), rosterRow(12L, 6L, 1)));
+        String json = "{\"homeLineup\":[{\"id\":5}],\"homeBench\":[{\"id\":6}],\"homeFieldingPitcherId\":6}";
+
+        service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, json);
+        service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, "not-a-json");
+    }
+
+    @Test
+    @DisplayName("门①：未受限赛事跳过校验（含名单外球员也不拦）")
+    void assertLineupSnapshotInRoster_notRestricted_skips() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(false);
+
+        service.assertLineupSnapshotInRoster(EVENT_ID, TEAM_ID, null, "{\"homeLineup\":[{\"id\":999}]}");
+
+        verify(eventRosterPlayerRepository, never())
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("门②：本场首次引入名单外球员 → 400")
+    void assertStatsPartsInRoster_blocksNewNonRosterPlayer() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventRosterPlayerRepository.findByEventIdAndDeletedAtIsNull(EVENT_ID))
+                .thenReturn(List.of(rosterRow(11L, 5L, 0)));
+        when(gamePlayerStatRepository.findByGameId(900L)).thenReturn(List.of());
+        when(playerRepository.findById(6L)).thenReturn(Optional.of(player(6L, "李四")));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.assertStatsPartsInRoster(
+                EVENT_ID, 900L, List.of(new EventRegistrationService.StatsRef(100L, 6L))));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("李四"));
+    }
+
+    @Test
+    @DisplayName("门②：已有本场统计行的球员更新不受限（首次引入口径）")
+    void assertStatsPartsInRoster_allowsExistingStatPlayer() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventRosterPlayerRepository.findByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(List.of());
+        GamePlayerStat stat = new GamePlayerStat();
+        stat.setGameId(900L);
+        stat.setTeamId(100L);
+        stat.setPlayerId(7L);
+        when(gamePlayerStatRepository.findByGameId(900L)).thenReturn(List.of(stat));
+
+        service.assertStatsPartsInRoster(EVENT_ID, 900L,
+                List.of(new EventRegistrationService.StatsRef(100L, 7L)));
+    }
+
+    @Test
+    @DisplayName("门②：未受限赛事/空 gameId 跳过")
+    void assertStatsPartsInRoster_skipsWhenNotRestricted() {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(false);
+
+        service.assertStatsPartsInRoster(EVENT_ID, 900L,
+                List.of(new EventRegistrationService.StatsRef(100L, 999L)));
+        service.assertStatsPartsInRoster(EVENT_ID, null,
+                List.of(new EventRegistrationService.StatsRef(100L, 999L)));
+
+        verify(eventRosterPlayerRepository, never()).findByEventIdAndDeletedAtIsNull(EVENT_ID);
     }
 }

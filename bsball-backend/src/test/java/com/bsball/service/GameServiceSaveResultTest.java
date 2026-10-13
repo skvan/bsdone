@@ -83,6 +83,8 @@ class GameServiceSaveResultTest {
 
     @Mock
     private EarnedRunReconstructionService earnedRunReconstructionService;
+    @Mock
+    private EventRegistrationService eventRegistrationService;
 
     private GameService gameService;
 
@@ -93,7 +95,7 @@ class GameServiceSaveResultTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();

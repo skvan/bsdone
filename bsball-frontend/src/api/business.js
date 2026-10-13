@@ -76,6 +76,21 @@ export const highlightMomentApi = {
   delete: (id) => del(`/api/highlight-moment/delete/${id}`)
 };
 
+/** 阵容选人池（Issue #310）：restricted=true 时 players=报名名单球员；false 时=本队 current 全量在役。 */
+export async function fetchRosterPlayers(eventId, teamId) {
+  const d = await getData(`/api/event/${eventId}/teams/${teamId}/roster-players`);
+  return { restricted: d?.restricted === true, players: d?.players ?? [] };
+}
+
+/** 录入选人入口（受限赛事自动收敛为报名名单；未受限回落全量在役）。 */
+export async function fetchEntryPool(eventId, teamId) {
+  if (eventId != null && eventId !== '') {
+    const pool = await fetchRosterPlayers(eventId, teamId);
+    if (pool.restricted) return pool.players;
+  }
+  return fetchPlayersByTeam(teamId);
+}
+
 export const coachApi = {
   list: (params) => fetchList('/api/coach/list', params),
   selectOptions: () => get('/api/coach/select-options').then((r) => r?.data ?? []),
@@ -235,6 +250,8 @@ export const gameApi = {
     return data?.snapshotJson ?? '';
   },
   saveLiveSnapshot: (id, snapshotJson) => post(`/api/game/${id}/live-snapshot`, { snapshotJson }),
+  // 电子秩序册（Issue #310）门①：阵容专用保存（受限赛事校验阵容球员 ⊆ 报名名单）
+  saveLineup: (id, snapshotJson) => post(`/api/game/${id}/lineup-snapshot`, { snapshotJson }),
   saveResult: (id, data) => post(`/api/game/${id}/save-result`, data)
 };
 
