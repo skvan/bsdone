@@ -126,6 +126,49 @@
   .msg.err { display: block; background: rgba(255,107,122,.12); border: 1px solid rgba(255,107,122,.5); color: #ffc2c9; }
 
   .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 22px; }
+
+  /* seatmap */
+  .seatmap-btn {
+    position: relative; display: block; width: 100%; padding: 0;
+    border: 1.5px solid var(--line); border-radius: 12px;
+    background: var(--navy-950); overflow: hidden; cursor: zoom-in;
+    transition: border-color .2s;
+  }
+  .seatmap-btn:hover { border-color: var(--gold); }
+  .seatmap-btn img {
+    display: block; width: 100%; height: auto;
+    max-height: 520px; object-fit: contain;
+    background: #e9e9e9;
+  }
+  .seatmap-hint {
+    position: absolute; right: 10px; bottom: 10px;
+    padding: 4px 12px; border-radius: 999px; pointer-events: none;
+    font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    color: var(--navy-950); background: rgba(232,197,71,.92);
+  }
+
+  /* lightbox */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; background: rgba(4,12,24,.92);
+    animation: lb-fade .15s ease;
+  }
+  .lightbox[hidden] { display: none; }
+  .lightbox img {
+    max-width: min(880px, 94vw); max-height: 90vh;
+    border-radius: 10px; box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  }
+  .lightbox-close {
+    position: absolute; top: 14px; right: 18px;
+    width: 40px; height: 40px; border: none; border-radius: 50%;
+    font-size: 22px; line-height: 1; cursor: pointer;
+    color: var(--ink); background: rgba(255,255,255,.14);
+    transition: background .2s, color .2s;
+  }
+  .lightbox-close:hover { color: var(--navy-950); background: rgba(232,197,71,.9); }
+  body.lb-open { overflow: hidden; }
+  @keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -166,6 +209,22 @@
           </select>
         </div>
 
+        <div class="field">
+          <label for="tier">选择票档<span class="req">*</span></label>
+          <select id="tier" name="tier" required disabled>
+            <option value="" disabled selected>请先选择场次</option>
+          </select>
+        </div>
+
+        <!-- 座位图：点击弹出放大查看 -->
+        <div class="field">
+          <label for="seatmapBtn">座位图<span class="opt">（点击图片可放大查看）</span></label>
+          <button type="button" class="seatmap-btn" id="seatmapBtn">
+            <img src="assets/seatmap.jpg" alt="场馆座位分区与票价示意图" loading="lazy" />
+            <span class="seatmap-hint">点击放大</span>
+          </button>
+        </div>
+
         <!-- 场次对应票价（联动区） -->
         <div class="pricebox" id="pricebox" style="display:none">
           <div class="meta" id="priceMeta"></div>
@@ -173,12 +232,6 @@
         </div>
 
         <div class="row2">
-          <div class="field">
-            <label for="tier">选择票档<span class="req">*</span></label>
-            <select id="tier" name="tier" required disabled>
-              <option value="" disabled selected>请先选择场次</option>
-            </select>
-          </div>
           <div class="field">
             <label for="qty">购买数量<span class="req">*</span></label>
             <input type="number" id="qty" name="qty" min="1" max="99" value="1" required />
@@ -201,6 +254,12 @@
     </div>
 
     <div class="foot">本表单数据将提交至报名收集端 · 提交即表示同意用于赛事票务联系</div>
+  </div>
+
+  <!-- 座位图放大弹层 -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox-close" id="lightboxClose" aria-label="关闭大图">×</button>
+    <img src="assets/seatmap.jpg" alt="场馆座位分区与票价示意图（大图）" />
   </div>
 
 <script>
@@ -332,6 +391,28 @@
       submitBtn.textContent = "提交报名";
     }
   });
+
+  /* ===== 座位图放大弹层 ===== */
+  const seatmapBtn = document.getElementById("seatmapBtn");
+  const lightbox = document.getElementById("lightbox");
+  const lightboxClose = document.getElementById("lightboxClose");
+
+  function openLightbox() {
+    lightbox.hidden = false;
+    document.body.classList.add("lb-open");
+    lightboxClose.focus();
+  }
+
+  function closeLightbox() {
+    lightbox.hidden = true;
+    document.body.classList.remove("lb-open");
+    seatmapBtn.focus();
+  }
+
+  seatmapBtn.addEventListener("click", openLightbox);
+  lightboxClose.addEventListener("click", closeLightbox);
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lightbox.hidden) closeLightbox(); });
 </script>
 </body>
 </html>
