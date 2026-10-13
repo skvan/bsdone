@@ -5,9 +5,11 @@
 //      以及 bs-ball 下静态资源：geo、icons、team-logos、carousel、ticket、advertising、*.svg 等）；
 //   2) 非 --legacy 模式：删除副本中的 bs-ball/assets/ 与 bs-ball/index.html（含 .gz 孪生），
 //      用 dist/（vite build 产物）替换，并重写 bs-ball/version.json（buildTime = 当前时间）；
-//   3) --legacy 模式：不做任何替换（内容与仓库现有编译产物等价，用于验证【打包→部署→回滚】
+//   3) 并入仓库 premier12/（十二强赛微站）为 webapps/premier12/（生成 index.html 目录入口；
+//      Issue #153 交付物接入部署链路）；
+//   4) --legacy 模式：不做任何替换（内容与仓库现有编译产物等价，用于验证【打包→部署→回滚】
 //      链路，页面零变化）；
-//   4) 输出 webapps-dev.tar.gz 到 dist/ 下（--legacy 默认输出 webapps-dev-legacy.tar.gz）。
+//   5) 输出 webapps-dev.tar.gz 到 dist/ 下（--legacy 默认输出 webapps-dev-legacy.tar.gz）。
 //
 // 用法：
 //   npm run package          # vite build + 组装打包（新版部署到 bs-ball/，历史行为）
@@ -23,6 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND_DIR = path.resolve(__dirname, '..');
 const REPO_DIR = path.resolve(FRONTEND_DIR, '..');
 const WEBAPPS_SRC = path.join(REPO_DIR, 'bsball_project', 'webapps');
+const PREMIER12_SRC = path.join(REPO_DIR, 'premier12');
 const DIST_DIR = path.join(FRONTEND_DIR, 'dist');
 const STAGE_ROOT = path.join(DIST_DIR, 'package');
 const STAGE_WEBAPPS = path.join(STAGE_ROOT, 'webapps');
@@ -47,6 +50,9 @@ const fail = (msg) => {
 
 // ---------- 前置检查 ----------
 if (!fs.existsSync(WEBAPPS_SRC)) fail('未找到 ' + WEBAPPS_SRC + '（仓库目录锚点异常）');
+if (!fs.existsSync(path.join(PREMIER12_SRC, 'premier12.html'))) {
+  fail('未找到 ' + PREMIER12_SRC + '/premier12.html（十二强赛页面缺失）');
+}
 if (!legacy && !fs.existsSync(path.join(DIST_DIR, 'index.html'))) {
   fail('未找到 dist/index.html —— 请先执行 vite build（推荐直接使用 npm run package）');
 }
@@ -94,12 +100,23 @@ if (!legacy) {
   log('legacy 模式：不替换（等值重打包，页面零变化）');
 }
 
-// ---------- 3) 打包（系统 tar，顶层含 webapps/） ----------
+// ---------- 3) Premier12 微站并入（Issue #153；/premier12/ 目录入口） ----------
+const premier12Dir = path.join(STAGE_WEBAPPS, 'premier12');
+fs.cpSync(PREMIER12_SRC, premier12Dir, {
+  recursive: true,
+  // server.js 为本地预览用静态服务器，非部署资产，不进公开 webroot
+  filter: (src) => path.basename(src) !== 'server.js'
+});
+// 目录索引：/premier12/ 直达宣传页；保留 premier12.html 供站内「返回首页」相对链接
+fs.copyFileSync(path.join(premier12Dir, 'premier12.html'), path.join(premier12Dir, 'index.html'));
+log('Premier12 微站并入 →', path.relative(FRONTEND_DIR, premier12Dir));
+
+// ---------- 4) 打包（系统 tar，顶层含 webapps/） ----------
 const tar = spawnSync('tar', ['-czf', OUT_TAR, '-C', STAGE_ROOT, 'webapps'], { stdio: 'inherit' });
 if (tar.error) fail('tar 执行失败（需系统 tar 命令）：' + tar.error.message);
 if (tar.status !== 0) fail('tar 退出码 ' + tar.status);
 
-// ---------- 4) 校验 ----------
+// ---------- 5) 校验 ----------
 const list = spawnSync('tar', ['-tzf', OUT_TAR], { encoding: 'utf8' });
 if (list.status !== 0) fail('tar -t 校验失败');
 // 注意：Windows tar 输出为 CRLF，需按 \r?\n 拆分并剔除尾部 \r
@@ -107,10 +124,14 @@ const files = list.stdout.split(/\r?\n/).map((s) => s.replace(/\r$/, '')).filter
 const hasIndex = files.includes('webapps/' + targetDirName + '/index.html');
 const hasVersion = files.includes('webapps/' + targetDirName + '/version.json');
 const hasPortal = files.includes('webapps/portal.html');
+const hasPremier12 = files.includes('webapps/premier12/index.html');
+const hasPremier12Signup = files.includes('webapps/premier12/signup.html');
+// server.js 为本地预览服务器，必须被 filter 排除；出现即视为打包缺陷
+const hasPremier12Server = files.includes('webapps/premier12/server.js');
 const assetCount = files.filter((f) => f.startsWith('webapps/' + targetDirName + '/assets/')).length;
-if (!hasIndex || !hasVersion || !hasPortal) {
+if (!hasIndex || !hasVersion || !hasPortal || !hasPremier12 || !hasPremier12Signup || hasPremier12Server) {
   fail(
-    `打包校验未通过（index.html=${hasIndex} version.json=${hasVersion} portal.html=${hasPortal}；条目=${files.length}）`
+    `打包校验未通过（index.html=${hasIndex} version.json=${hasVersion} portal.html=${hasPortal} premier12=${hasPremier12} signup=${hasPremier12Signup} server.js=${hasPremier12Server}；条目=${files.length}）`
   );
 }
 log('打包校验通过：条目总数 =', files.length, '；assets 条目 =', assetCount);

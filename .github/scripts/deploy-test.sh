@@ -170,8 +170,10 @@ P1=$(curl -s -o /dev/null -m 5 -w "%{http_code}" -H "Host: test.bsdone.com" http
 P2=$(curl -s -m 5 -H "Host: test.bsdone.com" http://127.0.0.1/bsball-server/health)
 P3=$(curl -s -o /dev/null -m 5 -w "%{http_code}" -H "Host: bsdone.com" http://127.0.0.1/)
 P4=$(curl -sk -o /dev/null -m 5 -w "%{http_code}" -H "Host: bsdone.com" https://127.0.0.1/)
+P5=$(curl -s -o /dev/null -m 5 -w "%{http_code}" -H "Host: test.bsdone.com" http://127.0.0.1/premier12/)
 echo "test  http  /        -> $P1 (expect 200)"
 echo "test  api   /health  -> $P2"
+echo "test  web   /premier12/ -> $P5 (expect 200)"
 echo "prod  http  redirect -> $P3 (expect 301)"
 echo "prod  https ssl      -> $P4 (expect 200)"
 echo

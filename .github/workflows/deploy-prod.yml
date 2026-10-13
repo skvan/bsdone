@@ -175,7 +175,7 @@ jobs:
           node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$VITE_APP_BUILD_TIME"
           cp dist/webapps-dev.tar.gz /tmp/webapps-prod.tar.gz
           echo "== tarball structure check (dual-track) =="
-          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html; do
+          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html webapps/premier12/index.html; do
             tar -tzf /tmp/webapps-prod.tar.gz | grep -qx "$entry" || { echo "::error::missing $entry in tarball"; exit 1; }
           done
           echo "tarball structure OK"
