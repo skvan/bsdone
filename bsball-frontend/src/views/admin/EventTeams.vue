@@ -87,7 +87,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
-import { eventApi, eventRegistrationApi, teamApi } from '../../api/business';
+import { eventApi, eventRegistrationApi } from '../../api/business';
 import { resolveAssetUrl } from '../../api/request';
 import { usePermission } from '../../composables/usePermission';
 import { useFixedOperationColumn, useListTableAttrs } from '../../composables/useListTable';
@@ -155,7 +155,8 @@ async function openInvite() {
   inviteTeamIds.value = [];
   inviteVisible.value = true;
   if (!allTeamOptions.value.length) {
-    allTeamOptions.value = await teamApi.selectOptions();
+    // 赛事可邀请球队（Issue #315）：本租户全部未删球队（不受管理域过滤）
+    allTeamOptions.value = await eventRegistrationApi.invitableTeams(eventId.value);
   }
 }
 

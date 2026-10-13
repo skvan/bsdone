@@ -41,13 +41,14 @@ class EventRegistrationApiMappingTest {
     }
 
     @Test
-    @DisplayName("11 个端点全部具备控制器映射（路径与权限种子一致）")
+    @DisplayName("12 个端点全部具备控制器映射（路径与权限种子一致）")
     void allEndpointsMapped() throws Exception {
         record Expectation(String method, String javaName, Class<?>[] params, String http, String path) {
         }
         List<Expectation> expectations = List.of(
                 new Expectation("invite", "invite", new Class<?>[]{Long.class, com.bsball.model.dto.EventTeamInviteRequest.class}, "POST", "/event/{eventId}/teams/invite"),
                 new Expectation("listEventTeams", "listEventTeams", new Class<?>[]{Long.class}, "GET", "/event/{eventId}/teams"),
+                new Expectation("teamOptions", "teamOptions", new Class<?>[]{Long.class}, "GET", "/event/{eventId}/team-options"),
                 new Expectation("remove", "remove", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/remove"),
                 new Expectation("lock", "lock", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/lock"),
                 new Expectation("unlock", "unlock", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/unlock"),
@@ -58,7 +59,7 @@ class EventRegistrationApiMappingTest {
                 new Expectation("decline", "decline", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/decline"),
                 new Expectation("submitRoster", "submitRoster", new Class<?>[]{Long.class, Long.class, com.bsball.model.dto.EventRosterSubmitRequest.class}, "PUT", "/event/{eventId}/teams/{teamId}/roster"));
 
-        assertEquals(11, expectations.size());
+        assertEquals(12, expectations.size());
         for (Expectation e : expectations) {
             Method m = EventRegistrationApi.class.getMethod(e.javaName(), e.params());
             assertNotNull(m, e.path() + " 方法应存在");
