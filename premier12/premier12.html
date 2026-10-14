@@ -384,6 +384,21 @@
   /* reveal animation */
   .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s ease; }
   .reveal.on { opacity: 1; transform: none; }
+
+  /* FOOTER（引流：BSD 平台入口） */
+  .site-footer { border-top: 1px solid var(--line); background: var(--navy-950); padding: 34px 0 26px; }
+  .sf-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .sf-left b { display: block; font-size: .95rem; letter-spacing: .04em; }
+  .sf-left span { font-size: .72rem; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .sf-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 22px; border-radius: 999px; text-decoration: none;
+    font-size: .9rem; font-weight: 700; letter-spacing: .03em;
+    color: var(--gold); border: 1.5px solid rgba(232,197,71,.55);
+    transition: .2s;
+  }
+  .sf-link:hover { color: var(--navy-950); background: var(--gold); border-color: var(--gold); }
+  .sf-note { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--line); font-size: .72rem; letter-spacing: .06em; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -693,6 +708,18 @@
     </div>
   </div>
 </section>
+
+<!-- FOOTER（引流：BSD 平台入口） -->
+<footer class="site-footer">
+  <div class="wrap sf-inner">
+    <div class="sf-left">
+      <b class="gold-text">2027 世界棒球12强赛资格赛 · 中山赛区</b>
+      <span>WBSC Premier12 2027 Zhongshan Qualifier</span>
+    </div>
+    <a class="sf-link" href="/bs-ball-next/">了解 BSD 棒垒球平台 →</a>
+  </div>
+  <div class="wrap sf-note">© 2026 广州康胜体育棒球 · BSD · Baseball &amp; Softball Database</div>
+</footer>
 
 <script>
   // Countdown to first pitch: 2026-11-26 12:00 (UTC+8)
