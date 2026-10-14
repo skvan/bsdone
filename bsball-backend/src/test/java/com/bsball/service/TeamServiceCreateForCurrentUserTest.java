@@ -1,9 +1,9 @@
 /*
- * 账号权限重构（批次 3a，Task 3.5）：TeamService.create 门户创建即授职分派矩阵测试。
+ * 账号权限重构（批次 3a，Task 3.5；Issue #318 起扩展为「创建即负责」）：TeamService.create 落职矩阵测试。
  *
- * 铁律：门户账号（非超管 / 非租管）且已登录（uid != null）创建球队时 → 落 bs_team_manager active 行
- * 并后置失效范围缓存；带联盟归属（leagueId != null）时先校验 assertCanManageLeague（失败 403 冒泡，
- * 不落关系）；超管 / 租管 / 未登录（uid == null）→ 不落 team_manager、不 evict。
+ * 铁律：非超管 / 非租管且已登录（uid != null）创建球队时 → 落 bs_team_manager active 行并后置失效范围缓存；
+ * 入参 leagueId 一律忽略（球队不隶属联盟，防旧前端回写脏数据）；超管 / 租管 / 未登录（uid == null）→
+ * 不落 team_manager、不 evict。
  *
  * evict 语义：create 整体 @Transactional，evict 经 accountScopeService.evictUserScopeCacheAfterCommit 后置提交。
  * 本测试用 mock AccountScopeService 仅验证「接线调用」；无事务立即失效 / 提交后失效 / 回滚不失效的真实
@@ -14,20 +14,16 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
-import com.bsball.exception.BusinessException;
-import com.bsball.model.entity.League;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
-import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
@@ -55,9 +51,6 @@ class TeamServiceCreateForCurrentUserTest {
 
     @Mock
     private TeamRepository teamRepository;
-
-    @Mock
-    private LeagueRepository leagueRepository;
 
     @Mock
     private AccountScopeService accountScopeService;
@@ -97,7 +90,7 @@ class TeamServiceCreateForCurrentUserTest {
     @BeforeEach
     void setUp() {
         CurrentUserHolder.clear();
-        service = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
+        service = new TeamService(teamRepository, accountScopeService, scopeQuerySupport,
                 resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
                 apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);
     }
@@ -125,44 +118,29 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(TEAM_ID, tm.getTeamId());
         assertEquals(PORTAL_UID, tm.getUserId());
         assertEquals(TeamManager.STATUS_ACTIVE, tm.getStatus());
-        verify(resourceGuard, never()).assertCanManageLeague(any());
         verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
+        verifyNoInteractions(resourceGuard);
     }
 
     @Test
-    @DisplayName("门户用户建队（leagueId 非空且守卫通过）→ 校验联盟后落 team_manager + evict")
-    void create_portalUser_leagueAllowed_provisionsManager() {
+    @DisplayName("门户用户建队带 leagueId 入参 → 入参忽略（落库 leagueId=null）+ 落 team_manager + evict")
+    void create_portalUser_leagueIdInput_ignored() {
         CurrentUserHolder.set(PORTAL_UID, TENANT_ID);
         stubPortalUser();
-        when(leagueRepository.findById(LEAGUE_ID)).thenReturn(Optional.of(league(LEAGUE_ID, TENANT_ID)));
         stubTeamSaved();
         stubNoExistingManager();
 
         Team out = service.create(payload(LEAGUE_ID));
 
         assertEquals(TEAM_ID, out.getId());
-        verify(resourceGuard).assertCanManageLeague(LEAGUE_ID);
+        ArgumentCaptor<Team> teamCaptor = ArgumentCaptor.forClass(Team.class);
+        verify(teamRepository).save(teamCaptor.capture());
+        assertEquals(null, teamCaptor.getValue().getLeagueId(), "入参 leagueId 一律忽略");
         TeamManager tm = captureManager();
         assertEquals(TEAM_ID, tm.getTeamId());
         assertEquals(PORTAL_UID, tm.getUserId());
         assertEquals(TeamManager.STATUS_ACTIVE, tm.getStatus());
         verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
-    }
-
-    @Test
-    @DisplayName("门户用户建队（leagueId 非空且守卫 403）→ 异常冒泡、不落 team_manager、不 evict")
-    void create_portalUser_leagueForbidden_throwsAndSkipsProvision() {
-        CurrentUserHolder.set(PORTAL_UID, TENANT_ID);
-        stubPortalUser();
-        when(leagueRepository.findById(LEAGUE_ID)).thenReturn(Optional.of(league(LEAGUE_ID, TENANT_ID)));
-        stubTeamSaved();
-        doThrow(new BusinessException(403, "无权管理该联盟")).when(resourceGuard).assertCanManageLeague(LEAGUE_ID);
-
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.create(payload(LEAGUE_ID)));
-
-        assertEquals(403, ex.getCode());
-        verify(teamManagerRepository, never()).save(any());
-        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
     }
 
     @Test
@@ -182,6 +160,24 @@ class TeamServiceCreateForCurrentUserTest {
         verify(accountScopeService).evictUserScopeCacheAfterCommit(PORTAL_UID);
     }
 
+    @Test
+    @DisplayName("门户用户建队忽略入参 id（防 merge 覆盖既有行）")
+    void create_inputIdIgnored() {
+        CurrentUserHolder.set(PORTAL_UID, TENANT_ID);
+        stubPortalUser();
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(teamRepository.save(any(Team.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(any(), eq(PORTAL_UID)))
+                .thenReturn(Optional.empty());
+
+        Team payload = payload(null);
+        payload.setId(999L);
+        Team out = service.create(payload);
+
+        assertEquals(null, out.getId(), "入参 id 一律忽略");
+        verify(teamManagerRepository).save(any(TeamManager.class));
+    }
+
     // ------------------------------------------------------------ 管理员 / 匿名：跳过授职
 
     @Test
@@ -196,7 +192,7 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(TEAM_ID, out.getId());
         verifyNoInteractions(teamManagerRepository);
         verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
-        verify(resourceGuard, never()).assertCanManageLeague(any());
+        verifyNoInteractions(resourceGuard);
     }
 
     @Test
@@ -212,7 +208,7 @@ class TeamServiceCreateForCurrentUserTest {
         assertEquals(TEAM_ID, out.getId());
         verifyNoInteractions(teamManagerRepository);
         verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
-        verify(resourceGuard, never()).assertCanManageLeague(any());
+        verifyNoInteractions(resourceGuard);
     }
 
     @Test
@@ -261,13 +257,5 @@ class TeamServiceCreateForCurrentUserTest {
         t.setName("门户自建球队");
         t.setLeagueId(leagueId);
         return t;
-    }
-
-    private static League league(long id, long tenantId) {
-        League l = new League();
-        l.setId(id);
-        l.setTenantId(tenantId);
-        l.setName("联盟" + id);
-        return l;
     }
 }

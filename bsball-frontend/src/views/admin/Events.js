@@ -109,6 +109,15 @@ var tt={
       }
       )
     }
+    // ---- 电子秩序册入口（Issue #310，手工补丁） ----
+    function openEventTeams(n){
+      U.push({
+        name:"AdminEventTeams",params:{
+          eventId:n.id
+        }
+      }
+      )
+    }
     async function me(n){
       await j(async()=>{
         try{
@@ -337,7 +346,13 @@ var tt={
               ,{
                 default:a(()=>[...e[24]||(e[24]=[i("删除",-1)])]),_:1
               }
-              ,8,["disabled","onClick"])):y("",!0)]),_:1
+              ,8,["disabled","onClick"])):y("",!0),d(k)("business:event:teams")?(p(),g(f,{
+                key:5,link:"",type:"primary",onClick:B=>openEventTeams(s)
+              }
+              ,{
+                default:a(()=>[i("参赛球队")]),_:1
+              }
+              ,8,["onClick"])):y("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
           }

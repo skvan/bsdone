@@ -9,8 +9,8 @@ import { formatDateYmd as ie } from '../../utils/dateExtras';
 import { useSettingsStore as ga } from '../../stores/settings';
 import { exportSfc as va } from '../../utils/exportSfc';
 import { uploadResource as G } from '../../api/system';
-import { leagueApi as ya } from '../../api/business';
 import { playerApi as _a } from '../../api/business';
+import InvitePlayerDialog from '../../components/admin/InvitePlayerDialog.vue';
 import { fetchPlayersByTeam as ba } from '../../api/business';
 import { teamApi as T } from '../../api/business';
 import { teamManagerApi as qn } from '../../api/business';
@@ -101,8 +101,17 @@ var Ta={
       }
       )
     }
-    const Pe=wa,K=g([]),Q=g([]),M=g(!1),P=g(!1),I=g(!1),U=g(!1),z=g(null),x=g([]),w=g([]),J=g(null),A=g(null),returnMode=g(!1),l=W({
-      leagueId:void 0,name:"",shortName:"",wordmark:"",city:"",stadium:"",description:"",contactPerson:"",contactPhone:"",contactEmail:"",logo:"",bgImage:"",showInPortal:!0,verified:!1
+    // ---- 电子秩序册入口（Issue #310，手工补丁） ----
+    function openEventRegistrations(o){
+      ke.push({
+        name:"AdminTeamEventRegistrations",params:{
+          id:String(o.id)
+        }
+      }
+      )
+    }
+    const Pe=wa,K=g([]),M=g(!1),P=g(!1),I=g(!1),U=g(!1),z=g(null),x=g([]),w=g([]),J=g(null),A=g(null),returnMode=g(!1),l=W({
+      name:"",shortName:"",wordmark:"",city:"",stadium:"",description:"",contactPerson:"",contactPhone:"",contactEmail:"",logo:"",bgImage:"",showInPortal:!0,verified:!1
     }
     ),B=W({
       keyword:""
@@ -157,14 +166,14 @@ var Ta={
       
     }
     function Z(o){
-      A.value=o?.id??null,l.leagueId=o?.leagueId??void 0,l.name=o?.name??"",l.shortName=o?.shortName??"",l.wordmark=o?.wordmark??"",l.city=o?.city??"",l.stadium=o?.stadium??"",l.description=o?.description??"",l.contactPerson=o?.contactPerson??"",l.contactPhone=o?.contactPhone??"",l.contactEmail=o?.contactEmail??"",l.logo=o?.logo??"",l.bgImage=o?.bgImage??"",l.showInPortal=o?.showInPortal!==0,l.verified=!!o?.verified,P.value=!0,se(()=>L.value?.clearValidate())
+      A.value=o?.id??null,l.name=o?.name??"",l.shortName=o?.shortName??"",l.wordmark=o?.wordmark??"",l.city=o?.city??"",l.stadium=o?.stadium??"",l.description=o?.description??"",l.contactPerson=o?.contactPerson??"",l.contactPhone=o?.contactPhone??"",l.contactEmail=o?.contactEmail??"",l.logo=o?.logo??"",l.bgImage=o?.bgImage??"",l.showInPortal=o?.showInPortal!==0,l.verified=!!o?.verified,P.value=!0,se(()=>L.value?.clearValidate())
     }
     async function Te(){
       await ue(async()=>{
         if(L.value)try{
           await L.value.validate();
           const o={
-            leagueId:l.leagueId,name:l.name?.trim(),shortName:l.shortName?.trim()||void 0,wordmark:l.wordmark?.trim()||void 0,city:l.city?.trim()||void 0,stadium:l.stadium?.trim()||void 0,description:l.description?.trim()||void 0,contactPerson:l.contactPerson?.trim()||void 0,contactPhone:l.contactPhone?.trim()||void 0,contactEmail:l.contactEmail?.trim()||void 0,logo:l.logo?.trim()||void 0,bgImage:l.bgImage?.trim()||void 0,showInPortal:l.showInPortal?1:0,verified:l.verified?1:0
+            name:l.name?.trim(),shortName:l.shortName?.trim()||void 0,wordmark:l.wordmark?.trim()||void 0,city:l.city?.trim()||void 0,stadium:l.stadium?.trim()||void 0,description:l.description?.trim()||void 0,contactPerson:l.contactPerson?.trim()||void 0,contactPhone:l.contactPhone?.trim()||void 0,contactEmail:l.contactEmail?.trim()||void 0,logo:l.logo?.trim()||void 0,bgImage:l.bgImage?.trim()||void 0,showInPortal:l.showInPortal?1:0,verified:l.verified?1:0
           };
           A.value?(await T.update(A.value,o),c.success("修改成功")):(await T.create(o),c.success("新增成功")),P.value=!1,k()
         }
@@ -237,8 +246,13 @@ var Ta={
       }
       )
     }
-    // ---- 球队负责人管理（指派/解除；主办方限无主队） ----
+    // ---- 球队负责人管理（指派/解除；受限角色仅本队=自己负责的球队；无主球队由租管/超管指派，Issue #318） ----
     const mgDlg=g(!1),mgRows=g([]),mgTeam=g(null),mgPick=g(null),mgOpts=g([]),mgBusy=g(!1),mgNames=g({});
+    // ---- 电子秩序册入口（Issue #310，手工补丁）：邀请球员对话框 ----
+    const inviteDlg=g(!1),inviteTeam=g(null);
+    function openInvitePlayer(o){
+      inviteTeam.value=o,inviteDlg.value=!0
+    }
     async function openMg(o){
       mgTeam.value=o,mgDlg.value=!0,mgPick.value=null,await Promise.all([loadMg(),searchMgUsers("")])
     }
@@ -378,21 +392,8 @@ var Ta={
       );
       K.value=o,_.total=e,M.value=!1
     }
-    async function Be(){
-      const{
-        list:o
-      }
-      =await ya.list({
-        pageSize:100
-      }
-      );
-      Q.value=o.map(e=>({
-        id:e.id,name:e.name
-      }
-      ))
-    }
     ra(()=>{
-      Be(),k()
+      k()
     }
     );
     function De(o){
@@ -567,6 +568,18 @@ var Ta={
               ,{
                 default:t(()=>[...e[43]||(e[43]=[i("负责人",-1)])]),_:1
               }
+              ,8,["onClick"])):E("",!0),n(C)("business:team:eventRegistration")?(r(),v(d,{
+                key:6,link:"",type:"primary",onClick:q=>openEventRegistrations(p)
+              }
+              ,{
+                default:t(()=>[i("赛事报名")]),_:1
+              }
+              ,8,["onClick"])):E("",!0),n(C)("business:team:invitePlayer")?(r(),v(d,{
+                key:7,link:"",type:"primary",onClick:q=>openInvitePlayer(p)
+              }
+              ,{
+                default:t(()=>[i("邀请球员")]),_:1
+              }
               ,8,["onClick"])):E("",!0)]),_:1
             }
             ,8,["fixed"])]),_:1
@@ -702,24 +715,6 @@ var Ta={
           }
           ,{
             default:t(()=>[...e[33]||(e[33]=[i("基本信息",-1)])]),_:1
-          }
-          ),a(u,{
-            label:"联盟"
-          }
-          ,{
-            default:t(()=>[a(Me,{
-              modelValue:l.leagueId,"onUpdate:modelValue":e[5]||(e[5]=s=>l.leagueId=s),placeholder:"选择联盟",clearable:"",style:{
-                width:"100%"
-              }
-              
-            }
-            ,{
-              default:t(()=>[(r(!0),N(la,null,da(Q.value,s=>(r(),v(Ne,{
-                key:s.id,label:s.name,value:s.id
-              }
-              ,null,8,["label","value"]))),128))]),_:1
-            }
-            ,8,["modelValue"])]),_:1
           }
           ),a(u,{
             label:"名称",prop:"name",required:""
@@ -947,8 +942,10 @@ var Ta={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"])
-      ])
+      ,8,["modelValue"]),a(InvitePlayerDialog,{
+        modelValue:inviteDlg.value,"onUpdate:modelValue":q=>inviteDlg.value=q,teamId:inviteTeam.value?.id??null,teamName:inviteTeam.value?.name??""
+      }
+      ,8,["modelValue","teamId","teamName"])])
     }
     
   }

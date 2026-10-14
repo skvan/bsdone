@@ -32,13 +32,11 @@ import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.PlayerTeamEntryDto;
 import com.bsball.model.dto.TeamOptionDto;
-import com.bsball.model.entity.League;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.GameRepository;
-import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamManagerRepository;
@@ -62,7 +60,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TeamService {
     private final TeamRepository teamRepository;
-    private final LeagueRepository leagueRepository;
     private final AccountScopeService accountScopeService;
     private final ScopeQuerySupport scopeQuerySupport;
     private final ResourceGuard resourceGuard;
@@ -131,55 +128,29 @@ public class TeamService {
     }
 
     /**
-     * 门户自助创建球队即授职（批次 3a，Task 3.5）：保存球队后，若当前登录用户为门户账号
-     * （非超管 / 非租管），则把其落为球队负责人（bs_team_manager 落 active 行，仅防御性判存），
-     * 并失效其范围缓存（后置提交）。带联盟归属（leagueId != null）时先校验其对该联盟的管理权；
-     * 超管 / 租管 / 未登录（uid == null）不落 team_manager。
-     *
-     * <p>事务性：整体 {@code @Transactional}（对齐批 3 自助创建链路），联盟守卫 / 关系落库异常时
-     * 整体回滚，不会遗留 orphan 球队。
+     * 创建球队（Issue #318 决策 3：创建即负责）：非超管/租管创建者自动落为球队负责人（幂等判存 + 失效范围缓存）；
+     * 去联盟归属后不再接受/校验 leagueId（入参一律忽略，防旧前端回写脏数据）。
+     * <p>事务性：整体 {@code @Transactional}，关系落库异常时整体回滚。
      */
     @Transactional(rollbackFor = Exception.class)
     public Team create(Team entity) {
         TeamService.normalizeBlankStringsToNull((Team)entity);
         long tid = this.tenantQueryPolicyService.requiredTenantId();
+        // 忽略入参 id（防 body 带 id 触发 merge 覆盖既有行/改写他租户行）
+        entity.setId(null);
         entity.setTenantId(Long.valueOf(tid));
-        if (entity.getLeagueId() != null) {
-            League league = this.leagueRepository.findById(entity.getLeagueId()).orElse(null);
-            if (league == null || league.getDeletedAt() != null) {
-                throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728");
-            }
-            if (!Objects.equals(league.getTenantId(), tid)) {
-                throw new BusinessException(400, "\u8054\u76df\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
-            }
-        }
+        entity.setLeagueId(null);
         Team saved = (Team)this.teamRepository.save(entity);
         Long uid = CurrentUserHolder.get();
         if (uid != null && !this.apiPermissionService.isSuperAdmin(uid) && !this.apiPermissionService.isTenantAdmin(uid)) {
-            if (saved.getLeagueId() != null) {
-                this.resourceGuard.assertCanManageLeague(saved.getLeagueId());
-            }
-            // 防御性判存：create 路径球队为新 id，判存必空；此处用于既有球队复用 / 防重的防御，而非严格幂等。
-            if (this.teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(saved.getId(), uid).isEmpty()) {
-                LocalDateTime now = LocalDateTime.now();
-                TeamManager tm = new TeamManager();
-                tm.setTenantId(saved.getTenantId());
-                tm.setTeamId(saved.getId());
-                tm.setUserId(uid);
-                tm.setStatus(TeamManager.STATUS_ACTIVE);
-                tm.setCreatedAt(now);
-                tm.setUpdatedAt(now);
-                this.teamManagerRepository.save(tm);
-            }
-            this.accountScopeService.evictUserScopeCacheAfterCommit(uid);
+            this.grantCreatorAsManager(saved, uid);
         }
         return saved;
     }
 
     /**
-     * 球队批量代建（批次 3b，Task 3.13 / spec §6.9）：联盟管理员挂本联盟（初始无主，不自动授职）。
-     * <p>规则：非管理员调用者每行 leagueId 必须 ∈ 自有联盟集合（越权 403）；逐行租户/联盟校验对齐
-     * {@link #create(Team)}；<b>建后不写 bs_team_manager</b>（不授职）；整体 {@code @Transactional}，任一行异常全量回滚。
+     * 球队批量代建（Issue #318 起口径）：不再校验/写入联盟；非超管/租管调用者创建的每行为"创建即负责"
+     * （逐队幂等落 active 负责人并失效范围缓存）；整体 {@code @Transactional}，任一行异常全量回滚。
      */
     @Transactional(rollbackFor = Exception.class)
     public List<Team> batchCreate(List<Team> items) {
@@ -195,22 +166,30 @@ public class TeamService {
             TeamService.normalizeBlankStringsToNull((Team)entity);
             entity.setId(null);
             entity.setTenantId(Long.valueOf(tid));
-            if (entity.getLeagueId() != null) {
-                League league = this.leagueRepository.findById(entity.getLeagueId()).orElse(null);
-                if (league == null || league.getDeletedAt() != null) {
-                    throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728");
-                }
-                if (!Objects.equals(league.getTenantId(), tid)) {
-                    throw new BusinessException(400, "\u8054\u76df\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
-                }
+            entity.setLeagueId(null);
+            Team row = (Team)this.teamRepository.save(entity);
+            if (!admin && uid != null) {
+                this.grantCreatorAsManager(row, uid);
             }
-            // 非管理员：每行必须挂自有联盟（leagueId 非空且 ∈ 自有联盟集合），否则 403。
-            if (!admin) {
-                this.resourceGuard.assertCanManageLeague(entity.getLeagueId());
-            }
-            saved.add((Team)this.teamRepository.save(entity));
+            saved.add(row);
         }
         return saved;
+    }
+
+    /** 创建即负责（Issue #318 决策 3）：受限身份创建球队后落 active 负责人（幂等判存）并失效其范围缓存。 */
+    private void grantCreatorAsManager(Team team, Long uid) {
+        if (this.teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(team.getId(), uid).isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            TeamManager tm = new TeamManager();
+            tm.setTenantId(team.getTenantId());
+            tm.setTeamId(team.getId());
+            tm.setUserId(uid);
+            tm.setStatus(TeamManager.STATUS_ACTIVE);
+            tm.setCreatedAt(now);
+            tm.setUpdatedAt(now);
+            this.teamManagerRepository.save(tm);
+        }
+        this.accountScopeService.evictUserScopeCacheAfterCommit(uid);
     }
 
     public Team update(Long id, Team entity) {
@@ -222,20 +201,13 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u4fee\u6539\u8be5\u7403\u961f");
         }
-        this.resourceGuard.assertCanStewardOrManageTeam(id);
+        this.resourceGuard.assertCanManageTeam(id);
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
         TeamService.normalizeBlankStringsToNull((Team)entity);
-        if (entity.getLeagueId() != null) {
-            League league = this.leagueRepository.findById(entity.getLeagueId()).orElse(null);
-            if (league == null || league.getDeletedAt() != null) {
-                throw new BusinessException(400, "\u8054\u76df\u4e0d\u5b58\u5728");
-            }
-            if (!Objects.equals(league.getTenantId(), tid)) {
-                throw new BusinessException(400, "\u8054\u76df\u4e0e\u5f53\u524d\u79df\u6237\u4e0d\u4e00\u81f4");
-            }
-        }
+        // 去联盟归属（Issue #318）：忽略入参 leagueId（球队不再有联盟归属）
+        entity.setLeagueId(null);
         Team before = PersonnelHistoryRecorder.snapshotTeam((Team)existing);
         Team saved = (Team)this.teamRepository.save(entity);
         this.personnelHistoryRecorder.afterTeamUpdate(before, saved);
@@ -259,7 +231,7 @@ public class TeamService {
         if (!Objects.equals(existing.getTenantId(), tid)) {
             throw new BusinessException(403, "\u65e0\u6743\u5220\u9664\u8be5\u7403\u961f");
         }
-        this.resourceGuard.assertCanStewardOrManageTeam(id);
+        this.resourceGuard.assertCanManageTeam(id);
         if (this.gameRepository.countPendingGamesByTeamId(id) > 0L) {
             throw new BusinessException(400, "\u5b58\u5728\u672a\u5f00\u6253\u7684\u6bd4\u8d5b\uff0c\u8bf7\u5148\u5904\u7406\u8d5b\u7a0b");
         }
@@ -396,9 +368,8 @@ public class TeamService {
     }
 
     @Generated
-    public TeamService(TeamRepository teamRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, TeamManagerRepository teamManagerRepository, ApiPermissionService apiPermissionService, GameRepository gameRepository, PlayerTeamRepository playerTeamRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService) {
+    public TeamService(TeamRepository teamRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, PersonnelHistoryRecorder personnelHistoryRecorder, TenantQueryPolicyService tenantQueryPolicyService, TeamManagerRepository teamManagerRepository, ApiPermissionService apiPermissionService, GameRepository gameRepository, PlayerTeamRepository playerTeamRepository, PlayerRepository playerRepository, PlayerTeamService playerTeamService) {
         this.teamRepository = teamRepository;
-        this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
         this.scopeQuerySupport = scopeQuerySupport;
         this.resourceGuard = resourceGuard;

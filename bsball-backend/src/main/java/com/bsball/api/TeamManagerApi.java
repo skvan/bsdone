@@ -64,9 +64,9 @@ public class TeamManagerApi {
         Object object;
         Long opId = this.requireUserId(auth);
         if (!this.apiPermissionService.isSuperAdmin(opId) && !this.apiPermissionService.isTenantAdmin(opId)) {
-            // 主办方（联盟域）可对「无主球队」指派负责人；有主球队只读（权属随接管转移，spec §6.9）。
-            // 受限角色由守卫统一裁定：球队负责人限自有球队（canManageTeam）；球队不存在/无主非本盟/越权一律 403。
-            this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+            // 受限角色由守卫统一裁定（Issue #318 起收敛为「本队」）：球队负责人限自有球队（canManageTeam）；
+            // 无主球队由超管/租管指派（或由创建者「创建即负责」）；越权一律 403。
+            this.resourceGuard.assertCanManageTeam(teamId);
         }
         if (body != null && (object = body.get("userId")) instanceof Number) {
             Number n = (Number)object;
@@ -98,8 +98,8 @@ public class TeamManagerApi {
     public Result<Object> remove(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @PathVariable Long userId) {
         Long opId = this.requireUserId(auth);
         if (!this.apiPermissionService.isSuperAdmin(opId) && !this.apiPermissionService.isTenantAdmin(opId)) {
-            // 与 assign 同源：受限角色由守卫统一裁定（主办方限「无主球队」；球队负责人限自有球队）。
-            this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+            // 与 assign 同源：受限角色由守卫统一裁定（Issue #318 起收敛为「本队」）。
+            this.resourceGuard.assertCanManageTeam(teamId);
         }
         TeamManager tm = (TeamManager)this.teamManagerRepository.findByTeamIdAndUserIdAndDeletedAtIsNull(teamId, userId).orElseThrow(() -> new BusinessException(404, "\u8d1f\u8d23\u4eba\u4e0d\u5b58\u5728"));
         tm.setStatus("inactive");

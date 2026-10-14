@@ -58,6 +58,18 @@ export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielde
   return appendOuts(`${reasonCn}：${runnerLabel(from, runner)} 于${base}出局${chainTxt}`, outsCum, total);
 }
 
+/** #223 接杀后回传刺杀离垒跑者：逐名列出原接杀 PO、回传 A、踩垒 PO 与跑者出局 */
+export function catchBackDoublePlayGroup({ catchCode, catcher, tagCode, tagger, runner, from, to, outsCum = 1, total = 0 }) {
+  const chain = toNumCodes([catchCode, tagCode]);
+  return {
+    lines: [
+      `${fielderLabel(catchCode, catcher)}: 接杀后回传（接杀：刺杀 PO；传球：助杀 A）`,
+      `${fielderLabel(tagCode, tagger)}: 接球触垒使跑者出局（刺杀 PO）`,
+      outText({ reasonCn: "离垒过远出局", runner, from, to, chain, note: "接杀回传", outsCum, total })
+    ]
+  };
+}
+
 /** C4 盗垒死单行：盗垒死（CS {刺杀位}）：{jv垒}跑者 {名} (#N) 自{垒}盗{垒}[，累计] */
 export function caughtStealingText({ fielderPos, runner, from, to, outsCum = 0, total = 0 }) {
   return appendOuts(`盗垒死（CS ${fielderPos}）：${runnerLabel(from, runner)} 自${BASE_CN[from] ?? ""}盗${BASE_CN[to] ?? ""}`, outsCum, total);

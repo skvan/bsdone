@@ -257,6 +257,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:77-81`
 - POST /game/{id}/live-snapshot
   - 作用：保存实时快照
+  - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛
@@ -311,6 +312,36 @@ EventService --> EventRepository
 - POST /history-record/create
   - 作用：创建历史记录
   - 参考：`HistoryRecordApi.java:46-50`
+
+## 阵容保存与秩序册校验（电子秩序册，Issue #310）
+
+赛事存在任意参赛记录（含仅邀请）后即为「受限赛事」：其比赛录入阵容与统计写入仅可使用各队报名球员。
+
+### 端点
+
+| 方法 | 路径 | 用途 | 说明 |
+|---|---|---|---|
+| POST | /game/{id}/lineup-snapshot | 阵容专用保存（门①） | body `{snapshotJson}` 同 `/{id}/live-snapshot`；受限赛事解析快照中 `homeLineup/awayLineup/homeBench/awayBench/homeFieldingPitcherId/awayFieldingPitcherId/homeLastDhAddedFromPoolId/awayLastDhAddedFromPoolId` 的球员 id，按主客队分别校验 ⊆ 该队有效报名名单；违规 400（消息含球员名与球队名）。阵容板保存/开始录入走此端点；比赛进行中的高频自动保存仍走 `/{id}/live-snapshot`（不解析校验） |
+
+### 统计写入门（门②）
+
+- `POST /game/{id}/save-live`（stats 部分）、`POST /game/{id}/save-result`（stats 部分）、`POST /game/stats/create`、`PUT /game/stats/update/{id}`：受限赛事下逐条校验 `(teamId, playerId)`。
+- **首次引入口径**：仅拦截「为本场首次引入的名单外球员」——若 `(gameId, teamId, playerId)` 已有有效统计行，其更新不受限（保护进行中比赛与历史修正）。
+- 违规 400：「球员「X」未在本赛事秩序册名单中，无法记入比赛数据」。
+- `save-result` 若同请求迁移 eventId，按**目标赛事**口径校验（`dto.game.eventId` 优先）。
+- 无赛事（eventId 为空）或赛事无参赛记录 → 全部跳过（现行为不变）。
+
+### 选人池端点
+
+- `GET /event/{eventId}/teams/{teamId}/roster-players`（见《球队球员API》电子秩序册小节）：受限=报名名单；未受限=本队 current 全量在役。
+
+### 排赛报名制门槛（Issue #318 决策 8/11）
+
+- 赛事结束校验（决策 7）：`PUT /event/update/{id}` 将状态由非 ended 置为 ended 前，校验该赛事未删比赛全部为终态（final 已结束 / cancelled 取消，与球队解散守卫同口径），否则 400「存在未结束的比赛，无法结束赛事」；反向（ended→其它）不拦。
+- 报名制门槛（决策 11）：`bs_event.require_roster=true`（新建赛事默认）时，建比赛/改主客队/`save-result` 改主客队/`import-game-result` 导入建比赛统一校验——该赛事「已确认且锁定名单」球队数 < 2 → 400「该赛事需至少两支球队完成报名（确认并锁定名单）后才能安排比赛」；主/客队须属该集合，否则 400「主/客队须为本赛事已完成报名的球队」。
+- 历史赛事（require_roster=false）不校验（决策 8 宽松口径，照顾存量比赛）。
+- `require_roster` 创建时定型：编辑赛事一律沿用存量值（无 UI 开关，防请求体缺省把存量 false 赛事翻转）。
+- 排赛选队候选：`GET /event/{eventId}/game-team-options`（见《球队球员API》）；联盟解散守卫同步改为「名下赛事全部 ended 才可解散」（决策 6）。
 
 ---
 

@@ -59,6 +59,7 @@ public class GameService {
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
+    private final EventRegistrationService eventRegistrationService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
         boolean hasFilter;
@@ -158,6 +159,25 @@ public class GameService {
         this.gameRepository.save(g);
     }
 
+    /**
+     * 阵容专用保存（门①，Issue #310）：受限赛事校验两队列/替补/守备投手 ⊆ 对应球队名单后落快照。
+     * 阵容板 save()/startEntry() 走此端点；比赛进行中的高频自动保存仍走 {@link #saveLiveSnapshot}（不解析校验）。
+     */
+    @Transactional
+    public void saveLineupSnapshot(Long gameId, String json) {
+        Game g = this.gameRepository.findById(gameId).orElse(null);
+        if (g == null) {
+            return;
+        }
+        this.assertGameWritable(g);
+        if (g.getEventId() != null) {
+            this.eventRegistrationService.assertLineupSnapshotInRoster(
+                    g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
+        }
+        g.setLiveSnapshotJson(json);
+        this.gameRepository.save(g);
+    }
+
     public Game create(Game entity) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Event ev = this.eventRepository.findById(entity.getEventId()).orElse(null);
@@ -165,6 +185,8 @@ public class GameService {
             throw new BusinessException(400, "\u8d5b\u4e8b\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
         this.resourceGuard.assertCanManageLeague(ev.getLeagueId());
+        // 报名制门槛（Issue #318 决策 11）：新建赛事须至少两支已完成报名（确认+锁定名单）的球队方可排赛
+        this.eventRegistrationService.assertGameTeamsEligible(entity.getEventId(), entity.getHomeTeamId(), entity.getAwayTeamId());
         entity.setTenantId(Long.valueOf(tid));
         if (entity.getStadiumId() != null) {
             this.assertStadiumBelongsToTenant(entity.getStadiumId(), tid);
@@ -190,6 +212,10 @@ public class GameService {
         if (entity.getEventId() != null && !entity.getEventId().equals(existing.getEventId())) {
             this.resourceGuard.assertCanManageEvent(entity.getEventId());
         }
+        // 报名制门槛（Issue #318 决策 11）：改比赛主客队/迁移赛事同样校验；按合并后最终值判定（缺省沿用既有，防绕过）
+        this.eventRegistrationService.assertGameTeamsEligible(eid,
+                entity.getHomeTeamId() != null ? entity.getHomeTeamId() : existing.getHomeTeamId(),
+                entity.getAwayTeamId() != null ? entity.getAwayTeamId() : existing.getAwayTeamId());
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
@@ -270,6 +296,10 @@ public class GameService {
             this.gameRepository.save(game);
         }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
+            this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), gameId,
+                    dto.getStats().stream()
+                            .map(s -> new EventRegistrationService.StatsRef(s.getTeamId(), s.getPlayerId()))
+                            .toList());
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
             Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> statRichness(a) >= statRichness(b) ? a : b));
             for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
@@ -364,6 +394,8 @@ public class GameService {
         game.setTenantId(Long.valueOf(tid));
         game.setHomeTeamId(g.getHomeTeamId());
         game.setAwayTeamId(g.getAwayTeamId());
+        // 报名制门槛（Issue #318 决策 11）：导入建比赛同口径校验（require_roster=false 历史赛事自动跳过）
+        this.eventRegistrationService.assertGameTeamsEligible(eventId, g.getHomeTeamId(), g.getAwayTeamId());
         game.setGameTime(g.getGameTime());
         game.setGameEndTime(g.getGameEndTime());
         game.setGameday(g.getGameday());
@@ -428,6 +460,14 @@ public class GameService {
         this.assertGameWritable(game);
         if (dto != null && dto.getStats() != null && !Boolean.TRUE.equals(game.getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            // 门②（Issue #310）：统计写入门；若本请求同时迁移 eventId，按目标赛事口径校验
+            Long rosterEventId = dto.getGame() != null && dto.getGame().getEventId() != null
+                    ? dto.getGame().getEventId()
+                    : game.getEventId();
+            this.eventRegistrationService.assertStatsPartsInRoster(rosterEventId, gameId,
+                    dto.getStats().stream()
+                            .map(s -> new EventRegistrationService.StatsRef(s.getTeamId(), s.getPlayerId()))
+                            .toList());
         }
         if (dto.getGame() != null) {
             SaveGameResultDTO.GamePart g = dto.getGame();
@@ -443,6 +483,10 @@ public class GameService {
             }
             if (g.getAwayTeamId() != null) {
                 game.setAwayTeamId(g.getAwayTeamId());
+            }
+            // 报名制门槛（Issue #318 决策 11）：保存结果改主客队同样校验
+            if (g.getHomeTeamId() != null || g.getAwayTeamId() != null) {
+                this.eventRegistrationService.assertGameTeamsEligible(game.getEventId(), game.getHomeTeamId(), game.getAwayTeamId());
             }
             if (g.getGameTime() != null) {
                 game.setGameTime(g.getGameTime());
@@ -808,7 +852,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.eventRepository = eventRepository;
@@ -818,6 +862,7 @@ public class GameService {
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.earnedRunReconstructionService = earnedRunReconstructionService;
+        this.eventRegistrationService = eventRegistrationService;
     }
 }
 

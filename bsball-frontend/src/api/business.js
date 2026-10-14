@@ -18,7 +18,7 @@ export const leagueApi = {
   revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`)
 };
 
-// 球队负责人管理（建盟链路批次：指派球队管理员；超管/租管；主办方限无主队）
+// 球队负责人管理（建盟链路批次：指派球队管理员；受限角色仅本队；无主球队由超管/租管指派，Issue #318）
 export const teamManagerApi = {
   list: (teamId) => getData(`/api/team/${teamId}/managers`).then((d) => d ?? []),
   assign: (teamId, userId) => post(`/api/team/${teamId}/managers`, { userId }),
@@ -75,6 +75,27 @@ export const highlightMomentApi = {
   update: (id, data) => put(`/api/highlight-moment/update/${id}`, data),
   delete: (id) => del(`/api/highlight-moment/delete/${id}`)
 };
+
+/** 阵容选人池（Issue #310）：restricted=true 时 players=报名名单球员；false 时=本队 current 全量在役。 */
+export async function fetchRosterPlayers(eventId, teamId) {
+  const d = await getData(`/api/event/${eventId}/teams/${teamId}/roster-players`);
+  if (d == null) {
+    // 请求失败（getData 已按统一口径处理提示）——显性化 failed，避免被误判为「未受限」
+    return { restricted: null, players: [], failed: true };
+  }
+  return { restricted: d.restricted === true, players: d.players ?? [] };
+}
+
+/** 录入选人入口（受限赛事自动收敛为报名名单；未受限/加载失败回落全量在役行）。 */
+export async function fetchEntryPool(eventId, teamId) {
+  if (eventId != null && eventId !== '') {
+    const pool = await fetchRosterPlayers(eventId, teamId);
+    if (pool.restricted === true) return pool.players;
+    // 未受限：回落 /player/list 全量球员行（含头像等完整字段，录入页卡片渲染依赖）；
+    // 加载失败：同样回落全量（门②仍兜底），避免录入选人不可用
+  }
+  return fetchPlayersByTeam(teamId);
+}
 
 export const coachApi = {
   list: (params) => fetchList('/api/coach/list', params),
@@ -194,6 +215,24 @@ export const eventApi = {
   importGameResult: (id, data) => post(`/api/event/${id}/import-game-result`, data)
 };
 
+// 电子秩序册（Issue #310）：赛事参赛登记（办赛方侧）与球队报名（球队侧）
+export const eventRegistrationApi = {
+  invite: (eventId, data) => post(`/api/event/${eventId}/teams/invite`, data ?? {}).then((r) => r?.data ?? {}),
+  listEventTeams: (eventId) => getData(`/api/event/${eventId}/teams`).then((d) => d ?? []),
+  // 赛事可邀请球队（Issue #315）：本租户全部未删球队（不受管理域过滤），供办赛方邀请
+  invitableTeams: (eventId) => getData(`/api/event/${eventId}/team-options`).then((d) => d ?? []),
+  // 排赛候选球队（Issue #318 决策 8/11）：报名制或已有参赛记录→仅已确认且锁定名单；历史无参赛记录赛事→本租户全量
+  gameTeamOptions: (eventId) => getData(`/api/event/${eventId}/game-team-options`).then((d) => d ?? []),
+  remove: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/remove`, {}),
+  lock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/lock`, {}),
+  unlock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/unlock`, {}),
+  roster: (eventId, teamId) => getData(`/api/event/${eventId}/teams/${teamId}/roster`).then((d) => d ?? []),
+  myRegistrations: (teamId) => getData(`/api/team/${teamId}/event-registrations`).then((d) => d ?? []),
+  confirm: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/confirm`, {}),
+  decline: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/decline`, {}),
+  submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
+};
+
 export const gameApi = {
   list: (params) => {
     const query = typeof params === 'number' ? { eventId: params } : params;
@@ -221,6 +260,8 @@ export const gameApi = {
     return data?.snapshotJson ?? '';
   },
   saveLiveSnapshot: (id, snapshotJson) => post(`/api/game/${id}/live-snapshot`, { snapshotJson }),
+  // 电子秩序册（Issue #310）门①：阵容专用保存（受限赛事校验阵容球员 ⊆ 报名名单）
+  saveLineup: (id, snapshotJson) => post(`/api/game/${id}/lineup-snapshot`, { snapshotJson }),
   saveResult: (id, data) => post(`/api/game/${id}/save-result`, data)
 };
 

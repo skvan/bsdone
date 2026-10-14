@@ -11,11 +11,14 @@
 package com.bsball.repository;
 
 import com.bsball.model.entity.Event;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -42,5 +45,14 @@ extends JpaRepository<Event, Long> {
 
     /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的赛事计数。 */
     public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
+
+    /** 电子秩序册（Issue #310）：邀请串行化行锁（同一赛事并发邀请互斥，防唯一索引冲突 500）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(value="select e from Event e where e.id = :id")
+    public Optional<Event> findByIdForUpdate(@Param(value="id") Long id);
+
+    /** 去联盟归属（Issue #318 决策 6）：联盟下未结束（status 非 ended，含 NULL）的未删赛事计数。 */
+    @Query(value="select count(e) from Event e where e.leagueId = :leagueId and e.deletedAt is null and (e.status is null or e.status <> 'ended')")
+    public long countNotEndedEventsByLeague(@Param(value="leagueId") Long leagueId);
 }
 

@@ -16,6 +16,9 @@ extends JpaRepository<PlayerTeam, Long> {
 
     public List<PlayerTeam> findByPlayerIdInAndDeletedAtIsNullAndCurrentTrue(Collection<Long> playerIds);
 
+    /** 按球队批量取经历行（含非 current，供报名等场景校验归属与取该队背号）。 */
+    public List<PlayerTeam> findByTeamIdAndDeletedAtIsNullAndPlayerIdIn(Long teamId, Collection<Long> playerIds);
+
     public Optional<PlayerTeam> findFirstByPlayerIdAndTeamIdAndDeletedAtIsNotNullOrderByIdDesc(Long playerId, Long teamId);
 
     @Query(value="select e.teamId from PlayerTeam e where e.deletedAt is null and e.playerId = :playerId and e.current = true order by e.sort asc, e.id asc")

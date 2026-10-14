@@ -52,8 +52,8 @@ JpaSpecificationExecutor<Player> {
 
     public List<Player> findByDeletedAtIsNullAndTenantId(long var1);
 
-    @Query(value="select count(p) from Player p, Team t where p.deletedAt is null and t.deletedAt is null and p.teamId = t.id and p.userId = :userId and t.leagueId = :leagueId and p.id <> :excludePlayerId and t.id <> :excludeTeamId")
-    public long countClaimedByUserInLeagueExcludingTeam(@Param(value="userId") long var1, @Param(value="leagueId") long var3, @Param(value="excludePlayerId") long var5, @Param(value="excludeTeamId") long var7);
+    @Query(value="select count(p) from Player p where p.deletedAt is null and p.userId = :userId and p.tenantId = :tenantId and p.id <> :excludePlayerId")
+    public long countClaimedByUserInTenantExcludingPlayer(@Param(value="userId") Long var1, @Param(value="tenantId") Long var3, @Param(value="excludePlayerId") Long var5);
 
     @Query(value="select p.id from Player p where p.deletedAt is null and lower(p.name) like lower(concat('%', :kw, '%'))")
     public List<Long> findIdsByNameLike(@Param(value="kw") String var1);

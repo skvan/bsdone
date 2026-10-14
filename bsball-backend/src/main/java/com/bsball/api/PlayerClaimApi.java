@@ -119,6 +119,27 @@ public class PlayerClaimApi {
         return Result.ok(this.playerClaimService.createInvite(userId, teamId, playerId, expireHours, maxUses, remark));
     }
 
+    /** 全量球员候选（邀请入队搜索，Issue #310 批 4）：本租户全部球员 + 认领状态 + 现属球队。 */
+    @GetMapping(value={"/team/{teamId}/player-invite-candidates"})
+    public Result<PageResult<Map<String, Object>>> inviteCandidates(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @RequestParam(required=false) String keyword, @RequestParam(required=false, defaultValue="1") Integer page, @RequestParam(required=false, defaultValue="20") Integer pageSize) {
+        this.requireUserId(auth);
+        return Result.ok(this.playerClaimService.inviteCandidates(teamId, keyword, page, pageSize));
+    }
+
+    /** 球队入队邀请列表（Issue #310 批 4）。 */
+    @GetMapping(value={"/team/{teamId}/player-claim-invites"})
+    public Result<List<Map<String, Object>>> listInvites(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId) {
+        this.requireUserId(auth);
+        return Result.ok(this.playerClaimService.listInvites(teamId));
+    }
+
+    /** 撤销入队邀请（幂等；Issue #310 批 4）。 */
+    @PostMapping(value={"/team/{teamId}/player-claim-invites/{id}/revoke"})
+    public Result<Map<String, Object>> revokeInvite(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @PathVariable Long id) {
+        this.requireUserId(auth);
+        return Result.ok(this.playerClaimService.revokeInvite(teamId, id));
+    }
+
     @GetMapping(value={"/portal/player-claim-invite/{token}"})
     public Result<Map<String, Object>> getInvite(@PathVariable String token) {
         return Result.ok(this.playerClaimService.getInvitePublic(token));

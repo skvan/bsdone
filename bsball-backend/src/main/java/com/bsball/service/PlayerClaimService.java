@@ -71,10 +71,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -269,7 +272,7 @@ public class PlayerClaimService {
         if (player.getUserId() != null) {
             throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
         }
-        this.ensureSingleLeagueSingleTeam(claim.getUserId(), player);
+        this.ensureSingleProfilePerTenant(claim.getUserId(), player);
         LocalDateTime now = LocalDateTime.now();
         claim.setStatus("approved");
         claim.setReviewerId(reviewerId);
@@ -337,10 +340,10 @@ public class PlayerClaimService {
 
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
-        // 批 2 沉淀⑩收敛：改用统一写保护守卫（ResourceGuard.assertCanManageTeam），与其它写路径同源。
-        // 语义：租户内不受限（超管/租管）放行；受限身份需命中自有球队集合（super/tenant admin 之外仅团队负责人/联盟派生域），否则 403。
+        // 电子秩序册批 4（Issue #310）：守卫=「可管理该球队」——球队负责人本队可发起入队邀请；
+        // Issue #318 起无主球队不再有联盟代管分支（由租管/超管指派负责人，或创建者自动负责）。
         this.resourceGuard.assertCanManageTeam(teamId);
-        Team team = (Team)this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
+        Team team = this.requireTeamInCurrentTenant(teamId);
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
             // 保留租户一致性：删除 isCurrentlyInTeam 硬校验后，仍需保证受邀球员与球队同租户。
@@ -373,6 +376,142 @@ public class PlayerClaimService {
         out.put("teamId", teamId);
         out.put("playerId", playerId);
         return out;
+    }
+
+    /**
+     * 全量球员候选（电子秩序册批 4，Issue #310）：本租户全部未删球员（keyword 匹配姓名/昵称/简称），
+     * 附认领状态与现属球队；守卫=可管理该球队（与创建邀请同源）。
+     */
+    public PageResult<Map<String, Object>> inviteCandidates(Long teamId, String keyword, Integer page, Integer pageSize) {
+        this.resourceGuard.assertCanManageTeam(teamId);
+        Team team = this.requireTeamInCurrentTenant(teamId);
+        Long tid = team.getTenantId();
+        int p = page == null || page <= 0 ? 1 : page.intValue();
+        int ps = pageSize == null || pageSize <= 0 ? 20 : Math.min(pageSize.intValue(), 100);
+        Page<Player> result = this.playerRepository.findAll(this.inviteCandidateSpec(tid, keyword),
+                PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.ASC, "id")));
+        List<Player> rows = result.getContent();
+        Map<Long, Set<Long>> currentTeams = rows.isEmpty()
+                ? Map.of()
+                : this.playerTeamService.currentTeamIdsByPlayerIds(rows.stream().map(Player::getId).toList());
+        Map<Long, String> teamNames = this.currentTeamNames(currentTeams);
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(rows.size());
+        for (Player player : rows) {
+            out.add(this.candidateRow(player, currentTeams.getOrDefault(player.getId(), Set.of()), teamNames, teamId));
+        }
+        return PageResult.of(out, result.getTotalElements());
+    }
+
+    private Specification<Player> inviteCandidateSpec(Long tid, String keyword) {
+        return (root, query, cb) -> {
+            ArrayList<Predicate> preds = new ArrayList<Predicate>();
+            preds.add(cb.isNull(root.get("deletedAt")));
+            if (tid != null) {
+                preds.add(cb.equal(root.get("tenantId"), tid));
+            }
+            if (keyword != null && !keyword.isBlank()) {
+                String k = "%" + keyword.toLowerCase() + "%";
+                preds.add(cb.or(cb.like(cb.lower(root.get("name")), k),
+                        cb.like(cb.lower(root.get("nickname")), k),
+                        cb.like(cb.lower(root.get("shortName")), k)));
+            }
+            return cb.and(preds.toArray(new Predicate[0]));
+        };
+    }
+
+    private Map<Long, String> currentTeamNames(Map<Long, Set<Long>> currentTeams) {
+        Set<Long> allTeamIds = new LinkedHashSet<Long>();
+        for (Set<Long> set : currentTeams.values()) {
+            allTeamIds.addAll(set);
+        }
+        if (allTeamIds.isEmpty()) {
+            return Map.of();
+        }
+        return this.teamRepository.findAllById(allTeamIds).stream()
+                .collect(Collectors.toMap(Team::getId, t -> t.getName(), (a, b) -> a));
+    }
+
+    private Map<String, Object> candidateRow(Player player, Set<Long> teamsOfPlayer, Map<Long, String> teamNames, Long teamId) {
+        List<Map<String, Object>> teamList = new ArrayList<Map<String, Object>>(teamsOfPlayer.size());
+        for (Long id : teamsOfPlayer) {
+            LinkedHashMap<String, Object> t = new LinkedHashMap<String, Object>();
+            t.put("teamId", id);
+            t.put("teamName", teamNames.getOrDefault(id, ""));
+            teamList.add(t);
+        }
+        LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
+        row.put("id", player.getId());
+        row.put("name", player.getName());
+        row.put("number", player.getNumber());
+        row.put("positions", player.getPositionsList());
+        row.put("status", player.getStatus());
+        row.put("claimed", player.getUserId() != null);
+        row.put("currentTeams", teamList);
+        row.put("inThisTeam", teamsOfPlayer.contains(teamId));
+        return row;
+    }
+
+    /** 球队入队邀请列表（含 token 供复制链接；绑定球员名批量解析）。守卫同创建邀请。 */
+    public List<Map<String, Object>> listInvites(Long teamId) {
+        this.resourceGuard.assertCanManageTeam(teamId);
+        this.requireTeamInCurrentTenant(teamId);
+        List<PlayerClaimInvite> invites = this.playerClaimInviteRepository
+                .findByTeamIdAndDeletedAtIsNullOrderByIdDesc(teamId);
+        List<Long> boundIds = invites.stream().map(PlayerClaimInvite::getPlayerId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> names = boundIds.isEmpty()
+                ? Map.of()
+                : this.playerRepository.findAllById(boundIds).stream()
+                        .collect(Collectors.toMap(Player::getId, p -> p.getName() == null ? "" : p.getName(), (a, b) -> a));
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(invites.size());
+        for (PlayerClaimInvite invite : invites) {
+            LinkedHashMap<String, Object> row = new LinkedHashMap<String, Object>();
+            row.put("id", invite.getId());
+            row.put("token", invite.getToken());
+            row.put("playerId", invite.getPlayerId());
+            row.put("playerName", invite.getPlayerId() != null ? names.get(invite.getPlayerId()) : null);
+            row.put("status", invite.getStatus());
+            row.put("expiresAt", invite.getExpiresAt());
+            row.put("maxUses", invite.getMaxUses());
+            row.put("usedCount", invite.getUsedCount());
+            row.put("remark", invite.getRemark());
+            row.put("createdAt", invite.getCreatedAt());
+            out.add(row);
+        }
+        return out;
+    }
+
+    /** 撤销入队邀请（幂等）：status→revoked，旧链接随之失效（requireActiveInvite 拒绝）。 */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> revokeInvite(Long teamId, Long inviteId) {
+        this.resourceGuard.assertCanManageTeam(teamId);
+        this.requireTeamInCurrentTenant(teamId);
+        PlayerClaimInvite invite = this.playerClaimInviteRepository.findById(inviteId).orElse(null);
+        if (invite == null || invite.getDeletedAt() != null || !Objects.equals(invite.getTeamId(), teamId)) {
+            throw new BusinessException(404, "邀请不存在");
+        }
+        if (!PlayerClaimInvite.STATUS_REVOKED.equals(invite.getStatus())) {
+            invite.setStatus(PlayerClaimInvite.STATUS_REVOKED);
+            this.playerClaimInviteRepository.save(invite);
+        }
+        LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("id", invite.getId());
+        out.put("status", invite.getStatus());
+        return out;
+    }
+
+    /**
+     * 球队归属校验（防跨租户可见/可写；超管全局豁免）：与 {@code pendingForReviewer} 的
+     * 「防跨租户可见」口径一致——租户内不受限账号亦不得跨租户读取/撤销他租户数据。
+     */
+    private Team requireTeamInCurrentTenant(Long teamId) {
+        Team team = this.teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(404, "球队不存在"));
+        Long uid = CurrentUserHolder.get();
+        Long reqTid = CurrentUserHolder.getTenantId();
+        if (uid != null && !this.apiPermissionService.isSuperAdmin(uid) && reqTid != null
+                && team.getTenantId() != null && !reqTid.equals(team.getTenantId())) {
+            throw new BusinessException(404, "球队不存在");
+        }
+        return team;
     }
 
     public Map<String, Object> getInvitePublic(String token) {
@@ -530,17 +669,18 @@ public class PlayerClaimService {
         this.playerClaimInviteRepository.save(invite);
     }
 
-    private void ensureSingleLeagueSingleTeam(Long userId, Player target) {
-        if (userId == null || target.getTeamId() == null) {
+    /**
+     * 认领约束（Issue #318 决策 5，替代原"单联盟单队"）：一个账号在同一租户内只能认领一份球员档案；
+     * 跨租户不校验（租户间数据不互通）。
+     */
+    private void ensureSingleProfilePerTenant(Long userId, Player target) {
+        if (userId == null || target.getTenantId() == null) {
             return;
         }
-        Team team = this.teamRepository.findById(target.getTeamId()).orElse(null);
-        if (team == null || team.getLeagueId() == null || team.getLeagueId() == 0L) {
-            return;
-        }
-        long cnt = this.playerRepository.countClaimedByUserInLeagueExcludingTeam(userId.longValue(), team.getLeagueId().longValue(), target.getId().longValue(), team.getId().longValue());
+        long cnt = this.playerRepository.countClaimedByUserInTenantExcludingPlayer(
+                userId, target.getTenantId(), target.getId());
         if (cnt > 0L) {
-            throw new BusinessException(400, "\u8ba4\u9886\u5931\u8d25\uff1a\u540c\u4e00\u8054\u76df\u5185\u60a8\u5df2\u8ba4\u9886\u5176\u4ed6\u7403\u961f\u7684\u7403\u5458\uff0c\u6bcf\u540d\u7403\u5458\u5728\u5355\u4e00\u8054\u76df\u53ea\u80fd\u53c2\u52a0\u4e00\u961f");
+            throw new BusinessException(400, "认领失败：同一租户内一个账号只能认领一份球员档案");
         }
     }
 

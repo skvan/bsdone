@@ -147,7 +147,7 @@ class PlayerClaimServiceTest {
         assertEquals(50L, ((Number) out.get("id")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
         assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
-        // 权限：改由统一写保护守卫判定（同语义）
+        // 权限：电子秩序册批 4（Issue #310）起改用统一守卫；Issue #318 起收敛为「可管理该球队」（无联盟代管分支）
         verify(resourceGuard).assertCanManageTeam(TEAM_ID);
         // 硬校验已删除：不再查询“球员是否在当前队”
         verify(playerTeamService, never()).isCurrentlyInTeam(any(), any());
@@ -537,6 +537,74 @@ class PlayerClaimServiceTest {
         assertEquals(CLAIMANT_ID, ((Number) out.get("previousUserId")).longValue());
         verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
         verify(personnelHistoryRecorder).recordPlayerClaimReleased(p, CLAIMANT_ID, CREATOR_ID, false);
+    }
+
+    // ------------------------------------------------------------------ 审核通过：一账号一租户一档案（Issue #318 决策 5）
+
+    @Test
+    @DisplayName("⑬ 审核通过：同租户内该账号已有其它已认领档案 → 400（一账号一租户一档案）")
+    void approve_sameTenantSecondProfile_rejected() {
+        PlayerClaim claim = pendingClaim(50L, CLAIMANT_ID, PLAYER_ID);
+        when(playerClaimRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(claim));
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerRepository.countClaimedByUserInTenantExcludingPlayer(CLAIMANT_ID, TENANT_ID, PLAYER_ID))
+                .thenReturn(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.approve(50L, CREATOR_ID, null));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("认领失败：同一租户内一个账号只能认领一份球员档案", ex.getMessage());
+        verify(playerClaimRepository, never()).save(any(PlayerClaim.class));
+        verify(playerRepository, never()).save(any(Player.class));
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
+    }
+
+    @Test
+    @DisplayName("⑭ 审核通过：同租户无其它档案 → 放行（查询口径=同租户且排除自身，跨租户天然不拦）")
+    void approve_noOtherProfileInTenant_passes() {
+        PlayerClaim claim = pendingClaim(50L, CLAIMANT_ID, PLAYER_ID);
+        when(playerClaimRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(claim));
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerRepository.countClaimedByUserInTenantExcludingPlayer(CLAIMANT_ID, TENANT_ID, PLAYER_ID))
+                .thenReturn(0L);
+
+        PlayerClaim out = service.approve(50L, CREATOR_ID, null);
+
+        assertEquals(PlayerClaim.STATUS_APPROVED, out.getStatus());
+        assertEquals(CLAIMANT_ID, p.getUserId());
+        // 钉死查询口径：以目标档案租户为域 + 排除目标档案自身（跨租户不校验、自身不误伤）
+        verify(playerRepository).countClaimedByUserInTenantExcludingPlayer(CLAIMANT_ID, TENANT_ID, PLAYER_ID);
+        verify(playerClaimRepository).save(claim);
+        verify(playerRepository).save(p);
+        verify(accountScopeService).evictUserScopeCacheAfterCommit(CLAIMANT_ID);
+    }
+
+    @Test
+    @DisplayName("⑮ 审核通过：目标球员已被认领 → 400（既有守卫不受本规则影响）")
+    void approve_playerAlreadyClaimed_400() {
+        PlayerClaim claim = pendingClaim(50L, CLAIMANT_ID, PLAYER_ID);
+        when(playerClaimRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(claim));
+        Player p = player(PLAYER_ID, TENANT_ID, 99L);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.approve(50L, CREATOR_ID, null));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("该球员已被认领", ex.getMessage());
+        verify(playerRepository, never()).countClaimedByUserInTenantExcludingPlayer(any(), any(), any());
+    }
+
+    private static PlayerClaim pendingClaim(Long id, Long userId, Long playerId) {
+        PlayerClaim c = new PlayerClaim();
+        c.setId(id);
+        c.setPlayerId(playerId);
+        c.setUserId(userId);
+        c.setStatus(PlayerClaim.STATUS_PENDING);
+        return c;
     }
 
     private static PlayerClaim approvedClaim(Long id, Long boundUserId) {
