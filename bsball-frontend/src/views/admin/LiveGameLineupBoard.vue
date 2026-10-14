@@ -133,7 +133,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
-import { eventApi, gameApi, gameStatsApi, teamApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { fetchResult } from '../../api/request';
 import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
 import { isBusinessError } from '../../utils/apiError';
 import { usePermission } from '../../composables/usePermission';
@@ -738,6 +739,19 @@ async function applyTemplate() {
 watch(() => awayBoard.notice.value, (msg) => { if (msg) ElMessage.warning(awayBoard.consumeNotice()); });
 watch(() => homeBoard.notice.value, (msg) => { if (msg) ElMessage.warning(homeBoard.consumeNotice()); });
 
+// 排赛候选兜底（Issue #318）：既有主客队不在候选（未报名/未锁定）时仅作展示兜底，保存/录入仍走后端门槛
+async function ensureSetupTeamOptions() {
+  for (const id of [setupForm.value.homeTeamId, setupForm.value.awayTeamId]) {
+    if (id == null || teams.value.some((t) => t.id === id)) continue;
+    // 名称取不到时不阻断加载，退回展示 ID；走 fetchResult 免弹全局错误提示（受限角色可能无权读该队）
+    let name = '';
+    try {
+      name = (await fetchResult(`/api/team/${id}`))?.data?.name ?? '';
+    } catch { /* 网络异常同样退回 ID 展示 */ }
+    teams.value = [...teams.value, { id, name: name ? `${name}（历史）` : String(id) }];
+  }
+}
+
 /* ---------------- 生命周期 ---------------- */
 onMounted(async () => {
   try {
@@ -745,7 +759,7 @@ onMounted(async () => {
     eventName.value = e?.name ?? '';
     mode.value = e?.gameMode ?? 'BASEBALL';
     const [teamList, stadiumList] = await Promise.all([
-      teamApi.selectOptions(),
+      eventRegistrationApi.gameTeamOptions(eventId.value),
       fetchAllStadiums().catch(() => []),
     ]);
     teams.value = teamList ?? [];
@@ -760,6 +774,7 @@ onMounted(async () => {
       if (q.venue) setupForm.value.venue = String(q.venue);
       if (teamsReady.value) await loadRosters();
     }
+    await ensureSetupTeamOptions();
   } catch (err) {
     ElMessage.error(err?.message ?? '加载失败');
   } finally {

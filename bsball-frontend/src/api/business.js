@@ -18,7 +18,7 @@ export const leagueApi = {
   revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`)
 };
 
-// 球队负责人管理（建盟链路批次：指派球队管理员；超管/租管；主办方限无主队）
+// 球队负责人管理（建盟链路批次：指派球队管理员；受限角色仅本队；无主球队由超管/租管指派，Issue #318）
 export const teamManagerApi = {
   list: (teamId) => getData(`/api/team/${teamId}/managers`).then((d) => d ?? []),
   assign: (teamId, userId) => post(`/api/team/${teamId}/managers`, { userId }),
@@ -221,6 +221,8 @@ export const eventRegistrationApi = {
   listEventTeams: (eventId) => getData(`/api/event/${eventId}/teams`).then((d) => d ?? []),
   // 赛事可邀请球队（Issue #315）：本租户全部未删球队（不受管理域过滤），供办赛方邀请
   invitableTeams: (eventId) => getData(`/api/event/${eventId}/team-options`).then((d) => d ?? []),
+  // 排赛候选球队（Issue #318 决策 8/11）：报名制或已有参赛记录→仅已确认且锁定名单；历史无参赛记录赛事→本租户全量
+  gameTeamOptions: (eventId) => getData(`/api/event/${eventId}/game-team-options`).then((d) => d ?? []),
   remove: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/remove`, {}),
   lock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/lock`, {}),
   unlock: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/unlock`, {}),
