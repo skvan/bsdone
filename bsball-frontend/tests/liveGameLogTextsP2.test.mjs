@@ -61,9 +61,9 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP"].includes'), 'mf 集合含新类型');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP","G"'), 'bf 集合含新类型');
   assert.ok(src.includes('CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员"'), '流程提示文案（去双杀）');
-  assert.match(src, /computeCatchBackFieldingStats as LgCatchBackStats/, '接杀回传使用接杀 PO + 传球 A + 触杀 PO 的专用记账');
+  assert.match(src, /computeCatchBackFieldingStats as LgCatchBackStats/, '接杀回传使用专用记账（接杀 PO 已入账，结算补回传 A 与触杀 PO）');
   assert.match(src, /catchBackDoublePlayGroup as LgCatchBackDp/, '逐人 PO/A 日志生成器导入');
-  assert.match(src, /for\(const fielding of LgCatchBackStats\(cbChain\[0\],e\)\)/, '结算写入接杀 PO、回传 A 与触杀 PO');
+  assert.match(src, /for\(const fielding of LgCatchBackStats\(cbChain\[0\],e\)\)/, '结算写入回传 A 与触杀 PO（避免接杀者 PO 双计）');
   assert.doesNotMatch(src, /Dn\(cbChain\)/, '不再把接杀回传误当成单次普通传接链');
   assert.match(chainStatsSrc, /export function computeCatchBackFieldingStats/, '存在接杀回传守备统计计算器');
   assert.match(src, /const cbLines=LgCatchBackDp\(/, '接杀回传结算生成逐人明细');

@@ -23,15 +23,15 @@ test('只从打序筛选实际守备员，即使合法位置清单含 DH 也排�
   assert.deepEqual(activeFielders(null, positions), []);
 });
 
-test('接杀后回传触杀：接杀者 PO+1/A+1，触杀者 PO+1', () => {
+test('接杀后回传触杀结算：接杀者仅记 A+1（PO 已在接杀时入账），触杀者记 PO+1', () => {
   assert.deepEqual(computeCatchBackFieldingStats('C', '2B'), [
-    { pos: 'C', po: 1, a: 1 },
+    { pos: 'C', po: 0, a: 1 },
     { pos: '2B', po: 1, a: 0 },
   ]);
 });
 
-test('同一名守备员接杀后回传并完成触杀时两次 PO 与一次 A 均保留', () => {
+test('同一名守备员接杀后回传并完成触杀：结算补记 A+1 与 PO+1（连同接杀 PO 最终 2 PO 1 A）', () => {
   assert.deepEqual(computeCatchBackFieldingStats('C', 'C'), [
-    { pos: 'C', po: 2, a: 1 },
+    { pos: 'C', po: 1, a: 1 },
   ]);
 });
