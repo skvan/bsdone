@@ -19,7 +19,7 @@ export default defineConfig({
       : {},
     ...devices['Desktop Chrome']
   },
-  webServer: {
+  webServer: process.env.E2E_BASE_URL ? undefined : {
     command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,

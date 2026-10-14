@@ -7230,6 +7230,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    function snapshotAtBatContext(){
+      return{
+        activeAbContext:dt.value?JSON.parse(JSON.stringify(dt.value)):null,
+        pendingAtBatResultCode:ve.value,
+        pendingAtBatResultText:i.value
+      }
+    }
+    function restoreAtBatContext(entry){
+      if(Object.prototype.hasOwnProperty.call(entry,"activeAbContext")){
+        dt.value=entry.activeAbContext?JSON.parse(JSON.stringify(entry.activeAbContext)):null
+      }
+      else Zi();
+      ve.value=entry.pendingAtBatResultCode??null,i.value=entry.pendingAtBatResultText??null
+    }
     // 打席落定：组装的 playEvent 已包含悬挂得分，随即清空悬挂列表，避免同一分被挂入后续打席导致决策重复（#204 根因修复）
     function Qr(){
       if(!F.value)return;
@@ -7421,7 +7435,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=e?.includeUndoStacks??!1;
       try{
         const a={
-          v:1,savedAt:Date.now(),gameMode:N.value,setupForm:{
+          v:1,savedAt:Date.now(),gameMode:N.value,...snapshotAtBatContext(),setupForm:{
             ..._
           }
           ,gameId:R.value,gameStarted:F.value,homeLineup:JSON.parse(JSON.stringify(q.value)),awayLineup:JSON.parse(JSON.stringify(X.value)),homeBench:JSON.parse(JSON.stringify(ye.value)),awayBench:JSON.parse(JSON.stringify(ae.value)),awayFieldingPitcherId:O.value,homeFieldingPitcherId:te.value,awayFieldingPitcherRow:De.value?JSON.parse(JSON.stringify(De.value)):null,homeFieldingPitcherRow:xe.value?JSON.parse(JSON.stringify(xe.value)):null,awayLastDhAddedFromPoolId:Xe.value,homeLastDhAddedFromPoolId:Te.value,awayUnavailablePlayerIds:[...Ie.value],homeUnavailablePlayerIds:[...I.value],awayLineupStarterIds:[...le.value],homeLineupStarterIds:[...fe.value],awaySlotSubHistory:Ae.value.map(s=>[...s]),homeSlotSubHistory:ie.value.map(s=>[...s]),teamsData:{
@@ -7682,6 +7696,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       finally{
         await Ks()
       }
+      restoreAtBatContext(e)
       
     }
     const no=new Map;
@@ -7769,6 +7784,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.runners&&(l.runners[1]=t(l.runners[1]),l.runners[2]=t(l.runners[2]),l.runners[3]=t(l.runners[3])),l.mvp=t(l.mvp),l.svp=t(l.svp),l.flow&&l.flow.runner&&(l.flow.runner=t(l.flow.runner))
       }
       )(),ke.value=e.log??[],e.atBatSummaries&&(Me.value=JSON.parse(JSON.stringify(e.atBatSummaries))),e.playEvents&&(f.playEvents=JSON.parse(JSON.stringify(e.playEvents)));
+      restoreAtBatContext(e);
       for(const t of pn)clearTimeout(t);
       pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,Jl(),pt(),syncChainVisualFromFlow()
     }
@@ -7869,7 +7885,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         let b;
         y===uo&&ql!==null?b=ql:(ql=Kl(),b=ql,uo=y);
         const w={
-          game:t,teams:Xl(),lineup:p,hitSprayQueue:[...l.hitSprayQueue],nextAction:e,log:g,atBatSummaries:b,playEvents:JSON.parse(JSON.stringify(f.playEvents))
+          game:t,teams:Xl(),lineup:p,...snapshotAtBatContext(),hitSprayQueue:[...l.hitSprayQueue],nextAction:e,log:g,atBatSummaries:b,playEvents:JSON.parse(JSON.stringify(f.playEvents))
         };
         lo($e.value,w),nt()||requestAnimationFrame(()=>Ii())
       }
@@ -7885,7 +7901,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const e=$e.value.pop(),t=Wl(),a=Yl();
       Ne.value.push({
-        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.nextAction,lastAction:e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
+        game:t,teams:Xl(),lineup:a,...snapshotAtBatContext(),hitSprayQueue:[...l.hitSprayQueue],nextAction:e.nextAction,lastAction:e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
       }
       ),Ne.value.length>Fs&&Ne.value.shift();
       const s=ro(t,a,e.game,e.lineup,e.nextAction,"undo");
@@ -7910,7 +7926,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const e=Ne.value.pop(),t=Wl(),a=Yl();
       lo($e.value,{
-        game:t,teams:Xl(),lineup:a,hitSprayQueue:[...l.hitSprayQueue],nextAction:e.lastAction??e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
+        game:t,teams:Xl(),lineup:a,...snapshotAtBatContext(),hitSprayQueue:[...l.hitSprayQueue],nextAction:e.lastAction??e.nextAction,log:[...ke.value],atBatSummaries:Kl(),playEvents:JSON.parse(JSON.stringify(f.playEvents))
       }
       );
       const s=e.lastAction??e.nextAction,r=ro(t,a,e.game,e.lineup,s,"redo");
@@ -10406,12 +10422,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           U>0&&Y.set(U,E)
         }
         );
-        const j=Array.from({
-          length:9
-        }
-        ,(E,U)=>Y.get(U+1)).filter(Boolean),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
+        const lineupSize=N.value==="SOFTBALL"?10:9;
+        const j=[...Y.entries()].sort(([left],[right])=>left-right).map(([,row])=>row),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
         if(j.length>0)for(const E of P){
-          if(V.length>=9)break;
+          if(V.length>=lineupSize)break;
           const U=Number(E.id);
           ee.has(U)||V.push(U)
         }
@@ -10444,6 +10458,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           length:yn
         }
         ,(Y,j)=>T(t.awayScoreByInning?.[j])),l.inning=t.inning??1,l.isTop=t.topBottom!=="bottom",l.isGameEnd=t.status==="final",F.value=!p?.lineupPrepOnly&&q.value.length>0&&X.value.length>0&&g.some(E=>(E.battingOrder??0)>0),Me.value=[],ve.value=null,i.value=null,$e.value=[],Ne.value=[],ke.value=[],await ao([...q.value,...ye.value],[...X.value,...ae.value],a,s)
+        f.resetCountForNewBatter()
       }
       finally{
         await Ks()
