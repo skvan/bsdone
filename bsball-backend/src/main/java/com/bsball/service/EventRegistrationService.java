@@ -38,8 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 电子秩序册（Issue #310）核心服务：赛事参赛登记、报名名单、锁定与移除。
  * <p>写守卫：赛事侧（邀请/移除/锁定）= {@link ResourceGuard#assertCanManageEvent(Long)}；
- * 球队侧（确认/谢绝/提交名单）= {@link ResourceGuard#assertCanStewardOrManageTeam(Long)}
- * （有主球队联盟侧只读；代管无主球队的办赛方可用）。读端点=登录+同租户（读宽写窄）。
+ * 球队侧（确认/谢绝/提交名单）= {@link ResourceGuard#assertCanManageTeam(Long)}
+ * （Issue #318 起收敛为「本队负责人或管理员」；办赛方对自有队经「创建即负责」同样可办）。读端点=登录+同租户（读宽写窄）。
  * <p>并发：邀请对赛事行加悲观锁、名单提交对登记行加悲观锁，串行化同键写入防唯一索引冲突。
  */
 @Service
@@ -143,6 +143,49 @@ public class EventRegistrationService {
         this.resourceGuard.assertCanManageEvent(eventId);
         this.requireEvent(eventId, tid);
         return this.teamRepository.findForSelectByTenantId(Long.valueOf(tid));
+    }
+
+    /**
+     * 排赛候选球队（Issue #318 决策 8/11）：require_roster 赛事或已有参赛记录 → 返回"已确认且锁定名单"的球队；
+     * 历史赛事（require_roster=false 且无参赛记录）→ 返回本租户全部未删球队。
+     */
+    public List<TeamOptionDto> gameTeamOptions(Long eventId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        Event ev = this.requireEvent(eventId, tid);
+        if (Boolean.TRUE.equals(ev.getRequireRoster()) || this.eventTeamRepository.existsByEventIdAndDeletedAtIsNull(eventId)) {
+            return this.teamRepository.findForSelectByTenantIdAndIdIn(Long.valueOf(tid), this.eligibleTeamIds(eventId));
+        }
+        return this.teamRepository.findForSelectByTenantId(Long.valueOf(tid));
+    }
+
+    /** 已"确认并锁定名单"的球队 ID（报名制门槛与排赛候选共用口径）。 */
+    private List<Long> eligibleTeamIds(Long eventId) {
+        return this.eventTeamRepository
+                .findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(eventId, EventTeam.STATUS_CONFIRMED)
+                .stream().map(EventTeam::getTeamId).toList();
+    }
+
+    /**
+     * 报名制门槛（Issue #318 决策 11）：require_roster 赛事须 ≥2 支"已确认且锁定名单"的球队方可排赛，
+     * 且被指定的主/客队必须属于该集合；历史赛事（require_roster=false）不校验。
+     */
+    public void assertGameTeamsEligible(Long eventId, Long homeTeamId, Long awayTeamId) {
+        if (eventId == null || (homeTeamId == null && awayTeamId == null)) {
+            return;
+        }
+        Event ev = this.eventRepository.findById(eventId).orElse(null);
+        if (ev == null || !Boolean.TRUE.equals(ev.getRequireRoster())) {
+            return;
+        }
+        List<Long> eligible = this.eligibleTeamIds(eventId);
+        if (eligible.size() < 2) {
+            throw new BusinessException(400, "该赛事需至少两支球队完成报名（确认并锁定名单）后才能安排比赛");
+        }
+        if ((homeTeamId != null && !eligible.contains(homeTeamId))
+                || (awayTeamId != null && !eligible.contains(awayTeamId))) {
+            throw new BusinessException(400, "主/客队须为本赛事已完成报名的球队");
+        }
     }
 
     /** 赛事侧参赛列表（含球队名/徽与名单人数）。 */
@@ -384,7 +427,7 @@ public class EventRegistrationService {
     @Transactional(rollbackFor = Exception.class)
     public EventTeamDto confirm(Long eventId, Long teamId) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         this.requireEvent(eventId, tid);
         EventTeam reg = this.requireRegistration(eventId, teamId, tid);
         if (EventTeam.STATUS_CONFIRMED.equals(reg.getStatus())) {
@@ -403,7 +446,7 @@ public class EventRegistrationService {
     @Transactional(rollbackFor = Exception.class)
     public EventTeamDto decline(Long eventId, Long teamId) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         this.requireEvent(eventId, tid);
         EventTeam reg = this.requireRegistration(eventId, teamId, tid);
         if (EventTeam.STATUS_DECLINED.equals(reg.getStatus())) {
@@ -426,7 +469,7 @@ public class EventRegistrationService {
     @Transactional(rollbackFor = Exception.class)
     public EventTeamDto submitRoster(Long eventId, Long teamId, List<Long> playerIds) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         this.requireEvent(eventId, tid);
         EventTeam reg = this.requireRegistrationForUpdate(eventId, teamId, tid);
         if (Boolean.TRUE.equals(reg.getRosterLocked())) {

@@ -986,9 +986,8 @@ public class PlayerService {
             throw new BusinessException(400, "球队不存在");
         }
         EffectiveScope s = this.accountScopeService.resolveCurrent();
-        boolean allowed = s.isUnrestrictedInTenant()
-                || s.canManageTeam(teamId)
-                || team.getLeagueId() != null && s.canManageLeague(team.getLeagueId());
+        // 去联盟归属（Issue #318）：移除球员仅限"不受限 或 本队负责人"（联盟分支移除）
+        boolean allowed = s.isUnrestrictedInTenant() || s.canManageTeam(teamId);
         if (!allowed) {
             throw new BusinessException(403, "无权将该球员移出该球队");
         }

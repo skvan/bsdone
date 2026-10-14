@@ -23,20 +23,15 @@ package com.bsball.service.query;
 import com.bsball.core.ScopeContextHolder;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.repository.EventRepository;
-import com.bsball.repository.TeamRepository;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ScopeQuerySupport {
 
-    private final TeamRepository teamRepository;
     private final EventRepository eventRepository;
 
-    public ScopeQuerySupport(TeamRepository teamRepository, EventRepository eventRepository) {
-        this.teamRepository = teamRepository;
+    public ScopeQuerySupport(EventRepository eventRepository) {
         this.eventRepository = eventRepository;
     }
 
@@ -53,7 +48,7 @@ public class ScopeQuerySupport {
     }
 
     /**
-     * 可见球队 ID 列表：显式授予的 teamIds ∪ 由可见联盟派生的球队（同租户、未删除）。
+     * 可见球队 ID 列表：仅显式授予的 teamIds（关系驱动；Issue #318 起不再由联盟派生球队）。
      *
      * @return null = 不限制（宽读）；空集 = 空页；非空 = 窄域
      */
@@ -61,11 +56,7 @@ public class ScopeQuerySupport {
         if (!ScopeContextHolder.isManage() || s.isUnrestrictedInTenant()) {
             return null;
         }
-        Set<Long> ids = new HashSet<>(s.getTeamIds());
-        if (!s.getLeagueIds().isEmpty()) {
-            ids.addAll(this.teamRepository.findIdsByLeagueIdInAndTenantId(s.getLeagueIds(), tenantId));
-        }
-        return List.copyOf(ids);
+        return List.copyOf(s.getTeamIds());
     }
 
     /**

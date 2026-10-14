@@ -20,7 +20,6 @@ import static org.mockito.Mockito.when;
 import com.bsball.core.ScopeContextHolder;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.repository.EventRepository;
-import com.bsball.repository.TeamRepository;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -38,9 +37,6 @@ class ScopeQuerySupportTest {
     private static final long TENANT_ID = 10L;
 
     @Mock
-    private TeamRepository teamRepository;
-
-    @Mock
     private EventRepository eventRepository;
 
     private ScopeQuerySupport support;
@@ -48,7 +44,7 @@ class ScopeQuerySupportTest {
     @BeforeEach
     void setUp() {
         ScopeContextHolder.clear();
-        support = new ScopeQuerySupport(teamRepository, eventRepository);
+        support = new ScopeQuerySupport(eventRepository);
     }
 
     @AfterEach
@@ -65,7 +61,7 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(false);
 
         assertNull(support.visibleLeagueIds(EffectiveScope.restricted(false, Set.of(10L), Set.of())));
-        verifyNoInteractions(teamRepository, eventRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
@@ -74,7 +70,7 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(true);
 
         assertNull(support.visibleLeagueIds(EffectiveScope.unrestricted()));
-        verifyNoInteractions(teamRepository, eventRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
@@ -85,7 +81,7 @@ class ScopeQuerySupportTest {
         List<Long> ids = support.visibleLeagueIds(EffectiveScope.restricted(false, Set.of(10L, 11L), Set.of()));
 
         assertEquals(Set.of(10L, 11L), Set.copyOf(ids));
-        verifyNoInteractions(teamRepository, eventRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
@@ -94,7 +90,7 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(true);
 
         assertTrue(support.visibleLeagueIds(EffectiveScope.empty()).isEmpty());
-        verifyNoInteractions(teamRepository, eventRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     // ------------------------------------------------------------------ visibleTeamIds
@@ -105,7 +101,7 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(false);
 
         assertNull(support.visibleTeamIds(EffectiveScope.restricted(false, Set.of(10L), Set.of(100L)), TENANT_ID));
-        verifyNoInteractions(teamRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
@@ -114,7 +110,7 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(true);
 
         assertNull(support.visibleTeamIds(EffectiveScope.unrestricted(), TENANT_ID));
-        verifyNoInteractions(teamRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
@@ -123,34 +119,31 @@ class ScopeQuerySupportTest {
         ScopeContextHolder.setManage(true);
 
         assertTrue(support.visibleTeamIds(EffectiveScope.empty(), TENANT_ID).isEmpty());
-        verifyNoInteractions(teamRepository);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
-    @DisplayName("可见球队：manage + 受限 → 显式 teamIds ∪ 由联盟派生的同租户球队")
-    void visibleTeamIds_manageRestricted_unionOfExplicitAndDerived() {
+    @DisplayName("可见球队：manage + 受限 → 仅显式 teamIds（Issue #318：不再按联盟派生），不查库")
+    void visibleTeamIds_manageRestricted_explicitOnly_noDerivation() {
         ScopeContextHolder.setManage(true);
-        when(teamRepository.findIdsByLeagueIdInAndTenantId(Set.of(10L), TENANT_ID))
-                .thenReturn(List.of(200L, 201L));
 
         List<Long> ids = support.visibleTeamIds(
                 EffectiveScope.restricted(false, Set.of(10L), Set.of(100L)), TENANT_ID);
 
-        assertEquals(Set.of(100L, 200L, 201L), Set.copyOf(ids));
-        // 派生查询必须带租户限定（同租户、未删除）
-        verify(teamRepository).findIdsByLeagueIdInAndTenantId(Set.of(10L), TENANT_ID);
+        assertEquals(List.of(100L), ids);
+        verifyNoInteractions(eventRepository);
     }
 
     @Test
-    @DisplayName("可见球队：manage + 仅显式 teamIds（无联盟）→ 不查派生库")
-    void visibleTeamIds_manageRestricted_teamOnly_noQuery() {
+    @DisplayName("可见球队：manage + 仅显式联盟（无 teamIds）→ 空集（Issue #318：不再由联盟派生球队）")
+    void visibleTeamIds_manageRestricted_leagueOnly_empty() {
         ScopeContextHolder.setManage(true);
 
         List<Long> ids = support.visibleTeamIds(
-                EffectiveScope.restricted(false, Set.of(), Set.of(100L)), TENANT_ID);
+                EffectiveScope.restricted(false, Set.of(10L), Set.of()), TENANT_ID);
 
-        assertEquals(List.of(100L), ids);
-        verifyNoInteractions(teamRepository);
+        assertTrue(ids.isEmpty());
+        verifyNoInteractions(eventRepository);
     }
 
     // ------------------------------------------------------------------ visibleEventIds

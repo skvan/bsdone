@@ -66,7 +66,7 @@ class PlayerRemoveRestoreRuleTest {
     void setUp() {
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, null, null, playerRepository, null,
-                teamRepository, null, apiPermissionService);
+                apiPermissionService);
         playerTeamService = new PlayerTeamService(playerTeamRepository, teamRepository);
         playerService = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
                 accountScopeService, scopeQuerySupport, guard, personnelHistoryRecorder, playerTeamService,

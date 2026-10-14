@@ -123,18 +123,18 @@ class DataSovereigntyRuleTest {
     void setUp() {
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
-                playerTeamService, teamRepository, teamManagerRepository, apiPermissionService);
+                playerTeamService, apiPermissionService);
         leagueService = new LeagueService(leagueRepository, accountScopeService, scopeQuerySupport, guard,
                 personnelHistoryRecorder, tenantQueryPolicyService, leagueProvisionService, apiPermissionService,
-                teamRepository);
-        teamService = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
+                eventRepository);
+        teamService = new TeamService(teamRepository, accountScopeService, scopeQuerySupport,
                 guard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
                 apiPermissionService, gameRepository, playerTeamRepository, playerRepository, playerTeamService);
         playerService = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
                 accountScopeService, scopeQuerySupport, guard, personnelHistoryRecorder, playerTeamService,
                 tenantQueryPolicyService, sysConfigService, playerClaimRepository, gamePlayerStatRepository);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                guard, tenantQueryPolicyService);
+                guard, tenantQueryPolicyService, gameRepository);
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);

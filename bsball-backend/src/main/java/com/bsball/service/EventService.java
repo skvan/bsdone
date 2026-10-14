@@ -31,6 +31,7 @@ import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.League;
 import com.bsball.repository.EventRepository;
+import com.bsball.repository.GameRepository;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
@@ -52,6 +53,7 @@ public class EventService {
     private final ScopeQuerySupport scopeQuerySupport;
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
+    private final GameRepository gameRepository;
 
     public PageResult<Event> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -95,6 +97,10 @@ public class EventService {
 
     public Event create(Event entity) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
+        if (entity.getRequireRoster() == null) {
+            // 报名制（Issue #318 决策 11）：新建默认 true；显式 null 归一化，防撞 not null 约束
+            entity.setRequireRoster(Boolean.TRUE);
+        }
         if (entity.getLeagueId() != null) {
             League league = this.leagueRepository.findById(entity.getLeagueId()).orElse(null);
             if (league == null || league.getDeletedAt() != null || !Objects.equals(league.getTenantId(), tid)) {
@@ -125,9 +131,17 @@ public class EventService {
         if (leagueId != null && !leagueId.equals(existing.getLeagueId())) {
             this.resourceGuard.assertCanManageLeague(leagueId);
         }
+        // 赛事结束校验（Issue #318 决策 7）：置为 ended 前，须该赛事全部比赛已终态（final/cancelled）
+        if ("ended".equals(entity.getStatus()) && !"ended".equals(existing.getStatus())
+                && this.gameRepository.countUnfinishedGamesByEvent(id) > 0L) {
+            throw new BusinessException(400, "存在未结束的比赛，无法结束赛事");
+        }
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
+        // 报名制标记创建时定型（决策 11：不提供 UI 开关）：编辑一律沿用旧值，
+        // 防请求体缺省值（实体默认 TRUE）把存量赛事静默翻成报名制。
+        entity.setRequireRoster(existing.getRequireRoster());
         return (Event)this.eventRepository.save(entity);
     }
 
@@ -162,13 +176,14 @@ public class EventService {
     }
 
     @Generated
-    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService) {
+    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, GameRepository gameRepository) {
         this.eventRepository = eventRepository;
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
         this.scopeQuerySupport = scopeQuerySupport;
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
+        this.gameRepository = gameRepository;
     }
 }
 

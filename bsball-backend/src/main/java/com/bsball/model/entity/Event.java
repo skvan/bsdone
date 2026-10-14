@@ -42,6 +42,9 @@ extends BaseEntity {
     private String status = "draft";
     @Comment(value="\u6bd4\u8d5b\u6a21\u5f0f: BASEBALL \u68d2\u7403 / SOFTBALL \u5792\u7403")
     private String gameMode = "BASEBALL";
+    @Comment(value="报名制：TRUE=至少2支已确认且锁定名单的球队才能建比赛（新建默认；存量回填 FALSE）")
+    @Column(nullable = false)
+    private Boolean requireRoster = Boolean.TRUE;
     @Column(length=2000)
     @Size(max=2000, message="\u63cf\u8ff0\u4e0d\u80fd\u8d85\u8fc72000\u5b57")
     @Comment(value="\u63cf\u8ff0")
@@ -149,6 +152,14 @@ extends BaseEntity {
     @Generated
     public void setGameMode(String gameMode) {
         this.gameMode = gameMode;
+    }
+
+    public Boolean getRequireRoster() {
+        return this.requireRoster;
+    }
+
+    public void setRequireRoster(Boolean requireRoster) {
+        this.requireRoster = requireRoster;
     }
 
     @Generated

@@ -334,6 +334,14 @@ EventService --> EventRepository
 
 - `GET /event/{eventId}/teams/{teamId}/roster-players`（见《球队球员API》电子秩序册小节）：受限=报名名单；未受限=本队 current 全量在役。
 
+### 排赛报名制门槛（Issue #318 决策 8/11）
+
+- 赛事结束校验（决策 7）：`PUT /event/update/{id}` 将状态由非 ended 置为 ended 前，校验该赛事未删比赛全部为终态（final 已结束 / cancelled 取消，与球队解散守卫同口径），否则 400「存在未结束的比赛，无法结束赛事」；反向（ended→其它）不拦。
+- 报名制门槛（决策 11）：`bs_event.require_roster=true`（新建赛事默认）时，建比赛/改主客队/`save-result` 改主客队/`import-game-result` 导入建比赛统一校验——该赛事「已确认且锁定名单」球队数 < 2 → 400「该赛事需至少两支球队完成报名（确认并锁定名单）后才能安排比赛」；主/客队须属该集合，否则 400「主/客队须为本赛事已完成报名的球队」。
+- 历史赛事（require_roster=false）不校验（决策 8 宽松口径，照顾存量比赛）。
+- `require_roster` 创建时定型：编辑赛事一律沿用存量值（无 UI 开关，防请求体缺省把存量 false 赛事翻转）。
+- 排赛选队候选：`GET /event/{eventId}/game-team-options`（见《球队球员API》）；联盟解散守卫同步改为「名下赛事全部 ended 才可解散」（决策 6）。
+
 ---
 
 > 本文整理自 Qoder RepoWiki（基于代码自动生成），仅供参考，以代码为准。

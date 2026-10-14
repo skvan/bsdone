@@ -272,7 +272,7 @@ public class PlayerClaimService {
         if (player.getUserId() != null) {
             throw new BusinessException(400, "\u8be5\u7403\u5458\u5df2\u88ab\u8ba4\u9886");
         }
-        this.ensureSingleLeagueSingleTeam(claim.getUserId(), player);
+        this.ensureSingleProfilePerTenant(claim.getUserId(), player);
         LocalDateTime now = LocalDateTime.now();
         claim.setStatus("approved");
         claim.setReviewerId(reviewerId);
@@ -340,9 +340,9 @@ public class PlayerClaimService {
 
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
-        // 电子秩序册批 4（Issue #310）：守卫放宽为「接管或代管」——办赛方对旗下无主球队可发起入队邀请；
-        // 有主球队的联盟侧仍只读（assertCanStewardOrManageTeam 语义）。
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        // 电子秩序册批 4（Issue #310）：守卫=「可管理该球队」——球队负责人本队可发起入队邀请；
+        // Issue #318 起无主球队不再有联盟代管分支（由租管/超管指派负责人，或创建者自动负责）。
+        this.resourceGuard.assertCanManageTeam(teamId);
         Team team = this.requireTeamInCurrentTenant(teamId);
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
@@ -380,10 +380,10 @@ public class PlayerClaimService {
 
     /**
      * 全量球员候选（电子秩序册批 4，Issue #310）：本租户全部未删球员（keyword 匹配姓名/昵称/简称），
-     * 附认领状态与现属球队；守卫=可管理/代管该球队（与创建邀请同源）。
+     * 附认领状态与现属球队；守卫=可管理该球队（与创建邀请同源）。
      */
     public PageResult<Map<String, Object>> inviteCandidates(Long teamId, String keyword, Integer page, Integer pageSize) {
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         Team team = this.requireTeamInCurrentTenant(teamId);
         Long tid = team.getTenantId();
         int p = page == null || page <= 0 ? 1 : page.intValue();
@@ -453,7 +453,7 @@ public class PlayerClaimService {
 
     /** 球队入队邀请列表（含 token 供复制链接；绑定球员名批量解析）。守卫同创建邀请。 */
     public List<Map<String, Object>> listInvites(Long teamId) {
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         this.requireTeamInCurrentTenant(teamId);
         List<PlayerClaimInvite> invites = this.playerClaimInviteRepository
                 .findByTeamIdAndDeletedAtIsNullOrderByIdDesc(teamId);
@@ -483,7 +483,7 @@ public class PlayerClaimService {
     /** 撤销入队邀请（幂等）：status→revoked，旧链接随之失效（requireActiveInvite 拒绝）。 */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> revokeInvite(Long teamId, Long inviteId) {
-        this.resourceGuard.assertCanStewardOrManageTeam(teamId);
+        this.resourceGuard.assertCanManageTeam(teamId);
         this.requireTeamInCurrentTenant(teamId);
         PlayerClaimInvite invite = this.playerClaimInviteRepository.findById(inviteId).orElse(null);
         if (invite == null || invite.getDeletedAt() != null || !Objects.equals(invite.getTeamId(), teamId)) {
@@ -669,17 +669,18 @@ public class PlayerClaimService {
         this.playerClaimInviteRepository.save(invite);
     }
 
-    private void ensureSingleLeagueSingleTeam(Long userId, Player target) {
-        if (userId == null || target.getTeamId() == null) {
+    /**
+     * 认领约束（Issue #318 决策 5，替代原"单联盟单队"）：一个账号在同一租户内只能认领一份球员档案；
+     * 跨租户不校验（租户间数据不互通）。
+     */
+    private void ensureSingleProfilePerTenant(Long userId, Player target) {
+        if (userId == null || target.getTenantId() == null) {
             return;
         }
-        Team team = this.teamRepository.findById(target.getTeamId()).orElse(null);
-        if (team == null || team.getLeagueId() == null || team.getLeagueId() == 0L) {
-            return;
-        }
-        long cnt = this.playerRepository.countClaimedByUserInLeagueExcludingTeam(userId.longValue(), team.getLeagueId().longValue(), target.getId().longValue(), team.getId().longValue());
+        long cnt = this.playerRepository.countClaimedByUserInTenantExcludingPlayer(
+                userId, target.getTenantId(), target.getId());
         if (cnt > 0L) {
-            throw new BusinessException(400, "\u8ba4\u9886\u5931\u8d25\uff1a\u540c\u4e00\u8054\u76df\u5185\u60a8\u5df2\u8ba4\u9886\u5176\u4ed6\u7403\u961f\u7684\u7403\u5458\uff0c\u6bcf\u540d\u7403\u5458\u5728\u5355\u4e00\u8054\u76df\u53ea\u80fd\u53c2\u52a0\u4e00\u961f");
+            throw new BusinessException(400, "认领失败：同一租户内一个账号只能认领一份球员档案");
         }
     }
 

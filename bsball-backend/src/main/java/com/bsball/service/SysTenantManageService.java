@@ -211,7 +211,6 @@ public class SysTenantManageService {
             HashMap<String, Object> m = new HashMap<String, Object>();
             m.put("id", t.getId());
             m.put("name", t.getName());
-            m.put("leagueId", t.getLeagueId());
             return m;
         }).collect(Collectors.toList());
         HashMap<String, Object> out = new HashMap<String, Object>();

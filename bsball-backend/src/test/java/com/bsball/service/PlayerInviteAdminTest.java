@@ -43,7 +43,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 /**
  * 电子秩序册（Issue #310）批 4 规则测试：入队邀请管理与全量球员候选。
- * 覆盖：候选搜索（守卫/装配/认领状态/现属球队）、createInvite 守卫放宽（接管或代管）、邀请列表/撤销（跨队 404/幂等）。
+ * 覆盖：候选搜索（守卫/装配/认领状态/现属球队）、createInvite 守卫（可管理该球队）、邀请列表/撤销（跨队 404/幂等）。
  */
 @ExtendWith(MockitoExtension.class)
 class PlayerInviteAdminTest {
@@ -149,7 +149,7 @@ class PlayerInviteAdminTest {
         Map<String, Object> row2 = out.getList().get(1);
         assertEquals(Boolean.TRUE, row2.get("claimed"));
         assertEquals(Boolean.FALSE, row2.get("inThisTeam"));
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
     }
 
     @Test
@@ -190,7 +190,7 @@ class PlayerInviteAdminTest {
     @Test
     @DisplayName("候选搜索：守卫拒绝（403）时零查询")
     void candidates_guardForbidden_noQuery() {
-        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanManageTeam(TEAM_ID);
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.inviteCandidates(TEAM_ID, null, 1, 20));
@@ -200,8 +200,8 @@ class PlayerInviteAdminTest {
     }
 
     @Test
-    @DisplayName("创建邀请：守卫放宽为接管或代管（代管无主球队可发起）")
-    void createInvite_usesStewardGuard() {
+    @DisplayName("创建邀请：守卫=可管理该球队（Issue #318 起无联盟代管分支）")
+    void createInvite_usesManageGuard() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team("雷霆队")));
         when(accountProperties.getInviteDefaultExpireHours()).thenReturn(72);
         when(accountProperties.getInviteDefaultMaxUses()).thenReturn(1);
@@ -210,7 +210,7 @@ class PlayerInviteAdminTest {
 
         assertNotNull(out.get("token"));
         assertEquals(TEAM_ID, out.get("teamId"));
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
         verify(playerClaimInviteRepository).save(any(PlayerClaimInvite.class));
     }
 
@@ -269,13 +269,13 @@ class PlayerInviteAdminTest {
         assertEquals(2, out.size());
         assertEquals("张三", out.get(0).get("playerName"));
         assertTrue(out.get(1).get("playerName") == null);
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
     }
 
     @Test
     @DisplayName("邀请列表/撤销：守卫拒绝（403）时零查询")
     void listAndRevoke_guardForbidden() {
-        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanManageTeam(TEAM_ID);
 
         assertEquals(403, assertThrows(BusinessException.class, () -> service.listInvites(TEAM_ID)).getCode());
         assertEquals(403, assertThrows(BusinessException.class, () -> service.revokeInvite(TEAM_ID, 9L)).getCode());
