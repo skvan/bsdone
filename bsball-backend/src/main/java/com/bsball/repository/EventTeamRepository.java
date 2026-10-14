@@ -23,4 +23,7 @@ extends JpaRepository<EventTeam, Long> {
     public boolean existsByEventIdAndDeletedAtIsNull(Long eventId);
 
     public List<EventTeam> findByTeamIdAndDeletedAtIsNullOrderByIdDesc(Long teamId);
+
+    /** 排赛候选/报名制门槛（Issue #318 决策 8/11）：已确认且名单已锁定的参赛登记。 */
+    public List<EventTeam> findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(Long eventId, String status);
 }

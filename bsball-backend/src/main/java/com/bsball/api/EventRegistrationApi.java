@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 电子秩序册（Issue #310）API：赛事参赛登记（邀请/列表/移除/锁定）与球队侧报名（确认/谢绝/名单）。
- * 写守卫与入参校验在服务层：赛事侧 assertCanManageEvent；球队侧 assertCanStewardOrManageTeam（含代管无主球队）。
+ * 写守卫与入参校验在服务层：赛事侧 assertCanManageEvent；球队侧 assertCanManageTeam（Issue #318 起收敛为「本队」）。
  */
 @RestController
 public class EventRegistrationApi {
@@ -48,6 +48,12 @@ public class EventRegistrationApi {
     @GetMapping(value = {"/event/{eventId}/team-options"})
     public Result<List<TeamOptionDto>> invitableTeams(@PathVariable Long eventId) {
         return Result.ok(this.eventRegistrationService.listInvitableTeams(eventId));
+    }
+
+    /** 排赛候选球队（Issue #318 决策 8/11）：报名制或已有参赛记录→已确认且锁定名单；历史无参赛记录赛事→租户全部。 */
+    @GetMapping(value = {"/event/{eventId}/game-team-options"})
+    public Result<List<TeamOptionDto>> gameTeamOptions(@PathVariable Long eventId) {
+        return Result.ok(this.eventRegistrationService.gameTeamOptions(eventId));
     }
 
     /** 移除参赛（软删登记 + 名单；锁定后 403）。 */

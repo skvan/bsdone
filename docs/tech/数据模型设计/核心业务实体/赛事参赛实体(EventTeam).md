@@ -38,10 +38,12 @@
 - Event 1—N EventTeam（teamId 间接关联 Team）；EventTeam 1—N EventRosterPlayer。
 - 阵容限制启用条件：该赛事存在任意有效 EventTeam 行（含仅邀请）→ 该赛事全部比赛启用；无参赛记录的比赛不受影响。
 - 校验入口（服务层）：阵容保存校验两队列+替补 ⊆ 名单；统计写入仅拦截"为本场首次引入名单外球员"。
+- 排赛门槛（Issue #318 决策 8/11）：`bs_event.require_roster=true`（新建赛事默认）→ 至少 2 支「已确认且锁定名单」球队才能建比赛且主/客队须属该集合；历史赛事（false）有参赛记录时同口径、无参赛记录时本租户全量可选（`GET /event/{eventId}/game-team-options`）。
 
 ## 约束与校验
 - 邀请：被邀球队须与赛事同租户；重复邀请幂等（invited/confirmed 跳过）。
 - 确认/谢绝：仅 invited 可操作，重复操作幂等；confirmed→谢绝 与 declined→确认 均拒绝（引导经办赛方重邀/线下沟通）。
 - 提交名单：须已确认、至少 1 人、球员须为本队 current 在役；锁定后 403。
+- 球队侧守卫（Issue #318）：确认/谢绝/提交名单/入队邀请统一由「可管理该球队」裁定（本队负责人或管理员）；原「联盟代管无主球队」分支已移除。
 
-> 本文以代码为准（EventTeam.java / EventRosterPlayer.java / EventRegistrationService.java / V20261013100000__event_order_book.sql）。
+> 本文以代码为准（EventTeam.java / EventRosterPlayer.java / EventRegistrationService.java / V20261013100000__event_order_book.sql / V20261014100000__team_detach_league_and_event_require_roster.sql）。

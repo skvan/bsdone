@@ -241,4 +241,88 @@ class GameRosterValidationTest {
         assertEquals(new EventRegistrationService.StatsRef(HOME_ID, 8L), captor.getValue().iterator().next());
         verify(gamePlayerStatRepository).save(payload);
     }
+
+    // ------------------------------------------------------------------ 报名制门槛接线（Issue #318 决策 11）
+
+    @Test
+    @DisplayName("排赛门槛接线：create 建比赛按（赛事,主,客）委托 assertGameTeamsEligible")
+    void create_validatesGameTeamsEligible() {
+        stubWritableContext();
+        Game entity = new Game();
+        entity.setEventId(Long.valueOf(EVENT_ID));
+        entity.setHomeTeamId(Long.valueOf(HOME_ID));
+        entity.setAwayTeamId(Long.valueOf(AWAY_ID));
+
+        gameService.create(entity);
+
+        verify(eventRegistrationService).assertGameTeamsEligible(EVENT_ID, HOME_ID, AWAY_ID);
+        verify(gameRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("排赛门槛接线：update 改主客队按目标赛事委托 assertGameTeamsEligible")
+    void update_validatesGameTeamsEligible() {
+        when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(game()));
+        stubWritableContext();
+        Game entity = new Game();
+        entity.setHomeTeamId(Long.valueOf(HOME_ID));
+        entity.setAwayTeamId(Long.valueOf(AWAY_ID));
+
+        gameService.update(GAME_ID, entity);
+
+        verify(eventRegistrationService).assertGameTeamsEligible(EVENT_ID, HOME_ID, AWAY_ID);
+        verify(gameRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("排赛门槛接线：update 迁移赛事且未带球队时，按合并后既有主客队校验（防绕过）")
+    void update_moveEventWithoutTeams_validatesMergedTeams() {
+        when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(game()));
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        Event target = new Event();
+        target.setId(Long.valueOf(701L));
+        target.setTenantId(Long.valueOf(TENANT_ID));
+        when(eventRepository.findById(701L)).thenReturn(Optional.of(target));
+        Game entity = new Game();
+        entity.setEventId(Long.valueOf(701L));
+
+        gameService.update(GAME_ID, entity);
+
+        verify(eventRegistrationService).assertGameTeamsEligible(701L, HOME_ID, AWAY_ID);
+    }
+
+    @Test
+    @DisplayName("排赛门槛接线：saveResult 改主客队时按合并后（eventId,主,客）委托 assertGameTeamsEligible")
+    void saveResult_changeTeams_validatesGameTeamsEligible() {
+        Game g = game();
+        when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(g));
+        stubWritableContext();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setHomeTeamId(Long.valueOf(HOME_ID));
+        dto.setGame(gamePart);
+
+        gameService.saveResult(GAME_ID, dto);
+
+        verify(eventRegistrationService).assertGameTeamsEligible(EVENT_ID, HOME_ID, AWAY_ID);
+    }
+
+    @Test
+    @DisplayName("排赛门槛接线：importGameResult 建比赛同口径委托 assertGameTeamsEligible")
+    void importGameResult_validatesGameTeamsEligible() {
+        stubWritableContext();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setHomeTeamId(Long.valueOf(HOME_ID));
+        gamePart.setAwayTeamId(Long.valueOf(AWAY_ID));
+        gamePart.setIsSpecialResult(Boolean.TRUE);
+        dto.setGame(gamePart);
+        dto.setStats(List.of());
+        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        gameService.importGameResult(EVENT_ID, dto);
+
+        verify(eventRegistrationService).assertGameTeamsEligible(EVENT_ID, HOME_ID, AWAY_ID);
+        verify(gameRepository).save(any(Game.class));
+    }
 }

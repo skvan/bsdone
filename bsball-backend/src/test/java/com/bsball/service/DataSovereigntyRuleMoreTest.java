@@ -38,7 +38,6 @@ import com.bsball.repository.HighlightMomentRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.repository.TeamLineupTemplateRepository;
-import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.Optional;
@@ -70,8 +69,6 @@ class DataSovereigntyRuleMoreTest {
     private PlayerTeamService playerTeamService;
     @Mock
     private TeamRepository teamRepository;
-    @Mock
-    private TeamManagerRepository teamManagerRepository;
     @Mock
     private ApiPermissionService apiPermissionService;
 
@@ -107,7 +104,7 @@ class DataSovereigntyRuleMoreTest {
     void setUp() {
         CurrentUserHolder.clear();
         guard = new ResourceGuard(accountScopeService, eventRepository, gameRepository, playerRepository,
-                playerTeamService, teamRepository, teamManagerRepository, apiPermissionService);
+                playerTeamService, apiPermissionService);
         coachService = new CoachService(coachRepository, teamRepository, accountScopeService, scopeQuerySupport,
                 guard, personnelHistoryRecorder, tenantQueryPolicyService);
         teamLineupTemplateService = new TeamLineupTemplateService(templateRepository, teamService, gameRepository,

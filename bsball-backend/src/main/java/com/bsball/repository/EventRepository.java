@@ -50,5 +50,9 @@ extends JpaRepository<Event, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(value="select e from Event e where e.id = :id")
     public Optional<Event> findByIdForUpdate(@Param(value="id") Long id);
+
+    /** 去联盟归属（Issue #318 决策 6）：联盟下未结束（status 非 ended，含 NULL）的未删赛事计数。 */
+    @Query(value="select count(e) from Event e where e.leagueId = :leagueId and e.deletedAt is null and (e.status is null or e.status <> 'ended')")
+    public long countNotEndedEventsByLeague(@Param(value="leagueId") Long leagueId);
 }
 

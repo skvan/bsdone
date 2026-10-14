@@ -52,10 +52,6 @@ extends JpaRepository<Team, Long> {
     @Query(value="select t.id from Team t where t.leagueId = :leagueId and t.tenantId = :tenantId")
     public List<Long> findIdsByLeagueIdAndTenantId(@Param(value="leagueId") Long var1, @Param(value="tenantId") Long var2);
 
-    /** 集合版：过滤软删（deletedAt is null）与租户；与单值版 findIdsByLeagueIdAndTenantId（不过滤软删）语义不同。 */
-    @Query(value="select t.id from Team t where t.deletedAt is null and t.tenantId = :tenantId and t.leagueId in :leagueIds")
-    public List<Long> findIdsByLeagueIdInAndTenantId(@Param(value="leagueIds") Collection<Long> var1, @Param(value="tenantId") Long var2);
-
     public List<Team> findByTenantIdAndDeletedAtIsNullOrderBySortAscIdAsc(Long var1);
 
     /**
@@ -69,7 +65,6 @@ extends JpaRepository<Team, Long> {
     /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的球队计数。 */
     public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
 
-    /** 联盟解散前置校验（建盟链路）：联盟下现存（未解散）球队计数。 */
-    public long countByLeagueIdAndDeletedAtIsNull(Long var1);
+    // 去联盟归属（Issue #318）：countByLeagueIdAndDeletedAtIsNull 已移除（联盟解散守卫改为"赛事全部结束"口径）
 }
 

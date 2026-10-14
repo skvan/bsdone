@@ -1,5 +1,6 @@
 package com.bsball.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,6 +12,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -302,7 +304,7 @@ class EventRegistrationServiceTest {
         assertEquals(400, ex.getCode());
         assertTrue(ex.getMessage().contains("张三"));
         verify(eventRosterPlayerRepository, never()).save(any(EventRosterPlayer.class));
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
     }
 
     @Test
@@ -405,7 +407,7 @@ class EventRegistrationServiceTest {
         assertNotNull(invited.getConfirmedAt());
         assertEquals(EventTeam.STATUS_CONFIRMED, dto.status());
         verify(eventTeamRepository).save(invited);
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
     }
 
     @Test
@@ -450,14 +452,14 @@ class EventRegistrationServiceTest {
         assertNotNull(invited.getDeclinedAt());
         assertEquals(EventTeam.STATUS_DECLINED, dto.status());
         verify(eventTeamRepository).save(invited);
-        verify(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
     }
 
     @Test
     @DisplayName("谢绝：守卫拒绝（403）时无任何写入")
     void decline_guardForbidden_noWrite() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
-        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanStewardOrManageTeam(TEAM_ID);
+        doThrow(new BusinessException(403, "无权管理该球队")).when(resourceGuard).assertCanManageTeam(TEAM_ID);
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.decline(EVENT_ID, TEAM_ID));
@@ -799,5 +801,142 @@ class EventRegistrationServiceTest {
 
         assertEquals(403, ex.getCode());
         verify(teamRepository, never()).findForSelectByTenantId(any());
+    }
+
+    // ------------------------------------------------------------------ 排赛候选与报名制门槛（Issue #318 决策 8/11）
+
+    @Test
+    @DisplayName("排赛候选：报名制赛事 → 仅返回已确认且锁定名单的球队（决策 11）")
+    void gameTeamOptions_requireRosterEvent_confirmedLockedOnly() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.TRUE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(EVENT_ID, EventTeam.STATUS_CONFIRMED))
+                .thenReturn(List.of(reg(EVENT_ID, 100L, EventTeam.STATUS_CONFIRMED),
+                        reg(EVENT_ID, 101L, EventTeam.STATUS_CONFIRMED)));
+        List<TeamOptionDto> teams = List.of(
+                new TeamOptionDto(100L, "雷霆队", null, null),
+                new TeamOptionDto(101L, "疾风队", null, null));
+        when(teamRepository.findForSelectByTenantIdAndIdIn(TENANT_ID, List.of(100L, 101L))).thenReturn(teams);
+
+        List<TeamOptionDto> out = service.gameTeamOptions(EVENT_ID);
+
+        assertEquals(teams, out);
+        verify(resourceGuard).assertCanManageEvent(EVENT_ID);
+        verify(teamRepository, never()).findForSelectByTenantId(any());
+    }
+
+    @Test
+    @DisplayName("排赛候选：历史赛事（非报名制）有参赛记录 → 同口径 confirmed+locked（决策 8）")
+    void gameTeamOptions_historyEventWithRegistrations_confirmedLocked() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.FALSE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventTeamRepository.findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(EVENT_ID, EventTeam.STATUS_CONFIRMED))
+                .thenReturn(List.of(reg(EVENT_ID, 100L, EventTeam.STATUS_CONFIRMED)));
+        List<TeamOptionDto> teams = List.of(new TeamOptionDto(100L, "雷霆队", null, null));
+        when(teamRepository.findForSelectByTenantIdAndIdIn(TENANT_ID, List.of(100L))).thenReturn(teams);
+
+        List<TeamOptionDto> out = service.gameTeamOptions(EVENT_ID);
+
+        assertEquals(teams, out);
+        verify(teamRepository, never()).findForSelectByTenantId(any());
+    }
+
+    @Test
+    @DisplayName("排赛候选：历史赛事无参赛记录 → 回落本租户全量球队（决策 8）")
+    void gameTeamOptions_historyEventWithoutRegistrations_allTenantTeams() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.FALSE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(false);
+        List<TeamOptionDto> teams = List.of(new TeamOptionDto(1L, "暴力羊", null, null));
+        when(teamRepository.findForSelectByTenantId(TENANT_ID)).thenReturn(teams);
+
+        List<TeamOptionDto> out = service.gameTeamOptions(EVENT_ID);
+
+        assertEquals(teams, out);
+        verify(teamRepository, never()).findForSelectByTenantIdAndIdIn(any(), any());
+    }
+
+    @Test
+    @DisplayName("排赛候选：守卫拒绝（403）时零查询")
+    void gameTeamOptions_guardForbidden_noQuery() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        doThrow(new BusinessException(403, "无权管理该赛事")).when(resourceGuard).assertCanManageEvent(EVENT_ID);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.gameTeamOptions(EVENT_ID));
+
+        assertEquals(403, ex.getCode());
+        verifyNoInteractions(teamRepository, eventTeamRepository);
+    }
+
+    @Test
+    @DisplayName("报名制门槛：require_roster 赛事不足 2 支已报名球队 → 400（决策 11）")
+    void assertGameTeamsEligible_fewerThanTwo_400() {
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.TRUE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(EVENT_ID, EventTeam.STATUS_CONFIRMED))
+                .thenReturn(List.of(reg(EVENT_ID, 100L, EventTeam.STATUS_CONFIRMED)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.assertGameTeamsEligible(EVENT_ID, 100L, 101L));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("该赛事需至少两支球队完成报名（确认并锁定名单）后才能安排比赛", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("报名制门槛：主/客队必须属于已报名集合 → 否则 400")
+    void assertGameTeamsEligible_teamNotRegistered_400() {
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.TRUE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(EVENT_ID, EventTeam.STATUS_CONFIRMED))
+                .thenReturn(List.of(reg(EVENT_ID, 100L, EventTeam.STATUS_CONFIRMED),
+                        reg(EVENT_ID, 101L, EventTeam.STATUS_CONFIRMED)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.assertGameTeamsEligible(EVENT_ID, 100L, 999L));
+
+        assertEquals(400, ex.getCode());
+        assertEquals("主/客队须为本赛事已完成报名的球队", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("报名制门槛：主/客队 ∈ 已报名集合 → 放行")
+    void assertGameTeamsEligible_registeredTeams_pass() {
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.TRUE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+        when(eventTeamRepository.findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(EVENT_ID, EventTeam.STATUS_CONFIRMED))
+                .thenReturn(List.of(reg(EVENT_ID, 100L, EventTeam.STATUS_CONFIRMED),
+                        reg(EVENT_ID, 101L, EventTeam.STATUS_CONFIRMED)));
+
+        assertDoesNotThrow(() -> service.assertGameTeamsEligible(EVENT_ID, 100L, 101L));
+    }
+
+    @Test
+    @DisplayName("报名制门槛：历史赛事（require_roster=false）不校验（决策 8 宽松口径）")
+    void assertGameTeamsEligible_historyEvent_skips() {
+        Event ev = event(EVENT_ID);
+        ev.setRequireRoster(Boolean.FALSE);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(ev));
+
+        assertDoesNotThrow(() -> service.assertGameTeamsEligible(EVENT_ID, 100L, 999L));
+        verify(eventTeamRepository, never()).findByEventIdAndStatusAndRosterLockedTrueAndDeletedAtIsNull(any(), any());
+    }
+
+    @Test
+    @DisplayName("报名制门槛：未指定主客队 / 无赛事 → 直接跳过（零查询）")
+    void assertGameTeamsEligible_noTeamsOrNoEvent_skips() {
+        assertDoesNotThrow(() -> service.assertGameTeamsEligible(EVENT_ID, null, null));
+        assertDoesNotThrow(() -> service.assertGameTeamsEligible(null, 100L, 101L));
+        verifyNoInteractions(eventRepository, eventTeamRepository);
     }
 }

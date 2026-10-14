@@ -29,5 +29,13 @@ JpaSpecificationExecutor<Game> {
 
     /** 超管资产视图（spec §6.10）：平台已归还（platform_owned=true 且已软删）的比赛计数。 */
     public long countByPlatformOwnedTrueAndDeletedAtIsNotNull();
+
+    /**
+     * 赛事结束校验（Issue #318 决策 7）：该赛事下“未结束”的未删比赛计数。
+     * 口径与 {@link #countPendingGamesByTeamId} 一致：终态 = {@code final}（已结束）/ {@code cancelled}（取消）；
+     * 空/未知 status 保守按未结束计。
+     */
+    @Query(value="select count(g) from Game g where g.eventId = :eventId and g.deletedAt is null and coalesce(g.status, 'scheduled') not in ('final', 'cancelled')")
+    public long countUnfinishedGamesByEvent(@Param(value="eventId") Long eventId);
 }
 

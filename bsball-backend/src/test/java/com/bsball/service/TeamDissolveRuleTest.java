@@ -39,7 +39,6 @@ import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.GameRepository;
-import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamManagerRepository;
@@ -68,9 +67,6 @@ class TeamDissolveRuleTest {
 
     @Mock
     private TeamRepository teamRepository;
-
-    @Mock
-    private LeagueRepository leagueRepository;
 
     @Mock
     private AccountScopeService accountScopeService;
@@ -119,7 +115,7 @@ class TeamDissolveRuleTest {
     void setUp() {
         CurrentUserHolder.clear();
         PlayerTeamService realPlayerTeamService = new PlayerTeamService(playerTeamRepository, teamRepository);
-        teamService = new TeamService(teamRepository, leagueRepository, accountScopeService, scopeQuerySupport,
+        teamService = new TeamService(teamRepository, accountScopeService, scopeQuerySupport,
                 resourceGuard, personnelHistoryRecorder, tenantQueryPolicyService, teamManagerRepository,
                 apiPermissionService, gameRepository, playerTeamRepository, playerRepository, realPlayerTeamService);
         statsService = new StatsService(playerStatsMapper, statsLeadersMapper, tenantProperties, teamRepository);

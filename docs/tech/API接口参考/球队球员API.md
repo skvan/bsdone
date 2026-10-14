@@ -84,11 +84,11 @@ A-->>C : 统一响应
   - PUT /team/update/{id}：更新球队
   - DELETE /team/delete/{id}：软删除
 - 关键行为
-  - 列表与选项均受租户与数据范围限制
-  - 创建/更新时校验联盟归属与租户一致性
-  - 删除为软删除，记录删除时间与操作人
+  - 列表与选项均受租户与数据范围限制（管理上下文窄读=自有球队集合；联盟不再派生球队可见域，Issue #318）
+  - 创建/更新不再读写联盟：leagueId 入参一律忽略（落库 null）；创建即负责——非超管/租管创建者自动落为该队负责人（含批量建队与门户自助建队）
+  - 删除为软删除，记录删除时间与操作人；解散前须无未开打比赛并走完整级联（球员离队/负责人失效）
 - 数据模型要点
-  - 包含租户ID、联盟ID、名称、标识、城市、主场、描述、联系方式、展示开关、认证状态、排序等字段
+  - 包含租户ID、名称、标识、城市、主场、描述、联系方式、展示开关、认证状态、排序等字段（`league_id` 列保留但已废弃恒为 null，实体字段写入停止，Issue #318）
 
 ```mermaid
 classDiagram
@@ -453,26 +453,28 @@ Exec --> End(["返回结果"])
 |---|---|---|---|
 | POST | /event/{eventId}/teams/invite | 邀请球队参赛（body: `{teamIds:[], remark?}`；幂等：已邀/已确认跳过，已谢绝重邀重置为 invited） | 办赛方（赛事所属联盟） |
 | GET | /event/{eventId}/team-options | 赛事可邀请球队：本租户全部未删球队（含他联盟/无联盟，不受管理域过滤；Issue #315 修复） | 办赛方（赛事所属联盟）/租管/超管 |
+| GET | /event/{eventId}/game-team-options | 排赛候选球队（Issue #318）：报名制赛事或已有参赛记录→仅「已确认且锁定名单」球队；历史无参赛记录赛事→本租户全部未删球队 | 办赛方（赛事所属联盟）/租管/超管 |
 | GET | /event/{eventId}/teams | 赛事参赛列表（球队名/徽、状态、名单人数、锁定态、最近提交时间） | 登录+同租户 |
 | POST | /event/{eventId}/teams/{teamId}/remove | 移除参赛（软删登记+全部名单行；锁定后 403，须先解锁） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/lock | 锁定报名名单（留痕 lockedBy/lockedAt） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
 | GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
 | GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
-| GET | /team/{teamId}/player-invite-candidates | 全量球员候选搜索（keyword 匹配姓名/昵称/简称；附认领状态、现属球队、已在本队标记；分页，pageSize 上限 100，按 id 升序） | 球队管理员/代管办赛方 |
-| POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 球队管理员/代管办赛方 |
-| GET | /team/{teamId}/player-claim-invites | 入队邀请列表（含 token 供复制链接、绑定球员名、状态/使用次数/有效期） | 球队管理员/代管办赛方 |
-| POST | /team/{teamId}/player-claim-invites/{id}/revoke | 撤销入队邀请（幂等；跨队/不存在 404） | 球队管理员/代管办赛方 |
+| GET | /team/{teamId}/player-invite-candidates | 全量球员候选搜索（keyword 匹配姓名/昵称/简称；附认领状态、现属球队、已在本队标记；分页，pageSize 上限 100，按 id 升序） | 可管理该球队 |
+| POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 可管理该球队 |
+| GET | /team/{teamId}/player-claim-invites | 入队邀请列表（含 token 供复制链接、绑定球员名、状态/使用次数/有效期） | 可管理该球队 |
+| POST | /team/{teamId}/player-claim-invites/{id}/revoke | 撤销入队邀请（幂等；跨队/不存在 404） | 可管理该球队 |
 | GET | /team/{teamId}/event-registrations | 球队侧「我的赛事报名」列表（赛事名/赛季/模式/状态） | 登录+同租户 |
-| POST | /event/{eventId}/teams/{teamId}/confirm | 确认参加（仅 invited 可操作；重复确认幂等） | 球队管理员/代管办赛方 |
-| POST | /event/{eventId}/teams/{teamId}/decline | 谢绝参赛（仅 invited 可操作；重复谢绝幂等） | 球队管理员/代管办赛方 |
-| PUT | /event/{eventId}/teams/{teamId}/roster | 提交/修改名单（body: `{playerIds:[]}` 按展示顺序；锁定 403；须已确认；至少 1 人；球员须本队 current 在役） | 球队管理员/代管办赛方 |
+| POST | /event/{eventId}/teams/{teamId}/confirm | 确认参加（仅 invited 可操作；重复确认幂等） | 可管理该球队 |
+| POST | /event/{eventId}/teams/{teamId}/decline | 谢绝参赛（仅 invited 可操作；重复谢绝幂等） | 可管理该球队 |
+| PUT | /event/{eventId}/teams/{teamId}/roster | 提交/修改名单（body: `{playerIds:[]}` 按展示顺序；锁定 403；须已确认；至少 1 人；球员须本队 current 在役） | 可管理该球队 |
 
 ### 关键规则
 - 状态机：`invited → confirmed / declined`；declined 可被办赛方重新邀请（重置回 invited，清空确认/谢绝/提交时间）。
 - 名单为快照语义：提交时校验球员为该队当前在役（`bs_player_team.is_current=true`）；提交后球员离队不自动移出，锁定前球队可自行修改；软删 = 移除报名。
-- 代管口径：无主球队（无有效 `bs_team_manager`）且归属办赛方联盟时，办赛方可代为确认/提交名单；有主球队联盟侧只读。
-- 邀请入队（批 4）：候选=本租户全量未删球员（非超管对跨租户球队一律 404，超管全局豁免）；未认领→定向绑定邀请、已认领→通用链接；**撤销后旧链接失效**（领取/认领接口返回 400「邀请链接已失效」）；创建邀请守卫已放宽为「接管或代管」——代管**无主球队**的办赛方可用，有主球队联盟侧仍只读。
+- 球队侧权限（Issue #318）：确认/谢绝/提交名单/入队邀请等统一由「可管理该球队」裁定（球队负责人或管理员）；原「联盟代管无主球队」分支已随去联盟归属移除——无主球队由租管/超管指派负责人，或由创建者「创建即负责」。
+- 排赛门槛（Issue #318 决策 8/11）：新建赛事默认报名制（`bs_event.require_roster=true`）——至少 2 支「已确认且锁定名单」球队才能建比赛，且主/客队须属该集合；历史赛事（false）有参赛记录时同口径、无参赛记录时本租户全量可选。排赛选队走 `game-team-options` 端点。
+- 邀请入队（批 4）：候选=本租户全量未删球员（非超管对跨租户球队一律 404，超管全局豁免）；未认领→定向绑定邀请、已认领→通用链接；**撤销后旧链接失效**（领取/认领接口返回 400「邀请链接已失效」）；创建邀请/候选守卫=可管理该球队（Issue #318 起无联盟代管分支）。
 
 ### 阵容限制口径（双门校验，Issue #310）
 - 启用条件：赛事存在任意有效参赛记录（含仅邀请）即对该赛事全部比赛启用；无参赛记录的赛事不受影响。
