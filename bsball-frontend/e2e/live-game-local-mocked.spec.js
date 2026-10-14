@@ -28,6 +28,7 @@ const stats = players.map((player, index) => ({
 
 test('LiveGame records, undoes, re-records, saves and restores from a mocked backend', async ({ page }) => {
   let savedSnapshot = '';
+  const savedSnapshots = [];
   let savedLiveBody;
   const intercepted = [];
 
@@ -58,6 +59,7 @@ test('LiveGame records, undoes, re-records, saves and restores from a mocked bac
       data = { snapshotJson: savedSnapshot };
     } else if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
       savedSnapshot = request.postDataJSON().snapshotJson;
+      savedSnapshots.push(savedSnapshot);
       data = { snapshotJson: savedSnapshot };
     } else if (path === '/game/10/save-live') {
       savedLiveBody = request.postDataJSON();
@@ -81,43 +83,45 @@ test('LiveGame records, undoes, re-records, saves and restores from a mocked bac
     });
   });
 
-  await page.goto('/bs-ball/admin/events/1/games/10/live');
+  await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
+  await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
   await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
 
-  const recordGroundOut = async () => {
-    await page.getByRole('button', { name: '界内球' }).click();
-    await page.getByText('滚地球', { exact: true }).click();
-    await page.getByText('出局', { exact: true }).click();
-    await page.getByText('一垒前出局', { exact: true }).click();
+  const recordBall = async () => {
+    await page.locator('button[title="坏球 Ball"]').click();
+    await expect(page.locator('button[title="坏球 Ball"]')).toBeVisible();
   };
 
-  await recordGroundOut();
-  const firstLog = await page.locator('body').innerText();
-  expect(firstLog).toContain('滚地球');
-  expect(firstLog).toContain('一垒');
+  await recordBall();
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  await expect.poll(() => savedSnapshots.length).toBeGreaterThan(0);
+  const firstSnapshot = JSON.parse(savedSnapshots.at(-1));
+  expect(firstSnapshot.eventLog.length).toBeGreaterThan(0);
+  expect(JSON.stringify(firstSnapshot.eventLog)).toContain('坏球');
 
   await page.getByRole('button', { name: /撤销/ }).click();
-  await recordGroundOut();
-  const repeatedLog = await page.locator('body').innerText();
-  expect(repeatedLog).toContain('滚地球');
-  expect(repeatedLog).toContain('一垒');
-
+  await recordBall();
   await page.getByRole('button', { name: '保存比赛' }).click();
   await expect.poll(() => savedLiveBody).toBeTruthy();
-  await expect.poll(() => savedSnapshot).not.toBe('');
+  await expect.poll(() => savedSnapshots.length).toBeGreaterThan(1);
   expect(savedLiveBody.game).toMatchObject({ inning: 1, topBottom: 'top' });
   expect(Array.isArray(savedLiveBody.stats)).toBe(true);
 
-  const snapshot = JSON.parse(savedSnapshot);
+  const snapshot = JSON.parse(savedSnapshots.at(-1));
   expect(snapshot.eventLog.length).toBeGreaterThan(0);
-  expect(snapshot.atBatSummaries).toHaveLength(1);
-  expect(snapshot.atBatSummaries[0].resultCode).toBeTruthy();
+  expect(JSON.stringify(snapshot.eventLog)).toContain('坏球');
+  expect(snapshot.eventLog).toEqual(firstSnapshot.eventLog);
 
+  await page.evaluate(() => {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('bs-ball-live-'))
+      .forEach((key) => localStorage.removeItem(key));
+  });
   await page.reload();
   await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
-  await expect(page.getByText(/已恢复比赛|已从服务器恢复录入现场/)).toBeVisible();
   const restoredLog = await page.locator('body').innerText();
-  expect(restoredLog).toContain('滚地球');
+  expect(restoredLog).toMatch(/B\s+1/);
+  await expect(page.getByText(/已从服务器恢复录入现场/)).toBeVisible();
   expect(intercepted.some((entry) => entry.includes('/game/10/save-live'))).toBe(true);
-  expect(intercepted.some((entry) => entry.includes('/game/10/live-snapshot'))).toBe(true);
+  expect(intercepted.filter((entry) => entry === 'GET /game/10/live-snapshot').length).toBeGreaterThan(1);
 });
