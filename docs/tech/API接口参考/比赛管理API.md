@@ -257,6 +257,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:77-81`
 - POST /game/{id}/live-snapshot
   - 作用：保存实时快照
+  - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛

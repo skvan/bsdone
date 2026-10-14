@@ -42,11 +42,13 @@ test('#225：Zi() 打席上下文含 basesBefore 布尔快照（历史组垒包�
   assert.match(src, /basesBefore:\{\s*\r?\n\s*\.\.\.m\.basesBefore/, 'Qr 继续从 m.basesBefore 展开');
 });
 
-test('#226：fielding.ip + Ipy 全员累进 + 换人 4 处注记', () => {
+test('#226：fielding.ip 只累进实际守备位球员 + 换人 4 处注记', () => {
   assert.ok(src.includes('po:0,a:0,e:0,ip:0'), 'Pt().fielding 含 ip');
   assert.ok(src.includes('const addIp=(o,key)=>{'), 'Ipy addIp 重构');
   assert.ok(src.includes('addIp(Se.value,"fielding")'), '投手活体守备 IP（DH 制深拷贝规避）');
-  assert.ok(src.includes('for(const m of Hn.value)if(m!==Se.value)addIp(m,"fielding")'), '守备全员按引用去重累进');
+  assert.ok(src.includes('const fieldingPositions=new Set(dd(N.value))'), '按当前赛制取得合法守备位置');
+  assert.ok(src.includes('LgActiveFielders(Hn.value,fieldingPositions,Nn)'), '按实际守备位置筛选，DH 不累计守备 IP');
+  assert.ok(src.includes('addOutToInnings as LgAddOutToInnings'), '使用纯函数累加守备/投手出局数');
   assert.ok(src.includes('function fieldingIpNote(p){'), '结清注记 helper');
   assert.ok(src.includes('D(LgSub({kind:"run",inName:P.name,outName:t.name})+fieldingIpNote(t))'), '代跑注记');
   assert.ok(src.includes('D(LgSub({kind:"hit",inName:w.name,outName:t.name})+fieldingIpNote(t))'), '代打注记');

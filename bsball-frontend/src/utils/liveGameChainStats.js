@@ -89,3 +89,18 @@ export function computeChainFieldingStats(type, steps) {
   }
   return [...map.values()];
 }
+
+/** 回传结算增量：接杀者的 PO 已在接杀时入账，此处仅记回传助杀 A 与触垒出局 PO（避免 PO 双计）。 */
+export function computeCatchBackFieldingStats(catchPos, tagPos) {
+  const stats = new Map();
+  const add = (pos, po, a) => {
+    if (!pos) return;
+    const current = stats.get(pos) ?? { pos, po: 0, a: 0 };
+    current.po += po;
+    current.a += a;
+    stats.set(pos, current);
+  };
+  add(catchPos, 0, 1);
+  add(tagPos, 1, 0);
+  return [...stats.values()];
+}
