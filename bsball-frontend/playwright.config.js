@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000/bs-ball/';
+const port = process.env.E2E_PORT || '3000';
+const baseURL = process.env.E2E_BASE_URL || `http://127.0.0.1:${port}/bs-ball/`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -13,6 +14,15 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+      : {},
     ...devices['Desktop Chrome']
+  },
+  webServer: {
+    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000
   },
 });

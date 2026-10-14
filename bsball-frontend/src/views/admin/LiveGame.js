@@ -46,13 +46,14 @@ import { getFieldingConfig as fd } from '../../utils/liveGameFieldLayout';
 import { getLineHead as ll } from '../../utils/liveGameFieldLayout';
 import { PITCHER_BALL_POSITION as cd } from '../../utils/liveGameFieldLayout';
 import { getPositionOptions as dd } from '../../utils/liveGameFieldLayout';
+import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders } from '../../utils/liveGameFieldingIp';
 import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
-import { computeChainFieldingStats as LgChainStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
 import { BAT_SHAPES, battedShapeColor } from '../../utils/battedBallFlight';
 import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
 import '../../styles/legacy/live-game.css';
@@ -8131,10 +8132,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // P3 · #226：每出局累进——投手 pitching.ip（原口径）+ 守备全员 fielding.ip；DH 制下 Hn 内投手为深拷贝，故对活体显式补记并按引用去重
     function Ipy(){
-      const addIp=(o,key)=>{if(!o?.stats?.[key])return;let s=o.stats[key].ip??0;const r=Math.round(s*10)%10+1;let p=Math.floor(s);r===3?(p++,s=p):s=p+r/10,o.stats[key].ip=s};
+      const addIp=(o,key)=>{if(!o?.stats?.[key])return;o.stats[key].ip=LgAddOutToInnings(o.stats[key].ip)};
+      const fieldingPositions=new Set(dd(N.value));
       addIp(Se.value,"pitching");
       addIp(Se.value,"fielding");
-      for(const m of Hn.value)if(m!==Se.value)addIp(m,"fielding")
+      for(const m of LgActiveFielders(Hn.value,fieldingPositions,Nn))if(m!==Se.value)addIp(m,"fielding")
     }
     function Bt(e,t){
       l.halfInningOuts.push((e??"出局").trim()),l.outs++,Ipy(),D(jr(e??"出局"),void 0,{
@@ -9296,9 +9298,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const Q1=a.runner,Q2=a.runnerBase;
         l.flow=null,Jl(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
         const cbChain=[a.catchPos??"P",e];
-        Dn(cbChain);
-        const cbTxt=LgOut({reasonCn:"离垒过远出局",runner:Q1,from:Q2,to:a.outAtBase??Q2,chain:LgNum(cbChain),note:"接杀回传",outsCum:1,total:l.outs});
-        D(cbTxt),l.abCatchRecorded=null,l.outs>=3&&(Je("THIRD_OUT",cbTxt),Qe());
+        for(const fielding of LgCatchBackStats(cbChain[0],e)){
+          const player=Vt(fielding.pos);
+          if(player?.stats?.fielding){
+            player.stats.fielding.po=(player.stats.fielding.po??0)+fielding.po;
+            player.stats.fielding.a=(player.stats.fielding.a??0)+fielding.a
+          }
+        }
+        const cbLines=LgCatchBackDp({catchCode:cbChain[0],catcher:Vt(cbChain[0]),tagCode:e,tagger:Q0,runner:Q1,from:Q2,to:a.outAtBase??Q2,outsCum:1,total:l.outs}).lines;
+        D(cbLines[0],void 0,{lines:cbLines.slice(1)}),l.abCatchRecorded=null,l.outs>=3&&(Je("THIRD_OUT",cbLines[2]),Qe());
         return
       }
       if(a?.type==="DK3_FIELDER_PICK"){

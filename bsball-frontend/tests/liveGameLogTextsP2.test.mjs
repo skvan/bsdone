@@ -3,9 +3,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { advanceText, outText } from '../src/utils/liveGameLogTexts.js';
+import { advanceText, outText, catchBackDoublePlayGroup } from '../src/utils/liveGameLogTexts.js';
 
 const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
+const chainStatsSrc = fs.readFileSync(new URL('../src/utils/liveGameChainStats.js', import.meta.url), 'utf8');
 
 test('advanceText：#224 打点注记（rbiNote 仅 to=4 得分分支生效）', () => {
   assert.equal(
@@ -37,6 +38,18 @@ test('outText：#223 接杀回传注记（链内融合 / 无链兜底 / 无 note
   );
 });
 
+test('catchBackDoublePlayGroup：逐名呈现接杀 PO、回传 A、踩垒 PO 与跑者出局', () => {
+  assert.deepEqual(catchBackDoublePlayGroup({
+    catchCode: '1', catcher: { name: '投手甲', number: 18 },
+    tagCode: '6', tagger: { name: '游击乙', number: 6 },
+    runner: { name: '跑者丙', number: 21 }, from: 2, to: 2, outsCum: 2, total: 2
+  }).lines, [
+    '1 投手 投手甲 (#18): 接杀后回传（接杀：刺杀 PO；传球：助杀 A）',
+    '6 游击 游击乙 (#6): 接球触垒使跑者出局（刺杀 PO）',
+    '离垒过远出局：二垒跑者 跑者丙 (#21) 于二垒出局（1-6，接杀回传），本棒次2人出局，已累计2人出局'
+  ]);
+});
+
 test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/bf/提示）', () => {
   assert.match(src, /e!=="G"&&\(l\.abCatchRecorded=\{/, 'bt G/F/L/TAG 接杀置位（非 G）');
   assert.match(src, /Dn\(t\),l\.abCatchRecorded=\{\r?\n\s+pos:t\[0\]\?\?null/, 'bt SF 接杀置位');
@@ -48,8 +61,14 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP"].includes'), 'mf 集合含新类型');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP","G"'), 'bf 集合含新类型');
   assert.ok(src.includes('CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员"'), '流程提示文案（去双杀）');
-  assert.match(src, /Dn\(cbChain\)/, 'Dn 记账（A=链首接杀者 / PO=链末踩垒者）');
-  assert.match(src, /note:"接杀回传"/, 'outText note 注入（去 DP 字样）');
+  assert.match(src, /computeCatchBackFieldingStats as LgCatchBackStats/, '接杀回传使用接杀 PO + 传球 A + 触杀 PO 的专用记账');
+  assert.match(src, /catchBackDoublePlayGroup as LgCatchBackDp/, '逐人 PO/A 日志生成器导入');
+  assert.match(src, /for\(const fielding of LgCatchBackStats\(cbChain\[0\],e\)\)/, '结算写入接杀 PO、回传 A 与触杀 PO');
+  assert.doesNotMatch(src, /Dn\(cbChain\)/, '不再把接杀回传误当成单次普通传接链');
+  assert.match(chainStatsSrc, /export function computeCatchBackFieldingStats/, '存在接杀回传守备统计计算器');
+  assert.match(src, /const cbLines=LgCatchBackDp\(/, '接杀回传结算生成逐人明细');
+  assert.match(src, /D\(cbLines\[0\],void 0,\{lines:cbLines\.slice\(1\)\}\)/, '多行明细进入可观赛日志组');
+  assert.match(src, /Je\("THIRD_OUT",cbLines\[2\]\)/, '第三出局仍关联跑者出局行');
 });
 
 test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账缺口）', () => {

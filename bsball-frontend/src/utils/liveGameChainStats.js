@@ -89,3 +89,18 @@ export function computeChainFieldingStats(type, steps) {
   }
   return [...map.values()];
 }
+
+/** A caught fly is one putout, followed by a throw assist and a second putout on the tag. */
+export function computeCatchBackFieldingStats(catchPos, tagPos) {
+  const stats = new Map();
+  const add = (pos, po, a) => {
+    if (!pos) return;
+    const current = stats.get(pos) ?? { pos, po: 0, a: 0 };
+    current.po += po;
+    current.a += a;
+    stats.set(pos, current);
+  };
+  add(catchPos, 1, 1);
+  add(tagPos, 1, 0);
+  return [...stats.values()];
+}
