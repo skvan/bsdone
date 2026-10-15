@@ -14,10 +14,13 @@
 package com.bsball.model.entity;
 
 import com.bsball.model.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.validation.constraints.Size;
+import java.util.Map;
 import lombok.Generated;
 import org.hibernate.annotations.Comment;
 
@@ -54,6 +57,15 @@ extends BaseEntity {
     @Column(nullable=false)
     @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
     private Boolean platformOwned = Boolean.FALSE;
+
+    /**
+     * 非持久化：联赛特殊规则生效值（Issue #275，设计稿 §3.3），
+     * 仅 GET /event/{id} 详情由 EventService 按 leagueId 装配（未挂联赛为服务默认值）；
+     * 其余路径保持 null，序列化时省略（list/create/update 等响应不受影响）。
+     */
+    @JsonInclude(value=JsonInclude.Include.NON_NULL)
+    @Transient
+    private Map<String, Boolean> specialRules;
 
     @Generated
     public Event() {
@@ -175,6 +187,16 @@ extends BaseEntity {
     @Generated
     public void setPlatformOwned(Boolean platformOwned) {
         this.platformOwned = platformOwned;
+    }
+
+    /** 联赛特殊规则生效值（瞬态，仅详情路径装配；null 表示未装配）。 */
+    public Map<String, Boolean> getSpecialRules() {
+        return this.specialRules;
+    }
+
+    /** 联赛特殊规则生效值（瞬态，仅详情路径装配）。 */
+    public void setSpecialRules(Map<String, Boolean> specialRules) {
+        this.specialRules = specialRules;
     }
 
     @Generated

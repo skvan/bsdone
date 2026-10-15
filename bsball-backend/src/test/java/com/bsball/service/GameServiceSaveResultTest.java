@@ -11,15 +11,20 @@ package com.bsball.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
+import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
@@ -112,7 +117,8 @@ class GameServiceSaveResultTest {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(Long.valueOf(TENANT_ID));
         when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.of(game));
         when(eventRepository.findById(Long.valueOf(EVENT_ID))).thenReturn(Optional.of(event));
-        when(gamePlayerStatRepository.save(any(GamePlayerStat.class))).thenAnswer(inv -> inv.getArgument(0));
+        // lenient：先發守位查重的攔截用例（#274）在寫入前就拋 400，走不到 save，嚴格樁會誤報未使用
+        lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @AfterEach
@@ -212,6 +218,62 @@ class GameServiceSaveResultTest {
         assertEquals("新生公園棒球場", existingGame.getVenue());
     }
 
+    // ------------------------------------------------------------------ 先發守位查重排除項（issue #274）
+
+    @Test
+    @DisplayName("多个 EP 落在前 9 棒不误报守备位置重复")
+    void saveResult_multipleEpsInTopNine_notMisreported() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(List.of());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        // 11 人陣（8 守位 + DH + 2 EP）；兩個 EP 都排在前 9 棒——修復前會把 EP 當守備位而誤報重複
+        dto.setStats(List.of(
+                starterPart(1, "SS"), starterPart(2, "2B"), starterPart(3, "1B"), starterPart(4, "3B"),
+                starterPart(5, "EP"), starterPart(6, "EP"), starterPart(7, "LF"), starterPart(8, "CF"),
+                starterPart(9, "RF"), starterPart(10, "C"), starterPart(11, "DH")));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(11)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("DH 不参与守备查重")
+    void saveResult_singleDh_notFieldingChecked() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(List.of());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        // 9 人 DH 制：真實守位各不相同，DH 落在前 9 棒內也不應被當作重複項
+        dto.setStats(List.of(
+                starterPart(1, "SS"), starterPart(2, "2B"), starterPart(3, "1B"), starterPart(4, "3B"),
+                starterPart(5, "LF"), starterPart(6, "CF"), starterPart(7, "RF"), starterPart(8, "C"),
+                starterPart(9, "DH")));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(9)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("真实守备位重复仍拦截")
+    void saveResult_duplicatedFieldingPosition_stillRejected() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        // SS 佔兩棒（其餘守位各一、含一個 DH）：排除 DH/EP 不得把真實守位重複一併放過
+        dto.setStats(List.of(
+                starterPart(1, "SS"), starterPart(2, "SS"), starterPart(3, "1B"), starterPart(4, "3B"),
+                starterPart(5, "LF"), starterPart(6, "CF"), starterPart(7, "RF"), starterPart(8, "C"),
+                starterPart(9, "DH")));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("守备位置重复"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+        verify(gamePlayerStatRepository, never()).findByGameId(anyLong());
+    }
+
     /* ---------- fixtures ---------- */
 
     private GamePlayerStat batterRow() {
@@ -257,6 +319,17 @@ class GameServiceSaveResultTest {
         g.setGameNumber(gameNumber);
         g.setVenue(venue);
         return g;
+    }
+
+    /** 先發打者筆：同隊、帶打序與位置（isPitcher=0），球員 id 由打序推得 */
+    private SaveGameResultDTO.StatPart starterPart(int battingOrder, String position) {
+        SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(2000L + battingOrder));
+        part.setIsPitcher(Integer.valueOf(0));
+        part.setBattingOrder(Integer.valueOf(battingOrder));
+        part.setPosition(position);
+        return part;
     }
 
     private void givenExistingRows(GamePlayerStat... rows) {

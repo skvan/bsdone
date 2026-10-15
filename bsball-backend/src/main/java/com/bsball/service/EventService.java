@@ -54,6 +54,7 @@ public class EventService {
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final GameRepository gameRepository;
+    private final LeagueSpecialRuleService leagueSpecialRuleService;
 
     public PageResult<Event> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -92,6 +93,9 @@ public class EventService {
         if (visibleLeagueIds != null && (entity.getLeagueId() == null || !visibleLeagueIds.contains(entity.getLeagueId()))) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8d5b\u4e8b");
         }
+        // 联赛特殊规则生效值（Issue #275，设计稿 §3.3）：随详情响应附带；
+        // 未挂联赛（leagueId 为空）由服务直接返回默认值（内部早退、零查库），此处不重复默认值字面量
+        entity.setSpecialRules(this.leagueSpecialRuleService.getEffective(entity.getLeagueId()));
         return entity;
     }
 
@@ -176,7 +180,7 @@ public class EventService {
     }
 
     @Generated
-    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, GameRepository gameRepository) {
+    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, GameRepository gameRepository, LeagueSpecialRuleService leagueSpecialRuleService) {
         this.eventRepository = eventRepository;
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
@@ -184,6 +188,7 @@ public class EventService {
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.gameRepository = gameRepository;
+        this.leagueSpecialRuleService = leagueSpecialRuleService;
     }
 }
 

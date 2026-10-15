@@ -299,6 +299,39 @@ var Ae={
         ownBusy.value=!1
       }
     }
+    // ---- 联赛特殊规则（Issue #275）：EP 制（额外打击者）与强制换局开关 ----
+    const ruleDlg=f(!1),ruleLeague=f(null),ruleLoading=f(!1),ruleForm=E({
+      extraBatter:!1,forceHalf:!0
+    }
+    ),{
+      submitting:ruleSaving,withSubmitLock:lockRuleSave
+    }
+    =I();
+    async function openSpecialRules(n){
+      ruleLeague.value=n,ruleDlg.value=!0,ruleLoading.value=!0,ruleForm.extraBatter=!1,ruleForm.forceHalf=!0;
+      const e=await k.specialRules(n.id);
+      if(e?.rules){
+        ruleForm.extraBatter=e.rules.extraBatter===!0,ruleForm.forceHalf=e.rules.forceHalf!==!1,ruleLoading.value=!1
+      }
+      else{
+        // 读取失败：404（不可见/跨租户）走 getData 静默分支不 toast，仅非 404 异常由请求层提示；此处关窗防误把默认值当生效值保存
+        ruleLoading.value=!1,ruleDlg.value=!1
+      }
+    }
+    async function saveSpecialRules(){
+      await lockRuleSave(async()=>{
+        try{
+          await k.updateSpecialRules(ruleLeague.value.id,{
+            extraBatter:ruleForm.extraBatter,forceHalf:ruleForm.forceHalf
+          }
+          ),v.success("保存成功"),ruleDlg.value=!1
+        }
+        catch(e){
+          v.error(e?.message||"保存失败")
+        }
+      }
+      )
+    }
     function S(){
       i.page=1,u()
     }
@@ -450,6 +483,12 @@ var Ae={
               }
               ,{
                 default:a(()=>[s("主办方",-1)]),_:1
+              }
+              ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:specialRule")?(C(),D(m,{
+                key:4,link:"",type:"primary",onClick:R4=>openSpecialRules(c)
+              }
+              ,{
+                default:a(()=>[s("特殊规则",-1)]),_:1
               }
               ,8,["onClick"])):Ee("",!0),d(Ab)("business:league:dissolve")?(C(),D(m,{
                 key:3,link:"",type:"danger",onClick:R4=>JDissolve(c)
@@ -609,7 +648,55 @@ var Ae={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"])
+      ,8,["modelValue"]),t(te,{
+        modelValue:ruleDlg.value,"onUpdate:modelValue":R5=>ruleDlg.value=R5,title:`特殊规则：${ruleLeague.value?.name??""}`,width:"480","close-on-click-modal":d(R)
+      }
+      ,{
+        footer:a(()=>[t(m,{
+          onClick:R5=>ruleDlg.value=!1
+        }
+        ,{
+          default:a(()=>[s("取消",-1)]),_:1
+        }
+        ),t(m,{
+          type:"primary",loading:d(ruleSaving),disabled:d(ruleSaving)||ruleLoading.value,onClick:saveSpecialRules
+        }
+        ,{
+          default:a(()=>[s("保存",-1)]),_:1
+        }
+        ,8,["loading","disabled"])]),default:a(()=>[fe(t(z,{
+          "label-width":"90px"
+        }
+        ,{
+          default:a(()=>[t(p,{
+            label:"额外打击者"
+          }
+          ,{
+            default:a(()=>[t(Z,{
+              modelValue:ruleForm.extraBatter,"onUpdate:modelValue":R5=>ruleForm.extraBatter=R5
+            }
+            ,null,8,["modelValue"]),e[21]||(e[21]=x("span",{
+              class:"form-hint"
+            }
+            ,"允许棒垒球联赛启用 EP 额外打击者（打击人数超默认）（默认关闭）",-1))]),_:1
+          }
+          ),t(p,{
+            label:"强制换局"
+          }
+          ,{
+            default:a(()=>[t(Z,{
+              modelValue:ruleForm.forceHalf,"onUpdate:modelValue":R5=>ruleForm.forceHalf=R5
+            }
+            ,null,8,["modelValue"]),e[22]||(e[22]=x("span",{
+              class:"form-hint"
+            }
+            ,"关闭后该联赛比赛不提供强制换局（默认开启）",-1))]),_:1
+          }
+          )]),_:1
+        }
+        ),[[ae,ruleLoading.value]])]),_:1
+      }
+      ,8,["modelValue","title","close-on-click-modal"])
       ])
     }
     

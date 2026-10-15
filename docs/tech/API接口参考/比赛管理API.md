@@ -66,6 +66,7 @@ G-->>C : 200 OK
 - 功能：赛事的增删改查、按联赛与租户过滤、导入比赛结果
 - 权限：基于租户与联赛的数据范围控制
 - 状态：默认draft，可按需推进
+- 详情附带：GET /event/{id} 响应新增 `specialRules` 字段（联赛特殊规则生效值，瞬态、仅详情接口返回；Issue #275，见文末「联赛特殊规则开关与 EP 制」）
 
 ```mermaid
 classDiagram
@@ -231,6 +232,7 @@ EventService --> EventRepository
   - 参考：`EventApi.java:51-55`
 - GET /event/{id}
   - 作用：获取单个赛事详情
+  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275，见文末专题）
   - 参考：`EventApi.java:57-64`
 - POST /event/create
   - 作用：创建赛事
@@ -342,6 +344,25 @@ EventService --> EventRepository
 - 历史赛事（require_roster=false）不校验（决策 8 宽松口径，照顾存量比赛）。
 - `require_roster` 创建时定型：编辑赛事一律沿用存量值（无 UI 开关，防请求体缺省把存量 false 赛事翻转）。
 - 排赛选队候选：`GET /event/{eventId}/game-team-options`（见《球队球员API》）；联盟解散守卫同步改为「名下赛事全部 ended 才可解散」（决策 6）。
+
+## 联赛特殊规则开关与 EP 制（Issue #275 / #274）
+
+联赛级特殊规则开关：`extra_batter`（EP 制 / 额外打击者）与 `force_half`（强制换局），存储于 `bs_league_special_rule`（唯一约束 `(league_id, rule_key)`，规则行只写不删）。取值语义：**行存在 = 以记录为准（支持显式关闭）；无记录 = 默认值**（extraBatter=false、forceHalf=true）。
+
+### 规则读写端点（联赛级配置）
+
+| 方法 | 路径 | 用途 | 说明 |
+|---|---|---|---|
+| GET | /league/{id}/special-rules | 读取生效值（含默认兜底） | 响应 `Result<Map>`，形状 `{rules:{extraBatter:boolean, forceHalf:boolean}}` |
+| PUT | /league/{id}/special-rules | 更新规则（camelCase 键，支持子集 / 全集） | body `{rules:{extraBatter, forceHalf}}`；未知键名 / 非布尔 JSON 值 / 缺失值 / 空映射 400，联赛不存在或已软删 404，跨租户 403；返回更新后生效值 |
+
+- 权限点：`business:league:specialRule`（联赛列表行内「特殊规则」按钮 + 两接口注册）；租管仅可操作本租户联赛，超管可跨租户。
+- 存量回填（迁移 `V20261015100000__league_special_rule.sql`）：含超默认阵型（棒球 >9 / 垒球 >10 打击）的联赛自动开启 `extra_batter`（打序统计 ∪ 阵容快照双证据，幂等；未挂联赛赛事跳过）。
+
+### 赛事详情附带（消费侧下发）
+
+- `GET /event/{id}` 响应新增 `specialRules: {extraBatter, forceHalf}`：由 EventService 按赛事 `leagueId` 取生效值附带（未挂联赛 / 无记录 → 默认兜底）；该字段为瞬态（不落表），仅详情接口装配，list / create / update 等响应不含（null 省略）。
+- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
 
 ---
 

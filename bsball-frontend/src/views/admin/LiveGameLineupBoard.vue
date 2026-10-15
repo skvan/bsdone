@@ -170,6 +170,7 @@ const loading = ref(true);
 const saving = ref(false);
 const mode = ref('BASEBALL');
 const eventName = ref('');
+const extraBatter = ref(false);     // 联赛级「额外打击者（EP）」开关；缺省/加载失败保持 false（fail-closed）
 const game = ref(null);
 const currentGameId = ref(null);
 const gameStatus = ref('');
@@ -183,13 +184,18 @@ const templateDialog = ref({ visible: false, team: 'away', list: [], selected: n
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 
-// 与旧件 el() 文案逐字一致
-const rosterHint = computed(() => mode.value === 'SOFTBALL'
-  ? '阵容确认（垒球：10-11 人；10 人为「P+八守位+XF」或「DH+八守位+XF」；11 人为再加 DH 都上场打击）'
-  : '阵容确认（棒球：9-10 人；9 人可为「P+八守位」或「DH+八守位」；10 人为「P+八守位+DH」）');
+// 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
+const rosterHint = computed(() => {
+  if (mode.value === 'SOFTBALL') return extraBatter.value ? '阵容确认（垒球：10-11 人）' : '阵容确认（垒球：10 人）';
+  return extraBatter.value ? '阵容确认（棒球：9-12 人，含 EP 额外打击者）' : '阵容确认（棒球：9 人）';
+});
 
-const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null));
-const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null));
+const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null), {
+  extraBatter,
+});
+const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null), {
+  extraBatter,
+});
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
 
@@ -758,6 +764,8 @@ onMounted(async () => {
     const e = await eventApi.get(eventId.value);
     eventName.value = e?.name ?? '';
     mode.value = e?.gameMode ?? 'BASEBALL';
+    // 联赛级特殊规则：缺字段/加载失败保持 false（fail-closed），仅显式 true 才开启
+    extraBatter.value = e?.specialRules?.extraBatter === true;
     const [teamList, stadiumList] = await Promise.all([
       eventRegistrationApi.gameTeamOptions(eventId.value),
       fetchAllStadiums().catch(() => []),
