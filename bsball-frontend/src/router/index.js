@@ -59,6 +59,7 @@ import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
 import EventTeams from '../views/admin/EventTeams.vue';
+import EventOrderBook from '../views/admin/EventOrderBook.vue';
 import TeamEventRegistrations from '../views/admin/TeamEventRegistrations.vue';
 import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
@@ -191,6 +192,7 @@ const routes = [
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             { path: 'events', name: 'AdminEvents', component: Events },
             { path: 'events/:eventId/teams', name: 'AdminEventTeams', component: EventTeams, meta: { title: '参赛球队' } },
+            { path: 'events/:eventId/order-book', name: 'AdminEventOrderBook', component: EventOrderBook, meta: { title: '秩序册' } },
             { path: 'teams/:id/event-registrations', name: 'AdminTeamEventRegistrations', component: TeamEventRegistrations, meta: { title: '赛事报名' } },
             { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
             { path: 'events/:eventId/games', name: 'AdminGames', component: Games },

@@ -6,6 +6,7 @@
         <span class="page-title">{{ t('orderBook.teamsTitle') }}</span>
         <span v-if="eventName" class="page-sub">· {{ eventName }}</span>
         <div class="head-actions">
+          <el-button @click="openOrderBook">{{ t('orderBook.viewBook') }}</el-button>
           <el-button v-if="canManage" type="primary" @click="openInvite">{{ t('orderBook.invite') }}</el-button>
         </div>
       </div>
@@ -149,6 +150,10 @@ async function loadEventName() {
 
 function goBack() {
   router.push({ name: 'AdminGames', params: { eventId: eventId.value } });
+}
+
+function openOrderBook() {
+  router.push({ name: 'AdminEventOrderBook', params: { eventId: eventId.value } });
 }
 
 async function openInvite() {
