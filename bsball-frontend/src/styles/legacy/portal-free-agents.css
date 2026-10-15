@@ -1,0 +1,81 @@
+/* 门户「自由球员」页样式（Issue #329，规格对齐 portal-leagues.css） */
+.portal-free-agents {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.free-agents-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.free-agents-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.free-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.free-agent-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--el-bg-color, #fff);
+  transition: box-shadow 0.2s ease;
+}
+
+.free-agent-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.free-agent-avatar {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.free-agent-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.free-agent-body {
+  min-width: 0;
+}
+
+.free-agent-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.free-agent-pos {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #909399);
+}
+
+.free-agents-pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}

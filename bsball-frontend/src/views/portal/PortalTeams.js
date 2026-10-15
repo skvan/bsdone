@@ -8,7 +8,9 @@ import { exportSfc as j } from '../../utils/exportSfc';
 import { teamApi as z } from '../../api/business';
 import { useTenantRouter as D } from '../../composables/useTenantRouter';
 import { onTeamLogoError as E } from '../../utils/placeholderAssets';
+import { onAvatarError as Ah } from '../../utils/placeholderAssets';
 import { DEFAULT_TEAM_SVG_PATH as F } from '../../utils/placeholderAssets';
+import { DEFAULT_AVATAR_SVG_PATH as Ag } from '../../utils/placeholderAssets';
 import '../../styles/legacy/portal-teams.css';
 var G={
   class:"portal-teams"
@@ -137,7 +139,7 @@ var G={
         }
         ,null,40,O)):o("",!0),t.shortName&&t.shortName!==t.name?(r(),s("p",Q,i(t.shortName),1)):o("",!0),t.city||t.stadium?(r(),s("p",X,[t.city?(r(),s("span",Y,i(t.city),1)):o("",!0),t.city&&t.stadium?(r(),s("span",Z," · ")):o("",!0),t.stadium?(r(),s("span",tt,i(n(p)("teams.homeStadium"))+"："+i(t.stadium),1)):o("",!0)])):o("",!0),t.description?(r(),s("p",et,i(m(t.description,60)),1)):o("",!0),t.contactPerson||t.contactPhone||t.contactEmail?(r(),s("p",at,i(T(t)),1)):o("",!0)])]),_:2
       }
-      ,1032,["to"]))),128))])),!u.value&&_.value.length===0?(r(),v(N,{
+      ,1032,["to"]))),128)),v(B,{key:"free-agents",to:n(x)("teams/free-agents"),class:"team-card portal-card-link"},{default:k(()=>[c("div",q,[c("div",H,[c("img",{src:n(Ag),alt:n(p)("teams.freeAgentsCard"),onError:n(Ah)},null,8,["alt","onError"])]),c("h3",K,n(p)("teams.freeAgentsCard"),1)])]),_:2},1032,["to"])])),!u.value&&_.value.length===0?(r(),v(N,{
         key:2,description:n(p)("teams.noTeams")
       }
       ,null,8,["description"])):o("",!0)])

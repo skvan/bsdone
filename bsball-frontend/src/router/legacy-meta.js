@@ -65,6 +65,8 @@ export const ROUTE_TITLE_KEYS = {
   PortalEvents: "route.events",
   PortalGameDetail: "route.gameDetail",
   PortalTeams: "route.teams",
+  PortalLeagueDetail: "route.leagueDetail",
+  PortalFreeAgents: "route.freeAgents",
   PortalStarPlayers: "route.starPlayers",
   PortalTeamDetail: "route.teamDetail",
   PortalStadiumDetail: "route.stadiumDetail",

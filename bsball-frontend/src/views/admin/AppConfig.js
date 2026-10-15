@@ -235,7 +235,7 @@ var bl={
     }
     function $(r){
       return{
-        carousel:"轮播公告",nav:"快捷入口（四宫格，仅小屏时显示）",promo:"双栏推广（广告 / 购票，无栏目标题）",events:"赛事一览",teams:"联盟/球队",news:"资讯公告"
+        carousel:"轮播公告",nav:"快捷入口（四宫格，仅小屏时显示）",promo:"双栏推广（广告 / 购票，无栏目标题）",events:"赛事一览",teams:"球队",news:"资讯公告"
       }
       [r]??r
     }

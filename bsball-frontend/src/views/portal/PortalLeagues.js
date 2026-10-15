@@ -1,14 +1,17 @@
 // PortalLeagues —— 门户「联盟一览」（只读；申请入口已按口径移至管理台发起，管理员/上级审核）
 import { defineComponent, h, ref, onMounted } from 'vue';
 import { ElPagination, ElEmpty, ElMessage } from 'element-plus';
+import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { leagueApi } from '../../api/business';
+import { useTenantRouter } from '../../composables/useTenantRouter';
 import '../../styles/legacy/portal-leagues.css';
 
 export default defineComponent({
   name: 'PortalLeagues',
   setup() {
     const { t } = useI18n();
+    const { portalPath } = useTenantRouter();
 
     const loading = ref(false);
     const rows = ref([]);
@@ -33,7 +36,7 @@ export default defineComponent({
 
     return () => {
       const cards = rows.value.map((l) =>
-        h('div', { class: 'league-card', key: l.id }, [
+        h(RouterLink, { class: 'league-card portal-card-link', key: l.id, to: portalPath(`leagues/${l.id}`) }, [
           h('div', { class: 'league-head' }, [
             h('span', { class: 'league-title' }, l.name || ''),
             l.nameEn ? h('span', { class: 'league-sub' }, l.nameEn) : null
