@@ -6,7 +6,8 @@
  *  - DB 中未知 rule_key 读取时忽略；
  *  - 规则键与 API（camelCase）键的映射、默认值集中在服务内，避免散落；
  *  - 写路径：键名 / 值校验（未知键、非布尔值、空映射 → 400）→ 联赛存在性（不存在 / 已软删 → 404）
- *    → 租户守卫（超管可跨租户；其余限本租户，越界 403，对齐 LeagueProvisionService.requirePending）
+ *    → 租户 / 身份守卫（null 租户 fail-closed；超管可跨租户；其余限本租户，越界 403；
+ *      再经 assertCanManageLeague 拦截「同租户内受限身份」，对齐 LeagueService 同一资源的写守卫）
  *    → 按行 upsert（审计：createdBy / updatedBy = 当前用户）；
  *  - 规则行只写不删（无软删语义）。
  *
@@ -54,7 +55,9 @@ public class LeagueSpecialRuleService {
 
     /**
      * 读取联赛特殊规则生效值（含默认兜底，供赛事详情等只读消费）。
-     * 纯读取：不做联赛存在性 / 权限判定；无记录或未知 rule_key 均按默认值兜底。
+     * 纯读取：不做联赛存在性 / 权限判定（访问控制由调用入口负责——T4 在 EventService.get
+     * 通过租户 + 可见域校验后附带本值；写守卫 assertCanManageLeague 属写语义，不用于读路径）；
+     * 无记录或未知 rule_key 均按默认值兜底。
      *
      * @param leagueId 联赛ID
      * @return camelCase 键的生效值：{extraBatter, forceHalf}
@@ -79,7 +82,7 @@ public class LeagueSpecialRuleService {
 
     /**
      * 更新联赛特殊规则（camelCase 子集 / 全集），返回更新后的生效值。
-     * 校验顺序：键名 / 值校验（400）→ 联赛存在性（404）→ 租户守卫（403）→ 按行 upsert。
+     * 校验顺序：键名 / 值校验（400）→ 联赛存在性（404）→ 租户 / 身份守卫（403）→ 按行 upsert。
      *
      * @param leagueId 联赛ID
      * @param rules    camelCase 规则映射（如 {extraBatter: true}），支持子集更新
@@ -121,15 +124,22 @@ public class LeagueSpecialRuleService {
         return validated;
     }
 
-    /** 租户守卫：超管可跨租户；其余（租管）仅可操作本租户联赛（对齐 LeagueProvisionService.requirePending）。 */
+    /**
+     * 租户 / 身份守卫（评审修复：对齐仓库规范，Issue #275）：
+     *  1. 无租户上下文（null）→ 403（fail-closed，防止上下文缺失被静默放行）；
+     *  2. 非超管须操作本租户联赛（跨租户 403）；超管可跨租户（设计 §3.1）；
+     *  3. 再经仓库规范写守卫 {@link ResourceGuard#assertCanManageLeague(Long)} 拦截「同租户内受限身份」
+     *     （与 LeagueService 对同一资源的写守卫口径一致；租户相等校验作为第一道防线保留）。
+     */
     private void assertTenantAccess(League league) {
-        if (this.resourceGuard.isCurrentUserSuperAdmin()) {
-            return;
-        }
         Long currentTenantId = CurrentUserHolder.getTenantId();
-        if (currentTenantId != null && !currentTenantId.equals(league.getTenantId())) {
+        if (currentTenantId == null) {
             throw new BusinessException(403, "无权修改该联赛的特殊规则");
         }
+        if (!this.resourceGuard.isCurrentUserSuperAdmin() && !currentTenantId.equals(league.getTenantId())) {
+            throw new BusinessException(403, "无权修改该联赛的特殊规则");
+        }
+        this.resourceGuard.assertCanManageLeague(league.getId());
     }
 
     /** 按行 upsert：行存在则原地更新（保留 createdBy），不存在则新增；规则行只写不删。 */

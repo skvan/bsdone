@@ -2,7 +2,9 @@
  * 联赛级特殊规则开关（Issue #275）：LeagueSpecialRuleService 单元测试（Mockito 手工装配）。
  *
  * 覆盖：默认值兜底（无记录 / 部分键）、写入并回读生效值（upsert 新增 + 更新既有行）、
- *      非法键名与非法值拒绝（零写入）、租户守卫（租管跨租户 403 / 超管放行）、联赛不存在 404。
+ *      非法键名与非法值拒绝（零写入）、租户 / 身份守卫（租管本租户放行并委托规范守卫、
+ *      跨租户 403 零写入、超管跨租户放行、null 租户 fail-closed、规范守卫拒绝受限身份零写入）、
+ *      联赛不存在 404。
  * 纯单元测试：不启动 Spring 容器、不连接数据库。
  */
 package com.bsball.service;
@@ -10,6 +12,8 @@ package com.bsball.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -141,6 +145,9 @@ class LeagueSpecialRuleServiceTest {
         assertEquals(Boolean.FALSE, updated.getEnabled());
         assertEquals(88L, updated.getCreatedBy());
         assertEquals(USER_ID, updated.getUpdatedBy());
+
+        // 租管（本租户）放行路径：委托仓库规范守卫（与 LeagueService 对同一资源的写守卫一致）
+        verify(resourceGuard).assertCanManageLeague(LEAGUE_ID);
     }
 
     @Test
@@ -202,6 +209,41 @@ class LeagueSpecialRuleServiceTest {
         assertEquals(2L, savedRows.get(0).getTenantId());
         assertEquals(USER_ID, savedRows.get(0).getCreatedBy());
         assertEquals(USER_ID, savedRows.get(0).getUpdatedBy());
+
+        // 超管（跨租户）放行路径同样委托仓库规范守卫
+        verify(resourceGuard).assertCanManageLeague(7L);
+    }
+
+    @Test
+    @DisplayName("无租户上下文（null）被拒（fail-closed），不咨询守卫且零写入")
+    void updateRules_nullTenantContext_failClosedWithoutWrites() {
+        // 模拟调用方无租户上下文（上下文异常 / 未解析）：不允许静默放行
+        CurrentUserHolder.set(USER_ID, null);
+        when(leagueRepository.findById(LEAGUE_ID)).thenReturn(Optional.of(league(LEAGUE_ID, TENANT_ID)));
+
+        BusinessException forbidden = assertThrows(BusinessException.class,
+                () -> service.updateRules(LEAGUE_ID, Map.of("extraBatter", true)));
+
+        assertEquals(403, forbidden.getCode());
+        // fail-closed 先于身份 / 守卫判定：不咨询资源守卫、不落库
+        verifyNoInteractions(leagueSpecialRuleRepository, resourceGuard);
+    }
+
+    @Test
+    @DisplayName("规范守卫拒绝同租户受限身份 → 403 且零写入（守卫先于任何落库）")
+    void updateRules_guardRejectsRestrictedIdentity_forbiddenWithoutWrites() {
+        when(resourceGuard.isCurrentUserSuperAdmin()).thenReturn(false);
+        when(leagueRepository.findById(LEAGUE_ID)).thenReturn(Optional.of(league(LEAGUE_ID, TENANT_ID)));
+        // 同租户但受限身份：仓库规范守卫（自有联盟集合未命中）拒绝
+        doThrow(new BusinessException(403, "无权管理该联盟"))
+                .when(resourceGuard).assertCanManageLeague(LEAGUE_ID);
+
+        BusinessException forbidden = assertThrows(BusinessException.class,
+                () -> service.updateRules(LEAGUE_ID, Map.of("extraBatter", true)));
+
+        assertEquals(403, forbidden.getCode());
+        // 守卫在任何落库之前执行：拒绝后规则仓储零写入
+        verifyNoInteractions(leagueSpecialRuleRepository);
     }
 
     @Test
