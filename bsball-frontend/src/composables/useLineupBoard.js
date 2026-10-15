@@ -220,7 +220,8 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     syncPitcher();
   }
 
-  /** 打线列表独立拖人：位置码 = 仅守备投手 → 'P'；无 DH → 'DH'；已有 DH → 'EP'（EP 制落位） */
+  /** 打线列表独立拖人：位置码 = 仅守备投手 → 'P'；无 DH → 'DH'；已有 DH → 棒球 'EP'（EP 制落位），
+   *  垒球无 EP → 维持「DH 已有人」拒绝（垒球现口径最多 N 人打击，含 1 名 DH） */
   function addToBatting(player) {
     if (player == null || findRowIndex(rows.value, player.id) >= 0) return;
     const filled = rows.value.filter((r) => !isPlaceholder(r));
@@ -234,6 +235,11 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       fieldingPitcherId.value != null &&
       String(fieldingPitcherId.value) === String(player.id) &&
       !slotRow(rows.value, 'P');
+    // 垒球无 EP 制：已有 DH 时非投手不再新增（避免落出非法守备位 EP）
+    if (!isFieldingPitcher && slotRow(rows.value, 'DH') && mode.value === 'SOFTBALL') {
+      notice.value = `DH 已有人；垒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
+      return;
+    }
     const position = isFieldingPitcher ? 'P' : (slotRow(rows.value, 'DH') ? 'EP' : 'DH');
     takeFirstEmpty(makeRow(player, teamId.value, position));
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));

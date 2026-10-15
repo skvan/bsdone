@@ -388,3 +388,15 @@ test('开启态（补回 T7 挂起断言）：垒球 DH 制 10 人需指定先�
   assert.equal(b.validation.value.ok, true);
   assert.equal(b.lineupComplete.value, true);
 });
+
+test('垒球开启态：已有 DH 时 addToBatting 非投手 → 拒绝且不新增行（EP 仅棒球）', () => {
+  const b = board('SOFTBALL', true);
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 8 守位 + DH（投手未指定），9 人打击
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 9);
+  b.addToBatting(P(13)); // 无 EP 制 → 拒绝，不落 EP 行
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 9);
+  assert.equal(b.rows.value.length, 10);
+  assert.equal(b.pool.value.some((p) => p.id === 13), true); // 仍在池中，未被吃进打线
+  assert.equal(b.notice.value, 'DH 已有人；垒球现口径最多 11 人打击（含 1 名 DH）');
+});
