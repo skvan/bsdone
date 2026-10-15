@@ -57,15 +57,17 @@ public class LeagueSpecialRuleService {
      * 读取联赛特殊规则生效值（含默认兜底，供赛事详情等只读消费）。
      * 纯读取：不做联赛存在性 / 权限判定（访问控制由调用入口负责——T4 在 EventService.get
      * 通过租户 + 可见域校验后附带本值；写守卫 assertCanManageLeague 属写语义，不用于读路径）；
-     * 无记录或未知 rule_key 均按默认值兜底。
+     * leagueId 为空（未挂联赛）→ 直接返回默认值，不查库；无记录或未知 rule_key 均按默认值兜底。
      *
-     * @param leagueId 联赛ID
+     * @param leagueId 联赛ID；可为 null（未挂联赛，直接返回默认值）
      * @return camelCase 键的生效值：{extraBatter, forceHalf}
      */
     public Map<String, Boolean> getEffective(Long leagueId) {
-        Map<String, Boolean> effective = new LinkedHashMap<>();
-        effective.put(API_EXTRA_BATTER, DEFAULTS.get(RULE_EXTRA_BATTER));
-        effective.put(API_FORCE_HALF, DEFAULTS.get(RULE_FORCE_HALF));
+        if (leagueId == null) {
+            // 未挂联赛（EventService 透传 null）：直接返回默认值，零仓储交互
+            return defaults();
+        }
+        Map<String, Boolean> effective = defaults();
         for (LeagueSpecialRule row : this.leagueSpecialRuleRepository.findByLeagueId(leagueId)) {
             if (row.getEnabled() == null) {
                 continue;
@@ -78,6 +80,14 @@ public class LeagueSpecialRuleService {
             // 未知 rule_key：忽略（保持默认值）
         }
         return effective;
+    }
+
+    /** 默认生效值映射（camelCase 键、插入序固定：extraBatter、forceHalf）。 */
+    private static Map<String, Boolean> defaults() {
+        Map<String, Boolean> defaults = new LinkedHashMap<>();
+        defaults.put(API_EXTRA_BATTER, DEFAULTS.get(RULE_EXTRA_BATTER));
+        defaults.put(API_FORCE_HALF, DEFAULTS.get(RULE_FORCE_HALF));
+        return defaults;
     }
 
     /**

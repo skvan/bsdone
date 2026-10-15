@@ -1,7 +1,7 @@
 /*
  * 联赛级特殊规则开关（Issue #275）：LeagueSpecialRuleService 单元测试（Mockito 手工装配）。
  *
- * 覆盖：默认值兜底（无记录 / 部分键）、写入并回读生效值（upsert 新增 + 更新既有行）、
+ * 覆盖：默认值兜底（无记录 / 部分键 / 未挂联赛 null 早退零查库）、写入并回读生效值（upsert 新增 + 更新既有行）、
  *      非法键名与非法值拒绝（零写入）、租户 / 身份守卫（租管本租户放行并委托规范守卫、
  *      跨租户 403 零写入、超管跨租户放行、null 租户 fail-closed、规范守卫拒绝受限身份零写入）、
  *      联赛不存在 404。
@@ -81,6 +81,18 @@ class LeagueSpecialRuleServiceTest {
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
         // 读取路径不做联赛存在性 / 权限判定（默认兜底，仅供赛事详情与只读消费）
         verifyNoInteractions(leagueRepository, resourceGuard);
+    }
+
+    @Test
+    @DisplayName("leagueId 为空（未挂联赛）：直接返回默认值，零仓储交互（服务内 null 早退）")
+    void getEffective_nullLeagueId_returnsDefaultsWithoutQuery() {
+        Map<String, Boolean> effective = service.getEffective(null);
+
+        assertEquals(2, effective.size());
+        assertEquals(Boolean.FALSE, effective.get("extraBatter"));
+        assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        // 未挂联赛不得查库：仓储 / 联赛仓 / 守卫均零交互
+        verifyNoInteractions(leagueSpecialRuleRepository, leagueRepository, resourceGuard);
     }
 
     @Test
