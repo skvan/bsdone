@@ -15,7 +15,10 @@ export const leagueApi = {
   // ---- 建盟链路（批次②）：联盟主办方管理（仅超管/租管） ----
   owners: (id) => getData(`/api/league/${id}/owners`).then((d) => d ?? []),
   assignOwner: (id, userId) => post(`/api/league/${id}/owner/assign`, { userId }),
-  revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`)
+  revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`),
+  // ---- 联赛特殊规则（Issue #275）：EP 制（额外打击者）/ 强制换局开关；GET 返回生效值（含默认兜底） ----
+  specialRules: (id) => getData(`/api/league/${id}/special-rules`),
+  updateSpecialRules: (id, rules) => put(`/api/league/${id}/special-rules`, { rules })
 };
 
 // 球队负责人管理（建盟链路批次：指派球队管理员；受限角色仅本队；无主球队由超管/租管指派，Issue #318）
