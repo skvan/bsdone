@@ -35,18 +35,12 @@
               <span v-else class="muted">{{ t('invitePlayer.freeAgent') }}</span>
             </template>
           </el-table-column>
-          <el-table-column :label="t('invitePlayer.colInTeam')" width="90">
-            <template #default="{ row }">
-              <el-tag v-if="row.inThisTeam" type="warning" effect="light">{{ t('invitePlayer.inThisTeam') }}</el-tag>
-              <span v-else class="muted">-</span>
-            </template>
-          </el-table-column>
           <el-table-column :label="t('orderBook.colActions')" width="110" fixed="right">
             <template #default="{ row }">
               <el-button
                 link
                 type="primary"
-                :disabled="row.inThisTeam || creating"
+                :disabled="creating"
                 @click="generateInvite(row)"
               >
                 {{ t('invitePlayer.generate') }}
@@ -57,8 +51,16 @@
             {{ keyword ? t('invitePlayer.emptySearch') : t('invitePlayer.searchPlaceholder') }}
           </template>
         </el-table>
-        <div v-if="total > candidates.length" class="dialog-hint">
-          {{ t('invitePlayer.moreHint', { total }) }}
+        <div class="candidates-pager">
+          <el-pagination
+            :current-page="page"
+            :page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            @current-change="onPageChange"
+            @size-change="onSizeChange"
+          />
         </div>
         <div class="dialog-hint">{{ t('invitePlayer.genericHint') }}</div>
       </el-tab-pane>
@@ -144,6 +146,8 @@ const activeTab = ref('search');
 const keyword = ref('');
 const candidates = ref([]);
 const total = ref(0);
+const page = ref(1);
+const pageSize = ref(20);
 const searching = ref(false);
 const creating = ref(false);
 const invites = ref([]);
@@ -166,6 +170,7 @@ function buildLink(token) {
 const linkPreview = computed(() => buildLink(linkToken.value));
 
 let searchTimer = null;
+let searchSeq = 0;
 
 function clearSearchTimer() {
   if (searchTimer) {
@@ -184,6 +189,7 @@ watch(
     activeTab.value = 'search';
     keyword.value = '';
     candidates.value = [];
+    page.value = 1;
     runSearch();
     if (canRevoke.value) loadInvites();
   }
@@ -191,6 +197,7 @@ watch(
 
 watch(keyword, () => {
   clearSearchTimer();
+  page.value = 1;
   searchTimer = setTimeout(runSearch, 300);
 });
 
@@ -198,21 +205,36 @@ onBeforeUnmount(clearSearchTimer);
 
 async function runSearch() {
   if (props.teamId == null) return;
+  const my = ++searchSeq;
   searching.value = true;
   try {
-    const page = await accountApi.inviteCandidates(props.teamId, {
+    const pageData = await accountApi.inviteCandidates(props.teamId, {
       keyword: keyword.value || undefined,
-      page: 1,
-      pageSize: 20
+      page: page.value,
+      pageSize: pageSize.value
     });
-    candidates.value = page.list;
-    total.value = page.total;
+    if (my !== searchSeq) return;
+    candidates.value = pageData.list;
+    total.value = pageData.total;
   } catch {
+    if (my !== searchSeq) return;
     candidates.value = [];
     total.value = 0;
   } finally {
-    searching.value = false;
+    if (my === searchSeq) searching.value = false;
   }
+}
+
+function onPageChange(p) {
+  clearSearchTimer();
+  page.value = p;
+  runSearch();
+}
+
+function onSizeChange(size) {
+  pageSize.value = size;
+  page.value = 1;
+  runSearch();
 }
 
 async function loadInvites() {
@@ -285,6 +307,12 @@ function inviteStatusType(status) {
 <style scoped>
 .search-input {
   margin-bottom: 10px;
+}
+
+.candidates-pager {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .dialog-hint {

@@ -1913,8 +1913,6 @@
     "claimed": "Claimed",
     "unclaimed": "Unclaimed",
     "colTeams": "Current Teams",
-    "colInTeam": "This Team",
-    "inThisTeam": "Already on team",
     "freeAgent": "Free agent",
     "generate": "Generate Invite",
     "emptySearch": "No matching players",
@@ -1939,8 +1937,7 @@
     "emptyInvites": "No invites generated yet",
     "createFailed": "Generate failed",
     "revokeFailed": "Revoke failed",
-    "genericHint": "Players already on this team need no invite; claimed players receive a generic link (join after their confirmation).",
-    "loadFailed": "Load failed",
-    "moreHint": "{total} players in total, refine with a keyword"
+    "genericHint": "Only players not on this team are listed; claimed players receive a generic link (join after their confirmation).",
+    "loadFailed": "Load failed"
   }
 }
