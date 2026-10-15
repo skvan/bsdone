@@ -718,7 +718,7 @@ public class GameService {
                 throw new BusinessException(400, sceneLabel + "\u5931\u8d25\uff1a\u7403\u961f(" + teamId + ")\u6709\u6253\u5e8f\u7684\u5148\u53d1\u4e0d\u8db3 9 \u4eba\uff0c\u65e0\u6cd5\u6821\u9a8c\u5b88\u5907\u4f4d\u7f6e");
             }
             List<SaveGameResultDTO.StatPart> starters = battingOrderRows.stream().limit(9L).toList();
-            List<String> positions = starters.stream().map(s -> s.getPosition() == null ? "" : s.getPosition().trim().toUpperCase()).filter(p -> !p.isBlank()).filter(p -> !"PH".equals(p)).toList();
+            List<String> positions = starters.stream().map(s -> s.getPosition() == null ? "" : s.getPosition().trim().toUpperCase()).filter(p -> !p.isBlank()).filter(p -> !"PH".equals(p) && !"DH".equals(p) && !"EP".equals(p)).toList();
             LinkedHashSet<String> unique = new LinkedHashSet<>(positions);
             if (unique.size() == positions.size()) continue;
             throw new BusinessException(400, sceneLabel + "\u5931\u8d25\uff1a\u7403\u961f(" + teamId + ")\u6709\u6253\u5e8f\u7684\u5148\u53d1\u5b88\u5907\u4f4d\u7f6e\u91cd\u590d");
