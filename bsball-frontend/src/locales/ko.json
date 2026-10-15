@@ -1902,8 +1902,6 @@
     "claimed": "연결됨",
     "unclaimed": "미연결",
     "colTeams": "현 소속팀",
-    "colInTeam": "본 팀",
-    "inThisTeam": "이미 소속",
     "freeAgent": "무소속",
     "generate": "초대 생성",
     "emptySearch": "일치하는 선수가 없습니다",
@@ -1928,8 +1926,7 @@
     "emptyInvites": "생성된 초대가 없습니다",
     "createFailed": "생성 실패",
     "revokeFailed": "철회 실패",
-    "genericHint": "「이미 소속」 선수는 초대가 필요 없습니다. 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
-    "loadFailed": "불러오기 실패",
-    "moreHint": "총 {total}명입니다. 키워드로 좁혀 주세요"
+    "genericHint": "본 팀에 소속되지 않은 선수만 표시합니다. 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
+    "loadFailed": "불러오기 실패"
   }
 }

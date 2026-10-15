@@ -1906,8 +1906,6 @@
     "claimed": "已認領",
     "unclaimed": "未認領",
     "colTeams": "現屬球隊",
-    "colInTeam": "本隊",
-    "inThisTeam": "已在本隊",
     "freeAgent": "自由球員",
     "generate": "產生邀請",
     "emptySearch": "未找到符合的球員",
@@ -1932,8 +1930,7 @@
     "emptyInvites": "尚無已產生的邀請",
     "createFailed": "產生失敗",
     "revokeFailed": "撤銷失敗",
-    "genericHint": "「已在本隊」的球員無需邀請；已認領球員將產生通用連結（本人確認後入隊）。",
-    "loadFailed": "載入失敗",
-    "moreHint": "共 {total} 名球員，請輸入關鍵字縮小範圍"
+    "genericHint": "清單僅顯示未在本隊的球員；已認領球員將產生通用連結（本人確認後入隊）。",
+    "loadFailed": "載入失敗"
   }
 }

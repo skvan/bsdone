@@ -1907,8 +1907,6 @@
     "claimed": "紐付け済み",
     "unclaimed": "未紐付け",
     "colTeams": "所属チーム",
-    "colInTeam": "本チーム",
-    "inThisTeam": "在籍中",
     "freeAgent": "フリー",
     "generate": "招待を発行",
     "emptySearch": "該当選手なし",
@@ -1933,8 +1931,7 @@
     "emptyInvites": "発行済みの招待はありません",
     "createFailed": "発行に失敗しました",
     "revokeFailed": "取消に失敗しました",
-    "genericHint": "「在籍中」の選手への招待は不要です。紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
-    "loadFailed": "読み込みに失敗しました",
-    "moreHint": "全 {total} 名。キーワードで絞り込んでください"
+    "genericHint": "本チームに未在籍の選手のみ表示します。紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
+    "loadFailed": "読み込みに失敗しました"
   }
 }

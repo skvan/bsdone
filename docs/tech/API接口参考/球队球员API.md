@@ -460,7 +460,7 @@ Exec --> End(["返回结果"])
 | POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
 | GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
 | GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
-| GET | /team/{teamId}/player-invite-candidates | 全量球员候选搜索（keyword 匹配姓名/昵称/简称；附认领状态、现属球队、已在本队标记；分页，pageSize 上限 100，按 id 升序） | 可管理该球队 |
+| GET | /team/{teamId}/player-invite-candidates | 球员候选搜索：本租户未删且**当前不在本队**的球员（排除已在本队者）；keyword 匹配姓名/昵称/简称；附认领状态、现属球队；分页，pageSize 上限 100，按 id 升序 | 可管理该球队 |
 | POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 可管理该球队 |
 | GET | /team/{teamId}/player-claim-invites | 入队邀请列表（含 token 供复制链接、绑定球员名、状态/使用次数/有效期） | 可管理该球队 |
 | POST | /team/{teamId}/player-claim-invites/{id}/revoke | 撤销入队邀请（幂等；跨队/不存在 404） | 可管理该球队 |
