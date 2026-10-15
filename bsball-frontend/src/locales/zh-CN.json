@@ -457,7 +457,7 @@
     "home": "首页",
     "expandMenu": "展开菜单",
     "events": "赛事一览",
-    "teams": "联盟球队",
+    "teams": "球队",
     "starPlayers": "明星球员",
     "news": "资讯公告",
     "stats": "数据排行",
@@ -728,7 +728,9 @@
     "events": "赛事一览",
     "eventGames": "赛程与结果",
     "gameDetail": "比赛详情",
-    "teams": "联盟球队",
+    "teams": "球队",
+    "leagueDetail": "联盟详情",
+    "freeAgents": "自由球员",
     "starPlayers": "明星球员",
     "teamDetail": "球队详情",
     "playerDetail": "球员详情",
@@ -812,7 +814,7 @@
   },
   "home": {
     "eventsTitle": "赛事一览",
-    "teamsTitle": "联盟球队",
+    "teamsTitle": "球队",
     "newsTitle": "资讯公告",
     "newsTitleEn": "news",
     "more": "查看更多 >",
@@ -827,9 +829,19 @@
     "promoTicketAlt": "购票"
   },
   "teams": {
-    "title": "联盟球队",
+    "title": "球队",
+    "freeAgentsCard": "自由球员",
     "noTeams": "暂无球队",
     "homeStadium": "主场"
+  },
+  "leagueDetail": {
+    "events": "下辖赛事",
+    "emptyEvents": "该联盟暂无赛事",
+    "notFound": "联盟不存在或已删除"
+  },
+  "freeAgents": {
+    "title": "自由球员",
+    "empty": "暂无自由球员"
   },
   "starPlayers": {
     "title": "明星球员",

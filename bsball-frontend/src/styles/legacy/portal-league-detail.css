@@ -1,0 +1,30 @@
+/* 门户「联盟详情」页增量样式（Issue #329；基础网格/卡片复用 portal-leagues.css） */
+.league-detail-info {
+  margin-bottom: 4px;
+}
+
+.league-detail-name-en {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #909399);
+}
+
+.league-detail-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.league-detail-events-title {
+  margin: 20px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.league-card .league-meta {
+  margin: 2px 0 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary, #909399);
+}

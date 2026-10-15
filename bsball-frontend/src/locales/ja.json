@@ -728,6 +728,8 @@
     "eventGames": "日程・結果",
     "gameDetail": "試合詳細",
     "teams": "チーム",
+    "leagueDetail": "リーグ詳細",
+    "freeAgents": "フリーエージェント",
     "starPlayers": "スター選手",
     "teamDetail": "チーム詳細",
     "playerDetail": "選手詳細",
@@ -822,8 +824,18 @@
   },
   "teams": {
     "title": "チーム",
+    "freeAgentsCard": "フリーエージェント",
     "noTeams": "チームがありません",
     "homeStadium": "本拠地"
+  },
+  "leagueDetail": {
+    "events": "大会一覧",
+    "emptyEvents": "このリーグには大会がありません",
+    "notFound": "リーグが見つかりません"
+  },
+  "freeAgents": {
+    "title": "フリーエージェント",
+    "empty": "フリーエージェントはいません"
   },
   "starPlayers": {
     "title": "スター選手",

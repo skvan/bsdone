@@ -727,6 +727,8 @@
     "eventGames": "일정 및 결과",
     "gameDetail": "경기 상세",
     "teams": "팀",
+    "leagueDetail": "리그 상세",
+    "freeAgents": "자유 계약 선수",
     "starPlayers": "스타 선수",
     "teamDetail": "팀 상세",
     "playerDetail": "선수 상세",
@@ -821,8 +823,18 @@
   },
   "teams": {
     "title": "팀",
+    "freeAgentsCard": "자유 계약 선수",
     "noTeams": "팀 없음",
     "homeStadium": "홈구장"
+  },
+  "leagueDetail": {
+    "events": "소속 대회",
+    "emptyEvents": "이 리그에 등록된 대회가 없습니다",
+    "notFound": "리그를 찾을 수 없습니다"
+  },
+  "freeAgents": {
+    "title": "자유 계약 선수",
+    "empty": "자유 계약 선수가 없습니다"
   },
   "starPlayers": {
     "title": "스타 선수",

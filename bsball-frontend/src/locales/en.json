@@ -728,6 +728,8 @@
     "eventGames": "Schedule & Results",
     "gameDetail": "Game Detail",
     "teams": "Teams",
+    "leagueDetail": "League Detail",
+    "freeAgents": "Free Agents",
     "starPlayers": "Star Players",
     "teamDetail": "Team Detail",
     "playerDetail": "Player Detail",
@@ -822,8 +824,18 @@
   },
   "teams": {
     "title": "Teams",
+    "freeAgentsCard": "Free Agents",
     "noTeams": "No teams",
     "homeStadium": "Home"
+  },
+  "leagueDetail": {
+    "events": "Events",
+    "emptyEvents": "No events in this league",
+    "notFound": "League not found"
+  },
+  "freeAgents": {
+    "title": "Free Agents",
+    "empty": "No free agents"
   },
   "starPlayers": {
     "title": "Star Players",

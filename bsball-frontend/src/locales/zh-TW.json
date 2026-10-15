@@ -456,7 +456,7 @@
     "leagues": "聯盟",
     "home": "首頁",
     "events": "賽事一覽",
-    "teams": "聯盟球隊",
+    "teams": "球隊",
     "starPlayers": "明星球員",
     "news": "資訊公告",
     "stats": "數據排行",
@@ -726,7 +726,9 @@
     "events": "賽事一覽",
     "eventGames": "賽程與結果",
     "gameDetail": "比賽詳情",
-    "teams": "聯盟球隊",
+    "teams": "球隊",
+    "leagueDetail": "聯盟詳情",
+    "freeAgents": "自由球員",
     "starPlayers": "明星球員",
     "teamDetail": "球隊詳情",
     "playerDetail": "球員詳情",
@@ -805,7 +807,7 @@
   },
   "home": {
     "eventsTitle": "賽事一覽",
-    "teamsTitle": "聯盟球隊",
+    "teamsTitle": "球隊",
     "newsTitle": "資訊公告",
     "newsTitleEn": "news",
     "more": "查看更多 >",
@@ -820,9 +822,19 @@
     "promoTicketAlt": "購票"
   },
   "teams": {
-    "title": "聯盟球隊",
+    "title": "球隊",
+    "freeAgentsCard": "自由球員",
     "noTeams": "暫無球隊",
     "homeStadium": "主場"
+  },
+  "leagueDetail": {
+    "events": "所屬賽事",
+    "emptyEvents": "此聯盟暫無賽事",
+    "notFound": "聯盟不存在或已刪除"
+  },
+  "freeAgents": {
+    "title": "自由球員",
+    "empty": "暫無自由球員"
   },
   "starPlayers": {
     "title": "明星球員",
