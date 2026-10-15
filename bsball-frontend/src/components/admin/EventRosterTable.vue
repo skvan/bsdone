@@ -3,7 +3,7 @@
     ref="tableRef"
     v-loading="loading"
     :data="rows"
-    max-height="420"
+    :max-height="maxHeight"
     @selection-change="onSelectionChange"
   >
     <el-table-column v-if="selectable" type="selection" width="44" />
@@ -35,6 +35,8 @@ defineProps({
   selectable: { type: Boolean, default: false },
   /** 显示"在队/已离队"列（查看态） */
   showCurrentInTeam: { type: Boolean, default: false },
+  /** 表格最大高度；整册打印页传 null 取消限高（默认 420 维持既有弹窗观感） */
+  maxHeight: { type: [Number, String], default: 420 },
   emptyText: { type: String, default: '' }
 });
 
