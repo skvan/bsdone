@@ -9,9 +9,10 @@ import { isPlaceholder, posOf } from '../src/utils/lineupBoardRules.js';
 const P = (id) => ({ id, name: `球员${id}`, number: id, teamId: 7 });
 const FIELD8 = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 
-function board(mode = 'BASEBALL') {
-  const b = useLineupBoard(ref(mode), ref(7));
-  b.setRoster([...Array(12)].map((_, i) => P(i + 1)));
+// 开关缺省 = 不传 opts（fail-closed：关闭）；开启态传布尔值，内部构造 extraBatter ref
+function board(mode = 'BASEBALL', extraBatter) {
+  const b = useLineupBoard(ref(mode), ref(7), extraBatter === undefined ? {} : { extraBatter: ref(extraBatter) });
+  b.setRoster([...Array(16)].map((_, i) => P(i + 1)));
   return b;
 }
 function fill8(b, from = 20) {
@@ -133,18 +134,28 @@ test('放 DH：投手自动移出打线、DH 制 9 行校验通过、有 notice'
   assert.equal(b.lastDhAddedFromPoolId.value, 12);
 });
 
-test('仅守备投手拖进打线列表 → 10 人打击（P+8+DH）；默认关闭口径下被拒（开关接入见设计稿 §4.3）', () => {
+test('开启态（补回 T7 挂起断言）：仅守备投手拖进打线列表 → 10 人打击（P+8+DH）校验通过', () => {
+  const b = board('BASEBALL', true);
+  assert.equal(b.maxCount.value, 12);
+  b.placeAtSlot(P(3), 'P');
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 决策 6b：投手移出打线 → 9 人打击
+  b.addToBatting(P(3));       // 投手拖回打线 → 10 人打击
+  assert.equal(b.rows.value.length, 10);
+  assert.equal(posOf(b.rows.value[9]), 'P');
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.lineupComplete.value, true);
+});
+
+test('关闭态（缺省 opts）：打线满 9 人后 addToBatting 被拒且提示未开放 EP 制', () => {
   const b = board();
   b.placeAtSlot(P(3), 'P');
   fill8(b);
-  b.placeAtSlot(P(12), 'DH');
-  b.addToBatting(P(3));
-  assert.equal(b.rows.value.length, 10);
-  assert.equal(posOf(b.rows.value[9]), 'P');
-  // 默认口径变化（#274/#275）：extraBatter 关闭时棒球 10 人阵（P+8+DH）被拒并提示未开放 EP 制；
-  // 开启态的通过断言待 useLineupBoard 接入 opts（设计稿 §4.3）后恢复
-  assert.equal(b.validation.value.ok, false);
-  assert.match(b.validation.value.msg ?? '', /未开放 EP 制/);
+  b.placeAtSlot(P(12), 'DH'); // 9 人满：8 守位 + DH（投手转仅守备）
+  b.addToBatting(P(3));       // 投手想回打线 → 被开关上限门拦截
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 9);
+  assert.match(b.notice.value, /未开放 EP 制/);
+  assert.match(b.notice.value, /上限 9 人/);
 });
 
 test('8 守位 + DH 且投手未指定 → fieldingPitcherRequired 为真，指定后 complete', () => {
@@ -156,6 +167,20 @@ test('8 守位 + DH 且投手未指定 → fieldingPitcherRequired 为真，指�
   assert.equal(b.fieldingPitcherRequired.value, true);
   assert.equal(b.lineupComplete.value, false);
   b.setFieldingPitcher(3);
+  assert.equal(b.lineupComplete.value, true);
+});
+
+test('开启态：8+DH+EP 无 P 阵（>baseCount 行）→ fieldingPitcherRequired 为真，指定后 complete', () => {
+  const b = board('BASEBALL', true);
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+  b.addToBatting(P(13)); // → EP（第 10 行）
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 10);
+  assert.equal(b.fieldingPitcherId.value, null);
+  assert.equal(b.fieldingPitcherRequired.value, true);
+  assert.equal(b.lineupComplete.value, false);
+  b.setFieldingPitcher(3);
+  assert.equal(b.fieldingPitcherRequired.value, false);
   assert.equal(b.lineupComplete.value, true);
 });
 
@@ -196,16 +221,34 @@ test('已有 DH 时拖人上投手丘 → 仅守备不进打线', () => {
   assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 9);
 });
 
-test('打线满 10 人时 addToBatting 拒绝并给 notice', () => {
-  const b = board();
+test('开启态：8+投手基础上 add 依序得 DH→EP→EP，第 13 人拒（上限 12）', () => {
+  const b = board('BASEBALL', true);
   b.placeAtSlot(P(3), 'P');
-  fill8(b);
-  b.placeAtSlot(P(12), 'DH'); // 决策 6b：投手移出打线 → 9 人打击
-  b.addToBatting(P(3)); // 投手拖回打线 → 10 人打击
+  fill8(b); // 9 人：P + 八守位
+  b.addToBatting(P(13)); // 无 DH → DH（10 人）
   assert.equal(b.rows.value.length, 10);
-  b.addToBatting(P(1)); // 第 11 人 → 满员拒绝
-  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 10);
-  assert.match(b.notice.value, /最多 10 人/);
+  assert.equal(b.slotOfRow('DH').id, 13);
+  b.addToBatting(P(14)); // 已有 DH → EP（11 人）
+  assert.equal(b.rows.value.length, 11);
+  assert.equal(posOf(b.rows.value[10]), 'EP');
+  b.addToBatting(P(15)); // 已有 DH → EP（12 人）
+  assert.equal(b.rows.value.length, 12);
+  assert.equal(posOf(b.rows.value[11]), 'EP');
+  assert.equal(b.validation.value.ok, true); // P+8+DH+2EP 合法
+  b.addToBatting(P(16)); // 第 13 人 → 达上限拒绝，行数不动
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 12);
+  assert.match(b.notice.value, /先发打线最多 12 人/);
+});
+
+test('开启态：8+DH 的 9 人阵 addToBatting → EP（10 人）', () => {
+  const b = board('BASEBALL', true);
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 8 守位 + DH（投手未指定）
+  assert.equal(b.rows.value.length, 9);
+  b.addToBatting(P(13)); // 已有 DH → EP
+  assert.equal(b.rows.value.length, 10);
+  assert.equal(posOf(b.rows.value[9]), 'EP');
+  assert.equal(b.validation.value.ok, true); // DH+8+EP 合法（10 人）
 });
 
 test('reorderBatting 改棒次且空行恒留尾部', () => {
@@ -237,11 +280,15 @@ test('applyTemplate：按 slots 落位、bench 覆盖、lastDh 清空', () => {
   assert.equal(b.lastDhAddedFromPoolId.value, null);
 });
 
-test('垒球模式：baseCount 10 / maxCount 11', () => {
-  const b = board('SOFTBALL');
-  assert.equal(b.baseCount.value, 10);
-  assert.equal(b.maxCount.value, 11);
-  assert.equal(b.rows.value.length, 10);
+test('垒球模式：baseCount 10；maxCount = 关闭（缺省/显式 false）=10 / 开启=11', () => {
+  const off = board('SOFTBALL');
+  assert.equal(off.baseCount.value, 10);
+  assert.equal(off.maxCount.value, 10);
+  assert.equal(off.rows.value.length, 10);
+  const explicitOff = board('SOFTBALL', false);
+  assert.equal(explicitOff.maxCount.value, 10);
+  const on = board('SOFTBALL', true);
+  assert.equal(on.maxCount.value, 11);
 });
 
 test('loadDraft：快照恢复（含占位行、替补、投手）', () => {
@@ -262,6 +309,17 @@ test('loadDraft：快照恢复（含占位行、替补、投手）', () => {
   assert.ok(b.rows.value.slice(2).every(isPlaceholder));
   assert.equal(b.bench.value.length, 1);
   assert.equal(b.fieldingPitcherId.value, 3);
+});
+
+test('读取保真：关闭态 loadDraft 含 12 行不被裁剪（显示校验错误直至调整）', () => {
+  const b = board(); // 开关缺省 = 关闭
+  const rows12 = [...Array(12)].map((_, i) => P(i + 1));
+  b.loadDraft({ rows: rows12, bench: [], fieldingPitcherId: null });
+  assert.equal(b.rows.value.length, 12);
+  assert.deepEqual(b.rows.value.map((r) => r.id), rows12.map((r) => r.id));
+  assert.equal(b.battingFull.value, true); // 新增受控：关闭态 9 人即视为满
+  assert.equal(b.validation.value.ok, false); // 不回溯、不静默改数：按关闭口径报超限
+  assert.match(b.validation.value.msg ?? '', /未开放 EP 制/);
 });
 
 test('sendToBench：DH 卡拖到替补区 → 走 removeDh，投手自动回打线、校验恢复', () => {
@@ -312,8 +370,9 @@ test('垒球：XF 自由人落位，10 人（P+八守位+XF）投手制校验通
   assert.equal(b.lineupComplete.value, true);
 });
 
-test('垒球：DH 制 10 人需指定先发投手；补投手回打线即 11 人打击', () => {
-  const b = board('SOFTBALL');
+test('开启态（补回 T7 挂起断言）：垒球 DH 制 10 人需指定先发投手；补投手回打线即 11 人打击通过', () => {
+  const b = board('SOFTBALL', true);
+  assert.equal(b.maxCount.value, 11);
   fill8(b);
   b.placeAtSlot(P(12), 'XF');
   b.placeAtSlot(P(9), 'DH');
@@ -326,9 +385,6 @@ test('垒球：DH 制 10 人需指定先发投手；补投手回打线即 11 人
   b.addToBatting(P(3));
   assert.equal(b.rows.value.length, 11);
   assert.equal(posOf(b.rows.value[10]), 'P');
-  // 默认口径变化（#274/#275）：extraBatter 关闭时垒球 11 人阵被拒并提示未开放 EP 制；
-  // 开启态的通过断言待 useLineupBoard 接入 opts（设计稿 §4.3）后恢复
-  assert.equal(b.validation.value.ok, false);
-  assert.match(b.validation.value.msg ?? '', /未开放 EP 制/);
-  assert.equal(b.lineupComplete.value, false);
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.lineupComplete.value, true);
 });

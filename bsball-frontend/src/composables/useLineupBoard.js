@@ -1,5 +1,7 @@
 // 阵容状态与动作（纯状态规则，不 import 任何拖拽库；node 可直接单测）
-// 行数组下标 = 棒次；空行（id<0）恒排尾部；行数 ∈ {baseCount, maxCount}
+// 行数组下标 = 棒次；空行（id<0）恒排尾部；行数 ∈ [baseCount, absMax]
+// 上限口径（设计稿 §4.3）：maxCount = 开关开启 ? absMax : baseCount；新增/落位门与 battingFull 用
+//   maxCount（关闭态 fail-closed）；normalize/loadDraft/applyTemplate 用 absMax（读取保真，绝不裁剪已存数据）
 // 语义要点（设计稿 §五）：投手丘单卡槽；投手是否打击由打线列表表达；
 //   放 DH → 投手自动移出打线（转仅守备）；移除 DH → 投手自动回打线
 import { computed, ref } from 'vue';
@@ -10,7 +12,7 @@ import {
   makeRow, normalizeRows, posOf, slotRow,
 } from '../utils/lineupBoardRules.js';
 
-export function useLineupBoard(mode, teamId) {
+export function useLineupBoard(mode, teamId, opts = {}) {
   const rows = ref([]);
   const bench = ref([]);
   const roster = ref([]);
@@ -19,7 +21,11 @@ export function useLineupBoard(mode, teamId) {
   const notice = ref('');
 
   const baseCount = computed(() => (mode.value === 'SOFTBALL' ? 10 : 9));
-  const maxCount = computed(() => (mode.value === 'SOFTBALL' ? 11 : 10));
+  // 开关缺省/未传 = 关闭（fail-closed）；opts.extraBatter 为 Ref/computed<boolean>
+  const extraBatterOn = computed(() => !!opts.extraBatter?.value);
+  // 绝对上限：仅用于读取保真；新增受开关上限 maxCount 约束
+  const absMax = computed(() => (mode.value === 'SOFTBALL' ? 11 : 12));
+  const maxCount = computed(() => (extraBatterOn.value ? absMax.value : baseCount.value));
   const hasDh = computed(() => !!slotRow(rows.value, 'DH'));
   const hasP = computed(() => !!slotRow(rows.value, 'P'));
 
@@ -28,11 +34,11 @@ export function useLineupBoard(mode, teamId) {
   );
   const validation = computed(() =>
     // 注意：validateRosterPositions 读的是行对象的 .position 字段 → 必须传行对象，不能传位置字符串数组
-    applyKeSpecial(validateRosterPositions(rows.value, mode.value), rows.value, baseCount.value)
+    applyKeSpecial(validateRosterPositions(rows.value, mode.value, { extraBatter: extraBatterOn.value }), rows.value, baseCount.value)
   );
-  // 「仍需指定仅守备投手」= 处于 DH 制阵型（9 棒且无 P）且**尚未指定**投手
+  // 「仍需指定仅守备投手」= 校验通过且**打线无 P**且尚未指定投手（覆盖 8+DH+EP 等 >baseCount 的无 P 阵）
   const fieldingPitcherRequired = computed(
-    () => rows.value.length === baseCount.value && validation.value.ok && !hasP.value && fieldingPitcherId.value == null
+    () => validation.value.ok && !hasP.value && fieldingPitcherId.value == null
   );
   // required 已蕴含「投手未指定」→ 「已就绪」即「不再需要指定」
   const fieldingPitcherOk = computed(() => !fieldingPitcherRequired.value);
@@ -40,7 +46,7 @@ export function useLineupBoard(mode, teamId) {
   const battingFull = computed(() => rows.value.filter((r) => !isPlaceholder(r)).length >= maxCount.value);
 
   function normalize() {
-    rows.value = normalizeRows(rows.value, baseCount.value, maxCount.value, teamId.value);
+    rows.value = normalizeRows(rows.value, baseCount.value, absMax.value, teamId.value);
   }
 
   function consumeNotice() {
@@ -76,7 +82,8 @@ export function useLineupBoard(mode, teamId) {
   }
 
   function loadDraft(snapshot) {
-    const src = (Array.isArray(snapshot?.rows) ? snapshot.rows : []).slice(0, maxCount.value);
+    // 读取保真：快照按 absMax 恢复，绝不裁剪已存数据（超编由 validation 显式报错直至调整）
+    const src = (Array.isArray(snapshot?.rows) ? snapshot.rows : []).slice(0, absMax.value);
     rows.value = src.map((row) =>
       isPlaceholder(row) ? makePlaceholderRow(teamId.value, 0) : makeRow(row, row.teamId ?? teamId.value, posOf(row))
     );
@@ -213,23 +220,22 @@ export function useLineupBoard(mode, teamId) {
     syncPitcher();
   }
 
-  /** 打线列表独立拖人：位置码取该人守备位（仅守备投手 → 'P'），否则 'DH' */
+  /** 打线列表独立拖人：位置码 = 仅守备投手 → 'P'；无 DH → 'DH'；已有 DH → 'EP'（EP 制落位） */
   function addToBatting(player) {
     if (player == null || findRowIndex(rows.value, player.id) >= 0) return;
     const filled = rows.value.filter((r) => !isPlaceholder(r));
     if (filled.length >= maxCount.value) {
-      notice.value = `先发打线最多 ${maxCount.value} 人（现口径）；更多打击人数待联赛开关开放（见 Issue #274/#275）`;
+      notice.value = extraBatterOn.value
+        ? `先发打线最多 ${maxCount.value} 人`
+        : `该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${maxCount.value} 人）`;
       return;
     }
     const isFieldingPitcher =
       fieldingPitcherId.value != null &&
       String(fieldingPitcherId.value) === String(player.id) &&
       !slotRow(rows.value, 'P');
-    if (!isFieldingPitcher && slotRow(rows.value, 'DH')) {
-      notice.value = `DH 已有人；${mode.value === 'SOFTBALL' ? '垒球' : '棒球'}现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
-      return;
-    }
-    takeFirstEmpty(makeRow(player, teamId.value, isFieldingPitcher ? 'P' : 'DH'));
+    const position = isFieldingPitcher ? 'P' : (slotRow(rows.value, 'DH') ? 'EP' : 'DH');
+    takeFirstEmpty(makeRow(player, teamId.value, position));
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));
     if (isFieldingPitcher) fieldingPitcherId.value = player.id;
     else lastDhAddedFromPoolId.value = player.id;
@@ -321,9 +327,9 @@ export function useLineupBoard(mode, teamId) {
     bench.value = roster.value.filter((p) => ids.has(String(p.id)) && findRowIndex(rows.value, p.id) < 0);
   }
 
-  /** 应用阵容模板（映射沿用旧件 sl()） */
+  /** 应用阵容模板（映射沿用旧件 sl()；读取保真按 absMax，不裁剪模板行数） */
   function applyTemplate({ slots, benchPlayerIds, pitcherId }) {
-    const list = (Array.isArray(slots) ? slots : []).slice(0, maxCount.value).map((slot) => {
+    const list = (Array.isArray(slots) ? slots : []).slice(0, absMax.value).map((slot) => {
       const p = roster.value.find((x) => String(x.id) === String(slot?.playerId));
       if (!p) return makePlaceholderRow(teamId.value, 0);
       return makeRow(p, teamId.value, String(slot?.position ?? '').toUpperCase());
