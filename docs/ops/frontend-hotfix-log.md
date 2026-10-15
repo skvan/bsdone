@@ -87,6 +87,7 @@
 
 | H63 | 2026-10-14 | Issue #153（分支 `feature/premier12-welcome-entry`；负责人需求：微站加回 welcome 页引流入口） | `premier12/premier12.html`、`premier12/signup.html` | 微站引流入口：①宣传页海报区后新增页尾品牌条（赛事名金色 + 英文副标 + 金色描边胶囊按钮「了解 BSD 棒垒球平台 →」（悬停金底）+ 版权行）；②报名页收集端说明下方新增一行居中文字链「了解 BSD 棒垒球平台 →」；入口指向 `/bs-ball-next/`（新版 welcome 页，根相对路径，测试/生产各自生效，两环境实测 200）；无依赖、无打包链路改动 | `/premier12/`（宣传页 + 报名页） | 随 v2.2/dev 携带（下一发布） | 本地预览（`server.js` 3001）+ 无头浏览器核验（移动端 390×844 / 桌面 1280×900：入口存在、href=/bs-ball-next/、悬停样式、控制台零报错）；效果图 3 张经负责人手机端确认；评审：code-simplifier（无需简化）+ feature-dev:code-reviewer（通过，唯一待办=本登记行已补） | 已完成（本次 PR）；待负责人合并 |
 | H64 | 2026-10-15 | 版本号治理（分支 `chore/bump-version-baseline-2.2.0`；负责人选项确认：基线升到 2.2.0） | 工程基线（webapps 旧版产物不随动）：`bsball-backend/pom.xml`（`app.release.version`）、`bsball-frontend/.env`（`VITE_APP_VERSION`）、`package.json` + `package-lock.json`（仅根与 packages[""]） | 版本基线升 **2.2.0**（dev 线，与已发布 v2.2.0 对齐）：未指定版本部署时页脚/控制台/版本检查默认展示 2.2.0；旧版产物仍由部署时 `apply-release-version.mjs` 按发布版本统一写入 | 版本号治理 | dev 工程基线（2.2.0） | DRY-RUN 锚点核验 10 规则全命中（7 文件，未写盘）；升级后比对：目标文件无 2.1.0 残留 | 已完成（本次 PR）；待负责人合并 |
+| H65 | 2026-10-16 | 版本号治理（分支 `chore/bump-version-baseline-2.2.1`；负责人选项确认：发布 2.2.1 前基线升级） | 工程基线（webapps 旧版产物不随动）：`bsball-backend/pom.xml`（`app.release.version`）、`bsball-frontend/.env`（`VITE_APP_VERSION`）、`package.json` + `package-lock.json`（仅根与 packages[""]） | 版本基线升 **2.2.1**（dev 线，与即将发布的 v2.2.1 对齐）：未指定版本部署时页脚/控制台/版本检查默认展示 2.2.1；旧版产物仍由部署时 `apply-release-version.mjs` 按发布版本统一写入 | 版本号治理 | dev 工程基线（2.2.1） | 目标文件四处的 2.2.0 基线值已替换（依赖项的巧合 2.2.0 版本号未动） | 已完成（本次 PR）；待负责人合并 |
 
 ### 登记步骤（每次热修必做）
 
