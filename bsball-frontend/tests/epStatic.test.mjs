@@ -1,5 +1,6 @@
 // 静态断言：LiveGame 录入页数据容量 11→12（打线槽位/守卫/保存循环/恢复上限，EP 制 #274）
 // 追加（T12，#275/#274）：force_half 显隐（event.specialRules 捕获 + 强制换局按钮 v-if）与录入页校验接入（extraBatter 开关、仅守备投手判定对齐 T8）
+// 追加（终评审修复）：模板页 league-less 调用点显式传参（LineupTemplates.js）+ 仅守备投手清理 watcher 去 t.length!==9 长度门禁（LiveGame.js）
 // 运行：node --test tests/epStatic.test.mjs
 // 依据：docs/联赛特殊规则与EP制-设计-2026-10-15.md §六（槽位数组 11→12、越界守卫 >=12、保存循环 d<12、恢复补齐上限 棒 12/垒 11；行1 force_half 显隐 / 行6 仅守备投手判定）、§4.4
 import { test } from 'node:test';
@@ -84,4 +85,24 @@ test('录入页校验接入规则：Er() 透传 extraBatter 开关，仅守备�
   assert.ok(source.includes('Kp=$(()=>Hr.value.ok&&!oa(q.value)&&te.value==null)'), 'Kp 应为「校验通过且打线无 P 且未指定守备投手」');
   assert.ok(!source.includes('X.value.length===9&&Nr.value.ok'), 'Yp 不得保留「行数=9 且校验通过且无 P」旧判定');
   assert.ok(!source.includes('q.value.length===9&&Hr.value.ok'), 'Kp 不得保留「行数=9 且校验通过且无 P」旧判定');
+});
+
+// ===== 终评审修复：模板页 league-less 开关对齐 + 仅守备投手清理守卫 =====
+
+test('模板页 league-less：validateRosterPositions 调用点显式传 {extraBatter:true}（保持改动前 9-10 两态）', () => {
+  const tpl = fs.readFileSync(new URL('../src/views/admin/LineupTemplates.js', import.meta.url), 'utf8');
+  // ne computed（第 10 条「指定打击」行会凑出 10 位置）→ 缺省 fail-closed 上限 9 会稳定误报「未开放 EP 制」横幅
+  assert.ok(tpl.includes('yl(t,void 0,{extraBatter:!0})'), '模板页 ne 校验须显式传 {extraBatter:true}（不可依赖缺省）');
+  assert.ok(!tpl.includes('yl(t)'), '不得保留裸调用 yl(t)：缺省 fail-closed 会误报「未开放 EP 制」横幅');
+  // 其余 validate* 调用点审计结论（保持现状，无需传参）：Ze=validateStarterFielding 仅 bl/gl 两处，
+  // 各带 b.length!==9 前置守卫（恒 9 人输入）；hl 亦为 9 人守卫。缺省上限 9 即改动前语义。
+  assert.equal((tpl.match(/Ze\(/g) ?? []).length, 2, 'Ze 调用点应仍为 bl/gl 两处（各带 9 人守卫）');
+  assert.equal((tpl.match(/b\.length!==9/g) ?? []).length, 3, 'bl/gl/hl 的 9 人守卫不得移除');
+});
+
+test('仅守备投手清理 watcher：不得按打线长度跳过（>9 阵含 P 时旧仅守备投手身份同样失效）', () => {
+  assert.ok(!source.includes('t.length!==9||!Nr.value.ok'), 'Yp watcher 不得保留 t.length!==9 长度门禁（10-12 阵含 P 不清理）');
+  assert.ok(!source.includes('t.length!==9||!Hr.value.ok'), 'Kp watcher 不得保留 t.length!==9 长度门禁');
+  assert.ok(source.includes('!Nr.value.ok||oa(t)&&O.value!=null&&(O.value=null)'), '缺少 Yp watcher 跨长度清理分支');
+  assert.ok(source.includes('!Hr.value.ok||oa(t)&&te.value!=null&&(te.value=null)'), '缺少 Kp watcher 跨长度清理分支');
 });

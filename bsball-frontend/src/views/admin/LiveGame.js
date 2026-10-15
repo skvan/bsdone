@@ -7331,12 +7331,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     ),Ce(Yp,e=>{
       if(nt()||e)return;
       const t=X.value;
-      t.length!==9||!Nr.value.ok||oa(t)&&O.value!=null&&(O.value=null)
+      !Nr.value.ok||oa(t)&&O.value!=null&&(O.value=null)
     }
     ),Ce(Kp,e=>{
       if(nt()||e)return;
       const t=q.value;
-      t.length!==9||!Hr.value.ok||oa(t)&&te.value!=null&&(te.value=null)
+      !Hr.value.ok||oa(t)&&te.value!=null&&(te.value=null)
     }
     ),Ce(()=>[O.value,te.value,Xe.value,Te.value],()=>{
       nt()||(eo(),ft("away"),ft("home"))

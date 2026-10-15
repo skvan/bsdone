@@ -314,7 +314,7 @@ var Ae={
         ruleForm.extraBatter=e.rules.extraBatter===!0,ruleForm.forceHalf=e.rules.forceHalf!==!1,ruleLoading.value=!1
       }
       else{
-        // 读取失败（404 不可见/跨租户、网络异常等）已按既有 API 口径在请求层提示；此处关窗防误把默认值当生效值保存
+        // 读取失败：404（不可见/跨租户）走 getData 静默分支不 toast，仅非 404 异常由请求层提示；此处关窗防误把默认值当生效值保存
         ruleLoading.value=!1,ruleDlg.value=!1
       }
     }
@@ -678,7 +678,7 @@ var Ae={
             ,null,8,["modelValue"]),e[21]||(e[21]=x("span",{
               class:"form-hint"
             }
-            ,"允许棒垒球联赛启用 EP 额外打击者（打击人数超默认）",-1))]),_:1
+            ,"允许棒垒球联赛启用 EP 额外打击者（打击人数超默认）（默认关闭）",-1))]),_:1
           }
           ),t(p,{
             label:"强制换局"
@@ -690,7 +690,7 @@ var Ae={
             ,null,8,["modelValue"]),e[22]||(e[22]=x("span",{
               class:"form-hint"
             }
-            ,"关闭后该联赛比赛不提供强制换局",-1))]),_:1
+            ,"关闭后该联赛比赛不提供强制换局（默认开启）",-1))]),_:1
           }
           )]),_:1
         }

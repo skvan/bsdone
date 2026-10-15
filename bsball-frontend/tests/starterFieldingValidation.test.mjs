@@ -23,7 +23,8 @@ test('棒球关闭：恰 9 两态通过，10 人（P+DH）被拒并提示未开�
 test('棒球开启：合法 11 组合（节选）', () => {
   const cases = [
     ['P'], ['DH'], ['P','DH'], ['P','EP'], ['DH','EP'],
-    ['P','DH','EP'], ['P','EP','EP'], ['P','DH','EP','EP'], ['P','EP','EP','EP'],
+    ['P','DH','EP'], ['P','EP','EP'], ['DH','EP','EP'],
+    ['P','DH','EP','EP'], ['P','EP','EP','EP'], ['DH','EP','EP','EP'],
   ];
   for (const extra of cases) assert.equal(B('BASEBALL', true, extra).ok, true, extra.join('+'));
 });
@@ -31,8 +32,28 @@ test('棒球开启：合法 11 组合（节选）', () => {
 test('棒球开启：非法组合被拒（无 P/DH、双 DH、EP×4、13 人）', () => {
   assert.equal(B('BASEBALL', true, ['EP']).ok, false);          // 无 P 无 DH
   assert.equal(B('BASEBALL', true, ['DH','DH']).ok, false);     // 双 DH
-  assert.equal(B('BASEBALL', true, ['P','EP','EP','EP','EP']).ok, false); // EP×4
+  assert.equal(B('BASEBALL', true, ['P','EP','EP','EP','EP']).ok, false); // EP×4（13 人形）
   assert.equal(B('BASEBALL', true, ['P','DH','EP','EP','EP']).ok, false); // 13 人
+  // 非 13 形状的 EP×4（8 守位 + 4EP = 12 人，先过总数门 ≤12）→ 命中 EP 重复门。
+  // 说明：q() 内 n>3 为纵深防御分支，经 validateStarterFielding 不可达——含 P/DH 时 EP≥4 最少 13 人
+  // 先撞总数门，无 P/DH 的 12 人形（或不足 8 守位形）则先撞本门（EP 允许上限 3）。
+  const ep4 = B('BASEBALL', true, ['EP','EP','EP','EP']);
+  assert.equal(ep4.ok, false);
+  assert.match(ep4.message, /EP 重复/);
+  const ep4dh = B('BASEBALL', true, ['DH','EP','EP','EP','EP']); // DH+8+4EP = 13 人形
+  assert.equal(ep4dh.ok, false);
+  assert.match(ep4dh.message, /先发人数须为/);                   // 先撞总数门（未触 EP 重复门）
+});
+
+test('模板页 league-less 语义：9 行 + 第 10 条 DH 显式 {extraBatter:true} → ok（不误报「未开放 EP 制」）', () => {
+  // LineupTemplates.js 第 10 条「指定打击」行会凑出 10 位置；该页属 league-less，须显式传参保持改动前 9-10 两态
+  const ok = Q(rowsOf(...F8,'P','DH'), 'BASEBALL', { extraBatter: true });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.msg, undefined); // 合法即无任何提示文案（横幅取 msg）
+  // 反证：缺省 fail-closed（上限 9）会稳定误报横幅——故模板页调用点必须显式传 opts
+  const miss = Q(rowsOf(...F8,'P','DH'), 'BASEBALL');
+  assert.equal(miss.ok, false);
+  assert.match(miss.msg, /未开放 EP 制/);
 });
 
 test('棒球开启：EP 可多人（不被判“重复”）；EP 不计入缺失守备位', () => {

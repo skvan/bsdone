@@ -191,10 +191,10 @@ const rosterHint = computed(() => {
 });
 
 const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null), {
-  extraBatter: computed(() => extraBatter.value),
+  extraBatter,
 });
 const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null), {
-  extraBatter: computed(() => extraBatter.value),
+  extraBatter,
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
