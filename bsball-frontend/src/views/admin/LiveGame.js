@@ -6798,14 +6798,15 @@ var sg={
     function oa(e){
       return e.some(t=>Nn(t.position)==="P")
     }
+    const forceHalfOn=x(!0),extraBatterOn=x(!1);
     function Er(e){
-      const t=sd(e);
+      const t=sd(e,void 0,{extraBatter:extraBatterOn.value});
       return e.length===9&&e.every(a=>!(a.position??"").toString().trim())&&!t.ok&&(t.msg??"").includes("未指定守备位置")?{
         ok:!1,msg:void 0,errorRowIndices:[]
       }
       :t
     }
-    const Nr=$(()=>Er(X.value)),Hr=$(()=>Er(q.value)),Yp=$(()=>X.value.length===9&&Nr.value.ok&&!oa(X.value)),Kp=$(()=>q.value.length===9&&Hr.value.ok&&!oa(q.value));
+    const Nr=$(()=>Er(X.value)),Hr=$(()=>Er(q.value)),Yp=$(()=>Nr.value.ok&&!oa(X.value)&&O.value==null),Kp=$(()=>Hr.value.ok&&!oa(q.value)&&te.value==null);
     $(()=>Ue.value),$(()=>Sn.value);
     function Dr(e){
       const{
@@ -10638,7 +10639,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       Le.value=!0,Ti=!0;
       try{
-        S.value=(await jc.get(Re.value))?.name??"当前赛事",Pa.value=await Zc.selectOptions()??[];
+        const ev=await jc.get(Re.value);
+        S.value=ev?.name??"当前赛事",forceHalfOn.value=ev?.specialRules?.forceHalf!==!1,extraBatterOn.value=ev?.specialRules?.extraBatter===!0,Pa.value=await Zc.selectOptions()??[];
         const t=ld(Re.value,e);
         if(t){
           const a=t.setupForm??{
@@ -11024,13 +11026,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,{
             default:L(()=>[...t[92]||(t[92]=[Q(" 得分纠偏 ",-1)])]),_:1
           }
-          ,8,["disabled","title"]),v(s,{
-            size:"small",type:"danger",plain:"",disabled:c(l).isGameEnd,title:"特殊换局规则：一键结束本半局并攻守交换（打者顺序保持不变）",class:"live-field-bench-ops-tile",onClick:forceHalf
+          ,8,["disabled","title"]),c(forceHalfOn)?(h(),Oe(s,{
+            key:0,size:"small",type:"danger",plain:"",disabled:c(l).isGameEnd,title:"特殊换局规则：一键结束本半局并攻守交换（打者顺序保持不变）",class:"live-field-bench-ops-tile",onClick:forceHalf
           }
           ,{
             default:L(()=>[Q(" 强制换局 ",-1)]),_:1
           }
-          ,8,["disabled"])])])]),_:1
+          ,8,["disabled"])):W("",!0)])])]),_:1
         }
         ,8,["visible","width"])]),n("div",Ug,[v(s,{
           size:"small",onClick:ec
