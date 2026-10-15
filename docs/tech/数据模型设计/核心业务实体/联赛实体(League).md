@@ -236,6 +236,12 @@ LEAGUE ||--o{ EVENT : "包含"
   - 接口：GET /league/list?page=&pageSize=&sortProp=&sortOrder=
   - 行为：分页、排序、租户隔离、数据范围过滤、忽略已删除
   - 参考路径：`LeagueApi.list:46-50`, `LeagueService.list:56-75`
+- 特殊规则配置（Issue #275）
+  - 接口：GET /league/{id}/special-rules（读取生效值，无记录按默认兜底：extraBatter=false、forceHalf=true）；PUT /league/{id}/special-rules（camelCase 键子集/全集更新，返回更新后生效值）
+  - 行为：联赛级开关 extra_batter（EP 制/额外打击者）/ force_half（强制换局），存表 bs_league_special_rule（行存在=以记录为准，无记录=默认值；规则行只写不删）
+  - 守卫：租管仅可操作本租户联赛（跨租户 403），超管可跨租户；权限点 business:league:specialRule
+  - 参考路径：`LeagueApi.getSpecialRules:139-147`, `LeagueApi.updateSpecialRules:149-157`, `LeagueSpecialRuleService`
+  - 详见：`核心业务实体/联赛特殊规则实体(LeagueSpecialRule).md`
 
 ## 依赖关系分析
 - 耦合与内聚

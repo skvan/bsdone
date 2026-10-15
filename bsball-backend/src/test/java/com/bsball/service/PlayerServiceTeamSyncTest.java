@@ -34,6 +34,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlayerService：多队经历集成（计划/镜像/权限/选择器）")
@@ -220,6 +223,35 @@ class PlayerServiceTeamSyncTest {
         assertEquals(2L, result.getTotal());
         assertEquals(List.of(1L, 2L), result.getList().stream().map(Player::getId).toList());
         verify(playerTeamService).attachEntries(List.of(p1, p2));
+    }
+
+    @Test
+    @DisplayName("列表权限：受限用户查「自由球员」(teamId=0) → 空页且不查库（已离队/无归属不属于授权球队）")
+    void list_scopedFreeAgentView_empty_noQuery() {
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(List.of(5L));
+
+        PageResult<Player> result = service.list(1, 10, null, null, 0L, null, null, null, null, null, null, null, null, null);
+
+        assertEquals(0, result.getList().size());
+        assertEquals(0L, result.getTotal());
+        verify(playerRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("列表权限：不受限用户查「自由球员」照常放行（管理员视图不受影响）")
+    void list_unrestrictedFreeAgentView_passesThrough() {
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
+        when(scopeQuerySupport.visibleTeamIds(any(), eq(TENANT))).thenReturn(null);
+        when(playerRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<Player>(List.of()));
+
+        PageResult<Player> result = service.list(1, 10, null, null, 0L, null, null, null, null, null, null, null, null, null);
+
+        assertEquals(0L, result.getTotal());
+        verify(playerRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test

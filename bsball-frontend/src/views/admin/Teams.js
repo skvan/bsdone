@@ -840,7 +840,7 @@ var Ta={
             ,null,8,["modelValue"]),e[35]||(e[35]=m("span",{
               class:"form-hint"
             }
-            ,"关闭后前台联盟球队页不展示",-1))])]),_:1
+            ,"关闭后前台球队页不展示",-1))])]),_:1
           }
           ),a(u,{
             label:"平台认证"
@@ -942,10 +942,12 @@ var Ta={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"]),a(InvitePlayerDialog,{
+      ,8,["modelValue"]),
+      // children 占位 null 与 patchFlag 16 缺一不可，缺失时弹窗打不开且无报错（Issue #327）
+      a(InvitePlayerDialog,{
         modelValue:inviteDlg.value,"onUpdate:modelValue":q=>inviteDlg.value=q,teamId:inviteTeam.value?.id??null,teamName:inviteTeam.value?.name??""
       }
-      ,8,["modelValue","teamId","teamName"])])
+      ,null,16)])
     }
     
   }

@@ -119,7 +119,7 @@ public class PlayerClaimApi {
         return Result.ok(this.playerClaimService.createInvite(userId, teamId, playerId, expireHours, maxUses, remark));
     }
 
-    /** 全量球员候选（邀请入队搜索，Issue #310 批 4）：本租户全部球员 + 认领状态 + 现属球队。 */
+    /** 球员候选（邀请入队搜索，Issue #310 批 4；口径调整：排除当前已在队球员）：本租户未删且当前不在本队的球员 + 认领状态 + 现属球队。 */
     @GetMapping(value={"/team/{teamId}/player-invite-candidates"})
     public Result<PageResult<Map<String, Object>>> inviteCandidates(@RequestHeader(value="Authorization", required=false) String auth, @PathVariable Long teamId, @RequestParam(required=false) String keyword, @RequestParam(required=false, defaultValue="1") Integer page, @RequestParam(required=false, defaultValue="20") Integer pageSize) {
         this.requireUserId(auth);

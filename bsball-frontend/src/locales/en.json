@@ -728,6 +728,8 @@
     "eventGames": "Schedule & Results",
     "gameDetail": "Game Detail",
     "teams": "Teams",
+    "leagueDetail": "League Detail",
+    "freeAgents": "Free Agents",
     "starPlayers": "Star Players",
     "teamDetail": "Team Detail",
     "playerDetail": "Player Detail",
@@ -822,8 +824,18 @@
   },
   "teams": {
     "title": "Teams",
+    "freeAgentsCard": "Free Agents",
     "noTeams": "No teams",
     "homeStadium": "Home"
+  },
+  "leagueDetail": {
+    "events": "Events",
+    "emptyEvents": "No events in this league",
+    "notFound": "League not found"
+  },
+  "freeAgents": {
+    "title": "Free Agents",
+    "empty": "No free agents"
   },
   "starPlayers": {
     "title": "Star Players",
@@ -1880,7 +1892,23 @@
     "joinedDone": "Confirmed",
     "declinedDone": "Declined",
     "backSchedule": "← Back to Schedule",
+    "bookTitle": "Order Book",
+    "viewBook": "Full Book",
+    "bookPrint": "Print",
+    "bookGeneratedAt": "Generated: ",
+    "bookSummary": "{teams} teams · {locked} locked · {players} registered players",
+    "bookNotSubmitted": "Roster not submitted",
+    "bookEmpty": "No confirmed teams yet",
+    "rosterLoadFailed": "Failed to load roster",
+    "bookLoadFailed": "Failed to load",
     "backTeams": "← Back to Teams",
+    "backEventTeams": "← Back to Participating Teams",
+    "viewCards": "Cards",
+    "viewList": "List",
+    "colPhoto": "Photo",
+    "colRegTeams": "Registered Teams",
+    "listExcluded": "Teams not included: ",
+    "listNoActive": "No active players to show",
     "operationFailed": "Operation failed",
     "emptyRegistrations": "No event registrations yet",
     "softball": "Softball"
@@ -1897,8 +1925,6 @@
     "claimed": "Claimed",
     "unclaimed": "Unclaimed",
     "colTeams": "Current Teams",
-    "colInTeam": "This Team",
-    "inThisTeam": "Already on team",
     "freeAgent": "Free agent",
     "generate": "Generate Invite",
     "emptySearch": "No matching players",
@@ -1923,8 +1949,7 @@
     "emptyInvites": "No invites generated yet",
     "createFailed": "Generate failed",
     "revokeFailed": "Revoke failed",
-    "genericHint": "Players already on this team need no invite; claimed players receive a generic link (join after their confirmation).",
-    "loadFailed": "Load failed",
-    "moreHint": "{total} players in total, refine with a keyword"
+    "genericHint": "Only players not on this team are listed; claimed players receive a generic link (join after their confirmation).",
+    "loadFailed": "Load failed"
   }
 }

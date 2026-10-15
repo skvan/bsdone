@@ -457,7 +457,7 @@
     "home": "首页",
     "expandMenu": "展开菜单",
     "events": "赛事一览",
-    "teams": "联盟球队",
+    "teams": "球队",
     "starPlayers": "明星球员",
     "news": "资讯公告",
     "stats": "数据排行",
@@ -728,7 +728,9 @@
     "events": "赛事一览",
     "eventGames": "赛程与结果",
     "gameDetail": "比赛详情",
-    "teams": "联盟球队",
+    "teams": "球队",
+    "leagueDetail": "联盟详情",
+    "freeAgents": "自由球员",
     "starPlayers": "明星球员",
     "teamDetail": "球队详情",
     "playerDetail": "球员详情",
@@ -812,7 +814,7 @@
   },
   "home": {
     "eventsTitle": "赛事一览",
-    "teamsTitle": "联盟球队",
+    "teamsTitle": "球队",
     "newsTitle": "资讯公告",
     "newsTitleEn": "news",
     "more": "查看更多 >",
@@ -827,9 +829,19 @@
     "promoTicketAlt": "购票"
   },
   "teams": {
-    "title": "联盟球队",
+    "title": "球队",
+    "freeAgentsCard": "自由球员",
     "noTeams": "暂无球队",
     "homeStadium": "主场"
+  },
+  "leagueDetail": {
+    "events": "下辖赛事",
+    "emptyEvents": "该联盟暂无赛事",
+    "notFound": "联盟不存在或已删除"
+  },
+  "freeAgents": {
+    "title": "自由球员",
+    "empty": "暂无自由球员"
   },
   "starPlayers": {
     "title": "明星球员",
@@ -1889,7 +1901,23 @@
     "joinedDone": "已确认参加",
     "declinedDone": "已谢绝",
     "backSchedule": "← 返回赛程",
+    "bookTitle": "秩序册",
+    "viewBook": "整册",
+    "bookPrint": "打印",
+    "bookGeneratedAt": "生成时间：",
+    "bookSummary": "{teams} 支球队 · 已锁定 {locked} · 报名球员 {players} 人",
+    "bookNotSubmitted": "名单未提交",
+    "bookEmpty": "暂无已确认球队",
+    "rosterLoadFailed": "名单加载失败",
+    "bookLoadFailed": "加载失败",
     "backTeams": "← 返回球队",
+    "backEventTeams": "← 返回参赛球队",
+    "viewCards": "卡片",
+    "viewList": "列表",
+    "colPhoto": "照片",
+    "colRegTeams": "报名球队",
+    "listExcluded": "未纳入列表的球队：",
+    "listNoActive": "暂无可展示的在役球员",
     "operationFailed": "操作失败",
     "emptyRegistrations": "暂无赛事报名记录",
     "softball": "垒球"
@@ -1906,8 +1934,6 @@
     "claimed": "已认领",
     "unclaimed": "未认领",
     "colTeams": "现属球队",
-    "colInTeam": "本队",
-    "inThisTeam": "已在本队",
     "freeAgent": "自由球员",
     "generate": "生成邀请",
     "emptySearch": "未找到匹配球员",
@@ -1932,8 +1958,7 @@
     "emptyInvites": "暂无已生成邀请",
     "createFailed": "生成失败",
     "revokeFailed": "撤销失败",
-    "genericHint": "「已在本队」的球员无需邀请；已认领球员将生成通用链接（本人确认后入队）。",
-    "loadFailed": "加载失败",
-    "moreHint": "共 {total} 名球员，请输入关键词缩小范围"
+    "genericHint": "列表仅显示未在本队的球员；已认领球员将生成通用链接（本人确认后入队）。",
+    "loadFailed": "加载失败"
   }
 }

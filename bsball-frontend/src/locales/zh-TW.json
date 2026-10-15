@@ -456,7 +456,7 @@
     "leagues": "聯盟",
     "home": "首頁",
     "events": "賽事一覽",
-    "teams": "聯盟球隊",
+    "teams": "球隊",
     "starPlayers": "明星球員",
     "news": "資訊公告",
     "stats": "數據排行",
@@ -726,7 +726,9 @@
     "events": "賽事一覽",
     "eventGames": "賽程與結果",
     "gameDetail": "比賽詳情",
-    "teams": "聯盟球隊",
+    "teams": "球隊",
+    "leagueDetail": "聯盟詳情",
+    "freeAgents": "自由球員",
     "starPlayers": "明星球員",
     "teamDetail": "球隊詳情",
     "playerDetail": "球員詳情",
@@ -805,7 +807,7 @@
   },
   "home": {
     "eventsTitle": "賽事一覽",
-    "teamsTitle": "聯盟球隊",
+    "teamsTitle": "球隊",
     "newsTitle": "資訊公告",
     "newsTitleEn": "news",
     "more": "查看更多 >",
@@ -820,9 +822,19 @@
     "promoTicketAlt": "購票"
   },
   "teams": {
-    "title": "聯盟球隊",
+    "title": "球隊",
+    "freeAgentsCard": "自由球員",
     "noTeams": "暫無球隊",
     "homeStadium": "主場"
+  },
+  "leagueDetail": {
+    "events": "所屬賽事",
+    "emptyEvents": "此聯盟暫無賽事",
+    "notFound": "聯盟不存在或已刪除"
+  },
+  "freeAgents": {
+    "title": "自由球員",
+    "empty": "暫無自由球員"
   },
   "starPlayers": {
     "title": "明星球員",
@@ -1879,7 +1891,23 @@
     "joinedDone": "已確認參加",
     "declinedDone": "已婉拒",
     "backSchedule": "← 返回賽程",
+    "bookTitle": "秩序冊",
+    "viewBook": "整冊",
+    "bookPrint": "列印",
+    "bookGeneratedAt": "產生時間：",
+    "bookSummary": "{teams} 支球隊 · 已鎖定 {locked} · 報名球員 {players} 人",
+    "bookNotSubmitted": "名單未提交",
+    "bookEmpty": "暫無已確認球隊",
+    "rosterLoadFailed": "名單載入失敗",
+    "bookLoadFailed": "載入失敗",
     "backTeams": "← 返回球隊",
+    "backEventTeams": "← 返回參賽球隊",
+    "viewCards": "卡片",
+    "viewList": "清單",
+    "colPhoto": "照片",
+    "colRegTeams": "報名球隊",
+    "listExcluded": "未納入清單的球隊：",
+    "listNoActive": "暫無可顯示的在役球員",
     "operationFailed": "操作失敗",
     "emptyRegistrations": "尚無賽事報名紀錄",
     "softball": "壘球"
@@ -1896,8 +1924,6 @@
     "claimed": "已認領",
     "unclaimed": "未認領",
     "colTeams": "現屬球隊",
-    "colInTeam": "本隊",
-    "inThisTeam": "已在本隊",
     "freeAgent": "自由球員",
     "generate": "產生邀請",
     "emptySearch": "未找到符合的球員",
@@ -1922,8 +1948,7 @@
     "emptyInvites": "尚無已產生的邀請",
     "createFailed": "產生失敗",
     "revokeFailed": "撤銷失敗",
-    "genericHint": "「已在本隊」的球員無需邀請；已認領球員將產生通用連結（本人確認後入隊）。",
-    "loadFailed": "載入失敗",
-    "moreHint": "共 {total} 名球員，請輸入關鍵字縮小範圍"
+    "genericHint": "清單僅顯示未在本隊的球員；已認領球員將產生通用連結（本人確認後入隊）。",
+    "loadFailed": "載入失敗"
   }
 }

@@ -379,8 +379,9 @@ public class PlayerClaimService {
     }
 
     /**
-     * 全量球员候选（电子秩序册批 4，Issue #310）：本租户全部未删球员（keyword 匹配姓名/昵称/简称），
-     * 附认领状态与现属球队；守卫=可管理该球队（与创建邀请同源）。
+     * 球员候选（电子秩序册批 4，Issue #310；口径调整：排除当前已在队球员——已在本队者无需邀请）：
+     * 本租户全部未删且当前不在本队的球员（keyword 匹配姓名/昵称/简称），附认领状态与现属球队；
+     * 守卫=可管理该球队（与创建邀请同源）。
      */
     public PageResult<Map<String, Object>> inviteCandidates(Long teamId, String keyword, Integer page, Integer pageSize) {
         this.resourceGuard.assertCanManageTeam(teamId);
@@ -388,7 +389,7 @@ public class PlayerClaimService {
         Long tid = team.getTenantId();
         int p = page == null || page <= 0 ? 1 : page.intValue();
         int ps = pageSize == null || pageSize <= 0 ? 20 : Math.min(pageSize.intValue(), 100);
-        Page<Player> result = this.playerRepository.findAll(this.inviteCandidateSpec(tid, keyword),
+        Page<Player> result = this.playerRepository.findAll(this.inviteCandidateSpec(tid, teamId, keyword),
                 PageRequest.of(p - 1, ps, Sort.by(Sort.Direction.ASC, "id")));
         List<Player> rows = result.getContent();
         Map<Long, Set<Long>> currentTeams = rows.isEmpty()
@@ -397,18 +398,20 @@ public class PlayerClaimService {
         Map<Long, String> teamNames = this.currentTeamNames(currentTeams);
         List<Map<String, Object>> out = new ArrayList<Map<String, Object>>(rows.size());
         for (Player player : rows) {
-            out.add(this.candidateRow(player, currentTeams.getOrDefault(player.getId(), Set.of()), teamNames, teamId));
+            out.add(this.candidateRow(player, currentTeams.getOrDefault(player.getId(), Set.of()), teamNames));
         }
         return PageResult.of(out, result.getTotalElements());
     }
 
-    private Specification<Player> inviteCandidateSpec(Long tid, String keyword) {
+    private Specification<Player> inviteCandidateSpec(Long tid, Long teamId, String keyword) {
         return (root, query, cb) -> {
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull(root.get("deletedAt")));
             if (tid != null) {
                 preds.add(cb.equal(root.get("tenantId"), tid));
             }
+            // 候选口径：排除"当前已在队"球员（已在本队者无需邀请）。
+            preds.add(cb.not(cb.exists(this.currentTeamSubquery(cb, query, root, teamId))));
             if (keyword != null && !keyword.isBlank()) {
                 String k = "%" + keyword.toLowerCase() + "%";
                 preds.add(cb.or(cb.like(cb.lower(root.get("name")), k),
@@ -417,6 +420,20 @@ public class PlayerClaimService {
             }
             return cb.and(preds.toArray(new Predicate[0]));
         };
+    }
+
+    /** "当前经历含指定球队"子查询（未删、current=true；语义与 PlayerService 同源）：候选排除已在本队球员。 */
+    private Subquery<Long> currentTeamSubquery(CriteriaBuilder cb, CriteriaQuery<?> query, Root<Player> root, Long teamId) {
+        Subquery<Long> sq = query.subquery(Long.class);
+        Root<PlayerTeam> entry = sq.from(PlayerTeam.class);
+        sq.select((Expression)entry.get("id"));
+        ArrayList<Predicate> conditions = new ArrayList<Predicate>();
+        conditions.add(cb.isNull((Expression)entry.get("deletedAt")));
+        conditions.add(cb.equal(entry.get("playerId"), root.get("id")));
+        conditions.add(cb.isTrue(entry.get("current")));
+        conditions.add(cb.equal(entry.get("teamId"), (Object)teamId));
+        sq.where((Expression)cb.and(conditions.toArray(new Predicate[0])));
+        return sq;
     }
 
     private Map<Long, String> currentTeamNames(Map<Long, Set<Long>> currentTeams) {
@@ -431,7 +448,7 @@ public class PlayerClaimService {
                 .collect(Collectors.toMap(Team::getId, t -> t.getName(), (a, b) -> a));
     }
 
-    private Map<String, Object> candidateRow(Player player, Set<Long> teamsOfPlayer, Map<Long, String> teamNames, Long teamId) {
+    private Map<String, Object> candidateRow(Player player, Set<Long> teamsOfPlayer, Map<Long, String> teamNames) {
         List<Map<String, Object>> teamList = new ArrayList<Map<String, Object>>(teamsOfPlayer.size());
         for (Long id : teamsOfPlayer) {
             LinkedHashMap<String, Object> t = new LinkedHashMap<String, Object>();
@@ -447,7 +464,6 @@ public class PlayerClaimService {
         row.put("status", player.getStatus());
         row.put("claimed", player.getUserId() != null);
         row.put("currentTeams", teamList);
-        row.put("inThisTeam", teamsOfPlayer.contains(teamId));
         return row;
     }
 

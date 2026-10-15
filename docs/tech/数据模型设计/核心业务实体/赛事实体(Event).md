@@ -100,11 +100,14 @@ class Event {
 +Boolean requireRoster
 +String description
 +Integer sort
++Map~String,Boolean~ specialRules %瞬态：仅 GET /event/{id} 详情装配（Issue #275）%
 }
 Event --|> BaseEntity : "继承"
 ```
 
 > 变更（Issue #318，2026-10-14）：`requireRoster`（`bs_event.require_roster`）为**报名制**标记——新建赛事默认 true：至少 2 支「已确认且锁定名单」的球队才能建比赛，且主/客队须属该集合；历史存量赛事由迁移回填 false（沿用宽松口径，照顾历史比赛）。该标记**创建时定型**：编辑赛事一律沿用存量值（无 UI 开关）。状态置为 ended 前须该赛事全部比赛已终态（final/cancelled，与球队解散守卫同口径），否则 400「存在未结束的比赛，无法结束赛事」。
+
+> 变更（Issue #275，2026-10-15）：`specialRules` 为**瞬态字段**（`@Transient` + `@JsonInclude(NON_NULL)`，不落表）——联赛特殊规则生效值 `{extraBatter, forceHalf}`，仅 `GET /event/{id}` 详情由 EventService 按 `leagueId` 装配（未挂联赛 / 无记录按默认兜底：extraBatter=false、forceHalf=true）；list / create / update 等其余路径保持 null 并随序列化省略。规则数据见 `核心业务实体/联赛特殊规则实体(LeagueSpecialRule).md`。
 
 ### 接口层：EventApi
 - 列表查询：支持分页、排序参数
@@ -132,7 +135,7 @@ Import --> End
 
 ### 服务层：EventService
 - 列表：根据全局/租户模式与数据范围过滤，支持分页与排序
-- 详情：校验租户与数据范围，无权限抛异常
+- 详情：校验租户与数据范围，无权限抛异常；按 leagueId 附带联赛特殊规则生效值 specialRules（瞬态字段，Issue #275）
 - 创建：校验联赛存在性、租户一致性与数据范围，设置租户后保存
 - 更新：校验原记录与目标联赛权限，保留审计字段；置为 ended 前校验全部比赛已 final（Issue #318 决策 7）
 - 删除：软删除，记录删除人与时间
@@ -199,6 +202,7 @@ Event 作为赛事主数据，具备清晰的字段定义与完善的权限控�
 - 分类信息：status（默认草稿）、gameMode（BASEBALL/SOFTBALL）
 - 报名制：requireRoster（新建默认 true；存量回填 false，Issue #318 决策 11）
 - 关联信息：leagueId（所属联赛）
+- 特殊规则（瞬态）：specialRules（`Map<String,Boolean>`，Issue #275）——仅 GET /event/{id} 详情装配的联赛规则生效值 {extraBatter, forceHalf}（未挂联赛按默认兜底），其余接口不返回、不落表
 
 ### 业务流程：赛事创建
 ```mermaid

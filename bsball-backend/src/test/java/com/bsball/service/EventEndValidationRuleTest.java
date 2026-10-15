@@ -62,12 +62,15 @@ class EventEndValidationRuleTest {
     @Mock
     private GameRepository gameRepository;
 
+    @Mock
+    private LeagueSpecialRuleService leagueSpecialRuleService;
+
     private EventService service;
 
     @BeforeEach
     void setUp() {
         service = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                resourceGuard, tenantQueryPolicyService, gameRepository);
+                resourceGuard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService);
     }
 
     @Test

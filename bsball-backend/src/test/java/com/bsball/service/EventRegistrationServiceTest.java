@@ -623,6 +623,7 @@ class EventRegistrationServiceTest {
                 .thenReturn(List.of(r1, r2));
         Player p5 = player(5L, "张三");
         p5.setNumber("7");
+        p5.setAvatar("/avatar/zhangsan.png");
         Player p6 = player(6L, "李四");
         when(playerRepository.findAllById(List.of(5L, 6L))).thenReturn(List.of(p5, p6));
         when(playerTeamRepository.findByPlayerIdInAndDeletedAtIsNullAndCurrentTrue(List.of(5L, 6L)))
@@ -632,8 +633,10 @@ class EventRegistrationServiceTest {
 
         assertEquals(2, out.size());
         assertEquals("7", out.get(0).number(), "快照缺失应回落档案背号");
+        assertEquals("/avatar/zhangsan.png", out.get(0).avatar(), "头像取球员档案");
         assertEquals(Boolean.FALSE, out.get(0).currentInTeam(), "已离队球员应标记不在队");
         assertEquals("8", out.get(1).number());
+        assertNull(out.get(1).avatar(), "档案无头像应为空");
         assertEquals(Boolean.TRUE, out.get(1).currentInTeam());
     }
 

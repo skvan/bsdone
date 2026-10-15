@@ -728,6 +728,8 @@
     "eventGames": "日程・結果",
     "gameDetail": "試合詳細",
     "teams": "チーム",
+    "leagueDetail": "リーグ詳細",
+    "freeAgents": "フリーエージェント",
     "starPlayers": "スター選手",
     "teamDetail": "チーム詳細",
     "playerDetail": "選手詳細",
@@ -822,8 +824,18 @@
   },
   "teams": {
     "title": "チーム",
+    "freeAgentsCard": "フリーエージェント",
     "noTeams": "チームがありません",
     "homeStadium": "本拠地"
+  },
+  "leagueDetail": {
+    "events": "大会一覧",
+    "emptyEvents": "このリーグには大会がありません",
+    "notFound": "リーグが見つかりません"
+  },
+  "freeAgents": {
+    "title": "フリーエージェント",
+    "empty": "フリーエージェントはいません"
   },
   "starPlayers": {
     "title": "スター選手",
@@ -1880,7 +1892,23 @@
     "joinedDone": "参加を確認しました",
     "declinedDone": "辞退しました",
     "backSchedule": "← 日程へ戻る",
+    "bookTitle": "チーム名簿一覧",
+    "viewBook": "名簿一覧",
+    "bookPrint": "印刷",
+    "bookGeneratedAt": "作成日時：",
+    "bookSummary": "{teams}チーム · ロック済み{locked} · 登録選手{players}名",
+    "bookNotSubmitted": "名簿未提出",
+    "bookEmpty": "確定チームはまだありません",
+    "rosterLoadFailed": "名簿の読み込みに失敗しました",
+    "bookLoadFailed": "読み込みに失敗しました",
     "backTeams": "← チームへ戻る",
+    "backEventTeams": "← 参加チームへ戻る",
+    "viewCards": "カード",
+    "viewList": "リスト",
+    "colPhoto": "写真",
+    "colRegTeams": "登録チーム",
+    "listExcluded": "リストに含まれないチーム：",
+    "listNoActive": "表示できる現役選手がいません",
     "operationFailed": "操作に失敗しました",
     "emptyRegistrations": "大会エントリーはありません",
     "softball": "ソフトボール"
@@ -1897,8 +1925,6 @@
     "claimed": "紐付け済み",
     "unclaimed": "未紐付け",
     "colTeams": "所属チーム",
-    "colInTeam": "本チーム",
-    "inThisTeam": "在籍中",
     "freeAgent": "フリー",
     "generate": "招待を発行",
     "emptySearch": "該当選手なし",
@@ -1923,8 +1949,7 @@
     "emptyInvites": "発行済みの招待はありません",
     "createFailed": "発行に失敗しました",
     "revokeFailed": "取消に失敗しました",
-    "genericHint": "「在籍中」の選手への招待は不要です。紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
-    "loadFailed": "読み込みに失敗しました",
-    "moreHint": "全 {total} 名。キーワードで絞り込んでください"
+    "genericHint": "本チームに未在籍の選手のみ表示します。紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
+    "loadFailed": "読み込みに失敗しました"
   }
 }

@@ -26,12 +26,14 @@ import com.bsball.common.Result;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.LeagueOwnerDto;
+import com.bsball.model.dto.LeagueSpecialRulesUpdateRequest;
 import com.bsball.model.entity.League;
 import com.bsball.model.entity.LeagueCreateRequest;
 import com.bsball.model.entity.LeagueOwner;
 import com.bsball.service.LeagueOwnerAssignService;
 import com.bsball.service.LeagueProvisionService;
 import com.bsball.service.LeagueService;
+import com.bsball.service.LeagueSpecialRuleService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,7 @@ public class LeagueApi {
     private final LeagueService leagueService;
     private final LeagueOwnerAssignService leagueOwnerAssignService;
     private final LeagueProvisionService leagueProvisionService;
+    private final LeagueSpecialRuleService leagueSpecialRuleService;
 
     @GetMapping(value={"/list"})
     public Result<PageResult<League>> list(@RequestParam(required=false) Integer page, @RequestParam(required=false) Integer pageSize, @RequestParam(required=false) String sortProp, @RequestParam(required=false) String sortOrder) {
@@ -131,6 +134,28 @@ public class LeagueApi {
         return Result.ok(Map.of());
     }
 
+    /* 联赛特殊规则读写（Issue #275）：薄控制器；键名 / 值校验与租户写守卫在 LeagueSpecialRuleService。 */
+
+    /** 读取联赛特殊规则生效值（含默认兜底）。 */
+    @GetMapping(value={"/{id}/special-rules"})
+    public Result<Map<String, Object>> getSpecialRules(@PathVariable Long id) {
+        // 读取守卫沿用联赛读惯例（LeagueService.get：租户 + 可见域；不存在 / 已软删 / 跨租户 → null，此处 404 收口）
+        if (this.leagueService.get(id) == null) {
+            throw new BusinessException(404, "联赛不存在");
+        }
+        return Result.ok(Map.of("rules", this.leagueSpecialRuleService.getEffective(id)));
+    }
+
+    /** 更新联赛特殊规则（camelCase 键，支持子集 / 全集），返回生效值。 */
+    @PutMapping(value={"/{id}/special-rules"})
+    public Result<Map<String, Object>> updateSpecialRules(@PathVariable Long id, @RequestBody(required=false) LeagueSpecialRulesUpdateRequest body) {
+        Map<String, Boolean> rules = body == null ? null : body.rules();
+        if (rules == null) {
+            throw new BusinessException(400, "rules 不能为空");
+        }
+        return Result.ok(Map.of("rules", this.leagueSpecialRuleService.updateRules(id, rules)));
+    }
+
     /** 取当前登录用户作为操作者（未登录 401）。 */
     private Long requireOperator() {
         Long userId = CurrentUserHolder.get();
@@ -160,10 +185,11 @@ public class LeagueApi {
 
     @Generated
     public LeagueApi(LeagueService leagueService, LeagueOwnerAssignService leagueOwnerAssignService,
-            LeagueProvisionService leagueProvisionService) {
+            LeagueProvisionService leagueProvisionService, LeagueSpecialRuleService leagueSpecialRuleService) {
         this.leagueService = leagueService;
         this.leagueOwnerAssignService = leagueOwnerAssignService;
         this.leagueProvisionService = leagueProvisionService;
+        this.leagueSpecialRuleService = leagueSpecialRuleService;
     }
 }
 

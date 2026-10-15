@@ -113,6 +113,8 @@ class BatchOnboardingRuleTest {
     private EarnedRunReconstructionService earnedRunReconstructionService;
     @Mock
     private EventRegistrationService eventRegistrationService;
+    @Mock
+    private LeagueSpecialRuleService leagueSpecialRuleService;
 
     private ResourceGuard guard;
     private TeamService teamService;
@@ -135,7 +137,7 @@ class BatchOnboardingRuleTest {
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                guard, tenantQueryPolicyService, gameRepository);
+                guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService);
     }
 
     @AfterEach

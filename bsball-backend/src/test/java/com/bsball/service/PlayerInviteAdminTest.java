@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,7 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerClaimInvite;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.PlayerClaimInviteRepository;
 import com.bsball.repository.PlayerClaimRepository;
@@ -24,6 +26,10 @@ import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.SysUserRepository;
 import com.bsball.repository.TeamManagerRepository;
 import com.bsball.repository.TeamRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -127,14 +133,19 @@ class PlayerInviteAdminTest {
     }
 
     @Test
-    @DisplayName("候选搜索：本租户全量球员装配认领状态/现属球队/已在本队，并过球队守卫")
+    @DisplayName("候选搜索：装配认领状态与现属球队（已在本队球员由查询条件排除；inThisTeam 字段已随口径调整移除）")
     void candidates_assemblesRows() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team("雷霆队")));
         when(playerRepository.findAll(ArgumentMatchers.<Specification<Player>>any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<Player>(List.of(player(1L, "张三", null), player(2L, "李四", 88L)), Pageable.ofSize(20), 2L));
+        // 候选均为"非本队"球员：张三另有他队经历（99），李四为自由球员
         when(playerTeamService.currentTeamIdsByPlayerIds(List.of(1L, 2L)))
-                .thenReturn(Map.of(1L, Set.of(TEAM_ID), 2L, Set.of()));
-        when(teamRepository.findAllById(any())).thenReturn(List.of(team("雷霆队")));
+                .thenReturn(Map.of(1L, Set.of(99L), 2L, Set.of()));
+        Team other = new Team();
+        other.setId(Long.valueOf(99L));
+        other.setTenantId(Long.valueOf(TENANT_ID));
+        other.setName("猎鹰队");
+        when(teamRepository.findAllById(any())).thenReturn(List.of(other));
 
         PageResult<Map<String, Object>> out = service.inviteCandidates(TEAM_ID, "张", 1, 20);
 
@@ -142,14 +153,43 @@ class PlayerInviteAdminTest {
         Map<String, Object> row1 = out.getList().get(0);
         assertEquals("张三", row1.get("name"));
         assertEquals(Boolean.FALSE, row1.get("claimed"));
-        assertEquals(Boolean.TRUE, row1.get("inThisTeam"));
+        assertTrue(row1.get("inThisTeam") == null);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> teams = (List<Map<String, Object>>) row1.get("currentTeams");
-        assertEquals("雷霆队", teams.get(0).get("teamName"));
+        assertEquals("猎鹰队", teams.get(0).get("teamName"));
         Map<String, Object> row2 = out.getList().get(1);
         assertEquals(Boolean.TRUE, row2.get("claimed"));
-        assertEquals(Boolean.FALSE, row2.get("inThisTeam"));
         verify(resourceGuard).assertCanManageTeam(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("候选搜索：查询接线 NOT EXISTS(当前经历含本队)——已在本队球员由数据层排除（spec 接线断言）")
+    void candidates_specWiresNotExistsCurrentTeam() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team("雷霆队")));
+        when(playerRepository.findAll(ArgumentMatchers.<Specification<Player>>any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<Player>(List.of()));
+
+        service.inviteCandidates(TEAM_ID, null, 1, 20);
+
+        ArgumentCaptor<Specification<Player>> specCaptor = ArgumentCaptor.forClass(Specification.class);
+        verify(playerRepository).findAll(specCaptor.capture(), any(Pageable.class));
+
+        CriteriaBuilder cb = mock(CriteriaBuilder.class);
+        CriteriaQuery<Player> query = mock(CriteriaQuery.class);
+        Root<Player> root = mock(Root.class);
+        Subquery<Long> sq = mock(Subquery.class);
+        Root<PlayerTeam> entry = mock(Root.class);
+        when(query.subquery(Long.class)).thenReturn(sq);
+        when(sq.from(PlayerTeam.class)).thenReturn(entry);
+
+        specCaptor.getValue().toPredicate(root, query, cb);
+
+        // 排除口径接线：NOT EXISTS(当前经历含本队) —— 与 PlayerService.currentTeamSubquery 同构
+        verify(query).subquery(Long.class);
+        verify(sq).from(PlayerTeam.class);
+        verify(cb).isTrue(any());
+        verify(cb).exists(any());
+        verify(cb).not(any());
     }
 
     @Test

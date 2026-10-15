@@ -727,6 +727,8 @@
     "eventGames": "일정 및 결과",
     "gameDetail": "경기 상세",
     "teams": "팀",
+    "leagueDetail": "리그 상세",
+    "freeAgents": "자유 계약 선수",
     "starPlayers": "스타 선수",
     "teamDetail": "팀 상세",
     "playerDetail": "선수 상세",
@@ -821,8 +823,18 @@
   },
   "teams": {
     "title": "팀",
+    "freeAgentsCard": "자유 계약 선수",
     "noTeams": "팀 없음",
     "homeStadium": "홈구장"
+  },
+  "leagueDetail": {
+    "events": "소속 대회",
+    "emptyEvents": "이 리그에 등록된 대회가 없습니다",
+    "notFound": "리그를 찾을 수 없습니다"
+  },
+  "freeAgents": {
+    "title": "자유 계약 선수",
+    "empty": "자유 계약 선수가 없습니다"
   },
   "starPlayers": {
     "title": "스타 선수",
@@ -1875,7 +1887,23 @@
     "joinedDone": "참가 확인됨",
     "declinedDone": "거절됨",
     "backSchedule": "← 일정으로 돌아가기",
+    "bookTitle": "오더북",
+    "viewBook": "전체 보기",
+    "bookPrint": "인쇄",
+    "bookGeneratedAt": "생성 시간: ",
+    "bookSummary": "{teams}팀 · 잠김 {locked} · 등록 선수 {players}명",
+    "bookNotSubmitted": "명단 미제출",
+    "bookEmpty": "확정된 팀이 없습니다",
+    "rosterLoadFailed": "명단을 불러오지 못했습니다",
+    "bookLoadFailed": "불러오지 못했습니다",
     "backTeams": "← 팀으로 돌아가기",
+    "backEventTeams": "← 참가 팀으로 돌아가기",
+    "viewCards": "카드",
+    "viewList": "목록",
+    "colPhoto": "사진",
+    "colRegTeams": "등록 팀",
+    "listExcluded": "목록에 포함되지 않은 팀: ",
+    "listNoActive": "표시할 현역 선수가 없습니다",
     "operationFailed": "작업 실패",
     "emptyRegistrations": "대회 참가 신청 내역이 없습니다",
     "softball": "소프트볼"
@@ -1892,8 +1920,6 @@
     "claimed": "연결됨",
     "unclaimed": "미연결",
     "colTeams": "현 소속팀",
-    "colInTeam": "본 팀",
-    "inThisTeam": "이미 소속",
     "freeAgent": "무소속",
     "generate": "초대 생성",
     "emptySearch": "일치하는 선수가 없습니다",
@@ -1918,8 +1944,7 @@
     "emptyInvites": "생성된 초대가 없습니다",
     "createFailed": "생성 실패",
     "revokeFailed": "철회 실패",
-    "genericHint": "「이미 소속」 선수는 초대가 필요 없습니다. 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
-    "loadFailed": "불러오기 실패",
-    "moreHint": "총 {total}명입니다. 키워드로 좁혀 주세요"
+    "genericHint": "본 팀에 소속되지 않은 선수만 표시합니다. 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
+    "loadFailed": "불러오기 실패"
   }
 }

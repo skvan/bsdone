@@ -340,7 +340,7 @@ var Il={
       return e?.optionalDhRow&&e.playerId!=null&&t.push({
         position:"DH"
       }
-      ),yl(t)
+      ),yl(t,void 0,{extraBatter:!0})
     }
     );
     function ct(t){

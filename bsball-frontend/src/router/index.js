@@ -35,7 +35,9 @@ import NoticeDetail from '../views/portal/NoticeDetail.js';
 import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
 import PortalEvents from '../views/portal/PortalEvents.js';
 import PortalLeagues from '../views/portal/PortalLeagues.js';
+import PortalLeagueDetail from '../views/portal/PortalLeagueDetail.js';
 import PortalTeams from '../views/portal/PortalTeams.js';
+import PortalFreeAgents from '../views/portal/PortalFreeAgents.js';
 import PortalTeamDetail from '../views/portal/PortalTeamDetail.js';
 import StarPlayers from '../views/portal/StarPlayers.js';
 import PortalPlayerDetail from '../views/portal/PortalPlayerDetail.js';
@@ -59,6 +61,7 @@ import PlayerDetail from '../views/admin/PlayerDetail.js';
 import Events from '../views/admin/Events.js';
 import EventBracket from '../views/admin/EventBracket.js';
 import EventTeams from '../views/admin/EventTeams.vue';
+import EventOrderBook from '../views/admin/EventOrderBook.vue';
 import TeamEventRegistrations from '../views/admin/TeamEventRegistrations.vue';
 import LiveGameLineupBoard from '../views/admin/LiveGameLineupBoard.vue';
 import LiveGameWatch from '../views/admin/LiveGameWatch.js';
@@ -126,9 +129,11 @@ const routes = [
         { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
         { path: 'events', name: 'PortalEvents', component: PortalEvents },
         { path: 'leagues', name: 'PortalLeagues', component: PortalLeagues },
+        { path: 'leagues/:id', name: 'PortalLeagueDetail', component: PortalLeagueDetail },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },
         { path: 'events/:eventId/games/:gameId', name: 'PortalGameDetail', component: PortalGameDetail },
         { path: 'teams', name: 'PortalTeams', component: PortalTeams },
+        { path: 'teams/free-agents', name: 'PortalFreeAgents', component: PortalFreeAgents },
         { path: 'star-players', name: 'PortalStarPlayers', component: StarPlayers },
         { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
         { path: 'stadiums/:id', name: 'PortalStadiumDetail', component: PortalStadiumDetail },
@@ -191,6 +196,7 @@ const routes = [
             { path: 'teams/:id/players', name: 'AdminTeamPlayers', component: PlayerList },
             { path: 'events', name: 'AdminEvents', component: Events },
             { path: 'events/:eventId/teams', name: 'AdminEventTeams', component: EventTeams, meta: { title: '参赛球队' } },
+            { path: 'events/:eventId/order-book', name: 'AdminEventOrderBook', component: EventOrderBook, meta: { title: '秩序册' } },
             { path: 'teams/:id/event-registrations', name: 'AdminTeamEventRegistrations', component: TeamEventRegistrations, meta: { title: '赛事报名' } },
             { path: 'events/:eventId/bracket', name: 'AdminEventBracket', component: EventBracket },
             { path: 'events/:eventId/games', name: 'AdminGames', component: Games },
