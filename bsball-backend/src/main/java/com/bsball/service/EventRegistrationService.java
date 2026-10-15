@@ -282,6 +282,7 @@ public class EventRegistrationService {
             out.add(new EventRosterPlayerDto(
                     r.getPlayerId(),
                     p != null ? p.getName() : null,
+                    p != null ? p.getAvatar() : null,
                     this.resolveNumber(r, p),
                     p != null ? p.getPositionsList() : List.of(),
                     p != null ? p.getStatus() : null,

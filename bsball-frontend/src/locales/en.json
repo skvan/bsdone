@@ -1891,6 +1891,12 @@
     "bookLoadFailed": "Failed to load",
     "backTeams": "← Back to Teams",
     "backEventTeams": "← Back to Participating Teams",
+    "viewCards": "Cards",
+    "viewList": "List",
+    "colPhoto": "Photo",
+    "colRegTeams": "Registered Teams",
+    "listExcluded": "Teams not included: ",
+    "listNoActive": "No active players to show",
     "operationFailed": "Operation failed",
     "emptyRegistrations": "No event registrations yet",
     "softball": "Softball"
