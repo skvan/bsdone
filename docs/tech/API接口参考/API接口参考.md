@@ -269,13 +269,20 @@ A-->>C : Result包装的响应
   - DELETE /league/delete/{id}
     - 路径参数：id
     - 响应：Result<Object>
+  - GET /league/{id}/special-rules
+    - 路径参数：id
+    - 响应：Result<Map>，形状 {rules:{extraBatter:boolean, forceHalf:boolean}}；为生效值（无记录按默认兜底：extraBatter=false、forceHalf=true）；联赛不存在 / 跨租户不可见返回404
+  - PUT /league/{id}/special-rules
+    - 路径参数：id
+    - 请求体：{rules:{extraBatter:boolean, forceHalf:boolean}}（camelCase 键，支持子集更新；未知键名或非布尔值返回400）
+    - 响应：Result<Map>，返回更新后的生效值 {rules:{extraBatter, forceHalf}}
 - 赛事
   - GET /event/list
     - 查询参数：page, pageSize, sortProp, sortOrder
     - 响应：Result<PageResult<Event>>
   - GET /event/{id}
     - 路径参数：id
-    - 响应：Result<Event>，不存在返回404
+    - 响应：Result<Event>，不存在返回404；详情附带 specialRules 字段（{extraBatter:boolean, forceHalf:boolean} 联赛特殊规则生效值，未挂联赛按默认兜底；仅详情接口附带，列表/创建/更新不含）
   - POST /event/create
     - 请求体：Event
     - 响应：Result<Map>，返回id
