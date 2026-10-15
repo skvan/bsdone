@@ -1900,6 +1900,12 @@
     "bookLoadFailed": "加载失败",
     "backTeams": "← 返回球队",
     "backEventTeams": "← 返回参赛球队",
+    "viewCards": "卡片",
+    "viewList": "列表",
+    "colPhoto": "照片",
+    "colRegTeams": "报名球队",
+    "listExcluded": "未纳入列表的球队：",
+    "listNoActive": "暂无可展示的在役球员",
     "operationFailed": "操作失败",
     "emptyRegistrations": "暂无赛事报名记录",
     "softball": "垒球"

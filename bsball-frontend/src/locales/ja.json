@@ -1891,6 +1891,12 @@
     "bookLoadFailed": "読み込みに失敗しました",
     "backTeams": "← チームへ戻る",
     "backEventTeams": "← 参加チームへ戻る",
+    "viewCards": "カード",
+    "viewList": "リスト",
+    "colPhoto": "写真",
+    "colRegTeams": "登録チーム",
+    "listExcluded": "リストに含まれないチーム：",
+    "listNoActive": "表示できる現役選手がいません",
     "operationFailed": "操作に失敗しました",
     "emptyRegistrations": "大会エントリーはありません",
     "softball": "ソフトボール"

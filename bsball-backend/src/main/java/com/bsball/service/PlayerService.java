@@ -169,6 +169,11 @@ public class PlayerService {
         if (!(global || visibleTeamIds == null || teamId == null || teamId == 0L || visibleTeamIds.contains(teamId))) {
             return PageResult.of((List)List.of(), (long)0L);
         }
+        // 受限角色（manage 窄读）不提供「自由球员」视图：无当前归属的球员（含已离队且未加入新队者）
+        // 不属于任何授权球队，一律空页（找自由球员走「邀请球员」候选搜索，不属球员管理列表）
+        if (!global && visibleTeamIds != null && teamId != null && teamId == 0L) {
+            return PageResult.of((List)List.of(), (long)0L);
+        }
         if (ids != null && !ids.isEmpty()) {
             List<Player> rows = this.playerRepository.findByDeletedAtIsNullAndIdIn(ids);
             List<Player> list;

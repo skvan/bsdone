@@ -131,7 +131,8 @@ class Team {
   - POST /player/import：批量导入（支持重复策略）
 - 关键行为
   - 列表与选项均受租户与数据范围限制；支持自由球员（无“当前”经历）与指定球队（存在该队“当前”经历）两种视图
-  - 数据范围判定：受限用户按“当前经历是否落在授权球队”判定可见性（列表、ID集合查询、详情一致）
+  - 数据范围判定：受限用户按“当前经历是否落在授权球队”判定可见性（列表与详情一致；ID集合查询沿用旧可见性以兼容历史比赛详情补全）
+  - 受限角色不提供「自由球员」视图：`teamId=0` 查询一律空页——无归属球员（含已离队且未加入新队者）不属于任何授权球队；找自由球员请走「邀请球员」候选搜索
   - 统计与钻取通过服务聚合计算并按模式过滤；统计按 playerId 聚合，不受多队注册影响
   - 导入与旧页面更新会按旧字段确保/更新一条“当前球队”经历
 - 数据模型要点
@@ -458,7 +459,7 @@ Exec --> End(["返回结果"])
 | POST | /event/{eventId}/teams/{teamId}/remove | 移除参赛（软删登记+全部名单行；锁定后 403，须先解锁） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/lock | 锁定报名名单（留痕 lockedBy/lockedAt） | 办赛方 |
 | POST | /event/{eventId}/teams/{teamId}/unlock | 解锁报名名单 | 办赛方 |
-| GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/背号快照/位置/是否仍在队） | 登录+同租户 |
+| GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/头像/背号快照/位置/是否仍在队） | 登录+同租户 |
 | GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
 | GET | /team/{teamId}/player-invite-candidates | 球员候选搜索：本租户未删且**当前不在本队**的球员（排除已在本队者）；keyword 匹配姓名/昵称/简称；附认领状态、现属球队；分页，pageSize 上限 100，按 id 升序 | 可管理该球队 |
 | POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 可管理该球队 |

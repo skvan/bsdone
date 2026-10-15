@@ -1886,6 +1886,12 @@
     "bookLoadFailed": "불러오지 못했습니다",
     "backTeams": "← 팀으로 돌아가기",
     "backEventTeams": "← 참가 팀으로 돌아가기",
+    "viewCards": "카드",
+    "viewList": "목록",
+    "colPhoto": "사진",
+    "colRegTeams": "등록 팀",
+    "listExcluded": "목록에 포함되지 않은 팀: ",
+    "listNoActive": "표시할 현역 선수가 없습니다",
     "operationFailed": "작업 실패",
     "emptyRegistrations": "대회 참가 신청 내역이 없습니다",
     "softball": "소프트볼"
