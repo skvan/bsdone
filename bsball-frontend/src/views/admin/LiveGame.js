@@ -954,11 +954,11 @@ var Bu=Yc("liveGame",()=>{
     const G=te[O.isTop?"away":"home"].innings,pe=O.inning-1;
     return pe>=0&&pe<G.length?G[pe]:0
   }
-  ),xe=$(()=>te.away.score),Xe=$(()=>te.home.score),Te=x([]),Ie=x([]),I=x([]),le=x([]),fe=x(null),Ae=x(null),ie=x(null),ke=x(null),Me=x(null),ve=x(null),i=x([]),dt=x([]),k=x(Array(11).fill(null)),zt=x(Array(11).fill(null)),$e=x(Array.from({
-    length:11
+  ),xe=$(()=>te.away.score),Xe=$(()=>te.home.score),Te=x([]),Ie=x([]),I=x([]),le=x([]),fe=x(null),Ae=x(null),ie=x(null),ke=x(null),Me=x(null),ve=x(null),i=x([]),dt=x([]),k=x(Array(12).fill(null)),zt=x(Array(12).fill(null)),$e=x(Array.from({
+    length:12
   }
   ,()=>[])),Ne=x(Array.from({
-    length:11
+    length:12
   }
   ,()=>[])),Ye=$(()=>O.isTop?Ie.value:Te.value),Sa=$(()=>O.batterIndex[O.isTop?"away":"home"]),ka=$(()=>Ye.value[Sa.value]),yi=$(()=>{
     const G=O.isTop?"home":"away",pe=G==="away"?fe.value:Ae.value;
@@ -989,11 +989,11 @@ var Bu=Yc("liveGame",()=>{
     ,O.batterIndex={
       away:0,home:0
     }
-    ,O.flow=null,O.isGameEnd=!1,O.hasPitchThisAB=!1,O.needNextBatter=!1,O.mvp=null,O.svp=null,O.runnerDragCiRunnerId=null,O.hitSprayQueue=[],Te.value=[],Ie.value=[],I.value=[],le.value=[],fe.value=null,Ae.value=null,ie.value=null,ke.value=null,Me.value=null,ve.value=null,i.value=[],dt.value=[],k.value=Array(11).fill(null),zt.value=Array(11).fill(null),$e.value=Array.from({
-      length:11
+    ,O.flow=null,O.isGameEnd=!1,O.hasPitchThisAB=!1,O.needNextBatter=!1,O.mvp=null,O.svp=null,O.runnerDragCiRunnerId=null,O.hitSprayQueue=[],Te.value=[],Ie.value=[],I.value=[],le.value=[],fe.value=null,Ae.value=null,ie.value=null,ke.value=null,Me.value=null,ve.value=null,i.value=[],dt.value=[],k.value=Array(12).fill(null),zt.value=Array(12).fill(null),$e.value=Array.from({
+      length:12
     }
     ,()=>[]),Ne.value=Array.from({
-      length:11
+      length:12
     }
     ,()=>[]),te.away.score=0,te.away.innings=[],te.away.roster=[],te.away.bench=[],te.home.score=0,te.home.innings=[],te.home.roster=[],te.home.bench=[],wn.value=[],ln.value=[],pn.value=[],Xn.value=null,Yn.value=null,sn.value=null,Kn.value="",Pa.value="info",Ue.value=[],Ft.value=[],wi.value=null,ht.value=[],xt.value=0,At.value=!1,ol.value=!1,ot.value=[],o.value=!1,l.value=null
   }
@@ -1068,7 +1068,7 @@ var Bu=Yc("liveGame",()=>{
   function Ot(G){
     const pe=G==="away"?Ie.value:Te.value;
     return Array.from({
-      length:11
+      length:12
     }
     ,(tt,yt)=>{
       const In=pe[yt];
@@ -1085,7 +1085,7 @@ var Bu=Yc("liveGame",()=>{
     k.value.every(G=>G==null)&&(k.value=Ot("away")),zt.value.every(G=>G==null)&&(zt.value=Ot("home"))
   }
   function rn(G,pe,tt){
-    if(pe<0||pe>=11||tt==null)return;
+    if(pe<0||pe>=12||tt==null)return;
     const yt=Number(tt);
     if(!Number.isFinite(yt)||yt<=0)return;
     const In=fl(G).value;
@@ -1096,11 +1096,11 @@ var Bu=Yc("liveGame",()=>{
     dl[pe]=[...Fa,yt],qt.value=dl
   }
   function ut(){
-    k.value=Array(11).fill(null),zt.value=Array(11).fill(null),$e.value=Array.from({
-      length:11
+    k.value=Array(12).fill(null),zt.value=Array(12).fill(null),$e.value=Array.from({
+      length:12
     }
     ,()=>[]),Ne.value=Array.from({
-      length:11
+      length:12
     }
     ,()=>[])
   }
@@ -6448,7 +6448,7 @@ var sg={
     function gr(e){
       const t=Ee(e).lineup.value;
       return Array.from({
-        length:11
+        length:12
       }
       ,(a,s)=>{
         const r=t[s];
@@ -6462,7 +6462,7 @@ var sg={
       le.value.every(e=>e==null)&&(le.value=gr("away")),fe.value.every(e=>e==null)&&(fe.value=gr("home"))
     }
     function _r(e,t,a){
-      if(t<0||t>=11||a==null)return;
+      if(t<0||t>=12||a==null)return;
       const s=Number(a);
       if(!Number.isFinite(s)||s<=0)return;
       const r=mr(e).value;
@@ -6474,24 +6474,24 @@ var sg={
     }
     function hr(e){
       return Array.isArray(e)?Array.from({
-        length:11
+        length:12
       }
       ,(t,a)=>{
         const s=e[a],r=Number(s);
         return Number.isFinite(r)&&r>0?r:null
       }
-      ):Array(11).fill(null)
+      ):Array(12).fill(null)
     }
     function yr(e){
       return Array.isArray(e)?Array.from({
-        length:11
+        length:12
       }
       ,(t,a)=>{
         const s=e[a];
         return Array.isArray(s)?s.map(r=>Number(r)).filter(r=>Number.isFinite(r)&&r>0):[]
       }
       ):Array.from({
-        length:11
+        length:12
       }
       ,()=>[])
     }
@@ -10279,14 +10279,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ),w.add(se))
       };
       for(let d=0;
-      d<11;
+      d<12;
       d++){
         const z=d+1,se=m[d];
         se!=null&&T(bs(e,se),z);
         for(const _e of y[d]??[])T(bs(e,_e));
         T(g[d])
       }
-      for(let d=11;
+      for(let d=12;
       d<g.length;
       d++)T(g[d]);
       const Y=s.value;
@@ -10422,7 +10422,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           U>0&&Y.set(U,E)
         }
         );
-        const lineupSize=N.value==="SOFTBALL"?10:9;
+        const lineupSize=N.value==="SOFTBALL"?11:12;
         const j=[...Y.entries()].sort(([left],[right])=>left-right).map(([,row])=>row),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
         if(j.length>0)for(const E of P){
           if(V.length>=lineupSize)break;
