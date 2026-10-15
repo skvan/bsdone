@@ -2526,10 +2526,12 @@ var $n={
         }
         ,8,["data","max-height"])])])):H("",!0)]),_:1
       }
-      ,8,["modelValue","width"]),t(InvitePlayerDialog,{
+      ,8,["modelValue","width"]),
+      // children 占位 null 与 patchFlag 16 缺一不可，缺失时弹窗打不开且无报错（Issue #327）
+      t(InvitePlayerDialog,{
         modelValue:inviteDlg.value,"onUpdate:modelValue":o=>inviteDlg.value=o,teamId:inviteTeam.value?.id??null,teamName:inviteTeam.value?.name??""
       }
-      ,8,["modelValue","teamId","teamName"])])
+      ,null,16)])
     }
     
   }
