@@ -50,7 +50,7 @@ LeagueSpecialRule --|> BaseEntity : "继承"
 - 消费口径（Issue #274）：extra_batter 关闭 → 棒球阵容恰 9 人 / 垒球恰 10 人；开启 → 棒球 9-12 人（EP 组合矩阵：八守位各 1 + P/DH 至少其一 + EP 至多 3）、垒球 10-11 人；force_half 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
 
 ## 约束与校验
-- 写入校验（服务层）：未知规则键 / 非布尔值 / 空映射 → 400；联赛不存在或已软删 → 404。
+- 写入校验（服务层）：未知规则键 / 非布尔 JSON 值 / 缺失值 / 空映射 → 400；联赛不存在或已软删 → 404。
 - 写守卫：租户上下文缺失 → 403（fail-closed）；租管仅可操作本租户联赛（跨租户 403），超管可跨租户；再经 ResourceGuard.assertCanManageLeague 拦截同租户内受限身份。
 - 权限点：`business:league:specialRule`（联赛目录「特殊规则」按钮种子 + 两接口 ApiDef 注册；前端按 hasPerm 控制按钮显隐）。
 

@@ -354,7 +354,7 @@ EventService --> EventRepository
 | 方法 | 路径 | 用途 | 说明 |
 |---|---|---|---|
 | GET | /league/{id}/special-rules | 读取生效值（含默认兜底） | 响应 `Result<Map>`，形状 `{rules:{extraBatter:boolean, forceHalf:boolean}}` |
-| PUT | /league/{id}/special-rules | 更新规则（camelCase 键，支持子集 / 全集） | body `{rules:{extraBatter, forceHalf}}`；未知键名 / 非布尔值 / 空映射 400，联赛不存在或已软删 404，跨租户 403；返回更新后生效值 |
+| PUT | /league/{id}/special-rules | 更新规则（camelCase 键，支持子集 / 全集） | body `{rules:{extraBatter, forceHalf}}`；未知键名 / 非布尔 JSON 值 / 缺失值 / 空映射 400，联赛不存在或已软删 404，跨租户 403；返回更新后生效值 |
 
 - 权限点：`business:league:specialRule`（联赛列表行内「特殊规则」按钮 + 两接口注册）；租管仅可操作本租户联赛，超管可跨租户。
 - 存量回填（迁移 `V20261015100000__league_special_rule.sql`）：含超默认阵型（棒球 >9 / 垒球 >10 打击）的联赛自动开启 `extra_batter`（打序统计 ∪ 阵容快照双证据，幂等；未挂联赛赛事跳过）。

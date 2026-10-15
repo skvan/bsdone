@@ -274,7 +274,7 @@ A-->>C : Result包装的响应
     - 响应：Result<Map>，形状 {rules:{extraBatter:boolean, forceHalf:boolean}}；为生效值（无记录按默认兜底：extraBatter=false、forceHalf=true）；联赛不存在 / 跨租户不可见返回404
   - PUT /league/{id}/special-rules
     - 路径参数：id
-    - 请求体：{rules:{extraBatter:boolean, forceHalf:boolean}}（camelCase 键，支持子集更新；未知键名或非布尔值返回400）
+    - 请求体：{rules:{extraBatter:boolean, forceHalf:boolean}}（camelCase 键，支持子集更新；未知键名 / 非布尔 JSON 值 / 缺失值返回400）
     - 响应：Result<Map>，返回更新后的生效值 {rules:{extraBatter, forceHalf}}
 - 赛事
   - GET /event/list
