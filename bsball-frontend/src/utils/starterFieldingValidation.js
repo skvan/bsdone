@@ -1,15 +1,17 @@
 // 先发守备阵容校验（starterFieldingValidation-BYO2jtwe）——行为保真移植，正文逐字保留短名
-// 逐字对应：m=POSITION_ORDER、P/z/D/B/O=位置组合、v/T=合法集合、_=数字↔位置映射、
-//   A=normalizeInput、K=normalizeCode、H=countBy、X/h/C=9人制校验、N=validateStarterFielding、
-//   R/w/k=垒球 10/11 人校验、W=getValidPositionOptions、y=sizeRange、Q=validateRosterPositions、Z=validateRows
+// 逐字对应：m=POSITION_ORDER、P/z/D/B/O=位置组合、v/T=合法集合（v 含 EP）、_=数字↔位置映射（含 EP）、
+//   A=normalizeInput、K=normalizeCode、H=countBy、X/h/C=9人制校验、q=棒球 EP 扩展组合校验、
+//   N=validateStarterFielding（第三参 o=opts，o.extraBatter 门禁）、
+//   R/w/k=垒球 10/11 人校验、W=getValidPositionOptions、y=sizeRange（第二参 extraBatter）、
+//   Q=validateRosterPositions（第三参 o）、Z=validateRows（第四参 o）
 
 var m=["C","1B","2B","3B","SS","LF","CF","RF"];
-var P=["P",...m],z=["DH",...m],D=["P",...m,"DH"],B=["P",...m,"XF"],O=["P",...m,"DH","XF"],v=new Set([...D]),T=new Set([...O]);
+var P=["P",...m],z=["DH",...m],D=["P",...m,"DH"],B=["P",...m,"XF"],O=["P",...m,"DH","XF"],v=new Set([...D,"EP"]),T=new Set([...O]);
 function A(e){
   return String(e??"").trim().toUpperCase()
 }
 var _={
-  1:"P",2:"C",3:"1B",4:"2B",5:"3B",6:"SS",7:"LF",8:"CF",9:"RF",10:"XF","1B":"1B","2B":"2B","3B":"3B",SS:"SS",P:"P",C:"C",LF:"LF",CF:"CF",RF:"RF",XF:"XF",XF1:"XF1",XF2:"XF2"
+  1:"P",2:"C",3:"1B",4:"2B",5:"3B",6:"SS",7:"LF",8:"CF",9:"RF",10:"XF","1B":"1B","2B":"2B","3B":"3B",SS:"SS",P:"P",C:"C",LF:"LF",CF:"CF",RF:"RF",XF:"XF",XF1:"XF1",XF2:"XF2",EP:"EP"
 };
 function K(e){
   const t=A(e);
@@ -35,23 +37,33 @@ function C(e){
   for(const t of m)if(e.get(t)!==1)return!1;
   return e.size===10
 }
-function N(e,t){
-  const a=t==="SOFTBALL";
+function q(e){
+  const t=e.get("P")??0,a=e.get("DH")??0,n=e.get("EP")??0;
+  if(t>1||a>1||n>3)return!1;
+  if(t+a<1)return!1;
+  for(const s of m)if(e.get(s)!==1)return!1;
+  const s=8+t+a+n;
+  return s>=9&&s<=12
+}
+function N(e,t,o){
+  const a=t==="SOFTBALL",r=o?.extraBatter;
   a&&(e=e.map(n=>n==="XF1"||n==="XF2"?"XF":n));
-  const L=a?10:9,d=a?11:10,I=e.length;
-  if(I<L||I>d)return{
+  const L=a?10:9,d=a?r?11:10:r?12:9,I=e.length;
+  if(I<L||I>d)return I>d&&!r?{
+    ok:!1,message:`该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${L} 人，当前 ${I} 人）`,errorIndices:e.map((n,s)=>s)
+  }:{
     ok:!1,message:`${a?"垒球先发人数须为 10 人（投手制）或 11 人（含 DH）":"先发人数须为 9 人（投手制或指定打击制）或 10 人（8 守位+P+DH）"}，当前为 ${I} 人`,errorIndices:e.map((n,s)=>s)
   };
-  const o=e.map((n,s)=>n?-1:s).filter(n=>n>=0);
-  if(o.length)return{
-    ok:!1,message:`第 ${o.map(n=>n+1).join("、")} 棒未填写守备位置`,errorIndices:o
+  const g=e.map((n,s)=>n?-1:s).filter(n=>n>=0);
+  if(g.length)return{
+    ok:!1,message:`第 ${g.map(n=>n+1).join("、")} 棒未填写守备位置`,errorIndices:g
   };
   const l=a?T:v,f=e.map((n,s)=>l.has(n)?-1:s).filter(n=>n>=0);
   if(f.length)return{
     ok:!1,message:`存在无效守备位置：${[...new Set(f.map(n=>e[n]))].join("、")}`,errorIndices:f
   };
   const c=H(e);
-  for(const[n,s]of c)if(s>1){
+  for(const[n,s]of c)if(s>1&&!(n==="EP"&&s<=3)){
     const u=e.map((F,S)=>F===n?S:-1).filter(F=>F>=0);
     return{
       ok:!1,message:`守备位置 ${n} 重复（第 ${u.map(F=>F+1).join("、")} 棒）`,errorIndices:u
@@ -66,6 +78,12 @@ function N(e,t){
   }
   :{
     ok:!1,message:"垒球 10 人阵容：P（或 DH）+ C/1B/2B/3B/SS/LF/CF/RF + XF 各一人；若用 DH 制需在下方指定先发投手。11 人阵容再叠加 P+DH 都上场打击",errorIndices:e.map((n,s)=>s)
+  }
+  :r?q(c)?{
+    ok:!0,message:"",errorIndices:[]
+  }
+  :{
+    ok:!1,message:"棒球阵容须包含 C/1B/2B/3B/SS/LF/CF/RF 各 1 人，P 与 DH 至多各 1 且至少其一，EP 至多 3 人（总人数 9-12）",errorIndices:e.map((n,s)=>s)
   }
   :I===9?X(c)||h(c)?{
     ok:!0,message:"",errorIndices:[]
@@ -100,27 +118,27 @@ var p=[...P],M=["LF","CF","RF"],$=["1B","2B","3B","SS"],U=[...p,"OF","DH","IF"],
 function W(e){
   return e==="SOFTBALL"?V:U
 }
-var G=9,b=10,j=10,x=11;
-function y(e){
+var G=9,j=10,x=11;
+function y(e,t){
   return e==="SOFTBALL"?{
-    min:j,max:x
+    min:j,max:t?x:j
   }
   :{
-    min:G,max:b
+    min:G,max:t?12:G
   }
   
 }
-function Q(e,t){
+function Q(e,t,o){
   const a=t==="SOFTBALL",{
     min:L,max:d
   }
-  =y(t??"BASEBALL"),I=e.length;
+  =y(t??"BASEBALL",o?.extraBatter),I=e.length;
   if(I<L||I>d)return{
-    ok:!1,msg:a?"阵容需 10-11 人（DH 及 XF 可选）":"阵容需 9-10 人（DH 可选）"
+    ok:!1,msg:I>d&&!o?.extraBatter?`该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${L} 人，当前 ${I} 人）`:(a?"阵容需 10-11 人（DH 及 XF 可选）":"阵容需 9-10 人（DH 可选）")
   };
-  const o=new Map,l=new Set;
+  const x=new Map,l=new Set;
   let f=!1;
-  const c=a?[...O,"XF1","XF2"]:[...P,"DH"];
+  const c=a?[...O,"XF1","XF2"]:[...P,"DH","EP"];
   for(let r=0;
   r<e.length;
   r++){
@@ -133,7 +151,7 @@ function Q(e,t){
     if(!c.includes(g))l.add(r),f=!0;
     else{
       const E=a&&(g==="XF1"||g==="XF2")?"XF":g;
-      o.has(E)||o.set(E,[]),o.get(E).push(r+1)
+      x.has(E)||x.set(E,[]),x.get(E).push(r+1)
     }
     
   }
@@ -141,15 +159,15 @@ function Q(e,t){
   if(n.length>0)return{
     ok:!1,msg:`第${n.map(r=>r+1).join("、")}棒未指定守备位置`,errorRowIndices:n
   };
-  const s=(a?[...B]:p).filter(r=>!o.has(r));
-  if((o.get("DH")?.length??0)>1){
-    const r=o.get("DH")??[];
+  const s=(a?[...B]:p).filter(r=>!x.has(r));
+  if((x.get("DH")?.length??0)>1){
+    const r=x.get("DH")??[];
     return r.forEach(i=>l.add(i-1)),{
       ok:!1,msg:`DH 重复（第${r.join("、")}棒）`,missing:s,errorRowIndices:[...l],recommended:["DH",...s]
     }
     
   }
-  const u=[...o.entries()].find(([,r])=>r.length>1),F=e.map((r,i)=>({
+  const u=[...x.entries()].find(([r,g])=>g.length>1&&!(r==="EP"&&g.length<=3)),F=e.map((r,i)=>({
     pos:(r.position??"").toString().trim().toUpperCase(),i
   }
   )).filter(({
@@ -168,7 +186,7 @@ function Q(e,t){
   let S=[...s];
   if(F.length>0){
     const r=F.map(i=>(e[i].position??"").toString().toUpperCase());
-    r.includes("OF")&&(S=[...new Set([...M.filter(i=>!o.has(i)),...S])]),r.includes("DH")&&(S=[...new Set([...s,...S])]),r.includes("IF")&&(S=[...new Set([...$.filter(i=>!o.has(i)),...S])])
+    r.includes("OF")&&(S=[...new Set([...M.filter(i=>!x.has(i)),...S])]),r.includes("DH")&&(S=[...new Set([...s,...S])]),r.includes("IF")&&(S=[...new Set([...$.filter(i=>!x.has(i)),...S])])
   }
   if(u){
     u[1].forEach(g=>l.add(g-1));
@@ -185,7 +203,7 @@ function Q(e,t){
     const i=(r.position??"").toString().trim().toUpperCase(),g=_[i]??i;
     return a&&(g==="XF1"||g==="XF2")?"XF":g
   }
-  ),t).ok?{
+  ),t,o).ok?{
     ok:!0
   }
   :s.length>0?{
@@ -196,17 +214,17 @@ function Q(e,t){
   }
   
 }
-function Z(e,t,a){
-  const L=a==="SOFTBALL",d=L?10:9,I=L?11:10,o=[...e].sort((f,c)=>f.battingOrder-c.battingOrder);
-  if(o.length<d||o.length>I)return{
-    valid:!1,message:`${t}：${L?"垒球先发须为 10 或 11 人":"有打序的先发必须为 9 或 10 人"}，当前为 ${o.length} 人`,invalidRowKeys:new Set(e.map(f=>f.key))
+function Z(e,t,a,o){
+  const L=a==="SOFTBALL",g=[...e].sort((f,c)=>f.battingOrder-c.battingOrder),d=L?10:9,I=L?(o?.extraBatter?11:10):(o?.extraBatter?12:9);
+  if(g.length<d||g.length>I)return{
+    valid:!1,message:`${t}：${g.length>I&&!o?.extraBatter?`该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${d} 人，当前 ${g.length} 人）`:`${L?"垒球先发须为 10 或 11 人":"有打序的先发必须为 9 或 10 人"}，当前为 ${g.length} 人`}`,invalidRowKeys:new Set(e.map(f=>f.key))
   };
-  const l=N(o.map(f=>A(f.position)),a);
+  const l=N(g.map(f=>A(f.position)),a,o);
   return l.ok?{
     valid:!0,message:"",invalidRowKeys:new Set
   }
   :{
-    valid:!1,message:`${t}：${l.message}`,invalidRowKeys:new Set(l.errorIndices.map(f=>o[f]?.key).filter(Boolean))
+    valid:!1,message:`${t}：${l.message}`,invalidRowKeys:new Set(l.errorIndices.map(f=>g[f]?.key).filter(Boolean))
   }
   
 }

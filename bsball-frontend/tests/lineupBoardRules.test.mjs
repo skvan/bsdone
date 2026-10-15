@@ -133,7 +133,7 @@ test('放 DH：投手自动移出打线、DH 制 9 行校验通过、有 notice'
   assert.equal(b.lastDhAddedFromPoolId.value, 12);
 });
 
-test('仅守备投手拖进打线列表 → 10 人打击（P+8+DH）校验通过', () => {
+test('仅守备投手拖进打线列表 → 10 人打击（P+8+DH）；默认关闭口径下被拒（开关接入见设计稿 §4.3）', () => {
   const b = board();
   b.placeAtSlot(P(3), 'P');
   fill8(b);
@@ -141,7 +141,10 @@ test('仅守备投手拖进打线列表 → 10 人打击（P+8+DH）校验通过
   b.addToBatting(P(3));
   assert.equal(b.rows.value.length, 10);
   assert.equal(posOf(b.rows.value[9]), 'P');
-  assert.equal(b.validation.value.ok, true);
+  // 默认口径变化（#274/#275）：extraBatter 关闭时棒球 10 人阵（P+8+DH）被拒并提示未开放 EP 制；
+  // 开启态的通过断言待 useLineupBoard 接入 opts（设计稿 §4.3）后恢复
+  assert.equal(b.validation.value.ok, false);
+  assert.match(b.validation.value.msg ?? '', /未开放 EP 制/);
 });
 
 test('8 守位 + DH 且投手未指定 → fieldingPitcherRequired 为真，指定后 complete', () => {
@@ -323,6 +326,9 @@ test('垒球：DH 制 10 人需指定先发投手；补投手回打线即 11 人
   b.addToBatting(P(3));
   assert.equal(b.rows.value.length, 11);
   assert.equal(posOf(b.rows.value[10]), 'P');
-  assert.equal(b.validation.value.ok, true);
-  assert.equal(b.lineupComplete.value, true);
+  // 默认口径变化（#274/#275）：extraBatter 关闭时垒球 11 人阵被拒并提示未开放 EP 制；
+  // 开启态的通过断言待 useLineupBoard 接入 opts（设计稿 §4.3）后恢复
+  assert.equal(b.validation.value.ok, false);
+  assert.match(b.validation.value.msg ?? '', /未开放 EP 制/);
+  assert.equal(b.lineupComplete.value, false);
 });
