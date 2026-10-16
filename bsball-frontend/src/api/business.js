@@ -233,6 +233,8 @@ export const eventRegistrationApi = {
   myRegistrations: (teamId) => getData(`/api/team/${teamId}/event-registrations`).then((d) => d ?? []),
   confirm: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/confirm`, {}),
   decline: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/decline`, {}),
+  // 撤销报名（球队侧自助退赛，Issue #310 延伸）：仅已确认且本队尚无已开赛比赛
+  withdraw: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/withdraw`, {}),
   submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
 };
 

@@ -33,6 +33,7 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
@@ -77,6 +78,8 @@ class EventRegistrationServiceTest {
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
+    private GameRepository gameRepository;
+    @Mock
     private PlayerService playerService;
     @Mock
     private ResourceGuard resourceGuard;
@@ -89,7 +92,7 @@ class EventRegistrationServiceTest {
     void setUp() {
         service = new EventRegistrationService(eventRepository, teamRepository, playerRepository,
                 playerTeamRepository, eventTeamRepository, eventRosterPlayerRepository,
-                gamePlayerStatRepository, playerService, resourceGuard, tenantQueryPolicyService);
+                gamePlayerStatRepository, gameRepository, playerService, resourceGuard, tenantQueryPolicyService);
     }
 
     @AfterEach
@@ -522,6 +525,119 @@ class EventRegistrationServiceTest {
         verify(eventRosterPlayerRepository).save(r1);
         verify(eventRosterPlayerRepository).save(r2);
         verify(resourceGuard).assertCanManageEvent(EVENT_ID);
+    }
+
+    @Test
+    @DisplayName("撤销报名：已确认且本队无已开赛比赛 → 软删登记与名单，走过球队侧守卫")
+    void withdrawRegistration_softDeletesAndGuarded() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        EventTeam confirmed = reg(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(confirmed));
+        when(gameRepository.countStartedGamesByEventAndTeam(EVENT_ID, TEAM_ID)).thenReturn(0L);
+        EventRosterPlayer r1 = rosterRow(11L, 5L, 0);
+        when(eventRosterPlayerRepository.findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID))
+                .thenReturn(List.of(r1));
+        CurrentUserHolder.set(UID, TENANT_ID);
+
+        service.withdrawRegistration(EVENT_ID, TEAM_ID);
+
+        assertNotNull(confirmed.getDeletedAt());
+        assertEquals(Long.valueOf(UID), confirmed.getDeletedBy());
+        assertNotNull(r1.getDeletedAt());
+        verify(eventTeamRepository).save(confirmed);
+        verify(eventRosterPlayerRepository).save(r1);
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("撤销报名：名单已锁定不拦（撤销＝整队退出，名单随登记作废）")
+    void withdrawRegistration_locked_allowed() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        EventTeam locked = reg(EventTeam.STATUS_CONFIRMED);
+        locked.setRosterLocked(Boolean.TRUE);
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(locked));
+        when(gameRepository.countStartedGamesByEventAndTeam(EVENT_ID, TEAM_ID)).thenReturn(0L);
+        CurrentUserHolder.set(UID, TENANT_ID);
+
+        service.withdrawRegistration(EVENT_ID, TEAM_ID);
+
+        assertNotNull(locked.getDeletedAt());
+        verify(eventTeamRepository).save(locked);
+    }
+
+    @Test
+    @DisplayName("撤销报名：未确认（仅邀请）→ 400，无写入与比赛查询")
+    void withdrawRegistration_notConfirmed_rejected() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID))
+                .thenReturn(Optional.of(reg(EventTeam.STATUS_INVITED)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.withdrawRegistration(EVENT_ID, TEAM_ID));
+
+        assertEquals(400, ex.getCode());
+        verify(eventTeamRepository, never()).save(any(EventTeam.class));
+        verifyNoInteractions(gameRepository);
+    }
+
+    @Test
+    @DisplayName("撤销报名：本队已有已开赛比赛 → 400，无写入")
+    void withdrawRegistration_startedGames_rejected() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID))
+                .thenReturn(Optional.of(reg(EventTeam.STATUS_CONFIRMED)));
+        when(gameRepository.countStartedGamesByEventAndTeam(EVENT_ID, TEAM_ID)).thenReturn(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.withdrawRegistration(EVENT_ID, TEAM_ID));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("开赛"));
+        verify(eventTeamRepository, never()).save(any(EventTeam.class));
+        verify(eventRosterPlayerRepository, never())
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("撤销报名：守卫拒绝（403）时无任何写入")
+    void withdrawRegistration_guardForbidden_noWrite() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        doThrow(new BusinessException(403, "无权操作")).when(resourceGuard).assertCanManageTeam(TEAM_ID);
+
+        assertThrows(BusinessException.class, () -> service.withdrawRegistration(EVENT_ID, TEAM_ID));
+
+        verifyNoInteractions(eventTeamRepository);
+        verifyNoInteractions(gameRepository);
+    }
+
+    @Test
+    @DisplayName("我的报名：canWithdraw＝已确认且本队未开赛（已开赛赛事/未确认均为 false）")
+    void listTeamRegistrations_canWithdrawFlags() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        EventTeam started = reg(EVENT_ID, TEAM_ID, EventTeam.STATUS_CONFIRMED);
+        EventTeam fresh = reg(701L, TEAM_ID, EventTeam.STATUS_CONFIRMED);
+        EventTeam declined = reg(702L, TEAM_ID, EventTeam.STATUS_DECLINED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(TEAM_ID))
+                .thenReturn(List.of(started, fresh, declined));
+        when(eventRepository.findAllById(List.of(EVENT_ID, 701L, 702L)))
+                .thenReturn(List.of(event(EVENT_ID), event(701L), event(702L)));
+        when(gameRepository.findStartedEventIdsByEventIdsAndTeamId(List.of(EVENT_ID, 701L, 702L), TEAM_ID))
+                .thenReturn(List.of(EVENT_ID));
+        when(eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID)).thenReturn(0L);
+        when(eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(701L, TEAM_ID)).thenReturn(2L);
+        when(eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(702L, TEAM_ID)).thenReturn(0L);
+
+        List<EventTeamDto> out = service.listTeamRegistrations(TEAM_ID);
+
+        assertEquals(3, out.size());
+        assertFalse(out.get(0).canWithdraw());
+        assertTrue(out.get(1).canWithdraw());
+        assertFalse(out.get(2).canWithdraw());
     }
 
     @Test
