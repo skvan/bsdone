@@ -18,7 +18,8 @@ test('命中卡槽优先于区域', () => {
 });
 
 test('落到打线列表 / 替补区 / 池', () => {
-  assert.deepEqual(resolveDropTarget(150, 400, layout), { kind: 'batting' });
+  // 无 battingRowRects（缺行信息）→ index = null（不参与重排）
+  assert.deepEqual(resolveDropTarget(150, 400, layout), { kind: 'batting', index: null });
   assert.deepEqual(resolveDropTarget(400, 400, layout), { kind: 'bench' });
   assert.deepEqual(resolveDropTarget(600, 100, layout), { kind: 'pool' });
 });
@@ -36,5 +37,24 @@ test('容差命中卡槽（触屏放大 1.2 倍）', () => {
 
 test('layout 缺省字段安全（无任何 rect = outside）', () => {
   assert.deepEqual(resolveDropTarget(10, 10, {}), { kind: 'outside' });
-  assert.deepEqual(resolveDropTarget(10, 10, { battingRect: rect(0, 0, 50, 50) }), { kind: 'batting' });
+  assert.deepEqual(resolveDropTarget(10, 10, { battingRect: rect(0, 0, 50, 50) }), { kind: 'batting', index: null });
+});
+
+// 打线行插入位（gap）：按「其余行」纵向中点计数（页面取 rect 时已排除被拖行本身）
+const rowRect = (top, height = 40) => ({ top, height });
+const withRows = (rows) => ({ ...layout, battingRowRects: rows });
+
+test('打线行 gap：严格越过中点才计一行（中点 320/380/440）', () => {
+  const l = withRows([rowRect(300), rowRect(360), rowRect(420)]);
+  assert.deepEqual(resolveDropTarget(150, 310, l), { kind: 'batting', index: 0 });
+  assert.deepEqual(resolveDropTarget(150, 320, l), { kind: 'batting', index: 0 }); // 恰在中点：不计
+  assert.deepEqual(resolveDropTarget(150, 321, l), { kind: 'batting', index: 1 });
+  assert.deepEqual(resolveDropTarget(150, 430, l), { kind: 'batting', index: 2 });
+  assert.deepEqual(resolveDropTarget(150, 500, l), { kind: 'batting', index: 3 }); // 末尾 gap = others.length
+});
+
+test('打线行 gap：无可计行 = 0；非数组/缺字段 = null；卡槽命中优先不受影响', () => {
+  assert.deepEqual(resolveDropTarget(150, 400, withRows([])), { kind: 'batting', index: 0 });
+  assert.deepEqual(resolveDropTarget(150, 400, { ...layout, battingRowRects: null }), { kind: 'batting', index: null });
+  assert.deepEqual(resolveDropTarget(120, 110, withRows([rowRect(300)])), { kind: 'slot', code: 'P' });
 });
