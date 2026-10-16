@@ -10,6 +10,8 @@
 package com.bsball.repository;
 
 import com.bsball.model.entity.Game;
+import java.util.Collection;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -37,5 +39,16 @@ JpaSpecificationExecutor<Game> {
      */
     @Query(value="select count(g) from Game g where g.eventId = :eventId and g.deletedAt is null and coalesce(g.status, 'scheduled') not in ('final', 'cancelled')")
     public long countUnfinishedGamesByEvent(@Param(value="eventId") Long eventId);
+
+    /**
+     * 本队“已开赛”比赛计数（撤销报名守卫，Issue #310 延伸）：
+     * 口径 = status ∈ {live（进行中）, final（已结束）}；仅计未软删比赛。
+     */
+    @Query(value="select count(g) from Game g where g.deletedAt is null and g.eventId = :eventId and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and g.status in ('live', 'final')")
+    public long countStartedGamesByEventAndTeam(@Param(value="eventId") Long eventId, @Param(value="teamId") Long teamId);
+
+    /** 批量口径（球队端列表 canWithdraw 标记）：本队在给定赛事中已开赛的赛事 ID 集（防逐行查询）。 */
+    @Query(value="select distinct g.eventId from Game g where g.deletedAt is null and g.eventId in :eventIds and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and g.status in ('live', 'final')")
+    public List<Long> findStartedEventIdsByEventIdsAndTeamId(@Param(value="eventIds") Collection<Long> eventIds, @Param(value="teamId") Long teamId);
 }
 

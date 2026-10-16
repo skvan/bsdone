@@ -31,7 +31,7 @@
             <span v-else class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('orderBook.colActions')" min-width="250" :fixed="opFixed">
+        <el-table-column :label="t('orderBook.colActions')" min-width="280" :fixed="opFixed">
           <template #default="{ row }">
             <el-button v-if="canManage && row.status === 'invited'" link type="primary" @click="confirmJoin(row)">
               {{ t('orderBook.confirmJoin') }}
@@ -49,6 +49,18 @@
               {{ t('orderBook.editRoster') }}
             </el-button>
             <el-button link type="primary" @click="openRoster(row, 'view')">{{ t('orderBook.viewRoster') }}</el-button>
+            <el-tooltip
+              v-if="canManage && row.status === 'confirmed'"
+              :disabled="row.canWithdraw === true"
+              :content="t('orderBook.withdrawBlocked')"
+              placement="top"
+            >
+              <span class="withdraw-wrap">
+                <el-button link type="danger" :disabled="row.canWithdraw !== true" @click="withdrawRegistration(row)">
+                  {{ t('orderBook.withdraw') }}
+                </el-button>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>{{ t('orderBook.emptyRegistrations') }}</template>
@@ -199,6 +211,22 @@ async function declineJoin(row) {
   }
 }
 
+// 撤销报名（球队侧自助退赛）：仅已确认可操作；本队尚有已开赛比赛时后端拦截
+async function withdrawRegistration(row) {
+  const ok = await confirmAction(
+    t('orderBook.withdrawConfirm', { name: row.eventName }),
+    t('orderBook.withdrawConfirmTitle')
+  );
+  if (!ok) return;
+  try {
+    await eventRegistrationApi.withdraw(row.eventId, teamId.value);
+    ElMessage.success(t('orderBook.withdrawnDone'));
+    await load();
+  } catch (e) {
+    ElMessage.error(e?.message ?? t('orderBook.withdrawFailed'));
+  }
+}
+
 async function openRoster(row, mode) {
   activeRow.value = row;
   rosterMode.value = mode;
@@ -309,5 +337,10 @@ onMounted(() => {
 
 .selected-tag {
   max-width: 140px;
+}
+
+.withdraw-wrap {
+  display: inline-flex;
+  margin-left: 12px;
 }
 </style>

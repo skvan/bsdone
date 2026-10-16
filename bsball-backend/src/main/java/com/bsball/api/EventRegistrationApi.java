@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 电子秩序册（Issue #310）API：赛事参赛登记（邀请/列表/移除/锁定）与球队侧报名（确认/谢绝/名单）。
+ * 电子秩序册（Issue #310）API：赛事参赛登记（邀请/列表/移除/锁定）与球队侧报名（确认/谢绝/名单/撤销）。
  * 写守卫与入参校验在服务层：赛事侧 assertCanManageEvent；球队侧 assertCanManageTeam（Issue #318 起收敛为「本队」）。
  */
 @RestController
@@ -60,6 +60,13 @@ public class EventRegistrationApi {
     @PostMapping(value = {"/event/{eventId}/teams/{teamId}/remove"})
     public Result<Object> remove(@PathVariable Long eventId, @PathVariable Long teamId) {
         this.eventRegistrationService.removeEventTeam(eventId, teamId);
+        return Result.ok(Map.of());
+    }
+
+    /** 撤销报名（球队侧自助退赛：仅已确认且本队尚无已开赛比赛；软删登记 + 名单）。 */
+    @PostMapping(value = {"/event/{eventId}/teams/{teamId}/withdraw"})
+    public Result<Object> withdraw(@PathVariable Long eventId, @PathVariable Long teamId) {
+        this.eventRegistrationService.withdrawRegistration(eventId, teamId);
         return Result.ok(Map.of());
     }
 

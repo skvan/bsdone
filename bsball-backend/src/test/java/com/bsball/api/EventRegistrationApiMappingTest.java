@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 /**
  * 电子秩序册（Issue #310）控制器映射守卫：
- * 防「服务/种子就位但控制器漏映射」类缺口（批 3 评审实证教训），对全部 13 个端点做映射存在性断言。
+ * 防「服务/种子就位但控制器漏映射」类缺口（批 3 评审实证教训），对全部 14 个端点做映射存在性断言。
  */
 @DisplayName("电子秩序册 控制器映射守卫（Issue #310）")
 class EventRegistrationApiMappingTest {
@@ -41,7 +41,7 @@ class EventRegistrationApiMappingTest {
     }
 
     @Test
-    @DisplayName("13 个端点全部具备控制器映射（路径与权限种子一致）")
+    @DisplayName("14 个端点全部具备控制器映射（路径与权限种子一致）")
     void allEndpointsMapped() throws Exception {
         record Expectation(String method, String javaName, Class<?>[] params, String http, String path) {
         }
@@ -58,9 +58,10 @@ class EventRegistrationApiMappingTest {
                 new Expectation("myRegistrations", "myRegistrations", new Class<?>[]{Long.class}, "GET", "/team/{teamId}/event-registrations"),
                 new Expectation("confirm", "confirm", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/confirm"),
                 new Expectation("decline", "decline", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/decline"),
+                new Expectation("withdraw", "withdraw", new Class<?>[]{Long.class, Long.class}, "POST", "/event/{eventId}/teams/{teamId}/withdraw"),
                 new Expectation("submitRoster", "submitRoster", new Class<?>[]{Long.class, Long.class, com.bsball.model.dto.EventRosterSubmitRequest.class}, "PUT", "/event/{eventId}/teams/{teamId}/roster"));
 
-        assertEquals(13, expectations.size());
+        assertEquals(14, expectations.size());
         for (Expectation e : expectations) {
             Method m = EventRegistrationApi.class.getMethod(e.javaName(), e.params());
             assertNotNull(m, e.path() + " 方法应存在");

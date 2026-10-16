@@ -1,13 +1,13 @@
 # 赛事参赛实体（EventTeam / EventRosterPlayer）
 
 ## 简介
-本文件说明电子秩序册（Issue #310）相关的两个实体：赛事参赛登记 `EventTeam` 与秩序册报名球员 `EventRosterPlayer`。能力链路：办赛方邀请球队（invited）→ 球队确认/谢绝（confirmed/declined）→ 球队提交报名名单 → 办赛方锁定（roster_locked）。赛事存在任意参赛记录后，其比赛录入阵容与统计写入仅可使用各队报名球员。文档以代码为依据。
+本文件说明电子秩序册（Issue #310）相关的两个实体：赛事参赛登记 `EventTeam` 与秩序册报名球员 `EventRosterPlayer`。能力链路：办赛方邀请球队（invited）→ 球队确认/谢绝（confirmed/declined）→ 球队提交报名名单 → 办赛方锁定（roster_locked）；已确认球队可在本队尚无已开赛比赛前**自助撤销报名**（软删）。赛事存在任意参赛记录后，其比赛录入阵容与统计写入仅可使用各队报名球员。文档以代码为依据。
 
 ## 项目结构
 - 实体层：EventTeam、EventRosterPlayer（均继承 BaseEntity 审计基类）
 - 数据访问层：EventTeamRepository、EventRosterPlayerRepository
-- 服务层：EventRegistrationService（邀请/确认谢绝/名单差量/锁定/移除；阵容与统计校验入口）
-- 接口层：EventRegistrationApi（10 端点）
+- 服务层：EventRegistrationService（邀请/确认谢绝/名单差量/锁定/移除/撤销；阵容与统计校验入口）
+- 接口层：EventRegistrationApi（14 端点）
 - 迁移：`db/migration/postgresql/V20261013100000__event_order_book.sql`
 
 ## EventTeam（表 bs_event_team，赛事参赛登记）
@@ -15,14 +15,14 @@
   - 归属：tenantId、eventId、teamId（同一赛事同一球队唯一，软删行除外）。
   - 状态：status ∈ {invited, confirmed, declined}；declined 可被重新邀请（重置回 invited 并清空确认/谢绝/提交时间）。
   - 时间：invitedBy/invitedAt、confirmedAt、declinedAt、rosterSubmittedAt（最近提交名单时间）。
-  - 锁定：rosterLocked + lockedBy/lockedAt；锁定后球队不可修改名单（403），办赛方移除需先解锁（锁定中移除 403）。
+  - 锁定：rosterLocked + lockedBy/lockedAt；锁定后球队不可修改名单（403），办赛方移除需先解锁（锁定中移除 403）；**球队撤销不受锁定限制**（撤销＝整队退出，名单随登记作废）。
   - 备注：remark（≤500）。
 - 业务含义
-  - 表达"某球队参加某赛事"的登记与报名进度；办赛方移除 = 软删本行 + 该队全部名单行。
+  - 表达"某球队参加某赛事"的登记与报名进度；办赛方移除 = 软删本行 + 该队全部名单行；球队撤销报名 = 同口径软删（仅已确认、本队尚无已开赛比赛时允许）。
 - 索引
   - 唯一：`(event_id, team_id) WHERE deleted_at IS NULL`；辅助：`(event_id, status)`、`team_id`、`tenant_id`（均带软删过滤）。
 - 生命周期
-  - 邀请创建 → 确认/谢绝 → 名单提交（可反复）→ 锁定/解锁 → 办赛方移除（软删）。
+  - 邀请创建 → 确认/谢绝 → 名单提交（可反复）→ 锁定/解锁 → 办赛方移除（软删）/ 球队撤销报名（软删；本队尚无已开赛比赛前）。
 
 ## EventRosterPlayer（表 bs_event_roster_player，秩序册报名球员）
 - 字段要点
@@ -44,6 +44,7 @@
 - 邀请：被邀球队须与赛事同租户；重复邀请幂等（invited/confirmed 跳过）。
 - 确认/谢绝：仅 invited 可操作，重复操作幂等；confirmed→谢绝 与 declined→确认 均拒绝（引导经办赛方重邀/线下沟通）。
 - 提交名单：须已确认、至少 1 人、球员须为本队 current 在役；锁定后 403。
+- 撤销报名（球队侧自助）：仅已确认的登记可撤销；本队在该赛事已有已开赛（进行中/已结束）比赛 → 400；名单锁定不拦；软删留痕（deletedBy/deletedAt），可被重新邀请。球队端列表 `canWithdraw` 由服务端按同口径计算。
 - 球队侧守卫（Issue #318）：确认/谢绝/提交名单/入队邀请统一由「可管理该球队」裁定（本队负责人或管理员）；原「联盟代管无主球队」分支已移除。
 
 > 本文以代码为准（EventTeam.java / EventRosterPlayer.java / EventRegistrationService.java / V20261013100000__event_order_book.sql / V20261014100000__team_detach_league_and_event_require_roster.sql）。

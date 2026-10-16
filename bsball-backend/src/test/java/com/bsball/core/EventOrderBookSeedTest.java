@@ -111,18 +111,20 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("API 注册幂等：两次调用仅插入 18 条（含赛事可邀请球队与排赛候选端点）")
+    @DisplayName("API 注册幂等：两次调用仅插入 19 条（含赛事可邀请球队与排赛候选端点）")
     void apiSeedIdempotent() throws Exception {
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(18, apiStore.size());
+        assertEquals(19, apiStore.size());
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(18, apiStore.size(), "二次调用不得重复插入");
+        assertEquals(19, apiStore.size(), "二次调用不得重复插入");
         assertTrue(apiStore.stream().anyMatch(a -> "/event/:eventId/teams/invite".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/team-options".equals(a.getPath()) && "GET".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/game-team-options".equals(a.getPath()) && "GET".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a -> "/team/:teamId/event-registrations".equals(a.getPath())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/event/:eventId/teams/:teamId/withdraw".equals(a.getPath()) && "POST".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/teams/:teamId/roster".equals(a.getPath()) && "PUT".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a ->
@@ -152,7 +154,7 @@ class EventOrderBookSeedTest {
         assertEquals(1L, counts.getOrDefault("business:team:eventRegistration", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:invitePlayer", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:inviteRevoke", 0L).longValue());
-        assertEquals(15, menuApiStore.size(), "四按钮合计绑定 15 个 API（6+5+2+2）");
+        assertEquals(16, menuApiStore.size(), "四按钮合计绑定 16 个 API（6+6+2+2）");
         Map<Long, String> pathById = apiStore.stream()
                 .collect(Collectors.toMap(SysApi::getId, a -> a.getMethod() + "|" + a.getPath()));
         Set<String> bound = menuApiStore.stream().map(l -> pathById.get(l.getApiId())).collect(Collectors.toSet());
@@ -161,7 +163,8 @@ class EventOrderBookSeedTest {
                 "POST|/event/:eventId/teams/:teamId/remove", "POST|/event/:eventId/teams/:teamId/lock",
                 "POST|/event/:eventId/teams/:teamId/unlock", "GET|/event/:eventId/teams/:teamId/roster",
                 "GET|/team/:teamId/event-registrations", "POST|/event/:eventId/teams/:teamId/confirm",
-                "POST|/event/:eventId/teams/:teamId/decline", "PUT|/event/:eventId/teams/:teamId/roster",
+                "POST|/event/:eventId/teams/:teamId/decline", "POST|/event/:eventId/teams/:teamId/withdraw",
+                "PUT|/event/:eventId/teams/:teamId/roster",
                 "GET|/team/:teamId/player-invite-candidates", "POST|/team/:teamId/player-claim-invite",
                 "GET|/team/:teamId/player-claim-invites", "POST|/team/:teamId/player-claim-invites/:id/revoke"),
                 bound, "按钮-API 绑定集合须与设计一致");
@@ -190,13 +193,14 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("谓词：球队侧自助路径（confirm/decline/roster）授球队管理员；邀请/移除/锁定不授")
+    @DisplayName("谓词：球队侧自助路径（confirm/decline/roster/withdraw）授球队管理员；邀请/移除/锁定不授")
     void predicatesForEventTeamPaths() throws Exception {
         Method self = InitDataRunner.class.getDeclaredMethod("isEventTeamSelfServicePath", String.class);
         self.setAccessible(true);
         assertTrue((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/confirm"));
         assertTrue((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/decline"));
         assertTrue((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/roster"));
+        assertTrue((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/withdraw"));
         assertFalse((Boolean) self.invoke(null, "/event/:eventId/teams/invite"));
         assertFalse((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/remove"));
         assertFalse((Boolean) self.invoke(null, "/event/:eventId/teams/:teamId/lock"));
@@ -206,6 +210,7 @@ class EventOrderBookSeedTest {
         tm.setAccessible(true);
         assertTrue((Boolean) tm.invoke(null, api(1L, "/event/:eventId/teams/:teamId/roster", "PUT")));
         assertTrue((Boolean) tm.invoke(null, api(2L, "/team/:teamId/event-registrations", "GET")));
+        assertTrue((Boolean) tm.invoke(null, api(8L, "/event/:eventId/teams/:teamId/withdraw", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(3L, "/event/:eventId/teams/invite", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(4L, "/event/:eventId/teams/:teamId/remove", "POST")));
         assertFalse((Boolean) tm.invoke(null, api(5L, "/event/:eventId/teams/:teamId/lock", "POST")));

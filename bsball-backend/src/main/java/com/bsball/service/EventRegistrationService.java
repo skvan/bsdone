@@ -17,6 +17,7 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
@@ -38,9 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 电子秩序册（Issue #310）核心服务：赛事参赛登记、报名名单、锁定与移除。
  * <p>写守卫：赛事侧（邀请/移除/锁定）= {@link ResourceGuard#assertCanManageEvent(Long)}；
- * 球队侧（确认/谢绝/提交名单）= {@link ResourceGuard#assertCanManageTeam(Long)}
+ * 球队侧（确认/谢绝/提交名单/撤销报名）= {@link ResourceGuard#assertCanManageTeam(Long)}
  * （Issue #318 起收敛为「本队负责人或管理员」；办赛方对自有队经「创建即负责」同样可办）。读端点=登录+同租户（读宽写窄）。
- * <p>并发：邀请对赛事行加悲观锁、名单提交对登记行加悲观锁，串行化同键写入防唯一索引冲突。
+ * <p>并发：邀请对赛事行加悲观锁、名单提交/撤销报名对登记行加悲观锁，串行化同键写入防唯一索引冲突。
  */
 @Service
 public class EventRegistrationService {
@@ -55,6 +56,7 @@ public class EventRegistrationService {
     private final EventTeamRepository eventTeamRepository;
     private final EventRosterPlayerRepository eventRosterPlayerRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
+    private final GameRepository gameRepository;
     private final PlayerService playerService;
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
@@ -66,6 +68,7 @@ public class EventRegistrationService {
             EventTeamRepository eventTeamRepository,
             EventRosterPlayerRepository eventRosterPlayerRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
+            GameRepository gameRepository,
             PlayerService playerService,
             ResourceGuard resourceGuard,
             TenantQueryPolicyService tenantQueryPolicyService) {
@@ -76,6 +79,7 @@ public class EventRegistrationService {
         this.eventTeamRepository = eventTeamRepository;
         this.eventRosterPlayerRepository = eventRosterPlayerRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.gameRepository = gameRepository;
         this.playerService = playerService;
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
@@ -201,7 +205,7 @@ public class EventRegistrationService {
         List<EventTeamDto> out = new ArrayList<EventTeamDto>(regs.size());
         for (EventTeam r : regs) {
             long count = this.eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(eventId, r.getTeamId());
-            out.add(this.build(r, teams.get(r.getTeamId()), null, count));
+            out.add(this.build(r, teams.get(r.getTeamId()), null, count, null));
         }
         return out;
     }
@@ -216,6 +220,8 @@ public class EventRegistrationService {
         }
         Map<Long, Event> events = this.eventRepository.findAllById(regs.stream().map(EventTeam::getEventId).toList())
                 .stream().collect(Collectors.toMap(Event::getId, x -> x, (a, b) -> a));
+        Set<Long> startedEventIds = this.startedEventIdsForTeam(
+                regs.stream().map(EventTeam::getEventId).distinct().toList(), teamId);
         List<EventTeamDto> out = new ArrayList<EventTeamDto>(regs.size());
         for (EventTeam r : regs) {
             Event ev = events.get(r.getEventId());
@@ -223,7 +229,7 @@ public class EventRegistrationService {
                 continue;
             }
             long count = this.eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(r.getEventId(), teamId);
-            out.add(this.build(r, team, ev, count));
+            out.add(this.build(r, team, ev, count, Boolean.valueOf(this.withdrawable(r, startedEventIds))));
         }
         return out;
     }
@@ -238,11 +244,49 @@ public class EventRegistrationService {
         if (Boolean.TRUE.equals(reg.getRosterLocked())) {
             throw new BusinessException(403, "名单已锁定，请先解锁再移除");
         }
+        this.softDeleteRegistration(reg);
+    }
+
+    /**
+     * 撤销报名（球队侧自助退赛，Issue #310 延伸）：仅已确认的登记可撤销；
+     * 本队已有“已开赛”比赛（进行中/已结束）→ 400；名单锁定不拦（撤销＝整队退出，名单随登记作废）。
+     * 软删登记行 + 全部名单行（留痕），撤销后可被重新邀请。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void withdrawRegistration(Long eventId, Long teamId) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageTeam(teamId);
+        this.requireEvent(eventId, tid);
+        EventTeam reg = this.requireRegistrationForUpdate(eventId, teamId, tid);
+        if (!EventTeam.STATUS_CONFIRMED.equals(reg.getStatus())) {
+            throw new BusinessException(400, "仅已确认参赛的球队可撤销报名");
+        }
+        if (this.gameRepository.countStartedGamesByEventAndTeam(eventId, teamId) > 0L) {
+            throw new BusinessException(400, "球队已有比赛开赛，不能撤销报名");
+        }
+        this.softDeleteRegistration(reg);
+    }
+
+    /** 软删登记行 + 全部名单行（主办方移除 / 球队撤销共用）。 */
+    private void softDeleteRegistration(EventTeam reg) {
         this.softDelete(reg);
         for (EventRosterPlayer row : this.eventRosterPlayerRepository
-                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(eventId, teamId)) {
+                .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(reg.getEventId(), reg.getTeamId())) {
             this.softDelete(row);
         }
+    }
+
+    /** 本队在给定赛事中“已开赛”（进行中/已结束）的赛事 ID 集（一次批量查询，防逐行）。 */
+    private Set<Long> startedEventIdsForTeam(List<Long> eventIds, Long teamId) {
+        if (eventIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<Long>(this.gameRepository.findStartedEventIdsByEventIdsAndTeamId(eventIds, teamId));
+    }
+
+    /** 可否撤销报名：已确认 且 本队在该赛事尚无已开赛比赛。 */
+    private boolean withdrawable(EventTeam reg, Set<Long> startedEventIds) {
+        return EventTeam.STATUS_CONFIRMED.equals(reg.getStatus()) && !startedEventIds.contains(reg.getEventId());
     }
 
     /** 锁定/解锁名单（仅办赛方；解锁清空锁定留痕）。 */
@@ -617,11 +661,11 @@ public class EventRegistrationService {
         Team team = this.teamRepository.findById(reg.getTeamId()).orElse(null);
         long count = this.eventRosterPlayerRepository
                 .countByEventIdAndTeamIdAndDeletedAtIsNull(reg.getEventId(), reg.getTeamId());
-        return this.build(reg, team, null, count);
+        return this.build(reg, team, null, count, null);
     }
 
-    /** 组装视图：{@code event} 仅球队侧填充、{@code team} 仅赛事侧填充（另一侧传 null）。 */
-    private EventTeamDto build(EventTeam reg, Team team, Event event, long playerCount) {
+    /** 组装视图：{@code event} 仅球队侧填充、{@code team} 仅赛事侧填充（另一侧传 null）；canWithdraw 仅球队侧列表计算。 */
+    private EventTeamDto build(EventTeam reg, Team team, Event event, long playerCount, Boolean canWithdraw) {
         return new EventTeamDto(
                 reg.getId(),
                 reg.getEventId(),
@@ -637,6 +681,7 @@ public class EventRegistrationService {
                 reg.getRemark(),
                 event != null ? event.getName() : null,
                 event != null ? event.getSeason() : null,
-                event != null ? event.getGameMode() : null);
+                event != null ? event.getGameMode() : null,
+                canWithdraw);
     }
 }
