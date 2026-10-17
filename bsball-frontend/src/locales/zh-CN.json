@@ -1385,6 +1385,10 @@
     "unnamedEvent": "未命名赛事",
     "shareCard": {
       "generateButton": "分享球员卡片",
+      "wechatTip": "好友/群聊：点右上角分享 · 朋友圈：保存海报",
+      "wechatGuideTitle": "点右上角「···」分享",
+      "wechatGuideBody": "选择发送给朋友或分享到朋友圈",
+      "wechatGuideOk": "知道了",
       "dialogTitle": "分享球员卡片",
       "orientationPortrait": "竖版 4:5",
       "orientationLandscape": "横版 16:9",

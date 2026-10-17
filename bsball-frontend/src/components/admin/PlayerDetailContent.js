@@ -4,7 +4,7 @@ import { ElRadioGroup as kt, ElImage as Kt, ElDialog as Yt, ElCol as Xt, ElDrawe
 import { nextTick as Ze, withModifiers as tt, createElementBlock as b, normalizeStyle as da, defineComponent as ft, createTextVNode as B, computed as g, toDisplayString as u, createElementVNode as c, unref as o, normalizeClass as Ye, mergeProps as yt, createBlock as I, ref as S, createVNode as p, withDirectives as It, openBlock as d, useModel as nr, withCtx as n, onUnmounted as _t, Fragment as x, withKeys as rt, resolveComponent as cr, watch as fe, onMounted as ht, renderList as Z, onBeforeUnmount as At, KeepAlive as Rt, createCommentVNode as T } from 'vue';
 import { Share as ur, QuestionFilled as pr, Select as lt } from '@element-plus/icons-vue';
 import { useI18n as $t } from 'vue-i18n';
-import { useRoute as gr } from 'vue-router';
+import { useRoute as gr, useRouter as wxUseRouter } from 'vue-router';
 import { interopDefaultCompat as Wt } from '../../utils/interopDefaultCompat';
 import { normalizeVnodeProps as qt } from '../../utils/vnodeProps';
 import { mergePropValues as er } from '../../utils/vnodeProps';
@@ -15,6 +15,9 @@ import { loadPrintExport as br } from '../../utils/printExport';
 import { exportSfc as gt } from '../../utils/exportSfc';
 import { playerApi as ca } from '../../api/business';
 import { useTenantRouter as yr } from '../../composables/useTenantRouter';
+// ---- 微信分享（Issue #343，手工补丁） ----
+import { useWechatShare, buildPlayerShareUrl, buildPlayerShareMeta } from '../../composables/useWechatShare';
+import { isWechatBrowser } from '../../utils/wechatJssdk';
 import { onAvatarError as wt } from '../../utils/placeholderAssets';
 import { DEFAULT_AVATAR_SVG_PATH as Ft } from '../../utils/placeholderAssets';
 import { useHtmlScrollLock as _r } from '../../composables/useHtmlScrollLock';
@@ -743,6 +746,8 @@ var vl={
   }
   ),emits:["update:modelValue"],setup(h){
     const r=h,m=nr(h,"modelValue");
+    // ---- 微信分享提示（Issue #343，手工补丁） ----
+    const isWx = isWechatBrowser(), wxGuide = S(!1);
     _r(m);
     const{
       t:v
@@ -1563,7 +1568,21 @@ var vl={
           }
           ,8,["label"])]),_:1
         }
-        ,8,["modelValue"]),c("div",{
+        ,8,["modelValue"]),
+        // ---- 微信分享提示条与引导浮层（Issue #343，手工补丁） ----
+        isWx?(d(),b("div",{key:1,class:"share-wechat-tip"},[
+          c("span",{class:"share-wechat-tip__text"},u(v("player.shareCard.wechatTip")),1),
+          p(ze,{type:"primary",link:"",size:"small",onClick:()=>{wxGuide.value=!0}},{
+            default:n(()=>[B(u(v("player.shareCard.wechatGuideTitle")),1)]),_:1
+          })
+        ])):T("",!0),
+        isWx&&wxGuide.value?(d(),b("div",{key:2,class:"share-wechat-guide",onClick:()=>{wxGuide.value=!1}},[
+          c("div",{class:"share-wechat-guide__arrow"},"↑"),
+          c("div",{class:"share-wechat-guide__title"},u(v("player.shareCard.wechatGuideTitle")),1),
+          c("div",{class:"share-wechat-guide__body"},u(v("player.shareCard.wechatGuideBody")),1),
+          c("div",{class:"share-wechat-guide__ok"},u(v("player.shareCard.wechatGuideOk")),1)
+        ])):T("",!0),
+        c("div",{
           ref_key:"captureHostRef",ref:K,class:"capture-host","aria-hidden":"true"
         }
         ,[me.value?(d(),I(Pt,qt(yt({
@@ -1829,7 +1848,7 @@ var vl={
       formatStatsRate:E
     }
     =Dt(),$=gr(),{
-      portalPath:V
+      portalPath:V,tenantCode:x2
     }
     =yr(),G="/bs-ball/carousel/default_banner_2.jpg",D=S(void 0);
     function X(){
@@ -1988,6 +2007,15 @@ var vl={
     function Ga(){
       fa(),he.value&&ue.value&&(O.value=1,le())
     }
+    // ---- 微信分享：数据就绪后自动配置右上角分享（Issue #343，手工补丁） ----
+    const wxRouter = wxUseRouter(), wxShareMeta = g(() => {
+      if (L.player == null || L.player.id == null) return null;
+      const meta = buildPlayerShareMeta(L.player, L.team, L.league, be.value, { resolveAsset: (e) => Ve(e) || "" });
+      if (!meta) return null;
+      meta.link = buildPlayerShareUrl(wxRouter, L.player.id, "share", x2.value);
+      return meta;
+    });
+    useWechatShare(wxShareMeta);
     fe(()=>L.player?.id,e=>{
       q.value="BASEBALL",e!=null?fa():(be.value=null,Ge.value=[],Oe.value=[])
     }
