@@ -98,10 +98,15 @@ app:
       # 是否启用「无 JWT 时仅允许 guest 角色 API 白名单」校验（ApiPermissionFilter）
       enabled: ${APP_GUEST_CHECK_ENABLED:true}
     # 无 token 时始终放行的路径前缀（逗号分隔），不走角色 API 表
-    guest-whitelist: ${APP_GUEST_WHITELIST:/auth/login,/auth/login-by-phone,/auth/register,/auth/sms,/auth/password,/auth/legal-docs,/auth/captcha,/health,/files,/druid,/druid-entry,/portal/visit,/portal/ip-location,/portal/devtools,/portal/tenant,/portal/settings,/portal/feedback,/portal/player-claim-invite,/sys/article/increment-view,/sys/article/platform/list,/sys/article/}
+    guest-whitelist: ${APP_GUEST_WHITELIST:/auth/login,/auth/login-by-phone,/auth/register,/auth/sms,/auth/password,/auth/legal-docs,/auth/captcha,/health,/files,/druid,/druid-entry,/portal/visit,/portal/ip-location,/portal/devtools,/portal/tenant,/portal/settings,/portal/feedback,/portal/player-claim-invite,/sys/article/increment-view,/sys/article/platform/list,/sys/article/,/wechat}
   # 游客 API 鉴权缓存：isGuestAllowed 合并查询 sys_api + guest 的 sys_role_api，过期后自动刷新
   api-permission:
     guest-cache-ttl-sec: ${APP_API_GUEST_CACHE_TTL_SEC:60}
+  # 微信服务号（JSSDK 签名；凭证真实值仅服务器 EnvironmentFile 注入）
+  wechat:
+    app-id: ${WECHAT_APP_ID:}
+    app-secret: ${WECHAT_APP_SECRET:}
+    allowed-hosts: ${WECHAT_ALLOWED_HOSTS:www.bsdone.com}
   upload:
     # 本地上传根目录（相对 workspace 或绝对路径）
     dir: ${APP_UPLOAD_DIR:uploads}
