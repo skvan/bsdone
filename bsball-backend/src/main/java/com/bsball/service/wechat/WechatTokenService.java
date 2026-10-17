@@ -10,6 +10,7 @@ import java.util.function.LongSupplier;
  * access_token / jsapi_ticket 内存缓存：TTL 取微信 expires_in；剩余 <10 分钟视为临期刷新；
  * synchronized 单飞防并发互踢；getticket 40001/42001 → 清 token 重试一次自愈。
  * 生产单实例部署，无需分布式锁。凭证与 token 不得写入日志。
+ * 传输层异常统一降级为 BusinessException，原始异常（可能含带凭证的请求 URI）不保留、不记录。
  */
 @Service
 public class WechatTokenService {
@@ -38,14 +39,14 @@ public class WechatTokenService {
         if (isFresh(cachedTicket, ticketExpireAtMs)) {
             return cachedTicket;
         }
-        WechatApiClient.WechatApiResult first = client.fetchJsapiTicket(token);
+        WechatApiClient.WechatApiResult first = safeFetchTicket(token);
         if (first.ok()) {
             cacheTicket(first);
             return cachedTicket;
         }
         if (isTokenInvalid(first.errcode())) {
             clearTokenCache();
-            WechatApiClient.WechatApiResult retry = client.fetchJsapiTicket(accessToken());
+            WechatApiClient.WechatApiResult retry = safeFetchTicket(accessToken());
             if (retry.ok()) {
                 cacheTicket(retry);
                 return cachedTicket;
@@ -59,13 +60,31 @@ public class WechatTokenService {
         if (isFresh(cachedToken, tokenExpireAtMs)) {
             return cachedToken;
         }
-        WechatApiClient.WechatApiResult r = client.fetchAccessToken();
+        WechatApiClient.WechatApiResult r = safeFetchToken();
         if (!r.ok()) {
             throw new BusinessException("微信 access_token 获取失败：" + r.errcode());
         }
         cachedToken = r.value();
         tokenExpireAtMs = clock.getAsLong() + r.expiresIn() * 1000L;
         return cachedToken;
+    }
+
+    /** 传输层异常降级：不保留原始异常，避免含 appSecret/token 的请求 URI 进入日志 */
+    private WechatApiClient.WechatApiResult safeFetchToken() {
+        try {
+            return client.fetchAccessToken();
+        } catch (RuntimeException e) {
+            throw new BusinessException("微信服务暂不可用");
+        }
+    }
+
+    /** 传输层异常降级：不保留原始异常，避免含 access_token 的请求 URI 进入日志 */
+    private WechatApiClient.WechatApiResult safeFetchTicket(String token) {
+        try {
+            return client.fetchJsapiTicket(token);
+        } catch (RuntimeException e) {
+            throw new BusinessException("微信服务暂不可用");
+        }
     }
 
     private void cacheTicket(WechatApiClient.WechatApiResult r) {

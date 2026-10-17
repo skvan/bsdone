@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -113,5 +115,34 @@ class WechatTokenServiceTest {
     void tokenFetchFails() {
         when(client.fetchAccessToken()).thenReturn(err(40013));
         assertThrows(BusinessException.class, () -> service.getJsapiTicket());
+    }
+
+    @Test
+    @DisplayName("token 传输异常：降级为 BusinessException，消息不含凭证/URI，无 cause")
+    void tokenTransportFailure() {
+        when(client.fetchAccessToken()).thenThrow(new RuntimeException(
+                "I/O error on GET request for \"https://api.weixin.qq.com/cgi-bin/token"
+                        + "?secret=SECRET_VALUE&access_token=TOKEN_VALUE\""));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getJsapiTicket());
+        assertSanitized(ex);
+    }
+
+    @Test
+    @DisplayName("ticket 传输异常：降级为 BusinessException，消息不含凭证/URI，无 cause")
+    void ticketTransportFailure() {
+        when(client.fetchAccessToken()).thenReturn(ok("T1", 7200));
+        when(client.fetchJsapiTicket("T1")).thenThrow(new RuntimeException(
+                "I/O error on GET request for \"https://api.weixin.qq.com/cgi-bin/ticket/getticket"
+                        + "?access_token=TOKEN_VALUE&secret=SECRET_VALUE\""));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getJsapiTicket());
+        assertSanitized(ex);
+    }
+
+    private static void assertSanitized(BusinessException ex) {
+        assertEquals("微信服务暂不可用", ex.getMessage());
+        assertFalse(ex.getMessage().contains("secret"));
+        assertFalse(ex.getMessage().contains("http"));
+        assertFalse(ex.getMessage().contains("TOKEN_VALUE"));
+        assertNull(ex.getCause());
     }
 }
