@@ -536,6 +536,12 @@
     "guideDesc": "可回饋功能建議、Bug 與內容問題；提交後可在「我的回饋」查看處理進展。",
     "guideConfirm": "知道了"
   },
+  "shareLanding": {
+    "text": "來自好友分享",
+    "home": "前往入口首頁",
+    "learn": "了解平台",
+    "close": "關閉"
+  },
   "platformDocs": {
     "backToPortal": "返回門戶首頁",
     "refreshListHint": "點擊刷新列表",

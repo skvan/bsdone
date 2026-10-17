@@ -538,6 +538,12 @@
     "guideDesc": "可反馈功能建议、Bug 与内容问题；提交后可在「我的反馈」查看处理进展。",
     "guideConfirm": "知道了"
   },
+  "shareLanding": {
+    "text": "来自好友分享",
+    "home": "进入门户首页",
+    "learn": "了解平台",
+    "close": "关闭"
+  },
   "platformDocs": {
     "backToPortal": "返回门户首页",
     "refreshListHint": "点击刷新列表",

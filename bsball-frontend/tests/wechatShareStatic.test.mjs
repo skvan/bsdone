@@ -72,3 +72,36 @@ test('PlayerShareCard/Dialog：二维码与品牌区补丁锚点', () => {
     assert.match(read(f), /"qrBrand"/);
   }
 });
+
+test('PortalPlayerDetail：回流横幅补丁锚点', () => {
+  const src = read('src/views/portal/PortalPlayerDetail.js');
+  assert.match(src, /share-landing-banner/);
+  assert.match(src, /extractShareSource/);
+  assert.match(src, /手工补丁/);
+  assert.match(src, /bs-share-landing-dismissed/);
+  assert.match(src, /sessionStorage\.setItem\("bs-share-landing-dismissed", "1"\)/);
+  const css = read('src/styles/legacy/portal-player-detail.css');
+  assert.match(css, /\.share-landing-banner\[data-v-4b84f8d2\]/);
+  assert.match(css, /\.share-landing-banner__text\[data-v-4b84f8d2\]/);
+});
+
+test('PortalVisitHitList：来源列补丁锚点', () => {
+  const src = read('src/views/admin/PortalVisitHitList.js');
+  assert.match(src, /label:"来源"/);
+  assert.match(src, /分享链接/);
+  assert.match(src, /二维码海报/);
+  assert.match(src, /o\.source==="share"\?"分享链接":o\.source==="poster"\?"二维码海报":"-"/);
+});
+
+test('locales：shareLanding 键（zh-CN/zh-TW）', () => {
+  const keys = ['text', 'home', 'learn', 'close'];
+  for (const f of ['src/locales/zh-CN.json', 'src/locales/zh-TW.json']) {
+    const raw = read(f);
+    assert.match(raw, /"shareLanding"/);
+    const landing = JSON.parse(raw).shareLanding || {};
+    for (const key of keys) {
+      assert.equal(typeof landing[key], 'string', `${f} shareLanding.${key} 应为字符串`);
+      assert.ok(landing[key].length > 0, `${f} shareLanding.${key} 不得为空`);
+    }
+  }
+});
