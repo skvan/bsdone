@@ -14,10 +14,11 @@ function setPage(href) {
 }
 
 function fakeWx(opts = {}) {
-  const calls = { config: null, app: [], timeline: [] };
+  const calls = { config: null, configCount: 0, app: [], timeline: [] };
   const wx = {
     config(configOpts) {
       calls.config = configOpts;
+      calls.configCount += 1;
       queueMicrotask(() => {
         if (opts.failConfig) {
           if (wx.__errorCb) wx.__errorCb(new Error('invalid signature'));
@@ -88,6 +89,7 @@ test('脚本加载失败：静默（warn 一次），不请求签名', async () 
 });
 
 test('签名接口失败：静默，不调 wx.config', async () => {
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/900?from=share');
   const warned = [];
   const { wx, calls } = fakeWx();
   await initWechatShare(META, deps({
@@ -96,11 +98,12 @@ test('签名接口失败：静默，不调 wx.config', async () => {
     warn: (e) => warned.push(e)
   }));
   assert.equal(warned.length, 1);
-  assert.equal(calls.config, null);
+  assert.equal(calls.configCount, 0);
+  assert.equal(calls.app.length, 0);
 });
 
-test('wx.config 失败：静默，不注册分享数据', async () => {
-  setPage('https://www.bsdone.com/bs-ball-next/team1/players/9?from=share');
+test('wx.config 失败：静默，不注册分享数据、不记为已配置', async () => {
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/901?from=share');
   const warned = [];
   const { wx, calls } = fakeWx({ failConfig: true });
   await initWechatShare(META, deps({
@@ -109,18 +112,22 @@ test('wx.config 失败：静默，不注册分享数据', async () => {
     warn: (e) => warned.push(e)
   }));
   assert.equal(warned.length, 1);
+  assert.equal(calls.configCount, 1);
+  assert.equal(calls.app.length, 0);
+  // 失败未写入活动 URL：updateShareData 必须 no-op
+  updateShareData(META, { getWx: () => wx, warn: () => {} });
   assert.equal(calls.app.length, 0);
 });
 
 test('happy path：config 参数正确、分享数据注册、url 去掉 # 片段', async () => {
-  setPage('https://www.bsdone.com/bs-ball-next/team1/players/9?from=share#section');
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/902?from=share#section');
   const { wx, calls } = fakeWx();
   let fetchedUrl = '';
   await initWechatShare(META, deps({
     fetchConfig: async (url) => { fetchedUrl = url; return { appId: 'wx-app', timestamp: 1700000000, nonceStr: 'n', signature: 's' }; },
     getWx: () => wx
   }));
-  assert.equal(fetchedUrl, 'https://www.bsdone.com/bs-ball-next/team1/players/9?from=share');
+  assert.equal(fetchedUrl, 'https://www.bsdone.com/bs-ball-next/team1/players/902?from=share');
   assert.equal(calls.config.appId, 'wx-app');
   assert.deepEqual(calls.config.jsApiList, ['updateAppMessageShareData', 'updateTimelineShareData']);
   assert.deepEqual(calls.app[0], { title: META.title, desc: META.desc, link: META.link, imgUrl: META.imgUrl });
@@ -128,22 +135,43 @@ test('happy path：config 参数正确、分享数据注册、url 去掉 # 片�
 });
 
 test('updateShareData：已配置页面更新成功（不再请求签名）', async () => {
-  setPage('https://www.bsdone.com/bs-ball-next/team1/players/9?from=share');
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/903?from=share');
   const { wx, calls } = fakeWx();
   let fetchCount = 0;
   await initWechatShare(META, deps({
     fetchConfig: async () => { fetchCount += 1; return { appId: 'a', timestamp: 1, nonceStr: 'n', signature: 's' }; },
     getWx: () => wx
   }));
+  assert.equal(fetchCount, 1);
+  assert.equal(calls.app.length, 1);
   updateShareData({ ...META, title: '张三 | 打击率 .350 · 12HR' }, { getWx: () => wx, warn: () => {} });
   assert.equal(fetchCount, 1);
+  assert.equal(calls.configCount, 1);
   assert.equal(calls.app.length, 2);
   assert.equal(calls.app[1].title, '张三 | 打击率 .350 · 12HR');
 });
 
 test('updateShareData：未配置页面 no-op', () => {
-  setPage('https://www.bsdone.com/bs-ball-next/never/players/1?from=share');
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/904?from=share');
   const { wx, calls } = fakeWx();
   updateShareData(META, { getWx: () => wx, warn: () => {} });
   assert.equal(calls.app.length, 0);
+});
+
+test('同 URL 二次 init：不重复签名、不重复 wx.config', async () => {
+  setPage('https://www.bsdone.com/bs-ball-next/team1/players/905?from=share');
+  const { wx, calls } = fakeWx();
+  let fetchCount = 0;
+  const initDeps = deps({
+    fetchConfig: async () => { fetchCount += 1; return { appId: 'a', timestamp: 1, nonceStr: 'n', signature: 's' }; },
+    getWx: () => wx
+  });
+  await initWechatShare(META, initDeps);
+  await initWechatShare({ ...META, title: '张三 | 打击率 .350 · 2H' }, initDeps);
+  assert.equal(fetchCount, 1);
+  assert.equal(calls.configCount, 1);
+  assert.equal(calls.app.length, 2);
+  assert.deepEqual(calls.timeline[1], {
+    title: '张三 | 打击率 .350 · 2H', desc: META.desc, link: META.link, imgUrl: META.imgUrl
+  });
 });

@@ -51,8 +51,8 @@ function applyShareData(wx, meta) {
   if (typeof wx.updateTimelineShareData === 'function') wx.updateTimelineShareData(data);
 }
 
-// 已成功 wx.config 的页面 URL 集合（已配置页面的分享数据更新无需重复签名）
-const configuredUrls = new Set();
+// wx.config 是全局单例，同一时刻只有一个页面 URL 生效；记录最近一次配置成功的 URL
+let activeConfiguredUrl = '';
 
 /**
  * 主入口：微信内 wx.config + 注册自定义分享。meta={title,desc,link,imgUrl}；deps 可注入便于单测。
@@ -73,6 +73,11 @@ export async function initWechatShare(meta, deps = {}) {
     const wx = d.getWx();
     if (!wx || typeof wx.config !== 'function') return;
     const url = currentUrl();
+    // 同一 URL 已配置：直接刷新分享数据，不重复签名与 wx.config
+    if (url === activeConfiguredUrl) {
+      applyShareData(wx, meta);
+      return;
+    }
     const conf = await d.fetchConfig(url);
     if (!conf || !conf.signature) return;
     await new Promise((resolve, reject) => {
@@ -87,7 +92,7 @@ export async function initWechatShare(meta, deps = {}) {
       wx.ready(() => resolve());
       wx.error((err) => reject(err || new Error('wx.config failed')));
     });
-    configuredUrls.add(url);
+    activeConfiguredUrl = url;
     applyShareData(wx, meta);
   } catch (e) {
     d.warn(e);
@@ -103,7 +108,7 @@ export function updateShareData(meta, deps = {}) {
   };
   try {
     if (!meta || !meta.title || !meta.link) return;
-    if (!configuredUrls.has(currentUrl())) return;
+    if (currentUrl() !== activeConfiguredUrl) return;
     const wx = d.getWx();
     if (!wx) return;
     applyShareData(wx, meta);
