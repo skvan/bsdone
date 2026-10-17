@@ -63,9 +63,10 @@ test('PlayerShareCard/Dialog：二维码与品牌区补丁锚点', () => {
   assert.match(pkg.dependencies.qrcode, /^\^1\.5\./);
   const css = read('src/styles/legacy/player-detail-content.css');
   assert.match(css, /\.card-qr\[data-v-9d93789c\]/);
-  assert.match(css, /\.card-qr\[data-v-9d93789c\] \{[^}]*z-index: 4;[^}]*right: 48px;[^}]*bottom: 212px;/);
+  assert.match(css, /\.card-qr\[data-v-9d93789c\] \{[^}]*z-index: 4;[^}]*pointer-events: none;[^}]*right: 48px;[^}]*bottom: 220px;/);
   assert.match(css, /\.card-qr-img\[data-v-9d93789c\] \{[^}]*width: 150px;[^}]*height: 150px;/);
-  assert.match(css, /\.player-share-card--landscape \.card-qr\[data-v-9d93789c\] \{[^}]*left: 360px;[^}]*bottom: 24px;/);
+  assert.match(css, /\.player-share-card--landscape \.card-qr\[data-v-9d93789c\] \{[^}]*right: 56px;[^}]*bottom: 360px;/);
+  assert.match(css, /\.player-share-card--landscape \.card-qr-img\[data-v-9d93789c\] \{[^}]*width: 160px;[^}]*height: 160px;/);
   for (const f of ['src/locales/zh-CN.json', 'src/locales/zh-TW.json']) {
     assert.match(read(f), /"qrCaption"/);
     assert.match(read(f), /"qrBrand"/);
