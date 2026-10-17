@@ -2,6 +2,7 @@
 // 运行：在 bsball-frontend 目录执行  node --test "tests/*.test.mjs"
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { buildOrderBookSections, summarizeOrderBook, buildFlatOrderBookPlayers } from '../src/utils/orderBook.js';
 
 const team = (id, extra = {}) => ({
@@ -148,4 +149,22 @@ test('buildFlatOrderBookPlayers：按姓名排序（中文拼音序）；空入�
 test('buildFlatOrderBookPlayers：缺省队名回落 ID 展示', () => {
   const flat = buildFlatOrderBookPlayers([{ teamId: 999, rows: [{ playerId: 5, name: '赵六' }] }]);
   assert.equal(flat[0].teamText, 'ID:999');
+});
+
+// —— 静态断言（#339）：卡片守位行空行占位、列表守位列去破折号 ——
+const orderBookVue = fs.readFileSync(new URL('../src/views/admin/EventOrderBook.vue', import.meta.url), 'utf8');
+
+test('卡片视图：守位行不使用可折叠空白兜底，且有固定行高保证空行占位', () => {
+  assert.ok(!orderBookVue.includes(".join(' / ') || ' '"), '守位行不得再用空格兜底（CSS 空白折叠会塌成 0 高）');
+  const block = orderBookVue.match(/\.ob-player-position\s*\{[^}]*\}/)?.[0] ?? '';
+  assert.match(block, /min-height:\s*1\.4em/, '守位行需 min-height 固定占一行');
+  assert.match(block, /line-height:\s*1\.4/, '守位行需显式 line-height 与 min-height 一致');
+  assert.match(block, /white-space:\s*nowrap/, '守位行需单行省略（多守位长文本不换行，保住三行对齐）');
+  assert.match(block, /text-overflow:\s*ellipsis/, '守位行截断需省略号提示');
+  assert.ok(orderBookVue.includes(`:title="(p.positions || []).join(' / ')"`), '守位行需 title 悬浮显示全文（截断时可查看）');
+});
+
+test('列表视图：无守位时显示空白而非破折号', () => {
+  assert.ok(!orderBookVue.includes("row.positionText || '—'"), '守位列不得兜底破折号');
+  assert.ok(orderBookVue.includes('{{ row.positionText }}'), '守位列直出文本（空则空白）');
 });
