@@ -112,6 +112,16 @@ test('buildPlayerShareMeta：resolveAsset/origin/platformName 选项与绝对头
   assert.equal(absolute.imgUrl, 'https://cdn.test/a.png');
 });
 
+test('buildPlayerShareMeta：data/blob/协议相对头像原样返回', () => {
+  const dataUri = 'data:image/png;base64,iVBORw0KGgo=';
+  const withData = buildPlayerShareMeta({ name: '周九', avatar: dataUri }, null, null, null);
+  assert.equal(withData.imgUrl, dataUri);
+  assert.equal(
+    buildPlayerShareMeta({ name: '吴十', avatar: '//cdn.test/a.png' }, null, null, null).imgUrl,
+    '//cdn.test/a.png'
+  );
+});
+
 test('buildPlayerShareMeta：空白头像回退平台 logo', () => {
   const meta = buildPlayerShareMeta({ name: '孙八', avatar: '   ' }, null, null, null);
   assert.equal(meta.imgUrl, 'https://www.bsdone.com/static/logo/logo2.png');
@@ -142,6 +152,34 @@ test('useWechatShare：链接变化触发初始化、同链接标题变化不再
   assert.equal(calls.configCount, 1);
   assert.deepEqual(calls.app.map((d) => d.title), ['张三', '张三 | 打击率 .350']);
   assert.deepEqual(calls.timeline.map((d) => d.title), ['张三', '张三 | 打击率 .350']);
+  stop();
+});
+
+test('useWechatShare：同链接仅 desc 变化也更新分享数据且不重复请求签名', async () => {
+  const href = 'https://www.bsdone.com/bs-ball-next/t/players/915?from=share';
+  globalThis.window = { location: { href } };
+  const { wx, calls } = wxHarness();
+  let fetchCount = 0;
+  const metaRef = ref(null);
+  const stop = useWechatShare(metaRef, {
+    isWechat: () => true,
+    loadScript: () => Promise.resolve(),
+    fetchConfig: async () => { fetchCount += 1; return { appId: 'a', timestamp: 1, nonceStr: 'n', signature: 's' }; },
+    getWx: () => wx,
+    warn: () => {}
+  });
+  metaRef.value = { title: '张三', desc: '雄鹰队', imgUrl: 'https://cdn.test/a.png', link: href };
+  await flush();
+  assert.equal(fetchCount, 1);
+  assert.equal(calls.configCount, 1);
+
+  metaRef.value = { title: '张三', desc: '雄鹰队 · 春季联赛 · BSD棒垒球数据平台', imgUrl: 'https://cdn.test/a.png', link: href };
+  await flush();
+  assert.equal(fetchCount, 1);
+  assert.equal(calls.configCount, 1);
+  assert.equal(calls.app.length, 2);
+  assert.equal(calls.app[1].desc, '雄鹰队 · 春季联赛 · BSD棒垒球数据平台');
+  assert.equal(calls.timeline[1].desc, '雄鹰队 · 春季联赛 · BSD棒垒球数据平台');
   stop();
 });
 

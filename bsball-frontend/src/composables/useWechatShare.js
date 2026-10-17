@@ -20,7 +20,8 @@ export function buildPlayerShareUrl(router, playerId, source, tenantCode) {
 
 function toAbsolute(url, origin) {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url;
+  // 已是绝对/内联/协议相对 URL：原样返回，不拼 origin
+  if (/^(?:https?:|data:|blob:)/i.test(url) || url.startsWith('//')) return url;
   return origin + (url.startsWith('/') ? url : '/' + url);
 }
 
@@ -55,10 +56,15 @@ export function buildPlayerShareMeta(player, team, league, stats, options = {}) 
   return { title, desc, imgUrl };
 }
 
-/** 微信内自动配置分享：链接变化→完整初始化；同链接仅标题变化→同页更新；初始化期间标题变化则在配置成功后补发 */
+/** 分享元数据完整键：title/desc/imgUrl 任一变化都要重配分享数据 */
+function metaKeyOf(meta) {
+  return `${meta.title}\u0000${meta.desc || ''}\u0000${meta.imgUrl || ''}`;
+}
+
+/** 微信内自动配置分享：链接变化→完整初始化；同链接元数据变化→同页更新；初始化期间元数据变化则在配置成功后补发 */
 export function useWechatShare(metaRef, deps = {}) {
   let lastLink = '';
-  let lastTitle = '';
+  let lastMetaKey = '';
   let latestMeta = null;
   let initToken = 0;
   return watch(metaRef, (meta) => {
@@ -66,21 +72,21 @@ export function useWechatShare(metaRef, deps = {}) {
     latestMeta = meta;
     if (meta.link !== lastLink) {
       const link = meta.link;
-      const initializedTitle = meta.title;
+      const initializedKey = metaKeyOf(meta);
       const token = ++initToken;
       lastLink = link;
-      lastTitle = meta.title;
+      lastMetaKey = initializedKey;
       initWechatShare(meta, deps).then(() => {
-        // 签名/config 期间标题已更新：配置成功后补发一次最新分享数据
+        // 签名/config 期间元数据已更新：配置成功后补发一次最新分享数据
         if (token !== initToken || !latestMeta || latestMeta.link !== link) return;
-        if (latestMeta.title === initializedTitle) return;
-        lastTitle = latestMeta.title;
+        if (metaKeyOf(latestMeta) === initializedKey) return;
+        lastMetaKey = metaKeyOf(latestMeta);
         updateShareData(latestMeta, deps);
       });
       return;
     }
-    if (meta.title !== lastTitle) {
-      lastTitle = meta.title;
+    if (metaKeyOf(meta) !== lastMetaKey) {
+      lastMetaKey = metaKeyOf(meta);
       updateShareData(meta, deps);
     }
   }, { immediate: true });
