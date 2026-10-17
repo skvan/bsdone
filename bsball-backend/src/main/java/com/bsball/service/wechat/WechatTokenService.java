@@ -35,10 +35,11 @@ public class WechatTokenService {
     /** 获取 jsapi_ticket；未配置或微信侧失败抛 BusinessException（调用方降级处理） */
     public synchronized String getJsapiTicket() {
         requireConfigured();
-        String token = accessToken();
+        // ticket 仍新鲜时不触碰 token：避免 token 临期刷新失败拖累可用的 ticket
         if (isFresh(cachedTicket, ticketExpireAtMs)) {
             return cachedTicket;
         }
+        String token = accessToken();
         WechatApiClient.WechatApiResult first = safeFetchTicket(token);
         if (first.ok()) {
             cacheTicket(first);

@@ -68,5 +68,12 @@ public class WechatApiClient {
 
     /** 微信接口结果：ok=errcode==0 且有值；errcode 供调用方自愈判断（40001/42001 失效） */
     public record WechatApiResult(boolean ok, int errcode, String errmsg, String value, int expiresIn) {
+        /** 脱敏：value 可能是 access_token/jsapi_ticket，toString 不输出原文 */
+        @Override
+        public String toString() {
+            String masked = value == null || value.isEmpty() ? "" : "***";
+            return "WechatApiResult[ok=" + ok + ", errcode=" + errcode + ", errmsg=" + errmsg
+                    + ", value=" + masked + ", expiresIn=" + expiresIn + "]";
+        }
     }
 }

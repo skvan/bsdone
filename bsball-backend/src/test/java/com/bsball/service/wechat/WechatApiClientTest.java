@@ -42,6 +42,16 @@ class WechatApiClientTest {
     }
 
     @Test
+    @DisplayName("toString 脱敏：不输出 token 原文")
+    void toStringMasksValue() {
+        WechatApiClient.WechatApiResult r = WechatApiClient.parseResult(
+                "{\"access_token\":\"SECRET_TOKEN\",\"expires_in\":7200}", "access_token");
+        String text = r.toString();
+        assertFalse(text.contains("SECRET_TOKEN"));
+        assertTrue(text.contains("***"));
+    }
+
+    @Test
     @DisplayName("非法 JSON：不抛异常，ok=false")
     void badJson() {
         WechatApiClient.WechatApiResult r = WechatApiClient.parseResult("not-json", "ticket");

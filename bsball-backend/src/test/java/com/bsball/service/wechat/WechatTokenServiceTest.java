@@ -84,6 +84,21 @@ class WechatTokenServiceTest {
     }
 
     @Test
+    @DisplayName("ticket 新鲜但 token 临期：直接返回缓存 ticket，不刷新 token")
+    void ticketFreshSkipsExpiringToken() {
+        when(client.fetchAccessToken()).thenReturn(ok("T1", 1000))
+                .thenThrow(new IllegalStateException("ticket 新鲜时不应刷新 token"));
+        when(client.fetchJsapiTicket("T1")).thenReturn(ok("TK1", 7200));
+        assertEquals("TK1", service.getJsapiTicket());
+
+        // token 仅剩 500s（<10 分钟临期），ticket 仍远离过期
+        now.addAndGet(500_000L);
+        assertEquals("TK1", service.getJsapiTicket());
+        verify(client, times(1)).fetchAccessToken();
+        verify(client, times(1)).fetchJsapiTicket("T1");
+    }
+
+    @Test
     @DisplayName("getticket 40001：清 token 缓存重试一次成功（自愈）")
     void selfHealOn40001() {
         when(client.fetchAccessToken()).thenReturn(ok("T1", 7200), ok("T2", 7200));
