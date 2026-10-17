@@ -500,12 +500,12 @@ var Er=["aria-label"],Lr={
     ,null,38)]),c("div",Kr,[c("div",Yr,u(E.value),1),c("div",Xr,[c("div",jr,[c("span",qr,u(h.roleLabel),1),c("span",Zr,u(h.scopeLabel),1)]),h.subScopeLabel?(d(),b("div",Jr,u(h.subScopeLabel),1)):T("",!0),c("div",Qr,[(d(!0),b(x,null,Z(h.stats,y=>(d(),b("div",{
       key:y.key,class:"card-stat"
     }
-    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])]),// ---- 微信分享海报二维码（Issue #343，手工补丁） ----
+    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])])]),// ---- 微信分享海报二维码（Issue #343，手工补丁；卡片根层定位，避免被 footer/hero 遮挡） ----
       h.qrUrl?(d(),b("div",{class:"card-qr"},[
         c("img",{class:"card-qr-img",src:h.qrUrl,crossorigin:"anonymous",draggable:"false"},null,8,["src"]),
         c("div",{class:"card-qr-caption"},u(h.qrCaption),1),
         c("div",{class:"card-qr-brand"},u(h.qrBrand),1)
-      ])):T("",!0)])],14,Er))
+      ])):T("",!0)],14,Er))
   }
   
 }
@@ -767,6 +767,7 @@ var vl={
     // ---- 微信分享提示（Issue #343，手工补丁） ----
     const isWx = isWechatBrowser(), wxGuide = S(!1);
     const wxQr = S("");
+    let wxQrSeq = 0;
     _r(m);
     const{
       t:v
@@ -1018,12 +1019,11 @@ var vl={
     }
     ),
     // ---- 微信分享海报二维码（Issue #343，手工补丁） ----
-    // 打开弹窗即生成海报二维码（480px 保障导出 scale=2 清晰；失败静默置空→卡片隐藏该区块）
-    fe(()=>m.value,(open)=>{
-      if(!open)return;
-      const u0=r.posterUrl;
-      if(!u0){wxQr.value="";return}
-      QrCode.toDataURL(u0,{width:480,margin:1,errorCorrectionLevel:"M"}).then((q)=>{wxQr.value=q}).catch(()=>{wxQr.value=""})
+    // 打开弹窗或海报链接变化时重新生成（组件复用/球员切换不沿用旧码）；关闭即清空，避免旧图闪现
+    fe(()=>[m.value,r.posterUrl],([open,url])=>{
+      const seq=++wxQrSeq;
+      if(!open||!url){wxQr.value="";return}
+      QrCode.toDataURL(url,{width:480,margin:1,errorCorrectionLevel:"M"}).then((q)=>{seq===wxQrSeq&&(wxQr.value=q)}).catch(()=>{seq===wxQrSeq&&(wxQr.value="")})
     }
     ),
     fe(()=>[m.value,$.value],([t,i])=>{
@@ -3312,7 +3312,7 @@ var vl={
       ,8,["modelValue","title"]),p(tn,{
         modelValue:He.value,"onUpdate:modelValue":a[6]||(a[6]=s=>He.value=s),player:h.player,team:h.team,stats:be.value,"stats-by-season":Ge.value,"default-avatar-img":h.defaultAvatarImg,"position-label":Ue.value,"display-name":Me.value,"bat-throw-line":sa.value,"poster-url":wxPosterUrl.value
       }
-      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line"])])):T("",!0)
+      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line","poster-url"])])):T("",!0)
     }
     
   }

@@ -54,11 +54,18 @@ test('PlayerShareCard/Dialog：二维码与品牌区补丁锚点', () => {
   assert.match(src, /QrCode\.toDataURL/);
   assert.match(src, /posterUrl/);
   assert.match(src, /poster-url/);
+  assert.match(src, /"bat-throw-line","poster-url"\]/);
+  assert.match(src, /fe\(\(\)=>\[m\.value,r\.posterUrl\],/);
+  assert.match(src, /let wxQrSeq = 0;/);
+  assert.match(src, /seq===wxQrSeq&&\(wxQr\.value=q\)/);
   assert.match(src, /ue\.value=!1\s+wxGuide\.value=!1;/);
   const pkg = JSON.parse(read('package.json'));
   assert.match(pkg.dependencies.qrcode, /^\^1\.5\./);
   const css = read('src/styles/legacy/player-detail-content.css');
   assert.match(css, /\.card-qr\[data-v-9d93789c\]/);
+  assert.match(css, /\.card-qr\[data-v-9d93789c\] \{[^}]*z-index: 4;[^}]*right: 48px;[^}]*bottom: 212px;/);
+  assert.match(css, /\.card-qr-img\[data-v-9d93789c\] \{[^}]*width: 150px;[^}]*height: 150px;/);
+  assert.match(css, /\.player-share-card--landscape \.card-qr\[data-v-9d93789c\] \{[^}]*left: 360px;[^}]*bottom: 24px;/);
   for (const f of ['src/locales/zh-CN.json', 'src/locales/zh-TW.json']) {
     assert.match(read(f), /"qrCaption"/);
     assert.match(read(f), /"qrBrand"/);
