@@ -538,6 +538,12 @@
     "guideDesc": "可反馈功能建议、Bug 与内容问题；提交后可在「我的反馈」查看处理进展。",
     "guideConfirm": "知道了"
   },
+  "shareLanding": {
+    "text": "来自好友分享",
+    "home": "进入门户首页",
+    "learn": "了解平台",
+    "close": "关闭"
+  },
   "platformDocs": {
     "backToPortal": "返回门户首页",
     "refreshListHint": "点击刷新列表",
@@ -1385,6 +1391,12 @@
     "unnamedEvent": "未命名赛事",
     "shareCard": {
       "generateButton": "分享球员卡片",
+      "wechatTip": "好友/群聊：点右上角分享 · 朋友圈：保存海报",
+      "wechatGuideTitle": "点右上角「···」分享",
+      "wechatGuideBody": "选择发送给朋友或分享到朋友圈",
+      "wechatGuideOk": "知道了",
+      "qrCaption": "长按识别二维码 · 查看球员数据",
+      "qrBrand": "BSD棒垒球数据平台",
       "dialogTitle": "分享球员卡片",
       "orientationPortrait": "竖版 4:5",
       "orientationLandscape": "横版 16:9",
