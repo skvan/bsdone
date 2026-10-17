@@ -1389,6 +1389,8 @@
       "wechatGuideTitle": "点右上角「···」分享",
       "wechatGuideBody": "选择发送给朋友或分享到朋友圈",
       "wechatGuideOk": "知道了",
+      "qrCaption": "长按识别二维码 · 查看球员数据",
+      "qrBrand": "BSD棒垒球数据平台",
       "dialogTitle": "分享球员卡片",
       "orientationPortrait": "竖版 4:5",
       "orientationLandscape": "横版 16:9",

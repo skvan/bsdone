@@ -45,3 +45,22 @@ test('player-detail-content.css：微信提示条与引导浮层样式（弹窗 
   assert.match(css, /\.share-wechat-guide\[data-v-4a548fe0\]/);
   assert.match(css, /\.share-wechat-guide__ok\[data-v-4a548fe0\]/);
 });
+
+test('PlayerShareCard/Dialog：二维码与品牌区补丁锚点', () => {
+  const src = read('src/components/admin/PlayerDetailContent.js');
+  assert.match(src, /import QrCode from 'qrcode';/);
+  assert.match(src, /card-qr/);
+  assert.match(src, /qrUrl:wxQr\.value/);
+  assert.match(src, /QrCode\.toDataURL/);
+  assert.match(src, /posterUrl/);
+  assert.match(src, /poster-url/);
+  assert.match(src, /ue\.value=!1\s+wxGuide\.value=!1;/);
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(pkg.dependencies.qrcode, /^\^1\.5\./);
+  const css = read('src/styles/legacy/player-detail-content.css');
+  assert.match(css, /\.card-qr\[data-v-9d93789c\]/);
+  for (const f of ['src/locales/zh-CN.json', 'src/locales/zh-TW.json']) {
+    assert.match(read(f), /"qrCaption"/);
+    assert.match(read(f), /"qrBrand"/);
+  }
+});

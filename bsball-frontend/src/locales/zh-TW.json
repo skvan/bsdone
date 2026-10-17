@@ -1381,6 +1381,8 @@
       "wechatGuideTitle": "點右上角「···」分享",
       "wechatGuideBody": "選擇傳送給朋友或分享到朋友圈",
       "wechatGuideOk": "知道了",
+      "qrCaption": "長按辨識 QR Code · 查看球員資料",
+      "qrBrand": "BSD棒壘球資料平台",
       "dialogTitle": "分享球員卡片",
       "orientationPortrait": "直式 4:5",
       "orientationLandscape": "橫式 16:9",
