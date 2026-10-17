@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FIELD_VIEWBOX, FIELD_SLOTS, DH_SLOT, XF_SLOT, ALL_SLOT_CODES, slotsForMode,
+  FIELD_VIEWBOX, FIELD_SLOTS, DH_SLOT, XF_SLOT, ALL_SLOT_CODES, SLOT_SIZE, slotsForMode,
   slotDef, isFieldCode, hitTestSlot,
 } from '../src/utils/lineupFieldPositions.js';
 
@@ -27,6 +27,28 @@ test('坐标全部落在 viewBox 内', () => {
   for (const s of [...FIELD_SLOTS, XF_SLOT, DH_SLOT]) {
     assert.ok(s.x >= 0 && s.x <= FIELD_VIEWBOX.width, `${s.code} x 越界`);
     assert.ok(s.y >= 0 && s.y <= FIELD_VIEWBOX.height, `${s.code} y 越界`);
+  }
+});
+
+test('卡槽不重叠不变量：任意球场宽度下（含极窄移动端）任意两卡槽矩形不相交（含垒球 XF）', () => {
+  const slots = [...FIELD_SLOTS, XF_SLOT, DH_SLOT];
+  const slotAt = (w) => Math.min(
+    Math.min(SLOT_SIZE.max, Math.max(SLOT_SIZE.min, SLOT_SIZE.ratio * w)),
+    SLOT_SIZE.guardRatio * w,
+  );
+  for (let w = 150; w <= 2400; w += 1) {
+    const slot = slotAt(w);
+    const scale = w / FIELD_VIEWBOX.width;
+    for (let i = 0; i < slots.length; i += 1) {
+      for (let j = i + 1; j < slots.length; j += 1) {
+        const dx = Math.abs(slots[i].x - slots[j].x) * scale;
+        const dy = Math.abs(slots[i].y - slots[j].y) * scale;
+        assert.ok(
+          dx >= slot || dy >= slot,
+          `球场 ${w}px 时 ${slots[i].code}-${slots[j].code} 卡槽重叠（dx=${dx.toFixed(1)}, dy=${dy.toFixed(1)}, slot=${slot.toFixed(1)}）`,
+        );
+      }
+    }
   }
 });
 
