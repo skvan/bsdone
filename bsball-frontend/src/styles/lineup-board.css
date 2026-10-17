@@ -91,6 +91,15 @@ body.lineup-dragging .lineup-slot--filled:not(.is-error) { border-color: #409eff
 .lineup-batting__row.is-error { border-color: #f56c6c; background: #fef0f0; }
 .lineup-batting__handle { width: 14px; height: 18px; color: #909399; cursor: grab; }
 .lineup-batting__handle:hover { color: #409eff; }
+
+/* 桌面整卡拖动排序（#340）：精指针设备隐藏把手、整行可拖；插入线标记松手后的落点。
+   触屏笔记本主指针为 fine、走同一路径 → 行补 touch-action: none，防触摸滚动抢占拖动（移动端 coarse 不受影响） */
+@media (pointer: fine) {
+  .lineup-batting__handle { display: none; }
+  .lineup-batting__row { grid-template-columns: auto 1fr auto; cursor: grab; touch-action: none; }
+}
+.lineup-batting__row.is-drop-before { box-shadow: 0 -3px 0 0 #67c23a; }
+.lineup-batting__row.is-drop-after { box-shadow: 0 3px 0 0 #67c23a; }
 .lineup-batting__order { font-weight: 700; color: #409eff; white-space: nowrap; }
 .lineup-batting__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lineup-batting__number { color: #409eff; font-weight: 600; white-space: nowrap; }

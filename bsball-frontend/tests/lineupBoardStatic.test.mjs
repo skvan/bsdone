@@ -66,3 +66,28 @@ test('拖拽起步 = 净位移门控（interactjs 无 distance 选项；阈值�
   assert.ok(!/distance:\s*DRAG_START_DISTANCE/.test(src), '不得使用不存在的 interactjs distance 选项（评审 Critical）');
   assert.ok(!/delay:\s*(DRAG_DELAY|1[0-9]{2})/.test(src), '不得再使用长按 delay');
 });
+
+test('打线整卡拖动排序（#340）：桌面按插入位重排、移动端把手 + sortablejs 零回归', () => {
+  const drag = read('../src/composables/useLineupDrag.js');
+  assert.ok(drag.includes('battingRowRects'), 'resolveDropTarget 需按行 rect 计算插入位 gap');
+  assert.ok(drag.includes('getLayout?.(el)'), 'move 取布局需传被拖元素（行 rect 排除自身）');
+  assert.ok(drag.includes('getLayout?.(event.target)'), 'end 取布局需传被拖元素');
+  assert.ok(drag.includes("ignoreFrom: '.drag-handle'"), 'interactjs 仍不得抢把手势（移动端）');
+
+  const page = read('../src/views/admin/LiveGameLineupBoard.vue');
+  assert.ok(page.includes("useMediaQuery('(pointer: fine)')"), '需以 (pointer: fine) 区分桌面整卡拖动');
+  assert.ok(page.includes(':drop-line="battingDropLine"'), '需下发布置线状态给打线组件');
+  assert.ok(page.includes('reorderBatting(from, target.index)'), 'batting 落点分支需调用 reorderBatting');
+
+  const batting = read('../src/components/admin/LineupBattingOrder.vue');
+  assert.ok(batting.includes("from 'sortablejs'"), '移动端行内排序仍需保留 sortablejs');
+  assert.ok(batting.includes('.drag-handle'), '把手节点保留（移动端使用）');
+  assert.ok(batting.includes('is-drop-before') && batting.includes('is-drop-after'), '需渲染插入线状态类');
+
+  const css = read('../src/styles/lineup-board.css');
+  assert.ok(css.includes('@media (pointer: fine)'), '桌面隐藏把手需要媒体查询');
+  assert.ok(css.includes('.lineup-batting__handle'), '把手样式保留（移动端使用）');
+  assert.ok(css.includes('is-drop-before') && css.includes('is-drop-after'), '插入线样式需登记');
+  const fineBlock = css.slice(css.indexOf('@media (pointer: fine)'), css.indexOf('@media (max-width: 768px)'));
+  assert.ok(fineBlock.includes('touch-action: none'), '触屏笔记本（主指针 fine）需禁触摸滚动抢占整卡拖动');
+});

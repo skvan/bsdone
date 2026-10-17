@@ -261,6 +261,26 @@ test('reorderBatting 改棒次且空行恒留尾部', () => {
   assert.ok(b.rows.value.slice(3).every(isPlaceholder));
 });
 
+test('reorderBatting 边界（整卡拖动排序所依赖）：同位幂等、插入位语义、越界忽略', () => {
+  const b = board();
+  b.placeAtSlot(P(2), 'C');
+  b.placeAtSlot(P(3), '1B');
+  b.placeAtSlot(P(4), '2B');
+  const ids = () => b.rows.value.filter((r) => !isPlaceholder(r)).map((r) => r.id);
+  b.reorderBatting(1, 1); // 同位（gap === from 的落点）→ no-op
+  assert.deepEqual(ids(), [2, 3, 4]);
+  b.reorderBatting(1, 0); // 中间 → 最前
+  assert.deepEqual(ids(), [3, 2, 4]);
+  b.reorderBatting(0, 1); // 插入位语义（摘除后插入）→ 与上一步互逆
+  assert.deepEqual(ids(), [2, 3, 4]);
+  b.reorderBatting(0, 2); // 最前 → 最后（末尾 gap = others.length 的落点）
+  assert.deepEqual(ids(), [3, 4, 2]);
+  b.reorderBatting(-1, 1); // from 越界 → 忽略
+  b.reorderBatting(0, 3);  // to == filled.length 越界 → 忽略
+  assert.deepEqual(ids(), [3, 4, 2]);
+  assert.ok(b.rows.value.slice(3).every(isPlaceholder)); // 空行仍恒留尾部
+});
+
 test('applyTemplate：按 slots 落位、bench 覆盖、lastDh 清空', () => {
   const b = board();
   b.lastDhAddedFromPoolId.value = 9;
