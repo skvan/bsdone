@@ -42,6 +42,8 @@ public class PitchingLeaderDTO {
     private Integer bk;
     private Integer pitchR;
     private Integer er;
+    private Integer unearnedR;
+    private Integer pendingR;
     private Integer go;
     private Integer fo;
     private Double goFo;
@@ -208,6 +210,16 @@ public class PitchingLeaderDTO {
     @Generated
     public Integer getEr() {
         return this.er;
+    }
+
+    @Generated
+    public Integer getUnearnedR() {
+        return this.unearnedR;
+    }
+
+    @Generated
+    public Integer getPendingR() {
+        return this.pendingR;
     }
 
     @Generated
@@ -383,6 +395,16 @@ public class PitchingLeaderDTO {
     @Generated
     public void setEr(Integer er) {
         this.er = er;
+    }
+
+    @Generated
+    public void setUnearnedR(Integer unearnedR) {
+        this.unearnedR = unearnedR;
+    }
+
+    @Generated
+    public void setPendingR(Integer pendingR) {
+        this.pendingR = pendingR;
     }
 
     @Generated

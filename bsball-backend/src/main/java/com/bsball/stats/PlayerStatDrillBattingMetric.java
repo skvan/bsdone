@@ -35,9 +35,9 @@ public enum PlayerStatDrillBattingMetric {
     TB("((GREATEST(0, COALESCE(s.h,0) - COALESCE(s.doubles,0) - COALESCE(s.triples,0) - COALESCE(s.hr,0) - COALESCE(s.inside_park_hr,0))) + COALESCE(s.doubles,0)*2 + COALESCE(s.triples,0)*3 + COALESCE(s.hr,0)*4 + COALESCE(s.inside_park_hr,0)*4)::integer"),
     SH_SF("(COALESCE(s.sh,0) + COALESCE(s.sf,0))::integer"),
     AVG("CASE WHEN COALESCE(s.ab,0) > 0 THEN ROUND((COALESCE(s.h,0)::numeric / NULLIF(s.ab,0)), 3) ELSE NULL END"),
-    OBP("CASE WHEN COALESCE(s.pa,0) > 0 THEN ROUND(((COALESCE(s.h,0) + (CASE WHEN COALESCE(s.bb,0) + COALESCE(s.hbp,0) > 0 THEN COALESCE(s.bb,0) + COALESCE(s.hbp,0) ELSE COALESCE(s.bb_hp,0) END))::numeric / NULLIF(s.pa,0)), 3) ELSE NULL END"),
+    OBP(PlayerStatDrillBattingMetric.drillDownObpSql()),
     SLG("CASE WHEN COALESCE(s.ab,0) > 0 THEN ROUND(((GREATEST(0, COALESCE(s.h,0) - COALESCE(s.doubles,0) - COALESCE(s.triples,0) - COALESCE(s.hr,0) - COALESCE(s.inside_park_hr,0))) + COALESCE(s.doubles,0)*2 + COALESCE(s.triples,0)*3 + COALESCE(s.hr,0)*4 + COALESCE(s.inside_park_hr,0)*4)::numeric / NULLIF(s.ab,0), 3) ELSE NULL END"),
-    OPS("CASE WHEN COALESCE(s.pa,0) > 0 AND COALESCE(s.ab,0) > 0 THEN ROUND(((COALESCE(s.h,0) + (CASE WHEN COALESCE(s.bb,0) + COALESCE(s.hbp,0) > 0 THEN COALESCE(s.bb,0) + COALESCE(s.hbp,0) ELSE COALESCE(s.bb_hp,0) END))::numeric / NULLIF(s.pa,0)) + ((GREATEST(0, COALESCE(s.h,0) - COALESCE(s.doubles,0) - COALESCE(s.triples,0) - COALESCE(s.hr,0) - COALESCE(s.inside_park_hr,0))) + COALESCE(s.doubles,0)*2 + COALESCE(s.triples,0)*3 + COALESCE(s.hr,0)*4 + COALESCE(s.inside_park_hr,0)*4)::numeric / NULLIF(s.ab,0), 3) ELSE NULL END"),
+    OPS(PlayerStatDrillBattingMetric.drillDownOpsSql()),
     SB_PCT("CASE WHEN (COALESCE(s.sb,0) + COALESCE(s.cs,0)) > 0 THEN ROUND(100.0 * COALESCE(s.sb,0)::numeric / NULLIF(COALESCE(s.sb,0) + COALESCE(s.cs,0), 0), 1) ELSE NULL END");
 
     private final String valueSql;
@@ -49,6 +49,39 @@ public enum PlayerStatDrillBattingMetric {
 
     public String getValueSql() {
         return this.valueSql;
+    }
+
+    private static String drillDownWalksSql() {
+        return "CASE WHEN COALESCE(s.bb,0) + COALESCE(s.hbp,0) > 0"
+                + " THEN COALESCE(s.bb,0) + COALESCE(s.hbp,0)"
+                + " ELSE COALESCE(s.bb_hp,0) END";
+    }
+
+    private static String drillDownObpDenominatorSql() {
+        return "(COALESCE(s.ab,0) + " + drillDownWalksSql() + " + COALESCE(s.sf,0))";
+    }
+
+    private static String drillDownObpSql() {
+        String denominator = drillDownObpDenominatorSql();
+        return "CASE WHEN " + denominator + " > 0 THEN ROUND((("
+                + "COALESCE(s.h,0) + " + drillDownWalksSql()
+                + ")::numeric / NULLIF(" + denominator + ",0)), 3) ELSE NULL END";
+    }
+
+    private static String drillDownTbSql() {
+        return "((GREATEST(0, COALESCE(s.h,0) - COALESCE(s.doubles,0)"
+                + " - COALESCE(s.triples,0) - COALESCE(s.hr,0)"
+                + " - COALESCE(s.inside_park_hr,0)))"
+                + " + COALESCE(s.doubles,0)*2 + COALESCE(s.triples,0)*3"
+                + " + COALESCE(s.hr,0)*4 + COALESCE(s.inside_park_hr,0)*4)";
+    }
+
+    private static String drillDownOpsSql() {
+        String denominator = drillDownObpDenominatorSql();
+        return "CASE WHEN " + denominator + " > 0 AND COALESCE(s.ab,0) > 0 THEN ROUND((("
+                + "COALESCE(s.h,0) + " + drillDownWalksSql()
+                + ")::numeric / NULLIF(" + denominator + ",0)) + (" + drillDownTbSql()
+                + ")::numeric / NULLIF(s.ab,0), 3) ELSE NULL END";
     }
 
     public static PlayerStatDrillBattingMetric fromApi(String raw) {

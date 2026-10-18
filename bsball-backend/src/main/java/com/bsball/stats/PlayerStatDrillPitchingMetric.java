@@ -66,7 +66,11 @@ public enum PlayerStatDrillPitchingMetric {
 
     private static String drillDownWhipSql() {
         String outs = PlayerStatDrillPitchingMetric.drillDownPitchIpOutsSql();
-        return "CASE WHEN " + outs + " > 0 THEN ROUND((CAST(COALESCE(s.pitchh, 0) AS NUMERIC) + CAST(COALESCE(s.pitch_bb_hp, 0) AS NUMERIC)) * 3.0 / NULLIF(CAST(" + outs + " AS NUMERIC), 0), 2) ELSE NULL END";
+        String walks = "CASE WHEN COALESCE(s.pitch_bb, 0) + COALESCE(s.pitch_hbp, 0) > 0"
+                + " THEN COALESCE(s.pitch_bb, 0)"
+                + " ELSE GREATEST(COALESCE(s.pitch_bb_hp, 0) - COALESCE(s.pitch_hbp, 0), 0) END";
+        return "CASE WHEN " + outs + " > 0 THEN ROUND((CAST(COALESCE(s.pitchh, 0) AS NUMERIC) + CAST(("
+                + walks + ") AS NUMERIC)) * 3.0 / NULLIF(CAST(" + outs + " AS NUMERIC), 0), 2) ELSE NULL END";
     }
 
     public static PlayerStatDrillPitchingMetric fromApi(String raw) {

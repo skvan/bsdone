@@ -36,6 +36,8 @@ public class EventStatRow {
     private int cs;
     private double ip;
     private int er;
+    private int unearnedR;
+    private int pendingR;
     private int pitchH;
     private int pitchBbHp;
     private int pitchSo;
@@ -65,8 +67,10 @@ public class EventStatRow {
     private int tc;
     private int po;
     private int a;
+    private int dp;
     private int pb;
     private int catcherCs;
+    private int catcherSb;
 
     @Generated
     public EventStatRow() {
@@ -200,6 +204,16 @@ public class EventStatRow {
     @Generated
     public int getEr() {
         return this.er;
+    }
+
+    @Generated
+    public int getUnearnedR() {
+        return this.unearnedR;
+    }
+
+    @Generated
+    public int getPendingR() {
+        return this.pendingR;
     }
 
     @Generated
@@ -348,6 +362,11 @@ public class EventStatRow {
     }
 
     @Generated
+    public int getDp() {
+        return this.dp;
+    }
+
+    @Generated
     public int getPb() {
         return this.pb;
     }
@@ -355,6 +374,11 @@ public class EventStatRow {
     @Generated
     public int getCatcherCs() {
         return this.catcherCs;
+    }
+
+    @Generated
+    public int getCatcherSb() {
+        return this.catcherSb;
     }
 
     @Generated
@@ -485,6 +509,16 @@ public class EventStatRow {
     @Generated
     public void setEr(int er) {
         this.er = er;
+    }
+
+    @Generated
+    public void setUnearnedR(int unearnedR) {
+        this.unearnedR = unearnedR;
+    }
+
+    @Generated
+    public void setPendingR(int pendingR) {
+        this.pendingR = pendingR;
     }
 
     @Generated
@@ -633,6 +667,11 @@ public class EventStatRow {
     }
 
     @Generated
+    public void setDp(int dp) {
+        this.dp = dp;
+    }
+
+    @Generated
     public void setPb(int pb) {
         this.pb = pb;
     }
@@ -640,6 +679,11 @@ public class EventStatRow {
     @Generated
     public void setCatcherCs(int catcherCs) {
         this.catcherCs = catcherCs;
+    }
+
+    @Generated
+    public void setCatcherSb(int catcherSb) {
+        this.catcherSb = catcherSb;
     }
 
     @Generated
