@@ -309,6 +309,7 @@ public class StatsService {
         b.setBb(r.getBb());
         b.setIbb(r.getIbb());
         b.setHbp(r.getHbp());
+        b.setIo(r.getIo());
         b.setCs(r.getCs());
         return b;
     }
@@ -321,10 +322,14 @@ public class StatsService {
         p.setUnearnedR(r.getUnearnedR());
         p.setPendingR(r.getPendingR());
         p.setPitchH(r.getPitchH());
+        p.setPitchDoubles(r.getPitchDoubles());
+        p.setPitchTriples(r.getPitchTriples());
         p.setPitchBbHp(r.getPitchBbHp());
         p.setPitchSo(r.getPitchSo());
         p.setPitchHr(r.getPitchHr());
         p.setPitchInsideParkHr(r.getPitchInsideParkHr());
+        p.setPitchSh(r.getPitchSh());
+        p.setPitchSf(r.getPitchSf());
         p.setGs(r.getGs());
         p.setSvo(r.getSvo());
         p.setCg(r.getCg());
@@ -340,6 +345,7 @@ public class StatsService {
         p.setPitchBb(r.getPitchBb());
         p.setPitchIbb(r.getPitchIbb());
         p.setPitchHbp(r.getPitchHbp());
+        p.setPitchIo(r.getPitchIo());
         p.setWp(r.getWp());
         p.setBk(r.getBk());
         p.setPitchR(r.getPitchR());
@@ -385,6 +391,7 @@ public class StatsService {
         b.setBb(StatsService.getInt(row, "bb"));
         b.setIbb(StatsService.getInt(row, "ibb"));
         b.setHbp(StatsService.getInt(row, "hbp"));
+        b.setIo(StatsService.getInt(row, "io"));
         b.setCs(StatsService.getInt(row, "cs"));
         return b;
     }
@@ -397,10 +404,14 @@ public class StatsService {
         p.setUnearnedR(StatsService.getInt(row, "unearnedR"));
         p.setPendingR(StatsService.getInt(row, "pendingR"));
         p.setPitchH(StatsService.getInt(row, "pitchH"));
+        p.setPitchDoubles(StatsService.getInt(row, "pitchDoubles"));
+        p.setPitchTriples(StatsService.getInt(row, "pitchTriples"));
         p.setPitchBbHp(StatsService.getInt(row, "pitchBbHp"));
         p.setPitchSo(StatsService.getInt(row, "pitchSo"));
         p.setPitchHr(StatsService.getInt(row, "pitchHr"));
         p.setPitchInsideParkHr(StatsService.getInt(row, "pitchInsideParkHr"));
+        p.setPitchSh(StatsService.getInt(row, "pitchSh"));
+        p.setPitchSf(StatsService.getInt(row, "pitchSf"));
         p.setGs(StatsService.getInt(row, "gs"));
         p.setSvo(StatsService.getInt(row, "svo"));
         p.setCg(StatsService.getInt(row, "cg"));
@@ -416,6 +427,7 @@ public class StatsService {
         p.setPitchBb(StatsService.getInt(row, "pitchBb"));
         p.setPitchIbb(StatsService.getInt(row, "pitchIbb"));
         p.setPitchHbp(StatsService.getInt(row, "pitchHbp"));
+        p.setPitchIo(StatsService.getInt(row, "pitchIo"));
         p.setWp(StatsService.getInt(row, "wp"));
         p.setBk(StatsService.getInt(row, "bk"));
         p.setPitchR(StatsService.getInt(row, "pitchR"));
@@ -502,6 +514,7 @@ public class StatsService {
         m.put("bb", b.getBb());
         m.put("ibb", b.getIbb());
         m.put("hbp", b.getHbp());
+        m.put("io", b.getIo());
         m.put("cs", cs);
         m.put("singles", singles);
         m.put("tb", tb);
@@ -528,10 +541,14 @@ public class StatsService {
         m.put("unearnedR", p.getUnearnedR());
         m.put("pendingR", p.getPendingR());
         m.put("pitchH", p.getPitchH());
+        m.put("pitchDoubles", p.getPitchDoubles());
+        m.put("pitchTriples", p.getPitchTriples());
         m.put("pitchBbHp", p.getPitchBbHp());
         m.put("pitchSo", p.getPitchSo());
         m.put("pitchHr", p.getPitchHr());
         m.put("pitchInsideParkHr", p.getPitchInsideParkHr());
+        m.put("pitchSh", p.getPitchSh());
+        m.put("pitchSf", p.getPitchSf());
         m.put("gs", p.getGs());
         m.put("svo", p.getSvo());
         m.put("cg", p.getCg());
@@ -546,6 +563,7 @@ public class StatsService {
         m.put("pitchBb", p.getPitchBb());
         m.put("pitchIbb", p.getPitchIbb());
         m.put("pitchHbp", p.getPitchHbp());
+        m.put("pitchIo", p.getPitchIo());
         m.put("wp", p.getWp());
         m.put("bk", p.getBk());
         m.put("pitchR", p.getPitchR());
@@ -642,7 +660,7 @@ public class StatsService {
     private static String teamBattingOrderBy(String sortProp, String sortOrder) {
         String p = sortProp == null ? "ops" : sortProp.trim();
         String d = StatsService.normalizeTeamSortOrder((String)sortOrder, "DESC");
-        Set<String> allow = Set.of("teamId", "teamName", "gp", "pa", "ab", "r", "h", "rbi", "doubles", "triples", "hr", "insideParkHr", "sb", "cs", "so", "bb", "hbp", "tb", "avg", "obp", "slg", "ops");
+        Set<String> allow = Set.of("teamId", "teamName", "gp", "pa", "ab", "r", "h", "rbi", "doubles", "triples", "hr", "insideParkHr", "gdp", "sh", "sf", "sb", "cs", "so", "bb", "ibb", "hbp", "io", "tb", "avg", "obp", "slg", "ops");
         if (!allow.contains(p)) {
             p = "ops";
             d = "DESC";
@@ -659,7 +677,7 @@ public class StatsService {
     private static String teamPitchingOrderBy(String sortProp, String sortOrder) {
         String p = sortProp == null ? "era" : sortProp.trim();
         String d = StatsService.normalizeTeamSortOrder((String)sortOrder, "ASC");
-        Set<String> allow = Set.of("teamId", "teamName", "gp", "gs", "w", "l", "sv", "hld", "ip", "whip", "era", "pitchBf", "np", "pitchH", "pitchHr", "pitchInsideParkHr", "pitchBb", "pitchHbp", "pitchSo", "wp", "bk", "pitchR", "er");
+        Set<String> allow = Set.of("teamId", "teamName", "gp", "gs", "w", "l", "sv", "hld", "ip", "whip", "era", "pitchBf", "np", "pitchH", "pitchDoubles", "pitchTriples", "pitchHr", "pitchInsideParkHr", "pitchSh", "pitchSf", "pitchBb", "pitchIbb", "pitchHbp", "pitchIo", "pitchSo", "wp", "bk", "pitchR", "er");
         if (!allow.contains(p)) {
             p = "era";
             d = "ASC";
@@ -941,6 +959,7 @@ public class StatsService {
         m.put("bb", d.getBb() != null ? d.getBb() : 0);
         m.put("ibb", d.getIbb() != null ? d.getIbb() : 0);
         m.put("hbp", d.getHbp() != null ? d.getHbp() : 0);
+        m.put("io", d.getIo() != null ? d.getIo() : 0);
         m.put("cs", d.getCs() != null ? d.getCs() : 0);
         m.put("avg", d.getAvg() != null ? StatsFormatUtil.fmtAvg((double)d.getAvg()) : "0");
         m.put("obp", d.getObp() != null ? StatsFormatUtil.fmtAvg((double)d.getObp()) : "0");
@@ -975,11 +994,16 @@ public class StatsService {
         m.put("pitchBf", d.getPitchBf());
         m.put("np", d.getNp());
         m.put("pitchH", d.getPitchH());
+        m.put("pitchDoubles", d.getPitchDoubles() != null ? d.getPitchDoubles() : 0);
+        m.put("pitchTriples", d.getPitchTriples() != null ? d.getPitchTriples() : 0);
         m.put("pitchHr", d.getPitchHr());
         m.put("pitchInsideParkHr", d.getPitchInsideParkHr() != null ? d.getPitchInsideParkHr() : 0);
+        m.put("pitchSh", d.getPitchSh() != null ? d.getPitchSh() : 0);
+        m.put("pitchSf", d.getPitchSf() != null ? d.getPitchSf() : 0);
         m.put("pitchBb", d.getPitchBb());
         m.put("pitchIbb", d.getPitchIbb());
         m.put("pitchHbp", d.getPitchHbp());
+        m.put("pitchIo", d.getPitchIo() != null ? d.getPitchIo() : 0);
         m.put("pitchSo", d.getPitchSo());
         m.put("wp", d.getWp());
         m.put("bk", d.getBk());
@@ -1035,11 +1059,16 @@ public class StatsService {
         m.put("triples", StatsService.getInt(d, "triples"));
         m.put("hr", StatsService.getInt(d, "hr"));
         m.put("insideParkHr", StatsService.getInt(d, "insideParkHr"));
+        m.put("gdp", StatsService.getInt(d, "gdp"));
+        m.put("sh", StatsService.getInt(d, "sh"));
+        m.put("sf", StatsService.getInt(d, "sf"));
         m.put("sb", StatsService.getInt(d, "sb"));
         m.put("cs", StatsService.getInt(d, "cs"));
         m.put("so", StatsService.getInt(d, "so"));
         m.put("bb", StatsService.getInt(d, "bb"));
+        m.put("ibb", StatsService.getInt(d, "ibb"));
         m.put("hbp", StatsService.getInt(d, "hbp"));
+        m.put("io", StatsService.getInt(d, "io"));
         m.put("tb", StatsService.getInt(d, "tb"));
         m.put("avg", avg > 0.0 ? StatsFormatUtil.fmtAvg((double)avg) : "0");
         m.put("obp", obp > 0.0 ? StatsFormatUtil.fmtAvg((double)obp) : "0");
@@ -1069,10 +1098,16 @@ public class StatsService {
         m.put("pitchBf", StatsService.getInt(d, "pitchBf"));
         m.put("np", StatsService.getInt(d, "np"));
         m.put("pitchH", StatsService.getInt(d, "pitchH"));
+        m.put("pitchDoubles", StatsService.getInt(d, "pitchDoubles"));
+        m.put("pitchTriples", StatsService.getInt(d, "pitchTriples"));
         m.put("pitchHr", StatsService.getInt(d, "pitchHr"));
         m.put("pitchInsideParkHr", StatsService.getInt(d, "pitchInsideParkHr"));
+        m.put("pitchSh", StatsService.getInt(d, "pitchSh"));
+        m.put("pitchSf", StatsService.getInt(d, "pitchSf"));
         m.put("pitchBb", StatsService.getInt(d, "pitchBb"));
+        m.put("pitchIbb", StatsService.getInt(d, "pitchIbb"));
         m.put("pitchHbp", StatsService.getInt(d, "pitchHbp"));
+        m.put("pitchIo", StatsService.getInt(d, "pitchIo"));
         m.put("pitchSo", StatsService.getInt(d, "pitchSo"));
         m.put("wp", StatsService.getInt(d, "wp"));
         m.put("bk", StatsService.getInt(d, "bk"));

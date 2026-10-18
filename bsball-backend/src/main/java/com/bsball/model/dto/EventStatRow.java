@@ -33,16 +33,21 @@ public class EventStatRow {
     private int bb;
     private int ibb;
     private int hbp;
+    private int io;
     private int cs;
     private double ip;
     private int er;
     private int unearnedR;
     private int pendingR;
     private int pitchH;
+    private int pitchDoubles;
+    private int pitchTriples;
     private int pitchBbHp;
     private int pitchSo;
     private int pitchHr;
     private int pitchInsideParkHr;
+    private int pitchSh;
+    private int pitchSf;
     private int gs;
     private int svo;
     private int cg;
@@ -58,6 +63,7 @@ public class EventStatRow {
     private int pitchBb;
     private int pitchIbb;
     private int pitchHbp;
+    private int pitchIo;
     private int wp;
     private int bk;
     private int pitchR;
@@ -947,6 +953,54 @@ public class EventStatRow {
         String $season = this.getSeason();
         result = result * 59 + ($season == null ? 43 : $season.hashCode());
         return result;
+    }
+
+    public int getIo() {
+        return this.io;
+    }
+
+    public void setIo(int io) {
+        this.io = io;
+    }
+
+    public int getPitchDoubles() {
+        return this.pitchDoubles;
+    }
+
+    public void setPitchDoubles(int pitchDoubles) {
+        this.pitchDoubles = pitchDoubles;
+    }
+
+    public int getPitchTriples() {
+        return this.pitchTriples;
+    }
+
+    public void setPitchTriples(int pitchTriples) {
+        this.pitchTriples = pitchTriples;
+    }
+
+    public int getPitchSh() {
+        return this.pitchSh;
+    }
+
+    public void setPitchSh(int pitchSh) {
+        this.pitchSh = pitchSh;
+    }
+
+    public int getPitchSf() {
+        return this.pitchSf;
+    }
+
+    public void setPitchSf(int pitchSf) {
+        this.pitchSf = pitchSf;
+    }
+
+    public int getPitchIo() {
+        return this.pitchIo;
+    }
+
+    public void setPitchIo(int pitchIo) {
+        this.pitchIo = pitchIo;
     }
 
     @Generated

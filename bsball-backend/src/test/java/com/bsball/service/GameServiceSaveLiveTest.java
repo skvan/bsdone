@@ -132,6 +132,63 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(3), pitcher.getEr());
     }
 
+    @Test
+    @DisplayName("saveLive：纸质表单新增字段全部落库")
+    void saveLive_paperFormFields_written() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setGdp(Integer.valueOf(1));
+        part.setIbb(Integer.valueOf(2));
+        part.setIo(Integer.valueOf(1));
+        part.setPitchDoubles(Integer.valueOf(2));
+        part.setPitchTriples(Integer.valueOf(1));
+        part.setPitchSh(Integer.valueOf(1));
+        part.setPitchSf(Integer.valueOf(1));
+        part.setPitchBb(Integer.valueOf(3));
+        part.setPitchIbb(Integer.valueOf(2));
+        part.setPitchHbp(Integer.valueOf(1));
+        part.setPitchIo(Integer.valueOf(1));
+        part.setGo(Integer.valueOf(4));
+        part.setFo(Integer.valueOf(5));
+        part.setGs(Integer.valueOf(1));
+        part.setFieldingGs(Integer.valueOf(1));
+        part.setDefInn(Double.valueOf(6.1D));
+        part.setDp(Integer.valueOf(1));
+        part.setPb(Integer.valueOf(1));
+        part.setCatcherSb(Integer.valueOf(2));
+        part.setCatcherCs(Integer.valueOf(1));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(1), pitcher.getGdp());
+        assertEquals(Integer.valueOf(2), pitcher.getIbb());
+        assertEquals(Integer.valueOf(1), pitcher.getIo());
+        assertEquals(Integer.valueOf(2), pitcher.getPitchDoubles());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchTriples());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchSh());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchSf());
+        assertEquals(Integer.valueOf(3), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(2), pitcher.getPitchIbb());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchHbp());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
+        assertEquals(Integer.valueOf(4), pitcher.getGo());
+        assertEquals(Integer.valueOf(5), pitcher.getFo());
+        assertEquals(Integer.valueOf(1), pitcher.getGs());
+        assertEquals(Integer.valueOf(1), pitcher.getFieldingGs());
+        assertEquals(Double.valueOf(6.1D), pitcher.getDefInn());
+        assertEquals(Integer.valueOf(1), pitcher.getDp());
+        assertEquals(Integer.valueOf(1), pitcher.getPb());
+        assertEquals(Integer.valueOf(2), pitcher.getCatcherSb());
+        assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
+    }
+
     private GameSaveLiveDTO dtoWithEr(Integer er) {
         GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
         part.setTeamId(Long.valueOf(TEAM_ID));

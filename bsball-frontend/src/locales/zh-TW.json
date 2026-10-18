@@ -1137,7 +1137,13 @@
       "pb": "捕逸",
       "catcherCs": "盜壘阻殺",
       "tcPct": "守備率",
-      "catcherSb": "被盜壘"
+      "catcherSb": "被盜壘",
+      "io": "妨阻上壘",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧短",
+      "pitchSf": "被犧飛",
+      "pitchIo": "被妨阻上壘"
     },
     "colEn": {
       "rank": "Rank",
@@ -1212,7 +1218,13 @@
       "pb": "PB",
       "catcherCs": "CS",
       "tcPct": "TC%",
-      "catcherSb": "SB"
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1283,7 +1295,14 @@
       "sb": "盜壘",
       "cs": "盜失",
       "bbHp": "保送+觸身",
-      "so": "三振"
+      "so": "三振",
+      "gdp": "雙殺打",
+      "sh": "犧短",
+      "sf": "犧飛",
+      "bb": "四壞（含IBB）",
+      "ibb": "故意四壞",
+      "hbp": "觸身",
+      "io": "妨阻上壘"
     },
     "careerPitch": {
       "gp": "出場場次",
@@ -1304,7 +1323,15 @@
       "bbHp": "保送+觸身",
       "so": "三振",
       "wp": "暴投",
-      "bk": "投手犯規"
+      "bk": "投手犯規",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧短",
+      "pitchSf": "被犧飛",
+      "pitchBb": "四壞（含IBB）",
+      "pitchIbb": "故意四壞",
+      "pitchHbp": "觸身",
+      "pitchIo": "被妨阻上壘"
     },
     "careerFld": {
       "gp": "出場場次",
@@ -1383,7 +1410,18 @@
       "dp": "雙殺",
       "unearnedR": "非自責分（不計入防禦率）",
       "pendingR": "尚待判定的失分",
-      "catcherSb": "捕手在場時對手盜壘成功次數"
+      "catcherSb": "捕手在場時對手盜壘成功次數",
+      "sh": "犧牲觸擊數",
+      "sf": "犧牲高飛數",
+      "ibb": "故意四壞",
+      "hbp": "觸身球",
+      "io": "妨阻上壘",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧牲觸擊",
+      "pitchSf": "被犧牲高飛",
+      "pitchIbb": "投手故意四壞",
+      "pitchIo": "投手被妨阻上壘"
     },
     "gameLogColTip": {
       "date": "比賽日期。",

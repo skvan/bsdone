@@ -40,7 +40,7 @@ public enum PlayerStatDrillPitchingMetric {
     PITCH_R("COALESCE(s.pitchr, 0)"),
     GO("COALESCE(s.go, 0)"),
     FO("COALESCE(s.fo, 0)"),
-    PITCH_AB("COALESCE(s.pitch_ab, GREATEST(0, COALESCE(s.pitch_bf,0) - COALESCE(s.pitch_bb,0) - COALESCE(s.pitch_ibb,0) - COALESCE(s.pitch_hbp,0)))::integer"),
+    PITCH_AB("COALESCE(s.pitch_ab, GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0)))::integer"),
     ERA(PlayerStatDrillPitchingMetric.drillDownEraSql()),
     WHIP(PlayerStatDrillPitchingMetric.drillDownWhipSql());
 

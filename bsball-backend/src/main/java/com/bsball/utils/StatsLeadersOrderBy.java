@@ -14,8 +14,8 @@ import java.util.Set;
  */
 public final class StatsLeadersOrderBy {
     private static final String TIE_BREAK_PLAYER = ", q.gp DESC, q.playerid ASC";
-    private static final Set<String> BATTING = Set.of("gp", "pa", "ab", "r", "h", "doubles", "triples", "hr", "insideParkHr", "rbi", "bb", "so", "sb", "cs", "avg", "obp", "slg", "ops", "tb");
-    private static final Set<String> PITCHING = Set.of("w", "l", "era", "gp", "gs", "cg", "sv", "svo", "ip", "pitchH", "pitchR", "er", "unearnedR", "pendingR", "pitchHr", "pitchInsideParkHr", "pitchHbp", "pitchBb", "pitchSo", "whip", "pitchPa", "pitchBf", "np");
+    private static final Set<String> BATTING = Set.of("gp", "pa", "ab", "r", "h", "doubles", "triples", "hr", "insideParkHr", "gdp", "sh", "sf", "rbi", "bb", "ibb", "hbp", "io", "so", "sb", "cs", "avg", "obp", "slg", "ops", "tb");
+    private static final Set<String> PITCHING = Set.of("w", "l", "era", "gp", "gs", "cg", "sv", "svo", "ip", "pitchH", "pitchDoubles", "pitchTriples", "pitchR", "er", "unearnedR", "pendingR", "pitchHr", "pitchInsideParkHr", "pitchSh", "pitchSf", "pitchHbp", "pitchBb", "pitchIbb", "pitchIo", "pitchSo", "whip", "pitchPa", "pitchBf", "np");
     private static final Set<String> FIELDING = Set.of("gp", "gs", "inn", "tc", "po", "a", "e", "dp",
             "pb", "catcherCs", "catcherSb", "tcPct");
 

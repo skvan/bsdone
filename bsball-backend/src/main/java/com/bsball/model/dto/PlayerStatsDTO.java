@@ -123,6 +123,7 @@ public class PlayerStatsDTO {
         private int bb;
         private int ibb;
         private int hbp;
+        private int io;
         private int cs;
         private Integer singles;
         private Integer tb;
@@ -574,6 +575,16 @@ public class PlayerStatsDTO {
         }
 
         @Generated
+        public int getIo() {
+            return this.io;
+        }
+
+        @Generated
+        public void setIo(int io) {
+            this.io = io;
+        }
+
+        @Generated
         public String toString() {
             return "PlayerStatsDTO.Batting(gp=" + this.getGp() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", rbi=" + this.getRbi() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", sb=" + this.getSb() + ", bbHp=" + this.getBbHp() + ", so=" + this.getSo() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", e=" + this.getE() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", singles=" + this.getSingles() + ", tb=" + this.getTb() + ", avg=" + this.getAvg() + ", obp=" + this.getObp() + ", slg=" + this.getSlg() + ", ops=" + this.getOps() + ", sbPct=" + this.getSbPct() + ")";
         }
@@ -783,10 +794,14 @@ public class PlayerStatsDTO {
         private int unearnedR;
         private int pendingR;
         private int pitchH;
+        private int pitchDoubles;
+        private int pitchTriples;
         private int pitchBbHp;
         private int pitchSo;
         private int pitchHr;
         private int pitchInsideParkHr;
+        private int pitchSh;
+        private int pitchSf;
         private int gs;
         private int svo;
         private int cg;
@@ -802,6 +817,7 @@ public class PlayerStatsDTO {
         private int pitchBb;
         private int pitchIbb;
         private int pitchHbp;
+        private int pitchIo;
         private int wp;
         private int bk;
         private int pitchR;
@@ -1301,6 +1317,56 @@ public class PlayerStatsDTO {
             String $goFo = this.getGoFo();
             result = result * 59 + ($goFo == null ? 43 : $goFo.hashCode());
             return result;
+        }
+
+        @Generated
+        public int getPitchDoubles() {
+            return this.pitchDoubles;
+        }
+
+        @Generated
+        public void setPitchDoubles(int pitchDoubles) {
+            this.pitchDoubles = pitchDoubles;
+        }
+
+        @Generated
+        public int getPitchTriples() {
+            return this.pitchTriples;
+        }
+
+        @Generated
+        public void setPitchTriples(int pitchTriples) {
+            this.pitchTriples = pitchTriples;
+        }
+
+        @Generated
+        public int getPitchSh() {
+            return this.pitchSh;
+        }
+
+        @Generated
+        public void setPitchSh(int pitchSh) {
+            this.pitchSh = pitchSh;
+        }
+
+        @Generated
+        public int getPitchSf() {
+            return this.pitchSf;
+        }
+
+        @Generated
+        public void setPitchSf(int pitchSf) {
+            this.pitchSf = pitchSf;
+        }
+
+        @Generated
+        public int getPitchIo() {
+            return this.pitchIo;
+        }
+
+        @Generated
+        public void setPitchIo(int pitchIo) {
+            this.pitchIo = pitchIo;
         }
 
         @Generated

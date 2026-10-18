@@ -1132,7 +1132,13 @@
       "pb": "PB",
       "catcherCs": "CS",
       "tcPct": "TC%",
-      "catcherSb": "SB Allowed"
+      "catcherSb": "SB Allowed",
+      "io": "Reached on obstruction",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchIo": "Obstruction allowed"
     },
     "colEn": {
       "rank": "Rank",
@@ -1207,7 +1213,13 @@
       "pb": "PB",
       "catcherCs": "CS",
       "tcPct": "TC%",
-      "catcherSb": "SB"
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1278,7 +1290,14 @@
       "sb": "Stolen bases",
       "cs": "Caught stealing",
       "bbHp": "Walks + HBP",
-      "so": "Strikeouts"
+      "so": "Strikeouts",
+      "gdp": "Grounded into double play",
+      "sh": "Sac bunts",
+      "sf": "Sac flies",
+      "bb": "Walks (incl. IBB)",
+      "ibb": "Intentional walks",
+      "hbp": "Hit by pitch",
+      "io": "Reached on obstruction"
     },
     "careerPitch": {
       "gp": "Games played",
@@ -1299,7 +1318,15 @@
       "bbHp": "Walks + HBP allowed",
       "so": "Strikeouts",
       "wp": "Wild pitches",
-      "bk": "Balks"
+      "bk": "Balks",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchBb": "Walks (incl. IBB)",
+      "pitchIbb": "Intentional walks",
+      "pitchHbp": "Hit by pitch",
+      "pitchIo": "Obstruction allowed"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1378,7 +1405,18 @@
       "dp": "Double play",
       "unearnedR": "Unearned runs (excluded from ERA)",
       "pendingR": "Runs awaiting an earned-run decision",
-      "catcherSb": "Stolen bases allowed while catching"
+      "catcherSb": "Stolen bases allowed while catching",
+      "sh": "Sacrifice bunts",
+      "sf": "Sacrifice flies",
+      "ibb": "Intentional walks",
+      "hbp": "Hit by pitch",
+      "io": "Reached on obstruction",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchIbb": "Intentional walks allowed",
+      "pitchIo": "Obstruction allowed"
     },
     "gameLogColTip": {
       "date": "Game date.",

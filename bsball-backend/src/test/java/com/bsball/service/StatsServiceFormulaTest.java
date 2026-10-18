@@ -146,6 +146,60 @@ class StatsServiceFormulaTest {
     }
 
     @Test
+    @DisplayName("打者 IO 与投手被 2B/3B/SH/SF/IO 进入球员统计响应")
+    void exposesPaperFormFields() {
+        PlayerStatsDTO.Batting batting = new PlayerStatsDTO.Batting();
+        batting.setIo(1);
+        PlayerStatsDTO.Pitching pitching = new PlayerStatsDTO.Pitching();
+        pitching.setIp(1.0);
+        pitching.setPitchDoubles(2);
+        pitching.setPitchTriples(1);
+        pitching.setPitchSh(1);
+        pitching.setPitchSf(1);
+        pitching.setPitchIo(1);
+
+        givenPlayerStats(batting, pitching, new PlayerStatsDTO.Fielding());
+
+        Map<String, Object> result = service.getPlayerStats(Long.valueOf(1L), "BASEBALL");
+        assertEquals(1, battingMap(result).get("io"));
+        assertEquals(2, pitchingMap(result).get("pitchDoubles"));
+        assertEquals(1, pitchingMap(result).get("pitchTriples"));
+        assertEquals(1, pitchingMap(result).get("pitchSh"));
+        assertEquals(1, pitchingMap(result).get("pitchSf"));
+        assertEquals(1, pitchingMap(result).get("pitchIo"));
+    }
+
+    @Test
+    @DisplayName("团队打者 GDP/SH/SF/IBB/HBP/IO 进入响应")
+    void teamBattingExposesPaperFormFields() {
+        when(statsLeadersMapper.countTeamBattingLeaders(
+                any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
+        when(statsLeadersMapper.selectTeamBattingLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), anyString(), anyInt(), anyLong()))
+                .thenReturn(List.of(Map.of(
+                        "teamId", 1L,
+                        "teamName", "测试队",
+                        "gdp", 1,
+                        "sh", 2,
+                        "sf", 3,
+                        "ibb", 4,
+                        "hbp", 5,
+                        "io", 6
+                )));
+
+        Map<String, Object> row = service.getTeamBattingLeaders(
+                null, null, null, null, null, null, 1, 20, null, null)
+                .getList().get(0);
+
+        assertEquals(1, row.get("gdp"));
+        assertEquals(2, row.get("sh"));
+        assertEquals(3, row.get("sf"));
+        assertEquals(4, row.get("ibb"));
+        assertEquals(5, row.get("hbp"));
+        assertEquals(6, row.get("io"));
+    }
+
+    @Test
     @DisplayName("团队投手 ERA=0 且 IP>0 时显示 0，而不是 -")
     void teamPitchingZeroEraDisplaysZero() {
         when(statsLeadersMapper.countTeamPitchingLeaders(
