@@ -1280,6 +1280,10 @@
       "ip": "이닝",
       "era": "평균자책점",
       "whip": "WHIP",
+      "pitchR": "실점",
+      "er": "자책점",
+      "unearnedR": "비자책점",
+      "pendingR": "판정 대기 실점",
       "pitchBf": "BF",
       "pitchAb": "자유 타석(타수 성격)",
       "ggComplete": "완투(GG)",
@@ -1300,7 +1304,9 @@
       "a": "어시스트",
       "e": "실책",
       "tcPct": "수비율",
+      "dp": "병살 수비",
       "pb": "포실",
+      "catcherSb": "도루 허용",
       "catcherCs": "도루 저지"
     },
     "seasonBlock": "{season} · {event}",
@@ -1364,7 +1370,10 @@
       "er": "자책점",
       "pitchBb": "볼넷 허용",
       "pitchHbp": "사구",
-      "dp": "병살"
+      "dp": "병살",
+      "unearnedR": "비자책점(평균자책점 제외)",
+      "pendingR": "자책점 판정 대기 실점",
+      "catcherSb": "포수 포지션에서 도루 허용 수"
     },
     "gameLogColTip": {
       "date": "경기 일자.",

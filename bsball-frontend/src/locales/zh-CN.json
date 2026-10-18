@@ -1298,6 +1298,10 @@
       "ip": "投球局数",
       "era": "自责分率",
       "whip": "每局被上垒率",
+      "pitchR": "投手失分",
+      "er": "自责分",
+      "unearnedR": "非自责分",
+      "pendingR": "待定分",
       "pitchBf": "面对打者",
       "pitchAb": "自由打数",
       "ggComplete": "完投",
@@ -1318,7 +1322,9 @@
       "a": "助杀",
       "e": "失误",
       "tcPct": "守备率",
+      "dp": "双杀守备",
       "pb": "捕逸",
+      "catcherSb": "被盗垒成功",
       "catcherCs": "盗垒阻杀"
     },
     "seasonBlock": "{season} · {event}",
@@ -1382,7 +1388,10 @@
       "er": "自责分",
       "pitchBb": "四坏球保送",
       "pitchHbp": "触身球",
-      "dp": "双杀"
+      "dp": "双杀",
+      "unearnedR": "非自责分（不计入防御率）",
+      "pendingR": "尚待判定的失分",
+      "catcherSb": "捕手在场时对手盗垒成功次数"
     },
     "gameLogColTip": {
       "date": "比赛日期。",
