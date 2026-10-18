@@ -1114,6 +1114,8 @@
       "bk": "投手犯规",
       "r": "得分",
       "er": "自责分",
+      "unearnedR": "非自责分",
+      "pendingR": "待定分",
       "go": "地滚出局",
       "fo": "高飞球出局",
       "goFo": "滚飞出局比",
@@ -1142,7 +1144,8 @@
       "dp": "双杀",
       "pb": "捕逸",
       "catcherCs": "盗垒阻杀",
-      "tcPct": "守备率"
+      "tcPct": "守备率",
+      "catcherSb": "被盗垒"
     },
     "colEn": {
       "rank": "Rank",
@@ -1186,6 +1189,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1214,7 +1219,8 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB"
     }
   },
   "player": {

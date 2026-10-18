@@ -1100,6 +1100,8 @@
       "bk": "보크",
       "r": "득점",
       "er": "자책",
+      "unearnedR": "비자책",
+      "pendingR": "미확정",
       "go": "GO",
       "fo": "FO",
       "goFo": "땅볼·뜬공 아웃 비율",
@@ -1126,7 +1128,8 @@
       "e": "실책",
       "inn": "수비 이닝",
       "dp": "병살",
-      "tcPct": "수비율"
+      "tcPct": "수비율",
+      "catcherSb": "도루 허용"
     },
     "colEn": {
       "rank": "Rank",
@@ -1170,6 +1173,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1196,7 +1201,8 @@
       "e": "E",
       "inn": "INN",
       "dp": "DP",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB"
     }
   },
   "player": {

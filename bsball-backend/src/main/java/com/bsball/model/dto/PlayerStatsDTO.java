@@ -586,8 +586,10 @@ public class PlayerStatsDTO {
         private int po;
         private int a;
         private int e;
+        private int dp;
         private int pb;
         private int catcherCs;
+        private int catcherSb;
         private String tcPct;
 
         @Generated
@@ -625,6 +627,11 @@ public class PlayerStatsDTO {
         }
 
         @Generated
+        public int getDp() {
+            return this.dp;
+        }
+
+        @Generated
         public int getPb() {
             return this.pb;
         }
@@ -632,6 +639,11 @@ public class PlayerStatsDTO {
         @Generated
         public int getCatcherCs() {
             return this.catcherCs;
+        }
+
+        @Generated
+        public int getCatcherSb() {
+            return this.catcherSb;
         }
 
         @Generated
@@ -670,6 +682,11 @@ public class PlayerStatsDTO {
         }
 
         @Generated
+        public void setDp(int dp) {
+            this.dp = dp;
+        }
+
+        @Generated
         public void setPb(int pb) {
             this.pb = pb;
         }
@@ -677,6 +694,11 @@ public class PlayerStatsDTO {
         @Generated
         public void setCatcherCs(int catcherCs) {
             this.catcherCs = catcherCs;
+        }
+
+        @Generated
+        public void setCatcherSb(int catcherSb) {
+            this.catcherSb = catcherSb;
         }
 
         @Generated
@@ -758,6 +780,8 @@ public class PlayerStatsDTO {
         private int gp;
         private double ip;
         private int er;
+        private int unearnedR;
+        private int pendingR;
         private int pitchH;
         private int pitchBbHp;
         private int pitchSo;
@@ -804,6 +828,16 @@ public class PlayerStatsDTO {
         @Generated
         public int getEr() {
             return this.er;
+        }
+
+        @Generated
+        public int getUnearnedR() {
+            return this.unearnedR;
+        }
+
+        @Generated
+        public int getPendingR() {
+            return this.pendingR;
         }
 
         @Generated
@@ -959,6 +993,16 @@ public class PlayerStatsDTO {
         @Generated
         public void setEr(int er) {
             this.er = er;
+        }
+
+        @Generated
+        public void setUnearnedR(int unearnedR) {
+            this.unearnedR = unearnedR;
+        }
+
+        @Generated
+        public void setPendingR(int pendingR) {
+            this.pendingR = pendingR;
         }
 
         @Generated

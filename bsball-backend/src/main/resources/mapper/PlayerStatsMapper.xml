@@ -84,6 +84,8 @@
                 ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
             END) AS ip,
             COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
+            COALESCE(SUM(s.pending_r), 0) AS pendingR,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
             COALESCE(SUM(s.pitch_bb_hp), 0) AS pitchBbHp,
             COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
@@ -132,8 +134,10 @@
             COALESCE(SUM(s.po), 0) AS po,
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.dp), 0) AS dp,
             COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -146,9 +150,10 @@
           AND s.position IS NOT NULL
           AND s.position NOT IN ('P', 'DH', 'PH')
           AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
             OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0))
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
           )
     </select>
 
@@ -203,6 +208,8 @@
                 ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
             END) AS ip,
             COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
+            COALESCE(SUM(s.pending_r), 0) AS pendingR,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
             COALESCE(SUM(s.pitch_bb_hp), 0) AS pitchBbHp,
             COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
@@ -256,8 +263,10 @@
             COALESCE(SUM(s.po), 0) AS po,
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.dp), 0) AS dp,
             COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -270,9 +279,10 @@
           AND s.position IS NOT NULL
           AND s.position NOT IN ('P', 'DH', 'PH')
           AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
             OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0))
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
           )
         GROUP BY e.id, e.name, e.season
         ORDER BY e.season DESC, e.id DESC
@@ -318,7 +328,8 @@
             s.pa AS pa, s.ab AS ab, s.r AS r, s.h AS h, s.rbi AS rbi, s.hr AS hr, s.inside_park_hr AS insideParkHr, s.sb AS sb,
             s.bb_hp AS bbHp, s.so AS so, s.doubles AS doubles, s.triples AS triples, s.e AS e,
             s.gdp AS gdp, s.sh AS sh, s.sf AS sf, s.bb AS bb, s.ibb AS ibb, s.hbp AS hbp, s.cs AS cs,
-            s.ip AS ip, s.er AS er, <include refid="pitchHCol"/> AS pitchH, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
+            s.ip AS ip, s.er AS er, s.unearned_r AS unearnedR, s.pending_r AS pendingR,
+            <include refid="pitchHCol"/> AS pitchH, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
             s.pitch_hr AS pitchHr, s.pitch_inside_park_hr AS pitchInsideParkHr, s.gs AS gs, s.svo AS svo, s.cg AS cg, s.pg AS pg,
             s.w AS w, s.l AS l, s.sv AS sv, s.hld AS hld, s.pitch_pa AS pitchPa, s.pitch_bf AS pitchBf,
             <include refid="pitchAbEffectiveCol"/> AS pitchAb,
@@ -326,9 +337,9 @@
             s.pitch_bb AS pitchBb, s.pitch_ibb AS pitchIbb, s.pitch_hbp AS pitchHbp,
             s.wp AS wp, s.bk AS bk, <include refid="pitchRCol"/> AS pitchR, s.go AS go, s.fo AS fo,
             s.is_pitcher AS isPitcher,
-            s.tc AS tc, s.po AS po, s.a AS a,
+            s.tc AS tc, s.po AS po, s.a AS a, s.dp AS dp,
             s.def_inn AS defInn,
-            s.pb AS pb, s.catcher_cs AS catcherCs
+            s.pb AS pb, s.catcher_cs AS catcherCs, s.catcher_sb AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -436,9 +447,10 @@
           AND s.position IS NOT NULL
           AND s.position NOT IN ('P', 'DH', 'PH')
           AND (
-            COALESCE(s.tc,0) &gt; 0 OR COALESCE(s.po,0) &gt; 0 OR COALESCE(s.a,0) &gt; 0 OR s.e IS NOT NULL
+            COALESCE(s.tc,0) &gt; 0 OR COALESCE(s.po,0) &gt; 0 OR COALESCE(s.a,0) &gt; 0
+            OR COALESCE(s.dp,0) &gt; 0 OR s.e IS NOT NULL
             OR COALESCE(s.def_inn,0) &gt; 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) &gt; 0 OR COALESCE(s.catcher_cs,0) &gt; 0))
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) &gt; 0 OR COALESCE(s.catcher_cs,0) &gt; 0 OR COALESCE(s.catcher_sb,0) &gt; 0))
           )
         <if test="eventId != null">AND g.event_id = #{eventId}</if>
         <if test="season != null and season != ''">AND e.season = #{season}</if>
