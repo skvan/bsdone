@@ -82,7 +82,8 @@ public class PortalVisitApi {
             Long tid = CurrentUserHolder.getTenantId();
             long tenantId = tid != null ? tid.longValue() : this.tenantProperties.getDefaultId();
             String ua = request.getHeader("User-Agent");
-            this.portalVisitService.recordAsync(visitorId, path, ip, tenantId, ua);
+            String source = body != null ? body.get("source") : null;
+            this.portalVisitService.recordAsync(visitorId, path, ip, tenantId, ua, source);
         }
         return Result.ok(Map.of("ok",true, "visitorNew",fresh, "recorded", (Object)recorded));
     }

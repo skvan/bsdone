@@ -536,6 +536,12 @@
     "guideDesc": "可回饋功能建議、Bug 與內容問題；提交後可在「我的回饋」查看處理進展。",
     "guideConfirm": "知道了"
   },
+  "shareLanding": {
+    "text": "來自好友分享",
+    "home": "前往門戶首頁",
+    "learn": "了解平台",
+    "close": "關閉"
+  },
   "platformDocs": {
     "backToPortal": "返回門戶首頁",
     "refreshListHint": "點擊刷新列表",
@@ -1377,6 +1383,12 @@
     "unnamedEvent": "未命名賽事",
     "shareCard": {
       "generateButton": "分享球員卡片",
+      "wechatTip": "好友/群組：點右上角分享 · 朋友圈：儲存海報",
+      "wechatGuideTitle": "點右上角「···」分享",
+      "wechatGuideBody": "選擇傳送給朋友或分享到朋友圈",
+      "wechatGuideOk": "知道了",
+      "qrCaption": "長按辨識 QR Code · 查看球員資料",
+      "qrBrand": "BSD棒壘球資料平台",
       "dialogTitle": "分享球員卡片",
       "orientationPortrait": "直式 4:5",
       "orientationLandscape": "橫式 16:9",
