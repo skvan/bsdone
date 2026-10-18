@@ -1285,6 +1285,10 @@
       "ip": "Innings pitched",
       "era": "Earned run average",
       "whip": "WHIP",
+      "pitchR": "Runs allowed",
+      "er": "Earned runs",
+      "unearnedR": "Unearned runs",
+      "pendingR": "Pending runs",
       "pitchBf": "Batters faced (BF)",
       "pitchAb": "At bats against (BF − BB − IBB − HBP)",
       "ggComplete": "Complete games (GG)",
@@ -1305,7 +1309,9 @@
       "a": "Assists",
       "e": "Errors",
       "tcPct": "Fielding percentage",
+      "dp": "Double plays",
       "pb": "Passed balls (catcher)",
+      "catcherSb": "Stolen bases allowed",
       "catcherCs": "Caught stealing"
     },
     "seasonBlock": "{season} · {event}",
@@ -1369,7 +1375,10 @@
       "er": "自責点",
       "pitchBb": "与四球",
       "pitchHbp": "与死球",
-      "dp": "併殺"
+      "dp": "併殺",
+      "unearnedR": "非自責点（防御率に含まれない）",
+      "pendingR": "自責点判定待ちの失点",
+      "catcherSb": "捕手時の盗塁許容数"
     },
     "gameLogColTip": {
       "date": "試合日。",

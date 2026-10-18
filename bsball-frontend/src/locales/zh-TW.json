@@ -1290,6 +1290,10 @@
       "ip": "局數",
       "era": "責失分率",
       "whip": "每局被上壘率",
+      "pitchR": "投手失分",
+      "er": "自責分",
+      "unearnedR": "非自責分",
+      "pendingR": "待定分",
       "pitchBf": "輪擊數",
       "pitchAb": "自由擊球數",
       "ggComplete": "完投",
@@ -1310,7 +1314,9 @@
       "a": "助殺",
       "e": "失誤",
       "tcPct": "防守率",
+      "dp": "雙殺守備",
       "pb": "捕逸",
+      "catcherSb": "被盜壘成功",
       "catcherCs": "盜壘阻殺"
     },
     "seasonBlock": "{season} · {event}",
@@ -1374,7 +1380,10 @@
       "er": "自責分",
       "pitchBb": "四壞球保送",
       "pitchHbp": "觸身球",
-      "dp": "雙殺"
+      "dp": "雙殺",
+      "unearnedR": "非自責分（不計入防禦率）",
+      "pendingR": "尚待判定的失分",
+      "catcherSb": "捕手在場時對手盜壘成功次數"
     },
     "gameLogColTip": {
       "date": "比賽日期。",

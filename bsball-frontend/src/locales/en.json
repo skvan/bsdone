@@ -1285,6 +1285,10 @@
       "ip": "Innings pitched",
       "era": "Earned run average",
       "whip": "WHIP",
+      "pitchR": "Runs allowed",
+      "er": "Earned runs",
+      "unearnedR": "Unearned runs",
+      "pendingR": "Pending runs",
       "pitchBf": "Batters faced (BF)",
       "pitchAb": "At bats against (BF − BB − IBB − HBP)",
       "ggComplete": "Complete games (GG)",
@@ -1305,7 +1309,9 @@
       "a": "Assists",
       "e": "Errors",
       "tcPct": "Fielding percentage",
+      "dp": "Double plays",
       "pb": "Passed balls (catcher)",
+      "catcherSb": "Stolen bases allowed",
       "catcherCs": "Caught stealing"
     },
     "seasonBlock": "{season} · {event}",
@@ -1369,7 +1375,10 @@
       "er": "Earned runs",
       "pitchBb": "Walks allowed",
       "pitchHbp": "Hit by pitch",
-      "dp": "Double play"
+      "dp": "Double play",
+      "unearnedR": "Unearned runs (excluded from ERA)",
+      "pendingR": "Runs awaiting an earned-run decision",
+      "catcherSb": "Stolen bases allowed while catching"
     },
     "gameLogColTip": {
       "date": "Game date.",
