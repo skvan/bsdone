@@ -54,6 +54,9 @@ public class PortalVisitHit {
     @Column(name="user_agent", length=512)
     @Comment(value="\u5ba2\u6237\u7aef User-Agent")
     private String userAgent;
+    @Column(length=32)
+    @Comment(value="回流来源（share=微信分享链接 / poster=二维码海报；非法或缺失为 NULL）")
+    private String source;
     @Column(length=128)
     @Comment(value="\u5ba2\u6237\u7aef IP\uff08\u8131\u654f/\u622a\u65ad\uff09\uff1b\u7701\u7ea7\u5f52\u5c5e\u89c1 ip_location_cache \u540c ip")
     private String ip;
@@ -105,6 +108,11 @@ public class PortalVisitHit {
     }
 
     @Generated
+    public String getSource() {
+        return this.source;
+    }
+
+    @Generated
     public String getIp() {
         return this.ip;
     }
@@ -147,6 +155,11 @@ public class PortalVisitHit {
     @Generated
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
+    }
+
+    @Generated
+    public void setSource(String source) {
+        this.source = source;
     }
 
     @Generated

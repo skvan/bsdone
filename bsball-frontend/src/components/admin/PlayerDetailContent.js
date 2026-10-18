@@ -4,7 +4,7 @@ import { ElRadioGroup as kt, ElImage as Kt, ElDialog as Yt, ElCol as Xt, ElDrawe
 import { nextTick as Ze, withModifiers as tt, createElementBlock as b, normalizeStyle as da, defineComponent as ft, createTextVNode as B, computed as g, toDisplayString as u, createElementVNode as c, unref as o, normalizeClass as Ye, mergeProps as yt, createBlock as I, ref as S, createVNode as p, withDirectives as It, openBlock as d, useModel as nr, withCtx as n, onUnmounted as _t, Fragment as x, withKeys as rt, resolveComponent as cr, watch as fe, onMounted as ht, renderList as Z, onBeforeUnmount as At, KeepAlive as Rt, createCommentVNode as T } from 'vue';
 import { Share as ur, QuestionFilled as pr, Select as lt } from '@element-plus/icons-vue';
 import { useI18n as $t } from 'vue-i18n';
-import { useRoute as gr } from 'vue-router';
+import { useRoute as gr, useRouter as wxUseRouter } from 'vue-router';
 import { interopDefaultCompat as Wt } from '../../utils/interopDefaultCompat';
 import { normalizeVnodeProps as qt } from '../../utils/vnodeProps';
 import { mergePropValues as er } from '../../utils/vnodeProps';
@@ -15,6 +15,10 @@ import { loadPrintExport as br } from '../../utils/printExport';
 import { exportSfc as gt } from '../../utils/exportSfc';
 import { playerApi as ca } from '../../api/business';
 import { useTenantRouter as yr } from '../../composables/useTenantRouter';
+// ---- 微信分享（Issue #343，手工补丁） ----
+import { useWechatShare, buildPlayerShareUrl, buildPlayerShareMeta } from '../../composables/useWechatShare';
+import { isWechatBrowser } from '../../utils/wechatJssdk';
+import QrCode from 'qrcode';
 import { onAvatarError as wt } from '../../utils/placeholderAssets';
 import { DEFAULT_AVATAR_SVG_PATH as Ft } from '../../utils/placeholderAssets';
 import { useHtmlScrollLock as _r } from '../../composables/useHtmlScrollLock';
@@ -228,6 +232,15 @@ var Er=["aria-label"],Lr={
     }
     ,activePhotoTarget:{
       default:null
+    }
+    ,qrUrl:{
+      default:""
+    }
+    ,qrCaption:{
+      default:""
+    }
+    ,qrBrand:{
+      default:""
     }
     
   }
@@ -487,7 +500,12 @@ var Er=["aria-label"],Lr={
     ,null,38)]),c("div",Kr,[c("div",Yr,u(E.value),1),c("div",Xr,[c("div",jr,[c("span",qr,u(h.roleLabel),1),c("span",Zr,u(h.scopeLabel),1)]),h.subScopeLabel?(d(),b("div",Jr,u(h.subScopeLabel),1)):T("",!0),c("div",Qr,[(d(!0),b(x,null,Z(h.stats,y=>(d(),b("div",{
       key:y.key,class:"card-stat"
     }
-    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])])])],14,Er))
+    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])])]),// ---- 微信分享海报二维码（Issue #343，手工补丁；卡片根层定位，避免被 footer/hero 遮挡） ----
+      h.qrUrl?(d(),b("div",{class:"card-qr"},[
+        c("img",{class:"card-qr-img",src:h.qrUrl,crossorigin:"anonymous",draggable:"false"},null,8,["src"]),
+        c("div",{class:"card-qr-caption"},u(h.qrCaption),1),
+        c("div",{class:"card-qr-brand"},u(h.qrBrand),1)
+      ])):T("",!0)],14,Er))
   }
   
 }
@@ -730,6 +748,9 @@ var vl={
     ,batThrowLine:{
       
     }
+    ,posterUrl:{
+      default:""
+    }
     
   }
   ,{
@@ -743,6 +764,10 @@ var vl={
   }
   ),emits:["update:modelValue"],setup(h){
     const r=h,m=nr(h,"modelValue");
+    // ---- 微信分享提示（Issue #343，手工补丁） ----
+    const isWx = isWechatBrowser(), wxGuide = S(!1);
+    const wxQr = S("");
+    let wxQrSeq = 0;
     _r(m);
     const{
       t:v
@@ -992,7 +1017,16 @@ var vl={
     fe(()=>m.value,t=>{
       t&&(Oa(),Ze(()=>ye()))
     }
-    ),fe(()=>[m.value,$.value],([t,i])=>{
+    ),
+    // ---- 微信分享海报二维码（Issue #343，手工补丁） ----
+    // 打开弹窗或海报链接变化时重新生成（组件复用/球员切换不沿用旧码）；关闭即清空，避免旧图闪现
+    fe(()=>[m.value,r.posterUrl],([open,url])=>{
+      const seq=++wxQrSeq;
+      if(!open||!url){wxQr.value="";return}
+      QrCode.toDataURL(url,{width:480,margin:1,errorCorrectionLevel:"M"}).then((q)=>{seq===wxQrSeq&&(wxQr.value=q)}).catch(()=>{seq===wxQrSeq&&(wxQr.value="")})
+    }
+    ),
+    fe(()=>[m.value,$.value],([t,i])=>{
       t&&(i==="landscape"&&V.value===Ae&&_.value.length>0&&(V.value=He(Ae)),na(V.value),z(),Oe(),Ze(()=>ye()))
     }
     ),fe(()=>[m.value,ie.value.map(t=>t.value).join(",")],()=>{
@@ -1183,7 +1217,7 @@ var vl={
       )):[]
     }
     ),Ha=g(()=>({
-      playerName:r.displayName||r.player.shortName||r.player.name,playerNumber:r.player.number,positionLabel:r.positionLabel||"",teamName:Wa.value,batThrowLabel:(r.batThrowLine||"").trim(),teamLogoUrl:za.value,scopeLabel:Ka.value,subScopeLabel:Ya.value,heroImageUrl:$.value==="landscape"?$e.value:ga.value,backdropImageUrl:$.value==="landscape"?k.value:ga.value,roleLabel:Xa.value,stats:ae.value==="pitching"?Ta.value:ae.value==="fielding"?qa.value:ja.value,orientation:$.value,photoTune:re(G.value),heroPhotoTune:re(D.value),frameBorderColor:Ne.value,numberColor:Se.value,cardFillColor:le.value
+      playerName:r.displayName||r.player.shortName||r.player.name,playerNumber:r.player.number,positionLabel:r.positionLabel||"",teamName:Wa.value,batThrowLabel:(r.batThrowLine||"").trim(),teamLogoUrl:za.value,scopeLabel:Ka.value,subScopeLabel:Ya.value,heroImageUrl:$.value==="landscape"?$e.value:ga.value,backdropImageUrl:$.value==="landscape"?k.value:ga.value,roleLabel:Xa.value,stats:ae.value==="pitching"?Ta.value:ae.value==="fielding"?qa.value:ja.value,orientation:$.value,photoTune:re(G.value),heroPhotoTune:re(D.value),frameBorderColor:Ne.value,numberColor:Se.value,cardFillColor:le.value,qrUrl:wxQr.value,qrCaption:v("player.shareCard.qrCaption"),qrBrand:v("player.shareCard.qrBrand")
     }
     ));
     fe(()=>G.value.fit,t=>{
@@ -1316,6 +1350,7 @@ var vl={
     }
     function Qa(){
       L(),q!=null&&(clearTimeout(q),q=null),aa(),me.value=!1,ce.value="compose",X.value=null,he.value=!1,Ce.value=!1,Be.value=!1,ue.value=!1
+      wxGuide.value=!1;
     }
     return(t,i)=>{
       const w=sr,A=hr,W=rr,_e=lr,Me=dr,Ue=ir,Ea=fr,ta=Tt,sa=kt,ze=Lt,va=Jt,et=mr,La=Kt,Aa=Ht,at=Nt,e=Et,a=jt,f=Rt;
@@ -1563,7 +1598,21 @@ var vl={
           }
           ,8,["label"])]),_:1
         }
-        ,8,["modelValue"]),c("div",{
+        ,8,["modelValue"]),
+        // ---- 微信分享提示条与引导浮层（Issue #343，手工补丁） ----
+        isWx?(d(),b("div",{key:1,class:"share-wechat-tip"},[
+          c("span",{class:"share-wechat-tip__text"},u(v("player.shareCard.wechatTip")),1),
+          p(ze,{type:"primary",link:"",size:"small",onClick:()=>{wxGuide.value=!0}},{
+            default:n(()=>[B(u(v("player.shareCard.wechatGuideTitle")),1)]),_:1
+          })
+        ])):T("",!0),
+        isWx&&wxGuide.value?(d(),b("div",{key:2,class:"share-wechat-guide",onClick:()=>{wxGuide.value=!1}},[
+          c("div",{class:"share-wechat-guide__arrow"},"↑"),
+          c("div",{class:"share-wechat-guide__title"},u(v("player.shareCard.wechatGuideTitle")),1),
+          c("div",{class:"share-wechat-guide__body"},u(v("player.shareCard.wechatGuideBody")),1),
+          c("div",{class:"share-wechat-guide__ok"},u(v("player.shareCard.wechatGuideOk")),1)
+        ])):T("",!0),
+        c("div",{
           ref_key:"captureHostRef",ref:K,class:"capture-host","aria-hidden":"true"
         }
         ,[me.value?(d(),I(Pt,qt(yt({
@@ -1829,7 +1878,7 @@ var vl={
       formatStatsRate:E
     }
     =Dt(),$=gr(),{
-      portalPath:V
+      portalPath:V,tenantCode:x2
     }
     =yr(),G="/bs-ball/carousel/default_banner_2.jpg",D=S(void 0);
     function X(){
@@ -1988,6 +2037,16 @@ var vl={
     function Ga(){
       fa(),he.value&&ue.value&&(O.value=1,le())
     }
+    // ---- 微信分享：数据就绪后自动配置右上角分享（Issue #343，手工补丁） ----
+    const wxRouter = wxUseRouter(), wxShareMeta = g(() => {
+      if (L.player == null || L.player.id == null) return null;
+      const meta = buildPlayerShareMeta(L.player, L.team, L.league, be.value, { resolveAsset: (e) => Ve(e) || "" });
+      if (!meta) return null;
+      meta.link = buildPlayerShareUrl(wxRouter, L.player.id, "share", x2.value);
+      return meta;
+    });
+    useWechatShare(wxShareMeta);
+    const wxPosterUrl = g(() => L.player == null || L.player.id == null ? "" : buildPlayerShareUrl(wxRouter, L.player.id, "poster", x2.value));
     fe(()=>L.player?.id,e=>{
       q.value="BASEBALL",e!=null?fa():(be.value=null,Ge.value=[],Oe.value=[])
     }
@@ -3251,9 +3310,9 @@ var vl={
         ,null,8,Bo)),c("p",So,u(Y.value.description||""),1)],64)):T("",!0)]),_:1
       }
       ,8,["modelValue","title"]),p(tn,{
-        modelValue:He.value,"onUpdate:modelValue":a[6]||(a[6]=s=>He.value=s),player:h.player,team:h.team,stats:be.value,"stats-by-season":Ge.value,"default-avatar-img":h.defaultAvatarImg,"position-label":Ue.value,"display-name":Me.value,"bat-throw-line":sa.value
+        modelValue:He.value,"onUpdate:modelValue":a[6]||(a[6]=s=>He.value=s),player:h.player,team:h.team,stats:be.value,"stats-by-season":Ge.value,"default-avatar-img":h.defaultAvatarImg,"position-label":Ue.value,"display-name":Me.value,"bat-throw-line":sa.value,"poster-url":wxPosterUrl.value
       }
-      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line"])])):T("",!0)
+      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line","poster-url"])])):T("",!0)
     }
     
   }

@@ -230,6 +230,15 @@ var ye={
               prop:"path",label:"路径","min-width":"260","show-overflow-tooltip":""
             }
             ),t(m,{
+              label:"来源",width:"120"
+            }
+            ,{
+              default:a(({
+                row:o
+              }
+              )=>[g(_(o.source==="share"?"分享链接":o.source==="poster"?"二维码海报":"-"),1)]),_:1
+            }
+            ),t(m,{
               label:"记录时间",width:"172"
             }
             ,{

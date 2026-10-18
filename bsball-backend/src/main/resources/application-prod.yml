@@ -12,6 +12,9 @@
 #   - ALIYUN_SMS_ACCESS_KEY_ID / ALIYUN_SMS_ACCESS_KEY_SECRET
 #   - APP_AMAP_WEB_KEY / APP_BAIDU_MAP_AK / APP_TENCENT_MAP_KEY
 #   - APP_INTERFACE_BOX_KEY / APP_INTERFACE_BOX_ID
+#   - WECHAT_APP_ID（服务号 AppID，EnvironmentFile 注入）
+#   - WECHAT_APP_SECRET（机密，EnvironmentFile 注入）
+#   - WECHAT_ALLOWED_HOSTS（非机密，部署环境域名列表）
 # 其余配置（SERVER_ADDRESS / DB_HOST / DB_PORT / DB_USER / DB_NAME 等）可选。
 # =============================================================================
 

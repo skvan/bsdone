@@ -63,12 +63,12 @@ participant S as "PortalVisitService"
 participant R as "PortalVisitHitRepository"
 participant T as "TenantProperties"
 participant H as "CurrentUserHolder"
-C->>V : POST /portal/visit/record {path}
+C->>V : POST /portal/visit/record {path, source?}
 V->>V : 读取Cookie portal_vid / 生成新ID
 V->>V : 防刷限流 CountAntiAbuseService.acquirePortalPv
 V->>H : getTenantId()
 V->>T : getDefaultId() (回退)
-V->>S : recordAsync(visitorId, path, ip, tenantId, ua)
+V->>S : recordAsync(visitorId, path, ip, tenantId, ua, source)
 S->>R : save(PortalVisitHit)
 R-->>S : 成功
 S-->>V : 完成
@@ -80,11 +80,19 @@ V-->>C : {ok, visitorNew, recorded}
 ### 访客访问追踪接口
 - 端点：POST /portal/visit/record
 - 功能：记录页面访问，生成或复用访客ID（Cookie portal_vid），异步落库，防刷限制
+- 请求体：
+
+```json
+{ "path": "/team1/players/9", "source": "share" }
+```
+
+  - `path`：前端路由路径，必填；缺失或为空时直接返回 `recorded=false`
+  - `source`：可选，回流来源标记；`share`=微信分享链接，`poster`=二维码海报；非法或缺失忽略并落 NULL（请求照常成功）
 - 关键逻辑：
   - 路径过滤：排除 /admin/login 及包含 /admin 的路径；忽略 /404、/service-unavailable
   - 访客标识：无Cookie则生成UUID，设置HttpOnly与SameSite=Lax
   - 租户范围：优先使用当前租户ID，否则回退到默认租户
-  - 异步写入：recordAsync 保存 PortalVisitHit（截断path/ua/ip）
+  - 异步写入：recordAsync 保存 PortalVisitHit（截断path/ua/ip；source 仅接受 share/poster，其余落 NULL）
 - 响应字段：ok、visitorNew、recorded
 
 ```mermaid
@@ -149,6 +157,14 @@ F-->>U : Result.ok
 ### 租户配置接口
 - 端点：GET /portal/tenant/check?code=xxx
 - 功能：根据code查询租户是否存在且激活，返回id与name
+
+### 微信 JSSDK 配置接口
+- 端点：`GET /wechat/jssdk-config?url=<当前页面完整 URL（不含 # 片段，encodeURIComponent）>`
+- 免登录（guest 白名单 `/wechat`）；幂等、无副作用；仅返回公开信息（appId 与签名），不返回任何凭证
+- 响应 data：`{ "appId": "...", "timestamp": 1710000000, "nonceStr": "16位随机串", "signature": "SHA1小写hex" }`
+- 参数校验：url 非空、长度 ≤1024、协议为 http(s)、主机命中 `app.wechat.allowed-hosts`（忽略大小写）
+- 失败语义：400 非法 url；503 未配置微信凭证（appId/appSecret）；502 微信侧不可用（获取 jsapi_ticket 或签名失败，统一降级，不返回 500）
+- 前端对任何非成功一律静默降级（回退微信默认分享预览），不影响页面
 
 ### 访问统计接口
 - 端点：
@@ -253,6 +269,7 @@ PortalVisitApi --> HttpClientIpUtil : "获取IP"
   - visitor_id：访客匿名ID（Cookie）
   - path：前端路由路径（不含query/hash；超长截断）
   - user_agent：客户端UA
+  - source（varchar(32)）：回流来源（share=微信分享链接 / poster=二维码海报；非法或缺失为 NULL）
   - ip：客户端IP（脱敏/截断）
   - ip_region：附加字段（非持久化，用于展示）
   - created_at：记录时间
