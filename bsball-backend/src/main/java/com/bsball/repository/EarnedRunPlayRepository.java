@@ -10,4 +10,6 @@ public interface EarnedRunPlayRepository extends JpaRepository<EarnedRunPlayEnti
 
     void deleteByTenantIdAndGameIdAndInningAndHalf(
             Long tenantId, Long gameId, Integer inning, String half);
+
+    boolean existsByGameId(Long gameId);
 }

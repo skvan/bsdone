@@ -300,6 +300,7 @@ public class GameService {
                     dto.getStats().stream()
                             .map(s -> new EventRegistrationService.StatsRef(s.getTeamId(), s.getPlayerId()))
                             .toList());
+            boolean engineManaged = this.isEngineManaged(game);
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
             Map<String, GamePlayerStat> existingMap = existing.stream().collect(Collectors.toMap(s -> s.getTeamId() + "_" + s.getPlayerId() + "_" + (s.getIsPitcher() == null ? 0 : s.getIsPitcher()), s -> s, (a, b) -> statRichness(a) >= statRichness(b) ? a : b));
             for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
@@ -308,16 +309,22 @@ public class GameService {
                 GamePlayerStat stat = existingMap.get(key);
                 Long statTid = game.getTenantId();
                 if (stat != null) {
-                    this.applyPartToStat(stat, part, gameId, statTid);
+                    this.applyPartToStat(stat, part, gameId, statTid, engineManaged);
                     this.gamePlayerStatRepository.save(stat);
                     continue;
                 }
                 GamePlayerStat newStat = new GamePlayerStat();
                 newStat.setGameId(gameId);
-                this.applyPartToStat(newStat, part, gameId, statTid);
+                this.applyPartToStat(newStat, part, gameId, statTid, engineManaged);
                 this.gamePlayerStatRepository.save(newStat);
             }
         }
+    }
+
+    /** 该场是否已有 ER 引擎事件；供前端把 ER/R 设为只读。 */
+    public boolean isEngineManaged(Game game) {
+        return game != null && game.getId() != null
+                && this.earnedRunReconstructionService.hasEngineData(game.getId());
     }
 
     /** Reconstructs and stores all earned-run decisions for one half-inning. */
@@ -444,7 +451,7 @@ public class GameService {
         for (SaveGameResultDTO.StatPart part : dto.getStats()) {
             if (part.getTeamId() == null || part.getPlayerId() == null) continue;
             GamePlayerStat stat = new GamePlayerStat();
-            this.applyResultPartToStat(stat, part, gameId, Long.valueOf(tid));
+            this.applyResultPartToStat(stat, part, gameId, Long.valueOf(tid), false);
             this.gamePlayerStatRepository.save(stat);
         }
         return gameId;
@@ -573,6 +580,7 @@ public class GameService {
         }
         Long statTenantId = game.getTenantId();
         if (dto.getStats() != null) {
+            boolean engineManaged = this.isEngineManaged(game);
             List<GamePlayerStat> existing = this.gamePlayerStatRepository.findByGameId(gameId);
             LinkedHashSet<Long> declaredIds = new LinkedHashSet<>();
             for (SaveGameResultDTO.StatPart part : dto.getStats()) {
@@ -602,7 +610,7 @@ public class GameService {
                     // 改由複合鍵決定落點，避免把既有列的 isPitcher 就地翻轉。
                     if (byId != null && isPitcher == (byId.getIsPitcher() == null ? 0 : byId.getIsPitcher().intValue())) {
                         stat = byId;
-                        this.applyResultPartToStat(stat, part, gameId, statTenantId);
+                        this.applyResultPartToStat(stat, part, gameId, statTenantId, engineManaged);
                         this.gamePlayerStatRepository.save(stat);
                         keepIds.add(stat.getId());
                         continue;
@@ -613,7 +621,7 @@ public class GameService {
                 if (stat == null) {
                     stat = new GamePlayerStat();
                 }
-                this.applyResultPartToStat(stat, part, gameId, statTenantId);
+                this.applyResultPartToStat(stat, part, gameId, statTenantId, engineManaged);
                 this.gamePlayerStatRepository.save(stat);
                 keepIds.add(stat.getId());
                 existingByKey.put(key, stat);
@@ -622,6 +630,8 @@ public class GameService {
             // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
             for (GamePlayerStat s : existing) {
                 if (keepIds.contains(s.getId())) continue;
+                // 引擎场次的投手行由 ER 引擎维护，payload 漏带时不得物理删除
+                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())) continue;
                 this.gamePlayerStatRepository.delete(s);
             }
         }
@@ -632,7 +642,8 @@ public class GameService {
         return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
     }
 
-    private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part, Long gameId, Long tenantId) {
+    private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part,
+            Long gameId, Long tenantId, boolean preserveEngineTotals) {
         stat.setTenantId(tenantId);
         stat.setGameId(gameId);
         stat.setTeamId(part.getTeamId());
@@ -668,13 +679,24 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
-        stat.setEr(part.getEr());
+        if (preserveEngineTotals) {
+            if (stat.getId() == null) {
+                zeroEngineTotals(stat);
+            }
+        } else {
+            // 旧客户端/未携带字段时保留既有值，避免把 legacy 场次的 ER/R 清空
+            if (part.getEr() != null) {
+                stat.setEr(part.getEr());
+            }
+            if (part.getPitchR() != null) {
+                stat.setPitchR(part.getPitchR());
+            }
+        }
         stat.setPitchH(part.getPitchH());
         stat.setPitchBbHp(part.getPitchBbHp());
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(Integer.valueOf(part.getPitchInsideParkHr() != null ? part.getPitchInsideParkHr() : 0));
-        stat.setPitchR(part.getPitchR());
         stat.setPitchPa(part.getPitchPa());
         stat.setPitchBf(part.getPitchBf());
         stat.setPitchAb(part.getPitchAb());
@@ -740,6 +762,13 @@ public class GameService {
         }
     }
 
+    private static void zeroEngineTotals(GamePlayerStat stat) {
+        stat.setPitchR(0);
+        stat.setEr(0);
+        stat.setUnearnedR(0);
+        stat.setPendingR(0);
+    }
+
     /** 統計欄位充實度：同 key 重複筆時優先保留資料較完整的列（與 GamePlayerStatService#statRichness 保持一致） */
     private static int statRichness(GamePlayerStat r) {
         int score = 0;
@@ -776,7 +805,8 @@ public class GameService {
         return score;
     }
 
-    private void applyPartToStat(GamePlayerStat stat, GameSaveLiveDTO.GamePlayerStatPart part, Long gameId, Long tenantId) {
+    private void applyPartToStat(GamePlayerStat stat, GameSaveLiveDTO.GamePlayerStatPart part,
+            Long gameId, Long tenantId, boolean preserveEngineTotals) {
         stat.setTenantId(tenantId);
         stat.setGameId(gameId);
         stat.setTeamId(part.getTeamId());
@@ -807,7 +837,13 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
-        stat.setEr(part.getEr());
+        if (preserveEngineTotals) {
+            if (stat.getId() == null) {
+                zeroEngineTotals(stat);
+            }
+        } else if (part.getEr() != null) {
+            stat.setEr(part.getEr());
+        }
         stat.setPitchH(part.getPitchH());
         stat.setPitchBbHp(part.getPitchBbHp());
         stat.setPitchSo(part.getPitchSo());
