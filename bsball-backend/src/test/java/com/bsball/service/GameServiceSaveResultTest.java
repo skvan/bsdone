@@ -302,6 +302,68 @@ class GameServiceSaveResultTest {
         return row;
     }
 
+    @Test
+    @DisplayName("引擎场次保存结果：payload 漏带的投手行不得被物理删除")
+    void saveResult_engineManaged_keepsMissingPitcherRow() {
+        GamePlayerStat batter = batterRow();
+        GamePlayerStat pitcher = pitcherRow();
+        givenExistingRows(batter, pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        // 只带打者行，投手行缺席
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(0, deletedRows().size(), "引擎维护的投手行不得因 payload 漏带被删除");
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：客户端 er/pitchR 不得覆盖引擎累计值")
+    void saveResult_engineManaged_ignoresClientEarnedAndPitchRuns() {
+        GamePlayerStat pitcher = pitcherRow();
+        pitcher.setEr(Integer.valueOf(3));
+        pitcher.setPitchR(Integer.valueOf(5));
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+
+        SaveGameResultDTO.StatPart part = part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), Double.valueOf(6.1D));
+        part.setEr(Integer.valueOf(99));
+        part.setPitchR(Integer.valueOf(88));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(part)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(3), pitcher.getEr(), "引擎场次 ER 只能由引擎写");
+        assertEquals(Integer.valueOf(5), pitcher.getPitchR(), "引擎场次 R 只能由引擎写");
+    }
+
+    @Test
+    @DisplayName("无引擎数据的 legacy 场次：saveResult 仍可手工修正 ER/R")
+    void saveResult_legacy_writesClientEarnedAndPitchRuns() {
+        GamePlayerStat pitcher = pitcherRow();
+        pitcher.setEr(Integer.valueOf(3));
+        pitcher.setPitchR(Integer.valueOf(5));
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        SaveGameResultDTO.StatPart part = part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), Double.valueOf(6.1D));
+        part.setEr(Integer.valueOf(4));
+        part.setPitchR(Integer.valueOf(6));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(part)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(4), pitcher.getEr());
+        assertEquals(Integer.valueOf(6), pitcher.getPitchR());
+    }
+
     private SaveGameResultDTO.StatPart part(Long id, Long playerId, int isPitcher, Integer ab, Double ip) {
         SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
         part.setId(id);

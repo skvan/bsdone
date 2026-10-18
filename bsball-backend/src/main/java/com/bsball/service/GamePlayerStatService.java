@@ -10,13 +10,16 @@
  */
 package com.bsball.service;
 
+import com.bsball.exception.BusinessException;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import lombok.Generated;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,6 +27,7 @@ public class GamePlayerStatService {
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameRepository gameRepository;
     private final EventRegistrationService eventRegistrationService;
+    private final EarnedRunReconstructionService earnedRunReconstructionService;
 
     public List<GamePlayerStat> listByGame(Long gameId) {
         List<GamePlayerStat> rows = this.gamePlayerStatRepository.findByGameId(gameId);
@@ -37,13 +41,20 @@ public class GamePlayerStatService {
         return List.copyOf(dedup.values());
     }
 
+    @Transactional
     public GamePlayerStat create(GamePlayerStat entity) {
         if (entity != null) {
+            // create 只允许新建；带 id 的请求必须走 update，避免 merge 绕过引擎守卫
+            entity.setId(null);
             this.assertRosterForWrite(entity.getGameId(), entity.getTeamId(), entity.getPlayerId());
+            if (this.isEngineManaged(entity.getGameId())) {
+                this.zeroEngineTotals(entity);
+            }
         }
         return (GamePlayerStat)this.gamePlayerStatRepository.save(entity);
     }
 
+    @Transactional
     public GamePlayerStat update(Long id, GamePlayerStat entity) {
         GamePlayerStat existing = this.gamePlayerStatRepository.findById(id).orElse(null);
         if (existing == null) {
@@ -54,6 +65,33 @@ public class GamePlayerStatService {
         Long finalTeamId = entity.getTeamId() != null ? entity.getTeamId() : existing.getTeamId();
         Long finalPlayerId = entity.getPlayerId() != null ? entity.getPlayerId() : existing.getPlayerId();
         this.assertRosterForWrite(finalGameId, finalTeamId, finalPlayerId);
+        boolean engineManaged = this.isEngineManaged(existing.getGameId())
+                || this.isEngineManaged(finalGameId);
+        if (engineManaged) {
+            if (!Objects.equals(finalGameId, existing.getGameId())) {
+                throw new BusinessException(400, "引擎场次不能移动统计行");
+            }
+            Integer incomingPitcher = entity.getIsPitcher() != null
+                    ? entity.getIsPitcher() : existing.getIsPitcher();
+            if (!Objects.equals(finalTeamId, existing.getTeamId())
+                    || !Objects.equals(finalPlayerId, existing.getPlayerId())
+                    || !Objects.equals(incomingPitcher, existing.getIsPitcher())) {
+                throw new BusinessException(400, "引擎场次不能改变统计行身份");
+            }
+            if (Integer.valueOf(1).equals(existing.getIsPitcher())) {
+                entity.setIsPitcher(existing.getIsPitcher());
+                entity.setPitchR(existing.getPitchR());
+                entity.setEr(existing.getEr());
+                entity.setUnearnedR(existing.getUnearnedR());
+                entity.setPendingR(existing.getPendingR());
+            }
+        }
+        entity.setGameId(finalGameId);
+        entity.setTeamId(finalTeamId);
+        entity.setPlayerId(finalPlayerId);
+        if (entity.getIsPitcher() == null) {
+            entity.setIsPitcher(existing.getIsPitcher());
+        }
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         return (GamePlayerStat)this.gamePlayerStatRepository.save(entity);
@@ -72,9 +110,27 @@ public class GamePlayerStatService {
                 List.of(new EventRegistrationService.StatsRef(teamId, playerId)));
     }
 
+    @Transactional
     public void delete(Long id) {
+        GamePlayerStat existing = this.gamePlayerStatRepository.findById(id).orElse(null);
+        if (existing != null && this.isEngineManaged(existing.getGameId())
+                && Integer.valueOf(1).equals(existing.getIsPitcher())) {
+            throw new BusinessException(400, "引擎场次不能删除投手统计行");
+        }
         this.gamePlayerStatRepository.deleteById(id);
     }
+
+    private boolean isEngineManaged(Long gameId) {
+        return gameId != null && this.earnedRunReconstructionService.hasEngineData(gameId);
+    }
+
+    private void zeroEngineTotals(GamePlayerStat entity) {
+        entity.setPitchR(0);
+        entity.setEr(0);
+        entity.setUnearnedR(0);
+        entity.setPendingR(0);
+    }
+
 
     private String buildKey(GamePlayerStat r) {
         return String.join((CharSequence)"|", String.valueOf(r.getGameId()), String.valueOf(r.getTeamId()), String.valueOf(r.getPlayerId()), String.valueOf(r.getIsPitcher()), String.valueOf(r.getBattingOrder()), String.valueOf(r.getPitcherOrder()), String.valueOf(r.getListOrder()), String.valueOf(r.getPosition()));
@@ -118,10 +174,12 @@ public class GamePlayerStatService {
     @Generated
     public GamePlayerStatService(GamePlayerStatRepository gamePlayerStatRepository,
             GameRepository gameRepository,
-            EventRegistrationService eventRegistrationService) {
+            EventRegistrationService eventRegistrationService,
+            EarnedRunReconstructionService earnedRunReconstructionService) {
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameRepository = gameRepository;
         this.eventRegistrationService = eventRegistrationService;
+        this.earnedRunReconstructionService = earnedRunReconstructionService;
     }
 }
 

@@ -22,10 +22,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Generated;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
 @Table(name="bs_game_player_stat")
 @Comment(value="\u6bd4\u8d5b\u7403\u5458\u7edf\u8ba1")
+@DynamicUpdate
 public class GamePlayerStat
 extends BaseEntity {
     @Comment(value="\u6bd4\u8d5bID")
