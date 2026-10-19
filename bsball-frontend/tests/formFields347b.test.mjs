@@ -58,17 +58,18 @@ test('LiveGame 事件自动累加', () => {
   assert.ok(live.includes('type==="DP"&&!seen.has(r.pos)'), '守备 DP 累加缺失');
 });
 
-test('门户比赛详情具备打者/投手/守备切换', () => {
+test('门户比赛详情具备打者/守备切换，投手表常显', () => {
   assert.ok(detail.includes('import GameDetailFieldingTable'), '未导入守备表组件');
   assert.ok(detail.includes('const boxView=I("batting")'), '缺少视图状态');
   assert.ok(detail.includes('gd-box-view-tabs'), '缺少视图标签栏');
   assert.ok(detail.includes('boxView.value!=="batting"'), '打者区块未按视图条件渲染');
-  assert.ok(detail.includes('boxView.value!=="pitching"'), '投手区块未按视图条件渲染');
+  assert.ok(!detail.includes('boxView.value!=="pitching"'), '投手区块不应再按视图切换');
+  assert.ok(detail.includes('gd-pitchers-section'), '缺少投手常显区块');
   assert.ok(detail.includes('boxView.value!=="fielding"'), '守备区块未按视图条件渲染');
   assert.ok(detail.includes('gd-fielding-block'), '缺少守备区块');
   assert.ok(detail.includes('gameDetail.fielding'), '守备标签未使用词典');
   assert.ok(css.includes('.gd-box-view-tab'), '缺少视图标签样式');
-  for (const key of ['batting', 'pitching', 'fielding']) {
-    assert.ok(detail.includes(`p(tabLabel("gameDetail.${key}"),1),3)`), `${key} 标签缺少 text/class patch flag`);
+  for (const key of ['batting', 'fielding']) {
+    assert.ok(detail.includes(`n(tabLabel("gameDetail.${key}")),3)`), `${key} 标签缺少 text patch flag`);
   }
 });

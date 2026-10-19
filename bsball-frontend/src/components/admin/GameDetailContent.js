@@ -415,9 +415,6 @@ var Sl={
 ,ai={
   class:"batting-line-names"
 }
-,li={
-  key:3,class:"box-section"
-}
 ,ri={
   class:"detail-tables-row"
 }
@@ -1579,7 +1576,7 @@ var Sl={
         }
         ]),role:"tab","aria-selected":g(z)==="home",onClick:t[9]||(t[9]=a=>xt("home"))
       }
-      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",{class:"gd-box-view-tabs"},[s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="batting"}]),onClick:()=>boxView.value="batting"},p(tabLabel("gameDetail.batting"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="pitching"}]),onClick:()=>boxView.value="pitching"},p(tabLabel("gameDetail.pitching"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="fielding"}]),onClick:()=>boxView.value="fielding"},p(tabLabel("gameDetail.fielding"),1),3)])),c.game?.isSpecialResult||boxView.value!=="batting"?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
+      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",{class:"gd-box-view-tabs"},[s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="batting"}]),onClick:()=>boxView.value="batting"},n(tabLabel("gameDetail.batting")),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="fielding"}]),onClick:()=>boxView.value="fielding"},n(tabLabel("gameDetail.fielding")),3)])),c.game?.isSpecialResult||boxView.value!=="batting"?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
         key:0,ref_key:"awayBattersScrollRoot",ref:ee,class:L(["detail-table-block detail-table-block--batters",{
           "gd-mobile-team-panel--hidden":St.value
         }
@@ -1795,7 +1792,7 @@ var Sl={
       ,[s("span",ti,n(a.type),1),t[29]||(t[29]=s("span",{
         class:"batting-line-sep"
       }
-      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="pitching"?_("",!0):(r(),i("div",li,[s("div",ri,[g(Tt)?(r(),i("div",{
+      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="fielding"?_("",!0):(r(),i("div",{class:"gd-fielding-block"},[s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.awayTeamId,"team-name":N.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"]),s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.homeTeamId,"team-name":T.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"])])),c.game?.isSpecialResult?_("",!0):(r(),i("div",{key:3,class:"box-section gd-pitchers-section"},[s("div",ri,[g(Tt)?(r(),i("div",{
         key:0,ref_key:"awayPitchersScrollRoot",ref:Ve,class:L(["detail-table-block","detail-table-block--pitchers",{
           "gd-mobile-team-panel--hidden":St.value
         }
@@ -1915,7 +1912,7 @@ var Sl={
         }
         ,1032,["label","min-width"]))),128))]),_:1
       }
-      ,8,["data","highlight-current-row","row-key","current-row-key","row-class-name"]))],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="fielding"?_("",!0):(r(),i("div",{class:"gd-fielding-block"},[s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.awayTeamId,"team-name":N.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"]),s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.homeTeamId,"team-name":T.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"])])),S.value&&qa.value?(r(),i("div",{
+      ,8,["data","highlight-current-row","row-key","current-row-key","row-class-name"]))],4)],2)):_("",!0)])])), S.value&&qa.value?(r(),i("div",{
         key:4,class:"gd-desktop-meta-footer",style:Y(Qa.value)
       }
       ,[s("div",Si,[(r(!0),i(b,null,P(Ga.value,(a,o)=>(r(),i(b,{
