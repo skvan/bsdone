@@ -13,17 +13,17 @@ function h(t,r){
   return e._rowId!=null?`${r}_${t.id}_r${e._rowId}`:`${r}_${e.supplementId??t.id}`
 }
 var a={
-  pa:0,ab:0,r:0,h:0,e:0,bbHp:0,sb:0,so:0,soSwing:0,soLooking:0,rbi:0,hr:0,insideParkHr:0,doubles:0,triples:0,fieldingGs:0,defInn:0,dp:0,sh:0,sf:0,cs:0,po:0,a:0,pb:0,catcherSb:0,catcherCs:0
+  pa:0,ab:0,r:0,h:0,e:0,bbHp:0,sb:0,so:0,soSwing:0,soLooking:0,rbi:0,hr:0,insideParkHr:0,doubles:0,triples:0,gdp:0,bb:0,ibb:0,hbp:0,io:0,fieldingGs:0,defInn:0,dp:0,sh:0,sf:0,cs:0,po:0,a:0,pb:0,catcherSb:0,catcherCs:0
 };
 function s(t){
-  const r=Number(t.pitchBf)||0,e=Number(t.pitchBb)||0,i=Number(t.pitchIbb)||0,n=Number(t.pitchHbp)||0;
-  return Math.max(0,r-e-i-n)
+  const r=Number(t.pitchBf)||0,e=Number(t.pitchBb)||0,n=Number(t.pitchHbp)||0,i=e+n>0?e:Math.max(0,(Number(t.pitchBbHp)||0)-n);
+  return Math.max(0,r-i-n)
 }
 function b(t){
   return t.pitchAb!=null&&!Number.isNaN(Number(t.pitchAb))?Math.max(0,Math.floor(Number(t.pitchAb))):s(t)
 }
 var u={
-  ip:0,pitchR:0,er:0,pitchH:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,pitAb:0,np:0,pitchBb:0,pitchIbb:0,pitchHbp:0,wp:0,bk:0,go:0,fo:0,gs:0,svo:0,cg:0,pg:0,w:0,l:0,sv:0,hld:0
+  ip:0,pitchR:0,er:0,pitchH:0,pitchDoubles:0,pitchTriples:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchSh:0,pitchSf:0,pitchPa:0,pitchBf:0,pitAb:0,np:0,pitchBb:0,pitchIbb:0,pitchHbp:0,pitchIo:0,wp:0,bk:0,go:0,fo:0,gs:0,svo:0,cg:0,pg:0,w:0,l:0,sv:0,hld:0
 };
 function p(t){
   const r=t.isPitcher;

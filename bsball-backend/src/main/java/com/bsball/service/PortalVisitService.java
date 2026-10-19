@@ -67,6 +67,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -88,10 +89,12 @@ public class PortalVisitService {
     private final IpLocationCacheService ipLocationCacheService;
     private final ApiPermissionService apiPermissionService;
     private static final int SUMMARY_MONTHLY_SERIES_THRESHOLD_DAYS = 62;
+    /** 埋点来源白名单（与前端 shareSource.js 对齐） */
+    private static final Set<String> VISIT_SOURCES = Set.of("share", "poster");
 
     @Async
     @Transactional
-    public void recordAsync(String visitorId, String path, String clientIp, long tenantId, String userAgent) {
+    public void recordAsync(String visitorId, String path, String clientIp, long tenantId, String userAgent, String source) {
         if (visitorId == null || visitorId.isBlank()) {
             return;
         }
@@ -100,11 +103,24 @@ public class PortalVisitService {
         hit.setVisitorId(visitorId);
         hit.setPath(PortalVisitService.truncate((String)path, (int)512));
         hit.setUserAgent(PortalVisitService.truncate((String)userAgent, (int)512));
+        hit.setSource(normalizeSource(source));
         hit.setIp(PortalVisitService.truncate((String)clientIp, (int)128));
         LocalDateTime now = LocalDateTime.now();
         hit.setCreatedAt(now);
         hit.setHitDate(now.toLocalDate());
         this.portalVisitHitRepository.save(hit);
+    }
+
+    /** 来源白名单校验：非法/缺失/超长（>32）→ null（埋点旁路：不阻塞请求、不落脏值） */
+    static String normalizeSource(String source) {
+        if (source == null) {
+            return null;
+        }
+        String trimmed = source.trim();
+        if (trimmed.isEmpty() || trimmed.length() > 32 || !VISIT_SOURCES.contains(trimmed)) {
+            return null;
+        }
+        return trimmed;
     }
 
     static DateRange resolveVisitRange(Integer days, LocalDate from, LocalDate to) {

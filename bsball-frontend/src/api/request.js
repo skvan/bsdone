@@ -14,6 +14,7 @@ import {
 } from '../utils/tenantRoute';
 import { getExplicitTenantCode, resolveToken, clearAllTenantAuth } from './tokenStorage';
 import { useAuthStore } from '../stores/auth';
+import { extractShareSource } from '../utils/shareSource';
 
 export const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || '';
 export const BASE_URL = (import.meta.env && import.meta.env.BASE_URL) || '/bs-ball/';
@@ -529,17 +530,18 @@ function allowPortalVisitSample(path) {
   }
 }
 
-// 门户访问埋点（30 分钟内同一路径只报一次；仅租户路径）
+// 门户访问埋点（30 分钟内同一路径只报一次；仅租户路径；带分享来源白名单 from=share/poster）
 export function recordPortalVisit(rawPath) {
   if (!isSafeRedirect(rawPath)) return;
   const path = stripQueryHash(rawPath);
   if (!path || !allowPortalVisitSample(path)) return;
+  const source = extractShareSource(typeof window !== 'undefined' ? window.location.search : '');
   const url = rewriteUrl('/api/portal/visit/record');
   fetch(url, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...tenantHeaders() },
-    body: JSON.stringify({ path })
+    body: JSON.stringify(source ? { path, source } : { path })
   }).catch(() => {});
 }
 

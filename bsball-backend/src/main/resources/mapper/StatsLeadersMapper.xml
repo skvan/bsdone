@@ -99,6 +99,15 @@
         GROUP BY tg.team_id
     </sql>
 
+    <!-- 上垒率分子/分母共用的保送项：优先 BB+HBP 分项，旧数据只有 BBHP 合计时回退 -->
+    <sql id="battingWalksExpr">
+        CASE
+            WHEN COALESCE(SUM(s.bb), 0) + COALESCE(SUM(s.hbp), 0) > 0
+                THEN COALESCE(SUM(s.bb), 0) + COALESCE(SUM(s.hbp), 0)
+            ELSE COALESCE(SUM(s.bb_hp), 0)
+        END
+    </sql>
+
     <sql id="battingMinPaThresholdExpr">
         <choose>
             <when test="_databaseId == 'PostgreSQL'">
@@ -108,6 +117,15 @@
                 CEILING(COALESCE(MAX(tsg.scheduled_games), 0) * 1.3)
             </otherwise>
         </choose>
+    </sql>
+
+    <!-- WHIP 分子保送项：优先 BB/HBP 分项，旧数据只有 BBHP 合计时回退（HBP 不计入标准 WHIP） -->
+    <sql id="pitchingWalksExpr">
+        CASE
+            WHEN COALESCE(SUM(s.pitch_bb), 0) + COALESCE(SUM(s.pitch_hbp), 0) > 0
+                THEN COALESCE(SUM(s.pitch_bb), 0)
+            ELSE GREATEST(COALESCE(SUM(s.pitch_bb_hp), 0) - COALESCE(SUM(s.pitch_hbp), 0), 0)
+        END
     </sql>
 
     <sql id="pitchingMinIpOutsThresholdExpr">
@@ -199,15 +217,15 @@
             END AS bb,
             COALESCE(SUM(s.ibb), 0) AS ibb,
             COALESCE(SUM(s.hbp), 0) AS hbp,
+            COALESCE(SUM(s.io), 0) AS io,
             COALESCE(SUM(s.cs), 0) AS cs,
             CASE WHEN COALESCE(SUM(s.ab), 0) > 0
                 THEN ROUND(CAST(1.0 * SUM(s.h) / SUM(s.ab) AS numeric), 3)
                 ELSE NULL
             END AS avg,
-            CASE WHEN COALESCE(COALESCE(SUM(s.pa), SUM(s.ab)), 0) > 0
-                THEN ROUND(CAST(1.0 * (COALESCE(SUM(s.h), 0) + CASE WHEN COALESCE(SUM(s.bb),0) + COALESCE(SUM(s.hbp),0) > 0
-                    THEN COALESCE(SUM(s.bb),0) + COALESCE(SUM(s.hbp),0) ELSE COALESCE(SUM(s.bb_hp),0) END)
-                    / COALESCE(COALESCE(SUM(s.pa), SUM(s.ab)), 0) AS numeric), 3)
+            CASE WHEN COALESCE(SUM(s.ab), 0) + <include refid="battingWalksExpr"/> + COALESCE(SUM(s.sf), 0) > 0
+                THEN ROUND(CAST(1.0 * (COALESCE(SUM(s.h), 0) + <include refid="battingWalksExpr"/>)
+                    / (COALESCE(SUM(s.ab), 0) + <include refid="battingWalksExpr"/> + COALESCE(SUM(s.sf), 0)) AS numeric), 3)
                 ELSE NULL
             END AS obp,
             CASE WHEN COALESCE(SUM(s.ab), 0) > 0
@@ -324,7 +342,7 @@
             END) AS ip,
             CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
                 THEN ROUND(CAST(
-                    (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + COALESCE(SUM(s.pitch_bb_hp), 0)) * 3.0
+                    (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
                     / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
@@ -336,20 +354,23 @@
             COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
             COALESCE(SUM(s.np), 0) AS np,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
+            COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
+            COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
             COALESCE(SUM(s.pitch_hr), 0) AS pitchHr,
             COALESCE(SUM(s.pitch_inside_park_hr), 0) AS pitch_inside_park_hr,
-            CASE
-                WHEN COALESCE(SUM(s.pitch_bb), 0) + COALESCE(SUM(s.pitch_hbp), 0) > 0
-                    THEN COALESCE(SUM(s.pitch_bb), 0)
-                ELSE GREATEST(COALESCE(SUM(s.pitch_bb_hp), 0) - COALESCE(SUM(s.pitch_hbp), 0), 0)
-            END AS pitchBb,
+            COALESCE(SUM(s.pitch_sh), 0) AS pitchSh,
+            COALESCE(SUM(s.pitch_sf), 0) AS pitchSf,
+            <include refid="pitchingWalksExpr"/> AS pitchBb,
             COALESCE(SUM(s.pitch_ibb), 0) AS pitchIbb,
             COALESCE(SUM(s.pitch_hbp), 0) AS pitchHbp,
+            COALESCE(SUM(s.pitch_io), 0) AS pitchIo,
             COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
             COALESCE(SUM(s.wp), 0) AS wp,
             COALESCE(SUM(s.bk), 0) AS bk,
             COALESCE(SUM(<include refid="pitchRCol"/>), 0) AS pitchR,
             COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
+            COALESCE(SUM(s.pending_r), 0) AS pendingR,
             COALESCE(SUM(s.go), 0) AS go,
             COALESCE(SUM(s.fo), 0) AS fo,
             CASE WHEN COALESCE(SUM(s.fo), 0) > 0
@@ -425,6 +446,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0
@@ -436,7 +460,9 @@
         LEFT JOIN bs_team t ON p.team_id = t.id
         WHERE (
             (s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
-             AND (COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0 OR s.e IS NOT NULL))
+             AND (COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+                  OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
+                  OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
             <if test="positionCode != null and positionCode != ''">
                 OR s.position = #{positionCode}
             </if>
@@ -493,6 +519,9 @@
             COALESCE(SUM(s.triples), 0) AS triples,
             COALESCE(SUM(s.hr), 0) AS hr,
             COALESCE(SUM(s.inside_park_hr), 0) AS insideParkHr,
+            COALESCE(SUM(s.gdp), 0) AS gdp,
+            COALESCE(SUM(s.sh), 0) AS sh,
+            COALESCE(SUM(s.sf), 0) AS sf,
             COALESCE(SUM(s.sb), 0) AS sb,
             COALESCE(SUM(s.cs), 0) AS cs,
             COALESCE(SUM(s.so), 0) AS so,
@@ -501,17 +530,18 @@
                     THEN COALESCE(SUM(s.bb), 0)
                 ELSE GREATEST(COALESCE(SUM(s.bb_hp), 0) - COALESCE(SUM(s.hbp), 0), 0)
             END AS bb,
+            COALESCE(SUM(s.ibb), 0) AS ibb,
             COALESCE(SUM(s.hbp), 0) AS hbp,
+            COALESCE(SUM(s.io), 0) AS io,
             GREATEST(0, COALESCE(SUM(s.h), 0) - COALESCE(SUM(s.doubles), 0) - COALESCE(SUM(s.triples), 0) - COALESCE(SUM(s.hr), 0) - COALESCE(SUM(s.inside_park_hr), 0))
                 + COALESCE(SUM(s.doubles), 0) * 2 + COALESCE(SUM(s.triples), 0) * 3 + COALESCE(SUM(s.hr), 0) * 4 + COALESCE(SUM(s.inside_park_hr), 0) * 4 AS tb,
             CASE WHEN COALESCE(SUM(s.ab), 0) > 0
                 THEN ROUND(CAST(1.0 * COALESCE(SUM(s.h), 0) / SUM(s.ab) AS numeric), 3)
                 ELSE NULL
             END AS avg,
-            CASE WHEN COALESCE(COALESCE(SUM(s.pa), SUM(s.ab)), 0) > 0
-                THEN ROUND(CAST(1.0 * (COALESCE(SUM(s.h), 0) + CASE WHEN COALESCE(SUM(s.bb),0) + COALESCE(SUM(s.hbp),0) > 0
-                    THEN COALESCE(SUM(s.bb),0) + COALESCE(SUM(s.hbp),0) ELSE COALESCE(SUM(s.bb_hp),0) END)
-                    / COALESCE(COALESCE(SUM(s.pa), SUM(s.ab)), 0) AS numeric), 3)
+            CASE WHEN COALESCE(SUM(s.ab), 0) + <include refid="battingWalksExpr"/> + COALESCE(SUM(s.sf), 0) > 0
+                THEN ROUND(CAST(1.0 * (COALESCE(SUM(s.h), 0) + <include refid="battingWalksExpr"/>)
+                    / (COALESCE(SUM(s.ab), 0) + <include refid="battingWalksExpr"/> + COALESCE(SUM(s.sf), 0)) AS numeric), 3)
                 ELSE NULL
             END AS obp,
             CASE WHEN COALESCE(SUM(s.ab), 0) > 0
@@ -559,7 +589,7 @@
             END) AS ip,
             CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) > 0
                 THEN ROUND(CAST(
-                    (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + COALESCE(SUM(s.pitch_bb_hp), 0)) * 3.0
+                    (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
                     / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
@@ -570,14 +600,16 @@
             COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
             COALESCE(SUM(s.np), 0) AS np,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
+            COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
+            COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
             COALESCE(SUM(s.pitch_hr), 0) AS pitchHr,
             COALESCE(SUM(s.pitch_inside_park_hr), 0) AS pitchInsideParkHr,
-            CASE
-                WHEN COALESCE(SUM(s.pitch_bb), 0) + COALESCE(SUM(s.pitch_hbp), 0) > 0
-                    THEN COALESCE(SUM(s.pitch_bb), 0)
-                ELSE GREATEST(COALESCE(SUM(s.pitch_bb_hp), 0) - COALESCE(SUM(s.pitch_hbp), 0), 0)
-            END AS pitchBb,
+            COALESCE(SUM(s.pitch_sh), 0) AS pitchSh,
+            COALESCE(SUM(s.pitch_sf), 0) AS pitchSf,
+            <include refid="pitchingWalksExpr"/> AS pitchBb,
+            COALESCE(SUM(s.pitch_ibb), 0) AS pitchIbb,
             COALESCE(SUM(s.pitch_hbp), 0) AS pitchHbp,
+            COALESCE(SUM(s.pitch_io), 0) AS pitchIo,
             COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
             COALESCE(SUM(s.wp), 0) AS wp,
             COALESCE(SUM(s.bk), 0) AS bk,
@@ -623,8 +655,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
-            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
-            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0

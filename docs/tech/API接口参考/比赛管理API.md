@@ -253,6 +253,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:62-69`
 - GET /game/{id}
   - 作用：获取比赛详情
+  - 响应字段 `engineManaged`：该场是否已有 ER 引擎事件；`true` 时前端把 `ER`/`R` 视为引擎只读字段
   - 参考：`GameApi.java:71-75`
 - GET /game/{id}/live-snapshot
   - 作用：获取实时快照（比分、局况等）
@@ -269,6 +270,9 @@ EventService --> EventRepository
   - 参考：`GameApi.java:101-105`
 - POST /game/{id}/save-live
   - 作用：更新比赛实时比分与部分统计
+  - ER 单一写方：若该场已有 `bs_earned_run_play`，请求里的 `er` 被忽略；`pitchR/ER/UER/PENDING` 只由 ER 引擎写。无引擎数据的 legacy 场次仍接受 `er`
+  - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
+  - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
   - 参考：`GameApi.java:107-111`
 - POST /game/{id}/earned-runs/reconstruct
   - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
@@ -276,9 +280,12 @@ EventService --> EventRepository
   - 判定输入：得分跑者可携带 `wouldScoreWithoutMisplay`（布尔，可空）——记录员对「若没有捕逸等防守失误，该跑者是否仍会得分」的判断；传 `null` 或省略时，捕逸得分保留为 `PENDING` 待人工覆核
   - 注意：该接口不是增量追加；判决待定时应传 `rulingPending=true`，结果会保留为 `PENDING`
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
+  - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
+  - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
+  - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；管理端不再提交 `pitchBbHp` 合并列，服务端按 `pitchBb+pitchHbp` 保存拆分字段
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
 - DELETE /game/delete/{id}
@@ -291,6 +298,7 @@ EventService --> EventRepository
 - PUT /game/stats/update/{id}
 - DELETE /game/stats/delete/{id}
   - 作用：球员统计CRUD
+  - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 拒绝删除投手行
   - 参考：`GameApi.java:125-141`
 
 ### 精彩时刻（HighlightMoment）

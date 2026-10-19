@@ -46,7 +46,7 @@
                 <el-avatar :size="96" shape="square" :src="resolveAssetUrl(p.avatar) || undefined" class="ob-player-avatar">
                   {{ (p.name || '球').slice(0, 1) }}
                 </el-avatar>
-                <div class="ob-player-position">{{ (p.positions || []).join(' / ') || ' ' }}</div>
+                <div class="ob-player-position" :title="(p.positions || []).join(' / ')">{{ (p.positions || []).join(' / ') }}</div>
                 <div class="ob-player-name" :title="p.name">{{ p.name }}</div>
                 <div class="ob-player-number">{{ p.number || '—' }}</div>
               </div>
@@ -73,7 +73,7 @@
               <template #default="{ row }">{{ row.numberText || '—' }}</template>
             </el-table-column>
             <el-table-column :label="t('orderBook.colPositions')" min-width="130">
-              <template #default="{ row }">{{ row.positionText || '—' }}</template>
+              <template #default="{ row }">{{ row.positionText }}</template>
             </el-table-column>
             <el-table-column :label="t('orderBook.colRegTeams')" min-width="280">
               <template #default="{ row }">
@@ -286,9 +286,17 @@ load();
 }
 
 .ob-player-position {
+  /* 无守位时也占一行（空行）：min-height 与 line-height 取值一致，保证有/无守位卡片三行水平对齐；
+     多守位长文本单行省略（悬浮 title 看全文），避免换行破坏对齐 */
   margin-top: 8px;
+  min-height: 1.4em;
+  line-height: 1.4;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ob-player-name {

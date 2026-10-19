@@ -107,10 +107,13 @@ public class GameSaveLiveDTO {
         private Integer triples;
         private Integer hr;
         private Integer insideParkHr;
+        private Integer gdp;
         private Integer sh;
         private Integer sf;
         private Integer bb;
+        private Integer ibb;
         private Integer hbp;
+        private Integer io;
         private Integer cs;
         @JsonDeserialize(using=BoolToIntDeserializer.class)
         private Integer isPitcher;
@@ -118,18 +121,35 @@ public class GameSaveLiveDTO {
         private Double ip;
         private Integer er;
         private Integer pitchH;
+        private Integer pitchDoubles;
+        private Integer pitchTriples;
         private Integer pitchBbHp;
         private Integer pitchSo;
         private Integer pitchHr;
         private Integer pitchInsideParkHr;
+        private Integer pitchSh;
+        private Integer pitchSf;
         private Integer pitchPa;
         private Integer pitchBf;
         private Integer np;
+        private Integer pitchBb;
+        private Integer pitchIbb;
+        private Integer pitchHbp;
+        private Integer pitchIo;
         private Integer wp;
         private Integer bk;
+        private Integer go;
+        private Integer fo;
+        private Integer gs;
         private Integer po;
         private Integer a;
         private Integer tc;
+        private Integer fieldingGs;
+        private Double defInn;
+        private Integer dp;
+        private Integer pb;
+        private Integer catcherSb;
+        private Integer catcherCs;
 
         @Generated
         public GamePlayerStatPart() {
@@ -553,6 +573,206 @@ public class GameSaveLiveDTO {
         @Generated
         public void setTc(Integer tc) {
             this.tc = tc;
+        }
+
+        @Generated
+        public Integer getGdp() {
+            return this.gdp;
+        }
+
+        @Generated
+        public void setGdp(Integer gdp) {
+            this.gdp = gdp;
+        }
+
+        @Generated
+        public Integer getIbb() {
+            return this.ibb;
+        }
+
+        @Generated
+        public void setIbb(Integer ibb) {
+            this.ibb = ibb;
+        }
+
+        @Generated
+        public Integer getIo() {
+            return this.io;
+        }
+
+        @Generated
+        public void setIo(Integer io) {
+            this.io = io;
+        }
+
+        @Generated
+        public Integer getPitchDoubles() {
+            return this.pitchDoubles;
+        }
+
+        @Generated
+        public void setPitchDoubles(Integer pitchDoubles) {
+            this.pitchDoubles = pitchDoubles;
+        }
+
+        @Generated
+        public Integer getPitchTriples() {
+            return this.pitchTriples;
+        }
+
+        @Generated
+        public void setPitchTriples(Integer pitchTriples) {
+            this.pitchTriples = pitchTriples;
+        }
+
+        @Generated
+        public Integer getPitchSh() {
+            return this.pitchSh;
+        }
+
+        @Generated
+        public void setPitchSh(Integer pitchSh) {
+            this.pitchSh = pitchSh;
+        }
+
+        @Generated
+        public Integer getPitchSf() {
+            return this.pitchSf;
+        }
+
+        @Generated
+        public void setPitchSf(Integer pitchSf) {
+            this.pitchSf = pitchSf;
+        }
+
+        @Generated
+        public Integer getPitchBb() {
+            return this.pitchBb;
+        }
+
+        @Generated
+        public void setPitchBb(Integer pitchBb) {
+            this.pitchBb = pitchBb;
+        }
+
+        @Generated
+        public Integer getPitchIbb() {
+            return this.pitchIbb;
+        }
+
+        @Generated
+        public void setPitchIbb(Integer pitchIbb) {
+            this.pitchIbb = pitchIbb;
+        }
+
+        @Generated
+        public Integer getPitchHbp() {
+            return this.pitchHbp;
+        }
+
+        @Generated
+        public void setPitchHbp(Integer pitchHbp) {
+            this.pitchHbp = pitchHbp;
+        }
+
+        @Generated
+        public Integer getPitchIo() {
+            return this.pitchIo;
+        }
+
+        @Generated
+        public void setPitchIo(Integer pitchIo) {
+            this.pitchIo = pitchIo;
+        }
+
+        @Generated
+        public Integer getGo() {
+            return this.go;
+        }
+
+        @Generated
+        public void setGo(Integer go) {
+            this.go = go;
+        }
+
+        @Generated
+        public Integer getFo() {
+            return this.fo;
+        }
+
+        @Generated
+        public void setFo(Integer fo) {
+            this.fo = fo;
+        }
+
+        @Generated
+        public Integer getGs() {
+            return this.gs;
+        }
+
+        @Generated
+        public void setGs(Integer gs) {
+            this.gs = gs;
+        }
+
+        @Generated
+        public Integer getFieldingGs() {
+            return this.fieldingGs;
+        }
+
+        @Generated
+        public void setFieldingGs(Integer fieldingGs) {
+            this.fieldingGs = fieldingGs;
+        }
+
+        @Generated
+        public Double getDefInn() {
+            return this.defInn;
+        }
+
+        @Generated
+        public void setDefInn(Double defInn) {
+            this.defInn = defInn;
+        }
+
+        @Generated
+        public Integer getDp() {
+            return this.dp;
+        }
+
+        @Generated
+        public void setDp(Integer dp) {
+            this.dp = dp;
+        }
+
+        @Generated
+        public Integer getPb() {
+            return this.pb;
+        }
+
+        @Generated
+        public void setPb(Integer pb) {
+            this.pb = pb;
+        }
+
+        @Generated
+        public Integer getCatcherSb() {
+            return this.catcherSb;
+        }
+
+        @Generated
+        public void setCatcherSb(Integer catcherSb) {
+            this.catcherSb = catcherSb;
+        }
+
+        @Generated
+        public Integer getCatcherCs() {
+            return this.catcherCs;
+        }
+
+        @Generated
+        public void setCatcherCs(Integer catcherCs) {
+            this.catcherCs = catcherCs;
         }
 
         @Generated

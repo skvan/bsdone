@@ -33,14 +33,21 @@ public class EventStatRow {
     private int bb;
     private int ibb;
     private int hbp;
+    private int io;
     private int cs;
     private double ip;
     private int er;
+    private int unearnedR;
+    private int pendingR;
     private int pitchH;
+    private int pitchDoubles;
+    private int pitchTriples;
     private int pitchBbHp;
     private int pitchSo;
     private int pitchHr;
     private int pitchInsideParkHr;
+    private int pitchSh;
+    private int pitchSf;
     private int gs;
     private int svo;
     private int cg;
@@ -56,6 +63,7 @@ public class EventStatRow {
     private int pitchBb;
     private int pitchIbb;
     private int pitchHbp;
+    private int pitchIo;
     private int wp;
     private int bk;
     private int pitchR;
@@ -65,8 +73,10 @@ public class EventStatRow {
     private int tc;
     private int po;
     private int a;
+    private int dp;
     private int pb;
     private int catcherCs;
+    private int catcherSb;
 
     @Generated
     public EventStatRow() {
@@ -200,6 +210,16 @@ public class EventStatRow {
     @Generated
     public int getEr() {
         return this.er;
+    }
+
+    @Generated
+    public int getUnearnedR() {
+        return this.unearnedR;
+    }
+
+    @Generated
+    public int getPendingR() {
+        return this.pendingR;
     }
 
     @Generated
@@ -348,6 +368,11 @@ public class EventStatRow {
     }
 
     @Generated
+    public int getDp() {
+        return this.dp;
+    }
+
+    @Generated
     public int getPb() {
         return this.pb;
     }
@@ -355,6 +380,11 @@ public class EventStatRow {
     @Generated
     public int getCatcherCs() {
         return this.catcherCs;
+    }
+
+    @Generated
+    public int getCatcherSb() {
+        return this.catcherSb;
     }
 
     @Generated
@@ -485,6 +515,16 @@ public class EventStatRow {
     @Generated
     public void setEr(int er) {
         this.er = er;
+    }
+
+    @Generated
+    public void setUnearnedR(int unearnedR) {
+        this.unearnedR = unearnedR;
+    }
+
+    @Generated
+    public void setPendingR(int pendingR) {
+        this.pendingR = pendingR;
     }
 
     @Generated
@@ -633,6 +673,11 @@ public class EventStatRow {
     }
 
     @Generated
+    public void setDp(int dp) {
+        this.dp = dp;
+    }
+
+    @Generated
     public void setPb(int pb) {
         this.pb = pb;
     }
@@ -640,6 +685,11 @@ public class EventStatRow {
     @Generated
     public void setCatcherCs(int catcherCs) {
         this.catcherCs = catcherCs;
+    }
+
+    @Generated
+    public void setCatcherSb(int catcherSb) {
+        this.catcherSb = catcherSb;
     }
 
     @Generated
@@ -903,6 +953,54 @@ public class EventStatRow {
         String $season = this.getSeason();
         result = result * 59 + ($season == null ? 43 : $season.hashCode());
         return result;
+    }
+
+    public int getIo() {
+        return this.io;
+    }
+
+    public void setIo(int io) {
+        this.io = io;
+    }
+
+    public int getPitchDoubles() {
+        return this.pitchDoubles;
+    }
+
+    public void setPitchDoubles(int pitchDoubles) {
+        this.pitchDoubles = pitchDoubles;
+    }
+
+    public int getPitchTriples() {
+        return this.pitchTriples;
+    }
+
+    public void setPitchTriples(int pitchTriples) {
+        this.pitchTriples = pitchTriples;
+    }
+
+    public int getPitchSh() {
+        return this.pitchSh;
+    }
+
+    public void setPitchSh(int pitchSh) {
+        this.pitchSh = pitchSh;
+    }
+
+    public int getPitchSf() {
+        return this.pitchSf;
+    }
+
+    public void setPitchSf(int pitchSf) {
+        this.pitchSf = pitchSf;
+    }
+
+    public int getPitchIo() {
+        return this.pitchIo;
+    }
+
+    public void setPitchIo(int pitchIo) {
+        this.pitchIo = pitchIo;
     }
 
     @Generated

@@ -160,6 +160,8 @@ Team --|> BaseEntity : "继承"
   - 创建/更新不再校验联盟：入参 leagueId 一律忽略并落库 null（防旧前端回写脏数据）；「联盟不存在或与当前租户不一致」类校验已成为历史。
 - 创建即负责
   - 非超管/租管创建者（单建/批量建队/门户自助建队）自动落为该队 `bs_team_manager` active 行并失效其范围缓存；超管/租管不自动落职（由管理员指派负责人）。
+- 负责人唯一性
+  - `ux_bs_team_manager_team_user_active`（`WHERE deleted_at IS NULL`）保证同队同人只有一条未软删记录；解除为软停用，解除后可再次指派同一用户。
 
 ### 生命周期与状态
 - 创建：自动填充 createdAt、updatedAt 与 createdBy（由框架监听器处理）。

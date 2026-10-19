@@ -65,6 +65,8 @@ public class GameResponseDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean hasLiveSnapshot;
+    /** 该场是否已有 ER 引擎事件；true 时前端应将 ER/R 视为引擎只读字段。 */
+    private Boolean engineManaged;
 
     public static GameResponseDTO from(Game g) {
         if (g == null) {
@@ -112,6 +114,7 @@ public class GameResponseDTO {
         dto.setUpdatedAt(g.getUpdatedAt());
         String snap = g.getLiveSnapshotJson();
         dto.setHasLiveSnapshot(Boolean.valueOf(snap != null && !snap.isBlank()));
+        dto.setEngineManaged(Boolean.FALSE);
         return dto;
     }
 
@@ -340,6 +343,11 @@ public class GameResponseDTO {
     }
 
     @Generated
+    public Boolean getEngineManaged() {
+        return this.engineManaged;
+    }
+
+    @Generated
     public void setId(Long id) {
         this.id = id;
     }
@@ -540,6 +548,11 @@ public class GameResponseDTO {
     }
 
     @Generated
+    public void setEngineManaged(Boolean engineManaged) {
+        this.engineManaged = engineManaged;
+    }
+
+    @Generated
     public boolean equals(Object o) {
         if (o == this) {
             return true;
@@ -654,6 +667,11 @@ public class GameResponseDTO {
         Boolean this$hasLiveSnapshot = this.getHasLiveSnapshot();
         Boolean other$hasLiveSnapshot = other.getHasLiveSnapshot();
         if (this$hasLiveSnapshot == null ? other$hasLiveSnapshot != null : !((Object)this$hasLiveSnapshot).equals(other$hasLiveSnapshot)) {
+            return false;
+        }
+        Boolean this$engineManaged = this.getEngineManaged();
+        Boolean other$engineManaged = other.getEngineManaged();
+        if (this$engineManaged == null ? other$engineManaged != null : !((Object)this$engineManaged).equals(other$engineManaged)) {
             return false;
         }
         List this$homeScoreByInning = this.getHomeScoreByInning();
@@ -802,6 +820,8 @@ public class GameResponseDTO {
         result = result * 59 + ($includeStatsInRanking == null ? 43 : ((Object)$includeStatsInRanking).hashCode());
         Boolean $hasLiveSnapshot = this.getHasLiveSnapshot();
         result = result * 59 + ($hasLiveSnapshot == null ? 43 : ((Object)$hasLiveSnapshot).hashCode());
+        Boolean $engineManaged = this.getEngineManaged();
+        result = result * 59 + ($engineManaged == null ? 43 : ((Object)$engineManaged).hashCode());
         List $homeScoreByInning = this.getHomeScoreByInning();
         result = result * 59 + ($homeScoreByInning == null ? 43 : ((Object)$homeScoreByInning).hashCode());
         List $awayScoreByInning = this.getAwayScoreByInning();
@@ -845,7 +865,7 @@ public class GameResponseDTO {
 
     @Generated
     public String toString() {
-        return "GameResponseDTO(id=" + this.getId() + ", eventId=" + this.getEventId() + ", homeTeamId=" + this.getHomeTeamId() + ", awayTeamId=" + this.getAwayTeamId() + ", homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + String.valueOf(this.getHomeScoreByInning()) + ", awayScoreByInning=" + String.valueOf(this.getAwayScoreByInning()) + ", totalInnings=" + this.getTotalInnings() + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", gameTime=" + this.getGameTime() + ", gameEndTime=" + this.getGameEndTime() + ", gameday=" + this.getGameday() + ", gameNumber=" + this.getGameNumber() + ", stadiumId=" + this.getStadiumId() + ", venue=" + this.getVenue() + ", status=" + this.getStatus() + ", inning=" + this.getInning() + ", topBottom=" + this.getTopBottom() + ", spectatorCount=" + this.getSpectatorCount() + ", umpireHp=" + this.getUmpireHp() + ", umpire1b=" + this.getUmpire1b() + ", umpire2b=" + this.getUmpire2b() + ", umpire3b=" + this.getUmpire3b() + ", recorders=" + this.getRecorders() + ", gameTag=" + this.getGameTag() + ", weatherSummary=" + this.getWeatherSummary() + ", weatherTempC=" + this.getWeatherTempC() + ", weatherWind=" + this.getWeatherWind() + ", weatherRainProbPct=" + this.getWeatherRainProbPct() + ", remark=" + this.getRemark() + ", isSpecialResult=" + this.getIsSpecialResult() + ", showRemarkInCard=" + this.getShowRemarkInCard() + ", includeStatsInRanking=" + this.getIncludeStatsInRanking() + ", createdAt=" + String.valueOf(this.getCreatedAt()) + ", updatedAt=" + String.valueOf(this.getUpdatedAt()) + ", hasLiveSnapshot=" + this.getHasLiveSnapshot() + ")";
+        return "GameResponseDTO(id=" + this.getId() + ", eventId=" + this.getEventId() + ", homeTeamId=" + this.getHomeTeamId() + ", awayTeamId=" + this.getAwayTeamId() + ", homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + String.valueOf(this.getHomeScoreByInning()) + ", awayScoreByInning=" + String.valueOf(this.getAwayScoreByInning()) + ", totalInnings=" + this.getTotalInnings() + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", gameTime=" + this.getGameTime() + ", gameEndTime=" + this.getGameEndTime() + ", gameday=" + this.getGameday() + ", gameNumber=" + this.getGameNumber() + ", stadiumId=" + this.getStadiumId() + ", venue=" + this.getVenue() + ", status=" + this.getStatus() + ", inning=" + this.getInning() + ", topBottom=" + this.getTopBottom() + ", spectatorCount=" + this.getSpectatorCount() + ", umpireHp=" + this.getUmpireHp() + ", umpire1b=" + this.getUmpire1b() + ", umpire2b=" + this.getUmpire2b() + ", umpire3b=" + this.getUmpire3b() + ", recorders=" + this.getRecorders() + ", gameTag=" + this.getGameTag() + ", weatherSummary=" + this.getWeatherSummary() + ", weatherTempC=" + this.getWeatherTempC() + ", weatherWind=" + this.getWeatherWind() + ", weatherRainProbPct=" + this.getWeatherRainProbPct() + ", remark=" + this.getRemark() + ", isSpecialResult=" + this.getIsSpecialResult() + ", showRemarkInCard=" + this.getShowRemarkInCard() + ", includeStatsInRanking=" + this.getIncludeStatsInRanking() + ", createdAt=" + String.valueOf(this.getCreatedAt()) + ", updatedAt=" + String.valueOf(this.getUpdatedAt()) + ", hasLiveSnapshot=" + this.getHasLiveSnapshot() + ", engineManaged=" + this.getEngineManaged() + ")";
     }
 }
 

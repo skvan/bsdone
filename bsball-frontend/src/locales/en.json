@@ -1101,6 +1101,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1129,7 +1131,14 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB Allowed",
+      "io": "Reached on obstruction",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchIo": "Obstruction allowed"
     },
     "colEn": {
       "rank": "Rank",
@@ -1173,6 +1182,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1201,7 +1212,14 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1272,13 +1290,24 @@
       "sb": "Stolen bases",
       "cs": "Caught stealing",
       "bbHp": "Walks + HBP",
-      "so": "Strikeouts"
+      "so": "Strikeouts",
+      "gdp": "Grounded into double play",
+      "sh": "Sac bunts",
+      "sf": "Sac flies",
+      "bb": "Walks (incl. IBB)",
+      "ibb": "Intentional walks",
+      "hbp": "Hit by pitch",
+      "io": "Reached on obstruction"
     },
     "careerPitch": {
       "gp": "Games played",
       "ip": "Innings pitched",
       "era": "Earned run average",
       "whip": "WHIP",
+      "pitchR": "Runs allowed",
+      "er": "Earned runs",
+      "unearnedR": "Unearned runs",
+      "pendingR": "Pending runs",
       "pitchBf": "Batters faced (BF)",
       "pitchAb": "At bats against (BF − BB − IBB − HBP)",
       "ggComplete": "Complete games (GG)",
@@ -1289,7 +1318,15 @@
       "bbHp": "Walks + HBP allowed",
       "so": "Strikeouts",
       "wp": "Wild pitches",
-      "bk": "Balks"
+      "bk": "Balks",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchBb": "Walks (incl. IBB)",
+      "pitchIbb": "Intentional walks",
+      "pitchHbp": "Hit by pitch",
+      "pitchIo": "Obstruction allowed"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1299,7 +1336,9 @@
       "a": "Assists",
       "e": "Errors",
       "tcPct": "Fielding percentage",
+      "dp": "Double plays",
       "pb": "Passed balls (catcher)",
+      "catcherSb": "Stolen bases allowed",
       "catcherCs": "Caught stealing"
     },
     "seasonBlock": "{season} · {event}",
@@ -1363,7 +1402,21 @@
       "er": "Earned runs",
       "pitchBb": "Walks allowed",
       "pitchHbp": "Hit by pitch",
-      "dp": "Double play"
+      "dp": "Double play",
+      "unearnedR": "Unearned runs (excluded from ERA)",
+      "pendingR": "Runs awaiting an earned-run decision",
+      "catcherSb": "Stolen bases allowed while catching",
+      "sh": "Sacrifice bunts",
+      "sf": "Sacrifice flies",
+      "ibb": "Intentional walks",
+      "hbp": "Hit by pitch",
+      "io": "Reached on obstruction",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchIbb": "Intentional walks allowed",
+      "pitchIo": "Obstruction allowed"
     },
     "gameLogColTip": {
       "date": "Game date.",

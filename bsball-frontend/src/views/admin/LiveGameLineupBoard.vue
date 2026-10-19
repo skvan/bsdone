@@ -1,5 +1,5 @@
 <template>
-  <div v-loading="loading" class="admin-page live-game-lineup-board">
+  <div v-loading="loading" class="admin-page live-game-lineup-board" :class="{ 'form-compact': formCompact }">
     <div class="lineup-board-header">
       <span class="header-left">确认先发阵容 · {{ eventName }}</span>
       <div class="header-actions">
@@ -10,10 +10,10 @@
       </div>
     </div>
 
-    <!-- 设置区：与旧件同字段同校验 -->
+    <!-- 设置区：与旧件同字段同校验；画布需要让位时（form-compact）压为两行 -->
     <el-form :model="setupForm" label-width="90px" class="setup-form">
       <el-row :gutter="16">
-        <el-col :span="12">
+        <el-col :span="formCompact ? 8 : 12">
           <el-form-item label="比赛模式">
             <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
               <el-option label="棒球" value="BASEBALL" />
@@ -21,11 +21,22 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :span="formCompact ? 8 : 12">
           <el-form-item label="场地">
             <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
               <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
             </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col v-if="formCompact" :span="8">
+          <el-form-item label="比赛时间">
+            <el-date-picker
+              v-model="gameTime"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选择比赛时间"
+              style="width: 100%"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -57,7 +68,7 @@
           </el-form-item>
         </el-col>
       </el-row>
-      <el-row :gutter="16">
+      <el-row v-if="!formCompact" :gutter="16">
         <el-col :span="12">
           <el-form-item label="比赛时间">
             <el-date-picker
@@ -79,11 +90,16 @@
       <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
     </el-radio-group>
 
-    <div v-if="pending" class="lineup-pending-hint">
+    <div v-if="pending" ref="pendingHintEl" class="lineup-pending-hint">
       待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
     </div>
 
-    <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
+    <div
+      ref="boardEl"
+      class="lineup-board"
+      :class="{ 'is-mobile': isMobile }"
+      :style="fieldCap ? { '--lineup-field-cap': `${fieldCap}px` } : null"
+    >
       <LineupFieldBoard
         ref="fieldBoard"
         :mode="mode"
@@ -97,6 +113,7 @@
         :error-indices="errorIndices"
         :max-count="board.maxCount.value"
         :drop-hover="isBattingHover"
+        :drop-line="battingDropLine"
         @reorder="({ from, to }) => board.reorderBatting(from, to)"
         @pick="(id) => onPick(findPlayer(id))"
       />
@@ -142,6 +159,7 @@ import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
+import { useLineupCanvasFit } from '../../composables/useLineupCanvasFit';
 import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
@@ -159,6 +177,8 @@ const router = useRouter();
 const tabs = useTabsStore();
 const { hasPerm } = usePermission();
 const isMobile = useMediaQuery('(max-width: 768px)');
+// 桌面整卡拖动（#340）：精指针设备隐藏打线把手、整行可拖排序；触屏设备保留把手 + sortablejs
+const isFinePointer = useMediaQuery('(pointer: fine)');
 
 const eventId = computed(() => Number(route.params.eventId));
 const gameId = computed(() => {
@@ -183,6 +203,12 @@ const pending = ref(null);          // 点选点放：{ player }
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
+const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
+const boardEl = ref(null);          // 阵容板网格容器（画布自适应用）
+const pendingHintEl = ref(null);    // 待放置提示条（临时占据球场上方空间，判定时剔除）
+
+// 画布自适应（#344）：实测可用空间计算球场列宽上限；画布需要让位时把设置区压为两行
+const { formCompact, fieldCap } = useLineupCanvasFit({ boardEl, pendingHintEl, isMobile });
 
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
 const rosterHint = computed(() => {
@@ -263,13 +289,41 @@ const hoverPanelKind = computed(() =>
   dragHover.value?.kind === 'bench' || dragHover.value?.kind === 'pool' ? dragHover.value.kind : ''
 );
 
+// 桌面整卡拖动打线行的插入线（#340）：gap ∈ [0, others.length]，gap === from 即原位（不显示）；
+// beforeId = 线画在该行上方；gap 到末尾 = afterId 贴在最后一行下方
+const battingDropLine = computed(() => {
+  if (!isFinePointer.value || !dragSource.value?.isRow) return null;
+  const hover = dragHover.value;
+  if (hover?.kind !== 'batting' || hover.index == null) return null;
+  const b = board.value;
+  const playerId = dragSource.value.playerId;
+  const from = findRowIndex(b.rows.value, playerId);
+  if (from < 0) return null;
+  const others = b.rows.value.filter((r) => !isPlaceholder(r) && String(r.id) !== String(playerId));
+  const gap = hover.index;
+  if (gap > others.length || gap === from) return null;
+  return {
+    beforeId: others[gap]?.id ?? null,
+    afterId: gap === others.length ? others[others.length - 1]?.id ?? null : null,
+  };
+});
+
 const { bind, unbind, wasRecentDrag } = useLineupDrag({
+  onDragStart(el) {
+    // 记录来源：打线行整体拖动（桌面重排）与其它卡片在落点逻辑中分派
+    dragSource.value = {
+      isRow: el.classList.contains('lineup-batting__row'),
+      playerId: el.dataset.playerId ?? null,
+    };
+  },
   onDrop(el, target) {
     const playerId = el.dataset.playerId;
-    if (playerId == null) return;
-    const player = findPlayer(playerId);
-    if (!player) return;
-    handleDrop(player, target);
+    const player = playerId != null ? findPlayer(playerId) : null;
+    if (player) handleDrop(player, target);
+    dragSource.value = null;
+  },
+  onCancel() {
+    dragSource.value = null;
   },
   // 指针一移动即进入拖拽语境 → 退出待放置（纯长按原地释放 = 点击，不在此清，保证点选的切换/取消语义）
   onHover(target) {
@@ -288,8 +342,8 @@ function findPlayer(playerId) {
   );
 }
 
-// R2：三个组件均 expose 返回原生元素的方法
-function getLayout() {
+// R2：三个组件均 expose 返回原生元素的方法；draggedEl = 被拖元素（打线行 rect 列表需排除自身，供插入位 gap）
+function getLayout(draggedEl = null) {
   const battingEl = battingRef.value?.getListEl?.() ?? null;
   const benchEl = poolRef.value?.getBenchEl?.() ?? null;
   const poolEl = poolRef.value?.getPoolEl?.() ?? null;
@@ -298,9 +352,18 @@ function getLayout() {
     const r = el.getBoundingClientRect();
     return { left: r.left, top: r.top, width: r.width, height: r.height };
   };
+  const battingRowRects = battingEl
+    ? [...battingEl.querySelectorAll('.lineup-batting__row')]
+        .filter((rowEl) => rowEl !== draggedEl)
+        .map((rowEl) => {
+          const r = rowEl.getBoundingClientRect();
+          return { top: r.top, height: r.height };
+        })
+    : null;
   return {
     slotRects: fieldBoard.value?.getSlotRects?.() ?? [],
     battingRect: toRect(battingEl),
+    battingRowRects,
     benchRect: toRect(benchEl),
     poolRect: toRect(poolEl),
   };
@@ -308,6 +371,15 @@ function getLayout() {
 
 function handleDrop(player, target) {
   const b = board.value;
+  // 桌面整卡拖动打线行（#340）：落在打线列表 = 按插入位重排棒次（移动端行内排序仍走把手 + sortablejs）
+  if (target.kind === 'batting' && isFinePointer.value && dragSource.value?.isRow && target.index != null) {
+    const from = findRowIndex(b.rows.value, player.id);
+    if (from >= 0) {
+      b.reorderBatting(from, target.index);
+      showNotice(b);
+      return;
+    }
+  }
   if (target.kind === 'slot') b.placeAtSlot(player, target.code);
   else if (target.kind === 'batting') b.addToBatting(player);
   else if (target.kind === 'bench') {
@@ -790,7 +862,8 @@ onMounted(async () => {
   }
   await nextTick();
   // F18：选择器委托绑定一次即可（interactjs 按选择器委托监听，覆盖后续动态渲染的卡片）；
-  // 打线行亦可拖起（拖到卡槽=落位、拖离所有区域=移出打线），行内把手由 sortablejs 接管（ignoreFrom）
+  // 打线行亦可拖起（拖到卡槽=落位、拖离所有区域=移出打线）；桌面整卡拖动 = 按插入位重排棒次（#340），
+  // 行内把手（移动端）由 sortablejs 接管（ignoreFrom）
   bind(['.lineup-card', '.lineup-batting__row'], getLayout);
   document.addEventListener('click', onDocClick);
 });

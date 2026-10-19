@@ -12,9 +12,15 @@
   background: rgba(103, 194, 58, 0.12); color: #529b2e; font-size: 13px;
 }
 
-/* 球场一屏自适应：列宽由「屏内可用高度」反推上限（球场高 = 宽 × 470/400 ≤ 100vh − 445，445 为页头/表单/队伍切换等上方固定占用）
-   → 全部守位卡槽一屏可见：矮屏自动变小、高屏自动变大；右侧两列设上限防高屏过宽，整版居中 */
-.lineup-board { display: grid; grid-template-columns: minmax(300px, calc((100vh - 445px) * 400 / 470)) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
+/* 球场自适应（#344）：列宽上限由页面实测「球场顶部 → 视口底部」的可用高度与容器宽度计算
+   （useLineupCanvasFit / utils/lineupCanvasFit，经 --lineup-field-cap 下发）；未测量前用 calc 兜底，
+   常量 = 页头与表单等上方占用 + 底部留白。右侧两列设上限防高屏过宽，整版居中 */
+.lineup-board { display: grid; grid-template-columns: minmax(300px, var(--lineup-field-cap, calc((100vh - 435px) * 400 / 470))) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
+
+/* 设置区条件压缩：仅在画布需要让位时（球场上限 < 480px 且高度受限）由页面加 form-compact 切换为两行 */
+.live-game-lineup-board.form-compact .setup-form .el-form-item { margin-bottom: 10px; }
+.live-game-lineup-board.form-compact .el-divider--horizontal { margin: 12px 0; }
+.live-game-lineup-board.form-compact .team-switch { margin: 4px 0 8px; }
 
 /* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中） */
 .lineup-field { position: relative; width: 100%; }
@@ -26,10 +32,11 @@
 .field-base { fill: #fff; stroke: #8a5a2b; }
 .field-mound { fill: #c97f43; stroke: #fff; stroke-width: 1; }
 
-/* 卡槽：小正方形（用户反馈）；空槽显示代号+中文，已落位只放卡片、不显示位置文字 */
+/* 卡槽：小正方形（用户反馈）；空槽显示代号+中文，已落位只放卡片、不显示位置文字。
+   18.5% 封顶（= 最紧行距 76 单位 − 余量）：极小球场（窄屏移动端）随场地等比缩小，永不重叠 */
 .lineup-slot {
   position: absolute; transform: translate(-50%, -50%);
-  width: clamp(56px, 15%, 72px); aspect-ratio: 1 / 1; padding: 3px; box-sizing: border-box;
+  width: min(clamp(56px, 15%, 72px), 18.5%); aspect-ratio: 1 / 1; padding: 3px; box-sizing: border-box;
   border: 2px dashed rgba(255, 255, 255, 0.85); border-radius: 8px;
   background: rgba(0, 0, 0, 0.18); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
@@ -91,6 +98,15 @@ body.lineup-dragging .lineup-slot--filled:not(.is-error) { border-color: #409eff
 .lineup-batting__row.is-error { border-color: #f56c6c; background: #fef0f0; }
 .lineup-batting__handle { width: 14px; height: 18px; color: #909399; cursor: grab; }
 .lineup-batting__handle:hover { color: #409eff; }
+
+/* 桌面整卡拖动排序（#340）：精指针设备隐藏把手、整行可拖；插入线标记松手后的落点。
+   触屏笔记本主指针为 fine、走同一路径 → 行补 touch-action: none，防触摸滚动抢占拖动（移动端 coarse 不受影响） */
+@media (pointer: fine) {
+  .lineup-batting__handle { display: none; }
+  .lineup-batting__row { grid-template-columns: auto 1fr auto; cursor: grab; touch-action: none; }
+}
+.lineup-batting__row.is-drop-before { box-shadow: 0 -3px 0 0 #67c23a; }
+.lineup-batting__row.is-drop-after { box-shadow: 0 3px 0 0 #67c23a; }
 .lineup-batting__order { font-weight: 700; color: #409eff; white-space: nowrap; }
 .lineup-batting__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lineup-batting__number { color: #409eff; font-weight: 600; white-space: nowrap; }

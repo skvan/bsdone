@@ -59,8 +59,14 @@ public class EarnedRunReconstructionService {
         playRepository.deleteByTenantIdAndGameIdAndInningAndHalf(
                 tenantId, gameId, inning, half);
         persistReconstruction(tenantId, gameId, inning, half, operatorId, plays, result);
-        applyPitcherStatDeltas(tenantId, gameId, fieldingTeamId, oldDecisions, result.decisions());
-        return result;
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals =
+                applyPitcherStatDeltas(tenantId, gameId, fieldingTeamId, oldDecisions, result.decisions());
+        return result.withPitcherAbsoluteTotals(absoluteTotals);
+    }
+
+    /** 该场是否已有 ER 引擎事件；按 gameId 全局唯一判断，避免换赛事/租户后守卫失效。 */
+    public boolean hasEngineData(long gameId) {
+        return gameId > 0 && playRepository.existsByGameId(gameId);
     }
 
     @Transactional
@@ -117,7 +123,7 @@ public class EarnedRunReconstructionService {
                 tenantId, gameId, playIds);
     }
 
-    private void applyPitcherStatDeltas(
+    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> applyPitcherStatDeltas(
             long tenantId,
             long gameId,
             Long fieldingTeamId,
@@ -135,9 +141,6 @@ public class EarnedRunReconstructionService {
                     decision.status() == EarnedRunStatus.EARNED ? 1 : 0,
                     decision.status() == EarnedRunStatus.UNEARNED ? 1 : 0,
                     decision.status() == EarnedRunStatus.PENDING ? 1 : 0);
-        }
-        if (deltas.isEmpty()) {
-            return;
         }
 
         Map<Long, GamePlayerStat> pitcherStats = new HashMap<>();
@@ -162,6 +165,18 @@ public class EarnedRunReconstructionService {
             stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + delta[3]));
             gamePlayerStatRepository.save(stat);
         }
+
+        // 返回全投手绝对值（含本次未触及的投手），供前端幂等覆盖展示。
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals = new HashMap<>();
+        for (Map.Entry<Long, GamePlayerStat> entry : pitcherStats.entrySet()) {
+            GamePlayerStat stat = entry.getValue();
+            absoluteTotals.put(entry.getKey(), new EarnedRunReconstructionResult.PitcherRunTotals(
+                    valueOrZero(stat.getPitchR()),
+                    valueOrZero(stat.getEr()),
+                    valueOrZero(stat.getUnearnedR()),
+                    valueOrZero(stat.getPendingR())));
+        }
+        return absoluteTotals;
     }
 
     /**

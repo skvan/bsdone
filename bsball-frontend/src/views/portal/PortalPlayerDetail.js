@@ -13,6 +13,7 @@ import { DEFAULT_AVATAR_SVG_PATH as O } from '../../utils/placeholderAssets';
 import Q from '../../components/admin/PlayerDetailContent.js';
 import { useDetailLoad as W } from '../../composables/useDetailLoad';
 import '../../styles/legacy/portal-player-detail.css';
+import { extractShareSource } from '../../utils/shareSource';
 var X={
   class:"portal-player-detail"
 }
@@ -21,6 +22,13 @@ var X={
 }
 ,Z={
   class:"player-claim-banner__text"
+}
+// ---- 微信分享回流横幅（Issue #343，手工补丁） ----
+,shareBannerCls={
+  key:"share-banner",class:"share-landing-banner"
+}
+,shareBannerTextCls={
+  class:"share-landing-banner__text"
 }
 ,ee=L({
   __name:"PlayerDetail",setup(ae){
@@ -40,6 +48,16 @@ var X={
       return l?.teamId?(a.value=(await y(`/api/team/${l.teamId}`)).data??null,a.value?.leagueId?u.value=(await y(`/api/league/${a.value.leagueId}`)).data??null:u.value=null):(a.value=null,u.value=null),s?(c.value=[],p.value=[]):(c.value=[],p.value=[]),l
     }
     ),d=o(!1);
+    // ---- 微信分享回流横幅（Issue #343，手工补丁） ----
+    const shareFrom = extractShareSource(typeof window !== "undefined" ? window.location.search : "");
+    const shareBannerClosed = o(false);
+    try { shareBannerClosed.value = sessionStorage.getItem("bs-share-landing-dismissed") === "1"; } catch {}
+    function dismissShareBanner() {
+      shareBannerClosed.value = true;
+      try { sessionStorage.setItem("bs-share-landing-dismissed", "1"); } catch {}
+    }
+    function goShareHome() { A.push({ name: "PortalHome", params: { tenantCode: i.params.tenantCode } }); }
+    function goShareLearn() { A.push({ name: "PortalIntro" }); }
     async function B(){
       if(t.value){
         if(!g.user){
@@ -77,7 +95,27 @@ var X={
     }
     ),(s,m)=>{
       const l=z,R=M,T=$;
-      return n(),I("div",X,[e(g).user&&e(t)&&!e(t).userId?(n(),I("div",Y,[V("span",Z,_(e(r)("player.claim.prompt")),1),b(l,{
+      return n(),I("div",X,[
+        // ---- 微信分享回流横幅（Issue #343，手工补丁） ----
+        shareFrom&&!shareBannerClosed.value?(n(),I("div",shareBannerCls,[V("span",shareBannerTextCls,_(e(r)("shareLanding.text")),1),b(z,{
+          type:"primary",link:"",size:"small",onClick:goShareHome
+        }
+        ,{
+          default:v(()=>[C(_(e(r)("shareLanding.home")),1)]),_:1
+        }
+        ),b(z,{
+          type:"primary",link:"",size:"small",onClick:goShareLearn
+        }
+        ,{
+          default:v(()=>[C(_(e(r)("shareLanding.learn")),1)]),_:1
+        }
+        ),b(z,{
+          link:"",size:"small",onClick:dismissShareBanner
+        }
+        ,{
+          default:v(()=>[C(_(e(r)("shareLanding.close")),1)]),_:1
+        }
+        )])):E("",!0),e(g).user&&e(t)&&!e(t).userId?(n(),I("div",Y,[V("span",Z,_(e(r)("player.claim.prompt")),1),b(l,{
         type:"primary",size:"small",loading:d.value,onClick:B
       }
       ,{

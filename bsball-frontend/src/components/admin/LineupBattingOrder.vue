@@ -10,7 +10,7 @@
         v-for="(row, index) in filledRows"
         :key="`p-${row.id}`"
         class="lineup-batting__row"
-        :class="{ 'is-error': errorIndices.includes(index) }"
+        :class="{ 'is-error': errorIndices.includes(index), 'is-drop-before': isDropBefore(row), 'is-drop-after': isDropAfter(row) }"
         :data-player-id="row.id"
         @click.stop="emit('pick', row.id)"
       >
@@ -37,11 +37,15 @@ const props = defineProps({
   maxCount: { type: Number, default: 10 },
   // 拖拽悬停在本区域（页面下发，用于「松手会落在这里」高亮）
   dropHover: { type: Boolean, default: false },
+  // 桌面整卡拖动：{ beforeId, afterId } 标记插入线画在哪一行（页面按 gap 计算下发）
+  dropLine: { type: Object, default: null },
 });
 const emit = defineEmits(['reorder', 'pick']);
 const listEl = ref(null);
 const filledRows = computed(() => props.rows.filter((r) => !isPlaceholder(r)));
 const filledCount = computed(() => filledRows.value.length);
+const isDropBefore = (row) => props.dropLine?.beforeId != null && String(props.dropLine.beforeId) === String(row.id);
+const isDropAfter = (row) => props.dropLine?.afterId != null && String(props.dropLine.afterId) === String(row.id);
 let sortable = null;
 
 onMounted(() => {

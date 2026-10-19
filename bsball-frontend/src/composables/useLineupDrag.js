@@ -8,12 +8,18 @@ const within = (x, y, r) =>
   r != null && x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
 
 /** 纯函数：指针落点 → 目标区域（卡槽优先，其次打线/替补/池）
- *  未落入任何可释放区域 = outside（负责人口径：拖离「选中区域」即移除，无需离开画布） */
+ *  未落入任何可释放区域 = outside（负责人口径：拖离「选中区域」即移除，无需离开画布）
+ *  batting 带插入位 gap（按「其余行」纵向中点计数，取 rect 时已由页面排除被拖行）；
+ *  无 battingRowRects（缺行信息）= index null（不参与重排） */
 export function resolveDropTarget(x, y, layout, tolerance = 1.2) {
-  const { slotRects = [], battingRect = null, benchRect = null, poolRect = null } = layout ?? {};
+  const { slotRects = [], battingRect = null, benchRect = null, poolRect = null, battingRowRects = null } = layout ?? {};
   const code = hitTestSlot(x, y, slotRects, tolerance);
   if (code) return { kind: 'slot', code };
-  if (within(x, y, battingRect)) return { kind: 'batting' };
+  if (within(x, y, battingRect)) {
+    // 严格越过某行中点才把 gap 计过该行 → gap ∈ [0, others.length]
+    const index = Array.isArray(battingRowRects) ? battingRowRects.filter((r) => y > r.top + r.height / 2).length : null;
+    return { kind: 'batting', index };
+  }
   if (within(x, y, benchRect)) return { kind: 'bench' };
   if (within(x, y, poolRect)) return { kind: 'pool' };
   return { kind: 'outside' };
@@ -25,7 +31,8 @@ export function resolveDropTarget(x, y, layout, tolerance = 1.2) {
 export const DRAG_START_DISTANCE = 12;
 
 /**
- * interactjs 绑定。elements 为可拖元素数组；getLayout() 在松手瞬间读取各区域 rect。
+ * interactjs 绑定。elements 为可拖元素数组；getLayout(draggedEl) 在拖起/松手瞬间读取各区域 rect，
+ * 入参为被拖元素（供打线行 rect 列表排除自身，算插入位 gap）。
  * onHover(target)：拖拽过程中指针当前悬停的落点（null = 无落点），供界面高亮「松手会落在哪」。
  */
 export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
@@ -38,9 +45,9 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
   // 滚动/改变窗口 → 区域 rect 变化，缓存作废（保证悬停高亮与松手落点一致）
   const invalidateLayout = () => { moveLayout = null; };
 
-  // 悬停去重：同一区域只在进入/离开时通知一次（避免每次 pointermove 都触发重渲染）
+  // 悬停去重：同一落点（区域 + 卡槽码 + 打线插入位）只在进入/离开时通知一次（避免每次 pointermove 都触发重渲染）
   function emitHover(target) {
-    const key = target ? `${target.kind}:${target.code ?? ''}` : '';
+    const key = target ? `${target.kind}:${target.code ?? ''}:${target.index ?? ''}` : '';
     if (key === lastHoverKey) return;
     lastHoverKey = key;
     onHover?.(target);
@@ -79,7 +86,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
               onDragStart?.(el);
             }
             el.style.transform = `translate(${el.dataset.dragX}px, ${el.dataset.dragY}px)`;
-            if (!moveLayout) moveLayout = getLayout?.() ?? null;
+            if (!moveLayout) moveLayout = getLayout?.(el) ?? null;
             const x = event.clientX ?? event.client?.x ?? 0;
             const y = event.clientY ?? event.client?.y ?? 0;
             emitHover(resolveDropTarget(x, y, moveLayout));
@@ -94,7 +101,7 @@ export function useLineupDrag({ onDragStart, onDrop, onCancel, onHover } = {}) {
             delete event.target.dataset.dragY;
             const x = event.clientX ?? event.client?.x ?? 0;
             const y = event.clientY ?? event.client?.y ?? 0;
-            const target = resolveDropTarget(x, y, getLayout?.());
+            const target = resolveDropTarget(x, y, getLayout?.(event.target));
             emitHover(null);
             // 未达起步阈值（小抖动 / 原地释放）= 点击：不吞浏览器 click、不触发落点动作
             if (!dragMoved) return;
