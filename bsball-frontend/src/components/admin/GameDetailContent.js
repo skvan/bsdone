@@ -19,6 +19,7 @@ import { resolveAtBats as La } from '../../utils/gamePlayerStat';
 import { isLegacyPositionLabel as wl } from '../../utils/gamePlayerStat';
 import { isPitcherFlag as ke } from '../../utils/gamePlayerStat';
 import { DEFAULT_PITCHER_FIELDS as Tl } from '../../utils/gameDetailFieldSettingsStorage';
+import GameDetailFieldingTable from './GameDetailFieldingTable.vue';
 import '../../styles/legacy/game-detail-content.css';
 function Nl(u){
   const ie=I("away"),O=m(()=>!0),Ge=m(()=>!0);
@@ -557,6 +558,7 @@ var Sl={
       t:qe,te:we
     }
     =bl();
+    const boxView=I("batting");
     function H(e,t){
       const l=`gameDetail.fieldTips.${e}.${t}`;
       return we(l)?String(qe(l)):""
@@ -625,11 +627,9 @@ var Sl={
     function Rt(){
       tt();
       const e=ee.value,t=te.value,l=Ve.value,d=ze.value;
-      if(!e||!t||!l||!d)return;
+      if(!e&&!t&&!l&&!d)return;
       const v=()=>{
-        const f=Te(e),a=Te(t),o=Te(l),x=Te(d);
-        if(!f||!a||!o||!x)return!1;
-        const X=[];
+        const f=e?Te(e):null,a=t?Te(t):null,o=l?Te(l):null,x=d?Te(d):null,X=[];
         function re(Z,We,me,$e){
           let V=!1;
           const pe=()=>{
@@ -655,10 +655,11 @@ var Sl={
           }
           )
         }
-        return re(f,e,a,t),re(o,l,x,d),et=()=>{
+        let hooked=!1;
+        return f&&a&&(re(f,e,a,t),hooked=!0),o&&x&&(re(o,l,x,d),hooked=!0),hooked&&(et=()=>{
           for(const Z of X)Z()
         }
-        ,!0
+        ),hooked
       }
       ,y=f=>{
         const a=setTimeout(()=>{
@@ -1571,7 +1572,7 @@ var Sl={
         }
         ]),role:"tab","aria-selected":g(z)==="home",onClick:t[9]||(t[9]=a=>xt("home"))
       }
-      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
+      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",{class:"gd-box-view-tabs"},[s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="batting"}]),onClick:()=>boxView.value="batting"},p(qe("gameDetail.batting"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="pitching"}]),onClick:()=>boxView.value="pitching"},p(qe("gameDetail.pitching"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="fielding"}]),onClick:()=>boxView.value="fielding"},p(qe("gameDetail.fielding"),1),3)])),c.game?.isSpecialResult||boxView.value!=="batting"?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
         key:0,ref_key:"awayBattersScrollRoot",ref:ee,class:L(["detail-table-block detail-table-block--batters",{
           "gd-mobile-team-panel--hidden":St.value
         }
@@ -1787,8 +1788,8 @@ var Sl={
       ,[s("span",ti,n(a.type),1),t[29]||(t[29]=s("span",{
         class:"batting-line-sep"
       }
-      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult?_("",!0):(r(),i("div",li,[s("div",ri,[g(Tt)?(r(),i("div",{
-        key:0,ref_key:"awayPitchersScrollRoot",ref:Ve,class:L(["detail-table-block",{
+      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="pitching"?_("",!0):(r(),i("div",li,[s("div",ri,[g(Tt)?(r(),i("div",{
+        key:0,ref_key:"awayPitchersScrollRoot",ref:Ve,class:L(["detail-table-block","detail-table-block--pitchers",{
           "gd-mobile-team-panel--hidden":St.value
         }
         ])
@@ -1848,7 +1849,7 @@ var Sl={
         ,1032,["label","min-width"]))),128))]),_:1
       }
       ,8,["data","highlight-current-row","row-key","current-row-key","row-class-name"]))],4)],2)):_("",!0),g(Nt)?(r(),i("div",{
-        key:1,ref_key:"homePitchersScrollRoot",ref:ze,class:L(["detail-table-block",{
+        key:1,ref_key:"homePitchersScrollRoot",ref:ze,class:L(["detail-table-block","detail-table-block--pitchers",{
           "gd-mobile-team-panel--hidden":Bt.value
         }
         ])
@@ -1907,7 +1908,7 @@ var Sl={
         }
         ,1032,["label","min-width"]))),128))]),_:1
       }
-      ,8,["data","highlight-current-row","row-key","current-row-key","row-class-name"]))],4)],2)):_("",!0)])])),S.value&&qa.value?(r(),i("div",{
+      ,8,["data","highlight-current-row","row-key","current-row-key","row-class-name"]))],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="fielding"?_("",!0):(r(),i("div",{class:"gd-fielding-block"},[s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.awayTeamId,"team-name":N.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"]),s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.homeTeamId,"team-name":T.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"])])),S.value&&qa.value?(r(),i("div",{
         key:4,class:"gd-desktop-meta-footer",style:Y(Qa.value)
       }
       ,[s("div",Si,[(r(!0),i(b,null,P(Ga.value,(a,o)=>(r(),i(b,{
