@@ -1062,7 +1062,9 @@ var Sl={
       return[...e,jt(e)]
     }
     );
-    function Zt(e){
+    // 勿命名为 Zt：顶部 getCurrentInstance 别名为 Zt；函数声明提升会遮蔽导入，
+    // 压缩后若仍同名，Zt() 会变成无参汇总函数 → e 为 undefined → for...of 抛 TypeError，setup 崩溃。
+    function buildExtraBaseSummary(e){
       const t=[],l={
         "2B":[],"3B":[],HR:[],IPHR:[]
       }
@@ -1081,7 +1083,7 @@ var Sl={
       }
       return t
     }
-    const Yt=m(()=>Zt(ut.value)),Jt=m(()=>Zt(dt.value));
+    const Yt=m(()=>buildExtraBaseSummary(ut.value)),Jt=m(()=>buildExtraBaseSummary(dt.value));
     function Qt(e){
       return c.stats.find(t=>t.teamId===e.teamId&&t.playerId===e.playerId&&!ke(t))
     }
