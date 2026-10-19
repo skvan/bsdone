@@ -19,9 +19,10 @@
     --ink: #f4f6fb;
     --muted: #a9b6cc;
     --line: rgba(255,255,255,.12);
+    --bsd-bar-h: 46px;
   }
 
-  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  html { scroll-behavior: smooth; scroll-padding-top: calc(76px + var(--bsd-bar-h)); }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -42,9 +43,57 @@
 
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
+  /* ============ BSD TOP BAR ============ */
+  .bsd-bar {
+    position: fixed; inset: 0 0 auto 0; z-index: 60;
+    height: var(--bsd-bar-h);
+    background: linear-gradient(90deg, #07162c 0%, #12345c 50%, #07162c 100%);
+    border-bottom: 1px solid rgba(232,197,71,.35);
+    box-shadow: 0 2px 14px rgba(0,0,0,.38);
+  }
+  .bsd-bar-inner {
+    max-width: 1120px; height: 100%; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .bsd-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+  .bsd-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(180deg, var(--gold-light), var(--gold-dark));
+    color: var(--navy-950); font-size: .72rem; font-weight: 900; letter-spacing: .04em;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  }
+  .bsd-name { line-height: 1.15; }
+  .bsd-name b { display: block; font-size: .9rem; font-weight: 800; letter-spacing: .04em; color: var(--ink); }
+  .bsd-name span { display: block; font-size: .6rem; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+  .bsd-tagline {
+    flex: 1; text-align: center; white-space: nowrap;
+    font-size: .82rem; letter-spacing: .12em; color: rgba(244,246,251,.78);
+  }
+  .bsd-tagline b { color: var(--gold-light); font-weight: 700; }
+  .bsd-cta {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 18px; border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold-light), var(--gold-dark));
+    color: var(--navy-950); text-decoration: none;
+    font-size: .82rem; font-weight: 900; letter-spacing: .04em;
+    box-shadow: 0 4px 14px rgba(232,197,71,.3);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .bsd-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,197,71,.5); }
+  @media (max-width: 760px) {
+    :root { --bsd-bar-h: 44px; }
+    .bsd-bar-inner { padding: 0 16px; gap: 10px; }
+    .bsd-mark { width: 28px; height: 28px; }
+    .bsd-name b { font-size: .84rem; }
+    .bsd-name span { display: none; }
+    .bsd-tagline { display: none; }
+    .bsd-cta { margin-left: auto; height: 36px; padding: 0 14px; font-size: .78rem; }
+  }
+
   /* ============ NAV ============ */
   .nav {
-    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    position: fixed; inset: var(--bsd-bar-h) 0 auto 0; z-index: 50;
     background: rgba(8,26,51,.82);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
@@ -77,7 +126,7 @@
     min-height: 100svh;
     display: flex; flex-direction: column; justify-content: center;
     text-align: center;
-    padding: 104px 24px 210px;
+    padding: calc(104px + var(--bsd-bar-h)) 24px 210px;
     background:
       radial-gradient(1100px 520px at 50% -10%, rgba(20,56,98,.9), transparent 70%),
       linear-gradient(180deg, var(--navy-950) 0%, var(--navy-800) 62%, var(--red-dark) 130%);
@@ -446,6 +495,21 @@
     </filter>
   </defs>
 </svg>
+
+<!-- BSD TOP BAR -->
+<div class="bsd-bar" role="region" aria-label="BSD 棒垒球数据平台推广">
+  <div class="bsd-bar-inner">
+    <a class="bsd-brand" href="/bs-ball-next/" aria-label="了解 BSD 棒垒球数据平台">
+      <span class="bsd-mark">BSD</span>
+      <span class="bsd-name">
+        <b>棒垒球数据平台</b>
+        <span>Baseball &amp; Softball Database</span>
+      </span>
+    </a>
+    <div class="bsd-tagline">实时记录 · 深度统计 · <b>免费直播</b></div>
+    <a class="bsd-cta" href="/bs-ball-next/">了解平台 <span aria-hidden="true">→</span></a>
+  </div>
+</div>
 
 <!-- NAV -->
 <header class="nav">
