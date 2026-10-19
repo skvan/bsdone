@@ -1,6 +1,6 @@
 // GameDetailContent —— 行为保真移植自编译产物 GameDetailContent-DwEyn9gG（recon-gen-b3.mjs 生成，勿手改）
 // 别名身份经 recon-probe2.mjs 运行时探针实证；body 为编译产物正文原样
-import { nextTick as Q, withModifiers as Fe, createElementBlock as i, normalizeStyle as Y, defineComponent as ul, createTextVNode as p, computed as m, toDisplayString as n, createElementVNode as s, unref as g, normalizeClass as L, vShow as Na, createBlock as B, ref as I, createVNode as k, withDirectives as Sa, openBlock as r, withCtx as h, onUnmounted as Ba, Fragment as b, resolveComponent as hl, watch as se, onMounted as Ia, renderList as P, createCommentVNode as _ } from 'vue';
+import { nextTick as Q, withModifiers as Fe, createElementBlock as i, normalizeStyle as Y, defineComponent as ul, createTextVNode as p, computed as m, toDisplayString as n, createElementVNode as s, unref as g, normalizeClass as L, vShow as Na, createBlock as B, ref as I, createVNode as k, withDirectives as Sa, openBlock as r, withCtx as h, onUnmounted as Ba, Fragment as b, resolveComponent as hl, watch as se, onMounted as Ia, renderList as P, createCommentVNode as _, getCurrentInstance as Zt } from 'vue';
 import { ArrowDown as Ta, Trophy as Pa } from '@element-plus/icons-vue';
 import { ElIcon as dl, ElTableColumn as cl, ElTable as ml, ElTooltip as vl } from 'element-plus';
 import { useI18n as bl } from 'vue-i18n';
@@ -558,7 +558,11 @@ var Sl={
       t:qe,te:we
     }
     =bl();
-    const boxView=I("batting");
+    const boxView=I("batting"),i18nGlobal=Zt()?.appContext?.config?.globalProperties;
+    function tabLabel(e){
+      const t=i18nGlobal?.$t?.(e)??qe(e);
+      return typeof t=="string"?t:String(t?.value??e)
+    }
     function H(e,t){
       const l=`gameDetail.fieldTips.${e}.${t}`;
       return we(l)?String(qe(l)):""
@@ -1572,7 +1576,7 @@ var Sl={
         }
         ]),role:"tab","aria-selected":g(z)==="home",onClick:t[9]||(t[9]=a=>xt("home"))
       }
-      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",{class:"gd-box-view-tabs"},[s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="batting"}]),onClick:()=>boxView.value="batting"},p(qe("gameDetail.batting"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="pitching"}]),onClick:()=>boxView.value="pitching"},p(qe("gameDetail.pitching"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="fielding"}]),onClick:()=>boxView.value="fielding"},p(qe("gameDetail.fielding"),1),3)])),c.game?.isSpecialResult||boxView.value!=="batting"?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
+      ,[s("span",ws,n(T.value||"主队"),1)],10,ks)]))],64)),c.game?.isSpecialResult?_("",!0):(r(),i("div",{class:"gd-box-view-tabs"},[s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="batting"}]),onClick:()=>boxView.value="batting"},p(tabLabel("gameDetail.batting"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="pitching"}]),onClick:()=>boxView.value="pitching"},p(tabLabel("gameDetail.pitching"),1),3),s("button",{type:"button",class:L(["gd-box-view-tab",{"is-active":boxView.value==="fielding"}]),onClick:()=>boxView.value="fielding"},p(tabLabel("gameDetail.fielding"),1),3)])),c.game?.isSpecialResult||boxView.value!=="batting"?_("",!0):(r(),i("div",Ts,[s("div",Ns,[g(Tt)?(r(),i("div",{
         key:0,ref_key:"awayBattersScrollRoot",ref:ee,class:L(["detail-table-block detail-table-block--batters",{
           "gd-mobile-team-panel--hidden":St.value
         }

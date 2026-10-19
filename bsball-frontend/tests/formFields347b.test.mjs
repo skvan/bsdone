@@ -69,6 +69,6 @@ test('门户比赛详情具备打者/投手/守备切换', () => {
   assert.ok(detail.includes('gameDetail.fielding'), '守备标签未使用词典');
   assert.ok(css.includes('.gd-box-view-tab'), '缺少视图标签样式');
   for (const key of ['batting', 'pitching', 'fielding']) {
-    assert.ok(detail.includes(`p(qe("gameDetail.${key}"),1),3)`), `${key} 标签缺少 text/class patch flag`);
+    assert.ok(detail.includes(`p(tabLabel("gameDetail.${key}"),1),3)`), `${key} 标签缺少 text/class patch flag`);
   }
 });
