@@ -3,3 +3,4 @@
 .gd-box-view-tab[data-v-764190f8]{cursor:pointer;font:inherit;color:var(--el-text-color-secondary);background:var(--portal-card-bg,var(--el-bg-color,#fff));border:1px solid var(--el-border-color);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;line-height:1.4}
 .gd-box-view-tab.is-active[data-v-764190f8]{color:var(--el-color-primary);border-color:var(--el-color-primary);background:var(--el-color-primary-light-9)}
 .gd-box-view-tab[data-v-764190f8]:focus-visible{outline:2px solid var(--el-color-primary);outline-offset:1px}
+.gd-pitchers-section[data-v-764190f8]{margin-top:16px}
