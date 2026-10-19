@@ -675,6 +675,9 @@ public class GameService {
         stat.setBb(part.getBb());
         stat.setIbb(part.getIbb());
         stat.setHbp(part.getHbp());
+        if (part.getIo() != null) {
+            stat.setIo(part.getIo());
+        }
         stat.setCs(part.getCs());
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
@@ -693,10 +696,22 @@ public class GameService {
             }
         }
         stat.setPitchH(part.getPitchH());
+        if (part.getPitchDoubles() != null) {
+            stat.setPitchDoubles(part.getPitchDoubles());
+        }
+        if (part.getPitchTriples() != null) {
+            stat.setPitchTriples(part.getPitchTriples());
+        }
         stat.setPitchBbHp(part.getPitchBbHp());
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(Integer.valueOf(part.getPitchInsideParkHr() != null ? part.getPitchInsideParkHr() : 0));
+        if (part.getPitchSh() != null) {
+            stat.setPitchSh(part.getPitchSh());
+        }
+        if (part.getPitchSf() != null) {
+            stat.setPitchSf(part.getPitchSf());
+        }
         stat.setPitchPa(part.getPitchPa());
         stat.setPitchBf(part.getPitchBf());
         stat.setPitchAb(part.getPitchAb());
@@ -704,6 +719,9 @@ public class GameService {
         stat.setPitchBb(part.getPitchBb());
         stat.setPitchIbb(part.getPitchIbb());
         stat.setPitchHbp(part.getPitchHbp());
+        if (part.getPitchIo() != null) {
+            stat.setPitchIo(part.getPitchIo());
+        }
         stat.setWp(part.getWp());
         stat.setBk(part.getBk());
         stat.setGo(part.getGo());
@@ -829,10 +847,19 @@ public class GameService {
         stat.setTriples(part.getTriples());
         stat.setHr(part.getHr());
         stat.setInsideParkHr(part.getInsideParkHr());
+        if (part.getGdp() != null) {
+            stat.setGdp(part.getGdp());
+        }
         stat.setSh(part.getSh());
         stat.setSf(part.getSf());
         stat.setBb(part.getBb());
+        if (part.getIbb() != null) {
+            stat.setIbb(part.getIbb());
+        }
         stat.setHbp(part.getHbp());
+        if (part.getIo() != null) {
+            stat.setIo(part.getIo());
+        }
         stat.setCs(part.getCs());
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
@@ -845,18 +872,69 @@ public class GameService {
             stat.setEr(part.getEr());
         }
         stat.setPitchH(part.getPitchH());
+        if (part.getPitchDoubles() != null) {
+            stat.setPitchDoubles(part.getPitchDoubles());
+        }
+        if (part.getPitchTriples() != null) {
+            stat.setPitchTriples(part.getPitchTriples());
+        }
         stat.setPitchBbHp(part.getPitchBbHp());
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(part.getPitchInsideParkHr());
+        if (part.getPitchSh() != null) {
+            stat.setPitchSh(part.getPitchSh());
+        }
+        if (part.getPitchSf() != null) {
+            stat.setPitchSf(part.getPitchSf());
+        }
         stat.setPitchPa(part.getPitchPa());
         stat.setPitchBf(part.getPitchBf());
         stat.setNp(part.getNp());
+        if (part.getPitchBb() != null) {
+            stat.setPitchBb(part.getPitchBb());
+        }
+        if (part.getPitchIbb() != null) {
+            stat.setPitchIbb(part.getPitchIbb());
+        }
+        if (part.getPitchHbp() != null) {
+            stat.setPitchHbp(part.getPitchHbp());
+        }
+        if (part.getPitchIo() != null) {
+            stat.setPitchIo(part.getPitchIo());
+        }
         stat.setWp(part.getWp());
         stat.setBk(part.getBk());
+        if (part.getGo() != null) {
+            stat.setGo(part.getGo());
+        }
+        if (part.getFo() != null) {
+            stat.setFo(part.getFo());
+        }
+        if (part.getGs() != null) {
+            stat.setGs(part.getGs());
+        }
         stat.setPo(part.getPo());
         stat.setA(part.getA());
         stat.setTc(part.getTc());
+        if (part.getFieldingGs() != null) {
+            stat.setFieldingGs(part.getFieldingGs());
+        }
+        if (part.getDefInn() != null) {
+            stat.setDefInn(part.getDefInn());
+        }
+        if (part.getDp() != null) {
+            stat.setDp(part.getDp());
+        }
+        if (part.getPb() != null) {
+            stat.setPb(part.getPb());
+        }
+        if (part.getCatcherSb() != null) {
+            stat.setCatcherSb(part.getCatcherSb());
+        }
+        if (part.getCatcherCs() != null) {
+            stat.setCatcherCs(part.getCatcherCs());
+        }
     }
 
     private void assertGameWritable(Game game) {

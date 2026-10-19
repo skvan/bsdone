@@ -32,11 +32,16 @@ public class PitchingLeaderDTO {
     private Integer pitchBf;
     private Integer np;
     private Integer pitchH;
+    private Integer pitchDoubles;
+    private Integer pitchTriples;
     private Integer pitchHr;
     private Integer pitchInsideParkHr;
+    private Integer pitchSh;
+    private Integer pitchSf;
     private Integer pitchBb;
     private Integer pitchIbb;
     private Integer pitchHbp;
+    private Integer pitchIo;
     private Integer pitchSo;
     private Integer wp;
     private Integer bk;
@@ -692,6 +697,46 @@ public class PitchingLeaderDTO {
     }
 
     @Generated
+    public Integer getPitchDoubles() {
+        return this.pitchDoubles;
+    }
+
+    public void setPitchDoubles(Integer pitchDoubles) {
+        this.pitchDoubles = pitchDoubles;
+    }
+
+    public Integer getPitchTriples() {
+        return this.pitchTriples;
+    }
+
+    public void setPitchTriples(Integer pitchTriples) {
+        this.pitchTriples = pitchTriples;
+    }
+
+    public Integer getPitchSh() {
+        return this.pitchSh;
+    }
+
+    public void setPitchSh(Integer pitchSh) {
+        this.pitchSh = pitchSh;
+    }
+
+    public Integer getPitchSf() {
+        return this.pitchSf;
+    }
+
+    public void setPitchSf(Integer pitchSf) {
+        this.pitchSf = pitchSf;
+    }
+
+    public Integer getPitchIo() {
+        return this.pitchIo;
+    }
+
+    public void setPitchIo(Integer pitchIo) {
+        this.pitchIo = pitchIo;
+    }
+
     public String toString() {
         return "PitchingLeaderDTO(playerId=" + this.getPlayerId() + ", playerName=" + this.getPlayerName() + ", teamId=" + this.getTeamId() + ", teamName=" + this.getTeamName() + ", position=" + this.getPosition() + ", number=" + this.getNumber() + ", gp=" + this.getGp() + ", gs=" + this.getGs() + ", svo=" + this.getSvo() + ", cg=" + this.getCg() + ", pg=" + this.getPg() + ", w=" + this.getW() + ", l=" + this.getL() + ", sv=" + this.getSv() + ", hld=" + this.getHld() + ", ip=" + this.getIp() + ", whip=" + this.getWhip() + ", era=" + this.getEra() + ", pitchPa=" + this.getPitchPa() + ", pitchBf=" + this.getPitchBf() + ", np=" + this.getNp() + ", pitchH=" + this.getPitchH() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", pitchBb=" + this.getPitchBb() + ", pitchIbb=" + this.getPitchIbb() + ", pitchHbp=" + this.getPitchHbp() + ", pitchSo=" + this.getPitchSo() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", pitchR=" + this.getPitchR() + ", er=" + this.getEr() + ", go=" + this.getGo() + ", fo=" + this.getFo() + ", goFo=" + this.getGoFo() + ")";
     }

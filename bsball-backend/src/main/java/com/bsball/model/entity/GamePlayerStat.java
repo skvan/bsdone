@@ -119,6 +119,9 @@ extends BaseEntity {
     @Comment(value="\u89e6\u8eab")
     private Integer hbp;
     @Column(columnDefinition="integer")
+    @Comment(value="\u59a8\u963b\u4e0a\u5792\uff08IO\uff09")
+    private Integer io;
+    @Column(columnDefinition="integer")
     @Comment(value="\u76d7\u5792\u88ab\u6740")
     private Integer cs;
     @JsonDeserialize(using=BoolToIntDeserializer.class)
@@ -142,6 +145,12 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u88ab\u5b89\u6253")
     private Integer pitchH;
+    @Column(name="pitch_doubles", columnDefinition="integer")
+    @Comment(value="\u88ab\u4e8c\u5792\u6253")
+    private Integer pitchDoubles;
+    @Column(name="pitch_triples", columnDefinition="integer")
+    @Comment(value="\u88ab\u4e09\u5792\u6253")
+    private Integer pitchTriples;
     @Column(columnDefinition="integer")
     @Comment(value="\u56db\u574f+\u89e6\u8eab")
     private Integer pitchBbHp;
@@ -154,6 +163,12 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u88ab\u573a\u5185\u5168\u5792\u6253\uff08IPHR\uff0c\u5bf9\u6295\u624b\u5355\u72ec\u7edf\u8ba1\uff09")
     private Integer pitchInsideParkHr;
+    @Column(name="pitch_sh", columnDefinition="integer")
+    @Comment(value="\u88ab\u727a\u7272\u89e6\u51fb")
+    private Integer pitchSh;
+    @Column(name="pitch_sf", columnDefinition="integer")
+    @Comment(value="\u88ab\u727a\u7272\u9ad8\u98de")
+    private Integer pitchSf;
     @Column(columnDefinition="integer")
     @Comment(value="\u5148\u53d1")
     private Integer gs;
@@ -199,6 +214,9 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u89e6\u8eab")
     private Integer pitchHbp;
+    @Column(name="pitch_io", columnDefinition="integer")
+    @Comment(value="\u88ab\u59a8\u963b\u4e0a\u5792\uff08IO\uff09")
+    private Integer pitchIo;
     @Column(columnDefinition="integer")
     @Comment(value="\u66b4\u6295")
     private Integer wp;
@@ -970,6 +988,66 @@ extends BaseEntity {
     @Generated
     public void setCatcherCs(Integer catcherCs) {
         this.catcherCs = catcherCs;
+    }
+
+    @Generated
+    public Integer getIo() {
+        return this.io;
+    }
+
+    @Generated
+    public void setIo(Integer io) {
+        this.io = io;
+    }
+
+    @Generated
+    public Integer getPitchDoubles() {
+        return this.pitchDoubles;
+    }
+
+    @Generated
+    public void setPitchDoubles(Integer pitchDoubles) {
+        this.pitchDoubles = pitchDoubles;
+    }
+
+    @Generated
+    public Integer getPitchTriples() {
+        return this.pitchTriples;
+    }
+
+    @Generated
+    public void setPitchTriples(Integer pitchTriples) {
+        this.pitchTriples = pitchTriples;
+    }
+
+    @Generated
+    public Integer getPitchSh() {
+        return this.pitchSh;
+    }
+
+    @Generated
+    public void setPitchSh(Integer pitchSh) {
+        this.pitchSh = pitchSh;
+    }
+
+    @Generated
+    public Integer getPitchSf() {
+        return this.pitchSf;
+    }
+
+    @Generated
+    public void setPitchSf(Integer pitchSf) {
+        this.pitchSf = pitchSf;
+    }
+
+    @Generated
+    public Integer getPitchIo() {
+        return this.pitchIo;
+    }
+
+    @Generated
+    public void setPitchIo(Integer pitchIo) {
+        this.pitchIo = pitchIo;
     }
 
     @Generated

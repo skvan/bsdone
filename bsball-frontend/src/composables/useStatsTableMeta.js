@@ -216,7 +216,7 @@ export function useStatsTableMeta() {
   const { t: e } = Dt();
   le();
   const { te: t } = Dt();
-  const a = { pitchSo: 'so', pitchBb: 'bb', pitchH: 'h', pitchHr: 'hr', pitchR: 'r' };
+  const a = { pitchSo: 'so', pitchBb: 'bb', pitchIbb: 'ibb', pitchHbp: 'hbp', pitchH: 'h', pitchHr: 'hr', pitchR: 'r' };
   function o(h) {
     const P = a[h] ?? h;
     const T = 'stats.colEn.' + P;

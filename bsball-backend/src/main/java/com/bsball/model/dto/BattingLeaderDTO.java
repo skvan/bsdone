@@ -36,6 +36,7 @@ public class BattingLeaderDTO {
     private Integer bb;
     private Integer ibb;
     private Integer hbp;
+    private Integer io;
     private Integer cs;
     private Double avg;
     private Double obp;
@@ -598,6 +599,14 @@ public class BattingLeaderDTO {
     }
 
     @Generated
+    public Integer getIo() {
+        return this.io;
+    }
+
+    public void setIo(Integer io) {
+        this.io = io;
+    }
+
     public String toString() {
         return "BattingLeaderDTO(playerId=" + this.getPlayerId() + ", playerName=" + this.getPlayerName() + ", teamId=" + this.getTeamId() + ", teamName=" + this.getTeamName() + ", position=" + this.getPosition() + ", number=" + this.getNumber() + ", gp=" + this.getGp() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", rbi=" + this.getRbi() + ", h=" + this.getH() + ", singles=" + this.getSingles() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", tb=" + this.getTb() + ", so=" + this.getSo() + ", sb=" + this.getSb() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", avg=" + this.getAvg() + ", obp=" + this.getObp() + ", slg=" + this.getSlg() + ", sbPct=" + this.getSbPct() + ")";
     }

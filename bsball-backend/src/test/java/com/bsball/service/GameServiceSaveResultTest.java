@@ -364,6 +364,35 @@ class GameServiceSaveResultTest {
         assertEquals(Integer.valueOf(6), pitcher.getPitchR());
     }
 
+    @Test
+    @DisplayName("saveResult：纸质表单新增字段全部落库")
+    void saveResult_paperFormFields_written() {
+        GamePlayerStat pitcher = pitcherRow();
+        givenExistingRows(pitcher);
+        SaveGameResultDTO.StatPart p = part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), Double.valueOf(6.1D));
+        p.setGdp(Integer.valueOf(1));
+        p.setIbb(Integer.valueOf(2));
+        p.setIo(Integer.valueOf(1));
+        p.setPitchDoubles(Integer.valueOf(2));
+        p.setPitchTriples(Integer.valueOf(1));
+        p.setPitchSh(Integer.valueOf(1));
+        p.setPitchSf(Integer.valueOf(1));
+        p.setPitchIo(Integer.valueOf(1));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(p)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(1), pitcher.getGdp());
+        assertEquals(Integer.valueOf(2), pitcher.getIbb());
+        assertEquals(Integer.valueOf(1), pitcher.getIo());
+        assertEquals(Integer.valueOf(2), pitcher.getPitchDoubles());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchTriples());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchSh());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchSf());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
+    }
+
     private SaveGameResultDTO.StatPart part(Long id, Long playerId, int isPitcher, Integer ab, Double ip) {
         SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
         part.setId(id);

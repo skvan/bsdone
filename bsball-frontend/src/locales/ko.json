@@ -1129,7 +1129,13 @@
       "inn": "수비 이닝",
       "dp": "병살",
       "tcPct": "수비율",
-      "catcherSb": "도루 허용"
+      "catcherSb": "도루 허용",
+      "io": "방해 출루",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchIo": "피방해 출루"
     },
     "colEn": {
       "rank": "Rank",
@@ -1202,7 +1208,13 @@
       "inn": "INN",
       "dp": "DP",
       "tcPct": "TC%",
-      "catcherSb": "SB"
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1273,7 +1285,14 @@
       "sb": "도루",
       "cs": "도루 실패",
       "bbHp": "볼넷+사구",
-      "so": "삼진"
+      "so": "삼진",
+      "gdp": "병살타",
+      "sh": "희생번트",
+      "sf": "희생플라이",
+      "bb": "볼넷(IBB 포함)",
+      "ibb": "고의사구",
+      "hbp": "사구",
+      "io": "방해 출루"
     },
     "careerPitch": {
       "gp": "출장 경기",
@@ -1294,7 +1313,15 @@
       "bbHp": "볼넷+사구 허용",
       "so": "탈삼진",
       "wp": "폭투",
-      "bk": "보크"
+      "bk": "보크",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchBb": "볼넷(IBB 포함)",
+      "pitchIbb": "고의사구",
+      "pitchHbp": "사구",
+      "pitchIo": "피방해 출루"
     },
     "careerFld": {
       "gp": "출장 경기",
@@ -1373,7 +1400,18 @@
       "dp": "병살",
       "unearnedR": "비자책점(평균자책점 제외)",
       "pendingR": "자책점 판정 대기 실점",
-      "catcherSb": "포수 포지션에서 도루 허용 수"
+      "catcherSb": "포수 포지션에서 도루 허용 수",
+      "sh": "희생번트",
+      "sf": "희생플라이",
+      "ibb": "고의사구",
+      "hbp": "사구",
+      "io": "방해 출루",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchIbb": "고의사구 허용",
+      "pitchIo": "피방해 출루"
     },
     "gameLogColTip": {
       "date": "경기 일자.",

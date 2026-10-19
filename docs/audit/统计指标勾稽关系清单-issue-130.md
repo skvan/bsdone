@@ -18,7 +18,8 @@
 
 ### B01 打席 PA
 
-- 公式：`PA = AB + BB + HBP + SF + SH + CI + OB + INT`
+- 公式：`PA = AB + BB + HBP + SF + SH + CI + OB + INT`；系统以单列 `io` 汇总妨阻/妨碍上垒（#347），实现公式为 `PA = AB + BB + HBP + SF + SH + IO`
+- 口径：`BB` 含 `IBB`，`IBB` 为子集；`bbHp = bb + hbp`
   - CI：捕手妨碍；OB：阻挡；INT：妨碍。
 - 来源：`pa, ab, bb, hbp, sf, sh`
 - 容忍度：0

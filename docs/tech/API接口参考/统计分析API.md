@@ -249,22 +249,24 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - Result<PageResult<Map<String,Object>>>
   - PageResult包含：data（List<Map>）、total（Long）、meta（Map，可能包含qualification等）
 - 击球/投球/防守行字段
-  - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、cs、singles、tb、avg、obp、slg、ops、sbPct
-  - 投球：gp、ip、er、pitchH、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
-  - 防守：gp、inn、tc、po、a、e、pb、catcherCs、tcPct
+  - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、io、cs、singles、tb、avg、obp、slg、ops、sbPct
+  - 投球：gp、ip、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
+  - 防守：gp、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 - 团队统计行字段
-  - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、hbp、tb、avg、obp、slg、ops
-  - 投球：teamId、teamName、gp、gs、w、l、sv、hld、ip、whip、era、pitchBf、np、pitchH、pitchHr、pitchInsideParkHr、pitchBb、pitchHbp、pitchSo、wp、bk、pitchR、er
+  - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、ibb、hbp、io、tb、avg、obp、slg、ops
+  - 投球：teamId、teamName、gp、gs、w、l、sv、hld、ip、whip、era、pitchBf、np、pitchH、pitchDoubles、pitchTriples、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchBb、pitchIbb、pitchHbp、pitchIo、pitchSo、wp、bk、pitchR、er
   - 防守：teamId、teamName、gp、gs、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 
 ### 指标计算方法（摘要）
 - 击球
+  - PA = AB + BB + HBP + SF + SH + IO（BB 含 IBB）
   - AVG = H / AB（AB>0）
   - OBP = (H + BB + HBP) / (AB + BB + HBP + SF)（分母>0；旧数据缺 BB/HBP 分项时用 BBHP 合计回退）
   - SLG = TB / AB（AB>0）
   - OPS = OBP + SLG（AB>0且OBP分母>0）
   - SB% = SB / (SB + CS) * 100（SB+CS>0）
 - 投球
+  - PitchBbHp = PitchBb + PitchHbp（PitchBb 含 IBB）
   - ERA = ER * 27 / IP_outs（IP_outs>0）
   - WHIP = (H + BB) / IP_outs（IP_outs>0；HBP 不计入，旧数据缺 BB/HBP 分项时用 BBHP 合计减 HBP 回退）
   - GO/FO比率 = GO / FO（FO>0）

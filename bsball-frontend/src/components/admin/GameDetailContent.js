@@ -845,13 +845,28 @@ var Sl={
       key:"hr",label:"HR",visible:!0
     }
     ,{
-      key:"shSf",label:"SH+SF",visible:!0
+      key:"gdp",label:"GDP",visible:!0
+    }
+    ,{
+      key:"sh",label:"SH",visible:!0
+    }
+    ,{
+      key:"sf",label:"SF",visible:!0
     }
     ,{
       key:"rbi",label:"RBI",visible:!0
     }
     ,{
-      key:"bbHp",label:"BB+HP",visible:!0
+      key:"bb",label:"BB",visible:!0
+    }
+    ,{
+      key:"ibb",label:"IBB",visible:!0
+    }
+    ,{
+      key:"hbp",label:"HB",visible:!0
+    }
+    ,{
+      key:"io",label:"IO",visible:!0
     }
     ,{
       key:"so",label:"SO",visible:!0
@@ -1029,7 +1044,7 @@ var Sl={
     const ut=m(()=>[...c.stats.filter(e=>e.teamId===c.game.awayTeamId&&(!ke(e)||e.battingOrder!=null))].sort(Kt)),dt=m(()=>[...c.stats.filter(e=>e.teamId===c.game.homeTeamId&&(!ke(e)||e.battingOrder!=null))].sort(Kt));
     function jt(e){
       return{
-        _totals:!0,battingOrder:null,playerId:0,position:"",pa:e.reduce((t,l)=>t+(Number(l.pa)??Number(l.ab)??0),0),ab:e.reduce((t,l)=>t+(Number(l.ab)||0),0),r:e.reduce((t,l)=>t+(Number(l.r)||0),0),h:e.reduce((t,l)=>t+(Number(l.h)||0),0),doubles:e.reduce((t,l)=>t+(Number(l.doubles)||0),0),triples:e.reduce((t,l)=>t+(Number(l.triples)||0),0),hr:e.reduce((t,l)=>t+(Number(l.hr)||0)+(Number(l.insideParkHr)||0),0),rbi:e.reduce((t,l)=>t+(Number(l.rbi)||0),0),bbHp:e.reduce((t,l)=>t+(Number(l.bbHp)||0),0),sb:e.reduce((t,l)=>t+(Number(l.sb)||0),0),cs:e.reduce((t,l)=>t+(Number(l.cs)||0),0),shSf:e.reduce((t,l)=>t+(Number(l.sh)||0)+(Number(l.sf)||0),0),so:e.reduce((t,l)=>t+(Number(l.so)||0),0),e:e.reduce((t,l)=>t+(Number(l.e)||0),0)
+        _totals:!0,battingOrder:null,playerId:0,position:"",pa:e.reduce((t,l)=>t+(Number(l.pa)??Number(l.ab)??0),0),ab:e.reduce((t,l)=>t+(Number(l.ab)||0),0),r:e.reduce((t,l)=>t+(Number(l.r)||0),0),h:e.reduce((t,l)=>t+(Number(l.h)||0),0),doubles:e.reduce((t,l)=>t+(Number(l.doubles)||0),0),triples:e.reduce((t,l)=>t+(Number(l.triples)||0),0),hr:e.reduce((t,l)=>t+(Number(l.hr)||0)+(Number(l.insideParkHr)||0),0),rbi:e.reduce((t,l)=>t+(Number(l.rbi)||0),0),bbHp:e.reduce((t,l)=>t+(Number(l.bbHp)||0),0),sb:e.reduce((t,l)=>t+(Number(l.sb)||0),0),cs:e.reduce((t,l)=>t+(Number(l.cs)||0),0),shSf:e.reduce((t,l)=>t+(Number(l.sh)||0)+(Number(l.sf)||0),0),gdp:e.reduce((t,l)=>t+(Number(l.gdp)||0),0),sh:e.reduce((t,l)=>t+(Number(l.sh)||0),0),sf:e.reduce((t,l)=>t+(Number(l.sf)||0),0),bb:e.reduce((t,l)=>t+(Number(l.bb)||0),0),ibb:e.reduce((t,l)=>t+(Number(l.ibb)||0),0),hbp:e.reduce((t,l)=>t+(Number(l.hbp)||0),0),io:e.reduce((t,l)=>t+(Number(l.io)||0),0),so:e.reduce((t,l)=>t+(Number(l.so)||0),0),e:e.reduce((t,l)=>t+(Number(l.e)||0),0)
       }
       
     }
@@ -1067,13 +1082,13 @@ var Sl={
     }
     function ea(e){
       const t=Ra(e.reduce((w,kt)=>w+De(Number(kt.ip)||0),0));
-      let l=0,d=0,v=0,y=0,f=0,a=0,o=0,x=0,X=0,re=0,Z=0,We=0,me=0,$e=0,V=0,pe=0,_e=0,ha=0,va=0,ba=0,ga=0,ya=0,fa=0,pa=0,_a=0,ka=0,wa=0;
+      let l=0,d=0,v=0,y=0,f=0,a=0,pd=0,pdt=0,psh=0,psf=0,pio=0,o=0,x=0,X=0,re=0,Z=0,We=0,me=0,$e=0,V=0,pe=0,_e=0,ha=0,va=0,ba=0,ga=0,ya=0,fa=0,pa=0,_a=0,ka=0,wa=0;
       for(const w of e){
         const kt=Qt(w);
-        l+=La(w),d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
+        l+=La(w),d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,pd+=Number(w.pitchDoubles)||0,pdt+=Number(w.pitchTriples)||0,psh+=Number(w.pitchSh)||0,psf+=Number(w.pitchSf)||0,pio+=Number(w.pitchIo)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,X+=Number(w.pitchInsideParkHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
       }
       return{
-        _totals:!0,playerId:0,position:"",ip:t,pitchR:v,er:y,pitchH:f,pitchBbHp:a,pitchSo:o,pitchHr:x,pitchInsideParkHr:X,pitAb:l,pitE:d,np:re,pitchPa:Z,pitchBf:We,pitchBb:me,pitchIbb:$e,pitchHbp:V,wp:pe,bk:_e,go:ha,fo:va,gs:ba,w:pa,l:_a,sv:ka,svo:ga,hld:wa,cg:ya,pg:fa
+        _totals:!0,playerId:0,position:"",ip:t,pitchR:v,er:y,pitchH:f,pitchDoubles:pd,pitchTriples:pdt,pitchSh:psh,pitchSf:psf,pitchIo:pio,pitchBbHp:a,pitchSo:o,pitchHr:x,pitchInsideParkHr:X,pitAb:l,pitE:d,np:re,pitchPa:Z,pitchBf:We,pitchBb:me,pitchIbb:$e,pitchHbp:V,wp:pe,bk:_e,go:ha,fo:va,gs:ba,w:pa,l:_a,sv:ka,svo:ga,hld:wa,cg:ya,pg:fa
       }
       
     }
