@@ -272,6 +272,7 @@ EventService --> EventRepository
   - 作用：更新比赛实时比分与部分统计
   - ER 单一写方：若该场已有 `bs_earned_run_play`，请求里的 `er` 被忽略；`pitchR/ER/UER/PENDING` 只由 ER 引擎写。无引擎数据的 legacy 场次仍接受 `er`
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
+  - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
   - 参考：`GameApi.java:107-111`
 - POST /game/{id}/earned-runs/reconstruct
   - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
