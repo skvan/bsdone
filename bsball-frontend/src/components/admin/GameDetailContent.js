@@ -16,6 +16,7 @@ import { useTenantRouter as _l } from '../../composables/useTenantRouter';
 import { onTeamLogoError as R } from '../../utils/placeholderAssets';
 import { DEFAULT_TEAM_SVG_PATH as kl } from '../../utils/placeholderAssets';
 import { resolveAtBats as La } from '../../utils/gamePlayerStat';
+import { resolveBoxViewLabel } from '../../utils/i18nText';
 import { isLegacyPositionLabel as wl } from '../../utils/gamePlayerStat';
 import { isPitcherFlag as ke } from '../../utils/gamePlayerStat';
 import { DEFAULT_PITCHER_FIELDS as Tl } from '../../utils/gameDetailFieldSettingsStorage';
@@ -560,8 +561,8 @@ var Sl={
     =bl();
     const boxView=I("batting"),i18nGlobal=Zt()?.appContext?.config?.globalProperties;
     function tabLabel(e){
-      const t=i18nGlobal?.$t?.(e)??qe(e);
-      return typeof t=="string"?t:String(t?.value??e)
+      const key=String(e);
+      return resolveBoxViewLabel(key,qe(key),i18nGlobal?.$t?.(key))
     }
     function H(e,t){
       const l=`gameDetail.fieldTips.${e}.${t}`;
