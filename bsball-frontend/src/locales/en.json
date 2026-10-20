@@ -1986,9 +1986,12 @@
     "colTeams": "Current Teams",
     "freeAgent": "Free agent",
     "generate": "Generate Invite",
+    "directJoin": "Add to Team",
+    "directJoinDone": "\"{name}\" has been added to the team",
+    "alreadyJoined": "Player is already on this team",
     "emptySearch": "No matching players",
     "linkTitle": "Invite Link Generated",
-    "linkHint": "Send the link to the player; after signing in or registering they join upon confirmation (unclaimed players get a bound invite, claimed players get a generic link).",
+    "linkHint": "Send the link to the player; they join after signing in or registering and confirming.",
     "copy": "Copy Link",
     "copyDone": "Link copied",
     "copyUnsupported": "Copy failed, please copy manually",
@@ -2008,7 +2011,7 @@
     "emptyInvites": "No invites generated yet",
     "createFailed": "Generate failed",
     "revokeFailed": "Revoke failed",
-    "genericHint": "Only players not on this team are listed; claimed players receive a generic link (join after their confirmation).",
+    "genericHint": "Only players not on this team are listed; unclaimed players are added directly (keeping their current teams), while claimed players receive a generic link (join after their confirmation).",
     "loadFailed": "Load failed"
   }
 }

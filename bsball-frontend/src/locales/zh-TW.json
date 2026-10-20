@@ -1997,9 +1997,12 @@
     "colTeams": "現屬球隊",
     "freeAgent": "自由球員",
     "generate": "產生邀請",
+    "directJoin": "邀請入隊",
+    "directJoinDone": "已將「{name}」加入球隊",
+    "alreadyJoined": "該球員已在本隊",
     "emptySearch": "未找到符合的球員",
     "linkTitle": "邀請連結已產生",
-    "linkHint": "將連結傳送給球員，本人登入或註冊後確認即入隊（未認領球員為定向邀請，已認領球員為通用連結）。",
+    "linkHint": "將連結傳送給球員，本人登入或註冊後確認即入隊。",
     "copy": "複製連結",
     "copyDone": "連結已複製",
     "copyUnsupported": "複製失敗，請手動複製連結",
@@ -2019,7 +2022,7 @@
     "emptyInvites": "尚無已產生的邀請",
     "createFailed": "產生失敗",
     "revokeFailed": "撤銷失敗",
-    "genericHint": "清單僅顯示未在本隊的球員；已認領球員將產生通用連結（本人確認後入隊）。",
+    "genericHint": "清單僅顯示未在本隊的球員；未認領球員點擊「邀請入隊」將直接加入（保留其現有球隊），已認領球員產生通用連結（本人確認後入隊）。",
     "loadFailed": "載入失敗"
   }
 }
