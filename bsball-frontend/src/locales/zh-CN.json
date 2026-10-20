@@ -2007,9 +2007,12 @@
     "colTeams": "现属球队",
     "freeAgent": "自由球员",
     "generate": "生成邀请",
+    "directJoin": "邀请入队",
+    "directJoinDone": "已将「{name}」加入球队",
+    "alreadyJoined": "该球员已在本队",
     "emptySearch": "未找到匹配球员",
     "linkTitle": "邀请链接已生成",
-    "linkHint": "将链接发送给球员，本人登录或注册后确认即入队（未认领球员为定向邀请，已认领球员为通用链接）。",
+    "linkHint": "将链接发送给球员，本人登录或注册后确认即入队。",
     "copy": "复制链接",
     "copyDone": "链接已复制",
     "copyUnsupported": "复制失败，请手动复制链接",
@@ -2029,7 +2032,7 @@
     "emptyInvites": "暂无已生成邀请",
     "createFailed": "生成失败",
     "revokeFailed": "撤销失败",
-    "genericHint": "列表仅显示未在本队的球员；已认领球员将生成通用链接（本人确认后入队）。",
+    "genericHint": "列表仅显示未在本队的球员；未认领球员点击「邀请入队」将直接加入（保留其现有球队），已认领球员生成通用链接（本人确认后入队）。",
     "loadFailed": "加载失败"
   }
 }
