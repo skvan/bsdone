@@ -2,17 +2,18 @@
  * 账号权限重构（批次 3a，Task 3.7）：PlayerClaimService 邀请改造单元测试（Mockito 手工装配）。
  *
  * 覆盖：
- *  ① createInvite 对“无队伍游离球员”不再因 isCurrentlyInTeam 被拒（Step1）；
+ *  ① createInvite 绑定未认领球员 → 直接入队（保留既有 current、追加受邀队 current=true、不生成 token）；
+ *     已在本队幂等返回、已认领拒绝、不绑定球员仍生成通用链接；
  *  ② 无档案者凭邀请 + 草稿 → createSelfProfile 被调 + 入队落库（current=true / 镜像 / join 沿革 / currentJoinRecordId）；
  *  ③ 重复接受 → 幂等（不重复建档 / 不重复入队）；
- *  ④ 已有档案（playerId 非空）→ 原认领关联语义（落一条待审 PlayerClaim）；
+ *  ④ 已有档案（playerId 非空，兼容存量定向邀请）→ 原认领关联语义（落一条待审 PlayerClaim）；
  *  ⑤ playerId 非空但跨租户 → 拒绝；
  *  ⑥ 无目标球员且无档案且无草稿 → 400；
  *  ⑦ 存量档案（不在受邀队）凭开放邀请 → 直接入队（不建档，固化 I-2 新语义）；
  *  ⑧ 幂等早返回不消费令牌（usedCount 不变）。
  *
  * mode 契约细分（批 b5，Task 2）：新建档入队={@code registered} / 存量档案直接入队={@code joined} /
- * 已在队幂等早返回={@code already_joined}；claim 路径仍为 {@code claim}。
+ * 球队代管直接入队={@code direct_joined} / 已在队幂等早返回={@code already_joined}；claim 路径仍为 {@code claim}。
  */
 package com.bsball.service;
 
@@ -126,11 +127,44 @@ class PlayerClaimServiceTest {
     // ------------------------------------------------------------------ Step1：createInvite
 
     @Test
-    @DisplayName("① 创建邀请：无队伍游离球员（同租户）不再因 isCurrentlyInTeam 被拒 → 正常创建邀请")
-    void createInvite_playerWithoutTeam_createsInvite() {
-        // 批 2 沉淀⑩收敛：改用统一守卫（resourceGuard mock 放行），不再走自研 isSuperAdmin 判定
+    @DisplayName("① 创建邀请：未认领球员 → 直接入队（A 保留当前、B 追加 current=true、不生成邀请）")
+    void createInvite_unclaimedPlayer_directJoinsPreservingCurrentTeams() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
-        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(player(PLAYER_ID, TENANT_ID, null)));
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerTeamService.currentTeamIds(PLAYER_ID)).thenReturn(Set.of(11L));
+        PlayerTeam teamA = entry(21L, 11L, "7", true, 0);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(PLAYER_ID))
+                .thenReturn(List.of(teamA));
+        PlayerTeamService.PlayerTeamSyncPlan plan = new PlayerTeamService.PlayerTeamSyncPlan(
+                List.of(), List.of(), List.of(), null, Set.of(11L), Set.of(11L, TEAM_ID), List.of());
+        when(playerTeamService.plan(any(), any(), eq(true))).thenReturn(plan);
+        when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(personnelHistoryRecorder.recordPlayerTeamTransitions(any(), any(), any())).thenReturn(77L);
+
+        Map<String, Object> out = service.createInvite(CREATOR_ID, TEAM_ID, PLAYER_ID, null, null, "备注");
+
+        assertEquals("direct_joined", out.get("mode"));
+        assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
+        assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
+        assertNull(p.getUserId(), "未认领状态必须保留");
+        ArgumentCaptor<List<PlayerTeamEntryDto>> entriesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(playerTeamService).plan(eq(p), entriesCaptor.capture(), eq(true));
+        List<PlayerTeamEntryDto> entries = entriesCaptor.getValue();
+        assertEquals(2, entries.size());
+        assertEquals(Boolean.TRUE, entryOf(entries, 11L).current(), "A 队当前标记必须保留");
+        assertEquals(Boolean.TRUE, entryOf(entries, TEAM_ID).current(), "B 队必须标记为当前");
+        verify(playerClaimInviteRepository, never()).save(any(PlayerClaimInvite.class));
+        verify(personnelHistoryRecorder).recordPlayerTeamTransitions(p, Set.of(11L), Set.of(11L, TEAM_ID));
+        // 未认领球员无账号，不存在用户范围缓存失效
+        verify(accountScopeService, never()).evictUserScopeCacheAfterCommit(any());
+        verify(resourceGuard).assertCanManageTeam(TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("①b 创建邀请：不绑定球员 → 仍生成通用邀请链接")
+    void createInvite_noPlayer_createsGenericInvite() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
         when(accountProperties.getInviteDefaultExpireHours()).thenReturn(72);
         when(accountProperties.getInviteDefaultMaxUses()).thenReturn(1);
         when(playerClaimInviteRepository.save(any(PlayerClaimInvite.class))).thenAnswer(invocation -> {
@@ -141,16 +175,61 @@ class PlayerClaimServiceTest {
             return invite;
         });
 
-        Map<String, Object> out = service.createInvite(CREATOR_ID, TEAM_ID, PLAYER_ID, null, null, "备注");
+        Map<String, Object> out = service.createInvite(CREATOR_ID, TEAM_ID, null, null, null, null);
 
         assertNotNull(out.get("token"));
         assertEquals(50L, ((Number) out.get("id")).longValue());
         assertEquals(TEAM_ID, ((Number) out.get("teamId")).longValue());
-        assertEquals(PLAYER_ID, ((Number) out.get("playerId")).longValue());
-        // 权限：电子秩序册批 4（Issue #310）起改用统一守卫；Issue #318 起收敛为「可管理该球队」（无联盟代管分支）
+        assertNull(out.get("playerId"));
         verify(resourceGuard).assertCanManageTeam(TEAM_ID);
-        // 硬校验已删除：不再查询“球员是否在当前队”
-        verify(playerTeamService, never()).isCurrentlyInTeam(any(), any());
+    }
+
+    @Test
+    @DisplayName("①c 创建邀请：未认领球员已在本队（current）→ 幂等返回 already_joined，无写入")
+    void createInvite_unclaimedPlayerAlreadyInTeam_idempotent() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+        when(playerTeamService.currentTeamIds(PLAYER_ID)).thenReturn(Set.of(TEAM_ID));
+
+        Map<String, Object> out = service.createInvite(CREATOR_ID, TEAM_ID, PLAYER_ID, null, null, null);
+
+        assertEquals("already_joined", out.get("mode"));
+        verify(playerTeamService, never()).plan(any(), any(), eq(true));
+        verify(playerRepository, never()).save(any(Player.class));
+        verify(playerClaimInviteRepository, never()).save(any(PlayerClaimInvite.class));
+    }
+
+    @Test
+    @DisplayName("①d 创建邀请：已认领球员 → 400（不得直接入队，应走通用链接）")
+    void createInvite_claimedPlayer_rejected() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(player(PLAYER_ID, TENANT_ID, 99L)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.createInvite(CREATOR_ID, TEAM_ID, PLAYER_ID, null, null, null));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("已被认领"));
+        verify(playerTeamService, never()).plan(any(), any(), eq(true));
+        verify(playerClaimInviteRepository, never()).save(any(PlayerClaimInvite.class));
+    }
+
+    @Test
+    @DisplayName("①e 创建邀请：球员已删除 → 404（不得直接入队）")
+    void createInvite_deletedPlayer_rejected() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        Player p = player(PLAYER_ID, TENANT_ID, null);
+        p.setDeletedAt(LocalDateTime.now());
+        when(playerRepository.findById(PLAYER_ID)).thenReturn(Optional.of(p));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.createInvite(CREATOR_ID, TEAM_ID, PLAYER_ID, null, null, null));
+
+        assertEquals(404, ex.getCode());
+        assertTrue(ex.getMessage().contains("球员不存在"));
+        verify(playerTeamService, never()).plan(any(), any(), eq(true));
+        verify(playerClaimInviteRepository, never()).save(any(PlayerClaimInvite.class));
     }
 
     @Test
