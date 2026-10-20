@@ -65,11 +65,25 @@ test('buildHitSprayRecord：无人上垒 runnersBefore 为 undefined；下半局
   assert.equal(rec.rbi, 3);
 });
 
-test('buildHitSprayRecord：无坐标 / 区域无效 / 无击球员 均返回 null', () => {
+test('buildHitSprayRecord：无坐标 / 非有限坐标 / 区域无效 / 无击球员 均返回 null', () => {
   assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayX: null }), null);
   assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayY: undefined }), null);
+  assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayX: NaN }), null);
+  assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayY: Infinity }), null);
+  assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayX: '' }), null);
   assert.equal(buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayZone: 'x', sprayFieldPos: 'y' }), null);
   assert.equal(buildHitSprayRecord({ ...baseState, batter: null }, 'H1', 0, baseSpray), null);
+});
+
+test('buildHitSprayRecord：坐标为 0 是合法落点，不按缺失丢弃', () => {
+  const onLine = buildHitSprayRecord(baseState, 'H1', 0, { ...baseSpray, sprayX: 0, sprayY: 120 });
+  assert.ok(onLine, 'x=0 的边线落点应生成记录');
+  assert.equal(onLine.sprayX, 0);
+  assert.equal(onLine.sprayY, 120);
+
+  const onWallTop = buildHitSprayRecord(baseState, 'OUT_F', 0, { ...baseSpray, sprayX: 240, sprayY: 0 });
+  assert.ok(onWallTop, 'y=0 的墙顶落点应生成记录');
+  assert.equal(onWallTop.sprayY, 0);
 });
 
 test('buildHitSprayRecord：gameId 缺省回落 0（沿用原 Lt/R 兜底语义）', () => {
