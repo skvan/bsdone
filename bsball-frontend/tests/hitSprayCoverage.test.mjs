@@ -41,3 +41,14 @@ test('对话框路径均入队：dp / fp / fcApply', () => {
   assert.match(source, /pushHitSpray\("E",0,a\);/, 'fcApply“没有跑者出局（失误）”分支应入队 E');
   assert.match(source, /pushHitSpray\("FC",0,a\);/, 'fcApply 正常野选路径应入队 FC');
 });
+
+test('落点拖拽范围经共享工具收敛，不再硬编码 0–480 / 0–640', () => {
+  assert.match(source, /import \{ clampHitSpotToField as LgClampHitSpot \} from '\.\.\/\.\.\/utils\/hitSprayField';/);
+  assert.match(source, /LgClampHitSpot\(r\.x,r\.y\)/, '拖拽坐标应经 clampHitSpotToField 处理');
+  assert.doesNotMatch(source, /Math\.max\(0,Math\.min\(480,r\.x\)\)/, '旧的 0–480 硬编码应移除');
+});
+
+test('击球落点热力图使用与录入页一致的完整球场坐标', () => {
+  assert.doesNotMatch(source, /viewBox:`0 0 \$\{u\.viewBoxWidth\} \$\{u\.viewBoxHeight\}`/, '热力图不应再用 0 0 480 640 裁剪扇形两翼');
+  assert.ok((source.match(/viewBox:"-300 -150 1080 780"/g) ?? []).length >= 2, '录入页与热力图都应使用完整球场 viewBox');
+});

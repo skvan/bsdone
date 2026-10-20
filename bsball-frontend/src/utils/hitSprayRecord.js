@@ -29,7 +29,8 @@ export function resolveSprayZone(sprayZone, sprayFieldPos) {
 export function buildHitSprayRecord(state, resultCode, rbi, spray) {
   const x = spray?.sprayX;
   const y = spray?.sprayY;
-  if (!x || !y) return null;
+  // 0 是合法 SVG 坐标（边线/墙顶/本垒一线），不能按 falsy 当成“无坐标”。
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   const zone = resolveSprayZone(spray.sprayZone, spray.sprayFieldPos);
   if (!zone) return null;
   const batter = state.batter;

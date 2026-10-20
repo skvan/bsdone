@@ -57,6 +57,7 @@ import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGro
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
 import { BAT_SHAPES, battedShapeColor } from '../../utils/battedBallFlight';
 import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
+import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -4327,8 +4328,9 @@ var hm=["aria-label"],ym={
       
     }
     );
+    // 热力图 viewBox 已改为完整球场（宽 1080），标记按 1080/480 放大，保持屏幕上的可读尺寸
     function o(S){
-      return 8+(S.rbi||0)*2
+      return (8+(S.rbi||0)*2)*2.25
     }
     function _(S,R){
       return .6+S/R*.4
@@ -4343,7 +4345,7 @@ var hm=["aria-label"],ym={
       x:"50",y:"55","text-anchor":"middle",fill:"#666","font-size":"12"
     }
     ,"暂无数据")],-1),n("p",null,"还没有击球落点记录",-1)])])),Vn(n("div",Nv,[(h(),C("svg",{
-      viewBox:`0 0 ${u.viewBoxWidth} ${u.viewBoxHeight}`,class:"hsh-svg"
+      viewBox:"-300 -150 1080 780",class:"hsh-svg"
     }
     ,[v($u,{
       "id-prefix":"hsh"
@@ -4355,16 +4357,16 @@ var hm=["aria-label"],ym={
       
     }
     ,[n("circle",{
-      cx:F.sprayX,cy:F.sprayY,r:o(F)+4,fill:l(F.resultCode),opacity:"0.2"
+      cx:F.sprayX,cy:F.sprayY,r:o(F)+9,fill:l(F.resultCode),opacity:"0.2"
     }
     ,null,8,Mv),n("circle",{
-      cx:F.sprayX,cy:F.sprayY,r:o(F),fill:l(F.resultCode),opacity:_(N,u.records.length),stroke:"#ffffff","stroke-width":"1.5"
+      cx:F.sprayX,cy:F.sprayY,r:o(F),fill:l(F.resultCode),opacity:_(N,u.records.length),stroke:"#ffffff","stroke-width":"3.4"
     }
     ,null,8,Uv),F.rbi&&F.rbi>0?(h(),C("circle",{
-      key:0,cx:F.sprayX+o(F)-2,cy:F.sprayY-o(F)+2,r:"5",fill:"#FFD700",stroke:"#000","stroke-width":"0.5"
+      key:0,cx:F.sprayX+o(F)-4.5,cy:F.sprayY-o(F)+4.5,r:"10",fill:"#FFD700",stroke:"#000","stroke-width":"1.1"
     }
     ,null,8,Gv)):W("",!0),u.showCoords?(h(),C("text",{
-      key:1,x:F.sprayX,y:F.sprayY+o(F)+12,"text-anchor":"middle","font-size":"8",fill:"#fff",opacity:"0.7"
+      key:1,x:F.sprayX,y:F.sprayY+o(F)+27,"text-anchor":"middle","font-size":"18",fill:"#fff",opacity:"0.7"
     }
     ,H(Math.round(F.sprayX))+","+H(Math.round(F.sprayY)),9,Vv)):W("",!0)]))),128))])],8,Hv)),R[3]||(R[3]=Tc('<div class="hsh-legend" data-v-6a48df47><div class="hsh-legend-title" data-v-6a48df47>图例</div><div class="hsh-legend-items" data-v-6a48df47><div class="hsh-legend-item" data-v-6a48df47><span class="hsh-legend-color" style="background-color:#4CAF50;" data-v-6a48df47></span><span class="hsh-legend-label" data-v-6a48df47>安打（H1/H2/H3/HR）</span></div><div class="hsh-legend-item" data-v-6a48df47><span class="hsh-legend-color" style="background-color:#F44336;" data-v-6a48df47></span><span class="hsh-legend-label" data-v-6a48df47>出局/接杀</span></div><div class="hsh-legend-item" data-v-6a48df47><span class="hsh-legend-color" style="background-color:#FF9800;" data-v-6a48df47></span><span class="hsh-legend-label" data-v-6a48df47>失误</span></div></div></div>',1))],512),[[_a,u.records.length>0]])]))
   }
@@ -8678,7 +8680,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!a)return;
       const s=a.createSVGPoint();
       s.x=e.clientX,s.y=e.clientY;
-      const r=s.matrixTransform(a.getScreenCTM()?.inverse()),p=Math.max(0,Math.min(480,r.x)),g=Math.max(0,Math.min(640,r.y)),m=p-t.startX,y=g-t.startY,b=Math.sqrt(m*m+y*y);
+      const r=s.matrixTransform(a.getScreenCTM()?.inverse()),c0=LgClampHitSpot(r.x,r.y),p=c0.x,g=c0.y,m=p-t.startX,y=g-t.startY,b=Math.sqrt(m*m+y*y);
       !t.hasMoved&&b>(t.mode==="chain"?10:5)&&(t.hasMoved=!0,console.log("[FielderDrag] Move threshold exceeded, hasMoved = true")),t.currentX=p,t.currentY=g,t.hasMoved&&(t.mode==="chain"&&(hh.value=hlBaseNear(p,g),Mn(hh)),zu(),console.log("[FielderDrag] Moving",{
         x:p,y:g
       }
