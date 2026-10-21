@@ -13,6 +13,8 @@ import { startVersionCheck } from './composables/useVersionCheck';
 import { installMessageDedupe } from './utils/messageDedupe';
 import { installPortalDevtoolsGuard } from './composables/portalDevtoolsGuard';
 import './styles/index.css';
+// 网站设计语言（DESIGN.md）：--bs-* 语义令牌与 .clubhouse-page 作用域映射
+import './styles/design-tokens.css';
 
 // 装配顺序对齐编译产物入口：消息去重 ur() → pinia → 弹窗默认值补丁 → i18n → Element Plus → router → mount → 版本检查 → devtools 防护
 // 说明：全局注册 Element Plus 与旧版编译产物行为对齐（旧入口 chunk 全局注册）。
