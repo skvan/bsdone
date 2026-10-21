@@ -29,6 +29,22 @@
   - `points`：按比赛日升序的近 12 场数据点；每点含 `label`、`value`、`gameday`、`eventId`。
   - `items`：仅安打构成（环形图）使用。
 - `ranks[]`：四个队内排名位；含 `metricKey`、`label`、`value`、`rank`、`total`、`barPct`、`available`。
+- `evaluation`：总体评价雷达数据。
+  - `available`：当前范围是否至少有一张可用雷达图。
+  - `comparison`：比较口径，固定为 `同队同赛事`。
+  - `minSample`：最少样本数，当前为 3。
+  - `cards[]`：打击、守备固定各一张；有投球局数时追加投球一张。
+    - `domain`：`batting` / `fielding` / `pitching`。
+    - `title` / `subtitle`：卡片标题与指标缩写。
+    - `available`、`reason`：无数据或样本不足时 `available=false`，并给出原因。
+    - `score` / `grade`：五个轴百分位的平均值，以及 S/A/B/C 等展示等级。
+    - `sampleSize`：参与比较的有效球员数。
+    - `axes[]`：`key`、`label`、`abbr`、`value`（原始值）、`percentile`（0–100 同队同赛事百分位）。
+  - 打击轴：`AVG`、`OBP`、`SLG`、`RBI`、`SB`；有效打席门槛 3。
+  - 守备轴：`FPCT`、`PO/G`、`A/G`、`DP/G`、`RF/9`；有效守备局数门槛 3 局。
+  - 投球轴：`ERA`、`WHIP`、`K/9`、`BB/9`、`IP`；有效投球局数门槛 1 局。ERA / WHIP / BB/9 越低越好，服务端已反向换算百分位。`IP` 展示保留棒球记法（如 `5.2` 表示 5⅔ 局），百分位按出局数换算。
+  - 百分位只在所选代表球队与赛事内计算；样本少于 3 人时不生成雷达值，避免小样本误读。
+  - 守备指标受守位影响，前端须与“同队同赛事”口径及守备局数一起展示。
 - `nextGame` / `schedule[]`：跨代表球队/赛事的未开赛或进行中比赛（最多 6 场）。
 - `recentGames[]`：最近 3 场个人比赛记录。
 
@@ -39,6 +55,7 @@
 3. 赛程：取代表球队已确认赛事中 `scheduled` / `live` 且比赛日不早于今天的比赛，按日期/时间升序。
 4. 最近战报：取个人比赛日志最近 3 场。
 5. 投球指标仅在有投球局数时标记可用；打击指标仅在有打席/打数时可用。
+6. 总体评价：以所选代表球队 + 赛事的有出场数据球员为样本，计算五个职业棒球口径指标的百分位；投球反向指标先取反再计算。打击样本至少 3 打席、守备至少 3 局、投球至少 1 局；样本球员少于 3 人时不出雷达值。
 
 ## PUT /api/account/clubhouse/config
 

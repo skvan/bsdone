@@ -111,6 +111,97 @@
         </div>
       </section>
 
+      <section v-if="evaluationCards.length" class="panel evaluation-panel">
+        <div class="eval-head">
+          <div>
+            <span class="kicker">OVERALL PROFILE</span>
+            <h3>总体评价 <small>职业指标 · 同队同赛事百分位</small></h3>
+          </div>
+          <div class="eval-meta">
+            <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
+            <span>{{ data.evaluation?.comparison || '同队同赛事' }}</span>
+          </div>
+        </div>
+        <div class="radar-grid" :class="evaluationCards.length > 2 ? 'three-up' : 'two-up'">
+          <article
+            v-for="card in evaluationCards"
+            :key="card.domain"
+            class="radar-card"
+            :class="card.domain"
+          >
+            <div class="radar-card-head">
+              <div>
+                <span class="radar-kicker">{{ radarKicker(card.domain) }}</span>
+                <h4>{{ card.title }}</h4>
+                <p class="radar-card-sub">{{ card.subtitle }}</p>
+              </div>
+              <div v-if="card.available" class="radar-score">
+                <b>{{ card.score }}</b><em>{{ card.grade }}</em><span>综合评分</span>
+              </div>
+              <div v-else class="radar-score is-empty">
+                <b>—</b><span>暂无评分</span>
+              </div>
+            </div>
+
+            <template v-if="card.available && card.radar">
+              <svg class="radar-chart" viewBox="0 0 340 270" role="img" :aria-label="radarAria(card)">
+                <polygon
+                  v-for="(ring, index) in card.radar.rings"
+                  :key="`ring-${index}`"
+                  class="radar-ring"
+                  :points="ring"
+                />
+                <line
+                  v-for="(spoke, index) in card.radar.spokes"
+                  :key="`spoke-${index}`"
+                  class="radar-spoke"
+                  :x1="spoke.x1"
+                  :y1="spoke.y1"
+                  :x2="spoke.x2"
+                  :y2="spoke.y2"
+                />
+                <polygon class="radar-area" :points="card.radar.shape" />
+                <polygon class="radar-line" :points="card.radar.shape" />
+                <circle
+                  v-for="(dot, index) in card.radar.dots"
+                  :key="`dot-${index}`"
+                  class="radar-dot"
+                  :cx="dot.x"
+                  :cy="dot.y"
+                  r="3.1"
+                />
+                <g v-for="(label, index) in card.radar.labels" :key="`label-${index}`">
+                  <text class="radar-axis-name" :x="label.x" :y="label.nameY" :text-anchor="label.anchor">{{ label.abbr }}</text>
+                  <text class="radar-axis-value" :x="label.x" :y="label.valueY" :text-anchor="label.anchor">{{ label.value }}</text>
+                  <text class="radar-axis-pct" :x="label.x" :y="label.pctY" :text-anchor="label.anchor">P{{ label.percentile }}</text>
+                </g>
+              </svg>
+              <div class="radar-metrics">
+                <div v-for="axis in card.axes" :key="axis.key" class="radar-metric">
+                  <i></i><b>{{ axis.label }}<small>{{ axis.abbr }}</small></b><em>{{ axis.value }}</em><span>{{ axis.percentile }}</span>
+                </div>
+              </div>
+              <div class="radar-highlights">
+                <span>强项<b>{{ card.strongest.label }}</b><em>{{ card.strongest.percentile }}</em></span>
+                <span>提升<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
+              </div>
+              <div class="radar-foot">
+                <span><b>样本</b> {{ card.sampleSize }} 人</span>
+                <span>{{ radarFoot(card.domain) }}</span>
+              </div>
+            </template>
+            <div v-else class="radar-empty">
+              <b>—</b>
+              <span>{{ card.reason || '暂无评价数据' }}</span>
+            </div>
+          </article>
+        </div>
+        <p class="eval-note">
+          <i></i>
+          <span>百分位越高代表同队同赛事排名越靠前；投球指标已按“越低越好”反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
+        </p>
+      </section>
+
       <div class="content-grid">
         <div class="main-col">
           <section class="panel data-panel">
@@ -379,6 +470,7 @@ const performanceSummary = computed(() => {
 const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
 const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
+const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
 const heroStats = computed(() => {
   const b = batting.value;
   if (hasBatting.value) {
@@ -480,6 +572,111 @@ function formatChartValue(value, metricKey) {
 
 function chartColor(index) {
   return `var(--bs-chart-${(index % 6) + 1})`;
+}
+
+function prepareEvaluationCard(card) {
+  const axes = card.axes || [];
+  const ranked = [...axes].sort((left, right) => Number(right.percentile) - Number(left.percentile));
+  return {
+    ...card,
+    radar: axes.length ? buildRadar(axes) : null,
+    strongest: ranked[0] || { label: '—', percentile: 0 },
+    weakest: ranked[ranked.length - 1] || { label: '—', percentile: 0 }
+  };
+}
+
+function buildRadar(axes) {
+  const geometry = { cx: 170, cy: 132, radius: 84, count: axes.length };
+  const points = axes.map((axis, index) => radarPoint(geometry, index, clampPercentile(axis.percentile)));
+  return {
+    rings: [20, 40, 60, 80, 100].map((level) => radarRing(geometry, level)),
+    spokes: radarSpokes(geometry),
+    shape: points.map(radarCoords).join(' '),
+    dots: points.map((point) => ({ x: point.x.toFixed(1), y: point.y.toFixed(1) })),
+    labels: radarLabels(axes, geometry)
+  };
+}
+
+function clampPercentile(value) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function radarCoords(point) {
+  return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+}
+
+function radarAngle(index, count) {
+  return -Math.PI / 2 + index * (Math.PI * 2 / count);
+}
+
+function radarPoint(geometry, index, value) {
+  const angle = radarAngle(index, geometry.count);
+  const distance = geometry.radius * (value / 100);
+  return {
+    x: geometry.cx + distance * Math.cos(angle),
+    y: geometry.cy + distance * Math.sin(angle)
+  };
+}
+
+function radarRing(geometry, level) {
+  return Array.from({ length: geometry.count }, (_, index) => (
+    radarCoords(radarPoint(geometry, index, level))
+  )).join(' ');
+}
+
+function radarSpokes(geometry) {
+  return Array.from({ length: geometry.count }, (_, index) => {
+    const end = radarPoint(geometry, index, 100);
+    return {
+      x1: geometry.cx,
+      y1: geometry.cy,
+      x2: end.x.toFixed(1),
+      y2: end.y.toFixed(1)
+    };
+  });
+}
+
+function radarLabels(axes, geometry) {
+  return axes.map((axis, index) => {
+    const angle = radarAngle(index, geometry.count);
+    const horizontal = Math.cos(angle);
+    const labelRadius = geometry.radius + 26;
+    const x = geometry.cx + labelRadius * horizontal;
+    const y = geometry.cy + labelRadius * Math.sin(angle);
+    let anchor = 'middle';
+    if (horizontal >= 0.25) {
+      anchor = 'start';
+    } else if (horizontal <= -0.25) {
+      anchor = 'end';
+    }
+    return {
+      x: x.toFixed(1),
+      nameY: (y - 5).toFixed(1),
+      valueY: (y + 8).toFixed(1),
+      pctY: (y + 20).toFixed(1),
+      anchor,
+      abbr: axis.abbr,
+      value: axis.value,
+      percentile: axis.percentile
+    };
+  });
+}
+
+function radarKicker(domain) {
+  return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
+}
+
+function radarFoot(domain) {
+  return {
+    batting: '打击指标 · 同队同赛事',
+    fielding: '守备指标 · 同队同赛事',
+    pitching: '投球指标 · 越低越好已反向'
+  }[domain] || '同队同赛事';
+}
+
+function radarAria(card) {
+  const axes = (card.axes || []).map((axis) => `${axis.label}${axis.value}，百分位${axis.percentile}`).join('；');
+  return `${card.title}雷达图，${axes}`;
 }
 
 function vizLabel(viz) {
@@ -813,6 +1010,63 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .rank-feature:nth-child(2) .track i { background: linear-gradient(90deg, #b87a4b, #e0b28c); }
 .rank-feature.neutral .track i { background: linear-gradient(90deg, #7c8a9c, #aeb8c4); }
 
+.evaluation-panel { margin-top: 20px; padding: 19px 21px 16px; }
+.eval-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.eval-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 22px; line-height: 1.2; color: var(--bs-ink); }
+.eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
+.eval-meta { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 11px; color: var(--bs-text-muted); }
+.eval-meta b { color: var(--bs-ink); font-family: var(--bs-font-num); font-size: 14px; margin-right: 3px; }
+.radar-grid { display: grid; gap: 14px; margin-top: 14px; }
+.radar-grid.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.radar-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.radar-card { --radar-color: var(--bs-chart-line); position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; padding: 16px 16px 13px; border: 1px solid var(--bs-hairline-soft); border-radius: 14px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
+.radar-card.batting { --radar-color: var(--bs-chart-6); }
+.radar-card.fielding { --radar-color: var(--bs-accent); }
+.radar-card.pitching { --radar-color: var(--bs-chart-3); }
+.radar-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, var(--radar-color), transparent); opacity: .85; }
+.radar-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.radar-kicker { display: block; font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--bs-text-muted); }
+.radar-card h4 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 19px; line-height: 1.15; color: var(--bs-ink); }
+.radar-card-sub { margin: 5px 0 0; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .06em; color: var(--bs-text-muted); }
+.radar-score { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 7px; text-align: right; }
+.radar-score b { font-family: var(--bs-font-num); font-size: 35px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
+.radar-score em { align-self: start; padding: 3px 5px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 4px; background: var(--bs-surface-soft); }
+.radar-score span { grid-column: 1 / -1; margin-top: 4px; font-size: 10px; letter-spacing: .08em; color: var(--bs-text-muted); }
+.radar-score.is-empty b { color: var(--bs-text-faint); }
+.radar-chart { width: 100%; max-width: 340px; margin: 7px auto 0; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--bs-hairline); stroke-width: 1; }
+.radar-spoke { stroke: var(--bs-hairline); stroke-width: 1; }
+.radar-area { fill: var(--radar-color); fill-opacity: .15; }
+.radar-line { fill: none; stroke: var(--radar-color); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.radar-dot { fill: var(--bs-surface); stroke: var(--radar-color); stroke-width: 2; }
+.radar-axis-name { fill: var(--bs-text); font-family: var(--bs-font-sans); font-size: 12px; font-weight: 700; }
+.radar-axis-value { fill: var(--bs-text-muted); font-family: var(--bs-font-num); font-size: 11px; }
+.radar-axis-pct { fill: var(--bs-text-muted); font-family: var(--bs-font-num); font-size: 10px; }
+.radar-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--bs-hairline-soft); }
+.radar-metric { display: grid; grid-template-columns: 6px 1fr auto 22px; align-items: center; gap: 5px; padding: 6px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
+.radar-metric:nth-last-child(-n+2) { border-bottom: 0; }
+.radar-metric i { width: 5px; height: 5px; border-radius: 50%; background: var(--radar-color); }
+.radar-metric b { font-size: 10px; font-weight: 600; color: var(--bs-text); white-space: nowrap; }
+.radar-metric b small { margin-left: 4px; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); letter-spacing: .03em; }
+.radar-metric em { font-style: normal; font-family: var(--bs-font-num); font-size: 12px; font-weight: 700; color: var(--bs-ink); }
+.radar-metric > span { font-family: var(--bs-font-num); font-size: 10px; font-weight: 600; text-align: right; color: var(--bs-text-muted); }
+.radar-highlights { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; padding: 8px 9px; border-radius: 7px; background: var(--bs-surface-soft); }
+.radar-highlights span { font-size: 10px; color: var(--bs-text-muted); }
+.radar-highlights b { margin-left: 3px; font-size: 10px; color: var(--bs-text); }
+.radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
+.radar-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 10px; color: var(--bs-text-muted); }
+.radar-foot b { color: var(--bs-text-muted); font-weight: 500; }
+.radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
+.radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
+.radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
+.eval-note { display: flex; align-items: flex-start; gap: 8px; margin: 11px 0 0; padding: 9px 11px; border: 1px dashed var(--bs-hairline); border-radius: 8px; background: var(--bs-surface-soft); font-size: 11px; line-height: 1.7; color: var(--bs-text-muted); }
+.eval-note i { flex: 0 0 auto; width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--bs-accent); }
+.eval-note span { flex: 1; }
+
+@media (max-width: 1120px) {
+  .radar-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(310px, .72fr); gap: 20px; align-items: start; margin-top: 20px; }
 .main-col, .side-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .panel { background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 19px 20px; }
@@ -943,6 +1197,11 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .rank-band { padding: 16px; }
   .rank-band-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .rank-feature { padding: 0; border-right: 0; }
+  .evaluation-panel { padding: 17px 16px 14px; }
+  .eval-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .eval-meta { align-self: flex-end; }
+  .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
+  .radar-card { padding: 16px 15px 13px; }
   .content-grid { grid-template-columns: 1fr; }
   .recent-cards { grid-template-columns: 1fr; }
   .chart-summary { display: none; }
@@ -966,6 +1225,11 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .donut { width: 120px; height: 120px; }
   .donut-center { width: 84px; height: 84px; }
   .matrix-item { padding: 8px 10px; }
+  .radar-card h4 { font-size: 20px; }
+  .radar-score b { font-size: 38px; }
+  .radar-metrics { gap: 0 20px; }
+  .radar-metric { padding: 7px 0; }
+  .radar-metric em { font-size: 13px; }
 }
 </style>
 

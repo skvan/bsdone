@@ -45,6 +45,8 @@ class ClubhouseServiceTest {
     @Mock
     private StatsService statsService;
     @Mock
+    private ClubhouseEvaluationService evaluationService;
+    @Mock
     private UserClubhouseConfigService configService;
 
     private ClubhouseService service;
@@ -60,6 +62,7 @@ class ClubhouseServiceTest {
                 eventTeamRepository,
                 gameRepository,
                 statsService,
+                evaluationService,
                 configService);
     }
 
@@ -104,6 +107,7 @@ class ClubhouseServiceTest {
         assertEquals("林嘉豪", playerView.get("name"));
         assertTrue(((List<?>) result.get("teams")).isEmpty());
         assertNotNull(result.get("catalog"));
+        assertTrue(result.containsKey("evaluation"));
         assertEquals(4, ((List<?>) result.get("ranks")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");

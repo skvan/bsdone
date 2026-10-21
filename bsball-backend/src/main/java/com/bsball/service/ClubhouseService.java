@@ -52,6 +52,7 @@ public class ClubhouseService {
     private final EventTeamRepository eventTeamRepository;
     private final GameRepository gameRepository;
     private final StatsService statsService;
+    private final ClubhouseEvaluationService evaluationService;
     private final UserClubhouseConfigService configService;
 
     /** 配置保存与读取统一使用球员所属租户，避免跨租户浏览时的租户口径分叉。 */
@@ -80,6 +81,8 @@ public class ClubhouseService {
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
         out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
+        out.put("evaluation", evaluationService.build(
+                player.getId(), scope.teamId(), scope.eventId(), gameMode, stats));
         List<Map<String, Object>> schedule = schedule(tenantId, teams);
         out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
         out.put("schedule", schedule);
