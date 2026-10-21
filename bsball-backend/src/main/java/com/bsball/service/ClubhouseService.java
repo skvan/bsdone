@@ -54,6 +54,11 @@ public class ClubhouseService {
     private final StatsService statsService;
     private final UserClubhouseConfigService configService;
 
+    /** 配置保存与读取统一使用球员所属租户，避免跨租户浏览时的租户口径分叉。 */
+    public Long playerTenantId(Long userId) {
+        return findPlayer(userId).getTenantId();
+    }
+
     public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId) {
         Player player = findPlayer(userId);
         Long tenantId = player.getTenantId();

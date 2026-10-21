@@ -1,7 +1,6 @@
 package com.bsball.api;
 
 import com.bsball.common.Result;
-import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.UnauthorizedException;
 import com.bsball.service.ClubhouseService;
 import com.bsball.service.JwtService;
@@ -46,14 +45,14 @@ public class ClubhouseApi {
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody(required = false) Map<String, Object> body) {
         Long userId = requireUserId(auth);
-        return Result.ok(configService.save(userId, requireTenantId(), body));
+        return Result.ok(configService.save(userId, clubhouseService.playerTenantId(userId), body));
     }
 
     @PostMapping(value = {"/config/reset"})
     public Result<Map<String, Object>> resetConfig(
             @RequestHeader(value = "Authorization", required = false) String auth) {
         Long userId = requireUserId(auth);
-        return Result.ok(configService.reset(userId, requireTenantId()));
+        return Result.ok(configService.reset(userId, clubhouseService.playerTenantId(userId)));
     }
 
     private Long requireUserId(String auth) {
@@ -65,11 +64,4 @@ public class ClubhouseApi {
         return userId;
     }
 
-    private Long requireTenantId() {
-        Long tenantId = CurrentUserHolder.getTenantId();
-        if (tenantId == null) {
-            throw new UnauthorizedException("请先登录");
-        }
-        return tenantId;
-    }
 }
