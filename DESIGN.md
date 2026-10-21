@@ -337,8 +337,28 @@ Chart rules:
 - Line charts: maximum 30 points per series; show a tooltip and a summary sentence for screen readers.
 - Bar charts: maximum 12 categories; sort intentionally (time, value or rank), not alphabetically by accident.
 - Donut/pie: only for composition metrics (for example hit types: singles / doubles / triples / home runs); never for rates such as AVG, OBP or ERA. Put the total or the leading share in the center, not a decorative number.
-- Scatter/radar/heatmap are not approved chart types yet. Do not add them without a design decision.
+- Radar: approved only for the player “总体评价” (overall evaluation) section. Use one card per domain: batting and defense are always shown together; pitchers get a third pitching card. Never use tabs or a switcher to hide one of them. A radar must show the raw value and percentile for every axis, plus the comparison scope and sample size. Do not use radar for time series, rankings over time or arbitrary dashboards.
+- Scatter/heatmap are not approved chart types yet. Do not add them without a design decision.
 - Implementation variables are `--bs-chart-1` … `--bs-chart-6`; use them in order and do not introduce local series hex values.
+
+#### Overall evaluation radar
+
+The approved player radar uses five axes per domain, in this fixed order:
+
+| Card | Axes | Domain color |
+|---|---|---|
+| Batting | AVG, OBP, SLG, RBI, SB | `chart-6` (deep navy) |
+| Defense | FPCT, PO/G, A/G, DP/G, RF/9 | `{colors.primary}` gold |
+| Pitching | ERA, WHIP, K/9, BB/9, IP | `chart-3` (teal) |
+
+- Normalize each axis to a `0–100` percentile within the selected represented team and event. Do not mix events or teams. Show the comparison scope (“同队同赛事”) and the number of players in the sample.
+- Require at least three comparable players. Below that, show an empty state with the reason instead of inventing a shape.
+- Lower-is-better metrics (ERA, WHIP, BB/9) must be reversed before plotting. State this in the section footnote. IP keeps baseball notation on the axis (`5.2` = 5⅔ innings); percentile math uses outs.
+- At widths where three cards would fall below roughly 300px each, wrap to two columns + one rather than shrinking the chart labels. The final mobile breakpoint stacks all cards in domain order.
+- Draw five concentric rings at 20% intervals with a 1px hairline; no ring labels are required. Fill the data polygon with the domain color at 15% opacity and a 2px outline; dots use the surface color with a 2px domain stroke.
+- Use the domain color as a 3px card edge, not as a background wash. The score and grade sit in the card header; the strongest and weakest axes are named below the chart.
+- The batting and defense cards appear side by side on desktop and stack on mobile. All cards remain visible simultaneously; no accordion, carousel or tab. Pitching is appended as a third card when the player has pitching data.
+- Defense is position-sensitive. Keep the scope note visible and do not imply that PO/G or A/G compare like-for-like across every position.
 
 ## Typography
 
@@ -427,6 +447,9 @@ White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercas
 
 ### Rank band
 Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band header must name the team and event scope.
+
+### Overall evaluation cards
+Full-width section directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
@@ -541,10 +564,10 @@ Rules:
 
 ## Responsive Behavior
 
-- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right.
-- **1024–1199px**: reduce page padding; hero right column narrows; scope hint may hide.
-- **768–1023px**: 8-column grid; hero stacks if the player card would be squeezed; rank band 2×2.
-- **<768px**: single column; scope pills wrap; player card becomes a full-width card; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up.
+- **1024–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide.
+- **768–1023px**: 8-column grid; hero stacks if the player card would be squeezed; rank band 2×2; evaluation radar cards stack.
+- **<768px**: single column; scope pills wrap; player card becomes a full-width card; chart and data matrix stack; schedule rows become two-line cards; result cards stack; evaluation radar cards stack in batting → defense → pitching order; touch targets ≥44px.
 - The page must never scroll horizontally at 390px.
 
 ## Adoption Rules for Future Frontend Changes

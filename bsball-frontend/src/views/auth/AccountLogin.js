@@ -62,8 +62,8 @@ var la={
       portalPath:Ce
     }
     =ta(),v=W(()=>Je(j)),ke=W(()=>`/${v.value}/account/register`),ye=W(()=>`/${v.value}/account/forgot-password`),ne=W(()=>{
-      let r=typeof j.query.redirect=="string"?j.query.redirect:`/${v.value}/`;
-      return r!==`/${v.value}/`&&r!==`/${v.value}`||(r=`/${v.value}${le.firstAccessibleMenuPath()}`),r
+      const r=typeof j.query.redirect=="string"?j.query.redirect:"";
+      return /\/claim\//.test(r)?r:""
     }
     ),J=m("password"),L=m(""),z=m(!1),U=m(!1),A=m(0);
     let T=null;
@@ -135,6 +135,12 @@ var la={
     };
     function R(){
       L.value=""
+    }
+    async function goAfterLogin(){
+      if(ne.value){await te.push(ne.value);return}
+      let profile=null;
+      try{profile=await me.getPlayerProfile()}catch{}
+      await te.push(profile?{name:"PortalClubhouse",params:{tenantCode:v.value}}:`/${v.value}/`)
     }
     function Q(a){
       const e=a?.message?.trim()??"";
@@ -311,7 +317,7 @@ var la={
           };
           h.value&&d.captchaId&&(a.captchaId=d.captchaId,p.value==="input"&&(a.captchaCode=d.captchaCode.trim()),d.captchaVerifyToken&&(a.captchaVerifyToken=d.captchaVerifyToken));
           const e=await B.login(a);
-          le.completeLogin(v.value,e.data.token,e.data.user),await te.push(ne.value)
+          le.completeLogin(v.value,e.data.token,e.data.user),await goAfterLogin()
         }
         catch(a){
           const e=Q(a);
@@ -332,7 +338,7 @@ var la={
             phone:o.phone.trim(),smsCode:o.smsCode.trim(),tenantCode:v.value
           }
           );
-          le.completeLogin(v.value,a.data.token,a.data.user),await te.push(ne.value)
+          le.completeLogin(v.value,a.data.token,a.data.user),await goAfterLogin()
         }
         catch(a){
           L.value=Q(a)

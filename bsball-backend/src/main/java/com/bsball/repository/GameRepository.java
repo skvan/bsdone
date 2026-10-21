@@ -47,6 +47,13 @@ JpaSpecificationExecutor<Game> {
     @Query(value="select count(g) from Game g where g.deletedAt is null and g.eventId = :eventId and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and g.status in ('live', 'final')")
     public long countStartedGamesByEventAndTeam(@Param(value="eventId") Long eventId, @Param(value="teamId") Long teamId);
 
+    /**
+     * 个人驾驶舱跨赛事赛程：本人代表球队的未结束比赛（scheduled/live），按日期时间升序。
+     * 只按租户 + 球队集合取数，避免逐赛事查询。
+     */
+    @Query(value="select g from Game g where g.deletedAt is null and g.tenantId = :tenantId and (g.homeTeamId in :teamIds or g.awayTeamId in :teamIds) and coalesce(g.status, 'scheduled') in :statuses order by g.gameday asc, g.gameTime asc, g.id asc")
+    public List<Game> findForTeamsAndStatuses(@Param(value="tenantId") Long tenantId, @Param(value="teamIds") Collection<Long> teamIds, @Param(value="statuses") Collection<String> statuses);
+
     /** 批量口径（球队端列表 canWithdraw 标记）：本队在给定赛事中已开赛的赛事 ID 集（防逐行查询）。 */
     @Query(value="select distinct g.eventId from Game g where g.deletedAt is null and g.eventId in :eventIds and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and g.status in ('live', 'final')")
     public List<Long> findStartedEventIdsByEventIdsAndTeamId(@Param(value="eventIds") Collection<Long> eventIds, @Param(value="teamId") Long teamId);

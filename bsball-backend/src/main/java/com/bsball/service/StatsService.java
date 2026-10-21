@@ -178,13 +178,22 @@ public class StatsService {
     }
 
     public List<PlayerGameLogEntryDTO> getPlayerGameLog(Long playerId, int limit, String gameMode) {
+        return this.loadGameLog(playerId, limit, gameMode, false);
+    }
+
+    /** 个人驾驶舱趋势/排名用：只取参与排名的比赛（与统计口径一致）。 */
+    public List<PlayerGameLogEntryDTO> getPlayerGameLogForRanking(Long playerId, int limit, String gameMode) {
+        return this.loadGameLog(playerId, limit, gameMode, true);
+    }
+
+    private List<PlayerGameLogEntryDTO> loadGameLog(Long playerId, int limit, String gameMode, boolean rankingOnly) {
         if (playerId == null || limit <= 0) {
             return List.of();
         }
         try {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
-            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), Math.min(limit, 100), gm);
+            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), Math.min(limit, 100), gm, rankingOnly);
             ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
             for (Map<String, Object> row : rows) {
                 PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
