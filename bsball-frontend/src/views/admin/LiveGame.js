@@ -55,7 +55,8 @@ import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
-import { BAT_SHAPES, battedShapeColor } from '../../utils/battedBallFlight';
+import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
+import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
 import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
 import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField';
 import '../../styles/legacy/live-game.css';
@@ -8574,7 +8575,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return Gf()?(l.flow={
         type:"BIP_HIT_PENDING",bipCode:e||void 0,resolveType:t
       }
-      ,J("点击守备位置确认落点，或拖拽调整落点位置","info"),!0):!1
+      ,J(t==="HR"?"全垒打：点击 LF/CF/RF 选择方向，拖拽选择墙外落点（拖到扇形内会自动外推）":"点击守备位置确认落点，或拖拽调整落点位置","info"),!0):!1
     }
     function Po(e,t,a,s){
       let r=us(e);
@@ -8670,7 +8671,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),window.removeEventListener("blur",Yh)
     }
     function Yh(){
-      console.log("[FielderDrag] blur cleanup"),ce.value=null,hh.value=null,Mn(ce),Mn(hh),ps()
+      console.log("[FielderDrag] blur cleanup"),ce.value=null,hh.value=null,hrDragPreview.value=null,Mn(ce),Mn(hh),ps()
     }
     function Co(e){
       const t=ce.value;
@@ -8680,7 +8681,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!a)return;
       const s=a.createSVGPoint();
       s.x=e.clientX,s.y=e.clientY;
-      const r=s.matrixTransform(a.getScreenCTM()?.inverse()),c0=LgClampHitSpot(r.x,r.y),p=c0.x,g=c0.y,m=p-t.startX,y=g-t.startY,b=Math.sqrt(m*m+y*y);
+      const r=s.matrixTransform(a.getScreenCTM()?.inverse()),c0=LgClampHitSpot(r.x,r.y),p=c0.x,g=c0.y,m=p-t.startX,y=g-t.startY,b=Math.sqrt(m*m+y*y),isHrDrag=t.mode==="bip"&&isHrPendingFlow(l.flow);
+      hrDragPreview.value=isHrDrag?LgProjectHrLanding(p,g,t.pos):null;
       !t.hasMoved&&b>(t.mode==="chain"?10:5)&&(t.hasMoved=!0,console.log("[FielderDrag] Move threshold exceeded, hasMoved = true")),t.currentX=p,t.currentY=g,t.hasMoved&&(t.mode==="chain"&&(hh.value=hlBaseNear(p,g),Mn(hh)),zu(),console.log("[FielderDrag] Moving",{
         x:p,y:g
       }
@@ -8694,7 +8696,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),!t||!t.isDragging||e.pointerId!==t.pointerId)return;
       const _f=l.flow,_okBip=_f?.type==="BIP_HIT_PENDING"&&t.mode==="bip",_okChain=!!_f&&ho.has(_f.type)&&t.mode==="chain";
       if(!_okBip&&!_okChain){
-        console.log("[FielderDrag] Aborted in pointerup: flow state mismatch"),ce.value=null,hh.value=null,ps();
+        console.log("[FielderDrag] Aborted in pointerup: flow state mismatch"),ce.value=null,hh.value=null,hrDragPreview.value=null,ps();
         return
       }
       const a=Rn.value;
@@ -8720,8 +8722,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       hh.value=null,Mn(hh);
-      const w=eu(y,b);
-      fs(w,y,b,tu(b,w),Bo(y,b,w))
+      const isHr=_okBip&&_f.resolveType==="HR",hrSpot=isHr?LgProjectHrLanding(y,b,t.pos):null,landX=hrSpot?hrSpot.x:y,landY=hrSpot?hrSpot.y:b;
+      hrDragPreview.value=null;
+      const w=eu(landX,landY);
+      fs(w,landX,landY,isHr?"deep":tu(landY,w),isHr?LgHrFieldPos(t.pos):Bo(landX,landY,w))
     }
     function hlBaseNear(e,t){
       const a=[[1,Ke[1]?.x,Ke[1]?.y],[2,Ke[2]?.x,Ke[2]?.y],[3,Ke[3]?.x,Ke[3]?.y],[4,Qo?.x,Qo?.y]];
@@ -8766,12 +8770,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       )
     }
-    const battedTrail=x(null);
-    function battedShapeOf(e){
-      const t=BAT_SHAPES[Ls(e??"")??""]??[.14,600];
-      return {
-        k:t[0],ms:t[1]
-      }
+    const battedTrail=x(null),hrDragPreview=x(null);
+    const isHrPendingFlow=e=>e?.type==="BIP_HIT_PENDING"&&e.resolveType==="HR";
+    function hrFxLayer(){
+      return Rn.value?.querySelector(".hr-fireworks-layer")
     }
     function battedGeo(e,t,a){
       return {
@@ -8779,7 +8781,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
     }
     function battedFlyTo(e,t,a,s){
-      const r=battedShapeOf(a),p=battedGeo(e,t,r.k),clr=battedShapeColor(a),g=++chainAnimSeq,m=performance.now(),y=q=>r.k===0?{
+      const hr=LgIsHomeRun(a),r=LgBattedShapeOf(a),p=battedGeo(e,t,r.k),clr=hr?"url(#lg-hr-trail)":battedShapeColor(a),g=++chainAnimSeq,m=performance.now(),y=q=>r.k===0?{
         x:240+(e-240)*q,y:555+(t-555)*q
       }
       :{
@@ -8788,21 +8790,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,b=q=>{
         const w=y(q);
         return r.k===0?`M 240 555 L ${w.x} ${w.y}`:`M 240 555 Q ${240+(p.cx-240)*q} ${555+(p.cy-555)*q} ${w.x} ${w.y}`
+      },setTrail=q=>{
+        battedTrail.value={
+          d:b(q),color:clr,hr
+        }
       };
-      Xn.value=240,Yn.value=555,ka.value=!0,(function w(q){
+      Xn.value=240,Yn.value=555,ka.value=!0;
+      let lastSpark=0;
+      (function w(q){
         if(g!==chainAnimSeq){
-          battedTrail.value&&(battedTrail.value={
-            d:b(1),color:clr
-          });
+          battedTrail.value&&setTrail(1);
           return
         }
         const x=Math.min((q-m)/r.ms,1),k=1-Math.pow(1-x,3),C0=y(k);
-        Xn.value=C0.x,Yn.value=C0.y,battedTrail.value={
-          d:b(k),color:clr
-        },x<1?requestAnimationFrame(w):(battedTrail.value={
-          d:b(1),color:clr
+        Xn.value=C0.x,Yn.value=C0.y,setTrail(k);
+        if(hr&&x<.98&&q-lastSpark>LgHrSparkMs){
+          lastSpark=q;
+          const N=y(Math.min(1,k+.01));
+          LgSpawnHrSparks(hrFxLayer(),C0.x,C0.y,N.x-C0.x,N.y-C0.y)
         }
-        ,s||setTimeout(()=>{
+        x<1?requestAnimationFrame(w):(setTrail(1),hr?(LgPlayHrFireworks(hrFxLayer(),e,t),setTimeout(()=>{
+          g===chainAnimSeq&&(ka.value=!1)
+        }
+        ,LgHrHoldMs)):s||setTimeout(()=>{
           g===chainAnimSeq&&(ka.value=!1)
         }
         ,200))
@@ -8852,7 +8862,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     const chainDone=x(null);
     function clearChainVisual(){
-      chainAnimSeq+=1,chainTrail.value=[],chainHl.value=null,chainDone.value=null,battedTrail.value=null,ka.value=!1
+      chainAnimSeq+=1,chainTrail.value=[],chainHl.value=null,chainDone.value=null,battedTrail.value=null,ka.value=!1,hrDragPreview.value=null,LgClearHrFx(hrFxLayer())
     }
     function syncChainVisualFromFlow(){
       clearChainVisual();
@@ -8860,7 +8870,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!e||!isChainFlow(e))return;
       const T2=e.bipSpray;
       if(T2?.sprayX!=null&&T2?.sprayY!=null){
-        const S2=battedShapeOf(e.bipCode),G2=battedGeo(T2.sprayX,T2.sprayY,S2.k);
+        const S2=LgBattedShapeOf(e.bipCode),G2=battedGeo(T2.sprayX,T2.sprayY,S2.k);
         battedTrail.value={
           d:S2.k===0?`M 240 555 L ${T2.sprayX} ${T2.sprayY}`:`M 240 555 Q ${G2.cx} ${G2.cy} ${T2.sprayX} ${T2.sprayY}`,color:battedShapeColor(e.bipCode)
         }
@@ -9285,8 +9295,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           J("无效的守备位置","warning");
           return
         }
-        const r=eu(s.x,s.y),p=tu(s.y,r);
-        fs(r,s.x,s.y,p,e);
+        const hr=isHrPendingFlow(a),hp=hr?LgProjectHrLanding(s.x,s.y,e):s,r=eu(hp.x,hp.y),p=hr?"deep":tu(hp.y,r);
+        fs(r,hp.x,hp.y,p,hr?LgHrFieldPos(e):e);
         return
       }
       if(a?.type==="ADVANCE_FE"&&a.advanceFeStep==="pick_fielder"){
@@ -11077,7 +11087,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,[(h(),C("svg",{
           ref_key:"fieldSvgRef",ref:Rn,viewBox:"-300 -150 1080 780",class:"ballpark-svg",onClick:zf
         }
-        ,[v($u),n("g",{
+        ,[n("defs",null,[n("linearGradient",{id:"lg-hr-trail",gradientUnits:"userSpaceOnUse",x1:"240",y1:"555",x2:"240",y2:"-80"},[(h(!0),C(me,null,et(LgHrTrailStops,(s,i)=>n("stop",{
+          key:i,offset:s.offset,"stop-color":s.color
+        }
+        )),128))])]),v($u),n("g",{
           class:"bases-group",onClick:t[6]||(t[6]=Ze(()=>{
             
           }
@@ -11098,7 +11111,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,-1),n("circle",{
           class:"field-home",cx:"240",cy:"555",r:"12",opacity:"0"
         }
-        ,null,-1)])]),c(battedTrail)?(h(),C("path",{key:"batted",class:"batted-trail",d:c(battedTrail).d,style:c(battedTrail).color?{
+        ,null,-1)])]),c(battedTrail)?(h(),C("path",{key:"batted",class:re(["batted-trail",{"batted-trail--hr":!!c(battedTrail).hr}]),d:c(battedTrail).d,style:c(battedTrail).color?{
           stroke:c(battedTrail).color
         }:null},null,8,["d","style"])):W("",!0),n("g",{class:"chain-trail-layer"},[(h(!0),C(me,null,et(c(chainTrail),(td,ti)=>(h(),C("line",{
           key:td.key,x1:td.x1,y1:td.y1,x2:td.x2,y2:td.y2,class:re(["chain-trail",ti===c(chainTrail).length-1?"chain-trail--solid":`chain-trail--l${Math.min(4,c(chainTrail).length-1-ti)}`])
@@ -11268,7 +11281,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ," 出局 ",10,kb)],64)):W("",!0)],64))),128))])):W("",!0),c(ka)?(h(),C("g",Pb,[n("image",{
           x:c(Xn)-12,y:c(Yn)-12,href:zn,"xlink:href":zn,width:"24",height:"24",preserveAspectRatio:"xMidYMid meet"
         }
-        ,null,8,Cb)])):W("",!0),ne.value&&ne.value.moved&&c(l).runners[ne.value.base]?(h(),C("g",{
+        ,null,8,Cb)])):W("",!0),n("g",{class:"hr-fireworks-layer","pointer-events":"none"}),c(hrDragPreview)?(h(),C("g",{key:"hr-preview",class:"hr-drag-preview",transform:`translate(${c(hrDragPreview).x}, ${c(hrDragPreview).y})`},[n("circle",{
+          r:"16",fill:"none",stroke:"url(#lg-hr-trail)","stroke-width":"3","stroke-dasharray":"5 4"
+        }
+        ),n("text",{
+          y:"-26","text-anchor":"middle",class:"hr-drag-preview__label"
+        }
+        ,"HR落点")])):W("",!0),ne.value&&ne.value.moved&&c(l).runners[ne.value.base]?(h(),C("g",{
           key:4,class:"runner-drag-floater","pointer-events":"none",transform:ur(ne.value.base)
         }
         ,[n("circle",{

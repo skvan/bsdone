@@ -36,6 +36,9 @@
                 <stop offset="0%" stop-color="#d98a4a" />
                 <stop offset="100%" stop-color="#c06830" />
               </linearGradient>
+              <linearGradient id="ghr-hr-trail" gradientUnits="userSpaceOnUse" x1="240" y1="555" x2="240" y2="-80">
+                <stop v-for="(s, i) in HR_TRAIL_STOPS" :key="i" :offset="s.offset" :stop-color="s.color" />
+              </linearGradient>
             </defs>
             <g aria-hidden="true">
               <path d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" fill="url(#ghr-grass)" />
@@ -66,14 +69,15 @@
                 :key="'t' + t.id"
                 :d="t.d"
                 class="ghr-trail ghr-trail--static"
+                :class="{ 'ghr-trail--hr': t.isHr }"
                 :style="{ stroke: t.color }"
               />
             </template>
             <template v-for="(r, i) in visibleRecords" :key="i">
               <circle
                 v-if="isHit(r)"
-                :cx="r.sprayX"
-                :cy="r.sprayY"
+                :cx="displayPoint(r).x"
+                :cy="displayPoint(r).y"
                 :r="r === selected ? 9.5 : 6.5"
                 class="ghr-dot ghr-dot--hit"
                 :class="{ 'ghr-dot--on': r === selected }"
@@ -94,12 +98,14 @@
                 :key="'a' + i"
                 :d="t.d"
                 class="ghr-trail"
+                :class="{ 'ghr-trail--hr': t.isHr }"
                 :style="{ stroke: t.color }"
               />
             </template>
             <template v-for="(b, i) in animBalls" :key="'b' + i">
               <circle v-if="b" :cx="b.x" :cy="b.y" r="5" class="ghr-ball" />
             </template>
+            <g ref="fxLayer" class="ghr-fireworks-layer" aria-hidden="true" />
           </svg>
           <div class="ghr-legend">
             <span class="ghr-legend-item">
@@ -154,7 +160,17 @@ import {
   battedShapeColor,
   battedShapeOf,
   bipCodeShape,
+  isHomeRunBip,
 } from '../../utils/battedBallFlight';
+import {
+  HR_FIREWORK_HOLD_MS,
+  HR_SIDE_SPARK_INTERVAL_MS,
+  HR_TRAIL_STOPS,
+  clearHomeRunFx,
+  playHomeRunFireworks,
+  projectHomeRunLanding,
+  spawnHomeRunSideSparks,
+} from '../../utils/homeRunEffect';
 
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
@@ -225,9 +241,17 @@ const focusMode = ref('none');
 const animIds = ref(new Set());
 const animTrails = ref([]);
 const animBalls = ref([]);
+const fxLayer = ref(null);
 let animSeq = 0;
 let rafId = 0;
 let loadSeq = 0;
+
+function displayPoint(r) {
+  if (isHomeRunBip(r.bipCode)) {
+    return projectHomeRunLanding(r.sprayX, r.sprayY, r.sprayFieldPos ?? r.sprayZone);
+  }
+  return { x: r.sprayX, y: r.sprayY };
+}
 
 async function load(gameId) {
   if (!gameId) return;
@@ -265,6 +289,7 @@ function cancelAnim() {
   animIds.value = new Set();
   animTrails.value = [];
   animBalls.value = [];
+  clearHomeRunFx(fxLayer.value);
 }
 
 // 记录归属球队：优先用记录上的 teamId；历史数据为 0 时按上/下半局推出击球方（主/客队）
@@ -324,11 +349,16 @@ const staticTrails = computed(() => {
   else if (focusMode.value === 'group') base = visibleRecords.value;
   return base
     .filter((r) => !animIds.value.has(r.id))
-    .map((r) => ({
-      id: r.id,
-      d: battedPathD(r.sprayX, r.sprayY, battedShapeOf(r.bipCode).k),
-      color: battedShapeColor(r.bipCode),
-    }));
+    .map((r) => {
+      const p = displayPoint(r);
+      const isHr = isHomeRunBip(r.bipCode);
+      return {
+        id: r.id,
+        d: battedPathD(p.x, p.y, battedShapeOf(r.bipCode).k),
+        color: isHr ? 'url(#ghr-hr-trail)' : battedShapeColor(r.bipCode),
+        isHr,
+      };
+    });
 });
 
 function playSingle(record) {
@@ -352,12 +382,40 @@ function growingTrailD(meta, q, head) {
   return `M 240 555 Q ${cx} ${cy} ${head.x} ${head.y}`;
 }
 
+// HR 飞行全程喷两侧火花；抵达落点后绽放烟花并停留（返回本轮是否仍在停留）
+function tickHomeRunFlight(meta, x, q, head, now) {
+  if (x >= 1 && !meta.fired) {
+    meta.fired = true;
+    meta.holdUntil = now + HR_FIREWORK_HOLD_MS;
+    playHomeRunFireworks(fxLayer.value, meta.x, meta.y);
+  }
+  if (x < 0.98 && now - meta.lastSpark > HR_SIDE_SPARK_INTERVAL_MS) {
+    meta.lastSpark = now;
+    const next = battedPointAt(meta.x, meta.y, meta.shape.k, Math.min(1, q + 0.01));
+    spawnHomeRunSideSparks(fxLayer.value, head.x, head.y, next.x - head.x, next.y - head.y);
+  }
+  return meta.holdUntil > now;
+}
+
 function startFlight(targets) {
   cancelAnim();
   const seq = animSeq;
   const metas = targets.map((r) => {
     const shape = battedShapeOf(r.bipCode);
-    return { r, shape, geo: battedGeo(r.sprayX, r.sprayY, shape.k), color: battedShapeColor(r.bipCode) };
+    const p = displayPoint(r);
+    const isHr = isHomeRunBip(r.bipCode);
+    return {
+      r,
+      shape,
+      geo: battedGeo(p.x, p.y, shape.k),
+      color: isHr ? 'url(#ghr-hr-trail)' : battedShapeColor(r.bipCode),
+      isHr,
+      x: p.x,
+      y: p.y,
+      lastSpark: 0,
+      fired: false,
+      holdUntil: 0,
+    };
   });
   animIds.value = new Set(targets.map((t) => t.id));
   const start = performance.now();
@@ -370,9 +428,11 @@ function startFlight(targets) {
       const x = Math.min((now - start) / m.shape.ms, 1);
       if (x < 1) allDone = false;
       const q = 1 - Math.pow(1 - x, 3);
-      const pt = battedPointAt(m.r.sprayX, m.r.sprayY, m.shape.k, q);
-      trails[i] = { d: growingTrailD(m, q, pt), color: m.color };
-      balls[i] = x < 1 ? { x: pt.x, y: pt.y } : null; // 落到落点后隐藏球，落点只留标记（安打圆形/非安打×）
+      const pt = battedPointAt(m.x, m.y, m.shape.k, q);
+      trails[i] = { d: growingTrailD(m, q, pt), color: m.color, isHr: m.isHr };
+      const holding = m.isHr && tickHomeRunFlight(m, x, q, pt, now);
+      if (holding) allDone = false;
+      balls[i] = x < 1 ? { x: pt.x, y: pt.y } : holding ? { x: m.x, y: m.y } : null; // HR 在落点停留看烟花；其余落到落点后隐藏
     });
     animTrails.value = trails;
     animBalls.value = balls;
@@ -395,8 +455,9 @@ function isHit(r) {
 
 // 非安打落点用红色 ×（half = 半臂长）
 function crossD(r, half) {
-  const x = r.sprayX;
-  const y = r.sprayY;
+  const p = displayPoint(r);
+  const x = p.x;
+  const y = p.y;
   return `M ${x - half} ${y - half} L ${x + half} ${y + half} M ${x - half} ${y + half} L ${x + half} ${y - half}`;
 }
 
@@ -546,6 +607,16 @@ function zoneText(r) {
   fill: none;
   stroke-width: 2.5;
   stroke-linecap: round;
+  pointer-events: none;
+}
+
+.ghr-trail--hr {
+  stroke-width: 7;
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 14px rgba(255, 79, 216, 0.7));
+}
+
+.ghr-fireworks-layer {
   pointer-events: none;
 }
 
