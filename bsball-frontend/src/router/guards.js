@@ -84,6 +84,13 @@ export function installRouterGuards(router) {
     buildDocumentTitle(to);
 
     const hasToken = typeof localStorage !== 'undefined' && !!resolveToken(active);
+    if (to.meta?.requiresPortalAuth === true && !hasToken) {
+      return {
+        name: 'PortalAccountLogin',
+        params: { tenantCode: active },
+        query: { redirect: to.fullPath }
+      };
+    }
     if (needAuth && !hasToken) {
       return {
         name: 'AdminLogin',

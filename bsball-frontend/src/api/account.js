@@ -29,6 +29,8 @@ export const accountApi = {
   register: (data) => post('/api/auth/register', data),
   loginByPhone: (data) => post('/api/auth/login-by-phone', data),
   getProfile: () => get('/api/account/profile'),
+  // 本人已认领的球员档案（未认领时 data 为 null；404 由调用方兜底）
+  getPlayerProfile: () => get('/api/account/player-profile').then((res) => res?.data ?? null),
   // 当前用户信息（App 启动时恢复登录态；编译产物 authApi.me）
   me: () => get('/api/auth/me'),
   updateProfile: (data) => put('/api/account/profile', data),
