@@ -394,7 +394,31 @@ var Ta={
       Je.value=e.batterFields,Ye.value=e.pitcherFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
     }
     function tt(e){
-      (e.key===adminFieldSettingsKey||e.key===watchSettingsKey)&&et()
+      if(e.key===adminFieldSettingsKey||e.key===watchSettingsKey){
+        et();
+        return
+      }
+      // 本地实时兜底：录入页写观赛快照时跨标签页立即应用，不依赖 postMessage 与 5s 轮询
+      if(!$.value)return;
+      const t=mt(ue.value,Y.value);
+      if(e.key!==t&&e.key!==mt(ue.value,void 0))return;
+      if(!e.newValue?.trim())return;
+      let a;
+      try{
+        a=JSON.parse(e.newValue)
+      }
+      catch{
+        return
+      }
+      const l=Number(a?.v??1);
+      if(!Number.isFinite(l)||l<1)return;
+      xe(a).then(()=>{
+        x.value=!0,T.value="",G.value="cache",U.value=new Date().toLocaleTimeString("zh-CN",{
+          hour12:!1
+        }
+        ),Fe.value=Date.now()
+      }
+      ).catch(()=>{})
     }
     // #211 观赛页「数据项调整」：右侧齿轮 + 独立列设置抽屉（不落其他页面的存储键）
     const watchSettingsOpen=f(!1),watchSmallScreen=f(typeof window<"u"&&window.innerWidth<768);
@@ -948,8 +972,8 @@ var Ta={
       const o=e.atBatSummaries;
       ve.value=Array.isArray(o)?o:[],Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
     }
-    async function ke(){
-      if($.value||Date.now()-Fe.value<4e3)return;
+    async function ke(force){
+      if($.value||(!force&&Date.now()-Fe.value<4e3))return;
       const e=Y.value;
       if(!Number.isFinite(e)||e<=0){
         T.value="无效的比赛 ID";
@@ -979,8 +1003,8 @@ var Ta={
       }
       
     }
-    async function We(){
-      if(Date.now()-Fe.value<4e3)return!1;
+    async function We(force){
+      if(!force&&Date.now()-Fe.value<4e3)return!1;
       const e=Y.value,t=ue.value;
       if(!Number.isFinite(e)||e<=0||!Number.isFinite(t)||t<=0)return!1;
       try{
@@ -1023,8 +1047,15 @@ var Ta={
       const t=e.data;
       t?.type===dn&&Number(t.gameId??0)===Number(Y.value)&&ea(t.payload)
     }
+    function watchOnVisibility(){
+      if(document.visibilityState!=="visible"||Q.value?.status==="final")return;
+      // 后台标签被节流/冻结后切回前台：立即补读一次，不再等下一轮 5s 轮询
+      $.value?We(!0).then(e=>{
+        e||Ie()
+      }):ke(!0)
+    }
     async function ta(){
-      $.value=!$.value,G.value="",x.value=!1,T.value="",U.value="",$.value?await We()||Ie():ke()
+      $.value=!$.value,G.value="",x.value=!1,T.value="",U.value="",$.value?await We(!0)||Ie():ke()
     }
     async function aa(){
       pe.value=!0,T.value="";
@@ -1055,7 +1086,7 @@ var Ta={
       
     }
     return ca(()=>{
-      window.addEventListener("message",_t),window.addEventListener("storage",tt),window.addEventListener("resize",watchOnResize),watchOnResize(),aa(),Se=window.setInterval(()=>{
+      window.addEventListener("message",_t),window.addEventListener("storage",tt),document.addEventListener("visibilitychange",watchOnVisibility),window.addEventListener("resize",watchOnResize),watchOnResize(),aa(),Se=window.setInterval(()=>{
         Q.value?.status!=="final"&&($.value?We().then(e=>{
           e||Ie()
         }
@@ -1067,7 +1098,7 @@ var Ta={
       ,300):ke()
     }
     ),pa(()=>{
-      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),window.removeEventListener("resize",watchOnResize),Se!=null&&(clearInterval(Se),Se=null)
+      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),document.removeEventListener("visibilitychange",watchOnVisibility),window.removeEventListener("resize",watchOnResize),Se!=null&&(clearInterval(Se),Se=null)
     }
     ),(e,t)=>{
       const a=ra,l=oa,r=sa,d=la,m=na,b=ua,w=ha;
