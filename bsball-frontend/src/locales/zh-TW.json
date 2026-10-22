@@ -424,6 +424,51 @@
         "fullName": "场内球比例",
         "definition": "打席结果为场内击球（非三振、保送、触身等）的比例",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "妨阻上壘",
+        "definition": "打者因守方妨礙或阻擋而獲判上一壘；計入打席，不計打數",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "被二壘打",
+        "definition": "投手被對方擊出的二壘安打數",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "被三壘打",
+        "definition": "投手被對方擊出的三壘安打數",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "被犧牲觸擊",
+        "definition": "投手被對方以犧牲觸擊推進出局",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "被犧牲高飛",
+        "definition": "投手被對方以高飛犧牲打送回跑者",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "被妨阻上壘",
+        "definition": "投手因其守方妨礙或阻擋導致打者上壘",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "非自責分",
+        "definition": "因守方失誤等非投手責任而失掉的分",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "待定分",
+        "definition": "自責分判定尚未完成的失分",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "被盜壘成功",
+        "definition": "捕手在場時對方成功盜壘的次數",
+        "shortLabel": "SB"
       }
     }
   },
@@ -966,9 +1011,16 @@
         "cs": "盜失（Caught Stealing）",
         "e": "失誤（Errors）",
         "avg": "打擊率（H/AB）",
-        "obp": "上壘率（本頁以 (H+保送+HP)/PA 近似）",
+        "obp": "上壘率（(H+BB+HBP)/(AB+BB+HBP+SF)）",
         "slg": "長打率（TB/AB）",
-        "ops": "攻擊指數（OBP+SLG）"
+        "ops": "攻擊指數（OBP+SLG）",
+        "gdp": "雙殺打（Grounded into Double Play）",
+        "sh": "犧牲觸擊（Sacrifice Bunt）",
+        "sf": "犧牲高飛（Sacrifice Fly）",
+        "bb": "四壞（含故意四壞）",
+        "ibb": "故意四壞（Intentional Walk）",
+        "hbp": "觸身球（Hit By Pitch）",
+        "io": "妨阻上壘（Obstruction/Interference）"
       },
       "pitcher": {
         "ip": "投球局數（Innings Pitched）",
@@ -979,7 +1031,7 @@
         "pitchSo": "奪三振（Strikeouts）",
         "pitchHr": "被牆外全壘打（Home Runs Allowed）",
         "pitchInsideParkHr": "被場內全壘打（Inside-the-park HR）",
-        "pitAb": "對手打數（BF−保送−IBB−HBP；非打者 AB）",
+        "pitAb": "對手打數（BF−BB−HBP；BB 含 IBB）",
         "pitE": "該投手本場打者數據的失誤",
         "np": "投球數",
         "pitchPa": "面對打席（PA）",
@@ -999,7 +1051,12 @@
         "hld": "中繼成功",
         "cg": "是否本場完投（不是為 0，是為 1）",
         "pg": "是否本場為完美比賽（不是為 0，是為 1）",
-        "era": "自責分率（ER×9/IP）"
+        "era": "自責分率（ER×9/IP）",
+        "pitchDoubles": "被二壘打（Doubles Allowed）",
+        "pitchTriples": "被三壘打（Triples Allowed）",
+        "pitchSh": "被犧牲觸擊（Sacrifice Bunts Allowed）",
+        "pitchSf": "被犧牲高飛（Sacrifice Flies Allowed）",
+        "pitchIo": "被妨阻上壘（Obstruction Allowed）"
       }
     }
   },
@@ -1379,7 +1436,7 @@
       "era": "責失分率",
       "whip": "每局被上壘率",
       "pitchBf": "面對打者總人次",
-      "pitchAb": "自由打數，由面對打者人次扣除四壞、故意與觸身",
+      "pitchAb": "自由打數，由面對打者人次扣除四壞與觸身（BB 含 IBB）",
       "ggComplete": "完投",
       "pgShutout": "完封",
       "pitchH": "被安打",
