@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 个人驾驶舱配置的读取、校验与保存。
- * <p>服务端只接受 {@link ClubhouseMetricCatalog} 中的指标和兼容图表类型；
- * 固定布局 v3-fixed 不允许客户端传入其他布局。</p>
+ * <p>服务端只接受 {@link ClubhouseMetricCatalog} 中的指标、兼容图表类型和
+ * {@link ClubhouseModuleCatalog} 中的模块；模块顺序即展示顺序，尺寸由白名单固定。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -76,7 +76,7 @@ public class UserClubhouseConfigService {
     }
 
     /**
-     * 校验并收敛为固定字段结构；非法指标/图表/排名数量直接拒绝。
+     * 校验并收敛为固定字段结构；非法指标/图表/排名/模块直接拒绝。
      */
     Map<String, Object> normalize(Map<String, Object> body) {
         Map<String, Object> source = body == null ? Map.of() : body;
@@ -92,15 +92,59 @@ public class UserClubhouseConfigService {
         }
 
         List<Map<String, Object>> ranks = normalizeRanks(source.get("ranks"));
+        List<Map<String, Object>> modules = normalizeModules(source.get("modules"));
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-        config.put("version", 1);
-        config.put("layout", "v3-fixed");
+        config.put("version", 2);
+        config.put("layout", "v3-modular");
+        config.put("modules", modules);
         LinkedHashMap<String, Object> outPerformance = new LinkedHashMap<>();
         outPerformance.put("metricKey", metric.key());
         outPerformance.put("viz", viz.trim());
         config.put("performance", outPerformance);
         config.put("ranks", ranks);
         return config;
+    }
+
+    private List<Map<String, Object>> normalizeModules(Object raw) {
+        if (!(raw instanceof List<?> list) || list.isEmpty()) {
+            return ClubhouseModuleCatalog.defaultModules();
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Object item : list) {
+            Map<String, Object> row = asMap(item);
+            ClubhouseModuleCatalog.ModuleDef def = ClubhouseModuleCatalog.find(asText(row.get("key")));
+            if (def == null) {
+                throw new BusinessException(400, "不支持的驾驶舱模块");
+            }
+            if (!seen.add(def.key())) {
+                throw new BusinessException(400, "驾驶舱模块不能重复");
+            }
+            out.add(moduleEntry(def, enabled(row.get("enabled"))));
+        }
+        for (ClubhouseModuleCatalog.ModuleDef def : ClubhouseModuleCatalog.all()) {
+            if (!seen.contains(def.key())) {
+                out.add(moduleEntry(def, def.enabledByDefault()));
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, Object> moduleEntry(ClubhouseModuleCatalog.ModuleDef def, boolean enabled) {
+        LinkedHashMap<String, Object> entry = new LinkedHashMap<>();
+        entry.put("key", def.key());
+        entry.put("enabled", enabled);
+        return entry;
+    }
+
+    private boolean enabled(Object raw) {
+        if (raw == null) {
+            return true;
+        }
+        if (raw instanceof Boolean value) {
+            return value;
+        }
+        throw new BusinessException(400, "模块 enabled 必须为布尔值");
     }
 
     private List<Map<String, Object>> normalizeRanks(Object raw) {

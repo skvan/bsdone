@@ -393,9 +393,10 @@ Serif is reserved for portal/dashboard display headings and the player name. Do 
 - Scope bar sits directly under the page head and above the hero.
 - Hero on desktop: 2-column split (identity / player card or snapshot); on mobile it stacks.
 - Rank band: 4 equal columns on desktop, 2×2 on mobile.
+- Dashboard module grid: one 12-column CSS Grid on desktop. Module spans are fixed by the module catalog: full `12`, wide `8`, narrow `4`. Order comes from the user's module config; do not use dense packing.
 - Touch targets: at least `44px` on mobile.
 
-Breakpoints: `1200px` (wide), `1024px` (compact desktop), `768px` (tablet / stacked), `480px` (phone).
+Breakpoints: the dashboard switches from the 12-column module grid to a single column at `980px`; phone typography and spacing tighten at `560px`. The page content max width is `1280px`.
 
 ## Elevation & Depth
 
@@ -442,6 +443,18 @@ Deep navy gradient with the player name in serif, short intro, tags and team str
 ### Player card
 The signature object: dark navy card, gold hairline, inner hairline frame, monogram avatar, player name, team line and three headline stats. It is decorative but must be built from real player data. It is not a generic "image card".
 
+### Dashboard modules
+The eight configurable modules are `队内坐标` (12), `总体评价` (12), `数据表现` (8), `代表球队` (4), `接下来的比赛` (8), `关于我` (4), `最近战报` (8), `快捷入口` (4). The default order follows the approved V3 page.
+
+- Hidden modules are removed from the grid; the page header, hero, identity strip and scope bar stay fixed.
+- Reordering is visual and follows the saved array. Wide and narrow cards do not pack densely; if a wide card is taller than the narrow card beside it, the next row starts after the wide card. This blank space is intentional and approved.
+- All modules can be hidden. Show a panel empty state with “所有内容模块已隐藏” and a primary “去设置” action; keep the top-right “数据设置” entry visible.
+- The module settings drawer lists every module with a drag handle, label, fixed-width badge, up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
+- Do not expose width editing or free positioning in this phase.
+
+### Settings drawer
+The module list sits above “表现图” and “队内排名”. Use `sortablejs` on the drag handle only; keep up/down buttons as the keyboard/touch fallback. Show “已启用 N / 8”. Saving persists module order and enabled state together with the existing metric choices. Hiding a module never clears its metric configuration.
+
 ### Panels
 White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercase gold kicker, serif title, optional "切换/完整数据" link. Do not nest more than one panel level.
 
@@ -449,7 +462,7 @@ White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercas
 Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band header must name the team and event scope.
 
 ### Overall evaluation cards
-Full-width section directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
+Full-width module in the default order directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
@@ -551,6 +564,8 @@ Rules:
 - Do use `{colors.accent-ink}` for small gold text on light.
 - Do keep the same event-tag tone for the same event type.
 - Do use a text label or icon alongside green/red semantic colors.
+- Do render dashboard modules from `moduleCatalog` + saved order; do not hard-code a second span/label map in the page.
+- Do keep the top-right “数据设置” entry available even when data modules are hidden.
 - Do verify both light and dark screenshots for every UI change.
 - Don't hard-code hex values in Vue components or page CSS.
 - Don't use `#C9A45B` for small text on warm paper.
@@ -564,10 +579,10 @@ Rules:
 
 ## Responsive Behavior
 
-- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up.
-- **1024–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide.
-- **768–1023px**: 8-column grid; hero stacks if the player card would be squeezed; rank band 2×2; evaluation radar cards stack.
-- **<768px**: single column; scope pills wrap; player card becomes a full-width card; chart and data matrix stack; schedule rows become two-line cards; result cards stack; evaluation radar cards stack in batting → defense → pitching order; touch targets ≥44px.
+- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their fixed 12/8/4 spans in saved order.
+- **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; module spans remain fixed.
+- **≤980px**: single column; every dashboard module spans the full row in saved order; hero stacks; rank band 2×2; evaluation radar cards stack; scope pills wrap; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≤560px**: phone typography and spacing; settings module hit targets remain 44×44px from the ≤980px rule.
 - The page must never scroll horizontally at 390px.
 
 ## Adoption Rules for Future Frontend Changes
@@ -603,3 +618,4 @@ Phased adoption:
 - No automated contrast/token lint is configured.
 - No dark-mode visual regression baselines.
 - Admin console adoption is intentionally undecided.
+- Module visual order uses CSS `order` while the DOM keeps the legacy main/side sequence (`performance → schedule → recentGames → teams → about → quickLinks`). Keyboard and screen-reader traversal follows that DOM sequence, not the saved visual order, including at the default setting. A future module renderer should flatten modules into configured DOM order; until then this is an accepted accessibility limitation for this phase.

@@ -31,9 +31,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 个人驾驶舱数据聚合（固定布局 v3-fixed）。
+ * 个人驾驶舱数据聚合（模块化布局 v3-modular）。
  * <p>数据范围：顶部数据按所选赛事（未选则全部赛事）聚合；队内排名必须落到
- * 「代表球队 + 赛事」；赛程跨全部代表球队与赛事。服务端只接受白名单指标。</p>
+ * 「代表球队 + 赛事」；赛程跨全部代表球队与赛事。服务端只接受白名单指标与模块。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -79,6 +79,7 @@ public class ClubhouseService {
         out.put("config", config);
         out.put("stats", stats);
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
+        out.put("moduleCatalog", ClubhouseModuleCatalog.catalog());
         out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
         out.put("evaluation", evaluationService.build(
