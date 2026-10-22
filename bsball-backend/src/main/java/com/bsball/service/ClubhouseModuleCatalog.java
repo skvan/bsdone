@@ -18,6 +18,7 @@ public final class ClubhouseModuleCatalog {
     private static final List<ModuleDef> MODULES = List.of(
             new ModuleDef("ranks", "队内坐标", 12, true),
             new ModuleDef("evaluation", "总体评价", 12, true),
+            new ModuleDef("milestones", "生涯里程碑", 12, true),
             new ModuleDef("performance", "数据表现", 8, true),
             new ModuleDef("teams", "代表球队", 4, true),
             new ModuleDef("schedule", "接下来的比赛", 8, true),

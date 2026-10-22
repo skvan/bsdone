@@ -15,9 +15,9 @@ class ClubhouseModuleCatalogTest {
     void defaultModulesFollowExistingLayout() {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
 
-        assertEquals(8, modules.size());
-        assertEquals(List.of("ranks", "evaluation", "performance", "teams",
-                "schedule", "about", "recentGames", "quickLinks"),
+        assertEquals(9, modules.size());
+        assertEquals(List.of("ranks", "evaluation", "milestones", "performance",
+                "teams", "schedule", "about", "recentGames", "quickLinks"),
                 modules.stream().map(row -> row.get("key")).toList());
         assertEquals(true, modules.get(0).get("enabled"));
     }
@@ -27,11 +27,13 @@ class ClubhouseModuleCatalogTest {
     void catalogReturnsFixedSpans() {
         List<Map<String, Object>> catalog = ClubhouseModuleCatalog.catalog();
 
-        assertEquals(8, catalog.size());
+        assertEquals(9, catalog.size());
         assertEquals(12, catalog.get(0).get("span"));
         assertEquals("队内坐标", catalog.get(0).get("label"));
-        assertEquals(8, catalog.get(2).get("span"));
-        assertEquals(4, catalog.get(3).get("span"));
+        assertEquals("生涯里程碑", catalog.get(2).get("label"));
+        assertEquals(12, catalog.get(2).get("span"));
+        assertEquals(8, catalog.get(3).get("span"));
+        assertEquals(4, catalog.get(4).get("span"));
     }
 
     @Test

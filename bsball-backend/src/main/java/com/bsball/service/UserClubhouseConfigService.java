@@ -93,10 +93,14 @@ public class UserClubhouseConfigService {
 
         List<Map<String, Object>> ranks = normalizeRanks(source.get("ranks"));
         List<Map<String, Object>> modules = normalizeModules(source.get("modules"));
+        List<String> milestoneKeys = normalizeMilestones(source.get("milestones"));
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
         config.put("version", 2);
         config.put("layout", "v3-modular");
         config.put("modules", modules);
+        LinkedHashMap<String, Object> outMilestones = new LinkedHashMap<>();
+        outMilestones.put("metricKeys", milestoneKeys);
+        config.put("milestones", outMilestones);
         LinkedHashMap<String, Object> outPerformance = new LinkedHashMap<>();
         outPerformance.put("metricKey", metric.key());
         outPerformance.put("viz", viz.trim());
@@ -145,6 +149,37 @@ public class UserClubhouseConfigService {
             return value;
         }
         throw new BusinessException(400, "模块 enabled 必须为布尔值");
+    }
+
+    private List<String> normalizeMilestones(Object raw) {
+        Map<String, Object> milestones = asMap(raw);
+        Object rawKeys = milestones.get("metricKeys");
+        if (rawKeys == null) {
+            return ClubhouseMilestoneCatalog.defaultKeys();
+        }
+        if (!(rawKeys instanceof List<?> list)) {
+            throw new BusinessException(400, "里程碑指标必须为数组");
+        }
+        if (list.isEmpty()) {
+            return ClubhouseMilestoneCatalog.defaultKeys();
+        }
+        if (list.size() > ClubhouseMilestoneCatalog.MAX_SELECTED) {
+            throw new BusinessException(400,
+                    "生涯里程碑最多选择 " + ClubhouseMilestoneCatalog.MAX_SELECTED + " 项");
+        }
+        List<String> out = new ArrayList<>(list.size());
+        Set<String> seen = new HashSet<>();
+        for (Object item : list) {
+            ClubhouseMilestoneCatalog.MetricDef def = ClubhouseMilestoneCatalog.find(asText(item));
+            if (def == null) {
+                throw new BusinessException(400, "不支持的里程碑指标");
+            }
+            if (!seen.add(def.key())) {
+                throw new BusinessException(400, "里程碑指标不能重复");
+            }
+            out.add(def.key());
+        }
+        return out;
     }
 
     private List<Map<String, Object>> normalizeRanks(Object raw) {

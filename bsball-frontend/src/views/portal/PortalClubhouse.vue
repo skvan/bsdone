@@ -214,6 +214,62 @@
         </p>
       </section>
 
+      <section
+        v-if="isModuleVisible('milestones')"
+        class="panel milestone-panel"
+        :class="moduleSpanClass('milestones')"
+        :style="{ order: moduleOrder('milestones') }"
+      >
+        <div class="panel-head milestone-head">
+          <div>
+            <span class="kicker">CAREER MILESTONES</span>
+            <h3>生涯里程碑 <small>全租户生涯 · 跨赛事与球队</small></h3>
+          </div>
+          <div class="milestone-summary">
+            <span>已达成 <b>{{ milestoneData.reachedCount || 0 }}</b> 项</span>
+            <span>下一站 <b>{{ nextMilestoneText }}</b></span>
+          </div>
+        </div>
+
+        <template v-if="milestoneData.available">
+          <div class="milestone-body">
+            <div class="milestone-metrics">
+              <article v-for="item in milestoneItems" :key="item.metricKey" class="milestone-metric" :class="item.domain">
+                <div class="mm-top">
+                  <span class="mm-short">{{ item.shortLabel }}</span>
+                  <span class="mm-domain">{{ milestoneDomainLabel(item.domain) }}</span>
+                </div>
+                <div class="mm-value">
+                  {{ item.value }}<span v-if="item.nextTarget">/ {{ item.nextTarget }}</span>
+                </div>
+                <div class="mm-label">{{ item.label }}</div>
+                <div class="mm-track"><i :style="{ width: `${item.progressPct}%` }"></i></div>
+                <div class="mm-foot">
+                  <span>{{ item.nextTarget ? `还差 ${item.remaining} ${item.unit}` : '已达最高里程碑' }}</span>
+                  <b>{{ item.progressPct }}%</b>
+                </div>
+              </article>
+            </div>
+            <div class="milestone-timeline">
+              <div class="mt-head"><b>最近里程碑</b><span>最近 {{ milestoneTimeline.length }} 项 / 共 {{ milestoneData.reachedCount || 0 }} 项</span></div>
+              <div v-if="milestoneTimeline.length" class="mt-list">
+                <div v-for="event in milestoneTimeline" :key="`${event.metricKey}-${event.gameId}-${event.title}`" class="mt-row">
+                  <span class="mt-dot"></span>
+                  <div class="mt-copy">
+                    <b>{{ event.title }}</b>
+                    <span>{{ event.eventName || '赛事' }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
+                  </div>
+                  <time>{{ formatMilestoneDate(event.gameday) }}</time>
+                </div>
+              </div>
+              <p v-else class="mt-empty">还没有达成里程碑，继续保持。</p>
+              <p class="mt-note">{{ milestoneData.note || '统计自系统记录 · 仅计入排行的比赛' }}</p>
+            </div>
+          </div>
+        </template>
+        <div v-else class="data-empty">暂无生涯累计数据。</div>
+      </section>
+
       <div class="content-grid">
         <div class="main-col">
           <section
@@ -439,6 +495,36 @@
       </div>
 
       <div class="settings-section">
+        <div class="settings-label">生涯里程碑 · 最多 6 项</div>
+        <p class="settings-hint">选择要展示的累计指标；时间线会展示已选指标最近达成的里程碑。</p>
+        <el-select
+          v-model="draft.milestones.metricKeys"
+          multiple
+          filterable
+          :multiple-limit="6"
+          class="settings-control"
+        >
+          <el-option-group label="打击">
+            <el-option
+              v-for="metric in milestoneBattingOptions"
+              :key="metric.key"
+              :label="`${metric.label} ${metric.shortLabel}`"
+              :value="metric.key"
+            />
+          </el-option-group>
+          <el-option-group label="投球">
+            <el-option
+              v-for="metric in milestonePitchingOptions"
+              :key="metric.key"
+              :label="`${metric.label} ${metric.shortLabel}`"
+              :value="metric.key"
+            />
+          </el-option-group>
+        </el-select>
+        <div class="settings-count">已选 {{ draft.milestones.metricKeys.length }} / 6</div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-label">表现图</div>
         <p class="settings-hint">选择要展示的指标与图表类型；不可用的指标会置灰。</p>
         <el-form label-position="top">
@@ -501,7 +587,7 @@ const router = useRouter();
 const { tenantCode } = useTenantRouter();
 
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
-const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
+const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
@@ -517,6 +603,7 @@ const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
 const draft = reactive({
   performance: { metricKey: 'batting.avg', viz: 'line' },
   ranks: DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey })),
+  milestones: { metricKeys: [] },
   modules: []
 });
 
@@ -554,6 +641,17 @@ const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
 const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
+const milestoneData = computed(() => data.value?.milestones || {});
+const milestoneItems = computed(() => milestoneData.value.items || []);
+const milestoneTimeline = computed(() => milestoneData.value.timeline || []);
+const milestoneCatalog = computed(() => data.value?.milestoneCatalog || []);
+const milestoneBattingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'batting'));
+const milestonePitchingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'pitching'));
+const nextMilestoneText = computed(() => {
+  if (!milestoneItems.value.length) return '等待数据';
+  const next = milestoneItems.value.find((item) => item.nextTarget != null);
+  return next ? `${next.nextTarget} ${next.label}` : '已达最高里程碑';
+});
 const enabledDraftCount = computed(() => draft.modules.filter((module) => module.enabled).length);
 const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
 const moduleMeta = computed(() => Object.fromEntries(
@@ -838,6 +936,15 @@ function formatDay(value) {
   return date.isValid() ? date.format('MM.DD') : (value || '--.--');
 }
 
+function formatMilestoneDate(value) {
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY.MM.DD') : (value || '日期未记录');
+}
+
+function milestoneDomainLabel(domain) {
+  return domain === 'pitching' ? '投球' : '打击';
+}
+
 function weekday(value) {
   const date = dayjs(value);
   return date.isValid() ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.day()] : '';
@@ -884,6 +991,10 @@ function resetDraft() {
   }));
   const modules = config.modules?.length ? config.modules : defaultModules();
   draft.modules = modules.map(resolveModule);
+  const selectedMilestones = config.milestones?.metricKeys;
+  draft.milestones.metricKeys = selectedMilestones?.length
+    ? [...selectedMilestones]
+    : milestoneCatalog.value.filter((metric) => metric.defaultSelected).map((metric) => metric.key);
 }
 
 function moveModule(index, direction) {
@@ -939,12 +1050,17 @@ async function saveSettings() {
     ElMessage.warning('四个排名位需要选择不同指标');
     return;
   }
+  if (!draft.milestones.metricKeys.length) {
+    ElMessage.warning('生涯里程碑至少选择 1 个指标');
+    return;
+  }
   saving.value = true;
   try {
     await clubhouseApi.saveConfig({
       version: 2,
       layout: 'v3-modular',
       modules: draft.modules.map(({ key, enabled }) => ({ key, enabled })),
+      milestones: { metricKeys: [...draft.milestones.metricKeys] },
       performance: { ...draft.performance },
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
     });
@@ -1219,6 +1335,37 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .eval-note i { flex: 0 0 auto; width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--bs-accent); }
 .eval-note span { flex: 1; }
 
+.milestone-panel { padding: 19px 21px 16px; }
+.milestone-head { align-items: flex-end; }
+.milestone-summary { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 10px; color: var(--bs-text-muted); }
+.milestone-summary b { margin-left: 3px; font-family: var(--bs-font-num); font-size: 13px; color: var(--bs-ink); }
+.milestone-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr); gap: 24px; margin-top: 14px; }
+.milestone-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.milestone-metric { --mm-color: var(--bs-chart-6); min-width: 0; padding: 11px 11px 9px; border: 1px solid var(--bs-hairline-soft); border-radius: 9px; background: var(--bs-surface-soft); }
+.milestone-metric.pitching { --mm-color: var(--bs-chart-3); }
+.mm-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mm-short { font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; color: var(--mm-color); letter-spacing: .08em; }
+.mm-domain { font-size: 10px; color: var(--bs-text-muted); }
+.mm-value { margin-top: 5px; font-family: var(--bs-font-num); font-size: 26px; line-height: 1; font-weight: 700; letter-spacing: -.03em; color: var(--bs-ink); }
+.mm-value span { margin-left: 3px; font-size: 11px; font-weight: 500; color: var(--bs-text-muted); letter-spacing: 0; }
+.mm-label { margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--bs-text); }
+.mm-track { height: 3px; margin-top: 9px; overflow: hidden; border-radius: 99px; background: var(--bs-hairline); }
+.mm-track i { display: block; height: 100%; border-radius: 99px; background: var(--mm-color); }
+.mm-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10px; color: var(--bs-text-muted); }
+.mm-foot b { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
+.milestone-timeline { min-width: 0; padding-left: 20px; border-left: 1px solid var(--bs-hairline-soft); }
+.mt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--bs-hairline-soft); }
+.mt-head b { font-family: var(--bs-font-serif); font-size: 17px; color: var(--bs-ink); }
+.mt-head span { font-size: 10px; color: var(--bs-text-muted); }
+.mt-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
+.mt-row:last-child { border-bottom: 0; }
+.mt-dot { width: 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: var(--bs-accent); box-shadow: 0 0 0 3px var(--bs-accent-soft); }
+.mt-copy b { display: block; font-size: 11px; font-weight: 700; color: var(--bs-text); }
+.mt-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-muted); }
+.mt-row time { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
+.mt-note, .mt-empty { margin: 7px 0 0; font-size: 10px; color: var(--bs-text-muted); }
+.mt-empty { padding: 10px 0; }
+
 @media (max-width: 1120px) {
   .radar-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -1360,6 +1507,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .module-sort-row.is-off .module-drag { opacity: .25; }
 .module-sort-row.is-off .module-sort-name span { color: var(--bs-text-muted); }
 .module-sort-count { margin-top: 8px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
+.settings-count { margin-top: 7px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
 
 /* 手机端：单列，玩家卡全宽，图表/矩阵/赛程堆叠。 */
 @media (max-width: 980px) {
@@ -1381,6 +1529,12 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .evaluation-panel { padding: 17px 16px 14px; }
   .eval-head { align-items: flex-start; flex-direction: column; gap: 8px; }
   .eval-meta { align-self: flex-end; }
+  .milestone-panel { padding: 17px 16px 14px; }
+  .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .milestone-summary { align-self: flex-end; flex-wrap: wrap; justify-content: flex-end; }
+  .milestone-body { grid-template-columns: 1fr; gap: 18px; }
+  .milestone-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .milestone-timeline { padding-left: 0; padding-top: 14px; border-left: 0; border-top: 1px solid var(--bs-hairline-soft); }
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
   .dashboard-grid { grid-template-columns: 1fr; }

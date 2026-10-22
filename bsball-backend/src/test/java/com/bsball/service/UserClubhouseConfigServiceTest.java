@@ -50,7 +50,10 @@ class UserClubhouseConfigServiceTest {
         assertEquals("v3-modular", config.get("layout"));
         assertNotNull(config.get("performance"));
         assertEquals(4, ((List<?>) config.get("ranks")).size());
-        assertEquals(8, ((List<?>) config.get("modules")).size());
+        assertEquals(9, ((List<?>) config.get("modules")).size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> milestones = (Map<String, Object>) config.get("milestones");
+        assertEquals(ClubhouseMilestoneCatalog.defaultKeys(), milestones.get("metricKeys"));
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
 
@@ -136,17 +139,18 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> modules = (List<Map<String, Object>>) saved.get("modules");
 
-        assertEquals(8, modules.size());
+        assertEquals(9, modules.size());
         assertEquals("evaluation", modules.get(0).get("key"));
         assertEquals(false, modules.get(0).get("enabled"));
         assertEquals("ranks", modules.get(1).get("key"));
-        assertEquals("performance", modules.get(2).get("key"));
+        assertEquals("milestones", modules.get(2).get("key"));
+        assertEquals("performance", modules.get(3).get("key"));
         assertTrue(modules.stream().skip(2)
                 .allMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
     @Test
-    @DisplayName("允许八个模块全部关闭")
+    @DisplayName("允许九个模块全部关闭")
     void allowsAllModulesDisabled() {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.all().stream()
                 .map(def -> Map.<String, Object>of("key", def.key(), "enabled", false))
@@ -160,7 +164,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) saved.get("modules");
 
-        assertEquals(8, rows.size());
+        assertEquals(9, rows.size());
         assertTrue(rows.stream().noneMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
@@ -174,7 +178,7 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> saved = service.save(7L, 1L, body);
 
-        assertEquals(8, ((List<?>) saved.get("modules")).size());
+        assertEquals(9, ((List<?>) saved.get("modules")).size());
     }
 
     @Test
@@ -197,7 +201,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) loaded.get("modules");
 
-        assertEquals(8, rows.size());
+        assertEquals(9, rows.size());
         assertTrue(rows.stream().noneMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
@@ -210,6 +214,61 @@ class UserClubhouseConfigServiceTest {
                 "modules", List.of(Map.of("key", "ranks", "enabled", "not-a-boolean")));
 
         assertThrows(BusinessException.class, () -> service.save(7L, 1L, body));
+    }
+
+    @Test
+    @DisplayName("里程碑默认 6 项且可保存 1–6 项")
+    void savesMilestoneMetricKeys() {
+        Map<String, Object> saved = service.save(7L, 1L, Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "milestones", Map.of("metricKeys", List.of(
+                        "batting.h", "pitching.ip", "pitching.np"))));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> milestones = (Map<String, Object>) saved.get("milestones");
+        assertEquals(List.of("batting.h", "pitching.ip", "pitching.np"),
+                milestones.get("metricKeys"));
+    }
+
+    @Test
+    @DisplayName("里程碑指标拒绝 7 项、未知、重复和非数组")
+    void rejectsInvalidMilestoneMetricKeys() {
+        Map<String, Object> base = Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks());
+
+        Map<String, Object> tooMany = new LinkedHashMap<>(base);
+        tooMany.put("milestones", Map.of("metricKeys", List.of(
+                "batting.h", "batting.hr", "batting.rbi", "batting.r",
+                "batting.sb", "batting.gp", "pitching.ip")));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L, tooMany));
+
+        Map<String, Object> unknown = new LinkedHashMap<>(base);
+        unknown.put("milestones", Map.of("metricKeys", List.of("batting.unknown")));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L, unknown));
+
+        Map<String, Object> duplicate = new LinkedHashMap<>(base);
+        duplicate.put("milestones", Map.of("metricKeys", List.of("batting.h", "batting.h")));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L, duplicate));
+
+        Map<String, Object> notArray = new LinkedHashMap<>(base);
+        notArray.put("milestones", Map.of("metricKeys", "batting.h"));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L, notArray));
+    }
+
+    @Test
+    @DisplayName("里程碑指标缺失或为空时回退默认 6 项")
+    void missingMilestoneKeysFallsBackToDefaults() {
+        Map<String, Object> saved = service.save(7L, 1L, Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "milestones", Map.of("metricKeys", List.of())));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> milestones = (Map<String, Object>) saved.get("milestones");
+        assertEquals(ClubhouseMilestoneCatalog.defaultKeys(), milestones.get("metricKeys"));
+        assertEquals(6, ((List<?>) milestones.get("metricKeys")).size());
     }
 
     @Test
@@ -232,7 +291,7 @@ class UserClubhouseConfigServiceTest {
 
         assertEquals(2, saved.get("version"));
         assertEquals("v3-modular", saved.get("layout"));
-        assertEquals(8, ((List<?>) saved.get("modules")).size());
+        assertEquals(9, ((List<?>) saved.get("modules")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> savedPerformance = (Map<String, Object>) saved.get("performance");
         assertEquals("batting.h", savedPerformance.get("metricKey"));
@@ -261,7 +320,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) config.get("performance");
         assertEquals("batting.h", performance.get("metricKey"));
-        assertEquals(8, ((List<?>) config.get("modules")).size());
+        assertEquals(9, ((List<?>) config.get("modules")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
 
@@ -276,7 +335,7 @@ class UserClubhouseConfigServiceTest {
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
         assertEquals("v3-modular", config.get("layout"));
-        assertEquals(8, ((List<?>) config.get("modules")).size());
+        assertEquals(9, ((List<?>) config.get("modules")).size());
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }

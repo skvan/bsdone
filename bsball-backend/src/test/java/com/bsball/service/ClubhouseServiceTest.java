@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -47,6 +50,8 @@ class ClubhouseServiceTest {
     @Mock
     private ClubhouseEvaluationService evaluationService;
     @Mock
+    private ClubhouseMilestoneService milestoneService;
+    @Mock
     private UserClubhouseConfigService configService;
 
     private ClubhouseService service;
@@ -63,6 +68,7 @@ class ClubhouseServiceTest {
                 gameRepository,
                 statsService,
                 evaluationService,
+                milestoneService,
                 configService);
     }
 
@@ -109,10 +115,15 @@ class ClubhouseServiceTest {
         assertNotNull(result.get("catalog"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> moduleCatalog = (List<Map<String, Object>>) result.get("moduleCatalog");
-        assertEquals(8, moduleCatalog.size());
+        assertEquals(9, moduleCatalog.size());
         assertEquals("ranks", moduleCatalog.get(0).get("key"));
-        assertEquals(12, moduleCatalog.get(0).get("span"));
+        assertEquals("evaluation", moduleCatalog.get(1).get("key"));
+        assertEquals("milestones", moduleCatalog.get(2).get("key"));
+        assertEquals(12, moduleCatalog.get(2).get("span"));
+        assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
+        assertTrue(result.containsKey("milestones"));
+        verify(milestoneService).build(eq(10L), isNull(), any());
         assertEquals(4, ((List<?>) result.get("ranks")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");
