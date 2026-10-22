@@ -53,6 +53,7 @@ public class ClubhouseService {
     private final GameRepository gameRepository;
     private final StatsService statsService;
     private final ClubhouseEvaluationService evaluationService;
+    private final ClubhouseMilestoneService milestoneService;
     private final UserClubhouseConfigService configService;
 
     /** 配置保存与读取统一使用球员所属租户，避免跨租户浏览时的租户口径分叉。 */
@@ -80,6 +81,7 @@ public class ClubhouseService {
         out.put("stats", stats);
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
         out.put("moduleCatalog", ClubhouseModuleCatalog.catalog());
+        out.put("milestoneCatalog", ClubhouseMilestoneCatalog.catalog());
         out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
         out.put("evaluation", evaluationService.build(
@@ -89,6 +91,13 @@ public class ClubhouseService {
         out.put("schedule", schedule);
         out.put("recentGames", recentGames(player, gameMode));
         return out;
+    }
+
+    /** 生涯里程碑按需加载；与顶部赛事/球队范围无关，也不参与驾驶舱首屏聚合。 */
+    public Map<String, Object> getMilestones(Long userId) {
+        Player player = findPlayer(userId);
+        Map<String, Object> config = configService.getOrCreate(userId, player.getTenantId());
+        return milestoneService.build(player.getId(), null, config);
     }
 
     private Player findPlayer(Long userId) {

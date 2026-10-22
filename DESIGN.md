@@ -444,7 +444,7 @@ Deep navy gradient with the player name in serif, short intro, tags and team str
 The signature object: dark navy card, gold hairline, inner hairline frame, monogram avatar, player name, team line and three headline stats. It is decorative but must be built from real player data. It is not a generic "image card".
 
 ### Dashboard modules
-The eight configurable modules are `队内坐标` (12), `总体评价` (12), `数据表现` (8), `代表球队` (4), `接下来的比赛` (8), `关于我` (4), `最近战报` (8), `快捷入口` (4). The default order follows the approved V3 page.
+The nine configurable modules are `队内坐标` (12), `总体评价` (12), `生涯里程碑` (12), `数据表现` (8), `代表球队` (4), `接下来的比赛` (8), `关于我` (4), `最近战报` (8), `快捷入口` (4). The default order follows the approved V3 page.
 
 - Hidden modules are removed from the grid; the page header, hero, identity strip and scope bar stay fixed.
 - Reordering is visual and follows the saved array. Wide and narrow cards do not pack densely; if a wide card is taller than the narrow card beside it, the next row starts after the wide card. This blank space is intentional and approved.
@@ -452,8 +452,18 @@ The eight configurable modules are `队内坐标` (12), `总体评价` (12), `�
 - The module settings drawer lists every module with a drag handle, label, fixed-width badge, up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
 - Do not expose width editing or free positioning in this phase.
 
+### Career milestones
+A full-width module in the default order after overall evaluation. It combines career cumulative progress and a recent milestone timeline. Its data loads lazily from `GET /account/clubhouse/milestones` only when the module is enabled; hiding it must not read the full career log.
+
+- Scope is all-tenant career across game modes: every event and represented team, ranking-included games only. The module is unaffected by the top scope bar. Label it “全租户生涯 · 跨赛事与球队” and note “统计自系统记录 · 仅计入排行的比赛”.
+- Users select 1–6 cumulative metrics in settings. Default: H, RBI, SB, G, IP, SO. Available catalog also includes HR, R, W, SV and NP.
+- Each metric card shows current value, next round-number target, a 3px progress track and remaining amount. IP uses baseball notation (`42.1` = 42⅓ innings); progress is computed from outs.
+- The timeline lists the five latest achieved milestones with date, title, event and opponent. Summary shows total achieved count. First-hit / first-home-run / first-RBI / first-win / first-save use dedicated titles.
+- Desktop: 2-column inner layout (metric grid + timeline rail), 3 metric columns × 2 rows. Mobile: metric cards 2-up, timeline stacked below.
+- The settings drawer includes “生涯里程碑 · 最多 6 项” with a multi-select; 1–6 unique metrics are required. Selecting metrics never changes the module order or visibility.
+
 ### Settings drawer
-The module list sits above “表现图” and “队内排名”. Use `sortablejs` on the drag handle only; keep up/down buttons as the keyboard/touch fallback. Show “已启用 N / 8”. Saving persists module order and enabled state together with the existing metric choices. Hiding a module never clears its metric configuration.
+The module list sits above “表现图” and “队内排名”. Use `sortablejs` on the drag handle only; keep up/down buttons as the keyboard/touch fallback. Show “已启用 N / 9”. Saving persists module order and enabled state together with the existing metric choices. Hiding a module never clears its metric configuration.
 
 ### Panels
 White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercase gold kicker, serif title, optional "切换/完整数据" link. Do not nest more than one panel level.
@@ -619,3 +629,4 @@ Phased adoption:
 - No dark-mode visual regression baselines.
 - Admin console adoption is intentionally undecided.
 - Module visual order uses CSS `order` while the DOM keeps the legacy main/side sequence (`performance → schedule → recentGames → teams → about → quickLinks`). Keyboard and screen-reader traversal follows that DOM sequence, not the saved visual order, including at the default setting. A future module renderer should flatten modules into configured DOM order; until then this is an accepted accessibility limitation for this phase.
+- Career timeline starts at the earliest game recorded in the system; historical games outside the system cannot be reconstructed.
