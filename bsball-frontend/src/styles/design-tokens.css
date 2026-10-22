@@ -1,0 +1,246 @@
+/*
+ * BSD 门户设计系统令牌。
+ * 设计契约见 /DESIGN.md（负责人已确认的 V3 球星年鉴，2026-10-21）。
+ *
+ * 约定：
+ * - 组件只消费 --bs-* 令牌，不要在本地硬编码色值。
+ * - 暗色跟随现有门户主题 store：html.dark / data-portal-theme。
+ * - 管理台不在此重绘，仅 .clubhouse-page 主动接入。
+ * - 浅色下金色小字必须用 --bs-accent-ink，不能用 --bs-accent。
+ */
+:root {
+  --bs-canvas: #f2efe9;
+  --bs-canvas-soft: #f7f4ee;
+  --bs-surface: #ffffff;
+  --bs-surface-soft: #fbf9f4;
+  --bs-surface-elevated: #f6f1e7;
+
+  --bs-ink: #071a33;
+  --bs-text: #1f2937;
+  --bs-text-muted: #5b6472;
+  --bs-text-faint: #8a919c;
+
+  --bs-hairline: #e8e2d7;
+  --bs-hairline-soft: #f0ece4;
+
+  --bs-accent: #c9a45b;
+  --bs-accent-hover: #d8b775;
+  --bs-accent-soft: #f6eedc;
+  --bs-on-accent: #201507;
+  --bs-accent-ink: #7a5a1f;
+
+  --bs-success: #1f7a5a;
+  --bs-danger: #b5122e;
+
+  --bs-hero-start: #0a2442;
+  --bs-hero-mid: #071a33;
+  --bs-hero-end: #041020;
+  --bs-on-hero: #ffffff;
+  --bs-hero-muted: rgba(255, 255, 255, 0.55);
+  --bs-hero-line: rgba(255, 255, 255, 0.11);
+  --bs-hero-card: rgba(255, 255, 255, 0.06);
+  --bs-hero-card-border: rgba(255, 255, 255, 0.14);
+
+  /* 分类图表配色，按顺序使用，最多 6 个系列。 */
+  --bs-chart-1: #c9a45b;
+  --bs-chart-2: #3d7fb5;
+  --bs-chart-3: #2f7f7a;
+  --bs-chart-4: #b87a4b;
+  --bs-chart-5: #7c8a9c;
+  --bs-chart-6: #12365f;
+  --bs-chart-grid: rgba(7, 26, 51, 0.08);
+  --bs-chart-line: #c9a45b;
+  --bs-chart-fill: rgba(201, 164, 91, 0.16);
+
+  --bs-font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --bs-font-serif: "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+  --bs-font-num: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif;
+
+  --bs-radius-xs: 4px;
+  --bs-radius-sm: 6px;
+  --bs-radius-md: 8px;
+  --bs-radius-lg: 12px;
+  --bs-radius-xl: 18px;
+  --bs-radius-2xl: 24px;
+  --bs-radius-full: 9999px;
+
+  --bs-space-xxs: 4px;
+  --bs-space-xs: 8px;
+  --bs-space-sm: 12px;
+  --bs-space-md: 16px;
+  --bs-space-lg: 20px;
+  --bs-space-xl: 24px;
+  --bs-space-2xl: 32px;
+  --bs-space-3xl: 40px;
+  --bs-space-section: 56px;
+
+  --bs-shadow-sm: 0 10px 30px rgba(7, 26, 51, 0.045);
+  --bs-shadow-md: 0 18px 48px rgba(7, 26, 51, 0.08);
+  --bs-shadow-hero: 0 26px 60px rgba(0, 0, 0, 0.2);
+
+  --bs-header-height: 68px;
+  --bs-content-max: 1280px;
+  --bs-motion-fast: 160ms;
+  --bs-motion-base: 240ms;
+  --bs-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+html.dark,
+html[data-portal-theme="dark"] {
+  --bs-canvas: #0b1018;
+  --bs-canvas-soft: #0e141d;
+  --bs-surface: #131b26;
+  --bs-surface-soft: #101823;
+  --bs-surface-elevated: #182231;
+
+  --bs-ink: #f3f6fa;
+  --bs-text: #d5dde8;
+  --bs-text-muted: #8d99a9;
+  --bs-text-faint: #5f6b7b;
+
+  --bs-hairline: #243041;
+  --bs-hairline-soft: #1b2533;
+
+  --bs-accent: #d4af6a;
+  --bs-accent-hover: #e8ce97;
+  --bs-accent-soft: rgba(212, 175, 106, 0.12);
+  --bs-on-accent: #201507;
+  --bs-accent-ink: #e8ce97;
+
+  --bs-success: #5fd3a5;
+  --bs-danger: #f0758b;
+
+  --bs-hero-start: #0a1b30;
+  --bs-hero-mid: #06101d;
+  --bs-hero-end: #030810;
+  --bs-on-hero: #ffffff;
+  --bs-hero-muted: rgba(255, 255, 255, 0.52);
+  --bs-hero-line: rgba(255, 255, 255, 0.1);
+  --bs-hero-card: rgba(255, 255, 255, 0.05);
+  --bs-hero-card-border: rgba(255, 255, 255, 0.12);
+
+  --bs-chart-1: #d4af6a;
+  --bs-chart-2: #89b9de;
+  --bs-chart-3: #7fd1c8;
+  --bs-chart-4: #e0b28c;
+  --bs-chart-5: #aeb8c4;
+  --bs-chart-6: #5e86a8;
+  --bs-chart-grid: rgba(255, 255, 255, 0.08);
+  --bs-chart-line: #d4af6a;
+  --bs-chart-fill: rgba(212, 175, 106, 0.13);
+
+  --bs-shadow-sm: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --bs-shadow-md: 0 18px 48px rgba(0, 0, 0, 0.36);
+  --bs-shadow-hero: 0 26px 60px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * 个人驾驶舱页面的首个接入作用域。
+ * Element Plus 变量只在此作用域内映射，管理台继续沿用原有蓝色主色，待单独决策。
+ * 注意：Teleport 到 body 的浮层（ElMessage/ElMessageBox、Select 下拉、Tooltip 等）
+ * 不在该作用域内，仍读取全局 --el-*。
+ */
+.clubhouse-page {
+  color-scheme: light;
+  background: var(--bs-canvas);
+  color: var(--bs-text);
+  font-family: var(--bs-font-sans);
+
+  --el-font-family: var(--bs-font-sans);
+  --el-bg-color: var(--bs-surface);
+  --el-bg-color-page: var(--bs-canvas);
+  --el-bg-color-overlay: var(--bs-surface);
+  --el-text-color-primary: var(--bs-ink);
+  --el-text-color-regular: var(--bs-text);
+  --el-text-color-secondary: var(--bs-text-muted);
+  /* placeholder 参与可读性，用 muted；faint 只用于装饰性元数据 */
+  --el-text-color-placeholder: var(--bs-text-muted);
+  --el-border-color: var(--bs-hairline);
+  --el-border-color-light: var(--bs-hairline-soft);
+  --el-border-color-lighter: var(--bs-hairline-soft);
+  --el-fill-color: var(--bs-surface-soft);
+  --el-fill-color-light: var(--bs-surface-soft);
+  --el-fill-color-blank: var(--bs-surface);
+  --el-color-primary: var(--bs-accent);
+  /* EP 主色梯度：light-3 / light-9 与语义令牌同值，其余为对齐金色主色的档位 */
+  --el-color-primary-light-3: var(--bs-accent-hover);
+  --el-color-primary-light-5: #dfc48c;
+  --el-color-primary-light-7: #ead9b4;
+  --el-color-primary-light-8: #f1e5cb;
+  --el-color-primary-light-9: var(--bs-accent-soft);
+  --el-color-primary-dark-2: #a98645;
+  --el-border-radius-base: var(--bs-radius-md);
+
+  /* 金色主色的文字对比度：填充按钮用深棕字，标签/链接小字用 accent-ink */
+}
+
+/* Element Plus 在输入控件自身声明 focus 变量，必须落到控件上才生效 */
+.clubhouse-page :is(.el-input, .el-textarea, .el-date-editor, .el-autocomplete) {
+  --el-input-focus-border-color: var(--bs-accent-ink);
+}
+
+.clubhouse-page .el-button--primary {
+  --el-button-text-color: var(--bs-on-accent);
+  --el-button-bg-color: var(--bs-accent);
+  --el-button-border-color: var(--bs-accent);
+  --el-button-hover-text-color: var(--bs-on-accent);
+  --el-button-hover-bg-color: var(--bs-accent-hover);
+  --el-button-hover-border-color: var(--bs-accent-hover);
+  --el-button-outline-color: var(--bs-accent-ink);
+  --el-button-active-color: var(--bs-on-accent);
+  --el-button-active-text-color: var(--bs-on-accent);
+  --el-button-active-bg-color: var(--bs-accent);
+  --el-button-active-border-color: var(--bs-accent);
+  --el-button-disabled-text-color: var(--bs-text-muted);
+  --el-button-disabled-bg-color: var(--bs-accent-soft);
+  --el-button-disabled-border-color: var(--bs-accent-soft);
+}
+
+.clubhouse-page .el-button.is-text.el-button--primary,
+.clubhouse-page .el-button.is-link.el-button--primary {
+  --el-button-text-color: var(--bs-accent-ink);
+  --el-button-hover-text-color: var(--bs-accent-ink);
+  --el-button-hover-link-text-color: var(--bs-accent-ink);
+  --el-button-active-text-color: var(--bs-accent-ink);
+}
+
+.clubhouse-page .el-button--primary.is-link.is-disabled,
+.clubhouse-page .el-button--primary.is-text.is-disabled {
+  color: var(--bs-text-muted);
+}
+
+.clubhouse-page .el-tag--primary {
+  --el-tag-text-color: var(--bs-accent-ink);
+  --el-tag-bg-color: var(--bs-accent-soft);
+  --el-tag-border-color: var(--bs-accent-hover);
+}
+
+.clubhouse-page .el-link--primary {
+  --el-link-text-color: var(--bs-accent-ink);
+  --el-link-hover-text-color: var(--bs-accent-ink);
+  --el-link-disabled-text-color: var(--bs-text-muted);
+}
+
+/* 门户全局表格的蓝色 hover/选中行带 !important，驾驶舱作用域内单独覆盖 */
+.clubhouse-page .el-table__body tr:hover > td.el-table__cell {
+  background-color: var(--bs-surface-soft) !important;
+}
+.clubhouse-page .el-table__body tr.current-row > td.el-table__cell {
+  background-color: var(--bs-accent-soft) !important;
+}
+html.dark .clubhouse-page .el-table__body tr.current-row > td.el-table__cell,
+html[data-portal-theme="dark"] .clubhouse-page .el-table__body tr.current-row > td.el-table__cell {
+  background-color: var(--bs-accent-soft) !important;
+}
+
+html.dark .clubhouse-page,
+html[data-portal-theme="dark"] .clubhouse-page {
+  color-scheme: dark;
+  /* 其余 --el-* 已通过 var(--bs-*) 自动跟随暗色，此处只需覆盖主色梯度 */
+  --el-color-primary-light-3: #dcbe83;
+  --el-color-primary-light-5: #e2c996;
+  --el-color-primary-light-7: #ead8b6;
+  --el-color-primary-light-8: #f1e5cc;
+  --el-color-primary-light-9: rgba(212, 175, 106, 0.12);
+  --el-color-primary-dark-2: #e8ce97;
+}

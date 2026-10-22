@@ -360,6 +360,7 @@
           AND e.tenant_id = #{tenantId}
           AND g.deleted_at IS NULL
           AND e.deleted_at IS NULL
+          AND (#{rankingOnly} = false OR COALESCE(g.include_stats_in_ranking, true) = true)
         <include refid="gameModeFilter"/>
         ORDER BY g.gameday DESC, g.id DESC
         LIMIT #{limit}
