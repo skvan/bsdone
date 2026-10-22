@@ -1792,7 +1792,7 @@ var Sl={
       ,[s("span",ti,n(a.type),1),t[29]||(t[29]=s("span",{
         class:"batting-line-sep"
       }
-      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="fielding"?_("",!0):(r(),i("div",{class:"gd-fielding-block"},[s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.awayTeamId,"team-name":N.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"]),s(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.homeTeamId,"team-name":T.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"])])),c.game?.isSpecialResult?_("",!0):(r(),i("div",{key:3,class:"box-section gd-pitchers-section"},[s("div",ri,[g(Tt)?(r(),i("div",{
+      ,"：",-1)),s("span",ai,n(a.names),1)]))),128))],512),[[Na,S.value||oe.value]])])):_("",!0)],4)],2)):_("",!0)])])),c.game?.isSpecialResult||boxView.value!=="fielding"?_("",!0):(r(),i("div",{class:"gd-fielding-block"},[k(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.awayTeamId,"team-name":N.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"]),k(GameDetailFieldingTable,{stats:c.stats,"team-id":c.game.homeTeamId,"team-name":T.value,"players-map":c.playersMap},null,8,["stats","team-id","team-name","players-map"])])),c.game?.isSpecialResult?_("",!0):(r(),i("div",{key:3,class:"box-section gd-pitchers-section"},[s("div",ri,[g(Tt)?(r(),i("div",{
         key:0,ref_key:"awayPitchersScrollRoot",ref:Ve,class:L(["detail-table-block","detail-table-block--pitchers",{
           "gd-mobile-team-panel--hidden":St.value
         }
