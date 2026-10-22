@@ -60,6 +60,7 @@ test('LiveGame 事件自动累加', () => {
 
 test('门户比赛详情具备打者/守备切换，投手表常显', () => {
   assert.ok(detail.includes('import GameDetailFieldingTable'), '未导入守备表组件');
+  assert.ok(detail.includes('k(GameDetailFieldingTable'), '守备表必须用 createVNode(k) 渲染组件');
   assert.ok(detail.includes('const boxView=I("batting")'), '缺少视图状态');
   assert.ok(detail.includes('gd-box-view-tabs'), '缺少视图标签栏');
   assert.ok(detail.includes('boxView.value!=="batting"'), '打者区块未按视图条件渲染');
