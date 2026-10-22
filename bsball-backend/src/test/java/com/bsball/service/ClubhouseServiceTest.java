@@ -107,6 +107,11 @@ class ClubhouseServiceTest {
         assertEquals("林嘉豪", playerView.get("name"));
         assertTrue(((List<?>) result.get("teams")).isEmpty());
         assertNotNull(result.get("catalog"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> moduleCatalog = (List<Map<String, Object>>) result.get("moduleCatalog");
+        assertEquals(8, moduleCatalog.size());
+        assertEquals("ranks", moduleCatalog.get(0).get("key"));
+        assertEquals(12, moduleCatalog.get(0).get("span"));
         assertTrue(result.containsKey("evaluation"));
         assertEquals(4, ((List<?>) result.get("ranks")).size());
         @SuppressWarnings("unchecked")

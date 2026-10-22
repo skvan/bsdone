@@ -8,6 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
+          <el-button link type="primary" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
         </div>
@@ -90,7 +91,13 @@
         <div class="id-item"><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
       </div>
 
-      <section class="rank-band">
+      <div v-if="activeModules.length" class="dashboard-grid">
+      <section
+        v-if="isModuleVisible('ranks')"
+        class="rank-band"
+        :class="moduleSpanClass('ranks')"
+        :style="{ order: moduleOrder('ranks') }"
+      >
         <div class="rank-band-head">
           <div><span class="kicker">TEAM RANKING</span><h2>队内坐标</h2></div>
           <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '全部赛事' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
@@ -111,7 +118,12 @@
         </div>
       </section>
 
-      <section v-if="evaluationCards.length" class="panel evaluation-panel">
+      <section
+        v-if="isModuleVisible('evaluation') && evaluationCards.length"
+        class="panel evaluation-panel"
+        :class="moduleSpanClass('evaluation')"
+        :style="{ order: moduleOrder('evaluation') }"
+      >
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
@@ -204,7 +216,12 @@
 
       <div class="content-grid">
         <div class="main-col">
-          <section class="panel data-panel">
+          <section
+            v-if="isModuleVisible('performance')"
+            class="panel data-panel"
+            :class="moduleSpanClass('performance')"
+            :style="{ order: moduleOrder('performance') }"
+          >
             <div class="panel-head">
               <div><span class="kicker">PERFORMANCE</span><h3>数据表现 <small>{{ performanceScopeLabel }}</small></h3></div>
               <div class="panel-head-actions">
@@ -263,7 +280,12 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section
+            v-if="isModuleVisible('schedule')"
+            class="panel"
+            :class="moduleSpanClass('schedule')"
+            :style="{ order: moduleOrder('schedule') }"
+          >
             <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>跨赛事汇总</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
             <div v-if="nextGame" class="next-game">
               <div class="ng-head"><span class="event-pill">{{ nextGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(nextGame.gameday) }}</span></div>
@@ -288,7 +310,12 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section
+            v-if="isModuleVisible('recentGames')"
+            class="panel"
+            :class="moduleSpanClass('recentGames')"
+            :style="{ order: moduleOrder('recentGames') }"
+          >
             <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
             <div v-if="data.recentGames.length" class="recent-cards">
               <article v-for="game in data.recentGames" :key="game.gameId" class="result-card">
@@ -304,7 +331,12 @@
         </div>
 
         <aside class="side-col">
-          <section class="panel team-panel">
+          <section
+            v-if="isModuleVisible('teams')"
+            class="panel team-panel"
+            :class="moduleSpanClass('teams')"
+            :style="{ order: moduleOrder('teams') }"
+          >
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
             <div v-for="team in teams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
               <span class="crest-lg">{{ teamCrest(team) }}</span>
@@ -314,7 +346,12 @@
             <div class="rep-scope"><span>球队积分按各队主赛事显示</span><el-button link type="primary" @click="goTeam">球队主页 ›</el-button></div>
           </section>
 
-          <section class="panel about-panel">
+          <section
+            v-if="isModuleVisible('about')"
+            class="panel about-panel"
+            :class="moduleSpanClass('about')"
+            :style="{ order: moduleOrder('about') }"
+          >
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
             <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
             <div class="about-meta">
@@ -325,7 +362,12 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section
+            v-if="isModuleVisible('quickLinks')"
+            class="panel"
+            :class="moduleSpanClass('quickLinks')"
+            :style="{ order: moduleOrder('quickLinks') }"
+          >
             <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
             <div class="shortcut-list">
               <el-button link type="primary" class="shortcut" @click="goPublicProfile">公开球员主页</el-button>
@@ -334,6 +376,13 @@
             </div>
           </section>
         </aside>
+      </div>
+      </div>
+      <div v-else class="panel dashboard-empty">
+        <span class="kicker">EMPTY DASHBOARD</span>
+        <h3>所有内容模块已隐藏</h3>
+        <p>可以随时在数据设置里重新打开需要的内容。</p>
+        <el-button type="primary" @click="openSettings">去设置</el-button>
       </div>
     </template>
 
@@ -359,7 +408,36 @@
       :append-to-body="false"
       class="clubhouse-settings"
       destroy-on-close
+      @opened="initModuleSortable"
+      @closed="destroyModuleSortable"
     >
+      <div class="settings-section">
+        <div class="settings-label">模块布局</div>
+        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；宽度本版固定。</p>
+        <div ref="moduleListEl" class="module-sort-list">
+          <div
+            v-for="(module, index) in draft.modules"
+            :key="module.key"
+            class="module-sort-row"
+            :class="{ 'is-off': !module.enabled }"
+          >
+            <span class="module-drag" aria-hidden="true"></span>
+            <div class="module-sort-name">
+              <b>{{ module.label }}</b>
+              <span>{{ moduleWidthLabel(module.span) }}</span>
+            </div>
+            <div class="module-sort-actions">
+              <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveModule(index, -1)" />
+              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" aria-label="下移" @click="moveModule(index, 1)" />
+            </div>
+            <div class="module-switch" @click.self="module.enabled = !module.enabled">
+              <el-switch v-model="module.enabled" size="small" :aria-label="`显示${module.label}`" />
+            </div>
+          </div>
+        </div>
+        <div class="module-sort-count">已启用 {{ enabledDraftCount }} / {{ draft.modules.length }}</div>
+      </div>
+
       <div class="settings-section">
         <div class="settings-label">表现图</div>
         <p class="settings-hint">选择要展示的指标与图表类型；不可用的指标会置灰。</p>
@@ -412,7 +490,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Setting } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
+import Sortable from 'sortablejs';
 import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
@@ -422,6 +501,7 @@ const router = useRouter();
 const { tenantCode } = useTenantRouter();
 
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
+const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
@@ -429,12 +509,15 @@ const teamId = ref(null);
 const eventId = ref(null);
 const settingsOpen = ref(false);
 const saving = ref(false);
+const moduleListEl = ref(null);
+let moduleSortable = null;
 let requestSeq = 0;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
 
 const draft = reactive({
   performance: { metricKey: 'batting.avg', viz: 'line' },
-  ranks: DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey }))
+  ranks: DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey })),
+  modules: []
 });
 
 const player = computed(() => data.value?.player || {});
@@ -471,6 +554,39 @@ const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
 const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
+const enabledDraftCount = computed(() => draft.modules.filter((module) => module.enabled).length);
+const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
+const moduleMeta = computed(() => Object.fromEntries(
+  moduleCatalog.value.map((item) => [item.key, item])
+));
+function resolveModule(module) {
+  const meta = moduleMeta.value[module.key];
+  return {
+    ...module,
+    enabled: module.enabled !== false,
+    label: meta?.label || module.label || module.key,
+    span: meta?.span || module.span || 4
+  };
+}
+function defaultModules() {
+  return DEFAULT_MODULE_KEYS.map((key) => resolveModule({ key }));
+}
+const activeModules = computed(() => {
+  const configured = data.value?.config?.modules;
+  const source = configured?.length ? configured : defaultModules();
+  return source.filter((module) => module.enabled !== false).map(resolveModule);
+});
+const moduleIndex = computed(() => new Map(activeModules.value.map((module, index) => [module.key, index])));
+function isModuleVisible(key) {
+  return moduleIndex.value.has(key);
+}
+function moduleSpanClass(key) {
+  const module = activeModules.value.find((item) => item.key === key);
+  return `span-${module?.span || 12}`;
+}
+function moduleOrder(key) {
+  return moduleIndex.value.get(key) ?? 0;
+}
 const heroStats = computed(() => {
   const b = batting.value;
   if (hasBatting.value) {
@@ -766,6 +882,44 @@ function resetDraft() {
   draft.ranks = DEFAULT_RANK_KEYS.map((metricKey, index) => ({
     metricKey: ranks[index]?.metricKey || metricKey
   }));
+  const modules = config.modules?.length ? config.modules : defaultModules();
+  draft.modules = modules.map(resolveModule);
+}
+
+function moveModule(index, direction) {
+  const target = index + direction;
+  if (target < 0 || target >= draft.modules.length) return;
+  const [module] = draft.modules.splice(index, 1);
+  draft.modules.splice(target, 0, module);
+}
+
+function moduleWidthLabel(span) {
+  switch (span) {
+    case 12: return '整行 12 列';
+    case 8: return '宽卡 8 列';
+    default: return '窄卡 4 列';
+  }
+}
+
+function initModuleSortable() {
+  destroyModuleSortable();
+  if (!moduleListEl.value) return;
+  moduleSortable = Sortable.create(moduleListEl.value, {
+    handle: '.module-drag',
+    animation: 150,
+    onEnd: ({ oldIndex, newIndex }) => {
+      if (oldIndex == null || newIndex == null || oldIndex === newIndex) return;
+      const [module] = draft.modules.splice(oldIndex, 1);
+      draft.modules.splice(newIndex, 0, module);
+    }
+  });
+}
+
+function destroyModuleSortable() {
+  if (moduleSortable) {
+    moduleSortable.destroy();
+    moduleSortable = null;
+  }
 }
 
 function onPerformanceMetricChange() {
@@ -788,8 +942,9 @@ async function saveSettings() {
   saving.value = true;
   try {
     await clubhouseApi.saveConfig({
-      version: 1,
-      layout: 'v3-fixed',
+      version: 2,
+      layout: 'v3-modular',
+      modules: draft.modules.map(({ key, enabled }) => ({ key, enabled })),
       performance: { ...draft.performance },
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
     });
@@ -903,6 +1058,7 @@ onMounted(() => {
   load();
 });
 onBeforeUnmount(() => {
+  destroyModuleSortable();
   document.documentElement.classList.remove('clubhouse-route');
 });
 </script>
@@ -1067,8 +1223,18 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
   .radar-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.content-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(310px, .72fr); gap: 20px; align-items: start; margin-top: 20px; }
-.main-col, .side-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 20px; width: 100%; min-width: 0; }
+.dashboard-grid .panel,
+.dashboard-grid .rank-band { min-width: 0; }
+.dashboard-grid .span-12 { grid-column: span 12; }
+.dashboard-grid .span-8 { grid-column: span 8; }
+.dashboard-grid .span-4 { grid-column: span 4; }
+.dashboard-grid .rank-band,
+.dashboard-grid .evaluation-panel { margin-top: 0; }
+.content-grid, .main-col, .side-col { display: contents; }
+.dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
+.dashboard-empty h3 { margin: 8px 0; font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
+.dashboard-empty p { margin: 0 0 16px; font-size: 11px; color: var(--bs-text-muted); }
 .panel { background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 19px 20px; }
 .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 13px; }
 .kicker { display: block; font-size: 8px; font-weight: 700; letter-spacing: .16em; color: var(--bs-accent-ink); text-transform: uppercase; }
@@ -1179,6 +1345,21 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .settings-label { font-size: 13px; font-weight: 700; color: var(--bs-ink); }
 .settings-hint { margin: 5px 0 12px; font-size: 11px; line-height: 1.6; color: var(--bs-text-muted); }
 .settings-control { width: 100%; }
+.module-sort-list { border-top: 1px solid var(--bs-hairline-soft); }
+.module-sort-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
+.module-drag { position: relative; width: 24px; height: 24px; cursor: grab; opacity: .45; }
+.module-drag::before { content: ""; position: absolute; top: 50%; left: 50%; width: 12px; height: 18px; transform: translate(-50%, -50%); background-image: radial-gradient(circle, currentColor 1px, transparent 1.2px); background-size: 5px 6px; background-position: center; }
+.module-drag:active { cursor: grabbing; }
+.module-sort-name { min-width: 0; }
+.module-sort-name b { display: block; font-size: 12px; font-weight: 700; color: var(--bs-text); }
+.module-sort-name span { display: block; margin-top: 2px; font-size: 11px; color: var(--bs-text-muted); }
+.module-sort-actions { display: flex; gap: 1px; }
+.module-sort-actions :deep(.el-button) { width: 24px; height: 24px; margin-left: 0; padding: 0; }
+.module-switch { display: grid; place-items: center; width: 34px; height: 34px; cursor: pointer; }
+.module-sort-row :deep(.el-switch) { --el-switch-on-color: var(--bs-accent); --el-switch-off-color: var(--bs-hairline); }
+.module-sort-row.is-off .module-drag { opacity: .25; }
+.module-sort-row.is-off .module-sort-name span { color: var(--bs-text-muted); }
+.module-sort-count { margin-top: 8px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
 
 /* 手机端：单列，玩家卡全宽，图表/矩阵/赛程堆叠。 */
 @media (max-width: 980px) {
@@ -1202,7 +1383,14 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .eval-meta { align-self: flex-end; }
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
-  .content-grid { grid-template-columns: 1fr; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .dashboard-grid .span-12,
+  .dashboard-grid .span-8,
+  .dashboard-grid .span-4 { grid-column: 1 / -1; }
+  .module-sort-row { grid-template-columns: 44px minmax(0, 1fr) auto auto; min-height: 52px; }
+  .module-drag { width: 44px; height: 44px; }
+  .module-sort-actions :deep(.el-button) { width: 44px; height: 44px; }
+  .module-switch { width: 44px; height: 44px; }
   .recent-cards { grid-template-columns: 1fr; }
   .chart-summary { display: none; }
   .scope-bar { flex-wrap: wrap; }

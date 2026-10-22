@@ -1,6 +1,6 @@
 # 个人驾驶舱 API
 
-个人驾驶舱（V3 球星年鉴）的固定布局数据接口。第一版只开放「表现图」与「队内排名」的指标/图表选择，不开放模块增删、拖拽排序或缩放。
+个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持八个业务模块的显示/隐藏与排序，以及「表现图」与「队内排名」的指标/图表选择；模块宽度固定，暂不开放缩放。
 
 ## 认证与前置条件
 
@@ -24,6 +24,7 @@
 - `scope`：本次数据口径 `{ teamId, teamName, eventId, eventName, gameMode }`。
 - `stats`：所选范围下的 `batting` / `pitching` / `fielding` 统计 Map（仅本人数据）。
 - `config`：当前用户配置（默认见下）。
+- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`span`（12/8/4）。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
 - `performance`：`{ metricKey, label, viz, domain, points[], summaryValue, items[], available }`。
   - `points`：按比赛日升序的近 12 场数据点；每点含 `label`、`value`、`gameday`、`eventId`。
@@ -59,14 +60,24 @@
 
 ## PUT /api/account/clubhouse/config
 
-保存固定布局下的数据选择。
+保存模块顺序/开关、表现图与队内排名选择。
 
 请求体示例：
 
 ```json
 {
-  "version": 1,
-  "layout": "v3-fixed",
+  "version": 2,
+  "layout": "v3-modular",
+  "modules": [
+    { "key": "ranks", "enabled": true },
+    { "key": "evaluation", "enabled": true },
+    { "key": "performance", "enabled": true },
+    { "key": "teams", "enabled": true },
+    { "key": "schedule", "enabled": true },
+    { "key": "about", "enabled": true },
+    { "key": "recentGames", "enabled": true },
+    { "key": "quickLinks", "enabled": true }
+  ],
   "performance": { "metricKey": "batting.avg", "viz": "line" },
   "ranks": [
     { "metricKey": "batting.avg" },
@@ -77,10 +88,18 @@
 }
 ```
 
-- `layout` 固定为 `v3-fixed`，客户端传其他值会被服务端收敛/拒绝。
+- `modules` 数组顺序即展示顺序；只接受白名单 key，且不能重复，否则返回 400。
+- `enabled` 必须是布尔值；缺省视为 `true`。允许八个模块全部关闭。
+- 缺失的模块会按默认顺序追加到末尾，保证始终保存完整八项。
+- `modules` 缺省时按默认模块保存，兼容旧客户端。
+- 服务端统一输出 `version=2` / `layout=v3-modular`；客户端传入的 `layout`/`version` 不作为可信输入。
 - `performance.viz` 必须在指标的兼容列表内；安打构成只允许 `donut`，比率/计数指标允许 `kpi` / `line` / `bar`。
 - `ranks` 必须恰好 4 个、不可重复，且只能使用 `rankable=true` 的指标。
 - **队内排名不提供全垒打**；默认四格为打击率、安打、上垒率、打点。
+
+### 旧配置兼容
+
+`version: 1` / `layout: v3-fixed` 的已存配置在读取时保留 `performance`、`ranks`，自动补全默认模块并返回 v2；GET 不写库，下次保存时落库。
 
 ## POST /api/account/clubhouse/config/reset
 
@@ -93,11 +112,13 @@
 | 未登录/Token 无效 | 401 |
 | 当前账号未关联球员档案 | 404 |
 | 指标、图表、排名数量或重复项非法 | 400 |
+| 未知或重复的模块 key、非布尔 enabled | 400 |
 | 请求的代表球队/赛事不属于本人 | 回落到默认球队/赛事，不返回越权数据 |
 
-## 第一版限制
+## 当前限制
 
-- 不返回里程碑、球探笔记（当前无可靠数据源），前端不展示，避免造假数据。
+- 不返回里程碑、球探笔记（当前无可靠数据源），前端不展示，避免造假数据；生涯里程碑按下一批需求单独设计。
 - 同一赛事内若球员同时代表多支球队，球队维度统计仍以赛事统计为准；当前业务模型按“不同赛事代表不同球队”处理。
 - 指标/目录标签目前为中文；多语言标签在后续统一。
-- 不支持模块增删、拖拽排序、缩放和自由位置；这些在后续版本扩展 `modules` 配置。
+- 模块宽度当前由 `moduleCatalog.span` 固定（12/8/4），不支持缩放或自由画布；桌面宽窄混排按配置顺序排布，允许留白。
+- 模块隐藏只影响展示，服务端仍返回全部数据，避免切换开关时额外请求。

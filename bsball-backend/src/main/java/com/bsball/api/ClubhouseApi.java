@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 个人驾驶舱接口（固定布局 v3-fixed）。
+ * 个人驾驶舱接口（模块化布局 v3-modular，尺寸固定）。
  * <ul>
- *   <li>GET  /account/clubhouse：聚合数据，可选 teamId/eventId 切换代表球队与赛事</li>
- *   <li>PUT  /account/clubhouse/config：保存表现图与队内排名指标</li>
+ *   <li>GET  /account/clubhouse：聚合数据与 moduleCatalog，可选 teamId/eventId 切换代表球队与赛事</li>
+ *   <li>PUT  /account/clubhouse/config：保存模块顺序/开关、表现图与队内排名指标</li>
  *   <li>POST /account/clubhouse/config/reset：恢复默认配置</li>
  * </ul>
  */
