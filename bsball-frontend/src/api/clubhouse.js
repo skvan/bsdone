@@ -1,4 +1,4 @@
-// 个人驾驶舱 API —— 模块化布局 v3-modular（尺寸固定）
+// 个人驾驶舱 API —— 模块化布局 v3-modular（桌面端可调宽高）
 import { get, post, put } from './request';
 
 function queryString(params) {

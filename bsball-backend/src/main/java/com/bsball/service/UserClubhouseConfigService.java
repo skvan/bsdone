@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 个人驾驶舱配置的读取、校验与保存。
  * <p>服务端只接受 {@link ClubhouseMetricCatalog} 中的指标、兼容图表类型和
- * {@link ClubhouseModuleCatalog} 中的模块；模块顺序即展示顺序，尺寸由白名单固定。</p>
+ * {@link ClubhouseModuleCatalog} 中的模块；模块顺序即展示顺序，宽高在白名单范围内可调。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -95,7 +95,7 @@ public class UserClubhouseConfigService {
         List<Map<String, Object>> modules = normalizeModules(source.get("modules"));
         List<String> milestoneKeys = normalizeMilestones(source.get("milestones"));
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-        config.put("version", 2);
+        config.put("version", 3);
         config.put("layout", "v3-modular");
         config.put("modules", modules);
         LinkedHashMap<String, Object> outMilestones = new LinkedHashMap<>();
@@ -124,21 +124,62 @@ public class UserClubhouseConfigService {
             if (!seen.add(def.key())) {
                 throw new BusinessException(400, "驾驶舱模块不能重复");
             }
-            out.add(moduleEntry(def, enabled(row.get("enabled"))));
+            out.add(moduleEntry(
+                    def,
+                    enabled(row.get("enabled")),
+                    normalizeWidth(def, row.get("width")),
+                    normalizeHeight(row.get("height"))));
         }
         for (ClubhouseModuleCatalog.ModuleDef def : ClubhouseModuleCatalog.all()) {
             if (!seen.contains(def.key())) {
-                out.add(moduleEntry(def, def.enabledByDefault()));
+                out.add(moduleEntry(def, def.enabledByDefault(), def.span(), 0));
             }
         }
         return out;
     }
 
-    private static Map<String, Object> moduleEntry(ClubhouseModuleCatalog.ModuleDef def, boolean enabled) {
+    private static Map<String, Object> moduleEntry(
+            ClubhouseModuleCatalog.ModuleDef def, boolean enabled, int width, int height) {
         LinkedHashMap<String, Object> entry = new LinkedHashMap<>();
         entry.put("key", def.key());
         entry.put("enabled", enabled);
+        entry.put("width", width);
+        entry.put("height", height);
         return entry;
+    }
+
+    private static int normalizeWidth(ClubhouseModuleCatalog.ModuleDef def, Object raw) {
+        if (raw == null) {
+            return def.span();
+        }
+        int width = asInt(raw, "模块宽度必须为整数");
+        if (width < def.minSpan() || width > ClubhouseModuleCatalog.MAX_SPAN) {
+            throw new BusinessException(400,
+                    def.label() + "宽度需在 " + def.minSpan() + "–" + ClubhouseModuleCatalog.MAX_SPAN + " 列之间");
+        }
+        return width;
+    }
+
+    private static int normalizeHeight(Object raw) {
+        if (raw == null) {
+            return 0;
+        }
+        int height = asInt(raw, "模块高度必须为整数");
+        if (height < 0 || height > ClubhouseModuleCatalog.MAX_HEIGHT_ROWS) {
+            throw new BusinessException(400,
+                    "模块高度需在 0–" + ClubhouseModuleCatalog.MAX_HEIGHT_ROWS + " 行之间");
+        }
+        return height;
+    }
+
+    private static int asInt(Object raw, String message) {
+        if (raw instanceof Number number) {
+            double value = number.doubleValue();
+            if (value == Math.rint(value) && value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+                return (int) value;
+            }
+        }
+        throw new BusinessException(400, message);
     }
 
     private boolean enabled(Object raw) {

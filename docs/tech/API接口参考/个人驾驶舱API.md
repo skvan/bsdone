@@ -1,6 +1,6 @@
 # 个人驾驶舱 API
 
-个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持九个业务模块的显示/隐藏与排序，以及「表现图」与「队内排名」的指标/图表选择；模块宽度固定，暂不开放缩放。
+个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持九个业务模块的显示/隐藏、排序与桌面端宽高调整，以及「表现图」与「队内排名」的指标/图表选择。宽高在服务端白名单范围内校验；手机端忽略宽高，按单列展示。
 
 ## 认证与前置条件
 
@@ -23,8 +23,8 @@
 - `teams[]`：当前代表球队；含 `events[]`、`primaryEventId`、`primaryEventName`、`standing`（积分榜名次/胜负/胜率/近况）。
 - `scope`：本次数据口径 `{ teamId, teamName, eventId, eventName, gameMode }`。
 - `stats`：所选范围下的 `batting` / `pitching` / `fielding` 统计 Map（仅本人数据）。
-- `config`：当前用户配置（默认见下）。
-- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`span`（12/8/4），共 9 个模块。
+- `config`：当前用户配置（version 3；`modules[]` 含 `width`/`height`，默认见 PUT 示例）。
+- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`span`（默认列宽）、`minSpan`（最小列宽）、`maxSpan`（固定 12），共 9 个模块。
 - `milestoneCatalog[]`：生涯里程碑指标白名单；含 `key`、`label`、`shortLabel`、`domain`、`unit`、`defaultSelected`、`thresholds[]`。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
 - `performance`：`{ metricKey, label, viz, domain, points[], summaryValue, items[], available }`。
@@ -78,24 +78,24 @@
 
 ## PUT /api/account/clubhouse/config
 
-保存模块顺序/开关、表现图与队内排名选择。
+保存模块顺序/开关/宽高、表现图与队内排名选择。
 
 请求体示例：
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "layout": "v3-modular",
   "modules": [
-    { "key": "ranks", "enabled": true },
-    { "key": "evaluation", "enabled": true },
-    { "key": "milestones", "enabled": true },
-    { "key": "performance", "enabled": true },
-    { "key": "teams", "enabled": true },
-    { "key": "schedule", "enabled": true },
-    { "key": "about", "enabled": true },
-    { "key": "recentGames", "enabled": true },
-    { "key": "quickLinks", "enabled": true }
+    { "key": "ranks", "enabled": true, "width": 12, "height": 0 },
+    { "key": "evaluation", "enabled": true, "width": 12, "height": 0 },
+    { "key": "milestones", "enabled": true, "width": 12, "height": 0 },
+    { "key": "performance", "enabled": true, "width": 8, "height": 0 },
+    { "key": "teams", "enabled": true, "width": 4, "height": 0 },
+    { "key": "schedule", "enabled": true, "width": 8, "height": 0 },
+    { "key": "about", "enabled": true, "width": 4, "height": 0 },
+    { "key": "recentGames", "enabled": true, "width": 8, "height": 0 },
+    { "key": "quickLinks", "enabled": true, "width": 4, "height": 0 }
   ],
   "milestones": {
     "metricKeys": ["batting.h", "batting.rbi", "batting.sb", "batting.gp", "pitching.ip", "pitching.so"]
@@ -112,17 +112,21 @@
 
 - `modules` 数组顺序即展示顺序；只接受白名单 key，且不能重复，否则返回 400。
 - `enabled` 必须是布尔值；缺省视为 `true`。允许九个模块全部关闭。
-- 缺失的模块会按默认顺序追加到末尾，保证始终保存完整九项。
+- `width`：整数列数，范围为该模块 `minSpan`–12；缺省取该模块默认列宽。低于最小列宽、超过 12、非整数或字符串均返回 400。
+- `height`：整数，0–80，单位为 10px；`0` 表示高度随内容自适应，非 0 表示最小高度，内容更高时模块仍会自然增高。负值、超过 80、小数或字符串返回 400。
+- 最小列宽：队内坐标/数据表现/接下来的比赛/最近战报 6 列；总体评价/生涯里程碑 8 列；代表球队/关于我/快捷入口 4 列。
+- 缺失的模块会按默认顺序追加到末尾，保证始终保存完整九项；追加模块使用默认宽高。
 - `milestones.metricKeys`：1–6 项、不可重复、只能使用里程碑白名单指标；缺失或空数组回退默认 6 项。
 - `modules` 缺省时按默认模块保存，兼容旧客户端。
-- 服务端统一输出 `version=2` / `layout=v3-modular`；客户端传入的 `layout`/`version` 不作为可信输入。
+- 服务端统一输出 `version=3` / `layout=v3-modular`；客户端传入的 `layout`/`version` 不作为可信输入。
+- 宽高仅影响桌面 12 列网格；`≤980px` 时前端忽略保存的宽高，按单列展示，但配置本身保留。
 - `performance.viz` 必须在指标的兼容列表内；安打构成只允许 `donut`，比率/计数指标允许 `kpi` / `line` / `bar`。
 - `ranks` 必须恰好 4 个、不可重复，且只能使用 `rankable=true` 的指标。
 - **队内排名不提供全垒打**；默认四格为打击率、安打、上垒率、打点。
 
 ### 旧配置兼容
 
-`version: 1` / `layout: v3-fixed` 的已存配置在读取时保留 `performance`、`ranks`，自动补全默认模块并返回 v2；GET 不写库，下次保存时落库。
+`version: 1` / `layout: v3-fixed` 以及 `version: 2` 的已存配置在读取时保留 `performance`、`ranks`、模块顺序与开关，自动补全模块默认宽高并返回 v3；GET 不写库，下次保存时落库。
 
 ## POST /api/account/clubhouse/config/reset
 
@@ -136,6 +140,7 @@
 | 当前账号未关联球员档案 | 404 |
 | 指标、图表、排名数量或重复项非法 | 400 |
 | 未知或重复的模块 key、非布尔 enabled | 400 |
+| 模块宽度低于最小列宽/超过 12/非整数，或高度不在 0–80/非整数 | 400 |
 | 里程碑指标超过 6 项、非数组、未知或重复 | 400 |
 | 请求的代表球队/赛事不属于本人 | 回落到默认球队/赛事，不返回越权数据 |
 
@@ -145,5 +150,7 @@
 - 生涯里程碑时间线只能从系统记录的比赛开始，不能补齐系统外历史；全量日志只在独立里程碑接口按需读取，不分页；后续数据量大时可改为 SQL 窗口累计。
 - 同一赛事内若球员同时代表多支球队，球队维度统计仍以赛事统计为准；当前业务模型按“不同赛事代表不同球队”处理。
 - 指标/目录标签目前为中文；多语言标签在后续统一。
-- 模块宽度当前由 `moduleCatalog.span` 固定（12/8/4），不支持缩放或自由画布；桌面宽窄混排按配置顺序排布，允许留白。
+- 模块宽高只在桌面端生效；手机端固定单列，不提供长按选中或尺寸手柄。
+- 本轮只开放尺寸调整，不支持画布内拖动换位或自由定位；排序仍通过设置抽屉完成。桌面网格按配置顺序稀疏排布，允许留白。
+- 高度以内容高度为硬下限，服务端只校验 0–80 的范围；具体内容下限由前端按实际渲染高度约束。
 - 除生涯里程碑外，隐藏模块只影响展示，驾驶舱仍返回其余数据；里程碑模块隐藏时前端不发起独立请求，也不读取全量生涯日志。

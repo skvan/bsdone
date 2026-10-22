@@ -16,7 +16,7 @@ class ClubhouseMetricCatalogTest {
     void defaultConfigContainsModules() {
         Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
 
-        assertEquals(2, config.get("version"));
+        assertEquals(3, config.get("version"));
         assertEquals("v3-modular", config.get("layout"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");

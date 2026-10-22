@@ -39,18 +39,23 @@ class UserClubhouseConfigServiceTest {
     }
 
     @Test
-    @DisplayName("无配置时返回 v2 默认配置且不在读接口落库")
+    @DisplayName("无配置时返回 version 3 默认配置且不在读接口落库")
     void returnsDefaultsWithoutWriting() {
         when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
                 .thenReturn(Optional.empty());
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals(2, config.get("version"));
+        assertEquals(3, config.get("version"));
         assertEquals("v3-modular", config.get("layout"));
         assertNotNull(config.get("performance"));
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         assertEquals(9, ((List<?>) config.get("modules")).size());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        assertEquals(12, modules.get(0).get("width"));
+        assertEquals(0, modules.get(0).get("height"));
+        assertEquals(4, modules.get(4).get("width"));
         @SuppressWarnings("unchecked")
         Map<String, Object> milestones = (Map<String, Object>) config.get("milestones");
         assertEquals(ClubhouseMilestoneCatalog.defaultKeys(), milestones.get("metricKeys"));
@@ -272,6 +277,100 @@ class UserClubhouseConfigServiceTest {
     }
 
     @Test
+    @DisplayName("保存模块宽高并在回读时保留")
+    void savesAndReloadsModuleSizes() throws Exception {
+        List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
+        modules.get(3).put("width", 10);
+        modules.get(3).put("height", 22);
+        Map<String, Object> saved = service.save(7L, 1L, Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "modules", modules));
+
+        Map<String, Object> performance = moduleRow(saved, "performance");
+        assertEquals(10, performance.get("width"));
+        assertEquals(22, performance.get("height"));
+
+        UserClubhouseConfig entity = new UserClubhouseConfig();
+        entity.setConfigJson(new ObjectMapper().writeValueAsString(saved));
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(entity));
+
+        Map<String, Object> loaded = service.getOrCreate(7L, 1L);
+        Map<String, Object> loadedPerformance = moduleRow(loaded, "performance");
+        assertEquals(10, loadedPerformance.get("width"));
+        assertEquals(22, loadedPerformance.get("height"));
+    }
+
+    @Test
+    @DisplayName("模块宽高缺省时补目录默认值")
+    void missingModuleSizeFallsBackToDefaults() {
+        Map<String, Object> saved = service.save(7L, 1L, Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "modules", List.of(Map.of("key", "performance", "enabled", true))));
+
+        Map<String, Object> performance = moduleRow(saved, "performance");
+        assertEquals(8, performance.get("width"));
+        assertEquals(0, performance.get("height"));
+        assertEquals(9, ((List<?>) saved.get("modules")).size());
+    }
+
+    @Test
+    @DisplayName("模块宽度必须为整数、不低于模块最小列宽且不超过 12")
+    void rejectsInvalidModuleWidth() {
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 5, 0)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("ranks", 4, 0)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 13, 0)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 8.5, 0)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", "8", 0)));
+    }
+
+    @Test
+    @DisplayName("模块高度必须为 0–80 的整数")
+    void rejectsInvalidModuleHeight() {
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 8, -1)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 8, 81)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 8, 7.5)));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                moduleSizeBody("performance", 8, "12")));
+    }
+
+    @Test
+    @DisplayName("version 2 已存配置读取时补齐 v3 默认宽高且不写库")
+    void migratesVersionTwoModuleSizes() {
+        UserClubhouseConfig entity = new UserClubhouseConfig();
+        entity.setConfigJson("""
+                {"version":2,"layout":"v3-modular",
+                 "modules":[{"key":"performance","enabled":true},{"key":"teams","enabled":false}],
+                 "performance":{"metricKey":"batting.avg","viz":"line"},
+                 "ranks":[{"metricKey":"batting.avg"},{"metricKey":"batting.h"},
+                          {"metricKey":"batting.obp"},{"metricKey":"batting.rbi"}]}
+                """);
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(entity));
+
+        Map<String, Object> config = service.getOrCreate(7L, 1L);
+
+        assertEquals(3, config.get("version"));
+        Map<String, Object> performance = moduleRow(config, "performance");
+        assertEquals(8, performance.get("width"));
+        assertEquals(0, performance.get("height"));
+        Map<String, Object> teams = moduleRow(config, "teams");
+        assertEquals(4, teams.get("width"));
+        assertEquals(false, teams.get("enabled"));
+        verify(configRepository, never()).save(any(UserClubhouseConfig.class));
+    }
+
+    @Test
     @DisplayName("合法配置按白名单收敛并通过原子 upsert 保存")
     void savesNormalizedConfig() {
         Map<String, Object> performance = new LinkedHashMap<>();
@@ -289,7 +388,7 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> saved = service.save(7L, 1L, body);
 
-        assertEquals(2, saved.get("version"));
+        assertEquals(3, saved.get("version"));
         assertEquals("v3-modular", saved.get("layout"));
         assertEquals(9, ((List<?>) saved.get("modules")).size());
         @SuppressWarnings("unchecked")
@@ -315,7 +414,7 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals(2, config.get("version"));
+        assertEquals(3, config.get("version"));
         assertEquals("v3-modular", config.get("layout"));
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) config.get("performance");
@@ -338,6 +437,28 @@ class UserClubhouseConfigServiceTest {
         assertEquals(9, ((List<?>) config.get("modules")).size());
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
+    }
+
+    private Map<String, Object> moduleSizeBody(String key, Object width, Object height) {
+        List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
+        modules.stream()
+                .filter(row -> key.equals(row.get("key")))
+                .findFirst()
+                .orElseThrow()
+                .putAll(Map.of("width", width, "height", height));
+        return Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "modules", modules);
+    }
+
+    private Map<String, Object> moduleRow(Map<String, Object> config, String key) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        return modules.stream()
+                .filter(row -> key.equals(row.get("key")))
+                .findFirst()
+                .orElseThrow();
     }
 
     private List<Map<String, Object>> validRanks() {

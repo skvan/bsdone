@@ -1,5 +1,5 @@
 <template>
-  <div class="clubhouse-page" v-loading="loading">
+  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing }" v-loading="loading">
     <template v-if="data">
       <div class="page-head">
         <div>
@@ -8,7 +8,8 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button link type="primary" @click="openSettings">数据设置</el-button>
+          <el-button v-if="!layoutEditing && activeModules.length" link type="primary" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
         </div>
@@ -16,10 +17,10 @@
 
       <div class="scope-bar">
         <span class="scope-title">数据范围</span>
-        <el-select v-model="teamId" size="small" class="scope-select" @change="onTeamChange">
+        <el-select v-model="teamId" size="small" class="scope-select" :disabled="layoutEditing" @change="onTeamChange">
           <el-option v-for="team in teams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select" :disabled="!scopeEvents.length" @change="load">
+        <el-select v-model="eventId" size="small" class="scope-select" :disabled="layoutEditing || !scopeEvents.length" @change="load">
           <el-option v-for="event in scopeEvents" :key="event.id" :label="event.name" :value="event.id" />
         </el-select>
         <span class="scope-hint">上方数据按所选赛事聚合；队内排名按所选球队与赛事计算</span>
@@ -91,12 +92,26 @@
         <div class="id-item"><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
       </div>
 
-      <div v-if="activeModules.length" class="dashboard-grid">
+      <div v-if="layoutEditing" class="layout-edit-banner">
+        <div class="edit-copy">
+          <b>布局编辑</b>
+          <span>长按模块边框选中；拖动手柄或方向键调整大小</span>
+        </div>
+        <div class="edit-actions">
+          <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
+          <button type="button" class="edit-done" @click="finishLayoutEditing">完成</button>
+        </div>
+      </div>
+
+      <div v-if="activeModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }">
       <section
         v-if="isModuleVisible('ranks')"
-        class="rank-band"
-        :class="moduleSpanClass('ranks')"
-        :style="{ order: moduleOrder('ranks') }"
+        class="rank-band dashboard-module"
+        data-module-key="ranks"
+        :tabindex="layoutEditing ? 0 : undefined"
+        :style="moduleLayoutStyle('ranks')"
+        @pointerdown="onModulePointerDown('ranks', $event)"
+        @keydown="onModuleKeydown('ranks', $event)"
       >
         <div class="rank-band-head">
           <div><span class="kicker">TEAM RANKING</span><h2>队内坐标</h2></div>
@@ -120,9 +135,12 @@
 
       <section
         v-if="isModuleVisible('evaluation') && evaluationCards.length"
-        class="panel evaluation-panel"
-        :class="moduleSpanClass('evaluation')"
-        :style="{ order: moduleOrder('evaluation') }"
+        class="panel evaluation-panel dashboard-module"
+        data-module-key="evaluation"
+        :tabindex="layoutEditing ? 0 : undefined"
+        :style="moduleLayoutStyle('evaluation')"
+        @pointerdown="onModulePointerDown('evaluation', $event)"
+        @keydown="onModuleKeydown('evaluation', $event)"
       >
         <div class="eval-head">
           <div>
@@ -216,9 +234,12 @@
 
       <section
         v-if="isModuleVisible('milestones')"
-        class="panel milestone-panel"
-        :class="moduleSpanClass('milestones')"
-        :style="{ order: moduleOrder('milestones') }"
+        class="panel milestone-panel dashboard-module"
+        data-module-key="milestones"
+        :tabindex="layoutEditing ? 0 : undefined"
+        :style="moduleLayoutStyle('milestones')"
+        @pointerdown="onModulePointerDown('milestones', $event)"
+        @keydown="onModuleKeydown('milestones', $event)"
       >
         <div class="panel-head milestone-head">
           <div>
@@ -275,9 +296,12 @@
         <div class="main-col">
           <section
             v-if="isModuleVisible('performance')"
-            class="panel data-panel"
-            :class="moduleSpanClass('performance')"
-            :style="{ order: moduleOrder('performance') }"
+            class="panel data-panel dashboard-module"
+            data-module-key="performance"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('performance')"
+            @pointerdown="onModulePointerDown('performance', $event)"
+            @keydown="onModuleKeydown('performance', $event)"
           >
             <div class="panel-head">
               <div><span class="kicker">PERFORMANCE</span><h3>数据表现 <small>{{ performanceScopeLabel }}</small></h3></div>
@@ -339,9 +363,12 @@
 
           <section
             v-if="isModuleVisible('schedule')"
-            class="panel"
-            :class="moduleSpanClass('schedule')"
-            :style="{ order: moduleOrder('schedule') }"
+            class="panel dashboard-module"
+            data-module-key="schedule"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('schedule')"
+            @pointerdown="onModulePointerDown('schedule', $event)"
+            @keydown="onModuleKeydown('schedule', $event)"
           >
             <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>跨赛事汇总</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
             <div v-if="nextGame" class="next-game">
@@ -369,9 +396,12 @@
 
           <section
             v-if="isModuleVisible('recentGames')"
-            class="panel"
-            :class="moduleSpanClass('recentGames')"
-            :style="{ order: moduleOrder('recentGames') }"
+            class="panel dashboard-module"
+            data-module-key="recentGames"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('recentGames')"
+            @pointerdown="onModulePointerDown('recentGames', $event)"
+            @keydown="onModuleKeydown('recentGames', $event)"
           >
             <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
             <div v-if="data.recentGames.length" class="recent-cards">
@@ -390,9 +420,12 @@
         <aside class="side-col">
           <section
             v-if="isModuleVisible('teams')"
-            class="panel team-panel"
-            :class="moduleSpanClass('teams')"
-            :style="{ order: moduleOrder('teams') }"
+            class="panel team-panel dashboard-module"
+            data-module-key="teams"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('teams')"
+            @pointerdown="onModulePointerDown('teams', $event)"
+            @keydown="onModuleKeydown('teams', $event)"
           >
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
             <div v-for="team in teams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
@@ -405,9 +438,12 @@
 
           <section
             v-if="isModuleVisible('about')"
-            class="panel about-panel"
-            :class="moduleSpanClass('about')"
-            :style="{ order: moduleOrder('about') }"
+            class="panel about-panel dashboard-module"
+            data-module-key="about"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('about')"
+            @pointerdown="onModulePointerDown('about', $event)"
+            @keydown="onModuleKeydown('about', $event)"
           >
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
             <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
@@ -421,9 +457,12 @@
 
           <section
             v-if="isModuleVisible('quickLinks')"
-            class="panel"
-            :class="moduleSpanClass('quickLinks')"
-            :style="{ order: moduleOrder('quickLinks') }"
+            class="panel dashboard-module"
+            data-module-key="quickLinks"
+            :tabindex="layoutEditing ? 0 : undefined"
+            :style="moduleLayoutStyle('quickLinks')"
+            @pointerdown="onModulePointerDown('quickLinks', $event)"
+            @keydown="onModuleKeydown('quickLinks', $event)"
           >
             <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
             <div class="shortcut-list">
@@ -435,7 +474,46 @@
         </aside>
       </div>
       </div>
-      <div v-else class="panel dashboard-empty">
+
+      <div
+        v-if="layoutEditing && selectedModule && selectionRect"
+        class="layout-selection-frame"
+        :style="selectionFrameStyle"
+      >
+        <div class="selection-toolbar">
+          <span class="selection-dot" aria-hidden="true"></span>
+          <b>{{ selectedModule.label }}</b>
+          <span class="selection-size">{{ selectionSizeLabel }}</span>
+          <button type="button" class="selection-reset" :disabled="layoutSaving" @click="resetSelectedModuleSize">重置尺寸</button>
+          <button type="button" class="selection-close" aria-label="取消选中" @click="clearModuleSelection({ restoreFocus: true })">×</button>
+        </div>
+        <button
+          type="button"
+          class="resize-handle handle-r"
+          aria-label="调整宽度"
+          :disabled="layoutSaving"
+          @pointerdown.prevent.stop="startResize('width', $event)"
+          @keydown="onResizeHandleKeydown('width', $event)"
+        ></button>
+        <button
+          type="button"
+          class="resize-handle handle-b"
+          aria-label="调整高度"
+          :disabled="layoutSaving"
+          @pointerdown.prevent.stop="startResize('height', $event)"
+          @keydown="onResizeHandleKeydown('height', $event)"
+        ></button>
+        <button
+          type="button"
+          class="resize-handle handle-br"
+          aria-label="调整宽高"
+          :disabled="layoutSaving"
+          @pointerdown.prevent.stop="startResize('both', $event)"
+          @keydown="onResizeHandleKeydown('both', $event)"
+        ></button>
+      </div>
+
+      <div v-if="!activeModules.length" class="panel dashboard-empty">
         <span class="kicker">EMPTY DASHBOARD</span>
         <h3>所有内容模块已隐藏</h3>
         <p>可以随时在数据设置里重新打开需要的内容。</p>
@@ -470,7 +548,7 @@
     >
       <div class="settings-section">
         <div class="settings-label">模块布局</div>
-        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；宽度本版固定。</p>
+        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；宽高请在页面「编辑布局」中调整。</p>
         <div ref="moduleListEl" class="module-sort-list">
           <div
             v-for="(module, index) in draft.modules"
@@ -481,7 +559,7 @@
             <span class="module-drag" aria-hidden="true"></span>
             <div class="module-sort-name">
               <b>{{ module.label }}</b>
-              <span>{{ moduleWidthLabel(module.span) }}</span>
+              <span>{{ moduleSizeLabel(module) }}</span>
             </div>
             <div class="module-sort-actions">
               <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveModule(index, -1)" />
@@ -574,7 +652,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
@@ -589,6 +667,8 @@ const { tenantCode } = useTenantRouter();
 
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
 const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
+const MAX_MODULE_HEIGHT_ROWS = 80;
+const mobileLayoutQuery = window.matchMedia('(max-width: 980px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
@@ -596,11 +676,25 @@ const teamId = ref(null);
 const eventId = ref(null);
 const settingsOpen = ref(false);
 const saving = ref(false);
+const pageEl = ref(null);
+const layoutEditing = ref(false);
+const layoutResizing = ref(false);
+const layoutSaving = ref(false);
+const layoutStatus = ref('');
+const selectedModuleKey = ref('');
+const selectionRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
 const moduleListEl = ref(null);
 let moduleSortable = null;
+let pressState = null;
+let resizeState = null;
+let selectionObserver = null;
+let keyboardResizeSnapshot = null;
+let keyboardResizeTimer = null;
+let selectionFrameRaf = 0;
+let layoutStatusTimer = null;
 let requestSeq = 0;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
 
@@ -663,13 +757,29 @@ const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
 const moduleMeta = computed(() => Object.fromEntries(
   moduleCatalog.value.map((item) => [item.key, item])
 ));
+function clampModuleWidth(value, minSpan, maxSpan) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return minSpan;
+  return Math.min(maxSpan, Math.max(minSpan, Math.round(numeric)));
+}
+function clampModuleHeight(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(MAX_MODULE_HEIGHT_ROWS, Math.max(0, Math.round(numeric)));
+}
 function resolveModule(module) {
   const meta = moduleMeta.value[module.key];
+  const minSpan = Number(meta?.minSpan) || 4;
+  const maxSpan = Number(meta?.maxSpan) || 12;
+  const width = clampModuleWidth(module.width ?? meta?.span ?? minSpan, minSpan, maxSpan);
   return {
     ...module,
     enabled: module.enabled !== false,
     label: meta?.label || module.label || module.key,
-    span: meta?.span || module.span || 4
+    width,
+    height: clampModuleHeight(module.height),
+    minSpan,
+    maxSpan
   };
 }
 function defaultModules() {
@@ -684,12 +794,479 @@ const moduleIndex = computed(() => new Map(activeModules.value.map((module, inde
 function isModuleVisible(key) {
   return moduleIndex.value.has(key);
 }
-function moduleSpanClass(key) {
+function moduleLayoutStyle(key) {
   const module = activeModules.value.find((item) => item.key === key);
-  return `span-${module?.span || 12}`;
+  return {
+    order: moduleIndex.value.get(key) ?? 0,
+    '--module-span': module?.width || 12,
+    '--module-min-h': module?.height ? `${module.height * 10}px` : '0px'
+  };
 }
-function moduleOrder(key) {
-  return moduleIndex.value.get(key) ?? 0;
+
+const selectedModule = computed(() => activeModules.value.find((item) => item.key === selectedModuleKey.value) || null);
+const selectionFrameStyle = computed(() => {
+  const rect = selectionRect.value;
+  if (!rect) return {};
+  return {
+    left: `${rect.left - 2}px`,
+    top: `${rect.top - 2}px`,
+    width: `${rect.width + 4}px`,
+    height: `${rect.height + 4}px`
+  };
+});
+const selectionSizeLabel = computed(() => {
+  const module = selectedModule.value;
+  const rect = selectionRect.value;
+  if (!module || !rect) return '';
+  const rows = Math.max(1, Math.round(rect.height / 10));
+  return `${module.width} 列 × ${rows} 行`;
+});
+
+function moduleElement(key) {
+  return document.querySelector(`.dashboard-module[data-module-key="${key}"]`);
+}
+
+function updateSelectionRect() {
+  if (!layoutEditing.value || !selectedModuleKey.value) {
+    selectionRect.value = null;
+    return;
+  }
+  const el = moduleElement(selectedModuleKey.value);
+  const page = pageEl.value;
+  if (!el || !page) {
+    selectionRect.value = null;
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  const pageRect = page.getBoundingClientRect();
+  selectionRect.value = {
+    left: rect.left - pageRect.left,
+    top: rect.top - pageRect.top,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function scheduleSelectionFrame() {
+  if (selectionFrameRaf) return;
+  selectionFrameRaf = requestAnimationFrame(() => {
+    selectionFrameRaf = 0;
+    updateSelectionRect();
+  });
+}
+
+function selectModule(key, focusHandle = false) {
+  if (selectedModuleKey.value && selectedModuleKey.value !== key) {
+    flushKeyboardResize();
+  }
+  selectedModuleKey.value = key;
+  updateSelectionRect();
+  nextTick(() => {
+    updateSelectionRect();
+    observeSelectedModule();
+    if (focusHandle) {
+      document.querySelector('.layout-selection-frame .handle-br')?.focus();
+    }
+  });
+}
+
+function clearModuleSelection({ restoreFocus = false } = {}) {
+  const key = selectedModuleKey.value;
+  flushKeyboardResize();
+  selectedModuleKey.value = '';
+  selectionRect.value = null;
+  selectionObserver?.disconnect();
+  selectionObserver = null;
+  if (restoreFocus && key) {
+    nextTick(() => moduleElement(key)?.focus());
+  }
+}
+
+function observeSelectedModule() {
+  selectionObserver?.disconnect();
+  selectionObserver = null;
+  const key = selectedModuleKey.value;
+  const el = key ? moduleElement(key) : null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  selectionObserver = new ResizeObserver(scheduleSelectionFrame);
+  selectionObserver.observe(el);
+}
+
+function onModulePointerDown(key, event) {
+  if (!layoutEditing.value || layoutSaving.value || resizeState) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  const el = event.currentTarget;
+  const rect = el.getBoundingClientRect();
+  const edge = 12;
+  const nearBorder = event.clientX - rect.left <= edge
+    || rect.right - event.clientX <= edge
+    || event.clientY - rect.top <= edge
+    || rect.bottom - event.clientY <= edge;
+  if (!nearBorder) return;
+  event.preventDefault();
+  cancelModulePress();
+  pressState = {
+    key,
+    startX: event.clientX,
+    startY: event.clientY,
+    timer: window.setTimeout(() => {
+      if (!pressState || pressState.key !== key) return;
+      pressState = null;
+      removePressListeners();
+      selectModule(key);
+    }, 350)
+  };
+  window.addEventListener('pointermove', onModulePressMove, true);
+  window.addEventListener('pointerup', cancelModulePress, true);
+  window.addEventListener('pointercancel', cancelModulePress, true);
+}
+
+function onModulePressMove(event) {
+  if (!pressState) return;
+  if (Math.hypot(event.clientX - pressState.startX, event.clientY - pressState.startY) > 8) {
+    cancelModulePress();
+  }
+}
+
+function onModuleKeydown(key, event) {
+  if (!layoutEditing.value) return;
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    flushKeyboardResize();
+    selectModule(key, true);
+    return;
+  }
+  if (selectedModuleKey.value !== key) return;
+  const horizontal = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+  const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+  if (!horizontal && !vertical) return;
+  event.preventDefault();
+  adjustSelectedSize('both', horizontal, vertical);
+}
+
+function onResizeHandleKeydown(direction, event) {
+  const horizontal = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+  const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+  const changesWidth = direction !== 'height' && horizontal !== 0;
+  const changesHeight = direction !== 'width' && vertical !== 0;
+  if (!changesWidth && !changesHeight) return;
+  event.preventDefault();
+  adjustSelectedSize(direction, horizontal, vertical);
+}
+
+function adjustSelectedSize(direction, horizontal, vertical) {
+  if (!selectedModule.value || layoutSaving.value) return;
+  const changesWidth = direction !== 'height' && horizontal !== 0;
+  const changesHeight = direction !== 'width' && vertical !== 0;
+  if (!changesWidth && !changesHeight) return;
+  if (!keyboardResizeSnapshot) {
+    keyboardResizeSnapshot = currentModuleConfig();
+  }
+  const module = selectedModule.value;
+  if (changesWidth) {
+    updateModuleSize(module.key, {
+      width: clampModuleWidth(module.width + horizontal, module.minSpan, module.maxSpan)
+    });
+  }
+  if (changesHeight) {
+    const el = moduleElement(module.key);
+    const contentMin = el ? measureModuleContentHeight(el) : 0;
+    const minRows = Math.max(1, Math.ceil(contentMin / 10));
+    const currentRows = module.height || minRows;
+    const rows = Math.min(
+      MAX_MODULE_HEIGHT_ROWS,
+      Math.max(minRows, currentRows + vertical)
+    );
+    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
+  }
+  nextTick(updateSelectionRect);
+  scheduleKeyboardResizeSave();
+}
+
+function scheduleKeyboardResizeSave() {
+  if (keyboardResizeTimer) window.clearTimeout(keyboardResizeTimer);
+  keyboardResizeTimer = window.setTimeout(() => {
+    keyboardResizeTimer = null;
+    const snapshot = keyboardResizeSnapshot;
+    keyboardResizeSnapshot = null;
+    if (snapshot && moduleSizesChanged(snapshot, currentModuleConfig())) {
+      persistLayout(snapshot);
+    }
+  }, 320);
+}
+
+function flushKeyboardResize() {
+  if (keyboardResizeTimer) {
+    window.clearTimeout(keyboardResizeTimer);
+    keyboardResizeTimer = null;
+  }
+  const snapshot = keyboardResizeSnapshot;
+  keyboardResizeSnapshot = null;
+  if (snapshot && moduleSizesChanged(snapshot, currentModuleConfig())) {
+    persistLayout(snapshot);
+  }
+}
+
+function cancelKeyboardResize() {
+  if (keyboardResizeTimer) window.clearTimeout(keyboardResizeTimer);
+  keyboardResizeTimer = null;
+  keyboardResizeSnapshot = null;
+}
+
+function cancelModulePress() {
+  if (pressState?.timer) window.clearTimeout(pressState.timer);
+  pressState = null;
+  removePressListeners();
+}
+
+function removePressListeners() {
+  window.removeEventListener('pointermove', onModulePressMove, true);
+  window.removeEventListener('pointerup', cancelModulePress, true);
+  window.removeEventListener('pointercancel', cancelModulePress, true);
+}
+
+function enterLayoutEditing() {
+  if (!data.value || layoutSaving.value || !activeModules.value.length || mobileLayoutQuery.matches) return;
+  settingsOpen.value = false;
+  layoutEditing.value = true;
+  clearModuleSelection();
+  setLayoutStatus('');
+}
+
+function finishLayoutEditing() {
+  cancelModulePress();
+  if (resizeState) cancelResize();
+  layoutEditing.value = false;
+  clearModuleSelection();
+  setLayoutStatus('');
+}
+
+function onLayoutKeydown(event) {
+  if (!layoutEditing.value || event.key !== 'Escape') return;
+  cancelModulePress();
+  if (resizeState) {
+    cancelResize();
+    return;
+  }
+  if (selectedModuleKey.value) {
+    clearModuleSelection({ restoreFocus: true });
+    return;
+  }
+  finishLayoutEditing();
+}
+
+function currentModuleConfig() {
+  const source = data.value?.config?.modules?.length ? data.value.config.modules : defaultModules();
+  return source.map((row) => {
+    const module = resolveModule(row);
+    return { key: module.key, enabled: module.enabled, width: module.width, height: module.height };
+  });
+}
+
+function updateModuleSize(key, patch) {
+  const config = data.value?.config;
+  if (!config) return;
+  if (!Array.isArray(config.modules) || !config.modules.length) {
+    config.modules = currentModuleConfig();
+  }
+  const row = config.modules.find((item) => item.key === key);
+  if (row) Object.assign(row, patch);
+}
+
+function measureModuleContentHeight(el) {
+  const previousMinHeight = el.style.minHeight;
+  el.style.minHeight = '0px';
+  const height = Math.ceil(el.getBoundingClientRect().height);
+  el.style.minHeight = previousMinHeight;
+  return height;
+}
+
+function startResize(direction, event) {
+  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState) return;
+  cancelKeyboardResize();
+  const el = moduleElement(selectedModule.value.key);
+  const grid = document.querySelector('.dashboard-grid');
+  if (!el || !grid) return;
+  const rect = el.getBoundingClientRect();
+  const gridRect = grid.getBoundingClientRect();
+  const gap = 20;
+  const colWidth = (gridRect.width - gap * 11) / 12;
+  if (colWidth <= 0) return;
+  const contentMin = measureModuleContentHeight(el);
+  resizeState = {
+    direction,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startWidth: rect.width,
+    startHeight: rect.height,
+    colWidth,
+    gap,
+    contentMin,
+    snapshot: currentModuleConfig()
+  };
+  layoutResizing.value = true;
+  window.addEventListener('pointermove', onResizeMove, true);
+  window.addEventListener('pointerup', finishResize, true);
+  window.addEventListener('pointercancel', finishResize, true);
+}
+
+function onResizeMove(event) {
+  if (!resizeState || event.pointerId !== resizeState.pointerId) return;
+  event.preventDefault();
+  const state = resizeState;
+  const module = selectedModule.value;
+  if (!module) return;
+  const dx = event.clientX - state.startX;
+  const dy = event.clientY - state.startY;
+  if (state.direction !== 'height') {
+    const width = state.startWidth + dx;
+    const span = clampModuleWidth(
+      Math.round((width + state.gap) / (state.colWidth + state.gap)),
+      module.minSpan,
+      module.maxSpan
+    );
+    updateModuleSize(module.key, { width: span });
+  }
+  if (state.direction !== 'width') {
+    const minRows = Math.max(1, Math.ceil(state.contentMin / 10));
+    const height = state.startHeight + dy;
+    const rows = Math.min(
+      MAX_MODULE_HEIGHT_ROWS,
+      Math.max(minRows, Math.round(height / 10))
+    );
+    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
+  }
+  scheduleSelectionFrame();
+}
+
+function finishResize(event) {
+  if (!resizeState) return;
+  if (event && event.pointerId !== undefined && event.pointerId !== resizeState.pointerId) return;
+  const snapshot = resizeState.snapshot;
+  clearResizeState();
+  const module = selectedModule.value;
+  const el = module ? moduleElement(module.key) : null;
+  if (module?.height && el) {
+    const contentMin = measureModuleContentHeight(el);
+    if (module.height * 10 <= contentMin + 5) {
+      updateModuleSize(module.key, { height: 0 });
+    }
+  }
+  nextTick(updateSelectionRect);
+  if (moduleSizesChanged(snapshot, currentModuleConfig())) {
+    persistLayout(snapshot);
+  }
+}
+
+function cancelResize() {
+  if (!resizeState) return;
+  const snapshot = resizeState.snapshot;
+  clearResizeState();
+  if (data.value?.config) {
+    data.value.config.modules = snapshot;
+  }
+  nextTick(updateSelectionRect);
+}
+
+function clearResizeState() {
+  resizeState = null;
+  layoutResizing.value = false;
+  window.removeEventListener('pointermove', onResizeMove, true);
+  window.removeEventListener('pointerup', finishResize, true);
+  window.removeEventListener('pointercancel', finishResize, true);
+}
+
+function moduleSizesChanged(before, after) {
+  const previous = new Map(before.map((item) => [item.key, `${item.width}x${item.height}`]));
+  return after.some((item) => previous.get(item.key) !== `${item.width}x${item.height}`);
+}
+
+function buildConfigPayload(modules) {
+  const config = data.value?.config || {};
+  const performance = config.performance?.metricKey
+    ? { ...config.performance }
+    : { metricKey: 'batting.avg', viz: 'line' };
+  const ranks = Array.isArray(config.ranks) && config.ranks.length
+    ? config.ranks.map((row) => ({ metricKey: row.metricKey }))
+    : DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey }));
+  const milestoneKeys = Array.isArray(config.milestones?.metricKeys)
+    ? [...config.milestones.metricKeys]
+    : [];
+  return {
+    version: 3,
+    layout: 'v3-modular',
+    modules: modules.map(({ key, enabled, width, height }) => ({
+      key,
+      enabled: enabled !== false,
+      width,
+      height
+    })),
+    milestones: { metricKeys: milestoneKeys },
+    performance,
+    ranks
+  };
+}
+
+async function persistLayout(snapshot) {
+  if (layoutSaving.value) return;
+  layoutSaving.value = true;
+  setLayoutStatus('saving');
+  try {
+    const saved = await clubhouseApi.saveConfig(buildConfigPayload(currentModuleConfig()));
+    if (saved && data.value) {
+      data.value.config = saved;
+    }
+    setLayoutStatus('saved');
+  } catch (error) {
+    if (snapshot && data.value?.config) {
+      data.value.config.modules = snapshot;
+    }
+    setLayoutStatus('');
+    ElMessage.error(error?.message || '布局保存失败');
+  } finally {
+    layoutSaving.value = false;
+    await nextTick();
+    updateSelectionRect();
+    observeSelectedModule();
+  }
+}
+
+function resetSelectedModuleSize() {
+  const module = selectedModule.value;
+  if (!module || layoutSaving.value) return;
+  cancelKeyboardResize();
+  const snapshot = currentModuleConfig();
+  const defaultSpan = moduleMeta.value[module.key]?.span || 12;
+  updateModuleSize(module.key, { width: defaultSpan, height: 0 });
+  nextTick(updateSelectionRect);
+  persistLayout(snapshot);
+}
+
+function setLayoutStatus(status) {
+  layoutStatus.value = status;
+  if (layoutStatusTimer) {
+    window.clearTimeout(layoutStatusTimer);
+    layoutStatusTimer = null;
+  }
+  if (status === 'saved') {
+    layoutStatusTimer = window.setTimeout(() => {
+      if (layoutStatus.value === 'saved') layoutStatus.value = '';
+    }, 1600);
+  }
+}
+
+function onMobileLayoutChange(event) {
+  if (event.matches && layoutEditing.value) finishLayoutEditing();
+}
+
+function onViewportResize() {
+  if (!layoutEditing.value) return;
+  if (mobileLayoutQuery.matches) {
+    finishLayoutEditing();
+    return;
+  }
+  nextTick(updateSelectionRect);
 }
 const heroStats = computed(() => {
   const b = batting.value;
@@ -982,7 +1559,7 @@ function recentLine(game) {
 }
 
 function openSettings() {
-  if (!data.value) return;
+  if (!data.value || layoutSaving.value) return;
   resetDraft();
   settingsOpen.value = true;
 }
@@ -1010,12 +1587,9 @@ function moveModule(index, direction) {
   draft.modules.splice(target, 0, module);
 }
 
-function moduleWidthLabel(span) {
-  switch (span) {
-    case 12: return '整行 12 列';
-    case 8: return '宽卡 8 列';
-    default: return '窄卡 4 列';
-  }
+function moduleSizeLabel(module) {
+  const width = `${module.width || 12} 列`;
+  return module.height ? `${width} · 至少 ${module.height * 10}px` : `${width} · 高度自适应`;
 }
 
 function initModuleSortable() {
@@ -1063,9 +1637,9 @@ async function saveSettings() {
   saving.value = true;
   try {
     await clubhouseApi.saveConfig({
-      version: 2,
+      version: 3,
       layout: 'v3-modular',
-      modules: draft.modules.map(({ key, enabled }) => ({ key, enabled })),
+      modules: draft.modules.map(({ key, enabled, width, height }) => ({ key, enabled, width, height })),
       milestones: { metricKeys: [...draft.milestones.metricKeys] },
       performance: { ...draft.performance },
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
@@ -1105,6 +1679,7 @@ async function resetSettings() {
 
 function onTeamChange() {
   if (!data.value) return;
+  if (layoutEditing.value) finishLayoutEditing();
   eventId.value = scopeEvents.value[0]?.id ?? null;
   load();
 }
@@ -1209,23 +1784,46 @@ function goGame(game) {
 
 onMounted(() => {
   document.documentElement.classList.add('clubhouse-route');
+  mobileLayoutQuery.addEventListener('change', onMobileLayoutChange);
+  window.addEventListener('resize', onViewportResize);
+  document.addEventListener('keydown', onLayoutKeydown);
   load();
 });
 onBeforeUnmount(() => {
   destroyModuleSortable();
+  cancelModulePress();
+  cancelKeyboardResize();
+  if (resizeState) clearResizeState();
+  selectionObserver?.disconnect();
+  if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
+  if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
+  mobileLayoutQuery.removeEventListener('change', onMobileLayoutChange);
+  window.removeEventListener('resize', onViewportResize);
+  document.removeEventListener('keydown', onLayoutKeydown);
   document.documentElement.classList.remove('clubhouse-route');
 });
 </script>
 
 <style scoped>
 /* 页面主体沿用 V3 设计令牌；桌面 12 栏、手机单栏。 */
-.clubhouse-page { max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
+.clubhouse-page { position: relative; max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
 .breadcrumb { font-size: 10px; color: var(--bs-text-faint); }
 .breadcrumb b { color: var(--bs-text-muted); font-weight: 500; }
 .page-head h1 { margin: 6px 0 0; font-size: 27px; line-height: 1.15; font-weight: 800; color: var(--bs-ink); }
 .page-sub { margin: 6px 0 0; font-size: 11px; color: var(--bs-text-muted); }
 .page-actions { display: flex; gap: 10px; }
+.layout-edit-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--bs-accent); border-radius: 10px; background: var(--bs-accent-soft); color: var(--bs-text); }
+.layout-edit-banner .edit-copy { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 11px; }
+.layout-edit-banner .edit-copy b { color: var(--bs-ink); font-weight: 800; white-space: nowrap; }
+.layout-edit-banner .edit-copy span { color: var(--bs-text-muted); }
+.layout-edit-banner .edit-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.layout-edit-banner .edit-status { font-size: 10px; color: var(--bs-text-muted); }
+.layout-edit-banner .edit-status.is-saved { color: var(--bs-success); }
+.layout-edit-banner .edit-done { height: 30px; padding: 0 13px; border: 1px solid var(--bs-accent); border-radius: 7px; color: var(--bs-on-accent); background: var(--bs-accent); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.layout-edit-banner .edit-done:hover { background: var(--bs-accent-hover); }
+.layout-edit-banner .edit-done:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
+.clubhouse-page.is-resizing { user-select: none; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; }
@@ -1411,11 +2009,33 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 20px; width: 100%; min-width: 0; }
 .dashboard-grid .panel,
 .dashboard-grid .rank-band { min-width: 0; }
-.dashboard-grid .span-12 { grid-column: span 12; }
-.dashboard-grid .span-8 { grid-column: span 8; }
-.dashboard-grid .span-4 { grid-column: span 4; }
+.dashboard-grid .dashboard-module { grid-column: span var(--module-span, 12); min-height: var(--module-min-h, 0px); }
+.dashboard-grid.layout-editing .dashboard-module { outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 160ms ease-out; user-select: none; }
+.dashboard-grid.layout-editing .dashboard-module:hover { outline-color: var(--bs-accent-soft); }
+.dashboard-grid.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
+.dashboard-grid.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
 .dashboard-grid .rank-band,
 .dashboard-grid .evaluation-panel { margin-top: 0; }
+.layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 0 0 9999px rgba(7, 26, 51, .035); }
+.selection-toolbar { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px 0 10px; border: 1px solid var(--bs-accent); border-radius: 8px; background: var(--bs-surface); box-shadow: var(--bs-shadow-sm); color: var(--bs-text); font-size: 10px; white-space: nowrap; pointer-events: auto; }
+.selection-toolbar .selection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bs-success); flex: 0 0 auto; }
+.selection-toolbar b { color: var(--bs-ink); font-size: 11px; font-weight: 800; }
+.selection-toolbar .selection-size { color: var(--bs-text-muted); }
+.selection-toolbar .selection-reset { padding: 3px 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.selection-toolbar .selection-reset:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
+.selection-toolbar .selection-close { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--bs-text-muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+.selection-toolbar .selection-close:hover { background: var(--bs-surface-soft); color: var(--bs-ink); }
+.selection-toolbar button:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
+.resize-handle { position: absolute; padding: 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
+.resize-handle::before { content: ""; position: absolute; background: var(--bs-accent); }
+.resize-handle:disabled, .selection-toolbar .selection-reset:disabled { opacity: .4; cursor: not-allowed; }
+.resize-handle:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
+.resize-handle.handle-r { right: -12px; top: 50%; width: 24px; height: 44px; transform: translateY(-50%); cursor: ew-resize; }
+.resize-handle.handle-r::before { top: 50%; left: 50%; width: 9px; height: 32px; transform: translate(-50%, -50%); border-radius: 5px; }
+.resize-handle.handle-b { bottom: -12px; left: 50%; width: 44px; height: 24px; transform: translateX(-50%); cursor: ns-resize; }
+.resize-handle.handle-b::before { top: 50%; left: 50%; width: 32px; height: 9px; transform: translate(-50%, -50%); border-radius: 5px; }
+.resize-handle.handle-br { right: -12px; bottom: -12px; width: 24px; height: 24px; cursor: nwse-resize; }
+.resize-handle.handle-br::before { top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 2px solid var(--bs-accent); border-radius: 4px; background: var(--bs-surface); }
 .content-grid, .main-col, .side-col { display: contents; }
 .dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
 .dashboard-empty h3 { margin: 8px 0; font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
@@ -1524,6 +2144,9 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-grid.layout-editing .dashboard-module { transition: none; }
+}
 .page-state { padding: 80px 20px; }
 .state-detail { text-align: center; font-size: 11px; color: var(--bs-text-muted); }
 .settings-section { margin-bottom: 22px; }
@@ -1576,9 +2199,9 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
   .dashboard-grid { grid-template-columns: 1fr; }
-  .dashboard-grid .span-12,
-  .dashboard-grid .span-8,
-  .dashboard-grid .span-4 { grid-column: 1 / -1; }
+  .dashboard-grid .dashboard-module { grid-column: 1 / -1; min-height: 0; }
+  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame { display: none !important; }
+  .dashboard-grid.layout-editing .dashboard-module > * { pointer-events: auto; }
   .module-sort-row { grid-template-columns: 44px minmax(0, 1fr) auto auto; min-height: 52px; }
   .module-drag { width: 44px; height: 44px; }
   .module-sort-actions :deep(.el-button) { width: 44px; height: 44px; }

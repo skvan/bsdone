@@ -7,8 +7,8 @@ import org.hibernate.annotations.Comment;
 
 /**
  * 个人驾驶舱的用户配置。
- * <p>当前为模块化布局 v3-modular，保存模块顺序/开关、表现图与四个队内排名指标；
- * 后续开放模块缩放/自由画布时，继续扩展 config_json，不新建表。</p>
+ * <p>当前为模块化布局 v3-modular，保存模块顺序/开关/宽高、表现图与四个队内排名指标；
+ * 后续开放画布内拖动换位时，继续扩展 config_json，不新建表。</p>
  */
 @Entity
 @Table(name = "bs_user_clubhouse_config")

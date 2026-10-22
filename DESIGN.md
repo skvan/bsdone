@@ -393,7 +393,7 @@ Serif is reserved for portal/dashboard display headings and the player name. Do 
 - Scope bar sits directly under the page head and above the hero.
 - Hero on desktop: 2-column split (identity / player card or snapshot); on mobile it stacks.
 - Rank band: 4 equal columns on desktop, 2×2 on mobile.
-- Dashboard module grid: one 12-column CSS Grid on desktop. Module spans are fixed by the module catalog: full `12`, wide `8`, narrow `4`. Order comes from the user's module config; do not use dense packing.
+- Dashboard module grid: one 12-column CSS Grid on desktop. Module widths default to `12` / `8` / `4` from the module catalog but can be resized between each module's `minSpan` and `12`; height snaps to `10px` rows and never shrinks below rendered content. Order comes from the user's module config; do not use dense packing.
 - Touch targets: at least `44px` on mobile.
 
 Breakpoints: the dashboard switches from the 12-column module grid to a single column at `980px`; phone typography and spacing tighten at `560px`. The page content max width is `1280px`.
@@ -444,13 +444,19 @@ Deep navy gradient with the player name in serif, short intro, tags and team str
 The signature object: dark navy card, gold hairline, inner hairline frame, monogram avatar, player name, team line and three headline stats. It is decorative but must be built from real player data. It is not a generic "image card".
 
 ### Dashboard modules
-The nine configurable modules are `队内坐标` (12), `总体评价` (12), `生涯里程碑` (12), `数据表现` (8), `代表球队` (4), `接下来的比赛` (8), `关于我` (4), `最近战报` (8), `快捷入口` (4). The default order follows the approved V3 page.
+The nine configurable modules and their default / minimum widths are `队内坐标` (12/6), `总体评价` (12/8), `生涯里程碑` (12/8), `数据表现` (8/6), `代表球队` (4/4), `接下来的比赛` (8/6), `关于我` (4/4), `最近战报` (8/6), `快捷入口` (4/4). The default order follows the approved V3 page; default height is auto.
 
 - Hidden modules are removed from the grid; the page header, hero, identity strip and scope bar stay fixed.
-- Reordering is visual and follows the saved array. Wide and narrow cards do not pack densely; if a wide card is taller than the narrow card beside it, the next row starts after the wide card. This blank space is intentional and approved.
+- Reordering is visual and follows the saved array. Cards do not pack densely; if a card is taller than the card beside it, the next row starts after the taller card. This blank space is intentional and approved.
+- Width snaps to the 12-column grid; height snaps to `10px` rows and `0` means auto. A module can never be shorter than its rendered content. Enlarging a module pushes later rows down; it does not overlap neighbours.
 - All modules can be hidden. Show a panel empty state with “所有内容模块已隐藏” and a primary “去设置” action; keep the top-right “数据设置” entry visible.
-- The module settings drawer lists every module with a drag handle, label, fixed-width badge, up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
-- Do not expose width editing or free positioning in this phase.
+- The module settings drawer lists every module with a drag handle, label, size badge (`N 列 · 高度自适应` / `N 列 · 至少 N px`), up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
+- **Layout editing is desktop-only.** Show a top-right “编辑布局” entry at `>980px`; entering edit mode shows a gold instruction bar with “完成”. The hero, identity strip and scope bar stay fixed, and scope selects are disabled.
+- **Selection:** long-press a module border for ~350ms (12px hit zone). Show a 2px gold frame with soft outer glow and no layout shift. Hovering a module in edit mode shows a faint gold outline. Pressing a handle must not select text or trigger module links.
+- **Keyboard:** in edit mode each module is tabbable and shows a 2px accent-ink focus ring. Enter/Space selects it and focuses the corner handle (both axes); arrow keys on a focused handle resize by one column/row (left/right = width, up/down = height, corner = both). The selected module itself also accepts arrow keys. Save status uses `role="status"` / `aria-live="polite"`.
+- **Resize handles:** right edge changes width, bottom edge changes height, bottom-right corner changes both. Anchor the top-left corner. Keep the visible gold bar compact but give every handle a ≥24×24px transparent hit area. Show the module name, current `N 列 × M 行`, “重置尺寸” and close in a compact surface toolbar inside the frame’s top-right. Drag previews live; release auto-saves.
+- **Failure:** save failure restores the pre-drag size and shows an error toast. Reset size restores the catalog default width and auto height. Mobile width never exposes the editor or handles and ignores saved widths/heights.
+- Do not expose free positioning or canvas drag-reorder in this phase; ordering remains in the settings drawer.
 
 ### Career milestones
 A full-width module in the default order after overall evaluation. It combines career cumulative progress and a recent milestone timeline. Its data loads lazily from `GET /account/clubhouse/milestones` only when the module is enabled; hiding it must not read the full career log.
@@ -463,7 +469,7 @@ A full-width module in the default order after overall evaluation. It combines c
 - The settings drawer includes “生涯里程碑 · 最多 6 项” with a multi-select; 1–6 unique metrics are required. Selecting metrics never changes the module order or visibility.
 
 ### Settings drawer
-The module list sits above “表现图” and “队内排名”. Use `sortablejs` on the drag handle only; keep up/down buttons as the keyboard/touch fallback. Show “已启用 N / 9”. Saving persists module order and enabled state together with the existing metric choices. Hiding a module never clears its metric configuration.
+The module list sits above “表现图” and “队内排名”. Use `sortablejs` on the drag handle only; keep up/down buttons as the keyboard/touch fallback. Show “已启用 N / 9”. Saving persists module order, enabled state, width and height together with the existing metric choices; size editing itself happens in the page’s “编辑布局” mode, not in this drawer. Hiding a module never clears its metric or size configuration.
 
 ### Panels
 White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercase gold kicker, serif title, optional "切换/完整数据" link. Do not nest more than one panel level.
@@ -576,6 +582,7 @@ Rules:
 - Do use a text label or icon alongside green/red semantic colors.
 - Do render dashboard modules from `moduleCatalog` + saved order; do not hard-code a second span/label map in the page.
 - Do keep the top-right “数据设置” entry available even when data modules are hidden.
+- Do keep size editing desktop-only; mobile must never show resize handles or apply saved heights.
 - Do verify both light and dark screenshots for every UI change.
 - Don't hard-code hex values in Vue components or page CSS.
 - Don't use `#C9A45B` for small text on warm paper.
@@ -589,9 +596,9 @@ Rules:
 
 ## Responsive Behavior
 
-- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their fixed 12/8/4 spans in saved order.
-- **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; module spans remain fixed.
-- **≤980px**: single column; every dashboard module spans the full row in saved order; hero stacks; rank band 2×2; evaluation radar cards stack; scope pills wrap; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their saved width/height in saved order; layout editing is available.
+- **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; saved module widths and heights remain active; layout editing remains available.
+- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2; evaluation radar cards stack; scope pills wrap; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
 - **≤560px**: phone typography and spacing; settings module hit targets remain 44×44px from the ≤980px rule.
 - The page must never scroll horizontally at 390px.
 
