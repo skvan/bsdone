@@ -387,9 +387,15 @@ function handleDrop(player, target) {
     b.sendToBench(player.id);
   }
   else if (target.kind === 'pool') {
-    // 替补卡片拖回池 = 从替补名单移除（sendBackToBench 是「加入替补」，不可混用）
-    if (b.bench.value.some((p) => String(p.id) === String(player.id))) {
+    // 替补卡片拖回池 = 从替补名单移除；场上球员 / 仅守备投手拖回池 = 直接从阵容移除
+    const inBench = b.bench.value.some((p) => String(p.id) === String(player.id));
+    const inRows = findRowIndex(b.rows.value, player.id) >= 0;
+    const fieldingPitcher =
+      b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id);
+    if (inBench) {
       b.setBench(b.bench.value.filter((p) => String(p.id) !== String(player.id)).map((p) => p.id));
+    } else if (inRows || fieldingPitcher) {
+      b.sendToPool(player.id);
     }
   }
   else if (target.kind === 'outside') {

@@ -11,6 +11,7 @@ import {
   applyKeSpecial, emptyStats, findRowIndex, hasPlayer, isPlaceholder, makePlaceholderRow,
   makeRow, normalizeRows, posOf, slotRow,
 } from '../utils/lineupBoardRules.js';
+import { sortByJersey } from '../utils/sortByJersey.js';
 
 export function useLineupBoard(mode, teamId, opts = {}) {
   const rows = ref([]);
@@ -30,7 +31,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
   const hasP = computed(() => !!slotRow(rows.value, 'P'));
 
   const pool = computed(() =>
-    roster.value.filter((p) => !hasPlayer(rows.value, p.id) && !hasPlayer(bench.value, p.id))
+    sortByJersey(roster.value.filter((p) => !hasPlayer(rows.value, p.id) && !hasPlayer(bench.value, p.id)))
   );
   const validation = computed(() =>
     // 注意：validateRosterPositions 读的是行对象的 .position 字段 → 必须传行对象，不能传位置字符串数组
@@ -53,6 +54,10 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     const n = notice.value;
     notice.value = '';
     return n;
+  }
+
+  function sortBench() {
+    bench.value = sortByJersey(bench.value);
   }
 
   function slotOfRow(code) {
@@ -89,6 +94,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     );
     normalize();
     bench.value = Array.isArray(snapshot?.bench) ? [...snapshot.bench] : [];
+    sortBench();
     fieldingPitcherId.value = snapshot?.fieldingPitcherId ?? null;
     lastDhAddedFromPoolId.value = snapshot?.lastDhAddedFromPoolId ?? null;
   }
@@ -132,6 +138,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       takeFirstEmpty(makeRow(player, teamId.value, target));
     }
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));
+    sortBench();
   }
 
   /** 落到 DH 卡槽：先清掉该球员旧行 → 占位已有 DH 行或取尾部空行 → 决策 6b 投手移出打线 */
@@ -160,6 +167,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       }
     }
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));
+    sortBench();
     lastDhAddedFromPoolId.value = player.id;
     // 决策 6b：放 DH → 投手移出打线（转仅守备）
     const pRow = slotRow(rows.value, 'P');
@@ -256,6 +264,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       if (fieldingPitcherId.value != null && String(fieldingPitcherId.value) === String(playerId)) {
         fieldingPitcherId.value = null;
         if (fromRoster && !hasPlayer(bench.value, fromRoster.id)) bench.value = [...bench.value, fromRoster];
+        sortBench();
       }
       return;
     }
@@ -267,6 +276,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     if (!hasPlayer(bench.value, player.id)) {
       bench.value = [...bench.value, { ...player, teamId: teamId.value, position: '', stats: player.stats ?? emptyStats() }];
     }
+    sortBench();
     if (fieldingPitcherId.value != null && String(fieldingPitcherId.value) === String(player.id)) fieldingPitcherId.value = null;
     if (lastDhAddedFromPoolId.value != null && String(lastDhAddedFromPoolId.value) === String(player.id)) lastDhAddedFromPoolId.value = null;
     normalize();
@@ -283,6 +293,24 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     if (inRows || isFieldingPitcher) return sendBackToBench(playerId);
     if (!hasPlayer(bench.value, playerId)) {
       setBench([...bench.value.map((p) => p.id), playerId]);
+    }
+  }
+
+  /** 直接移出阵容回到可选池（不进入替补席）；DH 被移出时沿用决策 16：仅守备投手自动回打线 */
+  function sendToPool(playerId) {
+    const wasDh = String(slotRow(rows.value, 'DH')?.id ?? '') === String(playerId);
+    detachPlayer(playerId);
+    normalize();
+    if (!wasDh) return;
+    const pitcher = fieldingPitcherId.value;
+    if (!slotRow(rows.value, 'P') && pitcher != null) {
+      const p = roster.value.find((x) => String(x.id) === String(pitcher));
+      if (p) {
+        takeFirstEmpty(makeRow(p, teamId.value, 'P'));
+        bench.value = bench.value.filter((x) => String(x.id) !== String(p.id));
+        fieldingPitcherId.value = p.id;
+        normalize();
+      }
     }
   }
 
@@ -304,6 +332,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     if (!hasPlayer(bench.value, dhPlayer.id)) {
       bench.value = [...bench.value, { ...dhPlayer, teamId: teamId.value, position: '', stats: dhPlayer.stats ?? emptyStats() }];
     }
+    sortBench();
     normalize();
     const pitcher = fieldingPitcherId.value;
     if (!slotRow(rows.value, 'P') && pitcher != null) {
@@ -331,6 +360,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
   function setBench(playerIds) {
     const ids = new Set((playerIds ?? []).map(String));
     bench.value = roster.value.filter((p) => ids.has(String(p.id)) && findRowIndex(rows.value, p.id) < 0);
+    sortBench();
   }
 
   /** 应用阵容模板（映射沿用旧件 sl()；读取保真按 absMax，不裁剪模板行数） */
@@ -344,6 +374,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     normalize();
     const ids = new Set((benchPlayerIds ?? []).map(String));
     bench.value = roster.value.filter((p) => ids.has(String(p.id)) && findRowIndex(rows.value, p.id) < 0);
+    sortBench();
     const pitcher = slotRow(rows.value, 'P');
     fieldingPitcherId.value = pitcher
       ? pitcher.id
@@ -357,7 +388,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     baseCount, maxCount, hasDh, hasP,
     validation, fieldingPitcherRequired, fieldingPitcherOk, lineupComplete, battingFull,
     slotOfRow, setRoster, loadDraft, reset,
-    placeAtSlot, addToBatting, sendBackToBench, sendToBench, reorderBatting,
+    placeAtSlot, addToBatting, sendBackToBench, sendToBench, sendToPool, reorderBatting,
     removeDh, setFieldingPitcher, setBench, applyTemplate, consumeNotice,
   };
 }

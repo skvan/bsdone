@@ -13,8 +13,12 @@ const CSS = '../src/styles/legacy/live-game.css';
 test('纯函数层不依赖 DOM/框架（可被 node --test 直接加载）', () => {
   const src = read(UTIL);
   const imports = [...src.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
-  assert.deepEqual(imports, [], `liveSubDrag.js 不应引入任何依赖：${imports.join(',')}`);
+  const external = imports.filter((spec) => !spec.startsWith('./'));
+  assert.deepEqual(external, [], `liveSubDrag.js 不得引入框架/第三方依赖：${external.join(',')}`);
   assert.ok(!/\bdocument\b|\bwindow\b|appendChild|createElement/.test(src), '纯函数层不得触碰 DOM');
+  // 本地相对依赖同样须保持纯函数，不能借道触碰 DOM/框架
+  const jersey = read('../src/utils/sortByJersey.js');
+  assert.ok(!/\bdocument\b|\bwindow\b|appendChild|createElement|from\s+'vue'/.test(jersey), 'sortByJersey.js 必须保持纯函数');
 });
 
 test('三个组件 vnode 必须带 patchFlag 16（无 flag 会被 block 优化跳过更新）', () => {

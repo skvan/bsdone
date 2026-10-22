@@ -424,6 +424,51 @@
         "fullName": "인플레이 타구 비율",
         "definition": "타석 중 인플레이 타구로 끝난 비율",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "방해 출루",
+        "definition": "수비 방해 또는 저지로 타자가 1루에 진루; 타석에는 포함되고 타수에는 제외",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "피2루타",
+        "definition": "투수가 허용한 2루타",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "피3루타",
+        "definition": "투수가 허용한 3루타",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "피희생번트",
+        "definition": "투수 상대 희생번트",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "피희생플라이",
+        "definition": "투수 상대 희생플라이",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "피방해 출루",
+        "definition": "투수 측 수비 방해/저지로 타자가 출루",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "비자책점",
+        "definition": "실책 등 투수 책임이 아닌 실점",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "판정 대기 실점",
+        "definition": "자책점 판정이 아직 확정되지 않은 실점",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "도루 허용",
+        "definition": "포수가 허용한 도루 수",
+        "shortLabel": "SB"
       }
     }
   },
@@ -960,9 +1005,16 @@
         "cs": "도루 실패.",
         "e": "실책.",
         "avg": "타율(H/AB).",
-        "obp": "출루율(이 페이지는 (H+BB+HP)/PA 근사).",
+        "obp": "출루율((H+BB+HBP)/(AB+BB+HBP+SF))",
         "slg": "장타율(TB/AB).",
-        "ops": "OPS(출루율+장타율)."
+        "ops": "OPS(출루율+장타율).",
+        "gdp": "병살타(Grounded into Double Play)",
+        "sh": "희생번트(Sacrifice Bunt)",
+        "sf": "희생플라이(Sacrifice Fly)",
+        "bb": "볼넷(고의사구 포함)",
+        "ibb": "고의사구(Intentional Walk)",
+        "hbp": "사구(Hit By Pitch)",
+        "io": "방해 출루(Obstruction/Interference)"
       },
       "pitcher": {
         "ip": "이닝.",
@@ -973,7 +1025,7 @@
         "pitchSo": "탈삼진.",
         "pitchHr": "피홈런(넘어간 홈런).",
         "pitchInsideParkHr": "장내 홈런 허용.",
-        "pitAb": "상대 타수(BF−BB−IBB−HBP; 타자 AB와 다름).",
+        "pitAb": "상대 타수(BF−BB−HBP; BB는 IBB 포함)",
         "pitE": "해당 투수 타격 기록 행의 수비 실책.",
         "np": "투구 수.",
         "pitchPa": "상대 타석(PA).",
@@ -993,7 +1045,12 @@
         "hld": "홀드.",
         "cg": "완투 여부(0/1).",
         "pg": "퍼펙트 여부(0/1).",
-        "era": "방어율(ER×9/IP)."
+        "era": "방어율(ER×9/IP).",
+        "pitchDoubles": "피2루타(Doubles Allowed)",
+        "pitchTriples": "피3루타(Triples Allowed)",
+        "pitchSh": "피희생번트(Sacrifice Bunts Allowed)",
+        "pitchSf": "피희생플라이(Sacrifice Flies Allowed)",
+        "pitchIo": "피방해 출루(Obstruction Allowed)"
       }
     }
   },
@@ -1369,7 +1426,7 @@
       "era": "자책점 평균",
       "whip": "이닝당 출루 허용",
       "pitchBf": "맞이한 타자 총인원",
-      "pitchAb": "자유 타석, 대면 타자에서 볼넷·고의·사구 제외",
+      "pitchAb": "상대 타수: BF에서 볼넷과 사구를 뺀 수(BB는 IBB 포함)",
       "ggComplete": "완투",
       "pgShutout": "완봉",
       "pitchH": "피안타",

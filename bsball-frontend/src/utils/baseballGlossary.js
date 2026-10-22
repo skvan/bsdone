@@ -5,7 +5,8 @@ const GLOSSARY_KEYS = new Set([
   'ip', 'tbf', 'bf', 'pitchBf', 'np', 'pIp', 'qs', 'gf', 'pitchR', 'er', 'era', 'whip', 'so9', 'bb9', 'h9',
   'kBb', 'avgAgainst', 'sbAllowed', 'csAllowed', 'pk', 'sh', 'sac', 'sf', 'gdp', 'gidp', 'goFo', 'goAo', 'xbh',
   'tb', 'babip', 'iso', 'abHr', 'bbK', 'bbPct', 'kPct', 'fip', 'eraPlus', 'inn', 'tc', 'po', 'a', 'e', 'dp',
-  'pb', 'catcherCs', 'tcPct', 'sb', 'cs', 'avg', 'obp', 'slg', 'ops', 'opsPlus', 'bipPct'
+  'pb', 'catcherCs', 'catcherSb', 'tcPct', 'sb', 'cs', 'avg', 'obp', 'slg', 'ops', 'opsPlus', 'bipPct',
+  'io', 'pitchDoubles', 'pitchTriples', 'pitchSh', 'pitchSf', 'pitchIo', 'unearnedR', 'pendingR'
 ]);
 
 const GLOSSARY_FORMULAS = {
@@ -13,7 +14,8 @@ const GLOSSARY_FORMULAS = {
   avgAgainst: 'H/AB', goFo: 'GO/AO', goAo: 'GO/AO', xbh: '2B+3B+HR', babip: '(H-HR)/(AB-K-HR+SF)',
   iso: '(2B+(2x3B)+(3xHR))/AB', abHr: 'AB/HR', bbK: 'BB/SO', bbPct: 'BB/PA', kPct: 'K/PA',
   tcPct: '(PO+A)/(PO+A+E)', avg: 'H/AB', obp: '(H+BB+HBP)/(AB+BB+HBP+SF)', slg: '(1B+2Bx2+3Bx3+HRx4)/AB',
-  ops: 'OBP+SLG', ip: '@glossary.formula.ip', inn: '@glossary.formula.inn', tb: '1B+2×2B+3×3B+4×HR'
+  ops: 'OBP+SLG', ip: '@glossary.formula.ip', inn: '@glossary.formula.inn', tb: '1B+2×2B+3×3B+4×HR',
+  unearnedR: 'R-ER-PENDING'
 };
 
 function normalizeSubject(value) {
@@ -30,7 +32,8 @@ function normalizeFormulaKey(input) {
     k9: 'so9', so9: 'so9', 'k/9': 'so9', 'so/9': 'so9', bb9: 'bb9', 'bb/9': 'bb9',
     kbb: 'kBb', 'k/bb': 'kBb', 'so/bb': 'kBb', bbb: 'bbPct', bbpct: 'bbPct', 'bb%': 'bbPct',
     kpct: 'kPct', 'k%': 'kPct', pipa: 'pIp', pip: 'pIp', 'p/ip': 'pIp',
-    goao: 'goAo', 'go/ao': 'goAo', abhr: 'abHr', 'ab/hr': 'abHr', tbf: 'tbf', hld: 'hld', sho: 'sho'
+    goao: 'goAo', 'go/ao': 'goAo', abhr: 'abHr', 'ab/hr': 'abHr', tbf: 'tbf', hld: 'hld', sho: 'sho',
+    pitchibb: 'ibb', pitchhbp: 'hbp'
   };
   return aliases[spaced] ?? aliases[compact] ?? compact;
 }

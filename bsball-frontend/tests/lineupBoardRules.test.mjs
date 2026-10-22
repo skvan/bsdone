@@ -409,6 +409,51 @@ test('开启态（补回 T7 挂起断言）：垒球 DH 制 10 人需指定先�
   assert.equal(b.lineupComplete.value, true);
 });
 
+test('可用池与替补席按背号升序；场→池直接移除且不进替补', () => {
+  const b = board();
+  assert.deepEqual(b.pool.value.map((p) => p.number), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+  b.setBench([9, 2, 5]);
+  assert.deepEqual(b.bench.value.map((p) => p.number), [2, 5, 9]);
+  b.sendToBench(7);
+  assert.deepEqual(b.bench.value.map((p) => p.number), [2, 5, 7, 9]);
+  b.placeAtSlot(P(11), 'C');
+  b.sendToPool(11);
+  assert.equal(b.rows.value.some((r) => !isPlaceholder(r) && r.id === 11), false);
+  assert.equal(b.bench.value.some((p) => p.id === 11), false);
+  assert.equal(b.pool.value.some((p) => p.id === 11), true);
+});
+
+test('仅守备投手拖回池：清除身份并回到池', () => {
+  const b = board();
+  b.setFieldingPitcher(4);
+  assert.equal(b.fieldingPitcherId.value, 4);
+  b.sendToPool(4);
+  assert.equal(b.fieldingPitcherId.value, null);
+  assert.equal(b.pool.value.some((p) => p.id === 4), true);
+});
+
+test('DH 拖回池：不进替补，仅守备投手自动回打线（决策 16）', () => {
+  const b = board();
+  b.placeAtSlot(P(3), 'P');
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH'); // 投手转仅守备
+  assert.equal(b.fieldingPitcherId.value, 3);
+  b.sendToPool(12);
+  assert.equal(b.rows.value.some((r) => !isPlaceholder(r) && r.id === 12), false);
+  assert.equal(b.bench.value.some((p) => p.id === 12), false);
+  assert.equal(b.pool.value.some((p) => p.id === 12), true);
+  assert.equal(b.slotOfRow('P')?.id, 3);
+  assert.equal(b.validation.value.ok, true);
+});
+
+test('仅守备投手回替补后仍按背号升序', () => {
+  const b = board();
+  b.setBench([7, 5]);
+  b.setFieldingPitcher(1);
+  b.sendToBench(1);
+  assert.deepEqual(b.bench.value.map((p) => p.number), [1, 5, 7]);
+});
+
 test('垒球开启态：已有 DH 时 addToBatting 非投手 → 拒绝且不新增行（EP 仅棒球）', () => {
   const b = board('SOFTBALL', true);
   fill8(b);

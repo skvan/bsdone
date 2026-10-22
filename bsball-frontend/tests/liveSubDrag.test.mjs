@@ -50,6 +50,16 @@ test('空/缺省输入安全', () => {
   assert.deepEqual(buildLiveBenchItems([], null, 'BASEBALL'), []);
 });
 
+test('替补席按背号升序，空背号排最后', () => {
+  const bench = [
+    { id: 1, name: '甲', number: '10' },
+    { id: 2, name: '乙', number: '2' },
+    { id: 3, name: '丙', number: '' }
+  ];
+  assert.deepEqual(buildLiveBenchItems(bench, [], 'BASEBALL').map((p) => p.id), [2, 1, 3]);
+  assert.deepEqual(buildLiveBenchItems(bench, [], 'SOFTBALL').map((p) => p.id), [2, 1, 3]);
+});
+
 /* ---------------- liveBenchEmptyText ---------------- */
 
 test('空席文案：棒球注明已换下不可再上场，垒球不带该说明', () => {
