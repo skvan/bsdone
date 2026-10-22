@@ -13,6 +13,7 @@ export const clubhouseApi = {
     const qs = queryString(params);
     return get(`/api/account/clubhouse${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
   },
+  milestones: () => get('/api/account/clubhouse/milestones').then((res) => res?.data ?? null),
   saveConfig: (config) => put('/api/account/clubhouse/config', config).then((res) => res?.data ?? null),
   resetConfig: () => post('/api/account/clubhouse/config/reset', {}).then((res) => res?.data ?? null)
 };

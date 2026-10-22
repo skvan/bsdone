@@ -5,9 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -78,6 +75,23 @@ class ClubhouseServiceTest {
     }
 
     @Test
+    @DisplayName("里程碑按需加载，使用当前用户配置")
+    void milestonesLoadOnDemand() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(player));
+        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
+        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
+        Map<String, Object> milestones = Map.of("available", true);
+        when(milestoneService.build(10L, null, config)).thenReturn(milestones);
+
+        assertEquals(milestones, service.getMilestones(7L));
+    }
+
+    @Test
     @DisplayName("未认领球员的账号访问驾驶舱返回 404")
     void unclaimedUserGets404() {
         when(playerRepository.findFirstByUserIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
@@ -122,8 +136,7 @@ class ClubhouseServiceTest {
         assertEquals(12, moduleCatalog.get(2).get("span"));
         assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
-        assertTrue(result.containsKey("milestones"));
-        verify(milestoneService).build(eq(10L), isNull(), any());
+        assertTrue(!result.containsKey("milestones"));
         assertEquals(4, ((List<?>) result.get("ranks")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");

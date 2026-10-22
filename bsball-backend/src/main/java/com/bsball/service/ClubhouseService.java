@@ -86,12 +86,18 @@ public class ClubhouseService {
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
         out.put("evaluation", evaluationService.build(
                 player.getId(), scope.teamId(), scope.eventId(), gameMode, stats));
-        out.put("milestones", milestoneService.build(player.getId(), null, config));
         List<Map<String, Object>> schedule = schedule(tenantId, teams);
         out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
         out.put("schedule", schedule);
         out.put("recentGames", recentGames(player, gameMode));
         return out;
+    }
+
+    /** 生涯里程碑按需加载；与顶部赛事/球队范围无关，也不参与驾驶舱首屏聚合。 */
+    public Map<String, Object> getMilestones(Long userId) {
+        Player player = findPlayer(userId);
+        Map<String, Object> config = configService.getOrCreate(userId, player.getTenantId());
+        return milestoneService.build(player.getId(), null, config);
     }
 
     private Player findPlayer(Long userId) {

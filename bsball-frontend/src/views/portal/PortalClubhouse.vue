@@ -231,7 +231,8 @@
           </div>
         </div>
 
-        <template v-if="milestoneData.available">
+        <div v-if="milestonesLoading" class="data-empty">正在加载生涯里程碑…</div>
+        <template v-else-if="milestoneData.available">
           <div class="milestone-body">
             <div class="milestone-metrics">
               <article v-for="item in milestoneItems" :key="item.metricKey" class="milestone-metric" :class="item.domain">
@@ -267,7 +268,7 @@
             </div>
           </div>
         </template>
-        <div v-else class="data-empty">暂无生涯累计数据。</div>
+        <div v-else class="data-empty">{{ milestonesError || '暂无生涯累计数据。' }}</div>
       </section>
 
       <div class="content-grid">
@@ -595,6 +596,9 @@ const teamId = ref(null);
 const eventId = ref(null);
 const settingsOpen = ref(false);
 const saving = ref(false);
+const milestonePayload = ref(null);
+const milestonesLoading = ref(false);
+const milestonesError = ref('');
 const moduleListEl = ref(null);
 let moduleSortable = null;
 let requestSeq = 0;
@@ -641,13 +645,15 @@ const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
 const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
-const milestoneData = computed(() => data.value?.milestones || {});
+const milestoneData = computed(() => milestonePayload.value || {});
 const milestoneItems = computed(() => milestoneData.value.items || []);
 const milestoneTimeline = computed(() => milestoneData.value.timeline || []);
 const milestoneCatalog = computed(() => data.value?.milestoneCatalog || []);
 const milestoneBattingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'batting'));
 const milestonePitchingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'pitching'));
 const nextMilestoneText = computed(() => {
+  if (milestonesLoading.value) return '加载中';
+  if (milestonesError.value) return '暂不可用';
   if (!milestoneItems.value.length) return '等待数据';
   const next = milestoneItems.value.find((item) => item.nextTarget != null);
   return next ? `${next.nextTarget} ${next.label}` : '已达最高里程碑';
@@ -1112,6 +1118,9 @@ async function load() {
   const seq = ++requestSeq;
   loading.value = true;
   loadError.value = '';
+  milestonePayload.value = null;
+  milestonesError.value = '';
+  milestonesLoading.value = false;
   try {
     const result = await clubhouseApi.dashboard({ teamId: teamId.value, eventId: eventId.value });
     if (seq !== requestSeq) return;
@@ -1123,14 +1132,11 @@ async function load() {
     teamId.value = result.scope?.teamId ?? null;
     eventId.value = result.scope?.eventId ?? null;
     resetDraft();
+    void loadMilestones(seq);
   } catch (error) {
     if (seq !== requestSeq) return;
     if (isAuthSessionError(error)) {
-      await router.replace({
-        name: 'PortalAccountLogin',
-        params: { tenantCode: tenantCode.value },
-        query: { redirect: router.currentRoute.value.fullPath }
-      });
+      await redirectToLogin();
       return;
     }
     if (error?.apiCode === 404 || String(error?.message || '').includes('未关联')) {
@@ -1141,6 +1147,38 @@ async function load() {
   } finally {
     if (seq === requestSeq) loading.value = false;
   }
+}
+
+async function loadMilestones(seq) {
+  if (!activeModules.value.some((module) => module.key === 'milestones')) {
+    milestonePayload.value = null;
+    milestonesLoading.value = false;
+    return;
+  }
+  milestonesLoading.value = true;
+  milestonesError.value = '';
+  try {
+    const result = await clubhouseApi.milestones();
+    if (seq !== requestSeq) return;
+    milestonePayload.value = result || {};
+  } catch (error) {
+    if (seq !== requestSeq) return;
+    if (isAuthSessionError(error)) {
+      await redirectToLogin();
+      return;
+    }
+    milestonesError.value = error?.message || '里程碑加载失败';
+  } finally {
+    if (seq === requestSeq) milestonesLoading.value = false;
+  }
+}
+
+async function redirectToLogin() {
+  await router.replace({
+    name: 'PortalAccountLogin',
+    params: { tenantCode: tenantCode.value },
+    query: { redirect: router.currentRoute.value.fullPath }
+  });
 }
 
 async function goUnclaimed() {

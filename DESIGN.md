@@ -453,7 +453,7 @@ The nine configurable modules are `队内坐标` (12), `总体评价` (12), `生
 - Do not expose width editing or free positioning in this phase.
 
 ### Career milestones
-A full-width module in the default order after overall evaluation. It combines career cumulative progress and a recent milestone timeline.
+A full-width module in the default order after overall evaluation. It combines career cumulative progress and a recent milestone timeline. Its data loads lazily from `GET /account/clubhouse/milestones` only when the module is enabled; hiding it must not read the full career log.
 
 - Scope is all-tenant career across game modes: every event and represented team, ranking-included games only. The module is unaffected by the top scope bar. Label it “全租户生涯 · 跨赛事与球队” and note “统计自系统记录 · 仅计入排行的比赛”.
 - Users select 1–6 cumulative metrics in settings. Default: H, RBI, SB, G, IP, SO. Available catalog also includes HR, R, W, SV and NP.
