@@ -70,13 +70,13 @@ test('守备行：listOrder 从 0 开始可用；都无顺序时按 playerId 稳
   ], 1).map((r) => r.playerId), [9, 10]);
 });
 
-test('比赛详情守备表接线：使用统一行构建，含 PB/SB/CS/INN 列', () => {
+test('比赛详情守备表接线：使用统一行构建与可配置列', () => {
   const detail = fs.readFileSync(new URL('../src/components/admin/GameDetailFieldingTable.vue', import.meta.url), 'utf8');
   assert.match(detail, /buildFieldingDisplayRows/, '详情守备表复用行构建');
   assert.doesNotMatch(detail, /return Number\(row\.po\)/, '不再按有守备数据过滤');
-  for (const col of ['PO', 'A', 'E', 'DP', 'INN', 'PB', 'SB', 'CS']) {
-    assert.ok(detail.includes(`label="${col}"`), `缺少 ${col} 列`);
-  }
+  assert.match(detail, /visibleFields/, '列由字段设置控制');
+  assert.match(detail, /DEFAULT_FIELDING_FIELDS/, '缺省字段包含守备/捕手列');
+  assert.match(detail, /col\.label/, '动态列标题');
   const entry = fs.readFileSync(new URL('../src/components/admin/GameFieldingTable.vue', import.meta.url), 'utf8');
   for (const key of ['pb', 'catcherSb', 'catcherCs']) {
     assert.ok(entry.includes(`key: '${key}'`), `录入页守备表缺少 ${key} 列`);

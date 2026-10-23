@@ -16,7 +16,7 @@ import { readWatchFieldSettings as kt } from '../../utils/gameDetailFieldSetting
 import { writeWatchFieldSettings as watchWriteSettings } from '../../utils/gameDetailFieldSettingsStorage';
 import { LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY as watchSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
 import { FIELD_SETTINGS_STORAGE_KEY as adminFieldSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
-import { DEFAULT_PITCHER_FIELDS as _a } from '../../utils/gameDetailFieldSettingsStorage';
+import { DEFAULT_PITCHER_FIELDS as _a, DEFAULT_BATTER_FIELDS as DBF, DEFAULT_FIELDING_FIELDS as FG } from '../../utils/gameDetailFieldSettingsStorage';
 import { POSITION_CODE_MAP as Ue } from '../../utils/starterFieldingValidation';
 import { buildPitchBlocks as ga } from '../../utils/liveGameFieldLayout';
 import { parseHeaderLine as wa } from '../../utils/liveGameFieldLayout';
@@ -328,70 +328,13 @@ var Ta={
     const pe=f(!0),T=f(""),x=f(!1),U=f(""),Fe=f(0),Ae=f(""),Te=f("客队"),Ee=f("主队"),j=f(0),z=f(0),Q=f(null),De=f([]),He=f({
       
     }
-    ),Ze=[{
-      key:"pa",label:"PA",visible:!0
+    ),Ze=DBF,qe=_a,watchFieldOptions={
+      defaultBatterFields:Ze,defaultPitcherFields:qe,defaultFieldingFields:FG,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
     }
-    ,{
-      key:"ab",label:"AB",visible:!0
-    }
-    ,{
-      key:"r",label:"R",visible:!0
-    }
-    ,{
-      key:"h",label:"H",visible:!0
-    }
-    ,{
-      key:"doubles",label:"2B",visible:!0
-    }
-    ,{
-      key:"triples",label:"3B",visible:!0
-    }
-    ,{
-      key:"hr",label:"HR",visible:!0
-    }
-    ,{
-      key:"shSf",label:"SH+SF",visible:!0
-    }
-    ,{
-      key:"rbi",label:"RBI",visible:!0
-    }
-    ,{
-      key:"bbHp",label:"BB+HP",visible:!0
-    }
-    ,{
-      key:"so",label:"SO",visible:!0
-    }
-    ,{
-      key:"sb",label:"SB",visible:!0
-    }
-    ,{
-      key:"cs",label:"CS",visible:!0
-    }
-    ,{
-      key:"e",label:"E",visible:!0
-    }
-    ,{
-      key:"avg",label:"AVG",visible:!0
-    }
-    ,{
-      key:"obp",label:"OBP",visible:!0
-    }
-    ,{
-      key:"slg",label:"SLG",visible:!0
-    }
-    ,{
-      key:"ops",label:"OPS",visible:!0
-    }
-    ],qe=_a,te=kt({
-      defaultBatterFields:Ze,defaultPitcherFields:qe,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
-    }
-    ),Je=f(te.batterFields),Ye=f(te.pitcherFields),Qe=f(te.decimalPlaces),Xe=f(te.rateDisplayStyle),Ke=f(te.showTrailingZeros);
+    ,te=kt(watchFieldOptions),Je=f(te.batterFields),Ye=f(te.pitcherFields),ff=f(te.fieldingFields),Qe=f(te.decimalPlaces),Xe=f(te.rateDisplayStyle),Ke=f(te.showTrailingZeros);
     function et(){
-      const e=kt({
-        defaultBatterFields:Ze,defaultPitcherFields:qe,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
-      }
-      );
-      Je.value=e.batterFields,Ye.value=e.pitcherFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
+      const e=kt(watchFieldOptions);
+      Je.value=e.batterFields,Ye.value=e.pitcherFields,ff.value=e.fieldingFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
     }
     function tt(e){
       if(e.key===adminFieldSettingsKey||e.key===watchSettingsKey){
@@ -426,8 +369,8 @@ var Ta={
       watchSmallScreen.value=window.innerWidth<768
     }
     function watchSaveSettings(e){
-      Je.value=e.batterItems,Ye.value=e.pitcherItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
-        batterFields:Je.value,pitcherFields:Ye.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
+      Je.value=e.batterItems,Ye.value=e.pitcherItems,ff.value=e.fieldingItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
+        batterFields:Je.value,pitcherFields:Ye.value,fieldingFields:ff.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
       }
       ),watchMessage.success("保存成功")
     }
@@ -1140,9 +1083,9 @@ var Ta={
           ])
         }
         ,null,2)]))])])]),dt.value&&De.value.length>=2?(c(),h("div",Ua,[M(fa,{
-          game:dt.value,stats:qt.value,teams:De.value,"players-map":He.value,"event-name":Ae.value,"batter-fields":Je.value,"pitcher-fields":Ye.value,"decimal-places":Qe.value,"rate-display-style":Xe.value,"show-trailing-zeros":Ke.value,"live-watch-batter-player-id":Gt.value,"live-watch-pitcher-player-id":Ut.value
+          game:dt.value,stats:qt.value,teams:De.value,"players-map":He.value,"event-name":Ae.value,"batter-fields":Je.value,"pitcher-fields":Ye.value,"fielding-fields":ff.value,"decimal-places":Qe.value,"rate-display-style":Xe.value,"show-trailing-zeros":Ke.value,"live-watch-batter-player-id":Gt.value,"live-watch-pitcher-player-id":Ut.value
         }
-        ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","decimal-places","rate-display-style","show-trailing-zeros","live-watch-batter-player-id","live-watch-pitcher-player-id"])])):F("",!0),i("div",ja,[i("div",za,[i("div",Za,[i("div",qa,[i("div",Ja,[t[8]||(t[8]=i("div",{
+        ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","fielding-fields","decimal-places","rate-display-style","show-trailing-zeros","live-watch-batter-player-id","live-watch-pitcher-player-id"])])):F("",!0),i("div",ja,[i("div",za,[i("div",Za,[i("div",qa,[i("div",Ja,[t[8]||(t[8]=i("div",{
           class:"pbp-panel-header__title"
         }
         ,[i("span",null,"Play-by-Play")],-1)),M(r,{
@@ -1333,7 +1276,7 @@ var Ta={
         }
         ,8,["modelValue"]))])])])])])]))]),_:1
       }
-      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"default-batter-items":Ze,"default-pitcher-items":qe,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
+      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"fielding-items":ff.value,"default-batter-items":Ze,"default-pitcher-items":qe,"default-fielding-items":FG,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","fielding-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
     }
     
   }

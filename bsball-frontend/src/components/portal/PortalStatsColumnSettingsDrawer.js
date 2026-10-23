@@ -36,61 +36,8 @@ import { buildInitialFieldSettings as Fl } from '../../utils/gameDetailFieldSett
 import { saveDetailPageSettings as Ol } from '../../utils/gameDetailFieldSettingsStorage';
 import { DEFAULT_PITCHER_FIELDS as Nl } from '../../utils/gameDetailFieldSettingsStorage';
 import '../../styles/legacy/portal-stats-column-settings-drawer.css';
-var Ul="leadingZero",Ae=[{
-  key:"pa",label:"PA",visible:!0
-}
-,{
-  key:"ab",label:"AB",visible:!0
-}
-,{
-  key:"r",label:"R",visible:!0
-}
-,{
-  key:"h",label:"H",visible:!0
-}
-,{
-  key:"doubles",label:"2B",visible:!0
-}
-,{
-  key:"triples",label:"3B",visible:!0
-}
-,{
-  key:"hr",label:"HR",visible:!0
-}
-,{
-  key:"shSf",label:"SH+SF",visible:!0
-}
-,{
-  key:"rbi",label:"RBI",visible:!0
-}
-,{
-  key:"bbHp",label:"BB+HP",visible:!0
-}
-,{
-  key:"so",label:"SO",visible:!0
-}
-,{
-  key:"sb",label:"SB",visible:!0
-}
-,{
-  key:"cs",label:"CS",visible:!0
-}
-,{
-  key:"e",label:"E",visible:!0
-}
-,{
-  key:"avg",label:"AVG",visible:!0
-}
-,{
-  key:"obp",label:"OBP",visible:!0
-}
-,{
-  key:"slg",label:"SLG",visible:!0
-}
-,{
-  key:"ops",label:"OPS",visible:!0
-}
-],Ee=Nl,Yl={
+import { DEFAULT_BATTER_FIELDS } from '../../utils/gameDetailFieldSettingsStorage';
+var Ul="leadingZero",Ae=DEFAULT_BATTER_FIELDS,Ee=Nl,Yl={
   class:"drawer-inner"
 }
 ,Ml={
