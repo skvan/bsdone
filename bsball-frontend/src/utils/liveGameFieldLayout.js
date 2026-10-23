@@ -375,7 +375,8 @@ function w(e){
 }
 function gt(e){
   const t=e.trim();
-  return/^安打得分/.test(t)||/^安打 ·/.test(t)||/^保送挤回/.test(t)
+  // 与 liveGameLogTexts.runCauseLabel 的得分行/出局行前缀保持同步
+  return/^(?:安打得分|失误造成得分|野选推进得分|牺牲打得分)/.test(t)||/^(?:安打|失误|野选|牺牲打) ·/.test(t)||/^保送挤回/.test(t)
 }
 function St(e){
   const t=e.trim();

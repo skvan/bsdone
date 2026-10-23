@@ -53,7 +53,7 @@ import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
 import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
@@ -4460,13 +4460,13 @@ function pu(u,f,l){
   R<u;
   R++){
     if(l.runners[3]&&l.runners[3]!==H){
-      const N=l.runners[3],M=f[S++]??"safe";
+      const N=l.runners[3],M=f[S++]??"safe",runCause=l.runCause??"BATTER_ACTION";
       if(l.ensureBatting(N),M==="safe"){
-        const runCause=l.runCause??"BATTER_ACTION",wouldScoreWithoutError=l.wouldScoreWithoutError??null;
+        const wouldScoreWithoutError=l.wouldScoreWithoutError??null;
         const Rb=decideRbiForRun({runCause,wouldScoreWithoutError,manualRbi:l.manualRbi});
         const run={runner:N,batter:o,rbiDelta:Rb?1:0,pitcher:_,erDelta:1,origin:N.origin??"NORMAL",runCause,wouldScoreWithoutError,rbiCredit:Rb,rbiReason:runCause==="ERROR"?(Rb?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"):"BATTER_ACTION"};
         l.recordRun?l.recordRun(1,run):l.addScore(1),Rb&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1,Rc++),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(LgAdvance({
-          reasonCn:"安打得分",runner:N,from:3,to:4,rbiNote:Rb?`${o.name??"打者"}：${Rc}打点`:void 0
+          reasonCn:LgRunCauseLabel(runCause,"score"),runner:N,from:3,to:4,rbiNote:Rb?`${o.name??"打者"}：${Rc}打点`:void 0
         }
         ))
       }
@@ -4474,7 +4474,7 @@ function pu(u,f,l){
       else{
         l.handleOut();
         const Le=M==="out_int"?"妨碍守备出局 (Int.)":M==="out_force"?"封杀出局 (FO)":M==="out_tag"?"触杀出局 (TO)":M==="viol"?"跑垒违规 (Viol.)":"本垒出局 (Out)";
-        l.addLog(`安打 · ${N.name} (#${N.number??"-"}) ${Le} — 未得分`)
+        l.addLog(`${LgRunCauseLabel(runCause,"play")} · ${N.name} (#${N.number??"-"}) ${Le} — 未得分`)
       }
       
     }
@@ -10088,10 +10088,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           key:"3",label:`三垒跑者 ${logPlayerName(l.runners[3])}`
         }
         ),fc_options.push({
+          key:"safe",label:"无人出局（安全，不计失误）"
+        }
+        ),fc_options.push({
           key:"0",label:"没有跑者出局（失误）"
         }
         );
-        LgPick(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者（若无人出局请选“没有跑者出局”）：").then(fc_choice=>fcApply(fc_choice,r,t,a,meta));
+        LgPick(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者；若无人出局，请选择「无人出局」或「失误」：").then(fc_choice=>fcApply(fc_choice,r,t,a,meta));
         return
       }
       else if(e==="DP"){
@@ -10138,6 +10141,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         const m=Rt(`${r.name}: 失误上垒 (E)`);
         l.balls=0,l.strikes=0,Je("E",m),is("FC"),Qe();
+        return
+      }
+      if(fc_choice==="safe"){
+        pushHitSpray("FC",0,a);
+        const fc_old={
+          1:l.runners[1],2:l.runners[2],3:l.runners[3]
+        }
+        ,fc_forcedHome=!!(fc_old[1]&&fc_old[2]&&fc_old[3]),fc_next=Jv(fc_old,r);
+        l.runners[1]=fc_next[1],l.runners[2]=fc_next[2],l.runners[3]=fc_next[3],ue(r),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+        if(fc_forcedHome&&fc_old[3]){
+          const fc_run=fc_old[3];
+          fc_run.stats.batting.r=(fc_run.stats.batting.r??0)+1;
+          ls(1,{runner:fc_run,batter:r,rbiDelta:1,pitcher:Se.value,erDelta:1,origin:"NORMAL",runCause:"FC",rbiCredit:true,rbiReason:"BATTER_ACTION"});
+          r.stats.batting.rbi=(r.stats.batting.rbi??0)+1;
+          addLivePitcherEarnedRuns(Se.value)
+        }
+        Ge(di(fc_old,r));
+        const fc_safe_m=Rt(`${r.name}: 野手选择上垒 (FC)`);
+        l.balls=0,l.strikes=0,Je("FC",fc_safe_m),is("FC"),Qe();
         return
       }
       const fc_base=Number(fc_choice);

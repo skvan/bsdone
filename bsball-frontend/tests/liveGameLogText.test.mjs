@@ -42,6 +42,35 @@ test('P1：FC 去原生 prompt/调试日志；页内对话框 + 组行生成', (
   assert.match(src, /fc_lines=LgFc\(\{/, 'FC 提交经 fcGroup 生成组行');
   assert.match(src, /D\(fc_lines\[0\],void 0,\{\s*\n\s*lines:fc_lines\.slice\(1\)/, '组行经 D(lines) 写入');
 });
+
+test('FC 无人出局分支：安全上垒、不计失误、只记打者 FC', () => {
+  assert.match(src, /key:"safe",label:"无人出局（安全，不计失误）"/, '对话框新增无人出局选项');
+  const i = src.indexOf('if(fc_choice==="safe"){');
+  assert.ok(i >= 0, 'safe 分支存在');
+  const body = src.slice(i, src.indexOf('const fc_base=Number(fc_choice)', i));
+  assert.match(body, /pushHitSpray\("FC",0,a\)/, '仍记 FC 落点');
+  assert.match(body, /Jv\(fc_old,r\)/, '打者上一垒并按被迫进垒推进');
+  assert.match(body, /r\.stats\.batting\.ab=\(r\.stats\.batting\.ab\?\?0\)\+1/, '打者记 AB');
+  assert.match(body, /野手选择上垒 \(FC\)/, '日志只记打者野选上垒');
+  assert.doesNotMatch(body, /fielding\.(?:e|po|a)\s*=/, '不记失误或 PO/A');
+  assert.doesNotMatch(body, /Dn\(/, '不走守备记账');
+});
+
+test('共用得分行按 runCause 记原因：失误不再写成安打得分', () => {
+  assert.match(src, /runCauseLabel as LgRunCauseLabel/, '导入原因文案映射');
+  const i = src.indexOf('function pu(');
+  const body = src.slice(i, src.indexOf('function fu(', i));
+  assert.match(body, /LgRunCauseLabel\(runCause,"score"\)/, '得分行按 runCause 取原因');
+  assert.match(body, /LgRunCauseLabel\(runCause,"play"\)/, '本垒出局行按 runCause 取前缀');
+  assert.doesNotMatch(body, /reasonCn:"安打得分"/, '不得再固定写安打得分');
+  assert.doesNotMatch(body, /`安打 · /, '不得再固定写安打前缀');
+});
+
+test('观赛日志分类：失误/野选/牺牲打得分行同样识别为得分行', () => {
+  assert.ok(layout.includes('失误造成得分') && layout.includes('野选推进得分') && layout.includes('牺牲打得分'), '得分行前缀齐全');
+  assert.ok(layout.includes('(?:安打|失误|野选|牺牲打) ·'), '本垒出局行前缀齐全');
+});
+
 test('P1/§222：安全进垒原因入文（LgAdvance）', () => {
   assert.match(src, /m\(LgAdvance\(\{reasonCn:s,runner:e,from:t,to:/, '安全进垒带原因前缀');
 });
