@@ -10088,7 +10088,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           key:"3",label:`三垒跑者 ${logPlayerName(l.runners[3])}`
         }
         ),fc_options.push({
-          key:"safe",label:"无人出局（安全，不计失误）"
+          key:"safe",label:"无人出局"
         }
         ),fc_options.push({
           key:"0",label:"没有跑者出局（失误）"
