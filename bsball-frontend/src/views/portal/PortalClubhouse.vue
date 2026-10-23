@@ -274,14 +274,30 @@
             </div>
             <div class="milestone-timeline">
               <div class="mt-head"><b>最近里程碑</b><span>最近 {{ milestoneTimeline.length }} 项 / 共 {{ milestoneData.reachedCount || 0 }} 项</span></div>
-              <div v-if="milestoneTimeline.length" class="mt-list">
-                <div v-for="event in milestoneTimeline" :key="`${event.metricKey}-${event.gameId}-${event.title}`" class="mt-row">
-                  <span class="mt-dot"></span>
-                  <div class="mt-copy">
-                    <b>{{ event.title }}</b>
-                    <span>{{ event.eventName || '赛事' }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
+              <div v-if="milestoneTimeline.length" class="mt-scroll">
+                <div
+                  ref="milestoneListEl"
+                  class="mt-list"
+                  tabindex="0"
+                  role="region"
+                  aria-label="最近里程碑时间线"
+                  @scroll="updateMilestoneScrollbar"
+                >
+                  <div v-for="event in milestoneTimeline" :key="`${event.metricKey}-${event.gameId}-${event.title}`" class="mt-row">
+                    <span class="mt-dot"></span>
+                    <div class="mt-copy">
+                      <b>{{ event.title }}</b>
+                      <span>{{ event.eventName || '赛事' }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
+                    </div>
+                    <time>{{ formatMilestoneDate(event.gameday) }}</time>
                   </div>
-                  <time>{{ formatMilestoneDate(event.gameday) }}</time>
+                </div>
+                <div v-if="milestoneScroll.canScroll" class="mt-scrollbar" aria-hidden="true">
+                  <span
+                    class="mt-scroll-thumb"
+                    :style="milestoneThumbStyle"
+                    @pointerdown.prevent.stop="startMilestoneScrollDrag"
+                  ></span>
                 </div>
               </div>
               <p v-else class="mt-empty">还没有达成里程碑，继续保持。</p>
@@ -666,7 +682,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
@@ -682,6 +698,7 @@ const { tenantCode } = useTenantRouter();
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
 const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
 const MAX_MODULE_HEIGHT_ROWS = 80;
+const MILESTONE_TRACK_INSET = 4;
 const mobileLayoutQuery = window.matchMedia('(max-width: 980px)');
 const data = ref(null);
 const loading = ref(false);
@@ -701,7 +718,11 @@ const selectionRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
+const milestoneListEl = ref(null);
+const milestoneScroll = reactive({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
 const moduleListEl = ref(null);
+let milestoneScrollDrag = null;
+let milestoneResizeObserver = null;
 let moduleSortable = null;
 let pressState = null;
 let resizeState = null;
@@ -758,9 +779,21 @@ const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map
 const milestoneData = computed(() => milestonePayload.value || {});
 const milestoneItems = computed(() => milestoneData.value.items || []);
 const milestoneTimeline = computed(() => milestoneData.value.timeline || []);
+const milestoneThumbStyle = computed(() => ({
+  height: `${milestoneScroll.thumbHeight}px`,
+  transform: `translateY(${milestoneScroll.thumbTop}px)`
+}));
 const milestoneCatalog = computed(() => data.value?.milestoneCatalog || []);
 const milestoneBattingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'batting'));
 const milestonePitchingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'pitching'));
+watch(milestoneTimeline, async () => {
+  await nextTick();
+  if (milestoneListEl.value) {
+    milestoneListEl.value.scrollTop = 0;
+  }
+  updateMilestoneScrollbar();
+  observeMilestoneList();
+});
 const nextMilestoneText = computed(() => {
   if (milestonesLoading.value) return '加载中';
   if (milestonesError.value) return '暂不可用';
@@ -1470,6 +1503,7 @@ function onMobileLayoutChange(event) {
 }
 
 function onViewportResize() {
+  updateMilestoneScrollbar();
   if (!layoutEditing.value) return;
   if (mobileLayoutQuery.matches) {
     finishLayoutEditing();
@@ -1731,6 +1765,102 @@ function formatDay(value) {
 function formatMilestoneDate(value) {
   const date = dayjs(value);
   return date.isValid() ? date.format('YYYY.MM.DD') : (value || '日期未记录');
+}
+
+function milestoneScrollMetrics(el) {
+  const clientHeight = el.clientHeight;
+  const scrollHeight = el.scrollHeight;
+  return {
+    clientHeight,
+    scrollHeight,
+    trackHeight: Math.max(1, clientHeight - MILESTONE_TRACK_INSET * 2),
+    maxScroll: Math.max(1, scrollHeight - clientHeight)
+  };
+}
+
+function updateMilestoneScrollbar() {
+  const el = milestoneListEl.value;
+  const canScroll = el ? el.scrollHeight > el.clientHeight + 1 : false;
+  milestoneScroll.canScroll = canScroll;
+  if (!canScroll) {
+    milestoneScroll.thumbHeight = 0;
+    milestoneScroll.thumbTop = 0;
+    return;
+  }
+  const { clientHeight, scrollHeight, trackHeight, maxScroll } = milestoneScrollMetrics(el);
+  const thumbHeight = Math.min(
+    trackHeight,
+    Math.max(28, Math.round(trackHeight * clientHeight / scrollHeight))
+  );
+  const maxThumb = Math.max(0, trackHeight - thumbHeight);
+  milestoneScroll.thumbHeight = thumbHeight;
+  milestoneScroll.thumbTop = Math.round((el.scrollTop / maxScroll) * maxThumb);
+}
+
+function observeMilestoneList() {
+  milestoneResizeObserver?.disconnect();
+  milestoneResizeObserver = null;
+  const el = milestoneListEl.value;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  milestoneResizeObserver = new ResizeObserver(updateMilestoneScrollbar);
+  milestoneResizeObserver.observe(el);
+}
+
+function startMilestoneScrollDrag(event) {
+  const el = milestoneListEl.value;
+  if (!el || !milestoneScroll.canScroll || milestoneScrollDrag) return;
+  const { trackHeight, maxScroll } = milestoneScrollMetrics(el);
+  milestoneScrollDrag = {
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    startScrollTop: el.scrollTop,
+    maxScroll,
+    maxThumb: Math.max(1, trackHeight - milestoneScroll.thumbHeight)
+  };
+  try {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  } catch {
+    // 旧浏览器不支持指针捕获时仍可用窗口监听拖动
+  }
+  window.addEventListener('pointermove', onMilestoneScrollDrag, true);
+  window.addEventListener('pointerup', stopMilestoneScrollDrag, true);
+  window.addEventListener('pointercancel', stopMilestoneScrollDrag, true);
+  window.addEventListener('lostpointercapture', onMilestoneScrollLostCapture, true);
+}
+
+function onMilestoneScrollDrag(event) {
+  if (!milestoneScrollDrag || event.pointerId !== milestoneScrollDrag.pointerId) return;
+  if (event.buttons === 0) {
+    stopMilestoneScrollDrag();
+    return;
+  }
+  event.preventDefault();
+  const el = milestoneListEl.value;
+  if (!el) return;
+  const delta = event.clientY - milestoneScrollDrag.startY;
+  const ratio = milestoneScrollDrag.maxScroll / milestoneScrollDrag.maxThumb;
+  el.scrollTop = Math.min(
+    milestoneScrollDrag.maxScroll,
+    Math.max(0, milestoneScrollDrag.startScrollTop + delta * ratio)
+  );
+  updateMilestoneScrollbar();
+}
+
+function onMilestoneScrollLostCapture(event) {
+  if (!milestoneScrollDrag || event.pointerId !== milestoneScrollDrag.pointerId) return;
+  stopMilestoneScrollDrag();
+}
+
+function stopMilestoneScrollDrag(event) {
+  if (event && event.pointerId !== undefined
+      && milestoneScrollDrag && event.pointerId !== milestoneScrollDrag.pointerId) {
+    return;
+  }
+  milestoneScrollDrag = null;
+  window.removeEventListener('pointermove', onMilestoneScrollDrag, true);
+  window.removeEventListener('pointerup', stopMilestoneScrollDrag, true);
+  window.removeEventListener('pointercancel', stopMilestoneScrollDrag, true);
+  window.removeEventListener('lostpointercapture', onMilestoneScrollLostCapture, true);
 }
 
 function milestoneDomainLabel(domain) {
@@ -2005,6 +2135,8 @@ onBeforeUnmount(() => {
   if (dragState) clearReorderState();
   if (resizeState) clearResizeState();
   selectionObserver?.disconnect();
+  milestoneResizeObserver?.disconnect();
+  if (milestoneScrollDrag) stopMilestoneScrollDrag();
   if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
   if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
   mobileLayoutQuery.removeEventListener('change', onMobileLayoutChange);
@@ -2200,13 +2332,24 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .mm-track i { display: block; height: 100%; border-radius: 99px; background: var(--mm-color); }
 .mm-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10px; color: var(--bs-text-muted); }
 .mm-foot b { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
-.milestone-timeline { min-width: 0; padding-left: 20px; border-left: 1px solid var(--bs-hairline-soft); }
+.milestone-timeline { min-width: 0; padding-left: 20px; }
 .mt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--bs-hairline-soft); }
 .mt-head b { font-family: var(--bs-font-serif); font-size: 17px; color: var(--bs-ink); }
 .mt-head span { font-size: 10px; color: var(--bs-text-muted); }
-.mt-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
+.mt-scroll { position: relative; }
+.mt-list { max-height: 238px; overflow-y: auto; overscroll-behavior: contain; padding-right: 14px; scrollbar-width: none; }
+.mt-list::-webkit-scrollbar { display: none; }
+.mt-list:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 3px; border-radius: 8px; }
+.mt-scrollbar { position: absolute; top: 4px; right: 0; bottom: 4px; width: 8px; border-radius: 99px; background: var(--bs-accent-soft); pointer-events: none; }
+.mt-scroll-thumb { position: absolute; top: 0; left: 0; width: 8px; border-radius: 99px; background: var(--bs-accent); cursor: grab; pointer-events: auto; touch-action: none; }
+.mt-scroll-thumb:active { cursor: grabbing; }
+.mt-row { position: relative; display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
+.mt-row::before { content: ""; position: absolute; left: 2px; top: 0; bottom: 0; border-left: 1px dashed var(--bs-accent); opacity: .58; pointer-events: none; }
+.mt-row:first-child::before { top: 16px; }
+.mt-row:last-child::before { bottom: calc(100% - 16px); }
+.mt-row:only-child::before { display: none; }
 .mt-row:last-child { border-bottom: 0; }
-.mt-dot { width: 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: var(--bs-accent); box-shadow: 0 0 0 3px var(--bs-accent-soft); }
+.mt-dot { position: relative; z-index: 1; width: 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: var(--bs-accent); box-shadow: 0 0 0 3px var(--bs-accent-soft); }
 .mt-copy b { display: block; font-size: 11px; font-weight: 700; color: var(--bs-text); }
 .mt-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-muted); }
 .mt-row time { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
@@ -2412,7 +2555,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .milestone-summary { align-self: flex-end; flex-wrap: wrap; justify-content: flex-end; }
   .milestone-body { grid-template-columns: 1fr; gap: 18px; }
   .milestone-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .milestone-timeline { padding-left: 0; padding-top: 14px; border-left: 0; border-top: 1px solid var(--bs-hairline-soft); }
+  .milestone-timeline { padding-left: 0; padding-top: 14px; border-top: 1px solid var(--bs-hairline-soft); }
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
   .dashboard-grid { grid-template-columns: 1fr; }

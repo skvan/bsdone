@@ -61,9 +61,28 @@ class ClubhouseMilestoneServiceTest {
         assertEquals(20, wins.get("progressPct"));
 
         List<Map<String, Object>> timeline = timeline(result);
-        assertEquals(5, timeline.size());
+        assertEquals(6, timeline.size());
         assertEquals("2026-05-01", timeline.get(0).get("gameday"));
         assertEquals("珠江飞鹰", timeline.get(0).get("opponentName"));
+    }
+
+    @Test
+    @DisplayName("时间线最多保留最近 20 项")
+    void timelineCapsAtTwenty() {
+        when(teamRepository.findAllById(any())).thenReturn(List.of(team(1L, "广州猎豹"), team(2L, "珠江飞鹰")));
+        when(statsService.getPlayerGameLogForMilestones(10L, "BASEBALL"))
+                .thenReturn(List.of(
+                        log(2L, "2026-04-01", 1, 0, 0, 0, 0, 0),
+                        log(1L, "2026-05-01", 100, 50, 100, 200.0, 200, 20)));
+
+        Map<String, Object> result = service.build(10L, "BASEBALL", config(
+                "batting.h", "batting.hr", "batting.rbi", "pitching.ip", "pitching.so", "pitching.w"));
+
+        List<Map<String, Object>> timeline = timeline(result);
+        assertEquals(20, timeline.size());
+        assertEquals("2026-05-01", timeline.get(0).get("gameday"));
+        assertEquals("2026-05-01", timeline.get(timeline.size() - 1).get("gameday"));
+        assertEquals(27, result.get("reachedCount"));
     }
 
     @Test

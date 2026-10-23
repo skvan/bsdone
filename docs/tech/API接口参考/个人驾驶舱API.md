@@ -72,7 +72,7 @@
 - `note`：统计口径说明。
 - `reachedCount`：已选指标已达成里程碑总数。
 - `items[]`：`metricKey`、`label`、`shortLabel`、`domain`、`unit`、`value`、`nextTarget`、`remaining`、`progressPct`、`reachedCount`。
-- `timeline[]`：最近 5 项，含 `metricKey`、`title`、`gameday`、`eventName`、`opponentName`、`teamName`、`gameId`。
+- `timeline[]`：最近最多 20 项，按比赛日倒序（最新在前），含 `metricKey`、`title`、`gameday`、`eventName`、`opponentName`、`teamName`、`gameId`。
 - `pitching.ip` 的 `value`/`remaining` 使用棒球记法；进度按出局数计算。
 - 该接口不接收 `teamId`/`eventId`，不受驾驶舱范围栏影响；查询全部比赛模式。
 

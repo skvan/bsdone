@@ -465,8 +465,9 @@ A full-width module in the default order after overall evaluation. It combines c
 - Scope is all-tenant career across game modes: every event and represented team, ranking-included games only. The module is unaffected by the top scope bar. Label it “全租户生涯 · 跨赛事与球队” and note “统计自系统记录 · 仅计入排行的比赛”.
 - Users select 1–6 cumulative metrics in settings. Default: H, RBI, SB, G, IP, SO. Available catalog also includes HR, R, W, SV and NP.
 - Each metric card shows current value, next round-number target, a 3px progress track and remaining amount. IP uses baseball notation (`42.1` = 42⅓ innings); progress is computed from outs.
-- The timeline lists the five latest achieved milestones with date, title, event and opponent. Summary shows total achieved count. First-hit / first-home-run / first-RBI / first-win / first-save use dedicated titles.
-- Desktop: 2-column inner layout (metric grid + timeline rail), 3 metric columns × 2 rows. Mobile: metric cards 2-up, timeline stacked below.
+- The timeline lists up to 20 latest achieved milestones, newest first (earliest at the bottom), with date, title, event and opponent. Summary shows total achieved count. First-hit / first-home-run / first-RBI / first-win / first-save use dedicated titles.
+- Timeline rail: a 1px dashed gold line connects the small gold dots from the first dot centre to the last. The list has a max height of 238px and scrolls; hide the native scrollbar and use an 8px custom gold track/thumb on the right. The thumb is draggable; wheel, trackpad and touch scrolling work. The list is keyboard-focusable with a visible focus ring. Header and footnote stay fixed outside the scroll area.
+- Desktop: 2-column inner layout (metric grid + timeline rail), 3 metric columns × 2 rows. Mobile: metric cards 2-up, timeline stacked below with the same scroll rail.
 - The settings drawer includes “生涯里程碑 · 最多 6 项” with a multi-select; 1–6 unique metrics are required. Selecting metrics never changes the module order or visibility.
 
 ### Settings drawer

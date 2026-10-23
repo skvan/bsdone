@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class ClubhouseMilestoneService {
-    private static final int MAX_TIMELINE = 5;
+    private static final int MAX_TIMELINE = 20;
     private static final String SCOPE_LABEL = "全租户生涯 · 跨赛事与球队";
     private static final String NOTE = "统计自系统记录 · 仅计入排行的比赛";
 
@@ -29,7 +29,7 @@ public class ClubhouseMilestoneService {
     private final TeamRepository teamRepository;
 
     /**
-     * 构建全租户生涯里程碑；时间线取最近 5 项。
+     * 构建全租户生涯里程碑；时间线取最近 20 项。
      *
      * @param playerId 当前球员 ID
      * @param gameMode 比赛模式；null 表示棒球/垒球合并统计
