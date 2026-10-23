@@ -90,6 +90,27 @@ export function computeChainFieldingStats(type, steps) {
   return [...map.values()];
 }
 
+/**
+ * 单出局链记账（2026-10-23 裁决，适用于 G/SH/FC/触杀封杀夹杀等）
+ * 末位记 PO；其余不同守位各记 1A；已得 PO 的同一守位不再记 A（同一出局不得 PO+A）。
+ * DP/TP 仍走 computeChainFieldingStats（同一人可因不同出局点分别记 PO 与 A）。
+ */
+export function computeSingleOutChainStats(steps) {
+  const seq = (Array.isArray(steps) ? steps : []).map((s) => String(s ?? "").trim()).filter(Boolean);
+  if (!seq.length) return [];
+  const putout = seq[seq.length - 1];
+  const stats = [];
+  const credited = new Set([putout]);
+  for (let i = 0; i < seq.length - 1; i += 1) {
+    const pos = seq[i];
+    if (credited.has(pos)) continue;
+    credited.add(pos);
+    stats.push({ pos, po: 0, a: 1 });
+  }
+  stats.push({ pos: putout, po: 1, a: 0 });
+  return stats;
+}
+
 /** 回传结算增量：接杀者的 PO 已在接杀时入账，此处仅记回传助杀 A 与触垒出局 PO（避免 PO 双计）。 */
 export function computeCatchBackFieldingStats(catchPos, tagPos) {
   const stats = new Map();

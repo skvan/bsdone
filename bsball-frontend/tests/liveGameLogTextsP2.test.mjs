@@ -53,7 +53,7 @@ test('catchBackDoublePlayGroup：逐名呈现接杀 PO、回传 A、踩垒 PO �
 test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/bf/提示）', () => {
   assert.match(src, /e!=="G"&&\(l\.abCatchRecorded=\{/, 'bt G/F/L/TAG 接杀置位（非 G）');
   assert.match(src, /Dn\(t\),l\.abCatchRecorded=\{\r?\n\s+pos:t\[0\]\?\?null/, 'bt SF 接杀置位');
-  assert.match(src, /function bt\(e,t,a,rbiOverride\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
+  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
   assert.match(src, /function Wt\(e\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Wt（投球）开头清除');
   assert.match(src, /function Hf\(\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Hf（故意四坏）开头清除');
   assert.match(src, /e\.id==="out_last"&&l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning/, 'kp out_last 分支（含半局校验）');

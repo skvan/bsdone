@@ -99,21 +99,58 @@ export function toNumCodes(codes) {
 /** 守备位→其覆盖垒（用于链中传出目标：“接球传X垒”） */
 export const POS_TO_BASE = { P: 1, 1: 1, C: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 2, 7: 3, 8: 2, 9: 1, "1B": 1, "2B": 2, "3B": 3, SS: 2, LF: 3, CF: 2, RF: 1 };
 
+/** 单出局链规整：相邻重复（自踩动作）合并为一次（5-2-5-5 → 5-2-5） */
+export function normalizeSingleOutChain(chain) {
+  const seq = (Array.isArray(chain) ? chain : []).map((c) => String(c ?? "").trim()).filter(Boolean);
+  const out = [];
+  for (const code of seq) {
+    if (out[out.length - 1] !== code) out.push(code);
+  }
+  return out;
+}
+
+/**
+ * 单出局链出局垒/方式判定（2026-10-23 裁决）
+ * - 最后一步有显式自踩动作 → 采用所选动作与垒包；
+ * - 无自踩动作 → 沿用原口径：出局垒=起始垒+1、封杀。
+ *   不能仅凭末位守备员的覆盖垒反推，否则延长传球链（如 6-4-3 的末尾回传一垒）
+ *   会被误判为回垒触杀；回垒触杀必须由自踩动作显式指定。
+ */
+export function resolveSingleOutChain({ chain, outFrom, stepAction } = {}) {
+  const normalized = normalizeSingleOutChain(chain);
+  const from = Number(outFrom);
+  const step = stepAction && typeof stepAction === "object" ? stepAction : null;
+  const explicitType = step?.action ?? (typeof stepAction === "string" ? stepAction : null);
+  const outType = explicitType === "tag" || explicitType === "force" ? explicitType : "force";
+  const actionBase = step ? Number(step.base) : NaN;
+  const outBase = Number.isFinite(actionBase) && actionBase >= 1 && actionBase <= 4
+    ? actionBase
+    : Number.isFinite(from) ? Math.min(4, from + 1) : null;
+  return { chain: normalized, outType, outBase };
+}
+
 /** B4 野手选择多行组：打者击出行 → 守备行×N（逐人）→ 跑者出局行（含累计）→ 打者收尾行 */
-export function fcGroup({ batter, ballDesc, chain = [], chainPlayers = [], outRunner, outFrom, outBase, reasonCn = "野手选择 FC", batterTo = 1, outsCum = 0, total = 0 }) {
+export function fcGroup({ batter, ballDesc, chain = [], chainPlayers = [], outRunner, outFrom, outBase, reasonCn = "野手选择 FC", batterTo = 1, outsCum = 0, total = 0, outType = "force" }) {
   const lines = [];
   lines.push(`${batter?.name ?? "打者"}: ${ballDesc}`);
   const n = chain.length;
+  const putoutCode = n ? chain[n - 1] : null;
+  const assisted = new Set();
   for (let i = 0; i < n; i++) {
     const code = chain[i];
     const p = chainPlayers[i];
     const who = `${code} ${POS_CN[code] ?? code}${p ? ` ${nameWithNumber(p, "守备员")}` : ""}`;
-    if (n === 1) lines.push(`${who}: 接球封杀${runnerLabel(outFrom, outRunner)}（刺杀 PO）`);
-    else if (i < n - 1) lines.push(`${who}: 接球传${BASE_CN[POS_TO_BASE[chain[i + 1]]] ?? "下一垒"}（助杀 A）`);
-    else lines.push(`${who}: 踏垒封杀${runnerLabel(outFrom, outRunner)}（刺杀 PO）`);
+    if (n === 1) lines.push(`${who}: ${outType === "tag" ? "接球触杀" : "接球封杀"}${runnerLabel(outFrom, outRunner)}（刺杀 PO）`);
+    else if (i < n - 1) {
+      const credit = code !== putoutCode && !assisted.has(code);
+      if (credit) assisted.add(code);
+      lines.push(`${who}: 接球传${BASE_CN[POS_TO_BASE[chain[i + 1]]] ?? "下一垒"}${credit ? "（助杀 A）" : ""}`);
+    }
+    else lines.push(`${who}: ${outType === "tag" ? "接球触杀" : "踏垒封杀"}${runnerLabel(outFrom, outRunner)}（刺杀 PO）`);
   }
   const chainTxt = chain.length ? `${chain.join("-")}，` : "";
-  lines.push(appendOuts(`${runnerLabel(outFrom, outRunner)}: 于${BASE_CN[outBase] ?? ""}被封杀出局（${chainTxt}${reasonCn}）`, outsCum, total));
+  const verb = outType === "tag" ? "被触杀" : "被封杀";
+  lines.push(appendOuts(`${runnerLabel(outFrom, outRunner)}: 于${BASE_CN[outBase] ?? ""}${verb}出局（${chainTxt}${reasonCn}）`, outsCum, total));
   lines.push(`${batter?.name ?? "打者"}: 上${BASE_CN[batterTo] ?? "一垒"}（${reasonCn}）`);
   return { lines };
 }

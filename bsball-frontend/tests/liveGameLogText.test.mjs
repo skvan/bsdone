@@ -38,7 +38,7 @@ test('拖拽出局行（P1/D1 归一）：原因前置 + 名(背号) + 于垒出
 test('P1：FC 去原生 prompt/调试日志；页内对话框 + 组行生成', () => {
   assert.doesNotMatch(src, /prompt\(/, '不得残留原生 prompt');
   assert.doesNotMatch(src, /\[FC\] branch entered/, 'H47 调试 console.log 已清理');
-  assert.match(src, /LgPick\(fc_options,"野手选择（FC）","请选择被野手选择封杀出局的跑者/, 'FC 选择走页内对话框');
+  assert.match(src, /LgPick\(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者/, 'FC 选择走页内对话框');
   assert.match(src, /fc_lines=LgFc\(\{/, 'FC 提交经 fcGroup 生成组行');
   assert.match(src, /D\(fc_lines\[0\],void 0,\{\s*\n\s*lines:fc_lines\.slice\(1\)/, '组行经 D(lines) 写入');
 });
