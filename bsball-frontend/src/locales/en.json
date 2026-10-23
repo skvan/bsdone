@@ -424,6 +424,51 @@
         "fullName": "Balls in Play Percentage",
         "definition": "Share of plate appearances that end with a ball in play",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "Reached on obstruction",
+        "definition": "Batter awarded first base due to defensive obstruction or interference; counts as a plate appearance, not an at-bat",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "Doubles allowed",
+        "definition": "Doubles hit against the pitcher",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "Triples allowed",
+        "definition": "Triples hit against the pitcher",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "Sacrifice bunts allowed",
+        "definition": "Sacrifice bunts against the pitcher",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "Sacrifice flies allowed",
+        "definition": "Sacrifice flies against the pitcher",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "Obstruction allowed",
+        "definition": "Batter reaches base due to the pitcher’s defensive obstruction/interference",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "Unearned runs",
+        "definition": "Runs scored due to errors or other non-pitcher responsibility",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "Pending runs",
+        "definition": "Runs whose earned/unearned decision is not final",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "Stolen bases allowed",
+        "definition": "Stolen bases against the catcher",
+        "shortLabel": "SB"
       }
     }
   },
@@ -961,9 +1006,16 @@
         "cs": "Caught stealing.",
         "e": "Errors.",
         "avg": "Batting average (H/AB).",
-        "obp": "On-base percentage (approx. (H+BB+HBP)/PA on this page).",
+        "obp": "On-base percentage ((H+BB+HBP)/(AB+BB+HBP+SF))",
         "slg": "Slugging percentage (TB/AB).",
-        "ops": "On-base plus slugging (OBP+SLG)."
+        "ops": "On-base plus slugging (OBP+SLG).",
+        "gdp": "Grounded into double play",
+        "sh": "Sacrifice bunt",
+        "sf": "Sacrifice fly",
+        "bb": "Walks (including intentional walks)",
+        "ibb": "Intentional walks",
+        "hbp": "Hit by pitch",
+        "io": "Reached on obstruction/interference"
       },
       "pitcher": {
         "ip": "Innings pitched.",
@@ -974,7 +1026,7 @@
         "pitchSo": "Strikeouts recorded.",
         "pitchHr": "Home runs allowed (over the fence).",
         "pitchInsideParkHr": "Inside-the-park home runs (IPHR).",
-        "pitAb": "Batters faced minus walks, IBB, and HBP (not batter AB).",
+        "pitAb": "At bats against (BF−BB−HBP; BB includes IBB)",
         "pitE": "Fielding errors on this pitcher’s batting-stat line for the game.",
         "np": "Total pitches thrown.",
         "pitchPa": "Plate appearances faced.",
@@ -994,7 +1046,12 @@
         "hld": "Hold.",
         "cg": "Complete game flag (0=no, 1=yes).",
         "pg": "Perfect game flag (0=no, 1=yes).",
-        "era": "Earned run average (ER×9/IP)."
+        "era": "Earned run average (ER×9/IP).",
+        "pitchDoubles": "Doubles allowed",
+        "pitchTriples": "Triples allowed",
+        "pitchSh": "Sacrifice bunts allowed",
+        "pitchSf": "Sacrifice flies allowed",
+        "pitchIo": "Obstruction allowed"
       }
     }
   },
@@ -1374,7 +1431,7 @@
       "era": "Earned run average",
       "whip": "Walks and hits per inning",
       "pitchBf": "Batters faced",
-      "pitchAb": "Resulting at bats, batters faced minus walks, IBB, HBP",
+      "pitchAb": "At bats against: BF minus walks and hit-by-pitch (BB includes IBB)",
       "ggComplete": "Complete game",
       "pgShutout": "Shutout",
       "pitchH": "Hits allowed",
@@ -1736,6 +1793,7 @@
     "threePlaces": "3 places",
     "batter": "Batter",
     "pitcher": "Pitcher",
+    "fielding": "Fielding",
     "hintDrag": "Check to show, drag to reorder",
     "hintMinVisible": "Keep at least {batterMin} batter stat columns and {pitcherMin} pitcher stat columns visible (excluding the fixed name column).",
     "minVisibleUncheckReject": "Keep at least {n} columns visible; cannot hide more.",
@@ -1757,6 +1815,13 @@
         "shSf": "Sacrifice hits (SH + SF)",
         "rbi": "Runs batted in",
         "bbHp": "Walks + hit by pitch",
+        "gdp": "Grounded into double play",
+        "sh": "Sacrifice bunt",
+        "sf": "Sacrifice fly",
+        "bb": "Walks",
+        "ibb": "Intentional walks",
+        "hbp": "Hit by pitch",
+        "io": "Obstruction/interference",
         "so": "Strikeouts",
         "sb": "Stolen bases",
         "cs": "Caught stealing",
@@ -1765,6 +1830,17 @@
         "obp": "On-base percentage",
         "slg": "Slugging percentage",
         "ops": "On-base plus slugging"
+      },
+      "fielding": {
+        "fieldingGs": "Games started in the field",
+        "po": "Putouts",
+        "a": "Assists",
+        "e": "Errors",
+        "dp": "Double plays",
+        "defInn": "Innings in the field",
+        "pb": "Passed balls",
+        "catcherSb": "Stolen bases allowed",
+        "catcherCs": "Caught stealing"
       },
       "pitcher": {
         "ip": "Innings pitched",

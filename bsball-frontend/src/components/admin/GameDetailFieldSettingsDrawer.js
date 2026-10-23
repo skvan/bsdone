@@ -83,6 +83,12 @@ var Ne={
     ,defaultPitcherItems:{
       
     }
+    ,fieldingItems:{
+      
+    }
+    ,defaultFieldingItems:{
+      
+    }
     ,decimalPlaces:{
       
     }
@@ -120,24 +126,45 @@ var Ne={
     }
     const o=K;
     He(Pe(o,"modelValue"));
-    const w=N,R=m("batter"),W=G(()=>o.isSmallScreen?"100%":"420px"),F=6,C=6;
+    const w=N,R=m("batter"),W=G(()=>o.isSmallScreen?"100%":"420px"),F=6,C=6,FG=3;
     function z(s){
       return s.filter(e=>e.visible).length
     }
-    const T=m(null),L=m(null);
-    let P=null,D=null;
-    const p=m([]),f=m([]),E=m(o.decimalPlaces),V=m(o.rateDisplayStyle),I=m(o.showTrailingZeros);
+    const T=m(null),L=m(null),Ff=m(null);
+    let P=null,D=null,qf=null;
+    const p=m([]),f=m([]),pf=m([]),E=m(o.decimalPlaces),V=m(o.rateDisplayStyle),I=m(o.showTrailingZeros);
     function A(s){
       return s.map(e=>({
         ...e
       }
       ))
     }
+    function groupItems(s){
+      if(s==="batter")return p.value;
+      if(s==="pitcher")return f.value;
+      return pf.value
+    }
+    function setGroupItems(s,e){
+      if(s==="batter"){
+        p.value=e
+      }
+      else if(s==="pitcher"){
+        f.value=e
+      }
+      else{
+        pf.value=e
+      }
+    }
+    function minVisibleFor(s){
+      if(s==="batter")return F;
+      if(s==="pitcher")return C;
+      return FG
+    }
     function Y(){
-      p.value=A(o.batterItems||[]),f.value=A(o.pitcherItems||[]),E.value=o.decimalPlaces,V.value=o.rateDisplayStyle,I.value=o.showTrailingZeros
+      p.value=A(o.batterItems||[]),f.value=A(o.pitcherItems||[]),pf.value=A(o.fieldingItems||[]),E.value=o.decimalPlaces,V.value=o.rateDisplayStyle,I.value=o.showTrailingZeros
     }
     function x(s,e,d){
-      const g=s==="batter"?p.value:f.value,y=s==="batter"?F:C;
+      const g=groupItems(s),y=minVisibleFor(s);
       if(!d&&z(g)<=y){
         X.warning(t("fieldSettings.minVisibleUncheckReject",{
           n:y
@@ -145,23 +172,22 @@ var Ne={
         ));
         return
       }
-      const c=g.map(h=>h.key===e?{
+      setGroupItems(s,g.map(h=>h.key===e?{
         ...h,visible:d
       }
-      :h);
-      s==="batter"?p.value=c:f.value=c
+      :h))
     }
     function M(s){
       return s.length>0&&s.every(e=>e.visible)
     }
     function u(s){
-      const e=s==="batter"?p.value:f.value;
+      const e=groupItems(s);
       if(!e.length)return;
-      const d=!M(e),g=e.map(y=>({
+      const d=!M(e);
+      setGroupItems(s,e.map(y=>({
         ...y,visible:d
       }
-      ));
-      s==="batter"?p.value=g:f.value=g
+      )))
     }
     function b(){
       const s=(e,d)=>{
@@ -171,46 +197,51 @@ var Ne={
           animation:150,handle:".drag-handle",onEnd:y=>{
             const c=y.oldIndex??-1,h=y.newIndex??-1;
             if(c<0||h<0||c===h)return;
-            const _=[...d==="batter"?p.value:f.value],B=_.splice(c,1)[0];
-            _.splice(h,0,B),d==="batter"?p.value=_:f.value=_
+            const _=[...groupItems(d)],B=_.splice(c,1)[0];
+            _.splice(h,0,B),setGroupItems(d,_)
           }
           
         }
         ):null
       };
-      P?.destroy(),D?.destroy(),P=s(T.value,"batter"),D=s(L.value,"pitcher")
+      P?.destroy(),D?.destroy(),qf?.destroy(),P=s(T.value,"batter"),D=s(L.value,"pitcher"),qf=s(Ff.value,"fielding")
     }
     te(()=>b()),Ae(()=>{
-      P?.destroy(),D?.destroy()
+      P?.destroy(),D?.destroy(),qf?.destroy()
     }
     ),ue(()=>o.modelValue,s=>{
       s&&(Y(),setTimeout(()=>b(),0))
     }
     );
     function k(){
-      p.value=A(o.defaultBatterItems||[]),f.value=A(o.defaultPitcherItems||[]),E.value=o.defaultDecimalPlaces,V.value=o.defaultRateDisplayStyle,I.value=o.defaultShowTrailingZeros,setTimeout(()=>b(),0)
+      p.value=A(o.defaultBatterItems||[]),f.value=A(o.defaultPitcherItems||[]),pf.value=A(o.defaultFieldingItems||[]),E.value=o.defaultDecimalPlaces,V.value=o.defaultRateDisplayStyle,I.value=o.defaultShowTrailingZeros,setTimeout(()=>b(),0)
     }
     function U(){
       w("update:modelValue",!1)
     }
     function Z(){
-      const s=z(p.value),e=z(f.value);
-      if(s<F){
-        X.warning(t("fieldSettings.minVisibleSaveBatter",{
-          n:F
+      const groups=[
+        {
+          count:z(p.value),min:F,message:"fieldSettings.minVisibleSaveBatter"
         }
-        ));
-        return
-      }
-      if(e<C){
-        X.warning(t("fieldSettings.minVisibleSavePitcher",{
-          n:C
+        ,{
+          count:z(f.value),min:C,message:"fieldSettings.minVisibleSavePitcher"
         }
-        ));
-        return
+        ,{
+          count:z(pf.value),min:FG,message:"fieldSettings.minVisibleUncheckReject"
+        }
+      ];
+      for(const group of groups){
+        if(group.count<group.min){
+          X.warning(t(group.message,{
+            n:group.min
+          }
+          ));
+          return
+        }
       }
       w("save",{
-        batterItems:A(p.value),pitcherItems:A(f.value),decimalPlaces:E.value,rateDisplayStyle:V.value,showTrailingZeros:I.value
+        batterItems:A(p.value),pitcherItems:A(f.value),fieldingItems:A(pf.value),decimalPlaces:E.value,rateDisplayStyle:V.value,showTrailingZeros:I.value
       }
       ),w("update:modelValue",!1)
     }
@@ -390,6 +421,63 @@ var Ne={
                   row:v
                 }
                 )=>[n("span",ot,r($("pitcher",v.key)),1)]),_:1
+              }
+              ,8,["label"])]),_:1
+            }
+            ,8,["data"])],512)]),_:1
+          }
+          ),a(B,{
+            name:"fielding"
+          }
+          ,{
+            label:i(()=>[n("span",st,r(l(t)("fieldSettings.fielding")),1)]),default:i(()=>[n("div",nt,r(l(t)("fieldSettings.hintDrag")),1),n("div",{
+              ref_key:"fieldingTableWrap",ref:Ff,class:"settings-table"
+            }
+            ,[a(_,{
+              data:pf.value,size:"small","row-key":"key"
+            }
+            ,{
+              default:i(()=>[a(c,{
+                width:"45",align:"center"
+              }
+              ,{
+                default:i(()=>[a(y,{
+                  class:"drag-handle"
+                }
+                ,{
+                  default:i(()=>[a(l(le))]),_:1
+                }
+                )]),_:1
+              }
+              ),a(c,{
+                width:"62",align:"center"
+              }
+              ,{
+                header:i(()=>[n("button",{
+                  type:"button",class:"show-col-header",title:l(t)("fieldSettings.showColumnToggleHint"),onMousedown:e[8]||(e[8]=j(()=>{
+                    
+                  }
+                  ,["stop","prevent"])),onClick:e[9]||(e[9]=j(v=>u("fielding"),["stop","prevent"]))
+                }
+                ,r(l(t)("fieldSettings.show")),41,rt)]),default:i(({
+                  row:v
+                }
+                )=>[a(h,{
+                  "model-value":v.visible,"onUpdate:modelValue":J=>x("fielding",v.key,!!J)
+                }
+                ,null,8,["model-value","onUpdate:modelValue"])]),_:1
+              }
+              ),a(c,{
+                prop:"label",label:l(t)("fieldSettings.field"),width:"80"
+              }
+              ,null,8,["label"]),a(c,{
+                label:l(t)("fieldSettings.desc"),"min-width":"140"
+              }
+              ,{
+                default:i(({
+                  row:v
+                }
+                )=>[n("span",ot,r($("fielding",v.key)),1)]),_:1
               }
               ,8,["label"])]),_:1
             }

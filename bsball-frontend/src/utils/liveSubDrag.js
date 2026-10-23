@@ -1,5 +1,6 @@
 // 替补席拖拽换人·纯函数层：替补列表构建、空席文案、落点解析、合法性矩阵（不触碰 DOM/Vue）
 // 供 LiveGame 补丁与单测共用；本文件须能被 node --test 直接加载（相对导入需带 .js 扩展名）
+import { sortByJersey } from './sortByJersey.js';
 const BASEBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员（已换下球员不可再上场）';
 const SOFTBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员';
 
@@ -7,9 +8,9 @@ const SOFTBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员';
 export function buildLiveBenchItems(bench, unavailableIds, gameMode) {
   const list = Array.isArray(bench) ? bench : [];
   const toItem = (p) => ({ id: p.id, name: p.name, number: p.number });
-  if (gameMode === 'SOFTBALL') return list.map(toItem);
+  if (gameMode === 'SOFTBALL') return sortByJersey(list.map(toItem));
   const blocked = new Set((Array.isArray(unavailableIds) ? unavailableIds : []).map((id) => String(id)));
-  return list.filter((p) => !blocked.has(String(p.id))).map(toItem);
+  return sortByJersey(list.filter((p) => !blocked.has(String(p.id))).map(toItem));
 }
 
 export function liveBenchEmptyText(gameMode) {

@@ -53,8 +53,8 @@ import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
-import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady } from '../../utils/liveGameChainStats';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
 import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
 import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
@@ -4460,13 +4460,13 @@ function pu(u,f,l){
   R<u;
   R++){
     if(l.runners[3]&&l.runners[3]!==H){
-      const N=l.runners[3],M=f[S++]??"safe";
+      const N=l.runners[3],M=f[S++]??"safe",runCause=l.runCause??"BATTER_ACTION";
       if(l.ensureBatting(N),M==="safe"){
-        const runCause=l.runCause??"BATTER_ACTION",wouldScoreWithoutError=l.wouldScoreWithoutError??null;
+        const wouldScoreWithoutError=l.wouldScoreWithoutError??null;
         const Rb=decideRbiForRun({runCause,wouldScoreWithoutError,manualRbi:l.manualRbi});
         const run={runner:N,batter:o,rbiDelta:Rb?1:0,pitcher:_,erDelta:1,origin:N.origin??"NORMAL",runCause,wouldScoreWithoutError,rbiCredit:Rb,rbiReason:runCause==="ERROR"?(Rb?"NORMAL_DEFENSE_RUN":"ERROR_CAUSED_RUN"):"BATTER_ACTION"};
         l.recordRun?l.recordRun(1,run):l.addScore(1),Rb&&(o.stats.batting.rbi=(o.stats.batting.rbi??0)+1,Rc++),N.stats.batting.r=(N.stats.batting.r??0)+1,addLivePitcherEarnedRuns(_),l.addLog(LgAdvance({
-          reasonCn:"安打得分",runner:N,from:3,to:4,rbiNote:Rb?`${o.name??"打者"}：${Rc}打点`:void 0
+          reasonCn:LgRunCauseLabel(runCause,"score"),runner:N,from:3,to:4,rbiNote:Rb?`${o.name??"打者"}：${Rc}打点`:void 0
         }
         ))
       }
@@ -4474,7 +4474,7 @@ function pu(u,f,l){
       else{
         l.handleOut();
         const Le=M==="out_int"?"妨碍守备出局 (Int.)":M==="out_force"?"封杀出局 (FO)":M==="out_tag"?"触杀出局 (TO)":M==="viol"?"跑垒违规 (Viol.)":"本垒出局 (Out)";
-        l.addLog(`安打 · ${N.name} (#${N.number??"-"}) ${Le} — 未得分`)
+        l.addLog(`${LgRunCauseLabel(runCause,"play")} · ${N.name} (#${N.number??"-"}) ${Le} — 未得分`)
       }
       
     }
@@ -5383,7 +5383,7 @@ var sg={
       if(t?.type===x_){
         const a=Lt.value??R.value;
         if(!a||Number(t.gameId??a)!==Number(a))return;
-        gl()
+        watchRespondSnapshot(e.source)
       }
       
     }
@@ -5421,6 +5421,26 @@ var sg={
         
       }
       
+    }
+    // 观赛页主动请求快照：直接回复请求窗口并落本地缓存，不依赖打开观赛时记住的窗口集合
+    function watchRespondSnapshot(e){
+      const t=Lt.value??R.value;
+      if(!t||!Re.value||!F.value)return;
+      const a=pa({
+        includeUndoStacks:!1
+      }
+      );
+      if(!a)return;
+      const s={
+        type:R_,gameId:Number(t),payload:a,sentAt:Date.now()
+      };
+      console.log("[LiveDebug] watchRespondSnapshot: gameId:",Number(t),"homeLineup:",a.homeLineup?.length,"awayLineup:",a.awayLineup?.length);
+      try{
+        e?.postMessage(s,window.location.origin)
+      }
+      catch{
+      }
+      gl(a),Bi(a)
     }
     function Bi(e){
       if(!F.value||!Re.value)return;
@@ -8178,16 +8198,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       l.outs>3&&(l.outs=3)
     }
     function Dn(e){
-      if(e.length===0)return;
-      const t=Hn.value.find(a=>a.position===e[e.length-1]);
-      t?.stats?.fielding&&(t.stats.fielding.po=(t.stats.fielding.po??0)+1);
-      for(let a=0;
-      a<e.length-1;
-      a++){
-        const s=Hn.value.find(r=>r.position===e[a]);
-        s?.stats?.fielding&&(s.stats.fielding.a=(s.stats.fielding.a??0)+1)
+      for(const r of LgSingleOutStats(e)){
+        const p=Hn.value.find(a=>a.position===r.pos);
+        if(!p?.stats?.fielding)continue;
+        p.stats.fielding.po=(p.stats.fielding.po??0)+r.po;
+        p.stats.fielding.a=(p.stats.fielding.a??0)+r.a
       }
-      
     }
     function applyChainFieldingStats(type,fielders){
       const s=LgChainStats(type,fielders);
@@ -8766,7 +8782,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           x:Xn.value,y:Yn.value
         };
         (y.x!==b.x||y.y!==b.y)&&pushChainTrail(b,y),ballFlyTo(y.x,y.y,450),markChainHl(y.x,y.y,!1),Xn.value=y.x,Yn.value=y.y;
-        g.steps.push(e),Array.isArray(g.stepActions)||(g.stepActions=new Array(g.steps.length-1).fill(null)),g.stepActions.push(p),pt()
+        g.steps.push(e),Array.isArray(g.stepActions)||(g.stepActions=new Array(g.steps.length-1).fill(null)),g.stepActions.push({action:p,base:s}),pt()
       }
       )
     }
@@ -8898,8 +8914,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       if(!CHAIN_TYPES.has(e.type))return!1;
       if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
-      const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1];
-      return bt(e.type,a,Sr(e)),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+      const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1],lastStepAction=e.steps?.length?e.stepActions?.[e.steps.length-1]??null:null;
+      return bt(e.type,a,Sr(e),void 0,{lastStepAction}),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
     }
     let chainClearTimer=null;
     function nextPitchCleanup(){
@@ -9964,7 +9980,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,resultCode,rbi,spray);
       record&&l.hitSprayQueue.push(record)
     }
-    function bt(e,t,a,rbiOverride){
+    function bt(e,t,a,rbiOverride,meta){
       l.abCatchRecorded=null;
       if(!["BB","HBP"].includes(e)&&!_o())return;
       if(l.needNextBatter&&!["BB","HBP"].includes(e)){
@@ -10092,10 +10108,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           key:"3",label:`三垒跑者 ${logPlayerName(l.runners[3])}`
         }
         ),fc_options.push({
-          key:"0",label:"没有跑者出局（失误）"
+          key:"safe",label:"无跑者出局"
+        }
+        ),fc_options.push({
+          key:"0",label:"无跑者出局（失误）"
         }
         );
-        LgPick(fc_options,"野手选择（FC）","请选择被野手选择封杀出局的跑者（若无人出局请选“没有跑者出局”）：").then(fc_choice=>fcApply(fc_choice,r,t,a));
+        LgPick(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者；若无跑者出局，请选择对应结果：").then(fc_choice=>fcApply(fc_choice,r,t,a,meta));
         return
       }
       else if(e==="DP"){
@@ -10129,7 +10148,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       l.balls=0,l.strikes=0,Je(g,m),is(e),Qe()
     }
-    async function fcApply(fc_choice,r,t,a){
+    async function fcApply(fc_choice,r,t,a,meta){
       if(fc_choice==null)return;
       if(fc_choice==="0"){
         const runDecision=l.runners[3]?await askErrorRunRbiDecision(l.runners[3]):null;
@@ -10144,6 +10163,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         l.balls=0,l.strikes=0,Je("E",m),is("FC"),Qe();
         return
       }
+      if(fc_choice==="safe"){
+        pushHitSpray("FC",0,a);
+        const fc_old={
+          1:l.runners[1],2:l.runners[2],3:l.runners[3]
+        }
+        ,fc_forcedHome=!!(fc_old[1]&&fc_old[2]&&fc_old[3]),fc_next=Jv(fc_old,r);
+        l.runners[1]=fc_next[1],l.runners[2]=fc_next[2],l.runners[3]=fc_next[3],ue(r),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+        if(fc_forcedHome&&fc_old[3]){
+          const fc_run=fc_old[3];
+          fc_run.stats.batting.r=(fc_run.stats.batting.r??0)+1;
+          ls(1,{runner:fc_run,batter:r,rbiDelta:1,pitcher:Se.value,erDelta:1,origin:"NORMAL",runCause:"FC",rbiCredit:true,rbiReason:"BATTER_ACTION"});
+          r.stats.batting.rbi=(r.stats.batting.rbi??0)+1;
+          addLivePitcherEarnedRuns(Se.value)
+        }
+        Ge(di(fc_old,r));
+        const fc_safe_m=Rt(`${r.name}: 野手选择上垒 (FC)`);
+        l.balls=0,l.strikes=0,Je("FC",fc_safe_m),is("FC"),Qe();
+        return
+      }
       const fc_base=Number(fc_choice);
       if(fc_base<1||fc_base>3||!l.runners[fc_base]){
         J("无效选择","warning");
@@ -10154,7 +10192,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       }
       ,fc_forced={
-        1:!0,2:!!fc_old[1],3:!!fc_old[2]
+        1:!0,2:!!fc_old[1],3:!!(fc_old[1]&&fc_old[2])
       };
       l.runners[fc_base]=null,l.outs++,Ipy(),l.outs>3&&(l.outs=3);
       const fc_new={
@@ -10179,12 +10217,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       l.runners[1]=fc_new[1],l.runners[2]=fc_new[2],l.runners[3]=fc_new[3],fc_moves.push({
         playerId:r.id??r.name??"?",from:0,to:1
       }
-      ),Ge(fc_moves),r.stats.batting.ab=(r.stats.batting.ab??0)+1,Dn(t);
-      const fc_ball=(a?.bipCode?Cu(a.bipCode):null)??"滚地球",fc_loc=Ed(a),fc_tN=LgNum([...t]),fc_lines=LgFc({
+      ),Ge(fc_moves),r.stats.batting.ab=(r.stats.batting.ab??0)+1;
+      const fc_resolved=LgResolveOut({chain:t,outFrom:fc_base,stepAction:meta?.lastStepAction});
+      Dn(fc_resolved.chain);
+      const fc_ball=(a?.bipCode?Cu(a.bipCode):null)??"滚地球",fc_loc=Ed(a),fc_tN=LgNum(fc_resolved.chain),fc_lines=LgFc({
         batter:r,
         ballDesc:`击出${fc_ball}${fc_loc?`到${fc_loc}`:""}${fc_tN[0]?`（${fc_tN[0]}）`:""}`,
-        chain:fc_tN,chainPlayers:t.map(Vt),
-        outRunner:fc_out,outFrom:fc_base,outBase:fc_base+1,
+        chain:fc_tN,chainPlayers:fc_resolved.chain.map(Vt),
+        outRunner:fc_out,outFrom:fc_base,outBase:fc_resolved.outBase,outType:fc_resolved.outType,
         outsCum:1,total:l.outs
       }).lines;
       D(fc_lines[0],void 0,{

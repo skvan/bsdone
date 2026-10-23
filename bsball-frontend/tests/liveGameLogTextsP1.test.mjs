@@ -2,7 +2,7 @@
 // 运行：node --test tests/liveGameLogTextsP1.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes } from '../src/utils/liveGameLogTexts.js';
+import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes, normalizeSingleOutChain, resolveSingleOutChain, runCauseLabel } from '../src/utils/liveGameLogTexts.js';
 
 test('nameWithNumber：名 (#N) / 缺号降级 / 缺名降级', () => {
   assert.equal(nameWithNumber({ name: 'Gytis', number: 8 }), 'Gytis (#8)');
@@ -92,6 +92,84 @@ test('fcGroup：三段链中间行传出目标按下一链位（5-4-3）', () =>
 test('toNumCodes：守备位别名→数字制（链文本统一）', () => {
   assert.deepEqual(toNumCodes(['3B', '2B', 'SS', 'C', 'P', '5']), ['5', '4', '6', '2', '1', '5']);
   assert.deepEqual(toNumCodes([]), []);
+});
+
+test('单出局链规整：相邻自踩合并（5-2-5-5 → 5-2-5）', () => {
+  assert.deepEqual(normalizeSingleOutChain(['5', '2', '5', '5']), ['5', '2', '5']);
+  assert.deepEqual(normalizeSingleOutChain(['3B', '2B', '3B', '3B']), ['3B', '2B', '3B']);
+  assert.deepEqual(normalizeSingleOutChain(['5', '5']), ['5']);
+  assert.deepEqual(normalizeSingleOutChain([]), []);
+  assert.deepEqual(normalizeSingleOutChain(null), []);
+});
+
+test('单出局出局判定：显式自踩优先；无自踩沿用下一垒封杀（不误判延长传球链）', () => {
+  assert.deepEqual(resolveSingleOutChain({ chain: ['5', '2', '5', '5'], outFrom: 3, stepAction: { action: 'tag', base: 3 } }), {
+    chain: ['5', '2', '5'], outType: 'tag', outBase: 3
+  });
+  assert.deepEqual(resolveSingleOutChain({ chain: ['5', '2', '2'], outFrom: 3, stepAction: { action: 'force', base: 4 } }), {
+    chain: ['5', '2'], outType: 'force', outBase: 4
+  });
+  // 无自踩：5-2-5-5 规整为 5-2-5，但仍按原口径记「下一垒封杀」
+  assert.deepEqual(resolveSingleOutChain({ chain: ['5', '2', '5', '5'], outFrom: 3 }), {
+    chain: ['5', '2', '5'], outType: 'force', outBase: 4
+  });
+  // 延长传球链 6-4-3：末位一垒手是回传，不得反推为回一垒触杀
+  assert.deepEqual(resolveSingleOutChain({ chain: ['6', '4', '3'], outFrom: 1 }), {
+    chain: ['6', '4', '3'], outType: 'force', outBase: 2
+  });
+  // 旧快照只有动作字符串、没有垒包 → 方式保留，垒包按下一垒
+  assert.deepEqual(resolveSingleOutChain({ chain: ['5', '2', '5', '5'], outFrom: 3, stepAction: 'tag' }), {
+    chain: ['5', '2', '5'], outType: 'tag', outBase: 4
+  });
+  assert.deepEqual(resolveSingleOutChain({ chain: [], outFrom: 3 }), {
+    chain: [], outType: 'force', outBase: 4
+  });
+});
+
+test('fcGroup：5-2-5 回三垒触杀（末位 PO 不再重复记 A）', () => {
+  const { lines } = fcGroup({
+    batter: { name: '张森溢', number: 69 },
+    ballDesc: '击出滚地球到三垒（5）',
+    chain: ['5', '2', '5'],
+    chainPlayers: [{ name: '钱乾', number: 95 }, { name: '权彰培', number: 25 }, { name: '钱乾', number: 95 }],
+    outRunner: { name: '吴昌言', number: 83 }, outFrom: 3, outBase: 3, outType: 'tag',
+    outsCum: 1, total: 2
+  });
+  assert.deepEqual(lines, [
+    '张森溢: 击出滚地球到三垒（5）',
+    '5 三垒手 钱乾 (#95): 接球传本垒',
+    '2 捕手 权彰培 (#25): 接球传三垒（助杀 A）',
+    '5 三垒手 钱乾 (#95): 接球触杀三垒跑者 吴昌言 (#83)（刺杀 PO）',
+    '三垒跑者 吴昌言 (#83): 于三垒被触杀出局（5-2-5，野手选择 FC），本棒次1人出局，已累计2人出局',
+    '张森溢: 上一垒（野手选择 FC）'
+  ]);
+});
+
+test('fcGroup：同一野手多次传球只标一次助杀', () => {
+  const { lines } = fcGroup({
+    batter: { name: '打者', number: 1 },
+    ballDesc: '击出滚地球到三垒（5）',
+    chain: ['5', '4', '5', '3'],
+    chainPlayers: [{ name: 'A', number: 5 }, { name: 'B', number: 4 }, { name: 'A', number: 5 }, { name: 'C', number: 3 }],
+    outRunner: { name: '跑者', number: 9 }, outFrom: 1, outBase: 2, outType: 'force',
+    outsCum: 1, total: 1
+  });
+  assert.match(lines[1], /（助杀 A）$/);
+  assert.doesNotMatch(lines[3], /助杀 A/);
+});
+
+test('runCauseLabel：得分行/本垒出局行按 runCause 区分，未知原因保持安打口径', () => {
+  assert.equal(runCauseLabel('ERROR'), '失误造成得分');
+  assert.equal(runCauseLabel('ERROR', 'play'), '失误');
+  assert.equal(runCauseLabel('FC'), '野选推进得分');
+  assert.equal(runCauseLabel('FC', 'play'), '野选');
+  assert.equal(runCauseLabel('SACRIFICE'), '牺牲打得分');
+  assert.equal(runCauseLabel('SACRIFICE', 'play'), '牺牲打');
+  assert.equal(runCauseLabel('HIT'), '安打得分');
+  assert.equal(runCauseLabel('HIT', 'play'), '安打');
+  assert.equal(runCauseLabel(undefined), '安打得分');
+  assert.equal(runCauseLabel(undefined, 'play'), '安打');
+  assert.equal(runCauseLabel('UNKNOWN', 'score'), '安打得分');
 });
 
 // —— 观赛端与分类器静态断言（P1-⑤ / G2） ——

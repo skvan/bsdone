@@ -37,7 +37,7 @@ function defaultStatPage() {
 }
 
 function defaultDetailPage() {
-  return { batterFields: [], pitcherFields: [], guideDismissed: false };
+  return { batterFields: [], pitcherFields: [], fieldingFields: [], guideDismissed: false };
 }
 
 export function defaultDisplaySettings() {
@@ -109,6 +109,7 @@ export function mergeDisplaySettings(raw) {
     const src = raw.detailPage;
     merged.detailPage.batterFields = sanitizeColumnSettingRows(src.batterFields);
     merged.detailPage.pitcherFields = sanitizeColumnSettingRows(src.pitcherFields);
+    merged.detailPage.fieldingFields = sanitizeColumnSettingRows(src.fieldingFields);
     if (typeof src.guideDismissed === 'boolean') merged.detailPage.guideDismissed = src.guideDismissed;
   }
   return merged;
