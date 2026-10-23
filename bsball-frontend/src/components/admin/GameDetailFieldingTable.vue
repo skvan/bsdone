@@ -8,16 +8,15 @@
       <el-table-column label="POS" width="70" align="center">
         <template #default="{ row }">{{ row.position || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="po" label="PO" width="64" align="center" />
-      <el-table-column prop="a" label="A" width="64" align="center" />
-      <el-table-column prop="e" label="E" width="64" align="center" />
-      <el-table-column prop="dp" label="DP" width="64" align="center" />
-      <el-table-column label="INN" width="76" align="center">
-        <template #default="{ row }">{{ innings(row.defInn) }}</template>
+      <el-table-column
+        v-for="col in visibleFields"
+        :key="col.key"
+        :label="col.label"
+        :width="columnWidth(col)"
+        align="center"
+      >
+        <template #default="{ row }">{{ cellValue(col, row) }}</template>
       </el-table-column>
-      <el-table-column prop="pb" label="PB" width="64" align="center" />
-      <el-table-column prop="catcherSb" label="SB" width="64" align="center" />
-      <el-table-column prop="catcherCs" label="CS" width="64" align="center" />
     </el-table>
   </div>
 </template>
@@ -25,17 +24,31 @@
 <script setup>
 import { computed } from 'vue';
 import { buildFieldingDisplayRows } from '../../utils/gameFieldingRows.js';
+import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage.js';
 
 const props = defineProps({
   stats: { type: Array, default: () => [] },
   teamId: { type: [Number, String], default: null },
   teamName: { type: String, default: '' },
-  playersMap: { type: Object, default: () => ({}) }
+  playersMap: { type: Object, default: () => ({}) },
+  fields: { type: Array, default: () => DEFAULT_FIELDING_FIELDS }
 });
 
 const rows = computed(() => buildFieldingDisplayRows(props.stats, props.teamId));
+const visibleFields = computed(() => {
+  const fields = props.fields?.length ? props.fields : DEFAULT_FIELDING_FIELDS;
+  return fields.filter((field) => field.visible !== false);
+});
 
 const title = computed(() => `${props.teamName || ''} 守备`.trim());
+
+function columnWidth(col) {
+  return col.key === 'defInn' ? 76 : 64;
+}
+
+function cellValue(col, row) {
+  return col.key === 'defInn' ? innings(row.defInn) : (row[col.key] ?? 0);
+}
 
 function nameOf(row) {
   const composite = props.playersMap?.[`${props.teamId}:${row.playerId}`];

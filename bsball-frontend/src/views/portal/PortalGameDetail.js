@@ -23,6 +23,7 @@ import HitReplay from '../../components/common/GameDetailHitReplay.vue';
 import { buildInitialFieldSettings as pe } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveDetailPageSettings as dt } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveValueControlSettings as ct } from '../../utils/gameDetailFieldSettingsStorage';
+import { DEFAULT_FIELDING_FIELDS as FG } from '../../utils/gameDetailFieldSettingsStorage';
 import { useDetailLoad as vt } from '../../composables/useDetailLoad';
 import { DEFAULT_RATE_DISPLAY_STYLE as mt } from '../../components/portal/PortalStatsColumnSettingsDrawer.js';
 import { DEFAULT_BATTER_STAT_COLUMNS as ft } from '../../components/portal/PortalStatsColumnSettingsDrawer.js';
@@ -79,14 +80,14 @@ var _t={
       
     }
     ),j=a(""),J=2,Q=mt,ee=!0,te=ft,ae=pt,g=pe({
-      defaultBatterFields:te,defaultPitcherFields:ae,defaultDecimalPlaces:J,defaultRateDisplayStyle:Q,defaultShowTrailingZeros:ee,tenantCode:p.value
+      defaultBatterFields:te,defaultPitcherFields:ae,defaultFieldingFields:FG,defaultDecimalPlaces:J,defaultRateDisplayStyle:Q,defaultShowTrailingZeros:ee,tenantCode:p.value
     }
-    ),S=a(g.batterFields),E=a(g.pitcherFields),w=a(g.decimalPlaces),y=a(g.rateDisplayStyle),T=a(g.showTrailingZeros),v=a(!1),ye=a("pitching"),ie=a("gameDetail"),i=a(!1),l=a(g.guideDismissed),o=a(!0);
+    ),S=a(g.batterFields),E=a(g.pitcherFields),Ff=a(g.fieldingFields),w=a(g.decimalPlaces),y=a(g.rateDisplayStyle),T=a(g.showTrailingZeros),v=a(!1),ye=a("pitching"),ie=a("gameDetail"),i=a(!1),l=a(g.guideDismissed),o=a(!0);
     let h=null;
-    const D=a(!1),F=a(!1),Te=m(()=>S.value),he=m(()=>E.value);
+    const D=a(!1),F=a(!1),Te=m(()=>S.value),he=m(()=>E.value),ff=m(()=>Ff.value);
     function De(){
       dt({
-        batterFields:S.value,pitcherFields:E.value
+        batterFields:S.value,pitcherFields:E.value,fieldingFields:Ff.value
       }
       )
     }
@@ -96,7 +97,7 @@ var _t={
       }
       )
     }
-    A([S,E],()=>De(),{
+    A([S,E,Ff],()=>De(),{
       deep:!0
     }
     ),A([w,y,T],()=>Fe()),A(v,e=>{
@@ -107,14 +108,14 @@ var _t={
     }
     );
     function Le(e){
-      S.value=e.batterItems,E.value=e.pitcherItems,w.value=e.decimalPlaces,y.value=e.rateDisplayStyle,T.value=e.showTrailingZeros
+      S.value=e.batterItems,E.value=e.pitcherItems,Ff.value=e.fieldingItems??Ff.value,w.value=e.decimalPlaces,y.value=e.rateDisplayStyle,T.value=e.showTrailingZeros
     }
     function Ie(){
       const e=pe({
-        defaultBatterFields:te,defaultPitcherFields:ae,defaultDecimalPlaces:J,defaultRateDisplayStyle:Q,defaultShowTrailingZeros:ee,tenantCode:p.value
+        defaultBatterFields:te,defaultPitcherFields:ae,defaultFieldingFields:FG,defaultDecimalPlaces:J,defaultRateDisplayStyle:Q,defaultShowTrailingZeros:ee,tenantCode:p.value
       }
       );
-      S.value=e.batterFields,E.value=e.pitcherFields,w.value=e.decimalPlaces,y.value=e.rateDisplayStyle,T.value=e.showTrailingZeros,l.value=e.guideDismissed,N(()=>{
+      S.value=e.batterFields,E.value=e.pitcherFields,Ff.value=e.fieldingFields,w.value=e.decimalPlaces,y.value=e.rateDisplayStyle,T.value=e.showTrailingZeros,l.value=e.guideDismissed,N(()=>{
         !l.value&&!v.value?i.value=!0:i.value=!1
       }
       ),n()
@@ -224,9 +225,9 @@ var _t={
         class:"detail-card","data-capture-ready":Me.value?"1":void 0
       }
       ,[b.value?(I(),W(ut,{
-        key:0,game:b.value,stats:B.value,teams:K.value,"players-map":X.value,"event-name":j.value,"batter-fields":Te.value,"pitcher-fields":he.value,"decimal-places":w.value,"rate-display-style":y.value,"show-trailing-zeros":T.value,"highlight-player-id":Se.value,"show-game-meta-staff":Ee.value
+        key:0,game:b.value,stats:B.value,teams:K.value,"players-map":X.value,"event-name":j.value,"batter-fields":Te.value,"pitcher-fields":he.value,"fielding-fields":ff.value,"decimal-places":w.value,"rate-display-style":y.value,"show-trailing-zeros":T.value,"highlight-player-id":Se.value,"show-game-meta-staff":Ee.value
       }
-      ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","decimal-places","rate-display-style","show-trailing-zeros","highlight-player-id","show-game-meta-staff"])):r(V)?(I(),W(C,{
+      ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","fielding-fields","decimal-places","rate-display-style","show-trailing-zeros","highlight-player-id","show-game-meta-staff"])):r(V)?(I(),W(C,{
         key:1,description:r(V)
       }
       ,{
