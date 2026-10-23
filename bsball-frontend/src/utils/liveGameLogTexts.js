@@ -38,6 +38,17 @@ export function appendOuts(text, outsCum, total) {
   return s ? `${text}，${s}` : text;
 }
 
+/** 跑者得分/本垒出局行的原因前缀：按 runCause 映射，未知原因保持安打口径 */
+const RUN_CAUSE_LABELS = {
+  ERROR: { score: "失误造成得分", play: "失误" },
+  FC: { score: "野选推进得分", play: "野选" },
+  SACRIFICE: { score: "牺牲打得分", play: "牺牲打" }
+};
+
+export function runCauseLabel(runCause, kind = "score") {
+  return RUN_CAUSE_LABELS[runCause]?.[kind] ?? (kind === "play" ? "安打" : "安打得分");
+}
+
 /** C1/C2 安全进垒单行：{原因}：{jv垒}跑者 {名} (#N) {进X — 安全|回本垒得分|回到X|留在X}（rbiNote 可选：#224 打点注记「{打者}：{N}打点」，仅得分分支追加）*/
 export function advanceText({ reasonCn, runner, from, to, rbiNote }) {
   const label = runnerLabel(from, runner);

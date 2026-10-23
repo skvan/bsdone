@@ -72,7 +72,7 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
 });
 
 test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账缺口）', () => {
-  assert.match(src, /l\.addLog\(LgAdvance\(\{\r?\n\s+reasonCn:"安打得分",runner:N,from:3,to:4,rbiNote:Rb\?/, 'pu 安打得分注记（含计数）');
+  assert.match(src, /l\.addLog\(LgAdvance\(\{\r?\n\s+reasonCn:LgRunCauseLabel\(runCause,"score"\),runner:N,from:3,to:4,rbiNote:Rb\?/, 'pu 得分注记（按 runCause）');
   assert.match(src, /reasonCn:"野选推进得分",runner:p,from:3,to:4,rbiNote:/, 'fp 野选推进得分注记');
   assert.match(src, /hn\("HR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'HR 注记');
   assert.match(src, /hn\("IPHR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'IPHR 注记');

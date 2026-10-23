@@ -2,7 +2,7 @@
 // 运行：node --test tests/liveGameLogTextsP1.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes, normalizeSingleOutChain, resolveSingleOutChain } from '../src/utils/liveGameLogTexts.js';
+import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes, normalizeSingleOutChain, resolveSingleOutChain, runCauseLabel } from '../src/utils/liveGameLogTexts.js';
 
 test('nameWithNumber：名 (#N) / 缺号降级 / 缺名降级', () => {
   assert.equal(nameWithNumber({ name: 'Gytis', number: 8 }), 'Gytis (#8)');
@@ -156,6 +156,20 @@ test('fcGroup：同一野手多次传球只标一次助杀', () => {
   });
   assert.match(lines[1], /（助杀 A）$/);
   assert.doesNotMatch(lines[3], /助杀 A/);
+});
+
+test('runCauseLabel：得分行/本垒出局行按 runCause 区分，未知原因保持安打口径', () => {
+  assert.equal(runCauseLabel('ERROR'), '失误造成得分');
+  assert.equal(runCauseLabel('ERROR', 'play'), '失误');
+  assert.equal(runCauseLabel('FC'), '野选推进得分');
+  assert.equal(runCauseLabel('FC', 'play'), '野选');
+  assert.equal(runCauseLabel('SACRIFICE'), '牺牲打得分');
+  assert.equal(runCauseLabel('SACRIFICE', 'play'), '牺牲打');
+  assert.equal(runCauseLabel('HIT'), '安打得分');
+  assert.equal(runCauseLabel('HIT', 'play'), '安打');
+  assert.equal(runCauseLabel(undefined), '安打得分');
+  assert.equal(runCauseLabel(undefined, 'play'), '安打');
+  assert.equal(runCauseLabel('UNKNOWN', 'score'), '安打得分');
 });
 
 // —— 观赛端与分类器静态断言（P1-⑤ / G2） ——
