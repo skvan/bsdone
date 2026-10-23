@@ -1,5 +1,5 @@
 <template>
-  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing }" v-loading="loading">
+  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing, 'is-reordering': layoutDragging }" v-loading="loading">
     <template v-if="data">
       <div class="page-head">
         <div>
@@ -95,7 +95,7 @@
       <div v-if="layoutEditing" class="layout-edit-banner">
         <div class="edit-copy">
           <b>布局编辑</b>
-          <span>长按模块边框选中；拖动手柄或方向键调整大小</span>
+          <span>长按模块边框选中；拖动手柄或方向键调整大小，拖动「移动」换位</span>
         </div>
         <div class="edit-actions">
           <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
@@ -484,6 +484,20 @@
           <span class="selection-dot" aria-hidden="true"></span>
           <b>{{ selectedModule.label }}</b>
           <span class="selection-size">{{ selectionSizeLabel }}</span>
+          <button
+            type="button"
+            class="selection-move"
+            :class="{ 'is-dragging': layoutDragging }"
+            title="拖动换位；方向键上移/下移"
+            aria-label="拖动换位；方向键上移/下移"
+            :disabled="layoutSaving"
+            @pointerdown.prevent.stop="startReorder($event)"
+            @keydown="onReorderHandleKeydown($event)"
+            @contextmenu.prevent
+          >
+            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1v10M1 6h10M3.6 3.6 6 1l2.4 2.6M3.6 8.4 6 11l2.4-2.6M3.6 3.6 1 6l2.6 2.4M8.4 3.6 11 6 8.4 8.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            <span>{{ layoutDragging ? '拖动中' : '移动' }}</span>
+          </button>
           <button type="button" class="selection-reset" :disabled="layoutSaving" @click="resetSelectedModuleSize">重置尺寸</button>
           <button type="button" class="selection-close" aria-label="取消选中" @click="clearModuleSelection({ restoreFocus: true })">×</button>
         </div>
@@ -679,6 +693,7 @@ const saving = ref(false);
 const pageEl = ref(null);
 const layoutEditing = ref(false);
 const layoutResizing = ref(false);
+const layoutDragging = ref(false);
 const layoutSaving = ref(false);
 const layoutStatus = ref('');
 const selectedModuleKey = ref('');
@@ -690,9 +705,10 @@ const moduleListEl = ref(null);
 let moduleSortable = null;
 let pressState = null;
 let resizeState = null;
+let dragState = null;
 let selectionObserver = null;
-let keyboardResizeSnapshot = null;
-let keyboardResizeTimer = null;
+let keyboardLayoutSnapshot = null;
+let keyboardLayoutTimer = null;
 let selectionFrameRaf = 0;
 let layoutStatusTimer = null;
 let requestSeq = 0;
@@ -857,7 +873,7 @@ function scheduleSelectionFrame() {
 
 function selectModule(key, focusHandle = false) {
   if (selectedModuleKey.value && selectedModuleKey.value !== key) {
-    flushKeyboardResize();
+    flushKeyboardLayout();
   }
   selectedModuleKey.value = key;
   updateSelectionRect();
@@ -872,7 +888,8 @@ function selectModule(key, focusHandle = false) {
 
 function clearModuleSelection({ restoreFocus = false } = {}) {
   const key = selectedModuleKey.value;
-  flushKeyboardResize();
+  if (dragState) cancelReorder();
+  flushKeyboardLayout();
   selectedModuleKey.value = '';
   selectionRect.value = null;
   selectionObserver?.disconnect();
@@ -893,7 +910,7 @@ function observeSelectedModule() {
 }
 
 function onModulePointerDown(key, event) {
-  if (!layoutEditing.value || layoutSaving.value || resizeState) return;
+  if (!layoutEditing.value || layoutSaving.value || resizeState || dragState) return;
   if (event.pointerType === 'mouse' && event.button !== 0) return;
   const el = event.currentTarget;
   const rect = el.getBoundingClientRect();
@@ -932,7 +949,7 @@ function onModuleKeydown(key, event) {
   if (!layoutEditing.value) return;
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
-    flushKeyboardResize();
+    flushKeyboardLayout();
     selectModule(key, true);
     return;
   }
@@ -959,8 +976,8 @@ function adjustSelectedSize(direction, horizontal, vertical) {
   const changesWidth = direction !== 'height' && horizontal !== 0;
   const changesHeight = direction !== 'width' && vertical !== 0;
   if (!changesWidth && !changesHeight) return;
-  if (!keyboardResizeSnapshot) {
-    keyboardResizeSnapshot = currentModuleConfig();
+  if (!keyboardLayoutSnapshot) {
+    keyboardLayoutSnapshot = currentModuleConfig();
   }
   const module = selectedModule.value;
   if (changesWidth) {
@@ -980,37 +997,211 @@ function adjustSelectedSize(direction, horizontal, vertical) {
     updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
   }
   nextTick(updateSelectionRect);
-  scheduleKeyboardResizeSave();
+  scheduleKeyboardLayoutSave();
 }
 
-function scheduleKeyboardResizeSave() {
-  if (keyboardResizeTimer) window.clearTimeout(keyboardResizeTimer);
-  keyboardResizeTimer = window.setTimeout(() => {
-    keyboardResizeTimer = null;
-    const snapshot = keyboardResizeSnapshot;
-    keyboardResizeSnapshot = null;
-    if (snapshot && moduleSizesChanged(snapshot, currentModuleConfig())) {
+function scheduleKeyboardLayoutSave() {
+  if (keyboardLayoutTimer) window.clearTimeout(keyboardLayoutTimer);
+  keyboardLayoutTimer = window.setTimeout(() => {
+    keyboardLayoutTimer = null;
+    const snapshot = keyboardLayoutSnapshot;
+    keyboardLayoutSnapshot = null;
+    if (snapshot && moduleLayoutChanged(snapshot, currentModuleConfig())) {
       persistLayout(snapshot);
     }
   }, 320);
 }
 
-function flushKeyboardResize() {
-  if (keyboardResizeTimer) {
-    window.clearTimeout(keyboardResizeTimer);
-    keyboardResizeTimer = null;
+function flushKeyboardLayout() {
+  if (keyboardLayoutTimer) {
+    window.clearTimeout(keyboardLayoutTimer);
+    keyboardLayoutTimer = null;
   }
-  const snapshot = keyboardResizeSnapshot;
-  keyboardResizeSnapshot = null;
-  if (snapshot && moduleSizesChanged(snapshot, currentModuleConfig())) {
+  const snapshot = keyboardLayoutSnapshot;
+  keyboardLayoutSnapshot = null;
+  if (snapshot && moduleLayoutChanged(snapshot, currentModuleConfig())) {
     persistLayout(snapshot);
   }
 }
 
-function cancelKeyboardResize() {
-  if (keyboardResizeTimer) window.clearTimeout(keyboardResizeTimer);
-  keyboardResizeTimer = null;
-  keyboardResizeSnapshot = null;
+function cancelKeyboardLayout() {
+  if (keyboardLayoutTimer) window.clearTimeout(keyboardLayoutTimer);
+  keyboardLayoutTimer = null;
+  keyboardLayoutSnapshot = null;
+}
+
+function onReorderHandleKeydown(event) {
+  if (!selectedModule.value || layoutSaving.value || dragState) return;
+  const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+  if (!direction) return;
+  event.preventDefault();
+  const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
+  if (!moveSelectedModuleBy(direction)) return;
+  keyboardLayoutSnapshot = snapshot;
+  scheduleKeyboardLayoutSave();
+}
+
+function moveSelectedModuleBy(direction) {
+  const visible = activeModules.value;
+  const index = visible.findIndex((item) => item.key === selectedModuleKey.value);
+  if (index < 0) return false;
+  const target = visible[index + direction];
+  if (!target) return false;
+  const modules = ensureModuleRows();
+  if (!modules) return false;
+  const sourceIndex = modules.findIndex((item) => item.key === selectedModuleKey.value);
+  const targetIndex = modules.findIndex((item) => item.key === target.key);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
+  [modules[sourceIndex], modules[targetIndex]] = [modules[targetIndex], modules[sourceIndex]];
+  nextTick(updateSelectionRect);
+  return true;
+}
+
+function startReorder(event) {
+  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  cancelModulePress();
+  const pendingSnapshot = keyboardLayoutSnapshot;
+  cancelKeyboardLayout();
+  const key = selectedModule.value.key;
+  dragState = {
+    key,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    lastX: event.clientX,
+    lastY: event.clientY,
+    moved: false,
+    lastTargetKey: '',
+    snapshot: pendingSnapshot || currentModuleConfig(),
+    raf: 0
+  };
+  layoutDragging.value = true;
+  moduleElement(key)?.classList.add('is-layout-dragging');
+  try {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  } catch {
+    // 某些触控/旧浏览器不支持指针捕获，窗口监听仍可完成拖动
+  }
+  window.addEventListener('pointermove', onReorderMove, true);
+  window.addEventListener('pointerup', finishReorder, true);
+  window.addEventListener('pointercancel', finishReorder, true);
+  window.addEventListener('lostpointercapture', onLostPointerCapture, true);
+  window.addEventListener('blur', cancelReorder, true);
+  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
+}
+
+function onReorderMove(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  if (event.buttons === 0) {
+    finishReorder(event);
+    return;
+  }
+  event.preventDefault();
+  dragState.lastX = event.clientX;
+  dragState.lastY = event.clientY;
+  const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+  if (!dragState.moved && distance < 4) return;
+  dragState.moved = true;
+  updateReorderTarget(event.clientX, event.clientY);
+}
+
+function updateReorderTarget(x, y) {
+  if (!dragState) return;
+  const stack = document.elementsFromPoint(x, y);
+  if (stack.some((el) => el.closest?.('.layout-selection-frame'))) {
+    dragState.lastTargetKey = '';
+    return;
+  }
+  for (const el of stack) {
+    const moduleEl = el.closest?.('.dashboard-module');
+    if (!moduleEl) continue;
+    if (moduleEl.dataset.moduleKey === dragState.key) {
+      dragState.lastTargetKey = '';
+      return;
+    }
+    reorderModuleTo(moduleEl.dataset.moduleKey);
+    return;
+  }
+  dragState.lastTargetKey = '';
+}
+
+function reorderModuleTo(targetKey) {
+  if (!dragState || !targetKey || targetKey === dragState.key) return false;
+  if (dragState.lastTargetKey === targetKey) return false;
+  const modules = ensureModuleRows();
+  if (!modules) return false;
+  const sourceIndex = modules.findIndex((item) => item.key === dragState.key);
+  const targetIndex = modules.findIndex((item) => item.key === targetKey);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
+  const [moved] = modules.splice(sourceIndex, 1);
+  // The target's original index is the insert point for both directions:
+  // moving down lands after the target, moving up lands before it.
+  modules.splice(targetIndex, 0, moved);
+  dragState.lastTargetKey = targetKey;
+  nextTick(updateSelectionRect);
+  return true;
+}
+
+function finishReorder(event) {
+  if (!dragState) return;
+  if (event && event.pointerId !== undefined && event.pointerId !== dragState.pointerId) return;
+  const snapshot = dragState.snapshot;
+  clearReorderState();
+  nextTick(updateSelectionRect);
+  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
+    persistLayout(snapshot);
+  }
+}
+
+function onLostPointerCapture(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  finishReorder(event);
+}
+
+function cancelReorder() {
+  if (!dragState) return;
+  const snapshot = dragState.snapshot;
+  clearReorderState();
+  if (data.value?.config) {
+    data.value.config.modules = snapshot;
+  }
+  nextTick(updateSelectionRect);
+}
+
+function clearReorderState() {
+  if (!dragState) {
+    layoutDragging.value = false;
+    return;
+  }
+  if (dragState.raf) cancelAnimationFrame(dragState.raf);
+  moduleElement(dragState.key)?.classList.remove('is-layout-dragging');
+  dragState = null;
+  layoutDragging.value = false;
+  window.removeEventListener('pointermove', onReorderMove, true);
+  window.removeEventListener('pointerup', finishReorder, true);
+  window.removeEventListener('pointercancel', finishReorder, true);
+  window.removeEventListener('lostpointercapture', onLostPointerCapture, true);
+  window.removeEventListener('blur', cancelReorder, true);
+}
+
+function autoScrollDuringReorder() {
+  if (!dragState) return;
+  if (dragState.moved) {
+    const threshold = 48;
+    const y = dragState.lastY;
+    let delta = 0;
+    if (y < threshold) {
+      delta = -Math.min(12, Math.ceil(((threshold - y) / threshold) * 12));
+    } else if (y > window.innerHeight - threshold) {
+      delta = Math.min(12, Math.ceil(((y - (window.innerHeight - threshold)) / threshold) * 12));
+    }
+    if (delta) {
+      window.scrollBy(0, delta);
+      updateReorderTarget(dragState.lastX, dragState.lastY);
+    }
+  }
+  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
 }
 
 function cancelModulePress() {
@@ -1035,6 +1226,7 @@ function enterLayoutEditing() {
 
 function finishLayoutEditing() {
   cancelModulePress();
+  if (dragState) cancelReorder();
   if (resizeState) cancelResize();
   layoutEditing.value = false;
   clearModuleSelection();
@@ -1044,6 +1236,10 @@ function finishLayoutEditing() {
 function onLayoutKeydown(event) {
   if (!layoutEditing.value || event.key !== 'Escape') return;
   cancelModulePress();
+  if (dragState) {
+    cancelReorder();
+    return;
+  }
   if (resizeState) {
     cancelResize();
     return;
@@ -1063,13 +1259,19 @@ function currentModuleConfig() {
   });
 }
 
-function updateModuleSize(key, patch) {
+function ensureModuleRows() {
   const config = data.value?.config;
-  if (!config) return;
+  if (!config) return null;
   if (!Array.isArray(config.modules) || !config.modules.length) {
     config.modules = currentModuleConfig();
   }
-  const row = config.modules.find((item) => item.key === key);
+  return config.modules;
+}
+
+function updateModuleSize(key, patch) {
+  const modules = ensureModuleRows();
+  if (!modules) return;
+  const row = modules.find((item) => item.key === key);
   if (row) Object.assign(row, patch);
 }
 
@@ -1082,8 +1284,9 @@ function measureModuleContentHeight(el) {
 }
 
 function startResize(direction, event) {
-  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState) return;
-  cancelKeyboardResize();
+  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
+  const pendingSnapshot = keyboardLayoutSnapshot;
+  cancelKeyboardLayout();
   const el = moduleElement(selectedModule.value.key);
   const grid = document.querySelector('.dashboard-grid');
   if (!el || !grid) return;
@@ -1103,7 +1306,7 @@ function startResize(direction, event) {
     colWidth,
     gap,
     contentMin,
-    snapshot: currentModuleConfig()
+    snapshot: pendingSnapshot || currentModuleConfig()
   };
   layoutResizing.value = true;
   window.addEventListener('pointermove', onResizeMove, true);
@@ -1154,7 +1357,7 @@ function finishResize(event) {
     }
   }
   nextTick(updateSelectionRect);
-  if (moduleSizesChanged(snapshot, currentModuleConfig())) {
+  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
     persistLayout(snapshot);
   }
 }
@@ -1177,9 +1380,15 @@ function clearResizeState() {
   window.removeEventListener('pointercancel', finishResize, true);
 }
 
-function moduleSizesChanged(before, after) {
-  const previous = new Map(before.map((item) => [item.key, `${item.width}x${item.height}`]));
-  return after.some((item) => previous.get(item.key) !== `${item.width}x${item.height}`);
+function moduleLayoutChanged(before, after) {
+  if (before.length !== after.length) return true;
+  return before.some((item, index) => {
+    const next = after[index];
+    return !next
+      || item.key !== next.key
+      || item.width !== next.width
+      || item.height !== next.height;
+  });
 }
 
 function buildConfigPayload(modules) {
@@ -1235,7 +1444,7 @@ async function persistLayout(snapshot) {
 function resetSelectedModuleSize() {
   const module = selectedModule.value;
   if (!module || layoutSaving.value) return;
-  cancelKeyboardResize();
+  cancelKeyboardLayout();
   const snapshot = currentModuleConfig();
   const defaultSpan = moduleMeta.value[module.key]?.span || 12;
   updateModuleSize(module.key, { width: defaultSpan, height: 0 });
@@ -1792,7 +2001,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   destroyModuleSortable();
   cancelModulePress();
-  cancelKeyboardResize();
+  cancelKeyboardLayout();
+  if (dragState) clearReorderState();
   if (resizeState) clearResizeState();
   selectionObserver?.disconnect();
   if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
@@ -1823,7 +2033,8 @@ onBeforeUnmount(() => {
 .layout-edit-banner .edit-done { height: 30px; padding: 0 13px; border: 1px solid var(--bs-accent); border-radius: 7px; color: var(--bs-on-accent); background: var(--bs-accent); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
 .layout-edit-banner .edit-done:hover { background: var(--bs-accent-hover); }
 .layout-edit-banner .edit-done:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.clubhouse-page.is-resizing { user-select: none; }
+.clubhouse-page.is-resizing, .clubhouse-page.is-reordering { user-select: none; }
+.clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; }
@@ -2014,6 +2225,7 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .dashboard-grid.layout-editing .dashboard-module:hover { outline-color: var(--bs-accent-soft); }
 .dashboard-grid.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
 .dashboard-grid.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
+.dashboard-grid .dashboard-module.is-layout-dragging { box-shadow: var(--bs-shadow-md); opacity: .92; }
 .dashboard-grid .rank-band,
 .dashboard-grid .evaluation-panel { margin-top: 0; }
 .layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 0 0 9999px rgba(7, 26, 51, .035); }
@@ -2021,6 +2233,11 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .selection-toolbar .selection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bs-success); flex: 0 0 auto; }
 .selection-toolbar b { color: var(--bs-ink); font-size: 11px; font-weight: 800; }
 .selection-toolbar .selection-size { color: var(--bs-text-muted); }
+.selection-toolbar .selection-move { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 24px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-size: 10px; font-weight: 700; cursor: grab; touch-action: none; }
+.selection-toolbar .selection-move:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
+.selection-toolbar .selection-move:active, .selection-toolbar .selection-move.is-dragging { cursor: grabbing; }
+.selection-toolbar .selection-move:disabled { opacity: .4; cursor: not-allowed; }
+.selection-toolbar .selection-move svg { width: 12px; height: 12px; }
 .selection-toolbar .selection-reset { padding: 3px 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-weight: 700; cursor: pointer; }
 .selection-toolbar .selection-reset:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
 .selection-toolbar .selection-close { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--bs-text-muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
