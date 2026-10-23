@@ -10088,13 +10088,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           key:"3",label:`三垒跑者 ${logPlayerName(l.runners[3])}`
         }
         ),fc_options.push({
-          key:"safe",label:"无人出局"
+          key:"safe",label:"无跑者出局"
         }
         ),fc_options.push({
-          key:"0",label:"没有跑者出局（失误）"
+          key:"0",label:"无跑者出局（失误）"
         }
         );
-        LgPick(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者；若无人出局，请选择「无人出局」或「失误」：").then(fc_choice=>fcApply(fc_choice,r,t,a,meta));
+        LgPick(fc_options,"野手选择（FC）","请选择该野手选择局面中出局的跑者；若无跑者出局，请选择对应结果：").then(fc_choice=>fcApply(fc_choice,r,t,a,meta));
         return
       }
       else if(e==="DP"){

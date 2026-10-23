@@ -43,8 +43,9 @@ test('P1：FC 去原生 prompt/调试日志；页内对话框 + 组行生成', (
   assert.match(src, /D\(fc_lines\[0\],void 0,\{\s*\n\s*lines:fc_lines\.slice\(1\)/, '组行经 D(lines) 写入');
 });
 
-test('FC 无人出局分支：安全上垒、不计失误、只记打者 FC', () => {
-  assert.match(src, /key:"safe",label:"无人出局"/, '对话框新增无人出局选项');
+test('FC 无跑者出局分支：安全上垒、不计失误、只记打者 FC', () => {
+  assert.match(src, /key:"safe",label:"无跑者出局"/, '对话框新增无跑者出局选项');
+  assert.match(src, /key:"0",label:"无跑者出局（失误）"/, '失误选项与安全选项统一命名');
   const i = src.indexOf('if(fc_choice==="safe"){');
   assert.ok(i >= 0, 'safe 分支存在');
   const body = src.slice(i, src.indexOf('const fc_base=Number(fc_choice)', i));
