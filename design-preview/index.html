@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>个人驾驶舱 · 细节优化高保真</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; background: #f2efe9; color: #071a33; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 28px; color: #5b6472; font-size: 14px; }
+    section { margin: 0 auto 36px; max-width: 1200px; }
+    h2 { margin: 0 0 10px; font-size: 16px; color: #7a5a1f; }
+    img { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 18px 48px rgba(7,26,51,.12); background: #fff; }
+    .mobile { max-width: 460px; margin: 0 auto; }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+    .dark { background: #0b1018; padding: 24px; border-radius: 16px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>个人驾驶舱 · 细节优化高保真</h1>
+  <p>顶部恢复球星卡；当前赛事与下一场比赛移入「接下来的比赛」模块。以下为桌面/手机、浅色/深色。</p>
+
+  <section>
+    <h2>桌面 · 浅色 · 顶部（球星卡优先）</h2>
+    <img src="clubhouse-detail-light-desktop.jpg" alt="桌面浅色顶部">
+  </section>
+
+  <section>
+    <h2>桌面 · 浅色 · 接下来的比赛（当前赛事 + 下一场）</h2>
+    <img src="clubhouse-detail-light-desktop-schedule.jpg" alt="桌面浅色赛程模块">
+  </section>
+
+  <section class="dark">
+    <h2>桌面 · 深色 · 接下来的比赛</h2>
+    <img src="clubhouse-detail-dark-desktop-schedule.jpg" alt="桌面深色赛程模块">
+  </section>
+
+  <section class="row">
+    <div>
+      <h2>手机 · 浅色 · 顶部</h2>
+      <img src="clubhouse-detail-light-mobile.jpg" alt="手机浅色顶部">
+    </div>
+    <div>
+      <h2>手机 · 浅色 · 接下来的比赛</h2>
+      <img src="clubhouse-detail-light-mobile-schedule.jpg" alt="手机浅色赛程模块">
+    </div>
+  </section>
+
+  <section>
+    <h2>桌面 · 浅色 · 队内坐标（字号、口径说明、信息入口）</h2>
+    <img src="clubhouse-detail-light-desktop-rank.jpg" alt="桌面浅色队内坐标">
+  </section>
+</body>
+</html>
