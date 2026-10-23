@@ -47,6 +47,27 @@ test('数据项调整抽屉：守备分组与保存载荷', () => {
   assert.match(src, /fieldingItems:A\(pf\.value\)/, '保存守备字段');
 });
 
+test('门户数据项调整抽屉：守备分组与保存载荷', () => {
+  const src = fs.readFileSync(new URL('../src/components/portal/PortalStatsColumnSettingsDrawer.js', import.meta.url), 'utf8');
+  assert.match(src, /DEFAULT_FIELDING_FIELDS/, '门户未引入守备默认字段');
+  assert.match(src, /fieldSettings\.fielding/, '门户缺少守备标签');
+  assert.match(src, /name:"fielding"/, '门户缺少守备标签页');
+  assert.match(src, /me\("fielding"/, '门户守备字段未接可见性开关');
+  assert.match(src, /fieldingFields:fy\.value/, '门户未持久化守备字段');
+  assert.match(src, /fieldingItems:fy\.value/, '门户未回传守备字段');
+  assert.match(src, /FIELDING_MIN/, '门户守备最少可见列未校验');
+  const portal = fs.readFileSync(new URL('../src/views/portal/PortalGameDetail.js', import.meta.url), 'utf8');
+  assert.match(portal, /fieldingItems\?\?Ff\.value/, 'PortalGameDetail 未接收守备字段');
+});
+
+test('观赛页实时快照守备行带 INN/PB/SB/CS/DP', () => {
+  const src = fs.readFileSync(new URL('../src/views/admin/LiveGameWatch.js', import.meta.url), 'utf8');
+  assert.match(src, /defInn:y\.ip\?\?y\.defInn/, '实时快照未带上守备局数（fielding.ip → defInn）');
+  for (const key of ['fieldingGs', 'dp', 'pb', 'catcherSb', 'catcherCs']) {
+    assert.match(src, new RegExp(`${key}:y\\.${key}`), `实时快照缺少守备字段 ${key}`);
+  }
+});
+
 test('门户 display settings 持久化不丢 fieldingFields', () => {
   const store = new Map();
   globalThis.window = {
