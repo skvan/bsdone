@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="!layoutEditing && activeModules.length" link type="primary" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="!layoutEditing && activeModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -95,7 +95,7 @@
       <div v-if="layoutEditing" class="layout-edit-banner">
         <div class="edit-copy">
           <b>布局编辑</b>
-          <span>长按模块边框选中；拖动手柄或方向键调整大小，拖动「移动」换位</span>
+          <span>点击模块选中；拖动手柄调整大小，拖动「移动」换位</span>
         </div>
         <div class="edit-actions">
           <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
@@ -103,20 +103,28 @@
         </div>
       </div>
 
-      <div v-if="activeModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }">
+      <div v-if="activeModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }" @click.self="clearModuleSelection()">
       <section
         v-if="isModuleVisible('ranks')"
         class="rank-band dashboard-module"
         data-module-key="ranks"
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('ranks')"
-        @pointerdown="onModulePointerDown('ranks', $event)"
+        @click="selectModule('ranks')"
         @keydown="onModuleKeydown('ranks', $event)"
       >
         <div class="rank-band-head">
-          <div><span class="kicker">TEAM RANKING</span><h2>队内坐标</h2></div>
+          <div>
+            <span class="kicker">TEAM RANKING</span>
+            <h2>队内坐标
+              <el-tooltip content="排名按所选代表球队与赛事统计；无最低打席门槛；全垒打不进入排名。" placement="bottom-start" trigger="click">
+                <button type="button" class="metric-info" aria-label="排名口径">i</button>
+              </el-tooltip>
+            </h2>
+          </div>
           <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '全部赛事' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
         </div>
+        <p class="rank-note"><b>口径</b><span>所选代表球队 + 赛事 · 无最低打席门槛 · 全垒打不进入排名</span></p>
         <div class="rank-band-grid">
           <div v-for="(rank, index) in data.ranks" :key="rank.metricKey || index" class="rank-feature" :class="{ neutral: rank.rank == null || rank.metricKey === 'batting.obp' }">
             <div class="line">
@@ -139,7 +147,7 @@
         data-module-key="evaluation"
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('evaluation')"
-        @pointerdown="onModulePointerDown('evaluation', $event)"
+        @click="selectModule('evaluation')"
         @keydown="onModuleKeydown('evaluation', $event)"
       >
         <div class="eval-head">
@@ -150,6 +158,9 @@
           <div class="eval-meta">
             <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
             <span>{{ data.evaluation?.comparison || '同队同赛事' }}</span>
+            <el-tooltip content="五个职业指标在同队同赛事内的百分位；样本少于 3 人不评分；投球反向指标已换算。" placement="bottom-end" trigger="click">
+              <button type="button" class="metric-info" aria-label="评价口径">i</button>
+            </el-tooltip>
           </div>
         </div>
         <div class="radar-grid" :class="evaluationCards.length > 2 ? 'three-up' : 'two-up'">
@@ -228,7 +239,7 @@
         </div>
         <p class="eval-note">
           <i></i>
-          <span>百分位越高代表同队同赛事排名越靠前；投球指标已按“越低越好”反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
+          <span>百分位越高代表同队同赛事排名越靠前；投球指标中 ERA/WHIP/BB/9 越低越好，已反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
         </p>
       </section>
 
@@ -238,7 +249,7 @@
         data-module-key="milestones"
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('milestones')"
-        @pointerdown="onModulePointerDown('milestones', $event)"
+        @click="selectModule('milestones')"
         @keydown="onModuleKeydown('milestones', $event)"
       >
         <div class="panel-head milestone-head">
@@ -316,7 +327,7 @@
             data-module-key="performance"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('performance')"
-            @pointerdown="onModulePointerDown('performance', $event)"
+            @click="selectModule('performance')"
             @keydown="onModuleKeydown('performance', $event)"
           >
             <div class="panel-head">
@@ -325,6 +336,9 @@
                 <div class="chart-summary">
                   <div><b>{{ performanceSummary }}</b><span>{{ performanceLabel }}</span></div>
                 </div>
+                <el-tooltip content="按比赛日排序的最近 12 场；指标与图表可在数据设置切换。" placement="bottom-end" trigger="click">
+                  <button type="button" class="metric-info" aria-label="表现图口径">i</button>
+                </el-tooltip>
                 <el-button link :icon="Setting" aria-label="数据设置" @click="openSettings" />
               </div>
             </div>
@@ -383,20 +397,27 @@
             data-module-key="schedule"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('schedule')"
-            @pointerdown="onModulePointerDown('schedule', $event)"
+            @click="selectModule('schedule')"
             @keydown="onModuleKeydown('schedule', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>跨赛事汇总</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
-            <div v-if="nextGame" class="next-game">
-              <div class="ng-head"><span class="event-pill">{{ nextGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(nextGame.gameday) }}</span></div>
+            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>{{ featuredGameIsCurrent ? '当前赛事优先 · 跨赛事汇总' : '跨赛事汇总' }}</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
+            <div v-if="currentEvent" class="event-context">
+              <span class="ec-label">当前赛事</span>
+              <b>{{ currentEvent.name }}</b>
+              <span class="ec-status" :class="currentEvent.status ? `is-${currentEvent.status}` : ''">{{ currentEventStatus }}</span>
+              <span v-if="currentEventDateRange" class="ec-dates">{{ currentEventDateRange }}</span>
+              <span v-if="featuredGame && !featuredGameIsCurrent" class="ec-note">当前赛事近期暂无未开赛比赛</span>
+            </div>
+            <div v-if="featuredGame" class="next-game">
+              <div class="ng-head"><span class="event-pill">{{ featuredGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(featuredGame.gameday) }}</span></div>
               <div class="ng-body">
-                <div class="ng-side"><span class="crest">{{ teamCrest(scopeTeam) }}</span><div><b>{{ nextGame.teamName }}</b><span>{{ nextGame.isHome ? '主场' : '客场' }}</span></div></div>
+                <div class="ng-side"><span class="crest">{{ featuredGame.teamName?.slice(0, 2) || '?' }}</span><div><b>{{ featuredGame.teamName }}</b><span>{{ featuredGame.isHome ? '主场' : '客场' }}</span></div></div>
                 <span class="ng-vs">VS</span>
-                <div class="ng-side right"><div><b>{{ nextGame.opponentName }}</b><span>{{ nextGame.isHome ? '客场' : '主场' }}</span></div><span class="crest dark">{{ opponentCrest(nextGame) }}</span></div>
+                <div class="ng-side right"><div><b>{{ featuredGame.opponentName }}</b><span>{{ featuredGame.isHome ? '客场' : '主场' }}</span></div><span class="crest dark">{{ opponentCrest(featuredGame) }}</span></div>
               </div>
               <div class="ng-foot">
-                <div class="ng-meta"><span>{{ formatDay(nextGame.gameday) }} · {{ weekday(nextGame.gameday) }}</span><span>{{ nextGame.venue || '场地待定' }}</span><span><b>{{ nextGame.gameTime || '--:--' }}</b></span></div>
-                <el-button link type="primary" @click="goGame(nextGame)">赛事详情 ›</el-button>
+                <div class="ng-meta"><span>{{ formatDay(featuredGame.gameday) }} · {{ weekday(featuredGame.gameday) }}</span><span>{{ featuredGame.venue || '场地待定' }}</span><span><b>{{ featuredGame.gameTime || '--:--' }}</b></span></div>
+                <el-button link type="primary" @click="goGame(featuredGame)">赛事详情 ›</el-button>
               </div>
             </div>
             <div v-else class="data-empty">暂无未开赛的比赛。</div>
@@ -416,7 +437,7 @@
             data-module-key="recentGames"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('recentGames')"
-            @pointerdown="onModulePointerDown('recentGames', $event)"
+            @click="selectModule('recentGames')"
             @keydown="onModuleKeydown('recentGames', $event)"
           >
             <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
@@ -440,7 +461,7 @@
             data-module-key="teams"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('teams')"
-            @pointerdown="onModulePointerDown('teams', $event)"
+            @click="selectModule('teams')"
             @keydown="onModuleKeydown('teams', $event)"
           >
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
@@ -458,7 +479,7 @@
             data-module-key="about"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('about')"
-            @pointerdown="onModulePointerDown('about', $event)"
+            @click="selectModule('about')"
             @keydown="onModuleKeydown('about', $event)"
           >
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
@@ -477,7 +498,7 @@
             data-module-key="quickLinks"
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('quickLinks')"
-            @pointerdown="onModulePointerDown('quickLinks', $event)"
+            @click="selectModule('quickLinks')"
             @keydown="onModuleKeydown('quickLinks', $event)"
           >
             <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
@@ -708,6 +729,7 @@ const eventId = ref(null);
 const settingsOpen = ref(false);
 const saving = ref(false);
 const pageEl = ref(null);
+const layoutEditEntryEl = ref(null);
 const layoutEditing = ref(false);
 const layoutResizing = ref(false);
 const layoutDragging = ref(false);
@@ -724,7 +746,6 @@ const moduleListEl = ref(null);
 let milestoneScrollDrag = null;
 let milestoneResizeObserver = null;
 let moduleSortable = null;
-let pressState = null;
 let resizeState = null;
 let dragState = null;
 let selectionObserver = null;
@@ -905,6 +926,7 @@ function scheduleSelectionFrame() {
 }
 
 function selectModule(key, focusHandle = false) {
+  if (!layoutEditing.value) return;
   if (selectedModuleKey.value && selectedModuleKey.value !== key) {
     flushKeyboardLayout();
   }
@@ -940,42 +962,6 @@ function observeSelectedModule() {
   if (!el || typeof ResizeObserver === 'undefined') return;
   selectionObserver = new ResizeObserver(scheduleSelectionFrame);
   selectionObserver.observe(el);
-}
-
-function onModulePointerDown(key, event) {
-  if (!layoutEditing.value || layoutSaving.value || resizeState || dragState) return;
-  if (event.pointerType === 'mouse' && event.button !== 0) return;
-  const el = event.currentTarget;
-  const rect = el.getBoundingClientRect();
-  const edge = 12;
-  const nearBorder = event.clientX - rect.left <= edge
-    || rect.right - event.clientX <= edge
-    || event.clientY - rect.top <= edge
-    || rect.bottom - event.clientY <= edge;
-  if (!nearBorder) return;
-  event.preventDefault();
-  cancelModulePress();
-  pressState = {
-    key,
-    startX: event.clientX,
-    startY: event.clientY,
-    timer: window.setTimeout(() => {
-      if (!pressState || pressState.key !== key) return;
-      pressState = null;
-      removePressListeners();
-      selectModule(key);
-    }, 350)
-  };
-  window.addEventListener('pointermove', onModulePressMove, true);
-  window.addEventListener('pointerup', cancelModulePress, true);
-  window.addEventListener('pointercancel', cancelModulePress, true);
-}
-
-function onModulePressMove(event) {
-  if (!pressState) return;
-  if (Math.hypot(event.clientX - pressState.startX, event.clientY - pressState.startY) > 8) {
-    cancelModulePress();
-  }
 }
 
 function onModuleKeydown(key, event) {
@@ -1093,7 +1079,6 @@ function moveSelectedModuleBy(direction) {
 function startReorder(event) {
   if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
   if (event.pointerType === 'mouse' && event.button !== 0) return;
-  cancelModulePress();
   const pendingSnapshot = keyboardLayoutSnapshot;
   cancelKeyboardLayout();
   const key = selectedModule.value.key;
@@ -1237,38 +1222,26 @@ function autoScrollDuringReorder() {
   dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
 }
 
-function cancelModulePress() {
-  if (pressState?.timer) window.clearTimeout(pressState.timer);
-  pressState = null;
-  removePressListeners();
-}
-
-function removePressListeners() {
-  window.removeEventListener('pointermove', onModulePressMove, true);
-  window.removeEventListener('pointerup', cancelModulePress, true);
-  window.removeEventListener('pointercancel', cancelModulePress, true);
-}
-
 function enterLayoutEditing() {
   if (!data.value || layoutSaving.value || !activeModules.value.length || mobileLayoutQuery.matches) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
   setLayoutStatus('');
+  nextTick(() => moduleElement(activeModules.value[0]?.key)?.focus());
 }
 
 function finishLayoutEditing() {
-  cancelModulePress();
   if (dragState) cancelReorder();
   if (resizeState) cancelResize();
   layoutEditing.value = false;
   clearModuleSelection();
   setLayoutStatus('');
+  nextTick(() => layoutEditEntryEl.value?.$el?.focus?.());
 }
 
 function onLayoutKeydown(event) {
   if (!layoutEditing.value || event.key !== 'Escape') return;
-  cancelModulePress();
   if (dragState) {
     cancelReorder();
     return;
@@ -1550,9 +1523,33 @@ const matrixItems = computed(() => {
   ];
 });
 const nextGame = computed(() => data.value?.nextGame || null);
+const currentEvent = computed(() => scopeEvents.value.find((event) => event.id === eventId.value)
+  || scopeEvents.value[0]
+  || null);
+const currentEventStatus = computed(() => {
+  const status = currentEvent.value?.status;
+  return { draft: '未开始', ongoing: '进行中', ended: '已结束' }[status] || '赛程中';
+});
+const currentEventDateRange = computed(() => {
+  const event = currentEvent.value;
+  if (!event) return '';
+  const start = formatEventDate(event.startDate);
+  const end = formatEventDate(event.endDate);
+  if (start && end) return `${start} – ${end}`;
+  return start || end;
+});
+const featuredGame = computed(() => {
+  const event = currentEvent.value;
+  const eventGame = event
+    ? (data.value?.schedule || []).find((game) => game.eventId === event.id)
+    : null;
+  return eventGame || nextGame.value;
+});
+const featuredGameIsCurrent = computed(() => currentEvent.value != null
+  && featuredGame.value?.eventId === currentEvent.value.id);
 const upcomingGames = computed(() => {
   const list = data.value?.schedule || [];
-  return list.slice(nextGame.value ? 1 : 0);
+  return list.filter((game) => game.gameId !== featuredGame.value?.gameId);
 });
 const battingMetrics = computed(() => catalog.value.filter((item) => item.domain === 'batting'));
 const pitchingMetrics = computed(() => catalog.value.filter((item) => item.domain === 'pitching'));
@@ -1710,7 +1707,7 @@ function radarFoot(domain) {
   return {
     batting: '打击指标 · 同队同赛事',
     fielding: '守备指标 · 同队同赛事',
-    pitching: '投球指标 · 越低越好已反向'
+    pitching: '投球指标 · ERA/WHIP/BB/9 已反向'
   }[domain] || '同队同赛事';
 }
 
@@ -1760,6 +1757,11 @@ function resultType(result) {
 function formatDay(value) {
   const date = dayjs(value);
   return date.isValid() ? date.format('MM.DD') : (value || '--.--');
+}
+
+function formatEventDate(value) {
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY.MM.DD') : '';
 }
 
 function formatMilestoneDate(value) {
@@ -2130,7 +2132,6 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   destroyModuleSortable();
-  cancelModulePress();
   cancelKeyboardLayout();
   if (dragState) clearReorderState();
   if (resizeState) clearResizeState();
@@ -2168,12 +2169,20 @@ onBeforeUnmount(() => {
 .clubhouse-page.is-resizing, .clubhouse-page.is-reordering { user-select: none; }
 .clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
-.scope-title { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
+.scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; }
 .scope-select :deep(.el-select__wrapper) { min-height: 30px; border-radius: 7px; box-shadow: 0 0 0 1px var(--bs-hairline) inset; background: var(--bs-surface-soft); }
-.scope-hint { font-size: 8px; color: var(--bs-text-faint); margin-left: 4px; }
-.scope-right { margin-left: auto; font-size: 9px; color: var(--bs-text-muted); white-space: nowrap; }
+.scope-hint { font-size: 10px; color: var(--bs-text-faint); margin-left: 4px; }
+.scope-right { margin-left: auto; font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
 .scope-right b { color: var(--bs-ink); }
+.event-context { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: -2px 0 12px; padding: 8px 10px; border: 1px solid var(--bs-hairline-soft); border-radius: 8px; background: var(--bs-surface-soft); color: var(--bs-text-muted); font-size: 10px; }
+.event-context .ec-label { font-weight: 700; letter-spacing: .08em; color: var(--bs-accent-ink); }
+.event-context b { font-size: 12px; color: var(--bs-ink); }
+.event-context .ec-status { padding: 2px 6px; border-radius: 99px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font-weight: 700; }
+.event-context .ec-status.is-ongoing { background: rgba(31,122,90,.1); color: var(--bs-success); }
+.event-context .ec-status.is-ended { background: var(--bs-surface); color: var(--bs-text-muted); }
+.event-context .ec-dates { font-family: var(--bs-font-num); }
+.event-context .ec-note { padding: 2px 6px; border: 1px dashed var(--bs-hairline); border-radius: 99px; color: var(--bs-text-muted); }
 
 .hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr); gap: 24px; min-height: 430px; padding: 34px 40px; border-radius: 24px; color: #fff; background: radial-gradient(90% 100% at 90% -10%, rgba(201,164,91,.25), transparent 55%), radial-gradient(80% 100% at 0% 110%, rgba(18,54,95,.78), transparent 64%), linear-gradient(145deg, var(--bs-hero-start), var(--bs-hero-mid) 58%, var(--bs-hero-end)); border: 1px solid var(--bs-hairline); box-shadow: var(--bs-shadow-hero); }
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .45; background: repeating-linear-gradient(115deg, transparent 0 42px, rgba(255,255,255,.018) 42px 43px), radial-gradient(circle at 80% 14%, rgba(255,255,255,.14) 0 1px, transparent 2px); background-size: auto, 28px 28px; }
@@ -2181,15 +2190,15 @@ onBeforeUnmount(() => {
 .hero-27 { position: absolute; z-index: -1; right: 2%; top: -34px; font-family: var(--bs-font-num); font-size: 400px; line-height: .8; font-weight: 800; letter-spacing: -.09em; color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,.09); pointer-events: none; user-select: none; }
 .hero-left { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.hero-kicker { display: flex; align-items: center; gap: 9px; font-size: 9px; font-weight: 700; letter-spacing: .26em; color: var(--bs-accent-ink); }
+.hero-kicker { display: flex; align-items: center; gap: 9px; font-size: 10px; font-weight: 700; letter-spacing: .26em; color: var(--bs-accent-ink); }
 .hero-kicker::before { content: ""; width: 26px; height: 1px; background: var(--bs-accent); }
-.claim { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: var(--bs-hero-muted); padding: 5px 9px; border-radius: 999px; border: 1px solid var(--bs-hero-card-border); background: var(--bs-hero-card); }
+.claim { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--bs-hero-muted); padding: 5px 9px; border-radius: 999px; border: 1px solid var(--bs-hero-card-border); background: var(--bs-hero-card); }
 .claim i { width: 4px; height: 4px; border-radius: 50%; background: var(--bs-accent); box-shadow: 0 0 0 3px rgba(201,164,91,.15); }
 .hero h1 { margin: 16px 0 0; font-family: var(--bs-font-serif); font-size: 66px; line-height: 1; font-weight: 700; letter-spacing: .005em; text-shadow: 0 6px 30px rgba(0,0,0,.3); }
 .hero-en { margin: 10px 0 0; font-family: var(--bs-font-num); font-size: 10px; font-weight: 700; letter-spacing: .34em; color: var(--bs-hero-muted); }
 .hero-intro { max-width: 470px; margin: 18px 0 0; font-size: 12px; line-height: 1.9; color: var(--bs-hero-muted); }
 .hero-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.tag { font-size: 9px; padding: 6px 9px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; }
+.tag { font-size: 10px; padding: 6px 9px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; }
 .hero-team { display: flex; align-items: center; gap: 10px; margin-top: 19px; padding-top: 14px; border-top: 1px solid var(--bs-hero-line); max-width: 470px; }
 .hero-actions { display: flex; gap: 9px; margin-top: 16px; }
 .hero-btn { height: 36px; padding: 0 16px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 700; cursor: pointer; transition: background 160ms ease-out, border-color 160ms ease-out; }
@@ -2201,7 +2210,7 @@ onBeforeUnmount(() => {
 .crest { width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 11px; font-weight: 800; color: #071a33; background: linear-gradient(145deg, var(--bs-accent-soft), var(--bs-accent)); }
 .crest.dark { color: #fff; background: linear-gradient(145deg, #173e62, #0a1b2e); border: 1px solid rgba(201,164,91,.5); }
 .team-copy b { display: block; font-size: 12px; }
-.team-copy span { display: block; margin-top: 2px; font-size: 9px; color: var(--bs-hero-muted); }
+.team-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 
 .card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; perspective: 1200px; }
 .card-back { position: absolute; width: 252px; height: 334px; border-radius: 15px; border: 1px solid rgba(201,164,91,.26); background: rgba(255,255,255,.035); backdrop-filter: blur(3px); }
@@ -2212,39 +2221,44 @@ html.dark .player-card,
 html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70% at 84% 0%, rgba(212,175,106,.18), transparent 55%), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 8px, transparent 8px 16px), linear-gradient(160deg, #132f4c, #0a1727 70%); border-color: rgba(212,175,106,.55); }
 .player-card::before { content: ""; position: absolute; inset: 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; pointer-events: none; }
 .card-top { display: flex; align-items: center; justify-content: space-between; }
-.card-top span { font-size: 7px; font-weight: 700; letter-spacing: .2em; color: var(--bs-accent-ink); }
-.card-top b { font-family: var(--bs-font-num); font-size: 8px; color: rgba(255,255,255,.45); }
+.card-top span { font-size: 10px; font-weight: 700; letter-spacing: .2em; color: var(--bs-accent-ink); }
+.card-top b { font-family: var(--bs-font-num); font-size: 10px; color: rgba(255,255,255,.45); }
 .card-portrait { display: flex; flex-direction: column; align-items: center; margin-top: 9px; }
 .card-avatar { width: 92px; height: 92px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-family: var(--bs-font-serif); font-size: 38px; color: #f7ebd4; background: radial-gradient(circle at 35% 22%, rgba(255,255,255,.16), transparent 38%), repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 7px, transparent 7px 14px), linear-gradient(145deg, #214a74, #0a1c33); border: 1px solid rgba(201,164,91,.6); box-shadow: 0 0 0 5px rgba(201,164,91,.12), inset 0 0 24px rgba(0,0,0,.25); }
 .card-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .card-name { margin-top: 12px; text-align: center; }
 .card-name b { font-family: var(--bs-font-serif); font-size: 23px; font-weight: 700; letter-spacing: .04em; }
-.card-name span { display: block; margin-top: 3px; font-family: var(--bs-font-num); font-size: 7px; letter-spacing: .24em; color: var(--bs-hero-muted); }
+.card-name span { display: block; margin-top: 3px; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .24em; color: var(--bs-hero-muted); }
 .card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; }
-.card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 7px; }
-.card-team span:last-child { font-size: 8px; color: rgba(255,255,255,.65); }
+.card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.card-team span:last-child { font-size: 10px; color: rgba(255,255,255,.65); }
 .card-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
 .card-stat { text-align: center; border-right: 1px solid rgba(255,255,255,.09); }
 .card-stat:last-child { border-right: 0; }
 .card-stat b { display: block; font-family: var(--bs-font-num); font-size: 19px; line-height: 1; color: #fff; }
-.card-stat span { display: block; margin-top: 3px; font-size: 7px; color: var(--bs-hero-muted); }
+.card-stat span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-hero-muted); }
 .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.1); }
-.card-foot span { font-size: 7px; color: var(--bs-hero-muted); }
-.card-foot b { font-size: 7px; color: var(--bs-accent-ink); letter-spacing: .1em; }
+.card-foot span { font-size: 10px; color: var(--bs-hero-muted); }
+.card-foot b { font-size: 10px; color: var(--bs-accent-ink); letter-spacing: .1em; }
 
 .identity-band { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 18px; border-top: 1px solid var(--bs-hairline); border-bottom: 1px solid var(--bs-hairline); padding: 13px 0; }
 .id-item { padding: 0 24px; border-right: 1px solid var(--bs-hairline); }
 .id-item:first-child { padding-left: 0; }
 .id-item:last-child { border-right: 0; padding-right: 0; }
-.id-item span { display: block; font-size: 8px; color: var(--bs-text-faint); letter-spacing: .05em; }
+.id-item span { display: block; font-size: 10px; color: var(--bs-text-faint); letter-spacing: .05em; }
 .id-item b { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--bs-text); }
 .id-item b em { font-style: normal; font-family: var(--bs-font-num); font-size: 14px; color: var(--bs-ink); }
 
 .rank-band { margin-top: 22px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 18px 22px 17px; }
 .rank-band-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
 .rank-band-head h2 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 23px; line-height: 1.2; font-weight: 700; color: var(--bs-ink); }
-.rank-band-head span { font-size: 9px; color: var(--bs-text-faint); }
+.rank-band-head span { font-size: 10px; color: var(--bs-text-faint); }
 .rank-scope a { color: var(--bs-accent-ink); font-weight: 700; margin-left: 5px; }
+.rank-note { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 10px; line-height: 1.5; color: var(--bs-text-muted); }
+.rank-note b { color: var(--bs-accent-ink); font-weight: 700; }
+.metric-info { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 6px; padding: 0; border: 1px solid var(--bs-hairline); border-radius: 50%; background: var(--bs-surface); color: var(--bs-text-muted); font: inherit; font-size: 10px; font-weight: 800; vertical-align: middle; cursor: help; }
+.metric-info:hover { border-color: var(--bs-accent); color: var(--bs-accent-ink); }
+.metric-info:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .rank-band-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 15px; }
 .rank-feature { padding: 0 24px; border-right: 1px solid var(--bs-hairline-soft); }
 .rank-feature:first-child { padding-left: 0; }
@@ -2253,8 +2267,8 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .rank-feature .no { font-family: var(--bs-font-num); font-size: 36px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
 .rank-feature .no small { font-size: 11px; color: var(--bs-text-faint); font-weight: 500; letter-spacing: 0; }
 .rank-feature .value { margin-left: auto; font-family: var(--bs-font-num); font-size: 17px; font-weight: 700; color: var(--bs-ink); }
-.rank-feature .metric { margin-top: 8px; font-size: 9px; font-weight: 700; color: var(--bs-text); }
-.rank-feature .metric span { display: block; margin-top: 2px; font-size: 8px; font-weight: 400; color: var(--bs-text-faint); }
+.rank-feature .metric { margin-top: 8px; font-size: 10px; font-weight: 700; color: var(--bs-text); }
+.rank-feature .metric span { display: block; margin-top: 2px; font-size: 10px; font-weight: 400; color: var(--bs-text-faint); }
 .rank-feature .track { height: 3px; border-radius: 99px; background: var(--bs-hairline-soft); margin-top: 10px; overflow: hidden; }
 .rank-feature .track i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--bs-accent), var(--bs-accent-hover)); }
 .rank-feature:nth-child(1) .track i { background: linear-gradient(90deg, #aeb8c4, #d8dee6); }
@@ -2364,7 +2378,7 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .dashboard-grid .panel,
 .dashboard-grid .rank-band { min-width: 0; }
 .dashboard-grid .dashboard-module { grid-column: span var(--module-span, 12); min-height: var(--module-min-h, 0px); }
-.dashboard-grid.layout-editing .dashboard-module { outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 160ms ease-out; user-select: none; }
+.dashboard-grid.layout-editing .dashboard-module { outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 160ms ease-out; user-select: none; cursor: pointer; }
 .dashboard-grid.layout-editing .dashboard-module:hover { outline-color: var(--bs-accent-soft); }
 .dashboard-grid.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
 .dashboard-grid.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
@@ -2402,22 +2416,23 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .dashboard-empty p { margin: 0 0 16px; font-size: 11px; color: var(--bs-text-muted); }
 .panel { background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 19px 20px; }
 .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 13px; }
-.kicker { display: block; font-size: 8px; font-weight: 700; letter-spacing: .16em; color: var(--bs-accent-ink); text-transform: uppercase; }
+.kicker { display: block; font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--bs-accent-ink); text-transform: uppercase; }
 .panel-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 20px; line-height: 1.2; font-weight: 700; color: var(--bs-ink); }
-.panel-head h3 small { font-family: var(--bs-font-sans); font-size: 9px; color: var(--bs-text-faint); font-weight: 400; margin-left: 5px; }
+.panel-head h3 small { font-family: var(--bs-font-sans); font-size: 10px; color: var(--bs-text-faint); font-weight: 400; margin-left: 5px; }
 .panel-head-actions { display: flex; align-items: center; gap: 14px; }
+.eval-meta .metric-info { margin-left: 0; }
 .chart-summary { text-align: right; }
 .chart-summary b { display: block; font-family: var(--bs-font-num); font-size: 18px; color: var(--bs-ink); }
-.chart-summary span { display: block; margin-top: 3px; font-size: 8px; color: var(--bs-text-faint); }
+.chart-summary span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
 .chart-wrap { margin-top: 4px; }
 .trend-chart { width: 100%; height: auto; overflow: visible; }
 .trend-chart .grid { stroke: var(--bs-hairline-soft); stroke-width: 1; }
-.trend-chart .axis { fill: var(--bs-text-faint); font-family: var(--bs-font-sans); font-size: 9px; }
+.trend-chart .axis { fill: var(--bs-text-faint); font-family: var(--bs-font-sans); font-size: 10px; }
 .trend-chart .line { fill: none; stroke: var(--bs-chart-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .trend-chart .area { fill: var(--bs-chart-fill); }
 .trend-chart .dot { fill: var(--bs-surface); stroke: var(--bs-chart-line); stroke-width: 2; }
 .trend-chart .bar { fill: var(--bs-chart-1); opacity: .9; }
-.chart-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 5px; font-size: 8px; color: var(--bs-text-muted); }
+.chart-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 5px; font-size: 10px; color: var(--bs-text-muted); }
 .chart-note b { color: var(--bs-text-faint); font-weight: 500; }
 .data-empty { padding: 24px 0; text-align: center; font-size: 11px; color: var(--bs-text-muted); }
 .kpi-view { padding: 24px 0 18px; }
@@ -2427,7 +2442,7 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .donut { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; }
 .donut-center { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; align-content: center; background: var(--bs-surface); }
 .donut-center b { font-family: var(--bs-font-num); font-size: 26px; color: var(--bs-ink); }
-.donut-center span { margin-top: 3px; font-size: 8px; color: var(--bs-text-faint); }
+.donut-center span { margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
 .donut-legend { flex: 1; min-width: 0; }
 .donut-legend-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 10px; color: var(--bs-text); }
 .donut-legend-row i { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
@@ -2438,32 +2453,32 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .matrix-item:nth-child(3n) { border-right: 0; }
 .matrix-item:nth-child(3n + 1) { padding-left: 0; }
 .matrix-item b { display: block; font-family: var(--bs-font-num); font-size: 19px; line-height: 1; color: var(--bs-ink); }
-.matrix-item span { display: block; margin-top: 4px; font-size: 8px; color: var(--bs-text-muted); }
+.matrix-item span { display: block; margin-top: 4px; font-size: 10px; color: var(--bs-text-muted); }
 
 .next-game { position: relative; overflow: hidden; background: linear-gradient(145deg, var(--bs-hero-start), var(--bs-hero-mid) 68%); border-radius: 14px; padding: 17px 19px; color: #fff; border: 1px solid var(--bs-hairline); }
 .next-game::after { content: ""; position: absolute; right: -50px; bottom: -76px; width: 190px; height: 190px; border-radius: 50%; border: 1px solid rgba(201,164,91,.17); box-shadow: 0 0 0 24px rgba(201,164,91,.035), 0 0 0 54px rgba(201,164,91,.018); }
 .ng-head { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
-.event-pill { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 5px; font-size: 8px; font-weight: 700; color: #24180a; background: linear-gradient(135deg, var(--bs-accent-hover), var(--bs-accent)); }
-.countdown { font-size: 9px; color: var(--bs-hero-muted); }
+.event-pill { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; color: #24180a; background: linear-gradient(135deg, var(--bs-accent-hover), var(--bs-accent)); }
+.countdown { font-size: 10px; color: var(--bs-hero-muted); }
 .ng-body { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; margin-top: 16px; position: relative; z-index: 1; }
 .ng-side { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ng-side.right { justify-content: flex-end; text-align: right; }
 .ng-side .crest { width: 38px; height: 38px; border-radius: 11px; }
 .ng-side b { display: block; font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ng-side span:last-child { display: block; margin-top: 2px; font-size: 8px; color: var(--bs-hero-muted); }
+.ng-side span:last-child { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 .ng-vs { font-family: var(--bs-font-num); font-size: 13px; font-weight: 800; color: var(--bs-accent-ink); letter-spacing: .08em; }
 .ng-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--bs-hero-line); position: relative; z-index: 1; }
-.ng-meta { display: flex; align-items: center; gap: 18px; font-size: 9px; color: var(--bs-hero-muted); }
+.ng-meta { display: flex; align-items: center; gap: 18px; font-size: 10px; color: var(--bs-hero-muted); }
 .ng-meta b { font-family: var(--bs-font-num); font-size: 11px; color: #fff; }
-.ng-foot :deep(.el-button) { color: var(--bs-accent-ink); font-size: 9px; }
+.ng-foot :deep(.el-button) { color: var(--bs-accent-ink); font-size: 10px; }
 .schedule-list { margin-top: 4px; }
 .schedule-row { display: grid; grid-template-columns: 58px 1fr auto auto; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
 .schedule-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .sch-date { font-family: var(--bs-font-num); font-size: 12px; font-weight: 700; color: var(--bs-ink); }
-.sch-date span { display: block; font-family: var(--bs-font-sans); font-size: 8px; color: var(--bs-text-faint); margin-top: 1px; }
+.sch-date span { display: block; font-family: var(--bs-font-sans); font-size: 10px; color: var(--bs-text-faint); margin-top: 1px; }
 .sch-main b { display: block; font-size: 10px; font-weight: 700; color: var(--bs-text); }
-.sch-main span { display: block; margin-top: 2px; font-size: 8px; color: var(--bs-text-muted); }
-.sch-event { font-size: 8px; font-weight: 700; color: var(--bs-accent-ink); background: var(--bs-accent-soft); padding: 4px 6px; border-radius: 4px; white-space: nowrap; }
+.sch-main span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-muted); }
+.sch-event { font-size: 10px; font-weight: 700; color: var(--bs-accent-ink); background: var(--bs-accent-soft); padding: 4px 6px; border-radius: 4px; white-space: nowrap; }
 .sch-event.blue { color: #3d7fb5; background: rgba(61,127,181,.1); }
 .sch-event.teal { color: #2f7f7a; background: rgba(47,127,122,.1); }
 html.dark .sch-event.blue,
@@ -2475,16 +2490,16 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .recent-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .result-card { background: var(--bs-surface-soft); border: 1px solid var(--bs-hairline-soft); border-radius: 10px; padding: 12px; }
 .result-top { display: flex; align-items: center; justify-content: space-between; }
-.result-top .date { font-size: 8px; color: var(--bs-text-faint); }
-.res-badge { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 8px; font-weight: 800; }
+.result-top .date { font-size: 10px; color: var(--bs-text-faint); }
+.res-badge { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; }
 .res-badge.w { color: var(--bs-success); background: rgba(31,122,90,.1); }
 .res-badge.l { color: var(--bs-danger); background: rgba(181,18,46,.1); }
 .result-score { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; }
 .result-score b { font-family: var(--bs-font-num); font-size: 24px; line-height: 1; color: var(--bs-ink); }
-.result-score span { font-size: 8px; color: var(--bs-text-faint); }
+.result-score span { font-size: 10px; color: var(--bs-text-faint); }
 .result-opponent { margin-top: 5px; font-size: 10px; font-weight: 700; color: var(--bs-text); }
-.result-meta { margin-top: 3px; font-size: 7px; color: var(--bs-text-faint); }
-.result-line { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--bs-hairline-soft); font-size: 8px; line-height: 1.65; color: var(--bs-text-muted); }
+.result-meta { margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
+.result-line { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; line-height: 1.65; color: var(--bs-text-muted); }
 
 .team-panel { position: relative; overflow: hidden; }
 .rep-team { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--bs-hairline-soft); cursor: pointer; }
@@ -2493,14 +2508,14 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .crest-lg { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 12px; font-weight: 800; color: #071a33; background: linear-gradient(145deg, var(--bs-accent-soft), var(--bs-accent)); }
 .rep-name { flex: 1; min-width: 0; }
 .rep-name b { display: block; font-size: 12px; font-weight: 800; color: var(--bs-ink); }
-.rep-name span { display: block; margin-top: 2px; font-size: 8px; color: var(--bs-text-muted); }
+.rep-name span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-muted); }
 .rep-stat { text-align: right; }
 .rep-stat b { display: block; font-family: var(--bs-font-num); font-size: 14px; color: var(--bs-ink); }
-.rep-stat span { display: block; margin-top: 2px; font-size: 7px; color: var(--bs-text-faint); }
-.rep-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bs-hairline-soft); font-size: 8px; color: var(--bs-text-muted); }
+.rep-stat span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-faint); }
+.rep-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; color: var(--bs-text-muted); }
 .about-intro { margin: 0; font-size: 10px; line-height: 1.85; color: var(--bs-text-muted); }
 .about-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--bs-hairline-soft); }
-.about-meta span { display: block; font-size: 8px; color: var(--bs-text-faint); }
+.about-meta span { display: block; font-size: 10px; color: var(--bs-text-faint); }
 .about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
