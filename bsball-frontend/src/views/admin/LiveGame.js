@@ -6255,7 +6255,7 @@ var sg={
         runner:a,fromBase:s,toBase:r
       }
       =t,p=a.id??a.name??"?";
-      de(`拖拽进垒-安全[${s}>${r}]`),ge.value=null,e.id==="safe_sb"&&(a.stats.batting.sb=(a.stats.batting.sb??0)+1,paceCatcherStat("catcherSb"));
+      de(`拖拽进垒-安全[${s}>${r}]`),ge.value=null,e.id==="safe_sb"&&(a.stats.batting.sb=(a.stats.batting.sb??0)+1,paceCatcherStat("catcherSb")),e.id==="safe_pb"&&paceCatcherStat("pb");
       const g=Se.value;
       if(e.id==="safe_wp"&&g?.stats?.pitching&&(g.stats.pitching.wp=(g.stats.pitching.wp??0)+1),zd.has(e.id)){
         l.flow={
@@ -8344,11 +8344,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("垒上无跑垒员","warning");
         return
       }
-      if(["BK","WP","PB","INT","OBST"].includes(e)&&!l.hasPitchThisAB){
+      if(["BK","WP","INT","OBST"].includes(e)&&!l.hasPitchThisAB){
         J("请先记录至少一次投球","warning");
         return
       }
-      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?"投手犯规":e==="WP"?"暴投":e==="PB"?"捕手漏接":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
+      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?"投手犯规":e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
         l.flow={
           type:"OBST",selectRunner:!0
         };
@@ -8398,11 +8398,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const s=ca();
         D(LgPitch({who:a,kind:"wild_pitch"}),s??void 0),ai({resultCode:"WP",resultText:`${a}: 暴投 (WP)`}),t?.stats?.pitching&&(t.stats.pitching.wp=(t.stats.pitching.wp??0)+1),l.flow=null
       }
-      else if(e==="PB"){
-        const s=Vt("C"),r=ca();
-        D(LgPitch({who:s?.name??"捕手",kind:"passed_ball"}),r??void 0),ai({resultCode:"PB",origin:"PASSED_BALL",resultText:`${s?.name??"捕手"}: 捕逸 (PB)`}),paceCatcherStat("pb"),l.flow=null
-      }
-      
     }
     function ti(e){
       const t=Se.value;
@@ -9140,8 +9135,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           case"evt:BK":Xt("BK");
           break;
           case"evt:WP":Xt("WP");
-          break;
-          case"evt:PB":Xt("PB");
           break;
           case"evt:INT":Xt("INT");
           break;
