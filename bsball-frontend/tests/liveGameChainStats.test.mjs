@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { computeChainFieldingStats, normalizeChainForDisplay, chainReadyForSettle } from '../src/utils/liveGameChainStats.js';
+import { computeChainFieldingStats, normalizeChainForDisplay, chainReadyForSettle, computeSingleOutChainStats } from '../src/utils/liveGameChainStats.js';
 
 test('DP 标准链：6-3（[SS,1B]）与 6-4-3（[SS,2B,1B]）', () => {
   assert.deepEqual(computeChainFieldingStats('DP', ['SS', '1B']), [
@@ -72,6 +72,25 @@ test('DP/TP 显示链规整：相邻重复合并（独力全同保留）', () =>
   assert.deepEqual(normalizeChainForDisplay('DP', []), []);
 });
 
+test('单出局链记账：末位 PO，去重助杀且排除 PO 本人（5-2-5 / 5-2-5-5）', () => {
+  assert.deepEqual(computeSingleOutChainStats(['5', '2', '5']), [
+    { pos: '2', po: 0, a: 1 },
+    { pos: '5', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['5', '2', '5', '5']), [
+    { pos: '2', po: 0, a: 1 },
+    { pos: '5', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['5', '2', '5', '2']), [
+    { pos: '5', po: 0, a: 1 },
+    { pos: '2', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['3']), [{ pos: '3', po: 1, a: 0 }]);
+  assert.deepEqual(computeSingleOutChainStats(['3', '3']), [{ pos: '3', po: 1, a: 0 }]);
+  assert.deepEqual(computeSingleOutChainStats([]), []);
+  assert.deepEqual(computeSingleOutChainStats(null), []);
+});
+
 test('链完成判定：TP 三人口径（2026-10-08 裁决）', () => {
   assert.equal(chainReadyForSettle('TP', ['SS', '2B', '1B'], 4), true);
   assert.equal(chainReadyForSettle('TP', ['3B', '3B', '2B', '1B'], 4), true);
@@ -94,7 +113,7 @@ test('批C 三杀门槛接入点（静态断言，防回退）', () => {
 
 test('LiveGame.js 接入点（静态断言，防回退）', () => {
   const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
-  assert.match(src, /import \{ computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady \} from '\.\.\/\.\.\/utils\/liveGameChainStats';/, '导入链统计、接杀回传与显示模块');
+  assert.match(src, /import \{ computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats \} from '\.\.\/\.\.\/utils\/liveGameChainStats';/, '导入链统计、接杀回传与显示模块');
   assert.match(src, /function applyChainFieldingStats\(type,fielders\)\{/, 'fp 统计分流函数存在');
   assert.match(src, /a\.stats\.batting\.ab=\(a\.stats\.batting\.ab\?\?0\)\+1,.*applyChainFieldingStats\(e\.playType,e\.fielders\)/, 'fp 通道已接入分流（不再直接 Dn(e.fielders)）');
   assert.match(src, /applyChainFieldingStats\("DP",t\)/, 'bt DP 回退通道已接入分流');
@@ -115,7 +134,7 @@ test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
   assert.match(src, /function hlBaseNear\(e,t\)\{/, 'hlBaseNear 垒包邻近判定');
   assert.match(src, /key:"force",label:"封杀出局"/, '封杀/触杀弹层选项');
   assert.match(src, /Array\.isArray\(g\.stepActions\)\|\|\(g\.stepActions=new Array\(g\.steps\.length-1\)\.fill\(null\)\)/, 'stepActions 对齐补 null');
-  assert.match(src, /g\.stepActions\.push\(p\)/, 'stepActions 写入');
+  assert.match(src, /g\.stepActions\.push\(\{action:p,base:s\}\)/, 'stepActions 写入动作与自踩垒包');
   assert.match(src, /key:`ssb-\$\{c\(hh\)\}`/, '垒包高亮渲染');
   assert.match(src, /class:"selfstep-base-hl"/, '垒包高亮 class');
   assert.match(src, /a\.steps\.push\(e\),Array\.isArray\(a\.stepActions\)&&a\.stepActions\.push\(null\),pt\(\);/, '点选 push 成对补位（E 链）');
@@ -129,4 +148,21 @@ test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
   assert.match(src, /tSuppressClick=0,t&&t\.stopPropagation/, 'tSuppressClick 一次性消费');
   const css = fs.readFileSync(new URL('../src/styles/legacy/live-game.css', import.meta.url), 'utf8');
   assert.ok(css.includes('.selfstep-base-hl[data-v-78b7b6a8]{'), '垒包高亮样式');
+});
+
+test('FC 自踩触杀贯通与单出局记账接入点（静态断言，防回退）', () => {
+  const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
+  assert.match(src, /computeSingleOutChainStats as LgSingleOutStats/, '导入单出局链记账');
+  assert.match(src, /function Dn\(e\)\{\r?\n\s*for\(const r of LgSingleOutStats\(e\)\)\{/, 'Dn 改用单出局纯函数');
+  assert.match(src, /resolveSingleOutChain as LgResolveOut/, '导入出局垒/方式判定');
+  assert.match(src, /lastStepAction=e\.steps\?\.length\?e\.stepActions\?\.\[e\.steps\.length-1\]\?\?null:null/, 'settle 取最后一步自踩动作');
+  assert.match(src, /bt\(e\.type,a,Sr\(e\),void 0,\{lastStepAction\}\)/, 'settle 把自踩动作传给 bt');
+  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{/, 'bt 接收链路元数据');
+  assert.match(src, /function fcApply\(fc_choice,r,t,a,meta\)\{/, 'fcApply 接收链路元数据');
+  assert.match(src, /fcApply\(fc_choice,r,t,a,meta\)/, 'bt 把元数据传给 fcApply');
+  assert.match(src, /fc_resolved=LgResolveOut\(\{[\s\S]{0,200}?chain:t,[\s\S]{0,120}?outFrom:fc_base,[\s\S]{0,120}?stepAction:meta\?\.lastStepAction/, 'fcApply 按自踩动作判定');
+  assert.match(src, /3:!!\(fc_old\[1\]&&fc_old\[2\]\)/, '三垒跑者仅满垒时才被迫进本垒');
+  assert.match(src, /Dn\(fc_resolved\.chain\)/, 'FC 按规整链记账');
+  assert.match(src, /outType:fc_resolved\.outType/, 'FC 日志使用判定后的出局方式');
+  assert.match(src, /outBase:fc_resolved\.outBase/, 'FC 日志使用判定后的出局垒');
 });
