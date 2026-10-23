@@ -1,5 +1,5 @@
 <template>
-  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing, 'is-reordering': layoutDragging }" v-loading="loading">
+  <div class="clubhouse-page" v-loading="loading">
     <template v-if="data">
       <div class="page-head">
         <div>
@@ -8,8 +8,6 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="!layoutEditing && activeModules.length" link type="primary" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
-          <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
         </div>
@@ -17,10 +15,10 @@
 
       <div class="scope-bar">
         <span class="scope-title">数据范围</span>
-        <el-select v-model="teamId" size="small" class="scope-select" :disabled="layoutEditing" @change="onTeamChange">
+        <el-select v-model="teamId" size="small" class="scope-select" @change="onTeamChange">
           <el-option v-for="team in teams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select" :disabled="layoutEditing || !scopeEvents.length" @change="load">
+        <el-select v-model="eventId" size="small" class="scope-select" :disabled="!scopeEvents.length" @change="load">
           <el-option v-for="event in scopeEvents" :key="event.id" :label="event.name" :value="event.id" />
         </el-select>
         <span class="scope-hint">上方数据按所选赛事聚合；队内排名按所选球队与赛事计算</span>
@@ -92,27 +90,7 @@
         <div class="id-item"><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
       </div>
 
-      <div v-if="layoutEditing" class="layout-edit-banner">
-        <div class="edit-copy">
-          <b>布局编辑</b>
-          <span>长按模块边框选中；拖动手柄或方向键调整大小，拖动「移动」换位</span>
-        </div>
-        <div class="edit-actions">
-          <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
-          <button type="button" class="edit-done" @click="finishLayoutEditing">完成</button>
-        </div>
-      </div>
-
-      <div v-if="activeModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }">
-      <section
-        v-if="isModuleVisible('ranks')"
-        class="rank-band dashboard-module"
-        data-module-key="ranks"
-        :tabindex="layoutEditing ? 0 : undefined"
-        :style="moduleLayoutStyle('ranks')"
-        @pointerdown="onModulePointerDown('ranks', $event)"
-        @keydown="onModuleKeydown('ranks', $event)"
-      >
+      <section class="rank-band">
         <div class="rank-band-head">
           <div><span class="kicker">TEAM RANKING</span><h2>队内坐标</h2></div>
           <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '全部赛事' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
@@ -133,15 +111,7 @@
         </div>
       </section>
 
-      <section
-        v-if="isModuleVisible('evaluation') && evaluationCards.length"
-        class="panel evaluation-panel dashboard-module"
-        data-module-key="evaluation"
-        :tabindex="layoutEditing ? 0 : undefined"
-        :style="moduleLayoutStyle('evaluation')"
-        @pointerdown="onModulePointerDown('evaluation', $event)"
-        @keydown="onModuleKeydown('evaluation', $event)"
-      >
+      <section v-if="evaluationCards.length" class="panel evaluation-panel">
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
@@ -232,93 +202,9 @@
         </p>
       </section>
 
-      <section
-        v-if="isModuleVisible('milestones')"
-        class="panel milestone-panel dashboard-module"
-        data-module-key="milestones"
-        :tabindex="layoutEditing ? 0 : undefined"
-        :style="moduleLayoutStyle('milestones')"
-        @pointerdown="onModulePointerDown('milestones', $event)"
-        @keydown="onModuleKeydown('milestones', $event)"
-      >
-        <div class="panel-head milestone-head">
-          <div>
-            <span class="kicker">CAREER MILESTONES</span>
-            <h3>生涯里程碑 <small>全租户生涯 · 跨赛事与球队</small></h3>
-          </div>
-          <div class="milestone-summary">
-            <span>已达成 <b>{{ milestoneData.reachedCount || 0 }}</b> 项</span>
-            <span>下一站 <b>{{ nextMilestoneText }}</b></span>
-          </div>
-        </div>
-
-        <div v-if="milestonesLoading" class="data-empty">正在加载生涯里程碑…</div>
-        <template v-else-if="milestoneData.available">
-          <div class="milestone-body">
-            <div class="milestone-metrics">
-              <article v-for="item in milestoneItems" :key="item.metricKey" class="milestone-metric" :class="item.domain">
-                <div class="mm-top">
-                  <span class="mm-short">{{ item.shortLabel }}</span>
-                  <span class="mm-domain">{{ milestoneDomainLabel(item.domain) }}</span>
-                </div>
-                <div class="mm-value">
-                  {{ item.value }}<span v-if="item.nextTarget">/ {{ item.nextTarget }}</span>
-                </div>
-                <div class="mm-label">{{ item.label }}</div>
-                <div class="mm-track"><i :style="{ width: `${item.progressPct}%` }"></i></div>
-                <div class="mm-foot">
-                  <span>{{ item.nextTarget ? `还差 ${item.remaining} ${item.unit}` : '已达最高里程碑' }}</span>
-                  <b>{{ item.progressPct }}%</b>
-                </div>
-              </article>
-            </div>
-            <div class="milestone-timeline">
-              <div class="mt-head"><b>最近里程碑</b><span>最近 {{ milestoneTimeline.length }} 项 / 共 {{ milestoneData.reachedCount || 0 }} 项</span></div>
-              <div v-if="milestoneTimeline.length" class="mt-scroll">
-                <div
-                  ref="milestoneListEl"
-                  class="mt-list"
-                  tabindex="0"
-                  role="region"
-                  aria-label="最近里程碑时间线"
-                  @scroll="updateMilestoneScrollbar"
-                >
-                  <div v-for="event in milestoneTimeline" :key="`${event.metricKey}-${event.gameId}-${event.title}`" class="mt-row">
-                    <span class="mt-dot"></span>
-                    <div class="mt-copy">
-                      <b>{{ event.title }}</b>
-                      <span>{{ event.eventName || '赛事' }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
-                    </div>
-                    <time>{{ formatMilestoneDate(event.gameday) }}</time>
-                  </div>
-                </div>
-                <div v-if="milestoneScroll.canScroll" class="mt-scrollbar" aria-hidden="true">
-                  <span
-                    class="mt-scroll-thumb"
-                    :style="milestoneThumbStyle"
-                    @pointerdown.prevent.stop="startMilestoneScrollDrag"
-                  ></span>
-                </div>
-              </div>
-              <p v-else class="mt-empty">还没有达成里程碑，继续保持。</p>
-              <p class="mt-note">{{ milestoneData.note || '统计自系统记录 · 仅计入排行的比赛' }}</p>
-            </div>
-          </div>
-        </template>
-        <div v-else class="data-empty">{{ milestonesError || '暂无生涯累计数据。' }}</div>
-      </section>
-
       <div class="content-grid">
         <div class="main-col">
-          <section
-            v-if="isModuleVisible('performance')"
-            class="panel data-panel dashboard-module"
-            data-module-key="performance"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('performance')"
-            @pointerdown="onModulePointerDown('performance', $event)"
-            @keydown="onModuleKeydown('performance', $event)"
-          >
+          <section class="panel data-panel">
             <div class="panel-head">
               <div><span class="kicker">PERFORMANCE</span><h3>数据表现 <small>{{ performanceScopeLabel }}</small></h3></div>
               <div class="panel-head-actions">
@@ -377,15 +263,7 @@
             </div>
           </section>
 
-          <section
-            v-if="isModuleVisible('schedule')"
-            class="panel dashboard-module"
-            data-module-key="schedule"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('schedule')"
-            @pointerdown="onModulePointerDown('schedule', $event)"
-            @keydown="onModuleKeydown('schedule', $event)"
-          >
+          <section class="panel">
             <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>跨赛事汇总</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
             <div v-if="nextGame" class="next-game">
               <div class="ng-head"><span class="event-pill">{{ nextGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(nextGame.gameday) }}</span></div>
@@ -410,15 +288,7 @@
             </div>
           </section>
 
-          <section
-            v-if="isModuleVisible('recentGames')"
-            class="panel dashboard-module"
-            data-module-key="recentGames"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('recentGames')"
-            @pointerdown="onModulePointerDown('recentGames', $event)"
-            @keydown="onModuleKeydown('recentGames', $event)"
-          >
+          <section class="panel">
             <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
             <div v-if="data.recentGames.length" class="recent-cards">
               <article v-for="game in data.recentGames" :key="game.gameId" class="result-card">
@@ -434,15 +304,7 @@
         </div>
 
         <aside class="side-col">
-          <section
-            v-if="isModuleVisible('teams')"
-            class="panel team-panel dashboard-module"
-            data-module-key="teams"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('teams')"
-            @pointerdown="onModulePointerDown('teams', $event)"
-            @keydown="onModuleKeydown('teams', $event)"
-          >
+          <section class="panel team-panel">
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
             <div v-for="team in teams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
               <span class="crest-lg">{{ teamCrest(team) }}</span>
@@ -452,15 +314,7 @@
             <div class="rep-scope"><span>球队积分按各队主赛事显示</span><el-button link type="primary" @click="goTeam">球队主页 ›</el-button></div>
           </section>
 
-          <section
-            v-if="isModuleVisible('about')"
-            class="panel about-panel dashboard-module"
-            data-module-key="about"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('about')"
-            @pointerdown="onModulePointerDown('about', $event)"
-            @keydown="onModuleKeydown('about', $event)"
-          >
+          <section class="panel about-panel">
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
             <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
             <div class="about-meta">
@@ -471,15 +325,7 @@
             </div>
           </section>
 
-          <section
-            v-if="isModuleVisible('quickLinks')"
-            class="panel dashboard-module"
-            data-module-key="quickLinks"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('quickLinks')"
-            @pointerdown="onModulePointerDown('quickLinks', $event)"
-            @keydown="onModuleKeydown('quickLinks', $event)"
-          >
+          <section class="panel">
             <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
             <div class="shortcut-list">
               <el-button link type="primary" class="shortcut" @click="goPublicProfile">公开球员主页</el-button>
@@ -488,66 +334,6 @@
             </div>
           </section>
         </aside>
-      </div>
-      </div>
-
-      <div
-        v-if="layoutEditing && selectedModule && selectionRect"
-        class="layout-selection-frame"
-        :style="selectionFrameStyle"
-      >
-        <div class="selection-toolbar">
-          <span class="selection-dot" aria-hidden="true"></span>
-          <b>{{ selectedModule.label }}</b>
-          <span class="selection-size">{{ selectionSizeLabel }}</span>
-          <button
-            type="button"
-            class="selection-move"
-            :class="{ 'is-dragging': layoutDragging }"
-            title="拖动换位；方向键上移/下移"
-            aria-label="拖动换位；方向键上移/下移"
-            :disabled="layoutSaving"
-            @pointerdown.prevent.stop="startReorder($event)"
-            @keydown="onReorderHandleKeydown($event)"
-            @contextmenu.prevent
-          >
-            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1v10M1 6h10M3.6 3.6 6 1l2.4 2.6M3.6 8.4 6 11l2.4-2.6M3.6 3.6 1 6l2.6 2.4M8.4 3.6 11 6 8.4 8.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            <span>{{ layoutDragging ? '拖动中' : '移动' }}</span>
-          </button>
-          <button type="button" class="selection-reset" :disabled="layoutSaving" @click="resetSelectedModuleSize">重置尺寸</button>
-          <button type="button" class="selection-close" aria-label="取消选中" @click="clearModuleSelection({ restoreFocus: true })">×</button>
-        </div>
-        <button
-          type="button"
-          class="resize-handle handle-r"
-          aria-label="调整宽度"
-          :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('width', $event)"
-          @keydown="onResizeHandleKeydown('width', $event)"
-        ></button>
-        <button
-          type="button"
-          class="resize-handle handle-b"
-          aria-label="调整高度"
-          :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('height', $event)"
-          @keydown="onResizeHandleKeydown('height', $event)"
-        ></button>
-        <button
-          type="button"
-          class="resize-handle handle-br"
-          aria-label="调整宽高"
-          :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('both', $event)"
-          @keydown="onResizeHandleKeydown('both', $event)"
-        ></button>
-      </div>
-
-      <div v-if="!activeModules.length" class="panel dashboard-empty">
-        <span class="kicker">EMPTY DASHBOARD</span>
-        <h3>所有内容模块已隐藏</h3>
-        <p>可以随时在数据设置里重新打开需要的内容。</p>
-        <el-button type="primary" @click="openSettings">去设置</el-button>
       </div>
     </template>
 
@@ -573,66 +359,7 @@
       :append-to-body="false"
       class="clubhouse-settings"
       destroy-on-close
-      @opened="initModuleSortable"
-      @closed="destroyModuleSortable"
     >
-      <div class="settings-section">
-        <div class="settings-label">模块布局</div>
-        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；宽高请在页面「编辑布局」中调整。</p>
-        <div ref="moduleListEl" class="module-sort-list">
-          <div
-            v-for="(module, index) in draft.modules"
-            :key="module.key"
-            class="module-sort-row"
-            :class="{ 'is-off': !module.enabled }"
-          >
-            <span class="module-drag" aria-hidden="true"></span>
-            <div class="module-sort-name">
-              <b>{{ module.label }}</b>
-              <span>{{ moduleSizeLabel(module) }}</span>
-            </div>
-            <div class="module-sort-actions">
-              <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveModule(index, -1)" />
-              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" aria-label="下移" @click="moveModule(index, 1)" />
-            </div>
-            <div class="module-switch" @click.self="module.enabled = !module.enabled">
-              <el-switch v-model="module.enabled" size="small" :aria-label="`显示${module.label}`" />
-            </div>
-          </div>
-        </div>
-        <div class="module-sort-count">已启用 {{ enabledDraftCount }} / {{ draft.modules.length }}</div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">生涯里程碑 · 最多 6 项</div>
-        <p class="settings-hint">选择要展示的累计指标；时间线会展示已选指标最近达成的里程碑。</p>
-        <el-select
-          v-model="draft.milestones.metricKeys"
-          multiple
-          filterable
-          :multiple-limit="6"
-          class="settings-control"
-        >
-          <el-option-group label="打击">
-            <el-option
-              v-for="metric in milestoneBattingOptions"
-              :key="metric.key"
-              :label="`${metric.label} ${metric.shortLabel}`"
-              :value="metric.key"
-            />
-          </el-option-group>
-          <el-option-group label="投球">
-            <el-option
-              v-for="metric in milestonePitchingOptions"
-              :key="metric.key"
-              :label="`${metric.label} ${metric.shortLabel}`"
-              :value="metric.key"
-            />
-          </el-option-group>
-        </el-select>
-        <div class="settings-count">已选 {{ draft.milestones.metricKeys.length }} / 6</div>
-      </div>
-
       <div class="settings-section">
         <div class="settings-label">表现图</div>
         <p class="settings-hint">选择要展示的指标与图表类型；不可用的指标会置灰。</p>
@@ -682,11 +409,10 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
-import Sortable from 'sortablejs';
+import { Setting } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
@@ -696,10 +422,6 @@ const router = useRouter();
 const { tenantCode } = useTenantRouter();
 
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
-const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
-const MAX_MODULE_HEIGHT_ROWS = 80;
-const MILESTONE_TRACK_INSET = 4;
-const mobileLayoutQuery = window.matchMedia('(max-width: 980px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
@@ -707,39 +429,12 @@ const teamId = ref(null);
 const eventId = ref(null);
 const settingsOpen = ref(false);
 const saving = ref(false);
-const pageEl = ref(null);
-const layoutEditing = ref(false);
-const layoutResizing = ref(false);
-const layoutDragging = ref(false);
-const layoutSaving = ref(false);
-const layoutStatus = ref('');
-const selectedModuleKey = ref('');
-const selectionRect = ref(null);
-const milestonePayload = ref(null);
-const milestonesLoading = ref(false);
-const milestonesError = ref('');
-const milestoneListEl = ref(null);
-const milestoneScroll = reactive({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
-const moduleListEl = ref(null);
-let milestoneScrollDrag = null;
-let milestoneResizeObserver = null;
-let moduleSortable = null;
-let pressState = null;
-let resizeState = null;
-let dragState = null;
-let selectionObserver = null;
-let keyboardLayoutSnapshot = null;
-let keyboardLayoutTimer = null;
-let selectionFrameRaf = 0;
-let layoutStatusTimer = null;
 let requestSeq = 0;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
 
 const draft = reactive({
   performance: { metricKey: 'batting.avg', viz: 'line' },
-  ranks: DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey })),
-  milestones: { metricKeys: [] },
-  modules: []
+  ranks: DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey }))
 });
 
 const player = computed(() => data.value?.player || {});
@@ -776,741 +471,6 @@ const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
 const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
-const milestoneData = computed(() => milestonePayload.value || {});
-const milestoneItems = computed(() => milestoneData.value.items || []);
-const milestoneTimeline = computed(() => milestoneData.value.timeline || []);
-const milestoneThumbStyle = computed(() => ({
-  height: `${milestoneScroll.thumbHeight}px`,
-  transform: `translateY(${milestoneScroll.thumbTop}px)`
-}));
-const milestoneCatalog = computed(() => data.value?.milestoneCatalog || []);
-const milestoneBattingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'batting'));
-const milestonePitchingOptions = computed(() => milestoneCatalog.value.filter((item) => item.domain === 'pitching'));
-watch(milestoneTimeline, async () => {
-  await nextTick();
-  if (milestoneListEl.value) {
-    milestoneListEl.value.scrollTop = 0;
-  }
-  updateMilestoneScrollbar();
-  observeMilestoneList();
-});
-const nextMilestoneText = computed(() => {
-  if (milestonesLoading.value) return '加载中';
-  if (milestonesError.value) return '暂不可用';
-  if (!milestoneItems.value.length) return '等待数据';
-  const next = milestoneItems.value.find((item) => item.nextTarget != null);
-  return next ? `${next.nextTarget} ${next.label}` : '已达最高里程碑';
-});
-const enabledDraftCount = computed(() => draft.modules.filter((module) => module.enabled).length);
-const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
-const moduleMeta = computed(() => Object.fromEntries(
-  moduleCatalog.value.map((item) => [item.key, item])
-));
-function clampModuleWidth(value, minSpan, maxSpan) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return minSpan;
-  return Math.min(maxSpan, Math.max(minSpan, Math.round(numeric)));
-}
-function clampModuleHeight(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.min(MAX_MODULE_HEIGHT_ROWS, Math.max(0, Math.round(numeric)));
-}
-function resolveModule(module) {
-  const meta = moduleMeta.value[module.key];
-  const minSpan = Number(meta?.minSpan) || 4;
-  const maxSpan = Number(meta?.maxSpan) || 12;
-  const width = clampModuleWidth(module.width ?? meta?.span ?? minSpan, minSpan, maxSpan);
-  return {
-    ...module,
-    enabled: module.enabled !== false,
-    label: meta?.label || module.label || module.key,
-    width,
-    height: clampModuleHeight(module.height),
-    minSpan,
-    maxSpan
-  };
-}
-function defaultModules() {
-  return DEFAULT_MODULE_KEYS.map((key) => resolveModule({ key }));
-}
-const activeModules = computed(() => {
-  const configured = data.value?.config?.modules;
-  const source = configured?.length ? configured : defaultModules();
-  return source.filter((module) => module.enabled !== false).map(resolveModule);
-});
-const moduleIndex = computed(() => new Map(activeModules.value.map((module, index) => [module.key, index])));
-function isModuleVisible(key) {
-  return moduleIndex.value.has(key);
-}
-function moduleLayoutStyle(key) {
-  const module = activeModules.value.find((item) => item.key === key);
-  return {
-    order: moduleIndex.value.get(key) ?? 0,
-    '--module-span': module?.width || 12,
-    '--module-min-h': module?.height ? `${module.height * 10}px` : '0px'
-  };
-}
-
-const selectedModule = computed(() => activeModules.value.find((item) => item.key === selectedModuleKey.value) || null);
-const selectionFrameStyle = computed(() => {
-  const rect = selectionRect.value;
-  if (!rect) return {};
-  return {
-    left: `${rect.left - 2}px`,
-    top: `${rect.top - 2}px`,
-    width: `${rect.width + 4}px`,
-    height: `${rect.height + 4}px`
-  };
-});
-const selectionSizeLabel = computed(() => {
-  const module = selectedModule.value;
-  const rect = selectionRect.value;
-  if (!module || !rect) return '';
-  const rows = Math.max(1, Math.round(rect.height / 10));
-  return `${module.width} 列 × ${rows} 行`;
-});
-
-function moduleElement(key) {
-  return document.querySelector(`.dashboard-module[data-module-key="${key}"]`);
-}
-
-function updateSelectionRect() {
-  if (!layoutEditing.value || !selectedModuleKey.value) {
-    selectionRect.value = null;
-    return;
-  }
-  const el = moduleElement(selectedModuleKey.value);
-  const page = pageEl.value;
-  if (!el || !page) {
-    selectionRect.value = null;
-    return;
-  }
-  const rect = el.getBoundingClientRect();
-  const pageRect = page.getBoundingClientRect();
-  selectionRect.value = {
-    left: rect.left - pageRect.left,
-    top: rect.top - pageRect.top,
-    width: rect.width,
-    height: rect.height
-  };
-}
-
-function scheduleSelectionFrame() {
-  if (selectionFrameRaf) return;
-  selectionFrameRaf = requestAnimationFrame(() => {
-    selectionFrameRaf = 0;
-    updateSelectionRect();
-  });
-}
-
-function selectModule(key, focusHandle = false) {
-  if (selectedModuleKey.value && selectedModuleKey.value !== key) {
-    flushKeyboardLayout();
-  }
-  selectedModuleKey.value = key;
-  updateSelectionRect();
-  nextTick(() => {
-    updateSelectionRect();
-    observeSelectedModule();
-    if (focusHandle) {
-      document.querySelector('.layout-selection-frame .handle-br')?.focus();
-    }
-  });
-}
-
-function clearModuleSelection({ restoreFocus = false } = {}) {
-  const key = selectedModuleKey.value;
-  if (dragState) cancelReorder();
-  flushKeyboardLayout();
-  selectedModuleKey.value = '';
-  selectionRect.value = null;
-  selectionObserver?.disconnect();
-  selectionObserver = null;
-  if (restoreFocus && key) {
-    nextTick(() => moduleElement(key)?.focus());
-  }
-}
-
-function observeSelectedModule() {
-  selectionObserver?.disconnect();
-  selectionObserver = null;
-  const key = selectedModuleKey.value;
-  const el = key ? moduleElement(key) : null;
-  if (!el || typeof ResizeObserver === 'undefined') return;
-  selectionObserver = new ResizeObserver(scheduleSelectionFrame);
-  selectionObserver.observe(el);
-}
-
-function onModulePointerDown(key, event) {
-  if (!layoutEditing.value || layoutSaving.value || resizeState || dragState) return;
-  if (event.pointerType === 'mouse' && event.button !== 0) return;
-  const el = event.currentTarget;
-  const rect = el.getBoundingClientRect();
-  const edge = 12;
-  const nearBorder = event.clientX - rect.left <= edge
-    || rect.right - event.clientX <= edge
-    || event.clientY - rect.top <= edge
-    || rect.bottom - event.clientY <= edge;
-  if (!nearBorder) return;
-  event.preventDefault();
-  cancelModulePress();
-  pressState = {
-    key,
-    startX: event.clientX,
-    startY: event.clientY,
-    timer: window.setTimeout(() => {
-      if (!pressState || pressState.key !== key) return;
-      pressState = null;
-      removePressListeners();
-      selectModule(key);
-    }, 350)
-  };
-  window.addEventListener('pointermove', onModulePressMove, true);
-  window.addEventListener('pointerup', cancelModulePress, true);
-  window.addEventListener('pointercancel', cancelModulePress, true);
-}
-
-function onModulePressMove(event) {
-  if (!pressState) return;
-  if (Math.hypot(event.clientX - pressState.startX, event.clientY - pressState.startY) > 8) {
-    cancelModulePress();
-  }
-}
-
-function onModuleKeydown(key, event) {
-  if (!layoutEditing.value) return;
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    flushKeyboardLayout();
-    selectModule(key, true);
-    return;
-  }
-  if (selectedModuleKey.value !== key) return;
-  const horizontal = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
-  const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
-  if (!horizontal && !vertical) return;
-  event.preventDefault();
-  adjustSelectedSize('both', horizontal, vertical);
-}
-
-function onResizeHandleKeydown(direction, event) {
-  const horizontal = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
-  const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
-  const changesWidth = direction !== 'height' && horizontal !== 0;
-  const changesHeight = direction !== 'width' && vertical !== 0;
-  if (!changesWidth && !changesHeight) return;
-  event.preventDefault();
-  adjustSelectedSize(direction, horizontal, vertical);
-}
-
-function adjustSelectedSize(direction, horizontal, vertical) {
-  if (!selectedModule.value || layoutSaving.value) return;
-  const changesWidth = direction !== 'height' && horizontal !== 0;
-  const changesHeight = direction !== 'width' && vertical !== 0;
-  if (!changesWidth && !changesHeight) return;
-  if (!keyboardLayoutSnapshot) {
-    keyboardLayoutSnapshot = currentModuleConfig();
-  }
-  const module = selectedModule.value;
-  if (changesWidth) {
-    updateModuleSize(module.key, {
-      width: clampModuleWidth(module.width + horizontal, module.minSpan, module.maxSpan)
-    });
-  }
-  if (changesHeight) {
-    const el = moduleElement(module.key);
-    const contentMin = el ? measureModuleContentHeight(el) : 0;
-    const minRows = Math.max(1, Math.ceil(contentMin / 10));
-    const currentRows = module.height || minRows;
-    const rows = Math.min(
-      MAX_MODULE_HEIGHT_ROWS,
-      Math.max(minRows, currentRows + vertical)
-    );
-    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
-  }
-  nextTick(updateSelectionRect);
-  scheduleKeyboardLayoutSave();
-}
-
-function scheduleKeyboardLayoutSave() {
-  if (keyboardLayoutTimer) window.clearTimeout(keyboardLayoutTimer);
-  keyboardLayoutTimer = window.setTimeout(() => {
-    keyboardLayoutTimer = null;
-    const snapshot = keyboardLayoutSnapshot;
-    keyboardLayoutSnapshot = null;
-    if (snapshot && moduleLayoutChanged(snapshot, currentModuleConfig())) {
-      persistLayout(snapshot);
-    }
-  }, 320);
-}
-
-function flushKeyboardLayout() {
-  if (keyboardLayoutTimer) {
-    window.clearTimeout(keyboardLayoutTimer);
-    keyboardLayoutTimer = null;
-  }
-  const snapshot = keyboardLayoutSnapshot;
-  keyboardLayoutSnapshot = null;
-  if (snapshot && moduleLayoutChanged(snapshot, currentModuleConfig())) {
-    persistLayout(snapshot);
-  }
-}
-
-function cancelKeyboardLayout() {
-  if (keyboardLayoutTimer) window.clearTimeout(keyboardLayoutTimer);
-  keyboardLayoutTimer = null;
-  keyboardLayoutSnapshot = null;
-}
-
-function onReorderHandleKeydown(event) {
-  if (!selectedModule.value || layoutSaving.value || dragState) return;
-  const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
-  if (!direction) return;
-  event.preventDefault();
-  const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
-  if (!moveSelectedModuleBy(direction)) return;
-  keyboardLayoutSnapshot = snapshot;
-  scheduleKeyboardLayoutSave();
-}
-
-function moveSelectedModuleBy(direction) {
-  const visible = activeModules.value;
-  const index = visible.findIndex((item) => item.key === selectedModuleKey.value);
-  if (index < 0) return false;
-  const target = visible[index + direction];
-  if (!target) return false;
-  const modules = ensureModuleRows();
-  if (!modules) return false;
-  const sourceIndex = modules.findIndex((item) => item.key === selectedModuleKey.value);
-  const targetIndex = modules.findIndex((item) => item.key === target.key);
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
-  [modules[sourceIndex], modules[targetIndex]] = [modules[targetIndex], modules[sourceIndex]];
-  nextTick(updateSelectionRect);
-  return true;
-}
-
-function startReorder(event) {
-  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
-  if (event.pointerType === 'mouse' && event.button !== 0) return;
-  cancelModulePress();
-  const pendingSnapshot = keyboardLayoutSnapshot;
-  cancelKeyboardLayout();
-  const key = selectedModule.value.key;
-  dragState = {
-    key,
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    lastX: event.clientX,
-    lastY: event.clientY,
-    moved: false,
-    lastTargetKey: '',
-    snapshot: pendingSnapshot || currentModuleConfig(),
-    raf: 0
-  };
-  layoutDragging.value = true;
-  moduleElement(key)?.classList.add('is-layout-dragging');
-  try {
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  } catch {
-    // 某些触控/旧浏览器不支持指针捕获，窗口监听仍可完成拖动
-  }
-  window.addEventListener('pointermove', onReorderMove, true);
-  window.addEventListener('pointerup', finishReorder, true);
-  window.addEventListener('pointercancel', finishReorder, true);
-  window.addEventListener('lostpointercapture', onLostPointerCapture, true);
-  window.addEventListener('blur', cancelReorder, true);
-  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
-}
-
-function onReorderMove(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
-  if (event.buttons === 0) {
-    finishReorder(event);
-    return;
-  }
-  event.preventDefault();
-  dragState.lastX = event.clientX;
-  dragState.lastY = event.clientY;
-  const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
-  if (!dragState.moved && distance < 4) return;
-  dragState.moved = true;
-  updateReorderTarget(event.clientX, event.clientY);
-}
-
-function updateReorderTarget(x, y) {
-  if (!dragState) return;
-  const stack = document.elementsFromPoint(x, y);
-  if (stack.some((el) => el.closest?.('.layout-selection-frame'))) {
-    dragState.lastTargetKey = '';
-    return;
-  }
-  for (const el of stack) {
-    const moduleEl = el.closest?.('.dashboard-module');
-    if (!moduleEl) continue;
-    if (moduleEl.dataset.moduleKey === dragState.key) {
-      dragState.lastTargetKey = '';
-      return;
-    }
-    reorderModuleTo(moduleEl.dataset.moduleKey);
-    return;
-  }
-  dragState.lastTargetKey = '';
-}
-
-function reorderModuleTo(targetKey) {
-  if (!dragState || !targetKey || targetKey === dragState.key) return false;
-  if (dragState.lastTargetKey === targetKey) return false;
-  const modules = ensureModuleRows();
-  if (!modules) return false;
-  const sourceIndex = modules.findIndex((item) => item.key === dragState.key);
-  const targetIndex = modules.findIndex((item) => item.key === targetKey);
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
-  const [moved] = modules.splice(sourceIndex, 1);
-  // The target's original index is the insert point for both directions:
-  // moving down lands after the target, moving up lands before it.
-  modules.splice(targetIndex, 0, moved);
-  dragState.lastTargetKey = targetKey;
-  nextTick(updateSelectionRect);
-  return true;
-}
-
-function finishReorder(event) {
-  if (!dragState) return;
-  if (event && event.pointerId !== undefined && event.pointerId !== dragState.pointerId) return;
-  const snapshot = dragState.snapshot;
-  clearReorderState();
-  nextTick(updateSelectionRect);
-  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
-    persistLayout(snapshot);
-  }
-}
-
-function onLostPointerCapture(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
-  finishReorder(event);
-}
-
-function cancelReorder() {
-  if (!dragState) return;
-  const snapshot = dragState.snapshot;
-  clearReorderState();
-  if (data.value?.config) {
-    data.value.config.modules = snapshot;
-  }
-  nextTick(updateSelectionRect);
-}
-
-function clearReorderState() {
-  if (!dragState) {
-    layoutDragging.value = false;
-    return;
-  }
-  if (dragState.raf) cancelAnimationFrame(dragState.raf);
-  moduleElement(dragState.key)?.classList.remove('is-layout-dragging');
-  dragState = null;
-  layoutDragging.value = false;
-  window.removeEventListener('pointermove', onReorderMove, true);
-  window.removeEventListener('pointerup', finishReorder, true);
-  window.removeEventListener('pointercancel', finishReorder, true);
-  window.removeEventListener('lostpointercapture', onLostPointerCapture, true);
-  window.removeEventListener('blur', cancelReorder, true);
-}
-
-function autoScrollDuringReorder() {
-  if (!dragState) return;
-  if (dragState.moved) {
-    const threshold = 48;
-    const y = dragState.lastY;
-    let delta = 0;
-    if (y < threshold) {
-      delta = -Math.min(12, Math.ceil(((threshold - y) / threshold) * 12));
-    } else if (y > window.innerHeight - threshold) {
-      delta = Math.min(12, Math.ceil(((y - (window.innerHeight - threshold)) / threshold) * 12));
-    }
-    if (delta) {
-      window.scrollBy(0, delta);
-      updateReorderTarget(dragState.lastX, dragState.lastY);
-    }
-  }
-  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
-}
-
-function cancelModulePress() {
-  if (pressState?.timer) window.clearTimeout(pressState.timer);
-  pressState = null;
-  removePressListeners();
-}
-
-function removePressListeners() {
-  window.removeEventListener('pointermove', onModulePressMove, true);
-  window.removeEventListener('pointerup', cancelModulePress, true);
-  window.removeEventListener('pointercancel', cancelModulePress, true);
-}
-
-function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !activeModules.value.length || mobileLayoutQuery.matches) return;
-  settingsOpen.value = false;
-  layoutEditing.value = true;
-  clearModuleSelection();
-  setLayoutStatus('');
-}
-
-function finishLayoutEditing() {
-  cancelModulePress();
-  if (dragState) cancelReorder();
-  if (resizeState) cancelResize();
-  layoutEditing.value = false;
-  clearModuleSelection();
-  setLayoutStatus('');
-}
-
-function onLayoutKeydown(event) {
-  if (!layoutEditing.value || event.key !== 'Escape') return;
-  cancelModulePress();
-  if (dragState) {
-    cancelReorder();
-    return;
-  }
-  if (resizeState) {
-    cancelResize();
-    return;
-  }
-  if (selectedModuleKey.value) {
-    clearModuleSelection({ restoreFocus: true });
-    return;
-  }
-  finishLayoutEditing();
-}
-
-function currentModuleConfig() {
-  const source = data.value?.config?.modules?.length ? data.value.config.modules : defaultModules();
-  return source.map((row) => {
-    const module = resolveModule(row);
-    return { key: module.key, enabled: module.enabled, width: module.width, height: module.height };
-  });
-}
-
-function ensureModuleRows() {
-  const config = data.value?.config;
-  if (!config) return null;
-  if (!Array.isArray(config.modules) || !config.modules.length) {
-    config.modules = currentModuleConfig();
-  }
-  return config.modules;
-}
-
-function updateModuleSize(key, patch) {
-  const modules = ensureModuleRows();
-  if (!modules) return;
-  const row = modules.find((item) => item.key === key);
-  if (row) Object.assign(row, patch);
-}
-
-function measureModuleContentHeight(el) {
-  const previousMinHeight = el.style.minHeight;
-  el.style.minHeight = '0px';
-  const height = Math.ceil(el.getBoundingClientRect().height);
-  el.style.minHeight = previousMinHeight;
-  return height;
-}
-
-function startResize(direction, event) {
-  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
-  const pendingSnapshot = keyboardLayoutSnapshot;
-  cancelKeyboardLayout();
-  const el = moduleElement(selectedModule.value.key);
-  const grid = document.querySelector('.dashboard-grid');
-  if (!el || !grid) return;
-  const rect = el.getBoundingClientRect();
-  const gridRect = grid.getBoundingClientRect();
-  const gap = 20;
-  const colWidth = (gridRect.width - gap * 11) / 12;
-  if (colWidth <= 0) return;
-  const contentMin = measureModuleContentHeight(el);
-  resizeState = {
-    direction,
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    startWidth: rect.width,
-    startHeight: rect.height,
-    colWidth,
-    gap,
-    contentMin,
-    snapshot: pendingSnapshot || currentModuleConfig()
-  };
-  layoutResizing.value = true;
-  window.addEventListener('pointermove', onResizeMove, true);
-  window.addEventListener('pointerup', finishResize, true);
-  window.addEventListener('pointercancel', finishResize, true);
-}
-
-function onResizeMove(event) {
-  if (!resizeState || event.pointerId !== resizeState.pointerId) return;
-  event.preventDefault();
-  const state = resizeState;
-  const module = selectedModule.value;
-  if (!module) return;
-  const dx = event.clientX - state.startX;
-  const dy = event.clientY - state.startY;
-  if (state.direction !== 'height') {
-    const width = state.startWidth + dx;
-    const span = clampModuleWidth(
-      Math.round((width + state.gap) / (state.colWidth + state.gap)),
-      module.minSpan,
-      module.maxSpan
-    );
-    updateModuleSize(module.key, { width: span });
-  }
-  if (state.direction !== 'width') {
-    const minRows = Math.max(1, Math.ceil(state.contentMin / 10));
-    const height = state.startHeight + dy;
-    const rows = Math.min(
-      MAX_MODULE_HEIGHT_ROWS,
-      Math.max(minRows, Math.round(height / 10))
-    );
-    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
-  }
-  scheduleSelectionFrame();
-}
-
-function finishResize(event) {
-  if (!resizeState) return;
-  if (event && event.pointerId !== undefined && event.pointerId !== resizeState.pointerId) return;
-  const snapshot = resizeState.snapshot;
-  clearResizeState();
-  const module = selectedModule.value;
-  const el = module ? moduleElement(module.key) : null;
-  if (module?.height && el) {
-    const contentMin = measureModuleContentHeight(el);
-    if (module.height * 10 <= contentMin + 5) {
-      updateModuleSize(module.key, { height: 0 });
-    }
-  }
-  nextTick(updateSelectionRect);
-  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
-    persistLayout(snapshot);
-  }
-}
-
-function cancelResize() {
-  if (!resizeState) return;
-  const snapshot = resizeState.snapshot;
-  clearResizeState();
-  if (data.value?.config) {
-    data.value.config.modules = snapshot;
-  }
-  nextTick(updateSelectionRect);
-}
-
-function clearResizeState() {
-  resizeState = null;
-  layoutResizing.value = false;
-  window.removeEventListener('pointermove', onResizeMove, true);
-  window.removeEventListener('pointerup', finishResize, true);
-  window.removeEventListener('pointercancel', finishResize, true);
-}
-
-function moduleLayoutChanged(before, after) {
-  if (before.length !== after.length) return true;
-  return before.some((item, index) => {
-    const next = after[index];
-    return !next
-      || item.key !== next.key
-      || item.width !== next.width
-      || item.height !== next.height;
-  });
-}
-
-function buildConfigPayload(modules) {
-  const config = data.value?.config || {};
-  const performance = config.performance?.metricKey
-    ? { ...config.performance }
-    : { metricKey: 'batting.avg', viz: 'line' };
-  const ranks = Array.isArray(config.ranks) && config.ranks.length
-    ? config.ranks.map((row) => ({ metricKey: row.metricKey }))
-    : DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey }));
-  const milestoneKeys = Array.isArray(config.milestones?.metricKeys)
-    ? [...config.milestones.metricKeys]
-    : [];
-  return {
-    version: 3,
-    layout: 'v3-modular',
-    modules: modules.map(({ key, enabled, width, height }) => ({
-      key,
-      enabled: enabled !== false,
-      width,
-      height
-    })),
-    milestones: { metricKeys: milestoneKeys },
-    performance,
-    ranks
-  };
-}
-
-async function persistLayout(snapshot) {
-  if (layoutSaving.value) return;
-  layoutSaving.value = true;
-  setLayoutStatus('saving');
-  try {
-    const saved = await clubhouseApi.saveConfig(buildConfigPayload(currentModuleConfig()));
-    if (saved && data.value) {
-      data.value.config = saved;
-    }
-    setLayoutStatus('saved');
-  } catch (error) {
-    if (snapshot && data.value?.config) {
-      data.value.config.modules = snapshot;
-    }
-    setLayoutStatus('');
-    ElMessage.error(error?.message || '布局保存失败');
-  } finally {
-    layoutSaving.value = false;
-    await nextTick();
-    updateSelectionRect();
-    observeSelectedModule();
-  }
-}
-
-function resetSelectedModuleSize() {
-  const module = selectedModule.value;
-  if (!module || layoutSaving.value) return;
-  cancelKeyboardLayout();
-  const snapshot = currentModuleConfig();
-  const defaultSpan = moduleMeta.value[module.key]?.span || 12;
-  updateModuleSize(module.key, { width: defaultSpan, height: 0 });
-  nextTick(updateSelectionRect);
-  persistLayout(snapshot);
-}
-
-function setLayoutStatus(status) {
-  layoutStatus.value = status;
-  if (layoutStatusTimer) {
-    window.clearTimeout(layoutStatusTimer);
-    layoutStatusTimer = null;
-  }
-  if (status === 'saved') {
-    layoutStatusTimer = window.setTimeout(() => {
-      if (layoutStatus.value === 'saved') layoutStatus.value = '';
-    }, 1600);
-  }
-}
-
-function onMobileLayoutChange(event) {
-  if (event.matches && layoutEditing.value) finishLayoutEditing();
-}
-
-function onViewportResize() {
-  updateMilestoneScrollbar();
-  if (!layoutEditing.value) return;
-  if (mobileLayoutQuery.matches) {
-    finishLayoutEditing();
-    return;
-  }
-  nextTick(updateSelectionRect);
-}
 const heroStats = computed(() => {
   const b = batting.value;
   if (hasBatting.value) {
@@ -1762,111 +722,6 @@ function formatDay(value) {
   return date.isValid() ? date.format('MM.DD') : (value || '--.--');
 }
 
-function formatMilestoneDate(value) {
-  const date = dayjs(value);
-  return date.isValid() ? date.format('YYYY.MM.DD') : (value || '日期未记录');
-}
-
-function milestoneScrollMetrics(el) {
-  const clientHeight = el.clientHeight;
-  const scrollHeight = el.scrollHeight;
-  return {
-    clientHeight,
-    scrollHeight,
-    trackHeight: Math.max(1, clientHeight - MILESTONE_TRACK_INSET * 2),
-    maxScroll: Math.max(1, scrollHeight - clientHeight)
-  };
-}
-
-function updateMilestoneScrollbar() {
-  const el = milestoneListEl.value;
-  const canScroll = el ? el.scrollHeight > el.clientHeight + 1 : false;
-  milestoneScroll.canScroll = canScroll;
-  if (!canScroll) {
-    milestoneScroll.thumbHeight = 0;
-    milestoneScroll.thumbTop = 0;
-    return;
-  }
-  const { clientHeight, scrollHeight, trackHeight, maxScroll } = milestoneScrollMetrics(el);
-  const thumbHeight = Math.min(
-    trackHeight,
-    Math.max(28, Math.round(trackHeight * clientHeight / scrollHeight))
-  );
-  const maxThumb = Math.max(0, trackHeight - thumbHeight);
-  milestoneScroll.thumbHeight = thumbHeight;
-  milestoneScroll.thumbTop = Math.round((el.scrollTop / maxScroll) * maxThumb);
-}
-
-function observeMilestoneList() {
-  milestoneResizeObserver?.disconnect();
-  milestoneResizeObserver = null;
-  const el = milestoneListEl.value;
-  if (!el || typeof ResizeObserver === 'undefined') return;
-  milestoneResizeObserver = new ResizeObserver(updateMilestoneScrollbar);
-  milestoneResizeObserver.observe(el);
-}
-
-function startMilestoneScrollDrag(event) {
-  const el = milestoneListEl.value;
-  if (!el || !milestoneScroll.canScroll || milestoneScrollDrag) return;
-  const { trackHeight, maxScroll } = milestoneScrollMetrics(el);
-  milestoneScrollDrag = {
-    pointerId: event.pointerId,
-    startY: event.clientY,
-    startScrollTop: el.scrollTop,
-    maxScroll,
-    maxThumb: Math.max(1, trackHeight - milestoneScroll.thumbHeight)
-  };
-  try {
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  } catch {
-    // 旧浏览器不支持指针捕获时仍可用窗口监听拖动
-  }
-  window.addEventListener('pointermove', onMilestoneScrollDrag, true);
-  window.addEventListener('pointerup', stopMilestoneScrollDrag, true);
-  window.addEventListener('pointercancel', stopMilestoneScrollDrag, true);
-  window.addEventListener('lostpointercapture', onMilestoneScrollLostCapture, true);
-}
-
-function onMilestoneScrollDrag(event) {
-  if (!milestoneScrollDrag || event.pointerId !== milestoneScrollDrag.pointerId) return;
-  if (event.buttons === 0) {
-    stopMilestoneScrollDrag();
-    return;
-  }
-  event.preventDefault();
-  const el = milestoneListEl.value;
-  if (!el) return;
-  const delta = event.clientY - milestoneScrollDrag.startY;
-  const ratio = milestoneScrollDrag.maxScroll / milestoneScrollDrag.maxThumb;
-  el.scrollTop = Math.min(
-    milestoneScrollDrag.maxScroll,
-    Math.max(0, milestoneScrollDrag.startScrollTop + delta * ratio)
-  );
-  updateMilestoneScrollbar();
-}
-
-function onMilestoneScrollLostCapture(event) {
-  if (!milestoneScrollDrag || event.pointerId !== milestoneScrollDrag.pointerId) return;
-  stopMilestoneScrollDrag();
-}
-
-function stopMilestoneScrollDrag(event) {
-  if (event && event.pointerId !== undefined
-      && milestoneScrollDrag && event.pointerId !== milestoneScrollDrag.pointerId) {
-    return;
-  }
-  milestoneScrollDrag = null;
-  window.removeEventListener('pointermove', onMilestoneScrollDrag, true);
-  window.removeEventListener('pointerup', stopMilestoneScrollDrag, true);
-  window.removeEventListener('pointercancel', stopMilestoneScrollDrag, true);
-  window.removeEventListener('lostpointercapture', onMilestoneScrollLostCapture, true);
-}
-
-function milestoneDomainLabel(domain) {
-  return domain === 'pitching' ? '投球' : '打击';
-}
-
 function weekday(value) {
   const date = dayjs(value);
   return date.isValid() ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.day()] : '';
@@ -1898,7 +753,7 @@ function recentLine(game) {
 }
 
 function openSettings() {
-  if (!data.value || layoutSaving.value) return;
+  if (!data.value) return;
   resetDraft();
   settingsOpen.value = true;
 }
@@ -1911,45 +766,6 @@ function resetDraft() {
   draft.ranks = DEFAULT_RANK_KEYS.map((metricKey, index) => ({
     metricKey: ranks[index]?.metricKey || metricKey
   }));
-  const modules = config.modules?.length ? config.modules : defaultModules();
-  draft.modules = modules.map(resolveModule);
-  const selectedMilestones = config.milestones?.metricKeys;
-  draft.milestones.metricKeys = selectedMilestones?.length
-    ? [...selectedMilestones]
-    : milestoneCatalog.value.filter((metric) => metric.defaultSelected).map((metric) => metric.key);
-}
-
-function moveModule(index, direction) {
-  const target = index + direction;
-  if (target < 0 || target >= draft.modules.length) return;
-  const [module] = draft.modules.splice(index, 1);
-  draft.modules.splice(target, 0, module);
-}
-
-function moduleSizeLabel(module) {
-  const width = `${module.width || 12} 列`;
-  return module.height ? `${width} · 至少 ${module.height * 10}px` : `${width} · 高度自适应`;
-}
-
-function initModuleSortable() {
-  destroyModuleSortable();
-  if (!moduleListEl.value) return;
-  moduleSortable = Sortable.create(moduleListEl.value, {
-    handle: '.module-drag',
-    animation: 150,
-    onEnd: ({ oldIndex, newIndex }) => {
-      if (oldIndex == null || newIndex == null || oldIndex === newIndex) return;
-      const [module] = draft.modules.splice(oldIndex, 1);
-      draft.modules.splice(newIndex, 0, module);
-    }
-  });
-}
-
-function destroyModuleSortable() {
-  if (moduleSortable) {
-    moduleSortable.destroy();
-    moduleSortable = null;
-  }
 }
 
 function onPerformanceMetricChange() {
@@ -1969,17 +785,11 @@ async function saveSettings() {
     ElMessage.warning('四个排名位需要选择不同指标');
     return;
   }
-  if (!draft.milestones.metricKeys.length) {
-    ElMessage.warning('生涯里程碑至少选择 1 个指标');
-    return;
-  }
   saving.value = true;
   try {
     await clubhouseApi.saveConfig({
-      version: 3,
-      layout: 'v3-modular',
-      modules: draft.modules.map(({ key, enabled, width, height }) => ({ key, enabled, width, height })),
-      milestones: { metricKeys: [...draft.milestones.metricKeys] },
+      version: 1,
+      layout: 'v3-fixed',
       performance: { ...draft.performance },
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
     });
@@ -2018,7 +828,6 @@ async function resetSettings() {
 
 function onTeamChange() {
   if (!data.value) return;
-  if (layoutEditing.value) finishLayoutEditing();
   eventId.value = scopeEvents.value[0]?.id ?? null;
   load();
 }
@@ -2032,9 +841,6 @@ async function load() {
   const seq = ++requestSeq;
   loading.value = true;
   loadError.value = '';
-  milestonePayload.value = null;
-  milestonesError.value = '';
-  milestonesLoading.value = false;
   try {
     const result = await clubhouseApi.dashboard({ teamId: teamId.value, eventId: eventId.value });
     if (seq !== requestSeq) return;
@@ -2046,11 +852,14 @@ async function load() {
     teamId.value = result.scope?.teamId ?? null;
     eventId.value = result.scope?.eventId ?? null;
     resetDraft();
-    void loadMilestones(seq);
   } catch (error) {
     if (seq !== requestSeq) return;
     if (isAuthSessionError(error)) {
-      await redirectToLogin();
+      await router.replace({
+        name: 'PortalAccountLogin',
+        params: { tenantCode: tenantCode.value },
+        query: { redirect: router.currentRoute.value.fullPath }
+      });
       return;
     }
     if (error?.apiCode === 404 || String(error?.message || '').includes('未关联')) {
@@ -2061,38 +870,6 @@ async function load() {
   } finally {
     if (seq === requestSeq) loading.value = false;
   }
-}
-
-async function loadMilestones(seq) {
-  if (!activeModules.value.some((module) => module.key === 'milestones')) {
-    milestonePayload.value = null;
-    milestonesLoading.value = false;
-    return;
-  }
-  milestonesLoading.value = true;
-  milestonesError.value = '';
-  try {
-    const result = await clubhouseApi.milestones();
-    if (seq !== requestSeq) return;
-    milestonePayload.value = result || {};
-  } catch (error) {
-    if (seq !== requestSeq) return;
-    if (isAuthSessionError(error)) {
-      await redirectToLogin();
-      return;
-    }
-    milestonesError.value = error?.message || '里程碑加载失败';
-  } finally {
-    if (seq === requestSeq) milestonesLoading.value = false;
-  }
-}
-
-async function redirectToLogin() {
-  await router.replace({
-    name: 'PortalAccountLogin',
-    params: { tenantCode: tenantCode.value },
-    query: { redirect: router.currentRoute.value.fullPath }
-  });
 }
 
 async function goUnclaimed() {
@@ -2123,50 +900,22 @@ function goGame(game) {
 
 onMounted(() => {
   document.documentElement.classList.add('clubhouse-route');
-  mobileLayoutQuery.addEventListener('change', onMobileLayoutChange);
-  window.addEventListener('resize', onViewportResize);
-  document.addEventListener('keydown', onLayoutKeydown);
   load();
 });
 onBeforeUnmount(() => {
-  destroyModuleSortable();
-  cancelModulePress();
-  cancelKeyboardLayout();
-  if (dragState) clearReorderState();
-  if (resizeState) clearResizeState();
-  selectionObserver?.disconnect();
-  milestoneResizeObserver?.disconnect();
-  if (milestoneScrollDrag) stopMilestoneScrollDrag();
-  if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
-  if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
-  mobileLayoutQuery.removeEventListener('change', onMobileLayoutChange);
-  window.removeEventListener('resize', onViewportResize);
-  document.removeEventListener('keydown', onLayoutKeydown);
   document.documentElement.classList.remove('clubhouse-route');
 });
 </script>
 
 <style scoped>
 /* 页面主体沿用 V3 设计令牌；桌面 12 栏、手机单栏。 */
-.clubhouse-page { position: relative; max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
+.clubhouse-page { max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
 .breadcrumb { font-size: 10px; color: var(--bs-text-faint); }
 .breadcrumb b { color: var(--bs-text-muted); font-weight: 500; }
 .page-head h1 { margin: 6px 0 0; font-size: 27px; line-height: 1.15; font-weight: 800; color: var(--bs-ink); }
 .page-sub { margin: 6px 0 0; font-size: 11px; color: var(--bs-text-muted); }
 .page-actions { display: flex; gap: 10px; }
-.layout-edit-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--bs-accent); border-radius: 10px; background: var(--bs-accent-soft); color: var(--bs-text); }
-.layout-edit-banner .edit-copy { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 11px; }
-.layout-edit-banner .edit-copy b { color: var(--bs-ink); font-weight: 800; white-space: nowrap; }
-.layout-edit-banner .edit-copy span { color: var(--bs-text-muted); }
-.layout-edit-banner .edit-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.layout-edit-banner .edit-status { font-size: 10px; color: var(--bs-text-muted); }
-.layout-edit-banner .edit-status.is-saved { color: var(--bs-success); }
-.layout-edit-banner .edit-done { height: 30px; padding: 0 13px; border: 1px solid var(--bs-accent); border-radius: 7px; color: var(--bs-on-accent); background: var(--bs-accent); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
-.layout-edit-banner .edit-done:hover { background: var(--bs-accent-hover); }
-.layout-edit-banner .edit-done:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.clubhouse-page.is-resizing, .clubhouse-page.is-reordering { user-select: none; }
-.clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; }
@@ -2314,92 +1063,12 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .eval-note i { flex: 0 0 auto; width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--bs-accent); }
 .eval-note span { flex: 1; }
 
-.milestone-panel { padding: 19px 21px 16px; }
-.milestone-head { align-items: flex-end; }
-.milestone-summary { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 10px; color: var(--bs-text-muted); }
-.milestone-summary b { margin-left: 3px; font-family: var(--bs-font-num); font-size: 13px; color: var(--bs-ink); }
-.milestone-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr); gap: 24px; margin-top: 14px; }
-.milestone-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
-.milestone-metric { --mm-color: var(--bs-chart-6); min-width: 0; padding: 11px 11px 9px; border: 1px solid var(--bs-hairline-soft); border-radius: 9px; background: var(--bs-surface-soft); }
-.milestone-metric.pitching { --mm-color: var(--bs-chart-3); }
-.mm-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.mm-short { font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; color: var(--mm-color); letter-spacing: .08em; }
-.mm-domain { font-size: 10px; color: var(--bs-text-muted); }
-.mm-value { margin-top: 5px; font-family: var(--bs-font-num); font-size: 26px; line-height: 1; font-weight: 700; letter-spacing: -.03em; color: var(--bs-ink); }
-.mm-value span { margin-left: 3px; font-size: 11px; font-weight: 500; color: var(--bs-text-muted); letter-spacing: 0; }
-.mm-label { margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--bs-text); }
-.mm-track { height: 3px; margin-top: 9px; overflow: hidden; border-radius: 99px; background: var(--bs-hairline); }
-.mm-track i { display: block; height: 100%; border-radius: 99px; background: var(--mm-color); }
-.mm-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10px; color: var(--bs-text-muted); }
-.mm-foot b { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
-.milestone-timeline { min-width: 0; padding-left: 20px; }
-.mt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--bs-hairline-soft); }
-.mt-head b { font-family: var(--bs-font-serif); font-size: 17px; color: var(--bs-ink); }
-.mt-head span { font-size: 10px; color: var(--bs-text-muted); }
-.mt-scroll { position: relative; }
-.mt-list { max-height: 238px; overflow-y: auto; overscroll-behavior: contain; padding-right: 14px; scrollbar-width: none; }
-.mt-list::-webkit-scrollbar { display: none; }
-.mt-list:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 3px; border-radius: 8px; }
-.mt-scrollbar { position: absolute; top: 4px; right: 0; bottom: 4px; width: 8px; border-radius: 99px; background: var(--bs-accent-soft); pointer-events: none; }
-.mt-scroll-thumb { position: absolute; top: 0; left: 0; width: 8px; border-radius: 99px; background: var(--bs-accent); cursor: grab; pointer-events: auto; touch-action: none; }
-.mt-scroll-thumb:active { cursor: grabbing; }
-.mt-row { position: relative; display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
-.mt-row::before { content: ""; position: absolute; left: 2px; top: 0; bottom: 0; border-left: 1px dashed var(--bs-accent); opacity: .58; pointer-events: none; }
-.mt-row:first-child::before { top: 16px; }
-.mt-row:last-child::before { bottom: calc(100% - 16px); }
-.mt-row:only-child::before { display: none; }
-.mt-row:last-child { border-bottom: 0; }
-.mt-dot { position: relative; z-index: 1; width: 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: var(--bs-accent); box-shadow: 0 0 0 3px var(--bs-accent-soft); }
-.mt-copy b { display: block; font-size: 11px; font-weight: 700; color: var(--bs-text); }
-.mt-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-muted); }
-.mt-row time { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
-.mt-note, .mt-empty { margin: 7px 0 0; font-size: 10px; color: var(--bs-text-muted); }
-.mt-empty { padding: 10px 0; }
-
 @media (max-width: 1120px) {
   .radar-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 20px; width: 100%; min-width: 0; }
-.dashboard-grid .panel,
-.dashboard-grid .rank-band { min-width: 0; }
-.dashboard-grid .dashboard-module { grid-column: span var(--module-span, 12); min-height: var(--module-min-h, 0px); }
-.dashboard-grid.layout-editing .dashboard-module { outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 160ms ease-out; user-select: none; }
-.dashboard-grid.layout-editing .dashboard-module:hover { outline-color: var(--bs-accent-soft); }
-.dashboard-grid.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
-.dashboard-grid.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
-.dashboard-grid .dashboard-module.is-layout-dragging { box-shadow: var(--bs-shadow-md); opacity: .92; }
-.dashboard-grid .rank-band,
-.dashboard-grid .evaluation-panel { margin-top: 0; }
-.layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 0 0 9999px rgba(7, 26, 51, .035); }
-.selection-toolbar { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px 0 10px; border: 1px solid var(--bs-accent); border-radius: 8px; background: var(--bs-surface); box-shadow: var(--bs-shadow-sm); color: var(--bs-text); font-size: 10px; white-space: nowrap; pointer-events: auto; }
-.selection-toolbar .selection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bs-success); flex: 0 0 auto; }
-.selection-toolbar b { color: var(--bs-ink); font-size: 11px; font-weight: 800; }
-.selection-toolbar .selection-size { color: var(--bs-text-muted); }
-.selection-toolbar .selection-move { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 24px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-size: 10px; font-weight: 700; cursor: grab; touch-action: none; }
-.selection-toolbar .selection-move:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
-.selection-toolbar .selection-move:active, .selection-toolbar .selection-move.is-dragging { cursor: grabbing; }
-.selection-toolbar .selection-move:disabled { opacity: .4; cursor: not-allowed; }
-.selection-toolbar .selection-move svg { width: 12px; height: 12px; }
-.selection-toolbar .selection-reset { padding: 3px 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-weight: 700; cursor: pointer; }
-.selection-toolbar .selection-reset:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
-.selection-toolbar .selection-close { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--bs-text-muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
-.selection-toolbar .selection-close:hover { background: var(--bs-surface-soft); color: var(--bs-ink); }
-.selection-toolbar button:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.resize-handle { position: absolute; padding: 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
-.resize-handle::before { content: ""; position: absolute; background: var(--bs-accent); }
-.resize-handle:disabled, .selection-toolbar .selection-reset:disabled { opacity: .4; cursor: not-allowed; }
-.resize-handle:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.resize-handle.handle-r { right: -12px; top: 50%; width: 24px; height: 44px; transform: translateY(-50%); cursor: ew-resize; }
-.resize-handle.handle-r::before { top: 50%; left: 50%; width: 9px; height: 32px; transform: translate(-50%, -50%); border-radius: 5px; }
-.resize-handle.handle-b { bottom: -12px; left: 50%; width: 44px; height: 24px; transform: translateX(-50%); cursor: ns-resize; }
-.resize-handle.handle-b::before { top: 50%; left: 50%; width: 32px; height: 9px; transform: translate(-50%, -50%); border-radius: 5px; }
-.resize-handle.handle-br { right: -12px; bottom: -12px; width: 24px; height: 24px; cursor: nwse-resize; }
-.resize-handle.handle-br::before { top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 2px solid var(--bs-accent); border-radius: 4px; background: var(--bs-surface); }
-.content-grid, .main-col, .side-col { display: contents; }
-.dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
-.dashboard-empty h3 { margin: 8px 0; font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
-.dashboard-empty p { margin: 0 0 16px; font-size: 11px; color: var(--bs-text-muted); }
+.content-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(310px, .72fr); gap: 20px; align-items: start; margin-top: 20px; }
+.main-col, .side-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .panel { background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 19px 20px; }
 .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 13px; }
 .kicker { display: block; font-size: 8px; font-weight: 700; letter-spacing: .16em; color: var(--bs-accent-ink); text-transform: uppercase; }
@@ -2504,31 +1173,12 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-grid.layout-editing .dashboard-module { transition: none; }
-}
 .page-state { padding: 80px 20px; }
 .state-detail { text-align: center; font-size: 11px; color: var(--bs-text-muted); }
 .settings-section { margin-bottom: 22px; }
 .settings-label { font-size: 13px; font-weight: 700; color: var(--bs-ink); }
 .settings-hint { margin: 5px 0 12px; font-size: 11px; line-height: 1.6; color: var(--bs-text-muted); }
 .settings-control { width: 100%; }
-.module-sort-list { border-top: 1px solid var(--bs-hairline-soft); }
-.module-sort-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--bs-hairline-soft); }
-.module-drag { position: relative; width: 24px; height: 24px; cursor: grab; opacity: .45; }
-.module-drag::before { content: ""; position: absolute; top: 50%; left: 50%; width: 12px; height: 18px; transform: translate(-50%, -50%); background-image: radial-gradient(circle, currentColor 1px, transparent 1.2px); background-size: 5px 6px; background-position: center; }
-.module-drag:active { cursor: grabbing; }
-.module-sort-name { min-width: 0; }
-.module-sort-name b { display: block; font-size: 12px; font-weight: 700; color: var(--bs-text); }
-.module-sort-name span { display: block; margin-top: 2px; font-size: 11px; color: var(--bs-text-muted); }
-.module-sort-actions { display: flex; gap: 1px; }
-.module-sort-actions :deep(.el-button) { width: 24px; height: 24px; margin-left: 0; padding: 0; }
-.module-switch { display: grid; place-items: center; width: 34px; height: 34px; cursor: pointer; }
-.module-sort-row :deep(.el-switch) { --el-switch-on-color: var(--bs-accent); --el-switch-off-color: var(--bs-hairline); }
-.module-sort-row.is-off .module-drag { opacity: .25; }
-.module-sort-row.is-off .module-sort-name span { color: var(--bs-text-muted); }
-.module-sort-count { margin-top: 8px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
-.settings-count { margin-top: 7px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
 
 /* 手机端：单列，玩家卡全宽，图表/矩阵/赛程堆叠。 */
 @media (max-width: 980px) {
@@ -2550,22 +1200,9 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .evaluation-panel { padding: 17px 16px 14px; }
   .eval-head { align-items: flex-start; flex-direction: column; gap: 8px; }
   .eval-meta { align-self: flex-end; }
-  .milestone-panel { padding: 17px 16px 14px; }
-  .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .milestone-summary { align-self: flex-end; flex-wrap: wrap; justify-content: flex-end; }
-  .milestone-body { grid-template-columns: 1fr; gap: 18px; }
-  .milestone-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .milestone-timeline { padding-left: 0; padding-top: 14px; border-top: 1px solid var(--bs-hairline-soft); }
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .dashboard-grid .dashboard-module { grid-column: 1 / -1; min-height: 0; }
-  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame { display: none !important; }
-  .dashboard-grid.layout-editing .dashboard-module > * { pointer-events: auto; }
-  .module-sort-row { grid-template-columns: 44px minmax(0, 1fr) auto auto; min-height: 52px; }
-  .module-drag { width: 44px; height: 44px; }
-  .module-sort-actions :deep(.el-button) { width: 44px; height: 44px; }
-  .module-switch { width: 44px; height: 44px; }
+  .content-grid { grid-template-columns: 1fr; }
   .recent-cards { grid-template-columns: 1fr; }
   .chart-summary { display: none; }
   .scope-bar { flex-wrap: wrap; }

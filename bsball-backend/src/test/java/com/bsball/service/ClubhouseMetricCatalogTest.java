@@ -12,21 +12,6 @@ import org.junit.jupiter.api.Test;
 class ClubhouseMetricCatalogTest {
 
     @Test
-    @DisplayName("默认配置包含九个模块并升级到 v3-modular")
-    void defaultConfigContainsModules() {
-        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
-
-        assertEquals(3, config.get("version"));
-        assertEquals("v3-modular", config.get("layout"));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
-        assertEquals(ClubhouseModuleCatalog.defaultModules(), modules);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> milestones = (Map<String, Object>) config.get("milestones");
-        assertEquals(6, ((List<?>) milestones.get("metricKeys")).size());
-    }
-
-    @Test
     @DisplayName("默认队内排名为打击率、安打、上垒率、打点，不包含全垒打")
     void defaultRanksExcludeHomeRuns() {
         Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();

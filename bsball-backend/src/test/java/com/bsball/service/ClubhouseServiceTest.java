@@ -47,8 +47,6 @@ class ClubhouseServiceTest {
     @Mock
     private ClubhouseEvaluationService evaluationService;
     @Mock
-    private ClubhouseMilestoneService milestoneService;
-    @Mock
     private UserClubhouseConfigService configService;
 
     private ClubhouseService service;
@@ -65,30 +63,12 @@ class ClubhouseServiceTest {
                 gameRepository,
                 statsService,
                 evaluationService,
-                milestoneService,
                 configService);
     }
 
     @AfterEach
     void tearDown() {
         CurrentUserHolder.clear();
-    }
-
-    @Test
-    @DisplayName("里程碑按需加载，使用当前用户配置")
-    void milestonesLoadOnDemand() {
-        CurrentUserHolder.set(7L, 1L);
-        Player player = new Player();
-        player.setId(10L);
-        player.setTenantId(1L);
-        when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
-                .thenReturn(Optional.of(player));
-        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
-        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
-        Map<String, Object> milestones = Map.of("available", true);
-        when(milestoneService.build(10L, null, config)).thenReturn(milestones);
-
-        assertEquals(milestones, service.getMilestones(7L));
     }
 
     @Test
@@ -127,16 +107,7 @@ class ClubhouseServiceTest {
         assertEquals("林嘉豪", playerView.get("name"));
         assertTrue(((List<?>) result.get("teams")).isEmpty());
         assertNotNull(result.get("catalog"));
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> moduleCatalog = (List<Map<String, Object>>) result.get("moduleCatalog");
-        assertEquals(9, moduleCatalog.size());
-        assertEquals("ranks", moduleCatalog.get(0).get("key"));
-        assertEquals("evaluation", moduleCatalog.get(1).get("key"));
-        assertEquals("milestones", moduleCatalog.get(2).get("key"));
-        assertEquals(12, moduleCatalog.get(2).get("span"));
-        assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
-        assertTrue(!result.containsKey("milestones"));
         assertEquals(4, ((List<?>) result.get("ranks")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");

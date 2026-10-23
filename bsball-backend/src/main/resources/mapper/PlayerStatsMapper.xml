@@ -363,7 +363,7 @@
           AND (#{rankingOnly} = false OR COALESCE(g.include_stats_in_ranking, true) = true)
         <include refid="gameModeFilter"/>
         ORDER BY g.gameday DESC, g.id DESC
-        <if test="limit != null">LIMIT #{limit}</if>
+        LIMIT #{limit}
     </select>
 
     <!-- 生涯打击钻取：valueSql 仅来自 PlayerStatDrillBattingMetric，禁止用户输入 -->

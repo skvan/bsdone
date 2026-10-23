@@ -186,20 +186,14 @@ public class StatsService {
         return this.loadGameLog(playerId, limit, gameMode, true);
     }
 
-    /** 生涯里程碑用：读取全部计入排行的比赛，不做 100 场截断。 */
-    public List<PlayerGameLogEntryDTO> getPlayerGameLogForMilestones(Long playerId, String gameMode) {
-        return this.loadGameLog(playerId, null, gameMode, true);
-    }
-
-    private List<PlayerGameLogEntryDTO> loadGameLog(Long playerId, Integer limit, String gameMode, boolean rankingOnly) {
-        if (playerId == null || (limit != null && limit <= 0)) {
+    private List<PlayerGameLogEntryDTO> loadGameLog(Long playerId, int limit, String gameMode, boolean rankingOnly) {
+        if (playerId == null || limit <= 0) {
             return List.of();
         }
         try {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
-            Integer queryLimit = limit == null ? null : Integer.valueOf(Math.min(limit, 100));
-            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), queryLimit, gm, rankingOnly);
+            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), Math.min(limit, 100), gm, rankingOnly);
             ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
             for (Map<String, Object> row : rows) {
                 PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
