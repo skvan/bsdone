@@ -5383,7 +5383,7 @@ var sg={
       if(t?.type===x_){
         const a=Lt.value??R.value;
         if(!a||Number(t.gameId??a)!==Number(a))return;
-        gl()
+        watchRespondSnapshot(e.source)
       }
       
     }
@@ -5421,6 +5421,26 @@ var sg={
         
       }
       
+    }
+    // 观赛页主动请求快照：直接回复请求窗口并落本地缓存，不依赖打开观赛时记住的窗口集合
+    function watchRespondSnapshot(e){
+      const t=Lt.value??R.value;
+      if(!t||!Re.value||!F.value)return;
+      const a=pa({
+        includeUndoStacks:!1
+      }
+      );
+      if(!a)return;
+      const s={
+        type:R_,gameId:Number(t),payload:a,sentAt:Date.now()
+      };
+      console.log("[LiveDebug] watchRespondSnapshot: gameId:",Number(t),"homeLineup:",a.homeLineup?.length,"awayLineup:",a.awayLineup?.length);
+      try{
+        e?.postMessage(s,window.location.origin)
+      }
+      catch{
+      }
+      gl(a),Bi(a)
     }
     function Bi(e){
       if(!F.value||!Re.value)return;
