@@ -5,7 +5,9 @@
       <el-table-column label="球员" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">{{ nameOf(row) }}</template>
       </el-table-column>
-      <el-table-column prop="position" label="POS" width="70" align="center" />
+      <el-table-column label="POS" width="70" align="center">
+        <template #default="{ row }">{{ row.position || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="po" label="PO" width="64" align="center" />
       <el-table-column prop="a" label="A" width="64" align="center" />
       <el-table-column prop="e" label="E" width="64" align="center" />
@@ -22,6 +24,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { buildFieldingDisplayRows } from '../../utils/gameFieldingRows.js';
 
 const props = defineProps({
   stats: { type: Array, default: () => [] },
@@ -30,15 +33,7 @@ const props = defineProps({
   playersMap: { type: Object, default: () => ({}) }
 });
 
-const excluded = new Set(['P', 'DH', 'PH']);
-const rows = computed(() => (props.stats || []).filter((row) => {
-  if (String(row.teamId) !== String(props.teamId)) return false;
-  const pos = String(row.position || '').toUpperCase();
-  if (!pos || excluded.has(pos)) return false;
-  return Number(row.po) || Number(row.a) || Number(row.e) || Number(row.dp)
-    || Number(row.defInn) || Number(row.pb) || Number(row.catcherSb) || Number(row.catcherCs)
-    || Number(row.tc);
-}));
+const rows = computed(() => buildFieldingDisplayRows(props.stats, props.teamId));
 
 const title = computed(() => `${props.teamName || ''} 守备`.trim());
 

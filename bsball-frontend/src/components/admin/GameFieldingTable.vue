@@ -49,7 +49,10 @@ const columns = [
   { key: 'a', label: 'A', width: 70, max: 99, step: 1, precision: 0 },
   { key: 'e', label: 'E', width: 70, max: 99, step: 1, precision: 0 },
   { key: 'dp', label: 'DP', width: 70, max: 99, step: 1, precision: 0 },
-  { key: 'defInn', label: 'INN', width: 80, max: 30, step: 0.1, precision: 1 }
+  { key: 'defInn', label: 'INN', width: 80, max: 30, step: 0.1, precision: 1 },
+  { key: 'pb', label: 'PB', width: 70, max: 99, step: 1, precision: 0 },
+  { key: 'catcherSb', label: 'SB', width: 70, max: 99, step: 1, precision: 0 },
+  { key: 'catcherCs', label: 'CS', width: 70, max: 99, step: 1, precision: 0 }
 ];
 
 function setValue(row, key, value) {
