@@ -1,7 +1,7 @@
 # 球员批量导入：外部辅助工具与接口契约
 
 > 本文描述**仓库外**的一个 Python 批量导入工具，以及它与后端接口的对接契约。
-> 目的：当球员资料以「千行计」时，避免在管理台逐笔点击；同时把两个会让人「以为工具坏了」的坑写清楚。
+> 目的：当球员资料以「千行计」时，避免在管理台逐笔点击；同时把三个会让人「以为工具坏了」的坑写清楚。
 >
 > **工具本体不在本仓库**（本仓库目前没有任何 `.py` 文件）。是否收进来由维护者决定，见文末。
 
@@ -30,12 +30,12 @@
 |---|---|---|
 | 登录 | `POST /auth/login`，body `{username, password}` → `data.token` | `AuthApi.java:74` |
 | 取球队 ID 清单 | `GET /team/list` | `TeamApi.java:54` |
-| 批量导入 | `POST /player/import`，body `{"items":[…Player…], "duplicateStrategy":"overwrite"|"skip"}` → `{created, updated, skipped}` | `PlayerApi.java:163`、`PlayerService.java:1090` |
+| 批量导入 | `POST /player/import`，body `{"items":[…Player…], "duplicateStrategy":"overwrite"|"skip"}` → `{created, updated, skipped}` | `PlayerApi.java:163`、`PlayerService.java:1086` |
 
 - 请求体类型是 `record PlayerImportRequest(List<Player> items, String duplicateStrategy)`，也就是 **items 直接反序列化成 `Player` 实体**，字段名必须用实体属性名。
-- `duplicateStrategy` 判定为 `"overwrite".equalsIgnoreCase(...)`，其余一律视为跳过（`PlayerService.java:1112`）。
+- `duplicateStrategy` 判定为 `"overwrite".equalsIgnoreCase(...)`，其余一律视为跳过（`PlayerService.java:1108`）。
 - 回传只有 `created / updated / skipped` 三个计数。**`name` 为空白的行会直接算进 `skipped`**（不报错、不写库）。
-- 实际落库写两张表：`bs_player`（`Player` 是 `@Entity @Table(name="bs_player")`）与球员-球队关联表 `bs_player_team`——每笔新建或覆盖后都会 `syncLegacyEntry()` 重算关联并 create/update/delete 关联行。
+- 实际落库写两张表：`bs_player`（`Player` 是 `@Entity @Table(name="bs_player")`）与球员-球队关联表 `bs_player_team`——每笔新建或覆盖后都会 `syncLegacyEntry()` 重算关联并 create/update 关联行（不删除既有经历）。
 - 后续三个请求都带 `Authorization: Bearer <token>`；导入落在**该账号自己的租户上下文**（`batchImport` 取 `tenantQueryPolicyService.requiredTenantId()`），跨租户的 `teamId` 会被一致性校验拒绝。
 
 字段对应（Excel 中文标题 → `Player` 属性，21 项）：
@@ -47,7 +47,7 @@
 状态→status  联络电话→contactPhone  联络Email→contactEmail  简介→intro  排序→sort
 ```
 
-必填：`name`、`number`、`teamId`。注意 `birthDate / height / weight` 在实体上是 **String**（不是日期/数字），`sort` 是 `Integer`、`teamId` 是 `Long`，`intro` 上限 2000 字。
+必填：`name`（空白行会计入 `skipped`）。`number`、`teamId` 没有 DTO 级必填校验；但受限身份建档时 `teamId` 不能为空且必须是其可管理的球队，否则会被 `assertCanCreateUnclaimedPlayer` 以 403 拒绝。注意 `birthDate / height / weight` 在实体上是 **String**（不是日期/数字），`sort` 是 `Integer`、`teamId` 是 `Long`，`intro` 上限 2000 字。
 
 ## 坑一：登录验证码默认开启（会让工具直接登不进去）
 
@@ -71,7 +71,7 @@ curl -s '<server>/auth/captcha/options'   # 看 enabled 是 true 还是 false
 三种走法，择一：
 
 1. 在导入用的环境把验证码关掉：环境变量 `APP_AUTH_CAPTCHA_ENABLED=false`，或该租户在「配置管理」把 `authCaptchaEnabled` 存为 false（库内配置会覆盖 yml 默认）。**导入完记得恢复。**
-2. 用带验证码的正式流程：`/auth/captcha/image` 出题、`/auth/captcha/verify-click` 或 `/auth/captcha/verify-drag` 人机验证通过后再带 `captchaId` 登录——需要人工互动，目前得改工具才支持。
+2. 用带验证码的正式流程：`/auth/captcha/image` 出题、`/auth/captcha/verify-click` 或 `/auth/captcha/verify-drag` 人机验证通过后，把响应里的 `verifyToken` 作为 `captchaVerifyToken`，连同 `captchaId` 一起提交登录——需要人工互动，目前得改工具才支持。
 3. 只在测试租户/测试环境使用，不动正式租户配置。
 
 ## 坑二：去重键已经不是「姓名 + 背号」
@@ -98,7 +98,7 @@ p.setCreatedAt(existing.getCreatedAt());
 playerRepository.save(p);      // JPA merge → 全部栏位一起写回
 ```
 
-`p` 是由 Excel 行直接反序列化出来的 `Player`，**Excel 里没填的属性就是 null**，于是 merge 会把这些栏位一并写成 null；只有实体自带默认值的两个栏位会被重置成默认而非 null——`status`（默认 `"active"`）与 `sort`（默认 `0`）。
+`p` 是由 Excel 行直接反序列化出来的 `Player`，**Excel 里没填的属性就是 null**，于是 merge 会把这些栏位一并写成 null；实体自带默认值的栏位则会被重置成默认——`status`（默认 `"active"`）、`sort`（默认 `0`）与 `platformOwned`（默认 `false`）。因此 `userId` 等未填栏位会被清空，平台归属标记也会被重置。
 
 所以：
 
@@ -108,7 +108,7 @@ playerRepository.save(p);      // JPA merge → 全部栏位一起写回
 
 ## 权限面
 
-`/player/import` 包含在 `team_manager` 的角色谓词内（`InitDataRunner.java:1330-1353`），球队管理员可用。另外每次建立未认领球员会过 `resourceGuard.assertCanCreateUnclaimedPlayer(teamId)`，额度或归属受限时会失败。
+`/player/import` 包含在 `team_manager` 的角色谓词内（`InitDataRunner.java:1330-1353`），球队管理员可用。另外每次建立未认领球员会过 `resourceGuard.assertCanCreateUnclaimedPlayer(teamId)`：不受限身份可建无队球员；受限身份必须提供其可管理的球队，`teamId` 为空或越权时返回 403。
 
 ## 建议的验收顺序
 
