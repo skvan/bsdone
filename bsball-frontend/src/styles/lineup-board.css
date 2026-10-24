@@ -12,15 +12,10 @@
   background: rgba(103, 194, 58, 0.12); color: #529b2e; font-size: 13px;
 }
 
-/* 球场自适应（#344）：列宽上限由页面实测「球场顶部 → 视口底部」的可用高度与容器宽度计算
-   （useLineupCanvasFit / utils/lineupCanvasFit，经 --lineup-field-cap 下发）；未测量前用 calc 兜底，
-   常量 = 页头与表单等上方占用 + 底部留白。右侧两列设上限防高屏过宽，整版居中 */
-.lineup-board { display: grid; grid-template-columns: minmax(300px, var(--lineup-field-cap, calc((100vh - 435px) * 400 / 470))) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
-
-/* 设置区条件压缩：仅在画布需要让位时（球场上限 < 480px 且高度受限）由页面加 form-compact 切换为两行 */
-.live-game-lineup-board.form-compact .setup-form .el-form-item { margin-bottom: 10px; }
-.live-game-lineup-board.form-compact .el-divider--horizontal { margin: 12px 0; }
-.live-game-lineup-board.form-compact .team-switch { margin: 4px 0 8px; }
+/* 球场按可用宽度填满（#415）：列宽上限 = 容器宽 - 右侧两列上限 560 - 间距 28；
+   宽屏三列铺满，窄屏球场保底 300px、右侧两列吸收余量并居中；
+   画布高度随 400:470 比例增长，页面纵向滚动查看完整守位 */
+.lineup-board { display: grid; grid-template-columns: minmax(300px, calc(100% - 588px)) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
 
 /* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中） */
 .lineup-field { position: relative; width: 100%; }
@@ -128,6 +123,7 @@ body.lineup-dragging .lineup-pool__section.is-drop-over { border-color: #67c23a;
 .lineup-pool__cards { display: flex; flex-wrap: wrap; gap: 6px; }
 .lineup-pool__count { color: #909399; font-size: 12px; }
 
+/* 仅保留 EP 未开放等画布上看不出来的规则提示 */
 .lineup-warn { margin-top: 10px; color: #f56c6c; font-size: 13px; }
 
 /* 移动端：球场撑满、上下堆叠；池/替补卡片字号上调（球场卡片保持小方块） */
