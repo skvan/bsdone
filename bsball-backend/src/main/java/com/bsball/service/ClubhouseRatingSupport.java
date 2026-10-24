@@ -29,7 +29,8 @@ public final class ClubhouseRatingSupport {
     /**
      * 计算 wOBA（参考值）。
      *
-     * <p>分子为固定业余权重加权，分母为 AB + BB − IBB + SF + HBP；分母不为正时返回 0。</p>
+     * <p>分子为固定业余权重加权，分母为 AB + BB − IBB + SF + HBP；分母不为正时返回 0。
+     * 场内本垒打（insideParkHr）与普通本垒打同样按本垒打权重计入，且不计入 singles。</p>
      *
      * @param row 打击统计行，接受数值或字符串数值
      * @return wOBA；无有效打席口径时返回 0
@@ -48,7 +49,7 @@ public final class ClubhouseRatingSupport {
                 + WOBA_SINGLE * number(row, "singles")
                 + WOBA_DOUBLE * number(row, "doubles")
                 + WOBA_TRIPLE * number(row, "triples")
-                + WOBA_HOME_RUN * number(row, "hr")
+                + WOBA_HOME_RUN * (number(row, "hr") + number(row, "insideParkHr"))
                 + WOBA_STOLEN_BASE * number(row, "sb")
                 - WOBA_CAUGHT_STEALING * number(row, "cs");
         return numerator / denominator;
@@ -57,7 +58,9 @@ public final class ClubhouseRatingSupport {
     /**
      * 计算 FIP（参考值）：{@code (13×HR + 3×(BB+HBP) − 2×SO) / IP + C}。
      *
-     * @param row      投球统计行，键为 pitchHr/pitchBb/pitchHbp/pitchSo/ip
+     * <p>HR 含场上本垒打与被场内本垒打（pitchHr + pitchInsideParkHr）。</p>
+     *
+     * @param row      投球统计行，键为 pitchHr/pitchInsideParkHr/pitchBb/pitchHbp/pitchSo/ip
      * @param constant 租户级 FIP 常数，通常由 {@link #fipConstant(List)} 得出
      * @return FIP；无有效投球局时返回 0
      */
@@ -69,7 +72,7 @@ public final class ClubhouseRatingSupport {
         if (innings <= 0) {
             return 0.0;
         }
-        double raw = (13.0 * number(row, "pitchHr")
+        double raw = (13.0 * (number(row, "pitchHr") + number(row, "pitchInsideParkHr"))
                 + 3.0 * (number(row, "pitchBb") + number(row, "pitchHbp"))
                 - 2.0 * number(row, "pitchSo")) / innings;
         return raw + constant;
@@ -128,7 +131,8 @@ public final class ClubhouseRatingSupport {
     /**
      * 反推租户/联盟级 FIP 常数：{@code 联盟平均 ERA − 联盟原始 FIP}。
      *
-     * <p>先按投球局数汇总整个投球池的 HR/BB/HBP/SO/IP/ER，再用合计值计算，避免逐人平均的偏差。
+     * <p>先按投球局数汇总整个投球池的 HR（含 pitchHr + pitchInsideParkHr）/BB/HBP/SO/IP/ER，
+     * 再用合计值计算，避免逐人平均的偏差。无投球局的统计行整行跳过，避免只累加分子造成的偏差。
      * 池内无有效投球局时返回 0，调用方应标注“参考 FIP”。</p>
      *
      * @param pitchingRows 投球统计行集合，可为 null
@@ -143,12 +147,16 @@ public final class ClubhouseRatingSupport {
             if (row == null) {
                 continue;
             }
-            totals.homeRuns += number(row, "pitchHr");
+            double innings = decimalInnings(row);
+            if (innings <= 0) {
+                continue;
+            }
+            totals.homeRuns += number(row, "pitchHr") + number(row, "pitchInsideParkHr");
             totals.walks += number(row, "pitchBb");
             totals.hitByPitch += number(row, "pitchHbp");
             totals.strikeouts += number(row, "pitchSo");
             totals.earnedRuns += number(row, "er");
-            totals.innings += decimalInnings(row);
+            totals.innings += innings;
         }
         if (totals.innings <= 0) {
             return 0.0;
