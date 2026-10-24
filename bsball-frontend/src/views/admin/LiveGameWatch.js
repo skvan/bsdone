@@ -31,6 +31,7 @@ import { getLineHead as It } from '../../utils/liveGameFieldLayout';
 import { groupLinesIntoBlocks as La } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as Fa } from '../../utils/liveGameFieldLayout';
 import { getFinalCount as Aa } from '../../utils/liveGameFieldLayout';
+import { resolveAtBatGroupBases } from '../../utils/liveGameGroupBases';
 import '../../styles/legacy/live-game-watch.css';
 var Ta={
   class:"header-left"
@@ -392,7 +393,7 @@ var Ta={
       }
       
     }
-    ),ve=f([]),ne=f([]),at=f({
+    ),ve=f([]),activeContext=f(null),ne=f([]),at=f({
       
     }
     ),At=I(()=>{
@@ -508,13 +509,16 @@ var Ta={
       :l
     }
     function K(e,t,a){
-      return oe(t,a,e)?{
-        1:H[1],2:H[2],3:H[3]
-      }
-      :$e(t,a,e)?.basesBefore??{
-        1:!1,2:!1,3:!1
-      }
-      
+      const current=oe(t,a,e);
+      const active=current?activeContext.value:null;
+      const currentBatter=ut();
+      const activeBases=active&&(active.batterId==null||currentBatter?.id==null||Number(active.batterId)===Number(currentBatter.id))?active.basesBefore:null;
+      return resolveAtBatGroupBases({
+        isCurrent:current,
+        liveBases:{1:H[1],2:H[2],3:H[3]},
+        summary:$e(t,a,e),
+        activeBases
+      })
     }
     function Ct(){
       return`${_.inning}-${_.isTop?"top":"bottom"}`
@@ -850,7 +854,7 @@ var Ta={
       b(t,"home"),b(a,"away"),b(l,"homeB"),b(r,"awayB")
     }
     function vt(){
-      H[1]=!1,H[2]=!1,H[3]=!1
+      H[1]=!1,H[2]=!1,H[3]=!1,activeContext.value=null
     }
     function Kt(e){
       if(vt(),!e)return;
@@ -913,7 +917,7 @@ var Ta={
       }
       ne.value=Fa(e.eventLog);
       const o=e.atBatSummaries;
-      ve.value=Array.isArray(o)?o:[],Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
+      ve.value=Array.isArray(o)?o:[],activeContext.value=e.activeAbContext??null,Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
     }
     async function ke(force){
       if($.value||(!force&&Date.now()-Fe.value<4e3))return;
