@@ -1,7 +1,7 @@
-// 棒球术语表与公式 —— 行为移植自编译产物 baseballGlossary chunk（逐字）
+// 棒球术语表与公式 —— 行为移植自编译产物 baseballGlossary chunk；移除未使用的 hb 键（#387）
 const GLOSSARY_KEYS = new Set([
   'pa', 'gp', 'g', 'ab', 'oneB', 'r', 'h', 'pitchH', 'twoB', 'threeB', 'hr', 'iphr', 'pitchHr', 'pitchInsideParkHr',
-  'rbi', 'bb', 'pitchBb', 'ibb', 'hbp', 'hb', 'so', 'pitchSo', 'w', 'l', 'gs', 'cg', 'pg', 'sho', 'sv', 'svo',
+  'rbi', 'bb', 'pitchBb', 'ibb', 'hbp', 'so', 'pitchSo', 'w', 'l', 'gs', 'cg', 'pg', 'sho', 'sv', 'svo',
   'ip', 'tbf', 'bf', 'pitchBf', 'np', 'pIp', 'qs', 'gf', 'pitchR', 'er', 'era', 'whip', 'so9', 'bb9', 'h9',
   'kBb', 'avgAgainst', 'sbAllowed', 'csAllowed', 'pk', 'sh', 'sac', 'sf', 'gdp', 'gidp', 'goFo', 'goAo', 'xbh',
   'tb', 'babip', 'iso', 'abHr', 'bbK', 'bbPct', 'kPct', 'fip', 'eraPlus', 'inn', 'tc', 'po', 'a', 'e', 'dp',

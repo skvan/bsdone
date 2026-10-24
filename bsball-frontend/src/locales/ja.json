@@ -100,11 +100,6 @@
         "definition": "投球が打者に当たり一塁が与えられた回数",
         "shortLabel": "HBP"
       },
-      "hb": {
-        "fullName": "Hit Batsmen",
-        "definition": "When a batter is struck by a pitched ball which he is not attempting to hit",
-        "shortLabel": "HB"
-      },
       "so": {
         "fullName": "三振",
         "definition": "打者が3ストライクでアウトになった回数",
