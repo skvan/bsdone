@@ -528,6 +528,24 @@ class ClubhouseServiceTest {
     }
 
     @Test
+    @DisplayName("赛程只保留与当前运动类型一致的赛事")
+    void scheduleExcludesOtherGameMode() {
+        stubTeamsWithMixedGameModes();
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+        when(gameRepository.findForTeamsAndStatuses(1L, List.of(1L, 2L), List.of("scheduled", "live")))
+                .thenReturn(List.of(
+                        upcomingGame(201L, 11L, 1L, 2L, "2999-05-01"),
+                        upcomingGame(202L, 12L, 1L, 4L, "2999-05-02")));
+
+        Map<String, Object> result = service.getDashboard(7L, null, null, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> schedule = (List<Map<String, Object>>) result.get("schedule");
+        assertEquals(List.of(201L), schedule.stream().map(row -> row.get("gameId")).toList());
+        assertEquals(201L, ((Map<?, ?>) result.get("nextGame")).get("gameId"));
+    }
+
+    @Test
     @DisplayName("选择球队时赛程只查该队比赛")
     void scheduleFiltersSelectedTeam() {
         stubTwoTeamsSameEvent();
@@ -644,6 +662,62 @@ class ClubhouseServiceTest {
         event.setStartDate("2026-03-01");
         event.setGameMode("BASEBALL");
         when(eventRepository.findAllById(any())).thenReturn(List.of(event));
+        when(statsService.getStandings(11L, null, null, "BASEBALL", 1, 100))
+                .thenReturn(PageResult.of(List.of(), 0L));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
+    }
+
+    /** 同一球员两支代表球队：赛事 11 为棒球，赛事 12 只有垒球，用于赛程运动类型过滤。 */
+    private void stubTeamsWithMixedGameModes() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(player));
+        PlayerTeam first = new PlayerTeam();
+        first.setTeamId(1L);
+        first.setCurrent(true);
+        PlayerTeam second = new PlayerTeam();
+        second.setTeamId(2L);
+        second.setCurrent(true);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
+                .thenReturn(List.of(first, second));
+        Team team1 = new Team();
+        team1.setId(1L);
+        team1.setName("广州猎豹");
+        Team team2 = new Team();
+        team2.setId(2L);
+        team2.setName("海珠蓝鸟");
+        when(teamRepository.findAllById(any())).thenReturn(List.of(team1, team2));
+        EventTeam baseballRegistration = new EventTeam();
+        baseballRegistration.setEventId(11L);
+        baseballRegistration.setStatus(EventTeam.STATUS_CONFIRMED);
+        EventTeam softballRegistration = new EventTeam();
+        softballRegistration.setEventId(12L);
+        softballRegistration.setStatus(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(1L))
+                .thenReturn(List.of(softballRegistration, baseballRegistration));
+        EventTeam blueBirdsRegistration = new EventTeam();
+        blueBirdsRegistration.setEventId(11L);
+        blueBirdsRegistration.setStatus(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(2L))
+                .thenReturn(List.of(blueBirdsRegistration));
+        Event baseball = new Event();
+        baseball.setId(11L);
+        baseball.setTenantId(1L);
+        baseball.setName("花城联赛");
+        baseball.setStatus("ongoing");
+        baseball.setStartDate("2026-03-01");
+        baseball.setGameMode("BASEBALL");
+        Event softball = new Event();
+        softball.setId(12L);
+        softball.setTenantId(1L);
+        softball.setName("垒球联赛");
+        softball.setStatus("ended");
+        softball.setStartDate("2026-04-01");
+        softball.setGameMode("SOFTBALL");
+        when(eventRepository.findAllById(any())).thenReturn(List.of(baseball, softball));
         when(statsService.getStandings(11L, null, null, "BASEBALL", 1, 100))
                 .thenReturn(PageResult.of(List.of(), 0L));
         when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());

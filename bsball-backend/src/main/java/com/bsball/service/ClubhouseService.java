@@ -35,7 +35,8 @@ import org.springframework.stereotype.Service;
 /**
  * 个人驾驶舱数据聚合（模块化布局 v3-modular）。
  * <p>数据范围：顶部数据按所选赛事（未选则全部赛事）聚合；队内排名必须落到
- * 「代表球队 + 赛事」；赛程跨全部代表球队与赛事。服务端只接受白名单指标与模块。</p>
+ * 「代表球队 + 赛事」；表现、战报与赛程按所选球队/赛事过滤，且只取当前运动类型。
+ * 服务端只接受白名单指标与模块。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -106,7 +107,8 @@ public class ClubhouseService {
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
         out.put("evaluation", evaluationService.build(
                 player.getId(), scope.teamId(), scope.eventId(), gameMode, stats));
-        List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventId());
+        List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventId(),
+                gameMode);
         out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
         out.put("schedule", schedule);
         out.put("recentGames", recentGames(player, scope.teamId(), scope.eventId(), gameMode));
@@ -607,18 +609,16 @@ public class ClubhouseService {
     /**
      * 比赛计划：只取当前范围内未开赛/进行中的比赛。
      * <p>选了球队只查该队；全部球队时查全部代表球队，选了赛事则只保留该赛事的比赛
-     * （多球队赛事逐场展示实际代表球队）。</p>
+     * （多球队赛事逐场展示实际代表球队）；赛事运动类型必须与当前 scope 一致。</p>
      */
     private List<Map<String, Object>> schedule(Long tenantId, List<Map<String, Object>> teams,
-            Long teamId, Long eventId) {
+            Long teamId, Long eventId, String gameMode) {
         List<Long> allTeamIds = teams.stream()
                 .map(row -> asLong(row.get("id")))
                 .filter(Objects::nonNull)
                 .toList();
         List<Long> teamIds = teamId == null ? allTeamIds : List.of(teamId);
-        Set<Long> eventIds = eventId == null
-                ? confirmedEventIds(teams, teamId)
-                : Set.of(eventId);
+        Set<Long> eventIds = scheduleEventIds(teams, teamId, eventId, gameMode);
         if (teamIds.isEmpty() || eventIds.isEmpty()) {
             return List.of();
         }
@@ -637,6 +637,39 @@ public class ClubhouseService {
         return upcoming.stream()
                 .map(game -> scheduleRow(game, teamIds, teamNames, eventNames))
                 .toList();
+    }
+
+    /** 赛程赛事集合：先按球队/所选赛事收窄，再剔除运动类型与 scope 不一致的赛事。 */
+    private Set<Long> scheduleEventIds(List<Map<String, Object>> teams, Long teamId, Long eventId,
+            String gameMode) {
+        Set<Long> candidates = eventId == null
+                ? confirmedEventIds(teams, teamId)
+                : Set.of(eventId);
+        Set<Long> out = new LinkedHashSet<>();
+        for (Long id : candidates) {
+            if (matchesGameMode(teams, id, gameMode)) {
+                out.add(id);
+            }
+        }
+        return out;
+    }
+
+    /** 赛事运动类型取自 teams[].events[].gameMode，避免为赛程额外查库。 */
+    private boolean matchesGameMode(List<Map<String, Object>> teams, Long eventId, String gameMode) {
+        for (Map<String, Object> team : teams) {
+            if (!(team.get("events") instanceof List<?> events)) {
+                continue;
+            }
+            for (Object raw : events) {
+                Map<String, Object> event = asMap(raw);
+                if (!eventId.equals(asLong(event.get("id")))) {
+                    continue;
+                }
+                String eventGameMode = normalizeGameMode(asString(event.get("gameMode")));
+                return eventGameMode == null || eventGameMode.equals(gameMode);
+            }
+        }
+        return true;
     }
 
     private Map<Long, String> teamNames(List<Game> games) {
