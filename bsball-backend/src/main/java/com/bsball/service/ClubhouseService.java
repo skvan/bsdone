@@ -62,11 +62,23 @@ public class ClubhouseService {
     }
 
     public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId) {
+        return getDashboard(userId, teamId, eventId, null);
+    }
+
+    /**
+     * 驾驶舱首屏聚合。
+     *
+     * @param userId      当前登录用户
+     * @param teamId      代表球队；为空表示全部球队
+     * @param eventId     赛事；为空表示生涯
+     * @param requestedGameMode 运动类型；为空时取所选赛事，再回落到棒球
+     */
+    public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId, String requestedGameMode) {
         Player player = findPlayer(userId);
         Long tenantId = player.getTenantId();
         List<PlayerTeam> entries = currentEntries(player.getId());
         List<Map<String, Object>> teams = buildTeams(entries, tenantId);
-        Scope scope = resolveScope(teams, teamId, eventId);
+        Scope scope = resolveScope(teams, teamId, eventId, requestedGameMode);
         Map<String, Object> config = configService.getOrCreate(userId, tenantId);
         String gameMode = blank(scope.gameMode()) ? DEFAULT_GAME_MODE : scope.gameMode();
         Map<String, Object> stats = loadStats(player.getId(), scope.eventId(), gameMode);
@@ -222,35 +234,55 @@ public class ClubhouseService {
         return Map.of();
     }
 
-    private Scope resolveScope(List<Map<String, Object>> teams, Long requestedTeamId, Long requestedEventId) {
-        if (teams.isEmpty()) {
-            return new Scope(null, null, null, null, DEFAULT_GAME_MODE);
-        }
-        Map<String, Object> team = teams.stream()
-                .filter(row -> requestedTeamId != null && requestedTeamId.equals(asLong(row.get("id"))))
+    /**
+     * 解析筛选范围：null 表示全部球队/生涯；非法或不匹配的入参回落到全部/生涯，不自动选中第一项。
+     * 球队与赛事相互独立：只选赛事时球队仍为全部球队。gameMode 优先级为请求参数 → 所选赛事 → 棒球。
+     */
+    private Scope resolveScope(List<Map<String, Object>> teams, Long requestedTeamId,
+            Long requestedEventId, String requestedGameMode) {
+        Map<String, Object> team = requestedTeamId == null ? null : teams.stream()
+                .filter(row -> requestedTeamId.equals(asLong(row.get("id"))))
                 .findFirst()
-                .orElse(teams.get(0));
-        List<?> rawEvents = team.get("events") instanceof List<?> list ? list : List.of();
-        Map<String, Object> event = rawEvents.stream()
+                .orElse(null);
+        Map<String, Object> event = requestedEventId == null ? null : candidateEvents(teams, team).stream()
                 .map(this::asMap)
-                .filter(row -> requestedEventId != null && requestedEventId.equals(asLong(row.get("id"))))
+                .filter(row -> requestedEventId.equals(asLong(row.get("id"))))
                 .findFirst()
-                .orElseGet(() -> rawEvents.stream().map(this::asMap).findFirst().orElse(Map.of()));
+                .orElse(null);
+        String eventGameMode = event == null ? null : asString(event.get("gameMode"));
+        String gameMode = !blank(requestedGameMode) ? requestedGameMode
+                : blank(eventGameMode) ? DEFAULT_GAME_MODE : eventGameMode;
         return new Scope(
-                asLong(team.get("id")),
-                asString(team.get("name")),
-                asLong(event.get("id")),
-                asString(event.get("name")),
-                asString(event.get("gameMode")));
+                team == null ? null : asLong(team.get("id")),
+                team == null ? null : asString(team.get("name")),
+                event == null ? null : asLong(event.get("id")),
+                event == null ? null : asString(event.get("name")),
+                gameMode);
+    }
+
+    /** 已选球队时赛事必须属于该球队的已确认赛事；全部球队时取所有代表球队的赛事。 */
+    private List<?> candidateEvents(List<Map<String, Object>> teams, Map<String, Object> team) {
+        if (team != null) {
+            return team.get("events") instanceof List<?> list ? list : List.of();
+        }
+        List<Object> events = new ArrayList<>();
+        for (Map<String, Object> row : teams) {
+            if (row.get("events") instanceof List<?> list) {
+                events.addAll(list);
+            }
+        }
+        return events;
     }
 
     private Map<String, Object> scopeView(Scope scope) {
         LinkedHashMap<String, Object> row = new LinkedHashMap<>();
         row.put("teamId", scope.teamId());
-        row.put("teamName", scope.teamName());
+        row.put("teamName", scope.teamId() == null ? "全部球队" : scope.teamName());
         row.put("eventId", scope.eventId());
-        row.put("eventName", scope.eventName());
+        row.put("eventName", scope.eventId() == null ? "生涯" : scope.eventName());
         row.put("gameMode", blank(scope.gameMode()) ? DEFAULT_GAME_MODE : scope.gameMode());
+        row.put("teamAll", scope.teamId() == null);
+        row.put("career", scope.eventId() == null);
         return row;
     }
 
