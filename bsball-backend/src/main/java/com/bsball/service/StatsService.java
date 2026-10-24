@@ -45,6 +45,7 @@ import com.bsball.model.dto.BattingLeaderDTO;
 import com.bsball.model.dto.EventStatRow;
 import com.bsball.model.dto.FieldingLeaderDTO;
 import com.bsball.model.dto.PitchingLeaderDTO;
+import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
@@ -175,6 +176,76 @@ public class StatsService {
             LoggerFactory.getLogger(StatsService.class).error("getPlayerStatsBySeason failed for playerId={}", (Object)playerId, (Object)e);
             return List.of();
         }
+    }
+
+    /**
+     * 驾驶舱赛事下拉：按球员（可选球队）聚合赛事、代表球队与最后一场比赛日期。
+     * <p>{@code teamId} 为空时统计全部代表球队，非空时只统计该队；只计入排行的比赛。
+     * 返回按最后一场倒序、同日期按赛事名升序，球队聚合结果解析为数组。</p>
+     */
+    public List<PlayerEventSummaryDTO> getPlayerEventSummaries(Long playerId, Long teamId, String gameMode) {
+        if (playerId == null) {
+            return List.of();
+        }
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            List<PlayerEventSummaryDTO> rows = this.playerStatsMapper.selectPlayerEventSummaries(playerId, Long.valueOf(tid), teamId, gm);
+            if (rows == null || rows.isEmpty()) {
+                return List.of();
+            }
+            ArrayList<PlayerEventSummaryDTO> list = new ArrayList<PlayerEventSummaryDTO>();
+            for (PlayerEventSummaryDTO row : rows) {
+                row.setTeamIdList(StatsService.parseTeamIds(row.getTeamIds()));
+                row.setTeamNameList(StatsService.parseTeamNames(row.getTeamNames()));
+                list.add(row);
+            }
+            // SQL 已排序，这里再兜底一次，避免不同数据库/null 排序差异影响下拉顺序
+            list.sort(Comparator
+                    .comparing(PlayerEventSummaryDTO::getLastGameday,
+                            Comparator.nullsLast(Comparator.<String>reverseOrder()))
+                    .thenComparing(PlayerEventSummaryDTO::getEventName,
+                            Comparator.nullsLast(Comparator.<String>naturalOrder())));
+            return list;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerEventSummaries failed for playerId={}", (Object)playerId, (Object)e);
+            return List.of();
+        }
+    }
+
+    private static List<Long> parseTeamIds(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        ArrayList<Long> ids = new ArrayList<Long>();
+        for (String part : raw.split(",")) {
+            String value = part.trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            try {
+                ids.add(Long.valueOf(value));
+            }
+            catch (NumberFormatException e) {
+                // 忽略非数字片段，赛事下拉不因脏数据整体失败
+            }
+        }
+        return ids;
+    }
+
+    private static List<String> parseTeamNames(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        ArrayList<String> names = new ArrayList<String>();
+        for (String part : raw.split(",")) {
+            String name = part.trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return names;
     }
 
     public List<PlayerGameLogEntryDTO> getPlayerGameLog(Long playerId, int limit, String gameMode) {

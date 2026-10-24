@@ -3,6 +3,7 @@ package com.bsball.service;
 import com.bsball.common.json.PositionsJsonUtil;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
@@ -82,6 +83,8 @@ public class ClubhouseService {
         Scope scope = resolveScope(teams, teamId, eventId, requestedGameMode);
         Map<String, Object> config = configService.getOrCreate(userId, tenantId);
         String gameMode = scope.gameMode();
+        List<PlayerEventSummaryDTO> eventSummaries =
+                statsService.getPlayerEventSummaries(player.getId(), scope.teamId(), gameMode);
         Map<String, Object> stats = loadStats(player.getId(), scope.eventId(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
@@ -90,6 +93,7 @@ public class ClubhouseService {
         out.put("player", playerView(player, entries));
         out.put("teams", teams);
         out.put("scope", scopeView(scope));
+        out.put("events", eventViews(eventSummaries));
         out.put("config", config);
         out.put("stats", stats);
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
@@ -212,6 +216,38 @@ public class ClubhouseService {
         row.put("endDate", event.getEndDate());
         row.put("gameMode", gameMode(event));
         return row;
+    }
+
+    /** 赛事下拉数据源：球队聚合输出为数组，最后一场统一为 yyyy-MM-dd。 */
+    private List<Map<String, Object>> eventViews(List<PlayerEventSummaryDTO> summaries) {
+        if (summaries == null || summaries.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (PlayerEventSummaryDTO summary : summaries) {
+            LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+            row.put("id", summary.getEventId());
+            row.put("name", summary.getEventName());
+            row.put("status", summary.getStatus());
+            row.put("startDate", summary.getStartDate());
+            row.put("endDate", summary.getEndDate());
+            row.put("gameMode", blank(summary.getGameMode()) ? DEFAULT_GAME_MODE : summary.getGameMode());
+            row.put("teamIds", summary.getTeamIdList());
+            row.put("teamNames", summary.getTeamNameList());
+            row.put("lastGameday", gamedayDate(summary.getLastGameday()));
+            row.put("gameCount", summary.getGameCount());
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /** 数据库日期若带时间部分，仅保留日期，保证前端按 yyyy-MM-dd 解析。 */
+    private String gamedayDate(String gameday) {
+        if (blank(gameday)) {
+            return null;
+        }
+        String value = gameday.trim();
+        return value.length() >= 10 ? value.substring(0, 10) : value;
     }
 
     private String gameMode(Event event) {

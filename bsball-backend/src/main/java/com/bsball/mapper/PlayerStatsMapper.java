@@ -13,6 +13,7 @@
 package com.bsball.mapper;
 
 import com.bsball.model.dto.EventStatRow;
+import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,8 @@ public interface PlayerStatsMapper {
     public List<EventStatRow> selectFieldingStatsByEvent(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="gameMode") String var3);
 
     public List<Map<String, Object>> selectTeamNamesByPlayerEvents(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="eventIds") List<Long> var3, @Param(value="gameMode") String var4);
+
+    public List<PlayerEventSummaryDTO> selectPlayerEventSummaries(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="teamId") Long var3, @Param(value="gameMode") String var4);
 
     public List<Map<String, Object>> selectGameLog(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="limit") Integer var3, @Param(value="gameMode") String var4, @Param(value="rankingOnly") boolean var5);
 

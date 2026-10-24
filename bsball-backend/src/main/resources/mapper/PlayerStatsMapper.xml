@@ -323,6 +323,29 @@
         GROUP BY sub.event_id
     </select>
 
+    <!-- 驾驶舱赛事下拉：按赛事聚合代表球队与最后一场（仅计入排行的比赛），最后一场倒序 -->
+    <select id="selectPlayerEventSummaries" resultType="com.bsball.model.dto.PlayerEventSummaryDTO">
+        SELECT e.id AS eventId, e.name AS eventName, e.status AS status,
+               e.start_date AS startDate, e.end_date AS endDate, e.game_mode AS gameMode,
+               STRING_AGG(DISTINCT s.team_id::text, ',' ORDER BY s.team_id::text) AS teamIds,
+               STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name) AS teamNames,
+               MAX(g.gameday) AS lastGameday,
+               COUNT(DISTINCT s.game_id) AS gameCount
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        LEFT JOIN bs_team t ON t.id = s.team_id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <include refid="gameModeFilter"/>
+        GROUP BY e.id, e.name, e.status, e.start_date, e.end_date, e.game_mode
+        ORDER BY MAX(g.gameday) DESC NULLS LAST, e.name ASC
+    </select>
+
     <!-- 比赛日志：最近 limit 场，每场一行，含 game 与 stat 列 -->
     <select id="selectGameLog" resultType="map">
         SELECT

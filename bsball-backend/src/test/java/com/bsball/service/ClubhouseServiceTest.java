@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.bsball.common.PageResult;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Player;
@@ -324,6 +325,39 @@ class ClubhouseServiceTest {
         Map<String, Object> scope = (Map<String, Object>) result.get("scope");
         assertEquals("SOFTBALL", scope.get("gameMode"));
         verify(statsService).getPlayerStatsBySeason(10L, "SOFTBALL");
+    }
+
+    @Test
+    @DisplayName("驾驶舱返回赛事下拉数据，球队聚合为数组且最后一场为日期")
+    void dashboardIncludesEventSummaries() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
+        PlayerEventSummaryDTO summary = new PlayerEventSummaryDTO();
+        summary.setEventId(11L);
+        summary.setEventName("花城联赛");
+        summary.setStatus("ongoing");
+        summary.setStartDate("2026-03-01");
+        summary.setEndDate("2026-11-30");
+        summary.setGameMode("BASEBALL");
+        summary.setTeamIds("1,2");
+        summary.setTeamNames("猎豹,蓝鸟");
+        summary.setTeamIdList(List.of(1L, 2L));
+        summary.setTeamNameList(List.of("猎豹", "蓝鸟"));
+        summary.setLastGameday("2026-10-20 00:00:00");
+        summary.setGameCount(18);
+        when(statsService.getPlayerEventSummaries(10L, null, "BASEBALL")).thenReturn(List.of(summary));
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> events = (List<Map<String, Object>>) result.get("events");
+        assertEquals(1, events.size());
+        assertEquals(11L, events.get(0).get("id"));
+        assertEquals("花城联赛", events.get(0).get("name"));
+        assertEquals(List.of(1L, 2L), events.get(0).get("teamIds"));
+        assertEquals(List.of("猎豹", "蓝鸟"), events.get(0).get("teamNames"));
+        assertEquals("2026-10-20", events.get(0).get("lastGameday"));
+        assertEquals(18, events.get(0).get("gameCount"));
     }
 
     private void stubSingleTeam(String eventGameMode, String effectiveGameMode) {
