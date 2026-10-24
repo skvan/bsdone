@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +27,7 @@ import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
+import com.bsball.service.ClubhouseService.Scope;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,7 +149,7 @@ class ClubhouseServiceTest {
         assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
         assertTrue(!result.containsKey("milestones"));
-        assertEquals(4, ((List<?>) result.get("ranks")).size());
+        assertTrue(((List<?>) result.get("ranks")).isEmpty());
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");
         assertEquals(false, performance.get("available"));
@@ -392,6 +396,42 @@ class ClubhouseServiceTest {
         List<Map<String, Object>> events = (List<Map<String, Object>>) result.get("events");
         assertEquals(1, events.size());
         assertEquals(11L, events.get(0).get("id"));
+    }
+
+    @Test
+    @DisplayName("球队+生涯使用跨赛事排行榜，且不因 eventId 为空丢弃排名")
+    void careerTeamRankUsesEventlessLeaderboard() {
+        Scope scope = new Scope(1L, "广州猎豹", null, null, "BASEBALL");
+        ClubhouseMetricCatalog.MetricDef def = ClubhouseMetricCatalog.find("batting.avg");
+        List<Map<String, Object>> rows = List.of(
+                Map.of("playerId", 11L, "avg", ".400"),
+                Map.of("playerId", 10L, "avg", ".300"));
+        when(statsService.getBattingLeaders(isNull(), any(), any(), eq(List.of(1L)), any(), any(),
+                any(), any(), any(), eq("BASEBALL"), anyInt(), anyInt(), any(), any(), eq(false)))
+                .thenReturn(PageResult.of(rows, rows.size()));
+
+        Map<String, Object> rank = service.rankOne(10L, scope, def, "BASEBALL", true);
+
+        assertEquals(2, rank.get("rank"));
+        assertEquals(2, rank.get("total"));
+        assertEquals(".300", rank.get("value"));
+    }
+
+    @Test
+    @DisplayName("球队+赛事仍使用该赛事的同队排行榜")
+    void teamEventRankStillUsesEventLeaderboard() {
+        Scope scope = new Scope(1L, "广州猎豹", 11L, "花城联赛", "BASEBALL");
+        ClubhouseMetricCatalog.MetricDef def = ClubhouseMetricCatalog.find("batting.avg");
+        List<Map<String, Object>> rows = List.of(Map.of("playerId", 10L, "avg", ".300"));
+        when(statsService.getBattingLeaders(eq(11L), any(), any(), eq(List.of(1L)), any(), any(),
+                any(), any(), any(), eq("BASEBALL"), anyInt(), anyInt(), any(), any(), eq(false)))
+                .thenReturn(PageResult.of(rows, rows.size()));
+
+        Map<String, Object> rank = service.rankOne(10L, scope, def, "BASEBALL", true);
+
+        assertEquals(1, rank.get("rank"));
+        assertEquals(1, rank.get("total"));
+        assertEquals(".300", rank.get("value"));
     }
 
     private PlayerEventSummaryDTO eventSummary(Long eventId, String eventName) {

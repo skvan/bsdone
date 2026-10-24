@@ -530,6 +530,9 @@ public class ClubhouseService {
 
     private List<Map<String, Object>> ranks(Long playerId, Scope scope, Map<String, Object> config,
             boolean battingAvailable, boolean pitchingAvailable, String gameMode) {
+        if (scope.teamId() == null) {
+            return List.of();
+        }
         List<Map<String, Object>> configured = configRanks(config);
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> row : configured) {
@@ -554,7 +557,7 @@ public class ClubhouseService {
         return ClubhouseMetricCatalog.defaultRankEntries();
     }
 
-    private Map<String, Object> rankOne(Long playerId, Scope scope, ClubhouseMetricCatalog.MetricDef def,
+    Map<String, Object> rankOne(Long playerId, Scope scope, ClubhouseMetricCatalog.MetricDef def,
             String gameMode, boolean available) {
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("metricKey", def == null ? null : def.key());
@@ -565,7 +568,7 @@ public class ClubhouseService {
         out.put("rank", null);
         out.put("total", 0);
         out.put("barPct", 0);
-        if (!available || def == null || scope.teamId() == null || scope.eventId() == null) {
+        if (!available || def == null || scope.teamId() == null) {
             return out;
         }
         List<Map<String, Object>> rows = leaderRows(scope, def, gameMode);
@@ -840,6 +843,6 @@ public class ClubhouseService {
         return value == null || value.isBlank();
     }
 
-    private record Scope(Long teamId, String teamName, Long eventId, String eventName, String gameMode) {
+    record Scope(Long teamId, String teamName, Long eventId, String eventName, String gameMode) {
     }
 }
