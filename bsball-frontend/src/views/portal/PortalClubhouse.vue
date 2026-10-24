@@ -395,7 +395,7 @@
               <div class="chart-note"><span>近 {{ chart.points.length }} 场 · 按比赛日排序</span><b>{{ performanceScopeLabel }}</b></div>
             </div>
 
-            <div v-else class="data-empty">{{ performanceEmptyText }}</div>
+            <div v-else class="data-empty">所选范围暂无比赛数据。</div>
 
             <div v-if="matrixItems.length" class="matrix-grid">
               <div v-for="item in matrixItems" :key="item.label" class="matrix-item">
@@ -835,9 +835,7 @@ const scopeLabel = computed(() => {
     .join(' · ');
 });
 const rankScopeLabel = computed(() => (eventId.value ? '同队同赛事' : '球队跨赛事生涯'));
-const rankNote = computed(() => (eventId.value
-  ? '同队同赛事 · 无最低打席门槛 · 全垒打不进入排名'
-  : '球队跨赛事生涯 · 无最低打席门槛 · 全垒打不进入排名'));
+const rankNote = computed(() => `${rankScopeLabel.value} · 无最低打席门槛 · 全垒打不进入排名`);
 const scheduleScopeLabel = computed(() => {
   if (eventId.value) return teamId.value ? '同队同赛事' : '当前赛事';
   return teamId.value ? '球队跨赛事生涯' : '跨球队生涯';
@@ -848,7 +846,6 @@ const recentEmptyText = computed(() => (eventId.value
 const scheduleEmptyText = computed(() => (eventId.value
   ? '该赛事暂无未开赛的比赛。'
   : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
-const performanceEmptyText = '所选范围暂无比赛数据。';
 const rankPopulation = computed(() => {
   const totals = (data.value?.ranks || []).map((item) => item.total).filter((total) => total > 0);
   return totals.length && totals.every((total) => total === totals[0]) ? totals[0] : 0;
