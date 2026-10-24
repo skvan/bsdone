@@ -496,7 +496,7 @@ Full-width module in the default order directly below the rank band. The header 
 
 The header carries the overall 0–100 score, its letter grade, the role label (野手 / 投手 / 二刀流), the confidence tag (`样本充足` / `参考值` / `样本不足`), the per-domain own samples (“X PA · X IP · X 局”) and the weighted overall reliability. Each card header repeats its own 0–100 score and grade; the radar shape never substitutes for them. The card footer shows the pool size (“样本池 N 人”), the player’s own sample (“本人 X PA / X IP / X 局”) and the axis count with the career scope.
 
-Use the API-supplied copy for the axis footnote: six axes at 0–100, 50 as the midpoint, lower-is-better pitching metrics already reversed, scores shrunk toward 50 and tagged `参考值` below the stable threshold, fielding compared within position group with `未按守位分组` when the group is too small, and “参考 wOBA x.xxx” / “参考 FIP x.xx（C x.xx）” as quality inputs that are not radar axes. Never invent a rank or shape when the API returns `available=false`; show its `reason`.
+Use frontend copy that matches the API values for the axis footnote: six axes at 0–100, 50 as the midpoint, lower-is-better pitching metrics already reversed, scores shrunk toward 50 and tagged `参考值` below the stable threshold, fielding compared within position group with `未按守位分组` when the group is too small (P/DH always fall back), and “参考 wOBA x.xxx” / “参考 FIP x.xx（C x.xx）” as quality inputs that are not radar axes. Never invent a rank or shape when the API returns `available=false`; show its `reason`.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
