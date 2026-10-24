@@ -337,28 +337,29 @@ Chart rules:
 - Line charts: maximum 30 points per series; show a tooltip and a summary sentence for screen readers.
 - Bar charts: maximum 12 categories; sort intentionally (time, value or rank), not alphabetically by accident.
 - Donut/pie: only for composition metrics (for example hit types: singles / doubles / triples / home runs); never for rates such as AVG, OBP or ERA. Put the total or the leading share in the center, not a decorative number.
-- Radar: approved only for the player “总体评价” (overall evaluation) section. Use one card per domain: batting and defense are always shown together; pitchers get a third pitching card. Never use tabs or a switcher to hide one of them. A radar must show the raw value and percentile for every axis, plus the comparison scope and sample size. Do not use radar for time series, rankings over time or arbitrary dashboards.
+- Radar: approved only for the player “总体评价” (overall evaluation) section. Use one card per domain: batting and defense are always shown together, and a pitching card is always present (it shows its unavailable reason when there is no pitching sample). Never use tabs or a switcher to hide one of them. A radar must show the raw value and percentile for every axis, plus the comparison scope and sample size. Do not use radar for time series, rankings over time or arbitrary dashboards.
 - Scatter/heatmap are not approved chart types yet. Do not add them without a design decision.
 - Implementation variables are `--bs-chart-1` … `--bs-chart-6`; use them in order and do not introduce local series hex values.
 
 #### Overall evaluation radar
 
-The approved player radar uses five axes per domain, in this fixed order:
+The approved player radar uses six axes per domain, in this fixed order:
 
 | Card | Axes | Domain color |
 |---|---|---|
-| Batting | AVG, OBP, SLG, RBI, SB | `chart-6` (deep navy) |
-| Defense | FPCT, PO/G, A/G, DP/G, RF/9 | `{colors.primary}` gold |
-| Pitching | ERA, WHIP, K/9, BB/9, IP | `chart-3` (teal) |
+| Batting | AVG, OBP, SLG, OPS, RBI, SB | `chart-6` (deep navy) |
+| Defense | FPCT, TC/G, PO/G, A/G, DP/G, RF/9 | `{colors.primary}` gold |
+| Pitching | ERA, WHIP, K/9, BB/9, HR/9, IP | `chart-3` (teal) |
 
-- Normalize each axis to a `0–100` percentile within the selected represented team and event. Do not mix events or teams. Show the comparison scope (“同队同赛事”) and the number of players in the sample.
-- Require at least three comparable players. Below that, show an empty state with the reason instead of inventing a shape.
-- Lower-is-better metrics (ERA, WHIP, BB/9) must be reversed before plotting. State this in the section footnote. IP keeps baseball notation on the axis (`5.2` = 5⅔ innings); percentile math uses outs.
+- Normalize each axis to a `0–100` percentile inside the **all-tenant career** pool (same tenant, same sport). The radar never follows the team/event scope: show “全租户生涯” and the number of players in the sample even when a team or event is selected. Do not mix tenants or baseball/softball.
+- Show thresholds are 10 PA / 3 IP / 6 fielding innings; stable thresholds are 50 PA / 15 IP / 30 innings. Below the show threshold the card is unavailable with the API reason; between show and stable the score is shrunk toward 50 and tagged `参考值`. Reaching the stable threshold shows `样本充足`, and the reliability value (2 decimals) stays visible.
+- `50` is the midpoint baseline (between the 40 and 60 rings); do not draw a separate 50 ring. Draw five concentric rings at 20% intervals with a 1px hairline; no ring labels are required. Fill the data polygon with the domain color at 15% opacity and a 2px outline; dots use the surface color with a 2px domain stroke.
+- Lower-is-better metrics (ERA, WHIP, BB/9, HR/9) must be reversed before plotting. State this in the section footnote. IP keeps baseball notation on the axis (`5.2` = 5⅔ innings); percentile math uses decimal innings.
+- The radar is a profile, not a score: the header score is the weighted quality score (wOBA/FIP etc.), never the polygon area. wOBA and FIP are quality inputs only and do not become radar axes.
+- Defense compares within the same position group (C / 1B / INF / OF / DH / P) when the group has at least 5 qualified players; otherwise fall back to all fielders and show `未按守位分组`. Keep the note visible; do not imply that PO/G or A/G compare like-for-like across every position.
 - At widths where three cards would fall below roughly 300px each, wrap to two columns + one rather than shrinking the chart labels. The final mobile breakpoint stacks all cards in domain order.
-- Draw five concentric rings at 20% intervals with a 1px hairline; no ring labels are required. Fill the data polygon with the domain color at 15% opacity and a 2px outline; dots use the surface color with a 2px domain stroke.
-- Use the domain color as a 3px card edge, not as a background wash. The score and grade sit in the card header; the strongest and weakest axes are named below the chart.
-- The batting and defense cards appear side by side on desktop and stack on mobile. All cards remain visible simultaneously; no accordion, carousel or tab. Pitching is appended as a third card when the player has pitching data.
-- Defense is position-sensitive. Keep the scope note visible and do not imply that PO/G or A/G compare like-for-like across every position.
+- Use the domain color as a 3px card edge, not as a background wash. The per-domain 0–100 score and letter grade (S/A+/A/B+/B/C+/C/D) sit in the card header; the strongest and weakest axes are named below the chart.
+- The batting and defense cards appear side by side on desktop and stack on mobile. All cards remain visible simultaneously; no accordion, carousel or tab. Pitching is appended as a third card and shows its unavailable reason when the player has no pitching sample.
 
 ## Typography
 
@@ -491,7 +492,11 @@ White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercas
 Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band renders only when a specific team is selected; with 全部球队 it is absent. The header must name the team and either 同队同赛事 (event selected) or 球队跨赛事生涯 (career).
 
 ### Overall evaluation cards
-Full-width module in the default order directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color. The header and axis footnotes take the comparison scope from the API `evaluation.comparison` (currently 同队同赛事). The module still requires both a team and an event; with 全部球队 or a career scope it shows the API’s unavailable reason instead of a fabricated shape. A career-wide radar is a separate change.
+Full-width module in the default order directly below the rank band. The header names the section “总体评价” and shows the fixed comparison “职业指标 · 全租户生涯百分位”; the radar and overall score are independent of the team/event scope and must say “不随筛选变化”. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a six-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
+
+The header carries the overall 0–100 score, its letter grade, the role label (野手 / 投手 / 二刀流), the confidence tag (`样本充足` / `参考值` / `样本不足`), the per-domain own samples (“X PA · X IP · X 局”) and the weighted overall reliability. Each card header repeats its own 0–100 score and grade; the radar shape never substitutes for them. The card footer shows the pool size (“样本池 N 人”), the player’s own sample (“本人 X PA / X IP / X 局”) and the axis count with the career scope.
+
+Use the API-supplied copy for the axis footnote: six axes at 0–100, 50 as the midpoint, lower-is-better pitching metrics already reversed, scores shrunk toward 50 and tagged `参考值` below the stable threshold, fielding compared within position group with `未按守位分组` when the group is too small, and “参考 wOBA x.xxx” / “参考 FIP x.xx（C x.xx）” as quality inputs that are not radar axes. Never invent a rank or shape when the API returns `available=false`; show its `reason`.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
@@ -640,7 +645,7 @@ Phased adoption:
 - **Header height**: existing 60px vs 68px in V3. Adopt 68px on the portal shell when touched; admin header can remain.
 - **Micro typography**: mockups use 7–9px labels. Production must use 10px labels / 11px captions minimum.
 - **Serif availability**: Songti/Noto Serif SC fallbacks are good on macOS/Windows; verify Android/WebView rendering and bundle only if needed.
-- **Data contract**: team/event scope for stats, ranks, performance, recent games and schedule is implemented by `GET /account/clubhouse` (team career and team+event are distinct). Overall evaluation/radar still uses the backend `evaluation.comparison` (同队同赛事) and requires a selected team and event; a career-wide radar is a separate backend/design decision.
+- **Data contract**: team/event scope for stats, ranks, performance, recent games and schedule is implemented by `GET /account/clubhouse` (team career and team+event are distinct). Overall evaluation/radar is separate: `evaluation.comparison` is fixed to `全租户生涯`, radar/scores use the same-tenant, same-sport career pool, and the module stays available when 全部球队 / 生涯 is selected. The algorithm contract lives in `docs/tech/个人驾驶舱评价算法.md`.
 
 ## Known Gaps
 
