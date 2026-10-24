@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -80,7 +81,7 @@ public class ClubhouseService {
         List<Map<String, Object>> teams = buildTeams(entries, tenantId);
         Scope scope = resolveScope(teams, teamId, eventId, requestedGameMode);
         Map<String, Object> config = configService.getOrCreate(userId, tenantId);
-        String gameMode = blank(scope.gameMode()) ? DEFAULT_GAME_MODE : scope.gameMode();
+        String gameMode = scope.gameMode();
         Map<String, Object> stats = loadStats(player.getId(), scope.eventId(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
@@ -249,15 +250,31 @@ public class ClubhouseService {
                 .filter(row -> requestedEventId.equals(asLong(row.get("id"))))
                 .findFirst()
                 .orElse(null);
-        String eventGameMode = event == null ? null : asString(event.get("gameMode"));
-        String gameMode = !blank(requestedGameMode) ? requestedGameMode
-                : blank(eventGameMode) ? DEFAULT_GAME_MODE : eventGameMode;
+        String eventGameMode = normalizeGameMode(event == null ? null : asString(event.get("gameMode")));
+        String gameMode = resolveGameMode(normalizeGameMode(requestedGameMode), eventGameMode);
         return new Scope(
                 team == null ? null : asLong(team.get("id")),
                 team == null ? null : asString(team.get("name")),
                 event == null ? null : asLong(event.get("id")),
                 event == null ? null : asString(event.get("name")),
                 gameMode);
+    }
+
+    /** 规范化运动类型：仅接受 BASEBALL/SOFTBALL（忽略大小写与首尾空白），其余返回 null。 */
+    private static String normalizeGameMode(String raw) {
+        if (blank(raw)) {
+            return null;
+        }
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        return "BASEBALL".equals(normalized) || "SOFTBALL".equals(normalized) ? normalized : null;
+    }
+
+    /** 请求类型优先（已过白名单），其次所选赛事类型，最后回落到棒球。 */
+    private static String resolveGameMode(String requested, String eventGameMode) {
+        if (requested != null) {
+            return requested;
+        }
+        return eventGameMode == null ? DEFAULT_GAME_MODE : eventGameMode;
     }
 
     /** 已选球队时赛事必须属于该球队的已确认赛事；全部球队时取所有代表球队的赛事。 */
@@ -280,7 +297,7 @@ public class ClubhouseService {
         row.put("teamName", scope.teamId() == null ? "全部球队" : scope.teamName());
         row.put("eventId", scope.eventId());
         row.put("eventName", scope.eventId() == null ? "生涯" : scope.eventName());
-        row.put("gameMode", blank(scope.gameMode()) ? DEFAULT_GAME_MODE : scope.gameMode());
+        row.put("gameMode", scope.gameMode());
         row.put("teamAll", scope.teamId() == null);
         row.put("career", scope.eventId() == null);
         return row;

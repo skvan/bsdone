@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.common.PageResult;
@@ -240,6 +241,89 @@ class ClubhouseServiceTest {
         Map<String, Object> scope = (Map<String, Object>) result.get("scope");
         assertEquals(11L, scope.get("eventId"));
         assertEquals("SOFTBALL", scope.get("gameMode"));
+    }
+
+    @Test
+    @DisplayName("同时选择球队与赛事时两者都生效")
+    void teamAndEventResolveTogether() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals(1L, scope.get("teamId"));
+        assertEquals("广州猎豹", scope.get("teamName"));
+        assertEquals(11L, scope.get("eventId"));
+        assertEquals("花城联赛", scope.get("eventName"));
+        assertEquals("BASEBALL", scope.get("gameMode"));
+        assertEquals(false, scope.get("teamAll"));
+        assertEquals(false, scope.get("career"));
+    }
+
+    @Test
+    @DisplayName("所选赛事不属于所选球队时赛事回落到生涯，球队保留")
+    void eventNotOwnedByTeamFallsBackToCareer() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 12L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals(1L, scope.get("teamId"));
+        assertEquals("广州猎豹", scope.get("teamName"));
+        assertNull(scope.get("eventId"));
+        assertEquals("生涯", scope.get("eventName"));
+        assertEquals(false, scope.get("teamAll"));
+        assertEquals(true, scope.get("career"));
+    }
+
+    @Test
+    @DisplayName("非法球队回落到全部球队时赛事仍然生效")
+    void invalidTeamKeepsValidEvent() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
+
+        Map<String, Object> result = service.getDashboard(7L, 999L, 11L, null);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertNull(scope.get("teamId"));
+        assertEquals("全部球队", scope.get("teamName"));
+        assertEquals(11L, scope.get("eventId"));
+        assertEquals("花城联赛", scope.get("eventName"));
+        assertEquals(true, scope.get("teamAll"));
+        assertEquals(false, scope.get("career"));
+    }
+
+    @Test
+    @DisplayName("未知运动类型回落到所选赛事类型并用于统计查询")
+    void unknownGameModeFallsBackToSelectedEvent() {
+        stubSingleTeam("SOFTBALL", "SOFTBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "SOFTBALL")).thenReturn(List.of());
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "foo");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals("SOFTBALL", scope.get("gameMode"));
+        verify(statsService).getPlayerStatsBySeason(10L, "SOFTBALL");
+    }
+
+    @Test
+    @DisplayName("小写带空白的运动类型归一为 SOFTBALL 并用于统计查询")
+    void lowercaseGameModeIsNormalized() {
+        stubSingleTeam("BASEBALL", "SOFTBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "SOFTBALL")).thenReturn(List.of());
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "  softball ");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals("SOFTBALL", scope.get("gameMode"));
+        verify(statsService).getPlayerStatsBySeason(10L, "SOFTBALL");
     }
 
     private void stubSingleTeam(String eventGameMode, String effectiveGameMode) {
