@@ -1131,13 +1131,13 @@ var Ta={
                 key:`${n.inning}-${n.half}-${s.key}`,name:rt(n.inning,n.half,s.key)
               }
               ,{
-                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,"第"+u(ct(s,n.inning,n.half))+"棒",1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(3,o=>i("span",{
+                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,"第"+u(ct(s,n.inning,n.half))+"棒",1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).strikes
                   }
                   ])
                 }
-                ,null,2)),64))]),i("div",gs,[(c(),h(L,null,O(4,o=>i("span",{
+                ,null,2)),64))]),i("div",gs,[(c(),h(L,null,O(3,o=>i("span",{
                   key:`b-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).balls
                   }
@@ -1218,13 +1218,13 @@ var Ta={
                 name:s.id
               }
               ,{
-                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,"第"+u(ct(s.group,s.inning,s.half))+"棒",1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(3,o=>i("span",{
+                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,"第"+u(ct(s.group,s.inning,s.half))+"棒",1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.id}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s.group,s.inning,s.half).strikes
                   }
                   ])
                 }
-                ,null,2)),64))]),i("div",en,[(c(),h(L,null,O(4,o=>i("span",{
+                ,null,2)),64))]),i("div",en,[(c(),h(L,null,O(3,o=>i("span",{
                   key:`b-${s.id}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s.group,s.inning,s.half).balls
                   }
