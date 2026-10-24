@@ -96,6 +96,10 @@ test('守备局数与故意四坏/妨碍捕手等易漏项有显式锚点（回�
   for (const k of ['gdp', 'ibb', 'io']) assert.ok(batting.has(k), `Do() 未映射打击侧 ${k}（io 还会连带把派生 pa 算小）`);
 });
 
+test('打击侧 bbHp 合计也必须还原（ue() legacy 回填依赖）', () => {
+  assert.ok(remappedByLoad('batting').has('bbHp'), 'Do() 未映射 bbHp：只有合计的旧打击行在往返后会被清零');
+});
+
 test('打者侧 hbp 与投手侧 pitchHbp 同时在场（半边丢失是本缺陷的指纹）', () => {
   assert.match(src.slice(anchor, src.indexOf('}', anchor)), /hbp:T\?\.hbp\?\?0/, '打者侧 hbp 映射被移除，本测试的对照前提失效');
   assert.ok(remappedByLoad('pitching').has('pitchHbp'), '投手侧 pitchHbp 缺失，会出现「打者有触身、投手无触身」的半边数据');

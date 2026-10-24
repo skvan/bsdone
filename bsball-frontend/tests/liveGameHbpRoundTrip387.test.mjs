@@ -62,7 +62,7 @@ const saveFielding = (p) => asPayload(payloadExprs('defInn|dp|pb|catcher[A-Za-z_
 const pitcherCompat = src.split('\n').find((l) => l.includes('p.pitchBb=Math.max'));
 const batterCompat = src.split('\n').find((l) => l.includes('b.bb=Number(b.bbHp)'));
 assert(pitcherCompat && batterCompat, '找不到 ue() 的旧数据兼容回填语句');
-const normalize = new Function('p', 'b', pitcherCompat.replace(/\bp\./g, 'p.').replace(/\bb\./g, 'b.') + ';void 0');
+const normalize = new Function('p', 'b', [pitcherCompat, batterCompat].join('\n') + ';void 0');
 
 const whip = (row) => {
   const h = Number(row.pitchH) || 0;
@@ -146,11 +146,19 @@ test('修复后往返：故意四坏 / GDP / IO / 捕手相关新补栏位不被
   assert.equal(savedFielding.catcherCs, 1);
 });
 
-test('真正的 legacy 行（只有合计、无拆分）仍按原逻辑兼容回填', () => {
+test('真正的 legacy 投手行（只有合计、无拆分）仍按原逻辑兼容回填', () => {
   const legacy = { ...SERVER_ROW, pitchBb: 0, pitchHbp: 0, pitchBbHp: 3 };
   const { p } = roundTrip(legacy);
   assert.equal(p.pitchBb, 3, '只有合计的旧行仍回填成保送——本修复没有破坏 legacy 兼容');
   assert.equal(p.pitchHbp ?? 0, 0, '合计行不该凭空长出触身球');
+});
+
+test('真正的 legacy 打击行（只有 bbHp 合计）往返后不被清零', () => {
+  const legacy = { ...SERVER_ROW, bb: 0, hbp: 0, bbHp: 3 };
+  const { b, savedBatting } = roundTrip(legacy);
+  assert.equal(b.bb, 3, '只有 bbHp 合计的旧打击行应回填成保送');
+  assert.equal(savedBatting.bbHp, 3, 'bbHp 合计不能在「重进现场→再保存」后被清零');
+  assert.equal(savedBatting.hbp ?? 0, 0, '合计行不该凭空长出触身球');
 });
 
 test('拆分已存在的行不会被兼容回填二次改写（歧义已消失）', () => {
