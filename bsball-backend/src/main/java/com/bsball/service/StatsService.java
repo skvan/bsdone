@@ -110,6 +110,30 @@ public class StatsService {
         }
     }
 
+    /**
+     * 球队维度统计：只统计该球员代表该队的比赛。
+     * <p>{@code eventId} 为空表示该队跨赛事生涯合计；非空表示该队在该赛事的合计，
+     * 不能用赛事总合计代替。返回结构与 {@link #getPlayerStats(Long, String)} 一致。</p>
+     */
+    public Map<String, Object> getPlayerStatsByTeam(Long playerId, Long teamId, Long eventId, String gameMode) {
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            HashMap<String, Object> result = new HashMap<String, Object>();
+            result.put("batting", this.formatBatting(bat));
+            result.put("pitching", this.formatPitching(pit));
+            result.put("fielding", this.formatFielding(fld));
+            return result;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerStatsByTeam failed for playerId={}, teamId={}", (Object)playerId, (Object)teamId, (Object)e);
+            return this.emptyPlayerStats();
+        }
+    }
+
     public Map<String, Object> emptyPlayerStats() {
         HashMap<String, Object> result = new HashMap<String, Object>();
         result.put("batting", new HashMap());

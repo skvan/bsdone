@@ -245,10 +245,10 @@ class ClubhouseServiceTest {
     }
 
     @Test
-    @DisplayName("同时选择球队与赛事时两者都生效")
+    @DisplayName("同时选择球队与赛事时统计按球队+赛事查询")
     void teamAndEventResolveTogether() {
         stubSingleTeam("BASEBALL", "BASEBALL");
-        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
+        when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL")).thenReturn(emptyStats());
 
         Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
 
@@ -261,13 +261,14 @@ class ClubhouseServiceTest {
         assertEquals("BASEBALL", scope.get("gameMode"));
         assertEquals(false, scope.get("teamAll"));
         assertEquals(false, scope.get("career"));
+        verify(statsService).getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL");
     }
 
     @Test
-    @DisplayName("所选赛事不属于所选球队时赛事回落到生涯，球队保留")
+    @DisplayName("所选赛事不属于所选球队时赛事回落到生涯，球队统计仍按球队")
     void eventNotOwnedByTeamFallsBackToCareer() {
         stubSingleTeam("BASEBALL", "BASEBALL");
-        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+        when(statsService.getPlayerStatsByTeam(10L, 1L, null, "BASEBALL")).thenReturn(emptyStats());
 
         Map<String, Object> result = service.getDashboard(7L, 1L, 12L, "BASEBALL");
 
@@ -279,6 +280,7 @@ class ClubhouseServiceTest {
         assertEquals("生涯", scope.get("eventName"));
         assertEquals(false, scope.get("teamAll"));
         assertEquals(true, scope.get("career"));
+        verify(statsService).getPlayerStatsByTeam(10L, 1L, null, "BASEBALL");
     }
 
     @Test
@@ -380,7 +382,7 @@ class ClubhouseServiceTest {
     @DisplayName("选择球队时赛事下拉只保留该队已确认的赛事")
     void dashboardExcludesEventsOutsideSelectedTeam() {
         stubSingleTeam("BASEBALL", "BASEBALL");
-        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+        when(statsService.getPlayerStatsByTeam(10L, 1L, null, "BASEBALL")).thenReturn(emptyStats());
         when(statsService.getPlayerEventSummaries(10L, 1L, "BASEBALL"))
                 .thenReturn(List.of(eventSummary(11L, "花城联赛"), eventSummary(99L, "旧赛事")));
 

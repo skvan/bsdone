@@ -1,6 +1,9 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.config.TenantProperties;
@@ -8,8 +11,10 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.mapper.PlayerStatsMapper;
 import com.bsball.mapper.StatsLeadersMapper;
 import com.bsball.model.dto.PlayerEventSummaryDTO;
+import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.repository.TeamRepository;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -85,6 +90,33 @@ class StatsServiceScopeTest {
         List<PlayerEventSummaryDTO> rows = statsService.getPlayerEventSummaries(10L, null, "BASEBALL");
 
         assertEquals(List.of(22L, 21L), rows.stream().map(PlayerEventSummaryDTO::getEventId).toList());
+    }
+
+    @Test
+    @DisplayName("球队+赛事统计使用球队过滤，不拿赛事合计代替")
+    void teamEventStatsUseTeamFilter() {
+        when(playerStatsMapper.selectBattingStatsByTeamScope(eq(10L), eq(1L), eq(2L), eq(3L), eq("BASEBALL")))
+                .thenReturn(new PlayerStatsDTO.Batting());
+        CurrentUserHolder.set(7L, 1L);
+
+        Map<String, Object> stats = statsService.getPlayerStatsByTeam(10L, 2L, 3L, "BASEBALL");
+
+        verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
+        assertTrue(stats.containsKey("batting"));
+        assertTrue(stats.containsKey("pitching"));
+        assertTrue(stats.containsKey("fielding"));
+    }
+
+    @Test
+    @DisplayName("球队生涯统计 eventId 传空，只按球队过滤")
+    void teamCareerStatsPassNullEventId() {
+        when(playerStatsMapper.selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+                .thenReturn(new PlayerStatsDTO.Batting());
+        CurrentUserHolder.set(7L, 1L);
+
+        statsService.getPlayerStatsByTeam(10L, 2L, null, "BASEBALL");
+
+        verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
     }
 
     private PlayerEventSummaryDTO eventRow(Long id, String name, String lastGameday,

@@ -28,6 +28,12 @@ public interface PlayerStatsMapper {
 
     public PlayerStatsDTO.Fielding selectFieldingStats(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="gameMode") String var3);
 
+    public PlayerStatsDTO.Batting selectBattingStatsByTeamScope(@Param(value="playerId") Long playerId, @Param(value="tenantId") Long tenantId, @Param(value="teamId") Long teamId, @Param(value="eventId") Long eventId, @Param(value="gameMode") String gameMode);
+
+    public PlayerStatsDTO.Pitching selectPitchingStatsByTeamScope(@Param(value="playerId") Long playerId, @Param(value="tenantId") Long tenantId, @Param(value="teamId") Long teamId, @Param(value="eventId") Long eventId, @Param(value="gameMode") String gameMode);
+
+    public PlayerStatsDTO.Fielding selectFieldingStatsByTeamScope(@Param(value="playerId") Long playerId, @Param(value="tenantId") Long tenantId, @Param(value="teamId") Long teamId, @Param(value="eventId") Long eventId, @Param(value="gameMode") String gameMode);
+
     public List<EventStatRow> selectBattingStatsByEvent(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="gameMode") String var3);
 
     public List<EventStatRow> selectPitchingStatsByEvent(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="gameMode") String var3);

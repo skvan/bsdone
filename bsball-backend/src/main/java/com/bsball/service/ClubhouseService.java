@@ -86,7 +86,7 @@ public class ClubhouseService {
         List<PlayerEventSummaryDTO> eventSummaries =
                 statsService.getPlayerEventSummaries(player.getId(), scope.teamId(), gameMode);
         Set<Long> scopedEventIds = confirmedEventIds(teams, scope.teamId());
-        Map<String, Object> stats = loadStats(player.getId(), scope.eventId(), gameMode);
+        Map<String, Object> stats = loadStats(player.getId(), scope.teamId(), scope.eventId(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
 
@@ -365,7 +365,14 @@ public class ClubhouseService {
         return row;
     }
 
-    private Map<String, Object> loadStats(Long playerId, Long eventId, String gameMode) {
+    /**
+     * 顶部统计按范围取数：选了球队走球队维度（eventId 为空即球队生涯），
+     * 未选球队时沿用现有生涯/按赛事合计口径。
+     */
+    private Map<String, Object> loadStats(Long playerId, Long teamId, Long eventId, String gameMode) {
+        if (teamId != null) {
+            return statsService.getPlayerStatsByTeam(playerId, teamId, eventId, gameMode);
+        }
         if (eventId != null) {
             List<PlayerStatsByEventDTO> seasons = statsService.getPlayerStatsBySeason(playerId, gameMode);
             for (PlayerStatsByEventDTO season : seasons) {
