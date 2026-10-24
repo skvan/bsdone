@@ -34,7 +34,7 @@ const DEFAULTS = {
     { key: 'hr', label: 'HR', visible: true },
     { key: 'shSf', label: 'SH+SF', visible: true },
     { key: 'rbi', label: 'RBI', visible: true },
-    { key: 'bbHp', label: 'BB+HP', visible: true },
+    { key: 'bbHp', label: 'BB+HBP', visible: true },
     { key: 'so', label: 'SO', visible: false },
     { key: 'sb', label: 'SB', visible: false }
   ],
@@ -43,7 +43,7 @@ const DEFAULTS = {
     { key: 'pitchR', label: 'R', visible: true },
     { key: 'er', label: 'ER', visible: true },
     { key: 'pitchH', label: 'H', visible: true },
-    { key: 'pitchBbHp', label: 'BB+HP', visible: true },
+    { key: 'pitchBbHp', label: 'BB+HBP', visible: true },
     { key: 'pitchSo', label: 'SO', visible: true },
     { key: 'wp', label: 'WP', visible: false },
     { key: 'np', label: 'NP', visible: false }
@@ -121,6 +121,11 @@ test('观赛键可见列少于 6 时按序补足保底', () => {
   const result = readWatchFieldSettings(DEFAULTS);
   assert.equal(result.batterFields.filter((item) => item.visible).length, 6);
   assert.equal(result.pitcherFields.filter((item) => item.visible).length, 6);
+});
+
+test('默认投手触身球列缩写统一为 HBP（#387）', () => {
+  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchHbp').label, 'HBP');
+  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchBbHp').label, 'BB+HBP');
 });
 
 test('取消勾选投手 PA/BF 后回读仍为隐藏（#211 回归：不再被夹取回默认可见）', () => {

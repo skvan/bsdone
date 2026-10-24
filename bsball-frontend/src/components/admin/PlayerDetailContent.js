@@ -1919,10 +1919,10 @@ var vl={
     }
     function ge(e,a){
       return(e==="batting"?{
-        GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HP":"bbHp",SO:"so"
+        GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HBP":"bbHp",SO:"so"
       }
       :e==="pitching"?{
-        GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"cg",PG:"pg",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HP":"pitchBbHp",SO:"pitchSo",WP:"wp",BK:"bk"
+        GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"cg",PG:"pg",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HBP":"pitchBbHp",SO:"pitchSo",WP:"wp",BK:"bk"
       }
       :{
         GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e","TC%":"tcPct",PB:"pb",CS:"catcherCs"
@@ -1996,10 +1996,10 @@ var vl={
     }
     );
     const U={
-      GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HP":"bbHp",SO:"batSo"
+      GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HBP":"bbHp",SO:"batSo"
     }
     ,ee={
-      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HP":"pitchBbHp",SO:"pitK",WP:"wp",BK:"bk"
+      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HBP":"pitchBbHp",SO:"pitK",WP:"wp",BK:"bk"
     }
     ,Ie={
       GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e","TC%":"tcPct",PB:"fldPb",CS:"fldCatcherCs"
@@ -2074,10 +2074,10 @@ var vl={
 `)
     }
     const ye={
-      GP:"GP",PA:"PA",AB:"AB",AVG:"AVG",OBP:"OBP",SLG:"SLG",OPS:"OPS",H:"H","1B":"1B","2B":"2B","3B":"3B",HR:"HR",IPHR:"IPHR","SH+SF":"SH+SF",TB:"TB",RBI:"RBI",R:"R",SB:"SB",CS:"CS","BB+HP":"BB+HP",SO:"SO"
+      GP:"GP",PA:"PA",AB:"AB",AVG:"AVG",OBP:"OBP",SLG:"SLG",OPS:"OPS",H:"H","1B":"1B","2B":"2B","3B":"3B",HR:"HR",IPHR:"IPHR","SH+SF":"SH+SF",TB:"TB",RBI:"RBI",R:"R",SB:"SB",CS:"CS","BB+HBP":"BB+HBP",SO:"SO"
     }
     ,Va={
-      GP:"GP",IP:"IP",ERA:"ERA",WHIP:"WHIP",BF:"BF",AB:"AB",GG:"GG",PG:"PG",H:"H",HR:"HR",IPHR:"IPHR","BB+HP":"BB+HP",SO:"SO",WP:"WP",BK:"BK"
+      GP:"GP",IP:"IP",ERA:"ERA",WHIP:"WHIP",BF:"BF",AB:"AB",GG:"GG",PG:"PG",H:"H",HR:"HR",IPHR:"IPHR","BB+HBP":"BB+HBP",SO:"SO",WP:"WP",BK:"BK"
     }
     ,ba={
       GP:"GP",INN:"INN",TC:"TC",PO:"PO",A:"A",E:"E","TC%":"TC%",PB:"PB",CS:"CS"
@@ -2140,7 +2140,7 @@ var vl={
       prop:"cs",abbr:"CS",tip:"cs",w:52
     }
     ,{
-      prop:"bbHp",abbr:"BB+HP",tip:"bbHp",w:72
+      prop:"bbHp",abbr:"BB+HBP",tip:"bbHp",w:72
     }
     ,{
       prop:"so",abbr:"SO",tip:"batSo",w:52
@@ -2179,7 +2179,7 @@ var vl={
       prop:"pitchInsideParkHr",abbr:"IPHR",tip:"pitchInsideParkHr",w:56
     }
     ,{
-      prop:"pitchBbHp",abbr:"BB+HP",tip:"pitchBbHp",w:72
+      prop:"pitchBbHp",abbr:"BB+HBP",tip:"pitchBbHp",w:72
     }
     ,{
       prop:"pitchSo",abbr:"SO",tip:"pitK",w:52
@@ -2377,7 +2377,7 @@ var vl={
         case"R":return(e.r??0)>0;
         case"SB":return(e.sb??0)>0;
         case"CS":return(e.cs??0)>0;
-        case"BB+HP":return Ia(e)>0;
+        case"BB+HBP":return Ia(e)>0;
         case"SO":return(e.so??0)>0;
         default:return!1
       }
@@ -2390,7 +2390,7 @@ var vl={
         key:f,label:r(l),enAbbr:ye[f]??f,val:P,drillable:Ja(e,f),desc:M
       }
       );
-      return[a("GP","player.careerBat.gp",e.gp,k("batting","GP",U)),a("PA","player.careerBat.pa",e.pa,k("batting","PA",U)),a("AB","player.careerBat.ab",e.ab,k("batting","AB",U)),a("AVG","player.careerBat.avg",E(e.avg),k("batting","AVG",U)),a("OBP","player.careerBat.obp",E(e.obp),k("batting","OBP",U)),a("SLG","player.careerBat.slg",E(e.slg),k("batting","SLG",U)),a("OPS","player.careerBat.ops",E(e.ops),k("batting","OPS",U)),a("H","player.careerBat.h",e.h,k("batting","H",U)),a("1B","player.careerBat.singles",e.singles??Math.max(0,e.h-e.doubles-e.triples-e.hr-(e.insideParkHr??0)),k("batting","1B",U)),a("2B","player.careerBat.doubles",e.doubles,k("batting","2B",U)),a("3B","player.careerBat.triples",e.triples,k("batting","3B",U)),a("HR","player.careerBat.hr",e.hr,k("batting","HR",U)),a("IPHR","player.careerBat.iphr",e.insideParkHr??0,k("batting","IPHR",U)),a("SH+SF","player.careerBat.shSf",(Number(e.sh)||0)+(Number(e.sf)||0),k("batting","SH+SF",U)),a("TB","player.careerBat.tb",e.tb??"-",k("batting","TB",U)),a("RBI","player.careerBat.rbi",e.rbi,k("batting","RBI",U)),a("R","player.careerBat.r",e.r,k("batting","R",U)),a("SB","player.careerBat.sb",e.sb,k("batting","SB",U)),a("CS","player.careerBat.cs",e.cs,k("batting","CS",U)),a("BB+HP","player.careerBat.bbHp",Ia(e),k("batting","BB+HP",U)),a("SO","player.careerBat.so",e.so,k("batting","SO",U))]
+      return[a("GP","player.careerBat.gp",e.gp,k("batting","GP",U)),a("PA","player.careerBat.pa",e.pa,k("batting","PA",U)),a("AB","player.careerBat.ab",e.ab,k("batting","AB",U)),a("AVG","player.careerBat.avg",E(e.avg),k("batting","AVG",U)),a("OBP","player.careerBat.obp",E(e.obp),k("batting","OBP",U)),a("SLG","player.careerBat.slg",E(e.slg),k("batting","SLG",U)),a("OPS","player.careerBat.ops",E(e.ops),k("batting","OPS",U)),a("H","player.careerBat.h",e.h,k("batting","H",U)),a("1B","player.careerBat.singles",e.singles??Math.max(0,e.h-e.doubles-e.triples-e.hr-(e.insideParkHr??0)),k("batting","1B",U)),a("2B","player.careerBat.doubles",e.doubles,k("batting","2B",U)),a("3B","player.careerBat.triples",e.triples,k("batting","3B",U)),a("HR","player.careerBat.hr",e.hr,k("batting","HR",U)),a("IPHR","player.careerBat.iphr",e.insideParkHr??0,k("batting","IPHR",U)),a("SH+SF","player.careerBat.shSf",(Number(e.sh)||0)+(Number(e.sf)||0),k("batting","SH+SF",U)),a("TB","player.careerBat.tb",e.tb??"-",k("batting","TB",U)),a("RBI","player.careerBat.rbi",e.rbi,k("batting","RBI",U)),a("R","player.careerBat.r",e.r,k("batting","R",U)),a("SB","player.careerBat.sb",e.sb,k("batting","SB",U)),a("CS","player.careerBat.cs",e.cs,k("batting","CS",U)),a("BB+HBP","player.careerBat.bbHp",Ia(e),k("batting","BB+HBP",U)),a("SO","player.careerBat.so",e.so,k("batting","SO",U))]
     }
     );
     function t(e){
@@ -2414,7 +2414,7 @@ var vl={
         case"H":return(e.pitchH??0)>0;
         case"HR":return(e.pitchHr??0)>0;
         case"IPHR":return(e.pitchInsideParkHr??0)>0;
-        case"BB+HP":return t(e)>0;
+        case"BB+HBP":return t(e)>0;
         case"SO":return(e.pitchSo??0)>0;
         case"WP":return(e.wp??0)>0;
         case"BK":return(e.bk??0)>0;
@@ -2429,7 +2429,7 @@ var vl={
         key:f,label:r(l),enAbbr:Va[f]??f,val:P,drillable:w(e,f),desc:M
       }
       );
-      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("BB+HP","player.careerPitch.bbHp",t(e),k("pitching","BB+HP",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
+      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("BB+HBP","player.careerPitch.bbHp",t(e),k("pitching","BB+HBP",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
     }
     );
     function W(e,a){

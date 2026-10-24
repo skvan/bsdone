@@ -100,10 +100,10 @@
         "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
         "shortLabel": "死球"
       },
-      "hb": {
+      "pitchHbp": {
         "fullName": "触身球（投手）",
         "definition": "投手投球击中未尝试挥棒的打者",
-        "shortLabel": "HB"
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "三振",
@@ -966,7 +966,7 @@
         "cs": "盗失（Caught Stealing）",
         "e": "失误（Errors）",
         "avg": "打击率（H/AB）",
-        "obp": "上垒率（本页用 (H+保送+HP)/PA 近似）",
+        "obp": "上垒率（本页用 (H+保送+HBP)/PA 近似）",
         "slg": "长打率（TB/AB）",
         "ops": "攻击指数（OBP+SLG）"
       },
@@ -1728,7 +1728,7 @@
         "pitchSo": "三振",
         "pitchHr": "被本垒打",
         "pitchInsideParkHr": "被场内本垒打",
-        "pitAb": "面对打者的简化打数相关指标（约 BF−BB−IBB−HP）",
+        "pitAb": "面对打者的简化打数相关指标（约 BF−BB−IBB−HBP）",
         "pitE": "该场该球员打者行守备失误（若有）",
         "np": "投球数",
         "pitchPa": "对局打席",

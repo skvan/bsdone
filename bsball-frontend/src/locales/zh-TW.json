@@ -100,10 +100,10 @@
         "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
         "shortLabel": "觸身"
       },
-      "hb": {
-        "fullName": "触身球（投手）",
-        "definition": "投手投球击中未尝试挥棒的打者",
-        "shortLabel": "HB"
+      "pitchHbp": {
+        "fullName": "觸身球（投手）",
+        "definition": "投手投球擊中未嘗試揮棒的打者",
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "三振",
@@ -959,7 +959,7 @@
         "cs": "盜失（Caught Stealing）",
         "e": "失誤（Errors）",
         "avg": "打擊率（H/AB）",
-        "obp": "上壘率（本頁以 (H+保送+HP)/PA 近似）",
+        "obp": "上壘率（本頁以 (H+保送+HBP)/PA 近似）",
         "slg": "長打率（TB/AB）",
         "ops": "攻擊指數（OBP+SLG）"
       },
@@ -1720,7 +1720,7 @@
         "pitchSo": "三振",
         "pitchHr": "被全壘打",
         "pitchInsideParkHr": "被場內全壘打",
-        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HP）",
+        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HBP）",
         "pitE": "同場該員守備失誤數（與統計源一致）",
         "np": "投球數",
         "pitchPa": "對局打席",

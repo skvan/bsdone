@@ -100,10 +100,10 @@
         "definition": "When a batter is struck by a pitched ball which he is not attempting to hit and is awarded first base",
         "shortLabel": "HBP"
       },
-      "hb": {
+      "pitchHbp": {
         "fullName": "Hit Batsmen",
         "definition": "When a batter is struck by a pitched ball which he is not attempting to hit",
-        "shortLabel": "HB"
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "Strikeouts",

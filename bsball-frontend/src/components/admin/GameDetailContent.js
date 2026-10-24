@@ -851,7 +851,7 @@ var Sl={
       key:"rbi",label:"RBI",visible:!0
     }
     ,{
-      key:"bbHp",label:"BB+HP",visible:!0
+      key:"bbHp",label:"BB+HBP",visible:!0
     }
     ,{
       key:"so",label:"SO",visible:!0

@@ -1568,7 +1568,7 @@ var Li={
       key:"shSf",label:"SH+SF",minWidth:80,title:"牺牲触击+牺牲高飞"
     }
     ,{
-      key:"bbHp",label:"BB+HB",minWidth:80,title:"四坏+触身"
+      key:"bbHp",label:"BB+HBP",minWidth:80,title:"四坏+触身"
     }
     ,{
       key:"sb",label:"SB",minWidth:77,title:"盗垒"
@@ -1632,7 +1632,7 @@ var Li={
       key:"pitchH",label:"H",minWidth:77,title:"被安打"
     }
     ,{
-      key:"pitchBbHp",label:"BB+HP",minWidth:80,title:"四坏+触身"
+      key:"pitchBbHp",label:"BB+HBP",minWidth:80,title:"四坏+触身"
     }
     ,{
       key:"pitchSo",label:"SO",minWidth:77,title:"三振"
@@ -1665,7 +1665,7 @@ var Li={
       key:"pitchIbb",label:"IBB",minWidth:65,title:"故意四坏"
     }
     ,{
-      key:"pitchHbp",label:"HP",minWidth:65,title:"触身"
+      key:"pitchHbp",label:"HBP",minWidth:65,title:"触身"
     }
     ,{
       key:"wp",label:"WP",minWidth:65,title:"暴投"

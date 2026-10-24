@@ -100,10 +100,10 @@
         "definition": "投球が打者に当たり一塁が与えられた回数",
         "shortLabel": "HBP"
       },
-      "hb": {
-        "fullName": "Hit Batsmen",
-        "definition": "When a batter is struck by a pitched ball which he is not attempting to hit",
-        "shortLabel": "HB"
+      "pitchHbp": {
+        "fullName": "与死球",
+        "definition": "投手が投球で打者に死球を与えた回数",
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "三振",

@@ -100,10 +100,10 @@
         "definition": "타자가 투구에 맞아 1루가 주어진 경우",
         "shortLabel": "HBP"
       },
-      "hb": {
+      "pitchHbp": {
         "fullName": "사구 허용",
         "definition": "투수가 타자에게 사구를 허용한 횟수",
-        "shortLabel": "HB"
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "삼진",
@@ -959,7 +959,7 @@
         "cs": "도루 실패.",
         "e": "실책.",
         "avg": "타율(H/AB).",
-        "obp": "출루율(이 페이지는 (H+BB+HP)/PA 근사).",
+        "obp": "출루율(이 페이지는 (H+BB+HBP)/PA 근사).",
         "slg": "장타율(TB/AB).",
         "ops": "OPS(출루율+장타율)."
       },
