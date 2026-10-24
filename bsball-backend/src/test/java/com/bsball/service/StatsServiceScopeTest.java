@@ -1,8 +1,6 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,28 +93,84 @@ class StatsServiceScopeTest {
     @Test
     @DisplayName("球队+赛事统计使用球队过滤，不拿赛事合计代替")
     void teamEventStatsUseTeamFilter() {
-        when(playerStatsMapper.selectBattingStatsByTeamScope(eq(10L), eq(1L), eq(2L), eq(3L), eq("BASEBALL")))
-                .thenReturn(new PlayerStatsDTO.Batting());
-        CurrentUserHolder.set(7L, 1L);
+        when(playerStatsMapper.selectBattingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+                .thenReturn(batting());
+        when(playerStatsMapper.selectPitchingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+                .thenReturn(pitching());
+        when(playerStatsMapper.selectFieldingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+                .thenReturn(fielding());
 
         Map<String, Object> stats = statsService.getPlayerStatsByTeam(10L, 2L, 3L, "BASEBALL");
 
         verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
-        assertTrue(stats.containsKey("batting"));
-        assertTrue(stats.containsKey("pitching"));
-        assertTrue(stats.containsKey("fielding"));
+        verify(playerStatsMapper).selectPitchingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
+        verify(playerStatsMapper).selectFieldingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
+        assertTeamStatsFormatted(stats);
     }
 
     @Test
     @DisplayName("球队生涯统计 eventId 传空，只按球队过滤")
     void teamCareerStatsPassNullEventId() {
         when(playerStatsMapper.selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
-                .thenReturn(new PlayerStatsDTO.Batting());
-        CurrentUserHolder.set(7L, 1L);
+                .thenReturn(batting());
+        when(playerStatsMapper.selectPitchingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+                .thenReturn(pitching());
+        when(playerStatsMapper.selectFieldingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+                .thenReturn(fielding());
 
-        statsService.getPlayerStatsByTeam(10L, 2L, null, "BASEBALL");
+        Map<String, Object> stats = statsService.getPlayerStatsByTeam(10L, 2L, null, "BASEBALL");
 
         verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
+        verify(playerStatsMapper).selectPitchingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
+        verify(playerStatsMapper).selectFieldingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
+        assertTeamStatsFormatted(stats);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertTeamStatsFormatted(Map<String, Object> stats) {
+        Map<String, Object> batting = (Map<String, Object>) stats.get("batting");
+        Map<String, Object> pitching = (Map<String, Object>) stats.get("pitching");
+        Map<String, Object> fielding = (Map<String, Object>) stats.get("fielding");
+
+        assertEquals(5, batting.get("gp"));
+        assertEquals("0.4", batting.get("avg"));
+        assertEquals(2, pitching.get("gp"));
+        assertEquals(4.0, pitching.get("ip"));
+        assertEquals("6.75", pitching.get("era"));
+        assertEquals(4, fielding.get("gp"));
+        assertEquals(9.0, fielding.get("inn"));
+        assertEquals("90.0%", fielding.get("tcPct"));
+    }
+
+    private PlayerStatsDTO.Batting batting() {
+        PlayerStatsDTO.Batting b = new PlayerStatsDTO.Batting();
+        b.setGp(5);
+        b.setPa(12);
+        b.setAb(10);
+        b.setH(4);
+        return b;
+    }
+
+    private PlayerStatsDTO.Pitching pitching() {
+        PlayerStatsDTO.Pitching p = new PlayerStatsDTO.Pitching();
+        p.setGp(2);
+        p.setIp(4.0);
+        p.setEr(3);
+        p.setPitchH(4);
+        p.setPitchBbHp(5);
+        p.setPitchSo(3);
+        return p;
+    }
+
+    private PlayerStatsDTO.Fielding fielding() {
+        PlayerStatsDTO.Fielding f = new PlayerStatsDTO.Fielding();
+        f.setGp(4);
+        f.setInn(9.0);
+        f.setTc(10);
+        f.setPo(8);
+        f.setA(1);
+        f.setE(1);
+        return f;
     }
 
     private PlayerEventSummaryDTO eventRow(Long id, String name, String lastGameday,
