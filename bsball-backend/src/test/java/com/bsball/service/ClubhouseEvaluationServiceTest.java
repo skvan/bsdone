@@ -4,9 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.common.PageResult;
@@ -50,6 +55,20 @@ class ClubhouseEvaluationServiceTest {
         assertEquals(6, axes(card(cards, "pitching")).size());
 
         assertEquals("全租户生涯", evaluation.get("comparison"));
+        assertEquals(Map.of("batting", 10, "pitching", 3, "fielding", 6),
+                evaluation.get("minSample"));
+        Map<String, Object> battingCard = card(cards, "batting");
+        assertEquals(2, battingCard.get("sampleSize"));
+        assertEquals(60, battingCard.get("ownSample"));
+        assertEquals("PA", battingCard.get("sampleUnit"));
+        Map<String, Object> pitchingCard = card(cards, "pitching");
+        assertEquals(2, pitchingCard.get("sampleSize"));
+        assertEquals(20.0, pitchingCard.get("ownSample"));
+        assertEquals("IP", pitchingCard.get("sampleUnit"));
+        Map<String, Object> fieldingCard = card(cards, "fielding");
+        assertEquals(2, fieldingCard.get("sampleSize"));
+        assertEquals(40.0, fieldingCard.get("ownSample"));
+        assertEquals("INN", fieldingCard.get("sampleUnit"));
         Map<String, Object> overall = overall(evaluation);
         assertEquals(100, overall.get("score"));
         assertEquals("S", overall.get("grade"));
@@ -58,6 +77,8 @@ class ClubhouseEvaluationServiceTest {
         assertEquals("TWO_WAY", overall.get("role"));
         assertEquals(Map.of("batting", 0.4, "pitching", 0.4, "fielding", 0.2),
                 overall.get("weights"));
+        assertEquals(Map.of("batting", 60.0, "pitching", 20.0, "fielding", 40.0),
+                overall.get("sampleSize"));
     }
 
     @Test
@@ -87,7 +108,7 @@ class ClubhouseEvaluationServiceTest {
         List<Map<String, Object>> pool = List.of(self,
                 battingRow(11L, "CF", 25, 25, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0));
         Map<String, Object> career = careerStats(self, Map.of(), Map.of());
-        stubCareerPools(pool, List.of(), List.of());
+        stubBattingPool(pool);
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
         Map<String, Object> batting = card(cards(evaluation), "batting");
@@ -97,7 +118,9 @@ class ClubhouseEvaluationServiceTest {
         assertEquals("B+", batting.get("grade"));
         assertEquals(0.5, batting.get("reliability"));
         assertEquals("参考值", batting.get("confidenceLabel"));
-        assertNotNull(batting.get("sampleSize"));
+        assertEquals(2, batting.get("sampleSize"));
+        assertEquals(25, batting.get("ownSample"));
+        assertEquals("PA", batting.get("sampleUnit"));
         Map<String, Object> overall = overall(evaluation);
         assertEquals(75, overall.get("score"));
         assertEquals(0.5, overall.get("reliability"));
@@ -113,7 +136,7 @@ class ClubhouseEvaluationServiceTest {
                 8, 1, 0, 30, 10, 0);
         List<Map<String, Object>> pool = List.of(self,
                 battingRow(11L, "CF", 25, 25, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0));
-        stubCareerPools(pool, List.of(), List.of());
+        stubBattingPool(pool);
 
         Map<String, Object> evaluation = service.buildCareer(
                 10L, "BASEBALL", careerStats(self, Map.of(), Map.of()), "CF");
@@ -122,12 +145,15 @@ class ClubhouseEvaluationServiceTest {
         assertEquals(100, batting.get("score"));
         assertEquals(1.0, batting.get("reliability"));
         assertEquals("样本充足", batting.get("confidenceLabel"));
+        assertEquals(50, batting.get("ownSample"));
+        assertEquals(2, batting.get("sampleSize"));
     }
 
     @Test
     @DisplayName("投手无打击样本时按投球 80%、守备 20% 计算总体")
     void pitcherWithoutBattingUsesEightyTwentyWeights() {
-        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        stubPitchingPool(bigPitchingPool());
+        stubFieldingPool(bigFieldingPool());
         Map<String, Object> career = careerStats(Map.of(), bigPitchingRow(), bigFieldingRow());
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "P");
@@ -137,12 +163,14 @@ class ClubhouseEvaluationServiceTest {
         assertEquals("PITCHER", overall.get("role"));
         assertEquals(Map.of("pitching", 0.8, "fielding", 0.2), overall.get("weights"));
         assertEquals(100, overall.get("score"));
+        verifyBattingPoolNotFetched();
     }
 
     @Test
     @DisplayName("野手按打击 55%、守备 45% 合并总体")
     void positionPlayerUsesBattingFieldingWeights() {
-        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        stubBattingPool(bigBattingPool());
+        stubFieldingPool(bigFieldingPool());
         Map<String, Object> career = careerStats(bigBattingRow(), Map.of(), bigFieldingRow());
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
@@ -150,6 +178,7 @@ class ClubhouseEvaluationServiceTest {
         Map<String, Object> overall = overall(evaluation);
         assertEquals("POSITION_PLAYER", overall.get("role"));
         assertEquals(Map.of("batting", 0.55, "fielding", 0.45), overall.get("weights"));
+        verifyPitchingPoolNotFetched();
     }
 
     @Test
@@ -160,7 +189,6 @@ class ClubhouseEvaluationServiceTest {
         Map<String, Object> lowPitching = pitchingRow(10L, 1.0, 2, 0, 1, 0, 1, 1.5);
         Map<String, Object> lowFielding = fieldingRow(10L, "CF", 1, 3.0, 3, 1, 1, 0);
         Map<String, Object> career = careerStats(lowBatting, lowPitching, lowFielding);
-        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
         List<Map<String, Object>> cards = cards(evaluation);
@@ -179,6 +207,7 @@ class ClubhouseEvaluationServiceTest {
         assertEquals(0.0, overall.get("reliability"));
         assertEquals("样本不足", overall.get("confidenceLabel"));
         assertEquals(Map.of(), overall.get("weights"));
+        verifyNoInteractions(statsService);
     }
 
     @Test
@@ -194,7 +223,7 @@ class ClubhouseEvaluationServiceTest {
         pool.add(fieldingRow(16L, "CF", 8, 20.0, 5, 4, 2, 0));
         Map<String, Object> career = careerStats(Map.of(), Map.of(),
                 fieldingRow(10L, "SS", 10, 40.0, 20, 18, 2, 4));
-        stubCareerPools(List.of(), List.of(), pool);
+        stubFieldingPool(pool);
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "SS");
         Map<String, Object> fielding = card(cards(evaluation), "fielding");
@@ -216,7 +245,7 @@ class ClubhouseEvaluationServiceTest {
         pool.add(fieldingRow(16L, "2B", 10, 40.0, 28, 8, 0, 4));
         Map<String, Object> career = careerStats(Map.of(), Map.of(),
                 fieldingRow(10L, "CF", 10, 40.0, 20, 18, 2, 4));
-        stubCareerPools(List.of(), List.of(), pool);
+        stubFieldingPool(pool);
 
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
         Map<String, Object> fielding = card(cards(evaluation), "fielding");
@@ -253,6 +282,123 @@ class ClubhouseEvaluationServiceTest {
     }
 
     @Test
+    @DisplayName("多守位行（CF、LF）只要含目标组守位就参与同组比较")
+    void multiPositionPeerJoinsTargetGroup() {
+        List<Map<String, Object>> pool = new ArrayList<>();
+        pool.add(fieldingRow(10L, "CF", 10, 40.0, 20, 18, 2, 4));
+        pool.add(fieldingRow(11L, "CF、LF", 8, 30.0, 9, 8, 1, 1));
+        pool.add(fieldingRow(12L, "RF", 8, 30.0, 8, 7, 1, 1));
+        pool.add(fieldingRow(13L, "LF", 8, 28.0, 7, 6, 1, 1));
+        pool.add(fieldingRow(14L, "OF", 8, 24.0, 6, 5, 1, 0));
+        pool.add(fieldingRow(15L, "SS", 10, 40.0, 30, 10, 0, 5));
+        Map<String, Object> career = careerStats(Map.of(), Map.of(),
+                fieldingRow(10L, "CF", 10, 40.0, 20, 18, 2, 4));
+        stubFieldingPool(pool);
+
+        Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
+        Map<String, Object> fielding = card(cards(evaluation), "fielding");
+
+        assertNull(fielding.get("note"));
+        assertEquals(5, fielding.get("sampleSize"));
+        assertEquals(100, axes(fielding).get(0).get("percentile"));
+        assertEquals(100, axes(fielding).get(5).get("percentile"));
+    }
+
+    @Test
+    @DisplayName("分项权重生效：各轴百分位不同时按 50/20/15/10/5 加权")
+    void qualityScoreUsesDeclaredAxisWeights() {
+        Map<String, Object> self = weightedBattingRow(
+                10L, 60, 10, 10, 10, 8, ".100", ".500", 10);
+        List<Map<String, Object>> pool = List.of(self,
+                weightedBattingRow(11L, 20, 10, 0, 5, 1, ".500", ".300", 30),
+                weightedBattingRow(12L, 20, 10, 0, 4, 5, ".400", ".600", 20),
+                weightedBattingRow(13L, 20, 10, 0, 3, 3, ".300", ".200", 5),
+                weightedBattingRow(14L, 20, 10, 0, 2, 2, ".200", ".400", 15));
+        stubBattingPool(pool);
+
+        Map<String, Object> evaluation = service.buildCareer(
+                10L, "BASEBALL", careerStats(self, Map.of(), Map.of()), "CF");
+        Map<String, Object> batting = card(cards(evaluation), "batting");
+
+        assertEquals(0, axes(batting).get(1).get("percentile"));
+        assertEquals(75, axes(batting).get(2).get("percentile"));
+        assertEquals(25, axes(batting).get(4).get("percentile"));
+        assertEquals(100, axes(batting).get(5).get("percentile"));
+        assertEquals(69, batting.get("score"));
+        assertEquals(69, overall(evaluation).get("score"));
+    }
+
+    @Test
+    @DisplayName("overall 可靠性按角色权重合并各分项自有样本")
+    void overallReliabilityUsesRoleWeights() {
+        Map<String, Object> self = battingRow(10L, "CF", 25, 20, 8, 2, 0, 2,
+                4, 1, 0, 15, 5, 0);
+        List<Map<String, Object>> battingPool = List.of(self,
+                battingRow(11L, "CF", 25, 25, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0));
+        stubBattingPool(battingPool);
+        stubFieldingPool(List.of());
+        Map<String, Object> career = careerStats(self, Map.of(),
+                fieldingRow(10L, "CF", 10, 30.0, 20, 18, 2, 4));
+
+        Map<String, Object> overall = overall(
+                service.buildCareer(10L, "BASEBALL", career, "CF"));
+
+        assertEquals("POSITION_PLAYER", overall.get("role"));
+        assertEquals(Map.of("batting", 0.55, "fielding", 0.45), overall.get("weights"));
+        assertEquals(64, overall.get("score"));
+        assertEquals(0.73, overall.get("reliability"));
+    }
+
+    @Test
+    @DisplayName("打击 PA 与投球 IP 均达门槛时按二刀流 40/40/20")
+    void twoWayRequiresBothThresholds() {
+        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        Map<String, Object> career = careerStats(
+                battingRow(10L, "CF", 50, 40, 16, 4, 0, 4, 8, 1, 0, 30, 10, 0),
+                pitchingRow(10L, 15.0, 6, 1, 4, 0, 8, 1.4),
+                bigFieldingRow());
+
+        Map<String, Object> overall = overall(
+                service.buildCareer(10L, "BASEBALL", career, "CF"));
+
+        assertEquals("TWO_WAY", overall.get("role"));
+        assertEquals(Map.of("batting", 0.4, "pitching", 0.4, "fielding", 0.2),
+                overall.get("weights"));
+    }
+
+    @Test
+    @DisplayName("投手有打击但未达二刀流门槛时按投球 70%、守备 15%、打击 15%")
+    void pitcherWithBattingBelowTwoWayThresholdUsesSeventyFifteenFifteen() {
+        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        Map<String, Object> lowPa = careerStats(
+                battingRow(10L, "CF", 30, 24, 9, 2, 0, 2, 4, 1, 0, 15, 4, 0),
+                bigPitchingRow(), bigFieldingRow());
+        Map<String, Object> lowIp = careerStats(
+                bigBattingRow(), pitchingRow(10L, 10.0, 6, 1, 4, 0, 8, 1.4), bigFieldingRow());
+
+        for (Map<String, Object> career : List.of(lowPa, lowIp)) {
+            Map<String, Object> overall = overall(
+                    service.buildCareer(10L, "BASEBALL", career, "CF"));
+
+            assertEquals("PITCHER", overall.get("role"));
+            assertEquals(Map.of("pitching", 0.7, "fielding", 0.15, "batting", 0.15),
+                    overall.get("weights"));
+        }
+    }
+
+    @Test
+    @DisplayName("gameMode 透传到对比池查询（SOFTBALL 不混棒球）")
+    void passesGameModeToPoolQueries() {
+        stubPools("SOFTBALL", bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+
+        Map<String, Object> evaluation = service.buildCareer(
+                10L, "Softball", bigCareerStats(), "CF");
+
+        assertEquals("全租户生涯", evaluation.get("comparison"));
+        verifyPools("SOFTBALL");
+    }
+
+    @Test
     @DisplayName("旧 build 调用兼容为全租户生涯口径")
     void legacyBuildDelegatesToCareer() {
         stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
@@ -278,26 +424,69 @@ class ClubhouseEvaluationServiceTest {
 
     private void stubCareerPools(List<Map<String, Object>> batting,
             List<Map<String, Object>> pitching, List<Map<String, Object>> fielding) {
+        stubPools("BASEBALL", batting, pitching, fielding);
+    }
+
+    private void stubPools(String mode, List<Map<String, Object>> batting,
+            List<Map<String, Object>> pitching, List<Map<String, Object>> fielding) {
+        stubBattingPool(mode, batting);
+        stubPitchingPool(mode, pitching);
+        stubFieldingPool(mode, fielding);
+    }
+
+    private void stubBattingPool(List<Map<String, Object>> batting) {
+        stubBattingPool("BASEBALL", batting);
+    }
+
+    private void stubBattingPool(String mode, List<Map<String, Object>> batting) {
         when(statsService.getBattingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("pa"), eq("desc"),
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("pa"), eq("desc"),
                 eq(false))).thenReturn(PageResult.of(batting, batting.size()));
+    }
+
+    private void stubPitchingPool(List<Map<String, Object>> pitching) {
+        stubPitchingPool("BASEBALL", pitching);
+    }
+
+    private void stubPitchingPool(String mode, List<Map<String, Object>> pitching) {
         when(statsService.getPitchingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("ip"), eq("desc"),
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("ip"), eq("desc"),
                 eq(false))).thenReturn(PageResult.of(pitching, pitching.size()));
+    }
+
+    private void stubFieldingPool(List<Map<String, Object>> fielding) {
+        stubFieldingPool("BASEBALL", fielding);
+    }
+
+    private void stubFieldingPool(String mode, List<Map<String, Object>> fielding) {
         when(statsService.getFieldingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("inn"), eq("desc")))
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("inn"), eq("desc")))
                 .thenReturn(PageResult.of(fielding, fielding.size()));
     }
 
     private void verifyAllTenantPools() {
+        verifyPools("BASEBALL");
+    }
+
+    private void verifyPools(String mode) {
         verify(statsService).getBattingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("pa"), eq("desc"),
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("pa"), eq("desc"),
                 eq(false));
         verify(statsService).getPitchingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("ip"), eq("desc"),
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("ip"), eq("desc"),
                 eq(false));
         verify(statsService).getFieldingLeaders(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("inn"), eq("desc"));
+                isNull(), isNull(), isNull(), eq(mode), eq(1), eq(500), eq("inn"), eq("desc"));
+    }
+
+    private void verifyBattingPoolNotFetched() {
+        verify(statsService, never()).getBattingLeaders(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyInt(), anyInt(), any(), any(), anyBoolean());
+    }
+
+    private void verifyPitchingPoolNotFetched() {
+        verify(statsService, never()).getPitchingLeaders(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), anyInt(), anyInt(), any(), any(), anyBoolean());
     }
 
     private List<Map<String, Object>> bigBattingPool() {
@@ -376,6 +565,33 @@ class ClubhouseEvaluationServiceTest {
 
     private int obpDenominator(int ab, int bb, int hbp, int sf) {
         return ab + bb + hbp + sf;
+    }
+
+    /** 显式指定 OBP/SLG 的打击行，用于让各轴百分位互不相同以验证权重。 */
+    private Map<String, Object> weightedBattingRow(Long playerId, int pa, int ab, int bb,
+            int singles, int sb, String obp, String slg, int rbi) {
+        LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+        row.put("playerId", playerId);
+        row.put("position", "CF");
+        row.put("pa", pa);
+        row.put("ab", ab);
+        row.put("h", singles);
+        row.put("bb", bb);
+        row.put("hbp", 0);
+        row.put("sf", 0);
+        row.put("ibb", 0);
+        row.put("singles", singles);
+        row.put("doubles", 0);
+        row.put("triples", 0);
+        row.put("hr", 0);
+        row.put("insideParkHr", 0);
+        row.put("sb", sb);
+        row.put("cs", 0);
+        row.put("obp", obp);
+        row.put("slg", slg);
+        row.put("ops", format3(Double.parseDouble(obp) + Double.parseDouble(slg)));
+        row.put("rbi", rbi);
+        return row;
     }
 
     private Map<String, Object> pitchingRow(Long playerId, double ip, int er, int hr,

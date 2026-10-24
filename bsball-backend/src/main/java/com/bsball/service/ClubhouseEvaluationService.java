@@ -3,6 +3,7 @@ package com.bsball.service;
 import com.bsball.common.PageResult;
 import com.bsball.utils.StatsFormatUtil;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +31,12 @@ public class ClubhouseEvaluationService {
     private static final double PITCHING_STABLE_IP = 15.0;
     private static final double FIELDING_DISPLAY_INN = 6.0;
     private static final double FIELDING_STABLE_INN = 30.0;
+    private static final int TWO_WAY_MIN_PA = 50;
+    private static final double TWO_WAY_MIN_IP = 15.0;
     private static final int MIN_POSITION_GROUP = 5;
+    private static final String UNIT_PA = "PA";
+    private static final String UNIT_IP = "IP";
+    private static final String UNIT_INN = "INN";
     private static final String COMPARISON = "全租户生涯";
     private static final String SAMPLE_SUFFICIENT = "样本充足";
     private static final String SAMPLE_REFERENCE = "参考值";
@@ -53,6 +59,9 @@ public class ClubhouseEvaluationService {
     /**
      * 构建全租户生涯评价。打击、守备、投球三张卡固定返回，样本不足的卡不可用。
      *
+     * <p>仅为可用的分项拉取对比池：无数据或未达展示门槛时不再查询该分项排行榜，
+     * 避免驾驶舱首屏为不可用分项付出额外查询。</p>
+     *
      * @param playerId        当前球员 ID
      * @param gameMode        BASEBALL / SOFTBALL；为空或非法时按棒球处理
      * @param careerStats     当前运动类型下跨球队、跨赛事的生涯统计
@@ -63,9 +72,15 @@ public class ClubhouseEvaluationService {
             Map<String, Object> careerStats, String primaryPosition) {
         Map<String, Object> stats = careerStats == null ? Map.of() : careerStats;
         String mode = normalizeGameMode(gameMode);
-        List<Map<String, Object>> battingPool = battingPool(mode);
-        List<Map<String, Object>> pitchingPool = pitchingPool(mode);
-        List<Map<String, Object>> fieldingPool = fieldingPool(mode);
+        Map<String, Object> battingStats = asMap(stats.get("batting"));
+        Map<String, Object> pitchingStats = asMap(stats.get("pitching"));
+        Map<String, Object> fieldingStats = asMap(stats.get("fielding"));
+        List<Map<String, Object>> battingPool = battingReady(battingStats)
+                ? battingPool(mode) : List.of();
+        List<Map<String, Object>> pitchingPool = pitchingReady(pitchingStats)
+                ? pitchingPool(mode) : List.of();
+        List<Map<String, Object>> fieldingPool = fieldingReady(fieldingStats)
+                ? fieldingPool(mode) : List.of();
 
         CardResult batting = battingCard(playerId, stats, battingPool);
         CardResult fielding = fieldingCard(playerId, primaryPosition, stats, fieldingPool);
@@ -134,7 +149,7 @@ public class ClubhouseEvaluationService {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("woba", round3(ClubhouseRatingSupport.woba(self)));
         return availableCard(BATTING_META, displayAxes, qualityAxes, reliability,
-                (int) Math.round(plateAppearances), NOTE_WOBA, meta);
+                pool.size(), plateAppearances, NOTE_WOBA, meta);
     }
 
     private CardResult pitchingCard(Long playerId, Map<String, Object> stats,
@@ -180,7 +195,7 @@ public class ClubhouseEvaluationService {
         meta.put("fip", round2(ClubhouseRatingSupport.fip(self, constant)));
         meta.put("fipConstant", round2(constant));
         return availableCard(PITCHING_META, displayAxes, qualityAxes, reliability,
-                round1(innings), NOTE_FIP, meta);
+                pool.size(), innings, NOTE_FIP, meta);
     }
 
     private CardResult fieldingCard(Long playerId, String primaryPosition, Map<String, Object> stats,
@@ -199,10 +214,9 @@ public class ClubhouseEvaluationService {
                 .toList();
         Map<String, Object> self = selfRow(playerId, primaryPosition, fielding, validPool);
         String position = blank(primaryPosition) ? text(self.get("position")) : primaryPosition;
-        String group = ClubhouseRatingSupport.positionGroup(position);
+        String group = primaryGroup(position);
         List<Map<String, Object>> groupPool = validPool.stream()
-                .filter(row -> group.equals(
-                        ClubhouseRatingSupport.positionGroup(text(row.get("position")))))
+                .filter(row -> inGroup(text(row.get("position")), group))
                 .toList();
         boolean grouped = groupPool.size() >= MIN_POSITION_GROUP;
         List<Map<String, Object>> pool = grouped ? groupPool : validPool;
@@ -226,7 +240,7 @@ public class ClubhouseEvaluationService {
                 new WeightedAxis(displayAxes.get(5), 0.15));
         String note = grouped ? null : NOTE_NO_POSITION_GROUP;
         return availableCard(FIELDING_META, displayAxes, qualityAxes, reliability,
-                round1(innings), note, Map.of());
+                pool.size(), innings, note, Map.of());
     }
 
     private Map<String, Object> overall(DomainScore batting, DomainScore fielding,
@@ -272,7 +286,12 @@ public class ClubhouseEvaluationService {
         if (!pitching.available()) {
             return ROLE_POSITION_PLAYER;
         }
-        return batting.available() ? ROLE_TWO_WAY : ROLE_PITCHER;
+        if (!batting.available()) {
+            return ROLE_PITCHER;
+        }
+        boolean twoWay = batting.ownSample() >= TWO_WAY_MIN_PA
+                && pitching.ownSample() >= TWO_WAY_MIN_IP;
+        return twoWay ? ROLE_TWO_WAY : ROLE_PITCHER;
     }
 
     private Map<String, Double> baseWeights(String role, DomainScore batting) {
@@ -311,15 +330,15 @@ public class ClubhouseEvaluationService {
     private Map<String, Object> sampleSizes(DomainScore batting, DomainScore fielding,
             DomainScore pitching) {
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
-        out.put("batting", batting.sample());
-        out.put("pitching", pitching.sample());
-        out.put("fielding", fielding.sample());
+        out.put("batting", batting.ownSample());
+        out.put("pitching", pitching.ownSample());
+        out.put("fielding", fielding.ownSample());
         return out;
     }
 
     private CardResult availableCard(CardMeta meta, List<Axis> displayAxes,
-            List<WeightedAxis> qualityAxes, double reliability, double sampleSize, String note,
-            Map<String, Object> metaExtra) {
+            List<WeightedAxis> qualityAxes, double reliability, int sampleSize,
+            double ownSample, String note, Map<String, Object> metaExtra) {
         double rawScore = weightedPercentile(qualityAxes);
         double adjusted = ClubhouseRatingSupport.shrink(rawScore, reliability);
         int score = (int) Math.max(0, Math.min(100, Math.round(adjusted)));
@@ -329,6 +348,8 @@ public class ClubhouseEvaluationService {
         card.put("score", score);
         card.put("grade", grade(score));
         card.put("sampleSize", sampleSize);
+        card.put("ownSample", displaySample(meta.domain(), ownSample));
+        card.put("sampleUnit", sampleUnit(meta.domain()));
         card.put("reliability", round2(reliability));
         card.put("confidenceLabel", confidenceLabel(reliability));
         card.put("axes", displayAxes.stream().map(this::axisView).toList());
@@ -339,7 +360,7 @@ public class ClubhouseEvaluationService {
             card.put("meta", metaExtra);
         }
         return new CardResult(card,
-                new DomainScore(meta.domain(), true, score, reliability, sampleSize));
+                new DomainScore(meta.domain(), true, score, reliability, ownSample));
     }
 
     private CardResult unavailableCard(CardMeta meta, String reason) {
@@ -348,6 +369,8 @@ public class ClubhouseEvaluationService {
         card.put("score", null);
         card.put("grade", null);
         card.put("sampleSize", 0);
+        card.put("ownSample", 0);
+        card.put("sampleUnit", sampleUnit(meta.domain()));
         card.put("reliability", 0.0);
         card.put("confidenceLabel", SAMPLE_INSUFFICIENT);
         card.put("axes", List.of());
@@ -506,6 +529,18 @@ public class ClubhouseEvaluationService {
         return number(fielding.get("gp")) > 0 || number(fielding.get("tc")) > 0;
     }
 
+    private boolean battingReady(Map<String, Object> batting) {
+        return hasBatting(batting) && number(batting.get("pa")) >= BATTING_DISPLAY_PA;
+    }
+
+    private boolean pitchingReady(Map<String, Object> pitching) {
+        return hasPitching(pitching) && innings(pitching) >= PITCHING_DISPLAY_IP;
+    }
+
+    private boolean fieldingReady(Map<String, Object> fielding) {
+        return hasFielding(fielding) && innings(fielding) >= FIELDING_DISPLAY_INN;
+    }
+
     private Double battingNumber(Map<String, Object> row, String field) {
         Double raw = optionalNumber(row.get(field));
         if (raw != null) {
@@ -603,6 +638,50 @@ public class ClubhouseEvaluationService {
         out.put("pitching", (int) PITCHING_DISPLAY_IP);
         out.put("fielding", (int) FIELDING_DISPLAY_INN);
         return out;
+    }
+
+    private static String sampleUnit(String domain) {
+        return switch (domain) {
+            case "batting" -> UNIT_PA;
+            case "pitching" -> UNIT_IP;
+            default -> UNIT_INN;
+        };
+    }
+
+    /** 展示用自有样本：打席取整，投球/守备局保留 1 位小数；可靠性仍用原始值。 */
+    private static Object displaySample(String domain, double ownSample) {
+        if (UNIT_PA.equals(sampleUnit(domain))) {
+            return (int) Math.round(ownSample);
+        }
+        return round1(ownSample);
+    }
+
+    /**
+     * 把排行榜守位字符串拆成守位组；多守位行以顿号或逗号分隔（如 {@code "CF、LF"}）。
+     * 无法识别的守位映射为 UTIL，多守位行只要有一个守位可识别就不会落入 UTIL。
+     */
+    private static List<String> positionGroups(String position) {
+        if (blank(position)) {
+            return List.of();
+        }
+        return Arrays.stream(position.split("[、,，]"))
+                .map(String::trim)
+                .filter(token -> !token.isEmpty())
+                .map(ClubhouseRatingSupport::positionGroup)
+                .toList();
+    }
+
+    /** 当前球员的对比组：优先取第一个可识别的守位组，全部无法识别时归 UTIL。 */
+    private static String primaryGroup(String position) {
+        return positionGroups(position).stream()
+                .filter(group -> !"UTIL".equals(group))
+                .findFirst()
+                .orElse("UTIL");
+    }
+
+    /** 同组判定：多守位行只要有任一守位映射到目标组即视为组内。 */
+    private static boolean inGroup(String position, String group) {
+        return positionGroups(position).contains(group);
     }
 
     private static String grade(int score) {
@@ -735,6 +814,6 @@ public class ClubhouseEvaluationService {
     }
 
     private record DomainScore(String key, boolean available, double score, double reliability,
-            double sample) {
+            double ownSample) {
     }
 }
