@@ -66,7 +66,7 @@ class StatsServiceScopeTest {
                         eventRow(21L, "未来杯", null, "1", "猎豹"),
                         eventRow(22L, "城市杯", "2026-09-18", "1", "猎豹")));
 
-        List<PlayerEventSummaryDTO> rows = statsService.getPlayerEventSummaries(10L, 1L, "BASEBALL");
+        List<PlayerEventSummaryDTO> rows = statsService.getPlayerEventSummaries(10L, null, "BASEBALL");
 
         assertEquals(List.of(22L, 21L), rows.stream().map(PlayerEventSummaryDTO::getEventId).toList());
     }
