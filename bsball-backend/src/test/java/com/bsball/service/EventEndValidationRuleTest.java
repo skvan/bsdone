@@ -70,7 +70,8 @@ class EventEndValidationRuleTest {
     @BeforeEach
     void setUp() {
         service = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                resourceGuard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService);
+                resourceGuard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
+                org.mockito.Mockito.mock(EventSpecialRuleService.class));
     }
 
     @Test
