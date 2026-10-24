@@ -1,7 +1,9 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.config.TenantProperties;
@@ -9,8 +11,10 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.mapper.PlayerStatsMapper;
 import com.bsball.mapper.StatsLeadersMapper;
 import com.bsball.model.dto.PlayerEventSummaryDTO;
+import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.repository.TeamRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -124,6 +128,55 @@ class StatsServiceScopeTest {
         verify(playerStatsMapper).selectPitchingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
         verify(playerStatsMapper).selectFieldingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
         assertTeamStatsFormatted(stats);
+    }
+
+    @Test
+    @DisplayName("战报先按球队/赛事过滤再取最近 3 场")
+    void recentGamesFilterBeforeLimit() {
+        when(playerStatsMapper.selectGameLogForScope(10L, 1L, 2L, 3L, 3, "BASEBALL", false))
+                .thenReturn(List.of(gameLogRow(101L, 3L, 2L, "2026-10-20")));
+
+        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(10L, 2L, 3L, 3, "BASEBALL", false);
+
+        assertEquals(1, rows.size());
+        assertEquals(101L, rows.get(0).getGameId());
+        assertEquals(3L, rows.get(0).getEventId());
+        assertEquals(2L, rows.get(0).getTeamId());
+        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, 2L, 3L, 3, "BASEBALL", false);
+    }
+
+    @Test
+    @DisplayName("生涯范围不传球队/赛事，按排行口径取最近 12 场")
+    void careerScopePassesNullFilters() {
+        when(playerStatsMapper.selectGameLogForScope(10L, 1L, null, null, 12, "BASEBALL", true))
+                .thenReturn(List.of(gameLogRow(102L, 11L, 1L, "2026-10-18")));
+
+        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(10L, null, null, 12, "BASEBALL", true);
+
+        assertEquals(1, rows.size());
+        assertEquals(102L, rows.get(0).getGameId());
+        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, null, null, 12, "BASEBALL", true);
+    }
+
+    @Test
+    @DisplayName("非正数 limit 不查库直接返回空")
+    void nonPositiveLimitSkipsQuery() {
+        assertTrue(statsService.getPlayerGameLogForScope(10L, 2L, 3L, 0, "BASEBALL", false).isEmpty());
+        verifyNoInteractions(playerStatsMapper);
+    }
+
+    private Map<String, Object> gameLogRow(Long gameId, Long eventId, Long teamId, String gameday) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("gameId", gameId);
+        row.put("eventId", eventId);
+        row.put("teamId", teamId);
+        row.put("gameday", gameday);
+        row.put("eventName", "花城联赛");
+        row.put("teamName", "广州猎豹");
+        row.put("isHome", true);
+        row.put("pa", 4);
+        row.put("ab", 3);
+        return row;
     }
 
     @SuppressWarnings("unchecked")

@@ -16,8 +16,11 @@ import com.bsball.common.PageResult;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.PlayerEventSummaryDTO;
+import com.bsball.model.dto.PlayerGameLogEntryDTO;
+import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
+import com.bsball.model.entity.Game;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
@@ -28,6 +31,7 @@ import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.ClubhouseService.Scope;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +134,7 @@ class ClubhouseServiceTest {
         emptyStats.put("pitching", new LinkedHashMap<>());
         emptyStats.put("fielding", new LinkedHashMap<>());
         when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats);
-        when(statsService.getPlayerGameLog(10L, 3, "BASEBALL")).thenReturn(List.of());
+        when(statsService.getPlayerGameLogForScope(10L, null, null, 3, "BASEBALL", false)).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, null);
 
@@ -187,7 +191,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("非法球队与赛事回落到全部球队与生涯")
     void invalidTeamAndEventFallBackToDefaults() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
 
         Map<String, Object> result = service.getDashboard(7L, 999L, 999L, "BASEBALL");
@@ -205,7 +209,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("只选赛事时球队仍为全部球队")
     void eventScopeKeepsAllTeams() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, 11L, null);
@@ -223,7 +227,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("请求的运动类型优先于所选赛事")
     void requestGameModeOverridesEventGameMode() {
-        stubSingleTeam("SOFTBALL", "BASEBALL");
+        stubSingleTeam("SOFTBALL");
         when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, 11L, "BASEBALL");
@@ -237,7 +241,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("未传运动类型时沿用所选赛事类型")
     void gameModeFallsBackToSelectedEvent() {
-        stubSingleTeam("SOFTBALL", "SOFTBALL");
+        stubSingleTeam("SOFTBALL");
         when(statsService.getPlayerStatsBySeason(10L, "SOFTBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, 11L);
@@ -251,7 +255,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("同时选择球队与赛事时统计按球队+赛事查询")
     void teamAndEventResolveTogether() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL")).thenReturn(emptyStats());
 
         Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
@@ -271,7 +275,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("所选赛事不属于所选球队时赛事回落到生涯，球队统计仍按球队")
     void eventNotOwnedByTeamFallsBackToCareer() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsByTeam(10L, 1L, null, "BASEBALL")).thenReturn(emptyStats());
 
         Map<String, Object> result = service.getDashboard(7L, 1L, 12L, "BASEBALL");
@@ -290,7 +294,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("非法球队回落到全部球队时赛事仍然生效")
     void invalidTeamKeepsValidEvent() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, 999L, 11L, null);
@@ -308,7 +312,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("未知运动类型回落到所选赛事类型并用于统计查询")
     void unknownGameModeFallsBackToSelectedEvent() {
-        stubSingleTeam("SOFTBALL", "SOFTBALL");
+        stubSingleTeam("SOFTBALL");
         when(statsService.getPlayerStatsBySeason(10L, "SOFTBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, 11L, "foo");
@@ -322,7 +326,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("小写带空白的运动类型归一为 SOFTBALL 并用于统计查询")
     void lowercaseGameModeIsNormalized() {
-        stubSingleTeam("BASEBALL", "SOFTBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsBySeason(10L, "SOFTBALL")).thenReturn(List.of());
 
         Map<String, Object> result = service.getDashboard(7L, null, 11L, "  softball ");
@@ -336,7 +340,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("驾驶舱返回赛事下拉数据，球队聚合为数组且最后一场为日期")
     void dashboardIncludesEventSummaries() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
         PlayerEventSummaryDTO summary = new PlayerEventSummaryDTO();
         summary.setEventId(11L);
@@ -369,7 +373,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("赛事下拉只保留当前代表球队已确认的赛事")
     void dashboardExcludesEventsOutsideConfirmedTeams() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
         when(statsService.getPlayerEventSummaries(10L, null, "BASEBALL"))
                 .thenReturn(List.of(eventSummary(11L, "花城联赛"), eventSummary(99L, "旧赛事")));
@@ -385,7 +389,7 @@ class ClubhouseServiceTest {
     @Test
     @DisplayName("选择球队时赛事下拉只保留该队已确认的赛事")
     void dashboardExcludesEventsOutsideSelectedTeam() {
-        stubSingleTeam("BASEBALL", "BASEBALL");
+        stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStatsByTeam(10L, 1L, null, "BASEBALL")).thenReturn(emptyStats());
         when(statsService.getPlayerEventSummaries(10L, 1L, "BASEBALL"))
                 .thenReturn(List.of(eventSummary(11L, "花城联赛"), eventSummary(99L, "旧赛事")));
@@ -434,6 +438,217 @@ class ClubhouseServiceTest {
         assertEquals(".300", rank.get("value"));
     }
 
+    @Test
+    @DisplayName("最近战报按球队与赛事过滤后取 3 场")
+    void recentGamesFollowScope() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL")).thenReturn(emptyStats());
+        PlayerGameLogEntryDTO log = gameLog(101L, 11L, 1L, "2026-10-20");
+        when(statsService.getPlayerGameLogForScope(10L, 1L, 11L, 3, "BASEBALL", false))
+                .thenReturn(List.of(log));
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> recent = (List<Map<String, Object>>) result.get("recentGames");
+        assertEquals(1, recent.size());
+        assertEquals(101L, recent.get(0).get("gameId"));
+        assertEquals(1L, recent.get(0).get("teamId"));
+        assertEquals("广州猎豹", recent.get(0).get("teamName"));
+        assertEquals("W", recent.get(0).get("result"));
+        verify(statsService).getPlayerGameLogForScope(10L, 1L, 11L, 3, "BASEBALL", false);
+    }
+
+    @Test
+    @DisplayName("表现走势按范围取排行比赛，保留最近 12 场")
+    void performanceFollowsScope() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL"))
+                .thenReturn(List.of(eventStats(11L)));
+        when(statsService.getPlayerGameLogForScope(10L, null, 11L, 30, "BASEBALL", true))
+                .thenReturn(battingLogs(13));
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> performance = (Map<String, Object>) result.get("performance");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> points = (List<Map<String, Object>>) performance.get("points");
+        assertEquals(12, points.size());
+        assertEquals("10-02", points.get(0).get("label"));
+        assertEquals("10-13", points.get(11).get("label"));
+        verify(statsService).getPlayerGameLogForScope(10L, null, 11L, 30, "BASEBALL", true);
+    }
+
+    @Test
+    @DisplayName("表现走势跳过无打击出场，不占用最近 12 场名额")
+    void performanceSkipsGamesWithoutParticipation() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL"))
+                .thenReturn(List.of(eventStats(11L)));
+        List<PlayerGameLogEntryDTO> logs = new ArrayList<>();
+        logs.add(emptyBattingLog(113L, "2026-10-13"));
+        logs.addAll(battingLogs(12));
+        when(statsService.getPlayerGameLogForScope(10L, null, 11L, 30, "BASEBALL", true))
+                .thenReturn(logs);
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> performance = (Map<String, Object>) result.get("performance");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> points = (List<Map<String, Object>>) performance.get("points");
+        // 最新一场未打击被跳过，仍应有 12 个有效点（若先按 12 场截断则只剩 11 个）
+        assertEquals(12, points.size());
+        assertEquals("10-02", points.get(0).get("label"));
+        assertEquals("10-13", points.get(11).get("label"));
+    }
+
+    @Test
+    @DisplayName("全部球队选赛事时赛程包含该赛事所有代表球队")
+    void scheduleIncludesAllTeamsOfSelectedEvent() {
+        stubTwoTeamsSameEvent();
+        when(statsService.getPlayerStatsBySeason(10L, "BASEBALL")).thenReturn(List.of());
+        when(gameRepository.findForTeamsAndStatuses(1L, List.of(1L, 2L), List.of("scheduled", "live")))
+                .thenReturn(List.of(
+                        upcomingGame(201L, 11L, 1L, 2L, "2999-05-01"),
+                        upcomingGame(202L, 11L, 2L, 3L, "2999-05-02"),
+                        upcomingGame(203L, 12L, 1L, 2L, "2999-05-03"),
+                        upcomingGame(204L, 11L, 1L, 2L, "2000-05-03")));
+
+        Map<String, Object> result = service.getDashboard(7L, null, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> schedule = (List<Map<String, Object>>) result.get("schedule");
+        assertEquals(List.of(201L, 202L),
+                schedule.stream().map(row -> row.get("gameId")).toList());
+        assertEquals(2L, schedule.get(1).get("teamId"));
+        assertEquals("海珠蓝鸟", schedule.get(1).get("teamName"));
+        assertEquals(201L, ((Map<?, ?>) result.get("nextGame")).get("gameId"));
+    }
+
+    @Test
+    @DisplayName("选择球队时赛程只查该队比赛")
+    void scheduleFiltersSelectedTeam() {
+        stubTwoTeamsSameEvent();
+        when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL")).thenReturn(emptyStats());
+        when(gameRepository.findForTeamsAndStatuses(1L, List.of(1L), List.of("scheduled", "live")))
+                .thenReturn(List.of(upcomingGame(201L, 11L, 1L, 2L, "2999-05-01")));
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> schedule = (List<Map<String, Object>>) result.get("schedule");
+        assertEquals(1, schedule.size());
+        assertEquals(1L, schedule.get(0).get("teamId"));
+        assertEquals("广州猎豹", schedule.get(0).get("teamName"));
+        verify(gameRepository).findForTeamsAndStatuses(1L, List.of(1L), List.of("scheduled", "live"));
+    }
+
+    private PlayerGameLogEntryDTO gameLog(Long gameId, Long eventId, Long teamId, String gameday) {
+        PlayerGameLogEntryDTO log = new PlayerGameLogEntryDTO();
+        log.setGameId(gameId);
+        log.setEventId(eventId);
+        log.setGameday(gameday);
+        log.setEventName("花城联赛");
+        log.setHomeTeamId(1L);
+        log.setAwayTeamId(2L);
+        log.setHomeScore(5);
+        log.setAwayScore(3);
+        log.setTeamId(teamId);
+        log.setTeamName("广州猎豹");
+        log.setIsHome(true);
+        log.setBatting(Map.of("ab", 3, "pa", 4, "avg", "0.333"));
+        log.setPitching(new LinkedHashMap<>());
+        log.setFielding(new LinkedHashMap<>());
+        return log;
+    }
+
+    /** 按 SQL 返回顺序（新→旧）构造 count 场有打击数据的比赛，日期从 10-13 递减。 */
+    private List<PlayerGameLogEntryDTO> battingLogs(int count) {
+        List<PlayerGameLogEntryDTO> logs = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            int day = 13 - i;
+            logs.add(gameLog(100L + day, 11L, 1L, String.format("2026-10-%02d", day)));
+        }
+        return logs;
+    }
+
+    /** 只上场未打击的比赛：ab/pa 均为 0，应被表现走势的参与口径过滤。 */
+    private PlayerGameLogEntryDTO emptyBattingLog(Long gameId, String gameday) {
+        PlayerGameLogEntryDTO log = gameLog(gameId, 11L, 1L, gameday);
+        log.setBatting(Map.of("ab", 0, "pa", 0, "avg", "-"));
+        return log;
+    }
+
+    private PlayerStatsByEventDTO eventStats(Long eventId) {
+        PlayerStatsByEventDTO row = new PlayerStatsByEventDTO();
+        row.setEventId(eventId);
+        row.setEventName("花城联赛");
+        row.setBatting(Map.of("ab", 3, "pa", 4, "avg", "0.333"));
+        row.setPitching(new LinkedHashMap<>());
+        row.setFielding(new LinkedHashMap<>());
+        return row;
+    }
+
+    private Game upcomingGame(Long gameId, Long eventId, Long homeTeamId, Long awayTeamId, String gameday) {
+        Game game = new Game();
+        game.setId(gameId);
+        game.setEventId(eventId);
+        game.setTenantId(1L);
+        game.setHomeTeamId(homeTeamId);
+        game.setAwayTeamId(awayTeamId);
+        game.setGameday(gameday);
+        game.setStatus("scheduled");
+        return game;
+    }
+
+    /** 两支代表球队都报名同一赛事，用于多球队赛事口径。 */
+    private void stubTwoTeamsSameEvent() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(player));
+        PlayerTeam first = new PlayerTeam();
+        first.setTeamId(1L);
+        first.setCurrent(true);
+        PlayerTeam second = new PlayerTeam();
+        second.setTeamId(2L);
+        second.setCurrent(true);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
+                .thenReturn(List.of(first, second));
+        Team team1 = new Team();
+        team1.setId(1L);
+        team1.setName("广州猎豹");
+        Team team2 = new Team();
+        team2.setId(2L);
+        team2.setName("海珠蓝鸟");
+        when(teamRepository.findAllById(any())).thenReturn(List.of(team1, team2));
+        EventTeam firstRegistration = new EventTeam();
+        firstRegistration.setEventId(11L);
+        firstRegistration.setStatus(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(1L))
+                .thenReturn(List.of(firstRegistration));
+        EventTeam secondRegistration = new EventTeam();
+        secondRegistration.setEventId(11L);
+        secondRegistration.setStatus(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(2L))
+                .thenReturn(List.of(secondRegistration));
+        Event event = new Event();
+        event.setId(11L);
+        event.setTenantId(1L);
+        event.setName("花城联赛");
+        event.setStatus("ongoing");
+        event.setStartDate("2026-03-01");
+        event.setGameMode("BASEBALL");
+        when(eventRepository.findAllById(any())).thenReturn(List.of(event));
+        when(statsService.getStandings(11L, null, null, "BASEBALL", 1, 100))
+                .thenReturn(PageResult.of(List.of(), 0L));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
+    }
+
     private PlayerEventSummaryDTO eventSummary(Long eventId, String eventName) {
         PlayerEventSummaryDTO summary = new PlayerEventSummaryDTO();
         summary.setEventId(eventId);
@@ -448,7 +663,7 @@ class ClubhouseServiceTest {
         return summary;
     }
 
-    private void stubSingleTeam(String eventGameMode, String effectiveGameMode) {
+    private void stubSingleTeam(String eventGameMode) {
         CurrentUserHolder.set(7L, 1L);
         Player player = new Player();
         player.setId(10L);
@@ -480,7 +695,6 @@ class ClubhouseServiceTest {
         when(statsService.getStandings(11L, null, null, eventGameMode, 1, 100))
                 .thenReturn(PageResult.of(List.of(), 0L));
         when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
-        when(statsService.getPlayerGameLog(10L, 3, effectiveGameMode)).thenReturn(List.of());
     }
 
     private Map<String, Object> emptyStats() {

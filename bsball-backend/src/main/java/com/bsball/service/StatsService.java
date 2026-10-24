@@ -286,6 +286,30 @@ public class StatsService {
         return this.loadGameLog(playerId, null, gameMode, true);
     }
 
+    /**
+     * 驾驶舱表现/战报用：先按球队/赛事过滤再取最近 {@code limit} 场。
+     * <p>{@code teamId}/{@code eventId} 为空表示不限制该维度（全部球队/生涯）；
+     * {@code rankingOnly=true} 只取计入排行的比赛，与生涯统计口径一致。</p>
+     */
+    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId, Long eventId,
+            int limit, String gameMode, boolean rankingOnly) {
+        if (playerId == null || limit <= 0) {
+            return List.of();
+        }
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            Integer queryLimit = Integer.valueOf(Math.min(limit, 100));
+            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLogForScope(
+                    playerId, Long.valueOf(tid), teamId, eventId, queryLimit, gm, rankingOnly);
+            return this.toGameLogEntries(rows);
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLogForScope failed for playerId={}, teamId={}, eventId={}", (Object)playerId, (Object)teamId, (Object)eventId, (Object)e);
+            return List.of();
+        }
+    }
+
     private List<PlayerGameLogEntryDTO> loadGameLog(Long playerId, Integer limit, String gameMode, boolean rankingOnly) {
         if (playerId == null || (limit != null && limit <= 0)) {
             return List.of();
@@ -295,32 +319,39 @@ public class StatsService {
             String gm = StatsService.normalizeGameMode(gameMode);
             Integer queryLimit = limit == null ? null : Integer.valueOf(Math.min(limit, 100));
             List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), queryLimit, gm, rankingOnly);
-            ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
-            for (Map<String, Object> row : rows) {
-                PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
-                dto.setGameId(StatsService.getLong(row, "gameId"));
-                dto.setEventId(StatsService.getLong(row, "eventId"));
-                dto.setGameday(StatsService.strVal(row, "gameday"));
-                dto.setEventName(StatsService.strVal(row, "eventName"));
-                dto.setHomeTeamId(StatsService.getLong(row, "homeTeamId"));
-                dto.setAwayTeamId(StatsService.getLong(row, "awayTeamId"));
-                dto.setHomeScore(Integer.valueOf(StatsService.getInt(row, "homeScore")));
-                dto.setAwayScore(Integer.valueOf(StatsService.getInt(row, "awayScore")));
-                dto.setTeamId(StatsService.getLong(row, "teamId"));
-                dto.setTeamName(StatsService.strVal(row, "teamName"));
-                Object isHome = StatsService.mapGet(row, "isHome");
-                dto.setIsHome(Boolean.valueOf(isHome instanceof Boolean ? (Boolean)isHome : isHome instanceof Number && ((Number)isHome).intValue() != 0));
-                dto.setBatting(this.formatBatting(this.mapToBatting(row)));
-                dto.setPitching(this.formatPitching(this.mapToPitching(row)));
-                dto.setFielding(this.formatFielding(this.mapToFielding(row)));
-                list.add(dto);
-            }
-            return list;
+            return this.toGameLogEntries(rows);
         }
         catch (Exception e) {
             LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLog failed for playerId={}", (Object)playerId, (Object)e);
             return List.of();
         }
+    }
+
+    private List<PlayerGameLogEntryDTO> toGameLogEntries(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
+        for (Map<String, Object> row : rows) {
+            PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
+            dto.setGameId(StatsService.getLong(row, "gameId"));
+            dto.setEventId(StatsService.getLong(row, "eventId"));
+            dto.setGameday(StatsService.strVal(row, "gameday"));
+            dto.setEventName(StatsService.strVal(row, "eventName"));
+            dto.setHomeTeamId(StatsService.getLong(row, "homeTeamId"));
+            dto.setAwayTeamId(StatsService.getLong(row, "awayTeamId"));
+            dto.setHomeScore(Integer.valueOf(StatsService.getInt(row, "homeScore")));
+            dto.setAwayScore(Integer.valueOf(StatsService.getInt(row, "awayScore")));
+            dto.setTeamId(StatsService.getLong(row, "teamId"));
+            dto.setTeamName(StatsService.strVal(row, "teamName"));
+            Object isHome = StatsService.mapGet(row, "isHome");
+            dto.setIsHome(Boolean.valueOf(isHome instanceof Boolean ? (Boolean)isHome : isHome instanceof Number && ((Number)isHome).intValue() != 0));
+            dto.setBatting(this.formatBatting(this.mapToBatting(row)));
+            dto.setPitching(this.formatPitching(this.mapToPitching(row)));
+            dto.setFielding(this.formatFielding(this.mapToFielding(row)));
+            list.add(dto);
+        }
+        return list;
     }
 
     private static Object mapGet(Map<String, Object> m, String key) {

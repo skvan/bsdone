@@ -482,8 +482,8 @@
         ORDER BY MAX(ts.last_gameday) DESC NULLS LAST, e.name ASC
     </select>
 
-    <!-- 比赛日志：最近 limit 场，每场一行，含 game 与 stat 列 -->
-    <select id="selectGameLog" resultType="map">
+    <!-- 比赛日志公共列与基础过滤：每场一行，含 game 与 stat 列 -->
+    <sql id="gameLogSelectBody">
         SELECT
             g.id AS gameId,
             g.event_id AS eventId,
@@ -521,8 +521,25 @@
           AND e.deleted_at IS NULL
           AND (#{rankingOnly} = false OR COALESCE(g.include_stats_in_ranking, true) = true)
         <include refid="gameModeFilter"/>
+    </sql>
+
+    <sql id="gameLogOrderAndLimit">
         ORDER BY g.gameday DESC, g.id DESC
         <if test="limit != null">LIMIT #{limit}</if>
+    </sql>
+
+    <!-- 比赛日志：最近 limit 场（个人档案、里程碑等不带球队/赛事范围的调用方） -->
+    <select id="selectGameLog" resultType="map">
+        <include refid="gameLogSelectBody"/>
+        <include refid="gameLogOrderAndLimit"/>
+    </select>
+
+    <!-- 驾驶舱范围日志：teamId/eventId 可选，先过滤再取最近 limit 场，避免先截断再过滤 -->
+    <select id="selectGameLogForScope" resultType="map">
+        <include refid="gameLogSelectBody"/>
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="gameLogOrderAndLimit"/>
     </select>
 
     <!-- 生涯打击钻取：valueSql 仅来自 PlayerStatDrillBattingMetric，禁止用户输入 -->

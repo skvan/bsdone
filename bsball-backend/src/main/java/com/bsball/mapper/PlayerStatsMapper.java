@@ -46,6 +46,8 @@ public interface PlayerStatsMapper {
 
     public List<Map<String, Object>> selectGameLog(@Param(value="playerId") Long var1, @Param(value="tenantId") Long var2, @Param(value="limit") Integer var3, @Param(value="gameMode") String var4, @Param(value="rankingOnly") boolean var5);
 
+    public List<Map<String, Object>> selectGameLogForScope(@Param(value="playerId") Long playerId, @Param(value="tenantId") Long tenantId, @Param(value="teamId") Long teamId, @Param(value="eventId") Long eventId, @Param(value="limit") Integer limit, @Param(value="gameMode") String gameMode, @Param(value="rankingOnly") boolean rankingOnly);
+
     public long countBattingDrillDown(@Param(value="playerId") Long var1, @Param(value="tenantId") long var2, @Param(value="eventId") Long var4, @Param(value="season") String var5, @Param(value="gameMode") String var6);
 
     public List<Map<String, Object>> selectBattingDrillDownPage(@Param(value="playerId") Long var1, @Param(value="tenantId") long var2, @Param(value="eventId") Long var4, @Param(value="season") String var5, @Param(value="valueSql") String var6, @Param(value="limit") int var7, @Param(value="offset") long var8, @Param(value="gameMode") String var10);
