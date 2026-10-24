@@ -360,6 +360,52 @@ class ClubhouseServiceTest {
         assertEquals(18, events.get(0).get("gameCount"));
     }
 
+    @Test
+    @DisplayName("赛事下拉只保留当前代表球队已确认的赛事")
+    void dashboardExcludesEventsOutsideConfirmedTeams() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+        when(statsService.getPlayerEventSummaries(10L, null, "BASEBALL"))
+                .thenReturn(List.of(eventSummary(11L, "花城联赛"), eventSummary(99L, "旧赛事")));
+
+        Map<String, Object> result = service.getDashboard(7L, null, null, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> events = (List<Map<String, Object>>) result.get("events");
+        assertEquals(1, events.size());
+        assertEquals(11L, events.get(0).get("id"));
+    }
+
+    @Test
+    @DisplayName("选择球队时赛事下拉只保留该队已确认的赛事")
+    void dashboardExcludesEventsOutsideSelectedTeam() {
+        stubSingleTeam("BASEBALL", "BASEBALL");
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
+        when(statsService.getPlayerEventSummaries(10L, 1L, "BASEBALL"))
+                .thenReturn(List.of(eventSummary(11L, "花城联赛"), eventSummary(99L, "旧赛事")));
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, null, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> events = (List<Map<String, Object>>) result.get("events");
+        assertEquals(1, events.size());
+        assertEquals(11L, events.get(0).get("id"));
+    }
+
+    private PlayerEventSummaryDTO eventSummary(Long eventId, String eventName) {
+        PlayerEventSummaryDTO summary = new PlayerEventSummaryDTO();
+        summary.setEventId(eventId);
+        summary.setEventName(eventName);
+        summary.setGameMode("BASEBALL");
+        summary.setTeamIds("1");
+        summary.setTeamNames("广州猎豹");
+        summary.setTeamIdList(List.of(1L));
+        summary.setTeamNameList(List.of("广州猎豹"));
+        summary.setLastGameday("2026-10-20");
+        summary.setGameCount(1);
+        return summary;
+    }
+
     private void stubSingleTeam(String eventGameMode, String effectiveGameMode) {
         CurrentUserHolder.set(7L, 1L);
         Player player = new Player();

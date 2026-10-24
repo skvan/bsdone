@@ -59,6 +59,22 @@ class StatsServiceScopeTest {
     }
 
     @Test
+    @DisplayName("赛事球队 ID 与名称按同一球队顺序配对，不按文本或名称各自排序")
+    void eventTeamIdsAndNamesPairByTeamIdOrder() {
+        when(playerStatsMapper.selectPlayerEventSummaries(10L, 1L, null, "BASEBALL"))
+                .thenReturn(List.of(
+                        eventRow(31L, "城市杯", "2026-09-18", "2,10", "猎豹,斑马")));
+
+        List<PlayerEventSummaryDTO> rows = statsService.getPlayerEventSummaries(10L, null, "BASEBALL");
+
+        List<Long> ids = rows.get(0).getTeamIdList();
+        List<String> names = rows.get(0).getTeamNameList();
+        assertEquals(List.of(2L, 10L), ids);
+        assertEquals("猎豹", names.get(ids.indexOf(2L)));
+        assertEquals("斑马", names.get(ids.indexOf(10L)));
+    }
+
+    @Test
     @DisplayName("最后一场为空的赛事排在最后")
     void eventSummariesPlaceMissingLastGamedayLast() {
         when(playerStatsMapper.selectPlayerEventSummaries(10L, 1L, null, "BASEBALL"))

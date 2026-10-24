@@ -85,6 +85,7 @@ public class ClubhouseService {
         String gameMode = scope.gameMode();
         List<PlayerEventSummaryDTO> eventSummaries =
                 statsService.getPlayerEventSummaries(player.getId(), scope.teamId(), gameMode);
+        Set<Long> scopedEventIds = confirmedEventIds(teams, scope.teamId());
         Map<String, Object> stats = loadStats(player.getId(), scope.eventId(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
@@ -93,7 +94,7 @@ public class ClubhouseService {
         out.put("player", playerView(player, entries));
         out.put("teams", teams);
         out.put("scope", scopeView(scope));
-        out.put("events", eventViews(eventSummaries));
+        out.put("events", eventViews(eventSummaries, scopedEventIds));
         out.put("config", config);
         out.put("stats", stats);
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
@@ -218,13 +219,19 @@ public class ClubhouseService {
         return row;
     }
 
-    /** 赛事下拉数据源：球队聚合输出为数组，最后一场统一为 yyyy-MM-dd。 */
-    private List<Map<String, Object>> eventViews(List<PlayerEventSummaryDTO> summaries) {
-        if (summaries == null || summaries.isEmpty()) {
+    /**
+     * 赛事下拉数据源：只保留当前（或所选）代表球队已确认的赛事，与 scope 解析口径一致；
+     * 球队聚合输出为数组，最后一场统一为 yyyy-MM-dd。
+     */
+    private List<Map<String, Object>> eventViews(List<PlayerEventSummaryDTO> summaries, Set<Long> eventIds) {
+        if (summaries == null || summaries.isEmpty() || eventIds.isEmpty()) {
             return List.of();
         }
         List<Map<String, Object>> rows = new ArrayList<>();
         for (PlayerEventSummaryDTO summary : summaries) {
+            if (!eventIds.contains(summary.getEventId())) {
+                continue;
+            }
             LinkedHashMap<String, Object> row = new LinkedHashMap<>();
             row.put("id", summary.getEventId());
             row.put("name", summary.getEventName());
@@ -239,6 +246,25 @@ public class ClubhouseService {
             rows.add(row);
         }
         return rows;
+    }
+
+    /** 赛事下拉与 scope 校验同源：当前全部代表球队的已确认赛事，或所选球队的已确认赛事。 */
+    private Set<Long> confirmedEventIds(List<Map<String, Object>> teams, Long teamId) {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Map<String, Object> team : teams) {
+            if (teamId != null && !teamId.equals(asLong(team.get("id")))) {
+                continue;
+            }
+            if (team.get("events") instanceof List<?> events) {
+                for (Object event : events) {
+                    Long id = asLong(asMap(event).get("id"));
+                    if (id != null) {
+                        ids.add(id);
+                    }
+                }
+            }
+        }
+        return ids;
     }
 
     /** 数据库日期若带时间部分，仅保留日期，保证前端按 yyyy-MM-dd 解析。 */
