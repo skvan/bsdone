@@ -136,7 +136,8 @@ class DataSovereigntyRuleTest {
                 accountScopeService, scopeQuerySupport, guard, personnelHistoryRecorder, playerTeamService,
                 tenantQueryPolicyService, sysConfigService, playerClaimRepository, gamePlayerStatRepository);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService);
+                guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
+                org.mockito.Mockito.mock(EventSpecialRuleService.class));
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);
