@@ -136,7 +136,8 @@ public class ClubhouseEvaluationService {
                 row -> battingNumber(row, "ops"), value -> StatsFormatUtil.fmtDecimal(value, 3));
         Axis rbi = countAxis("rbi", "打点", "RBI", self, pool);
         Axis sb = countAxis("sb", "盗垒", "SB", self, pool);
-        Axis woba = axis("woba", "加权上垒率", "wOBA", ClubhouseRatingSupport.woba(self), true,
+        double wobaValue = ClubhouseRatingSupport.woba(self);
+        Axis woba = axis("woba", "加权上垒率", "wOBA", wobaValue, true,
                 pool, ClubhouseRatingSupport::woba, value -> StatsFormatUtil.fmtDecimal(value, 3));
 
         List<Axis> displayAxes = List.of(avg, obp, slg, ops, rbi, sb);
@@ -147,7 +148,7 @@ public class ClubhouseEvaluationService {
                 new WeightedAxis(rbi, 0.10),
                 new WeightedAxis(sb, 0.05));
         Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("woba", round3(ClubhouseRatingSupport.woba(self)));
+        meta.put("woba", round3(wobaValue));
         return availableCard(BATTING_META, displayAxes, qualityAxes, reliability,
                 pool.size(), plateAppearances, NOTE_WOBA, meta);
     }
@@ -180,19 +181,19 @@ public class ClubhouseEvaluationService {
                 this::homeRunsPerNine, value -> StatsFormatUtil.fmtDecimal(value, 2));
         Axis ip = axis("ip", "投球局数", "IP", innings, true, pool, this::innings,
                 ClubhouseEvaluationService::baseballInnings);
-        Axis fipValue = axis("fip", "防御率独立值", "FIP",
-                ClubhouseRatingSupport.fip(self, constant), false, pool,
+        double fipValue = ClubhouseRatingSupport.fip(self, constant);
+        Axis fipAxis = axis("fip", "防御率独立值", "FIP", fipValue, false, pool,
                 row -> ClubhouseRatingSupport.fip(row, constant),
                 value -> StatsFormatUtil.fmtDecimal(value, 2));
 
         List<Axis> displayAxes = List.of(era, whip, k9, bb9, hr9, ip);
         List<WeightedAxis> qualityAxes = List.of(
-                new WeightedAxis(fipValue, 0.50),
+                new WeightedAxis(fipAxis, 0.50),
                 new WeightedAxis(k9, 0.20),
                 new WeightedAxis(bb9, 0.15),
                 new WeightedAxis(whip, 0.15));
         Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("fip", round2(ClubhouseRatingSupport.fip(self, constant)));
+        meta.put("fip", round2(fipValue));
         meta.put("fipConstant", round2(constant));
         return availableCard(PITCHING_META, displayAxes, qualityAxes, reliability,
                 pool.size(), innings, NOTE_FIP, meta);
@@ -248,27 +249,30 @@ public class ClubhouseEvaluationService {
         String role = role(batting, pitching);
         Map<String, Double> baseWeights = baseWeights(role, batting);
         List<DomainScore> domains = List.of(batting, fielding, pitching);
-        LinkedHashMap<String, Double> applied = new LinkedHashMap<>();
         double weightSum = 0.0;
         for (DomainScore domain : domains) {
             Double weight = baseWeights.get(domain.key());
             if (weight != null && domain.available()) {
-                applied.put(domain.key(), weight);
                 weightSum += weight;
             }
         }
 
+        boolean scored = weightSum > 0.0;
         double score = 0.0;
         double reliability = 0.0;
         LinkedHashMap<String, Double> normalized = new LinkedHashMap<>();
-        for (Map.Entry<String, Double> entry : applied.entrySet()) {
-            double weight = entry.getValue() / weightSum;
-            normalized.put(entry.getKey(), round3(weight));
-            DomainScore domain = domain(domains, entry.getKey());
-            score += domain.score() * weight;
-            reliability += domain.reliability() * weight;
+        if (scored) {
+            for (DomainScore domain : domains) {
+                Double weight = baseWeights.get(domain.key());
+                if (weight == null || !domain.available()) {
+                    continue;
+                }
+                double share = weight / weightSum;
+                normalized.put(domain.key(), round3(share));
+                score += domain.score() * share;
+                reliability += domain.reliability() * share;
+            }
         }
-        boolean scored = weightSum > 0.0;
         int roundedScore = scored ? (int) Math.round(score) : 0;
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
@@ -318,13 +322,6 @@ public class ClubhouseEvaluationService {
             }
         }
         return weights;
-    }
-
-    private DomainScore domain(List<DomainScore> domains, String key) {
-        return domains.stream()
-                .filter(domain -> domain.key().equals(key))
-                .findFirst()
-                .orElse(new DomainScore(key, false, 0.0, 0.0, 0.0));
     }
 
     private Map<String, Object> sampleSizes(DomainScore batting, DomainScore fielding,
