@@ -1,5 +1,5 @@
 <template>
-  <div v-loading="loading" class="admin-page live-game-lineup-board" :class="{ 'form-compact': formCompact }">
+  <div v-loading="loading" class="admin-page live-game-lineup-board">
     <div class="lineup-board-header">
       <span class="header-left">确认先发阵容 · {{ eventName }}</span>
       <div class="header-actions">
@@ -10,10 +10,10 @@
       </div>
     </div>
 
-    <!-- 设置区：与旧件同字段同校验；画布需要让位时（form-compact）压为两行 -->
+    <!-- 设置区：与旧件同字段同校验 -->
     <el-form :model="setupForm" label-width="90px" class="setup-form">
       <el-row :gutter="16">
-        <el-col :span="formCompact ? 8 : 12">
+        <el-col :span="12">
           <el-form-item label="比赛模式">
             <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
               <el-option label="棒球" value="BASEBALL" />
@@ -21,22 +21,11 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="formCompact ? 8 : 12">
+        <el-col :span="12">
           <el-form-item label="场地">
             <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
               <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
             </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col v-if="formCompact" :span="8">
-          <el-form-item label="比赛时间">
-            <el-date-picker
-              v-model="gameTime"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              placeholder="选择比赛时间"
-              style="width: 100%"
-            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -68,7 +57,7 @@
           </el-form-item>
         </el-col>
       </el-row>
-      <el-row v-if="!formCompact" :gutter="16">
+      <el-row :gutter="16">
         <el-col :span="12">
           <el-form-item label="比赛时间">
             <el-date-picker
@@ -90,16 +79,11 @@
       <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
     </el-radio-group>
 
-    <div v-if="pending" ref="pendingHintEl" class="lineup-pending-hint">
+    <div v-if="pending" class="lineup-pending-hint">
       待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
     </div>
 
-    <div
-      ref="boardEl"
-      class="lineup-board"
-      :class="{ 'is-mobile': isMobile }"
-      :style="fieldCap ? { '--lineup-field-cap': `${fieldCap}px` } : null"
-    >
+    <div class="lineup-board">
       <LineupFieldBoard
         ref="fieldBoard"
         :mode="mode"
@@ -130,8 +114,8 @@
       />
     </div>
 
-    <div v-if="!board.validation.value.ok && board.validation.value.msg" class="lineup-warn">{{ board.validation.value.msg }}</div>
-    <div v-if="board.fieldingPitcherRequired.value && !board.fieldingPitcherOk.value" class="lineup-warn">须指定先发投手后才可开始录入</div>
+    <!-- 仅保留 EP 未开放等画布上看不出来的规则提示；空位/重复/无效位置由卡槽直接呈现 -->
+    <div v-if="lineupErrorMsg" class="lineup-warn">{{ lineupErrorMsg }}</div>
 
     <!-- 模板对话框：应用前二次确认 -->
     <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
@@ -159,9 +143,9 @@ import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
-import { useLineupCanvasFit } from '../../composables/useLineupCanvasFit';
 import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
+import { visibleLineupError } from '../../utils/lineupValidationMessage';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
@@ -176,7 +160,6 @@ const route = useRoute();
 const router = useRouter();
 const tabs = useTabsStore();
 const { hasPerm } = usePermission();
-const isMobile = useMediaQuery('(max-width: 768px)');
 // 桌面整卡拖动（#340）：精指针设备隐藏打线把手、整行可拖排序；触屏设备保留把手 + sortablejs
 const isFinePointer = useMediaQuery('(pointer: fine)');
 
@@ -204,12 +187,6 @@ const templateDialog = ref({ visible: false, team: 'away', list: [], selected: n
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
-const boardEl = ref(null);          // 阵容板网格容器（画布自适应用）
-const pendingHintEl = ref(null);    // 待放置提示条（临时占据球场上方空间，判定时剔除）
-
-// 画布自适应（#344）：实测可用空间计算球场列宽上限；画布需要让位时把设置区压为两行
-const { formCompact, fieldCap } = useLineupCanvasFit({ boardEl, pendingHintEl, isMobile });
-
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
 const rosterHint = computed(() => {
   if (mode.value === 'SOFTBALL') return extraBatter.value ? '阵容确认（垒球：10-11 人）' : '阵容确认（垒球：10 人）';
@@ -237,6 +214,7 @@ const homeTeamName = computed(() => teams.value.find((t) => t.id === setupForm.v
 const awayTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.awayTeamId)?.name ?? '客队');
 
 const errorIndices = computed(() => board.value.validation.value.errorRowIndices ?? []);
+const lineupErrorMsg = computed(() => visibleLineupError(board.value.validation.value.msg));
 
 // R1：球场卡槽视图（9 守备位 + DH）
 const fieldSlotViews = computed(() => {
