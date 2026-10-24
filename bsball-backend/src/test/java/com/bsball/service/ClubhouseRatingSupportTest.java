@@ -138,6 +138,7 @@ class ClubhouseRatingSupportTest {
     void groupsPositions() {
         assertEquals("C", ClubhouseRatingSupport.positionGroup("C"));
         assertEquals("INF", ClubhouseRatingSupport.positionGroup("SS"));
+        assertEquals("INF", ClubhouseRatingSupport.positionGroup("IF"));
         assertEquals("OF", ClubhouseRatingSupport.positionGroup("CF"));
         assertEquals("DH", ClubhouseRatingSupport.positionGroup("DH"));
     }
@@ -148,6 +149,7 @@ class ClubhouseRatingSupportTest {
         assertEquals("1B", ClubhouseRatingSupport.positionGroup(" 1b "));
         assertEquals("INF", ClubhouseRatingSupport.positionGroup("2b"));
         assertEquals("INF", ClubhouseRatingSupport.positionGroup("3B"));
+        assertEquals("INF", ClubhouseRatingSupport.positionGroup(" if "));
         assertEquals("OF", ClubhouseRatingSupport.positionGroup("lf"));
         assertEquals("OF", ClubhouseRatingSupport.positionGroup("RF"));
         assertEquals("P", ClubhouseRatingSupport.positionGroup("p"));

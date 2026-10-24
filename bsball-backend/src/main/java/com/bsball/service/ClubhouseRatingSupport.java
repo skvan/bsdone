@@ -107,7 +107,10 @@ public final class ClubhouseRatingSupport {
     }
 
     /**
-     * 守位分组：C、1B、INF（2B/3B/SS）、OF（LF/CF/RF）、DH、P，其余归 UTIL。
+     * 守位分组：C、1B、INF（2B/3B/SS/IF）、OF（LF/CF/RF）、DH、P，其余归 UTIL。
+     *
+     * <p>门户守位列表同时提供 IF（内野）与 2B/3B/SS，IF 与具体内野守位同归 INF 组，
+     * 避免门户可选守位落到 UTIL 兜底组。</p>
      *
      * @param position 守位代码，忽略大小写与首尾空白
      * @return 守位组代码
@@ -120,7 +123,7 @@ public final class ClubhouseRatingSupport {
         return switch (normalized) {
             case "C" -> "C";
             case "1B" -> "1B";
-            case "2B", "3B", "SS" -> "INF";
+            case "2B", "3B", "SS", "IF" -> "INF";
             case "LF", "CF", "RF", "OF" -> "OF";
             case "DH" -> "DH";
             case "P" -> "P";
