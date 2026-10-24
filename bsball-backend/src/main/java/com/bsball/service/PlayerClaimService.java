@@ -338,6 +338,14 @@ public class PlayerClaimService {
         return out;
     }
 
+    /**
+     * 创建邀请：
+     * <ul>
+     *   <li>绑定未认领球员 → 由球队代管直接追加球队经历并置 current=true（既有 current 原样保留），
+     *       无需球员登录/确认、不产生认领关系，也不生成邀请 token；</li>
+     *   <li>不绑定球员 → 生成通用邀请 token，由本人登录/注册后接受（已认领球员走此路径）。</li>
+     * </ul>
+     */
     @Transactional
     public Map<String, Object> createInvite(Long creatorId, Long teamId, Long playerId, Integer expireHours, Integer maxUses, String remark) {
         // 电子秩序册批 4（Issue #310）：守卫=「可管理该球队」——球队负责人本队可发起入队邀请；
@@ -346,6 +354,9 @@ public class PlayerClaimService {
         Team team = this.requireTeamInCurrentTenant(teamId);
         if (playerId != null) {
             Player p = (Player)this.playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(404, "球员不存在"));
+            if (p.getDeletedAt() != null) {
+                throw new BusinessException(404, "球员不存在");
+            }
             // 保留租户一致性：删除 isCurrentlyInTeam 硬校验后，仍需保证受邀球员与球队同租户。
             if (!Objects.equals(p.getTenantId(), team.getTenantId())) {
                 throw new BusinessException(400, "球员与球队不属于同一租户");
@@ -353,6 +364,12 @@ public class PlayerClaimService {
             if (p.getUserId() != null) {
                 throw new BusinessException(400, "该球员已被认领");
             }
+            // 未认领球员由球队代管：邀请即直接入队，不产生认领关系。
+            if (this.playerTeamService.currentTeamIds(playerId).contains(teamId)) {
+                return this.joinResult(playerId, teamId, "already_joined");
+            }
+            this.applyInviteJoin(p, teamId);
+            return this.joinResult(playerId, teamId, "direct_joined");
         }
         int hours = expireHours != null && expireHours > 0 ? expireHours.intValue() : this.accountProperties.getInviteDefaultExpireHours();
         int uses = maxUses != null && maxUses > 0 ? maxUses.intValue() : this.accountProperties.getInviteDefaultMaxUses();
@@ -665,7 +682,8 @@ public class PlayerClaimService {
 
     /**
      * 邀请入队结果：mode 透传子语义——新建档入队={@code registered}、存量档案直接入队={@code joined}、
-     * 已在队幂等早返回={@code already_joined}（前端据此区分提示与埋点，三者均为终态成功）。
+     * 球队代管直接入队={@code direct_joined}、已在队幂等早返回={@code already_joined}
+     * （前端据此区分提示与埋点，四者均为终态成功）。
      */
     private Map<String, Object> joinResult(Long playerId, Long teamId, String mode) {
         LinkedHashMap<String, Object> out = new LinkedHashMap<String, Object>();

@@ -1,0 +1,1344 @@
+{
+ "G01_SCORE_INNING|legacy": {
+  "code": "G01_SCORE_INNING",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 3,
+  "games": 3,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "away 总分 13 ≠ 局分合计 15"
+   },
+   {
+    "gameId": 14,
+    "gameday": "2025-09-27",
+    "msg": "away 总分 10 ≠ 局分合计 11"
+   },
+   {
+    "gameId": 213,
+    "gameday": "2026-09-13",
+    "msg": "away 总分 10 ≠ 局分合计 9"
+   }
+  ]
+ },
+ "P01_PITCH_R|legacy": {
+  "code": "P01_PITCH_R",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 32,
+  "games": 21,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "主队 投手ΣR 15 ≠ 对方总分 13（差 -2）"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "主队 投手ΣR 12 ≠ 对方总分 13（差 1）"
+   },
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "主队 投手ΣR 0 ≠ 对方总分 8（差 8）"
+   },
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "客队 投手ΣR 0 ≠ 对方总分 9（差 9）"
+   },
+   {
+    "gameId": 44,
+    "gameday": "2026-03-29",
+    "msg": "客队 投手ΣR 12 ≠ 对方总分 8（差 -4）"
+   },
+   {
+    "gameId": 55,
+    "gameday": "2025-03-08",
+    "msg": "主队 投手ΣR 7 ≠ 对方总分 6（差 -1）"
+   },
+   {
+    "gameId": 66,
+    "gameday": "2026-04-11",
+    "msg": "主队 投手ΣR 9 ≠ 对方总分 8（差 -1）"
+   },
+   {
+    "gameId": 110,
+    "gameday": "2026-05-23",
+    "msg": "客队 投手ΣR 5 ≠ 对方总分 8（差 3）"
+   }
+  ]
+ },
+ "P08_PITCH_H|legacy": {
+  "code": "P08_PITCH_H",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 28,
+  "games": 25,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "主队 被安打 投手侧 6 ≠ 对方打者侧 5"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "客队 被安打 投手侧 3 ≠ 对方打者侧 2"
+   },
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "客队 被安打 投手侧 3 ≠ 对方打者侧 4"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "客队 被安打 投手侧 5 ≠ 对方打者侧 4"
+   },
+   {
+    "gameId": 13,
+    "gameday": "2025-09-27",
+    "msg": "主队 被安打 投手侧 7 ≠ 对方打者侧 8"
+   },
+   {
+    "gameId": 13,
+    "gameday": "2025-09-27",
+    "msg": "客队 被安打 投手侧 7 ≠ 对方打者侧 6"
+   },
+   {
+    "gameId": 21,
+    "gameday": "2025-09-27",
+    "msg": "主队 被安打 投手侧 6 ≠ 对方打者侧 5"
+   },
+   {
+    "gameId": 23,
+    "gameday": "2025-08-31",
+    "msg": "客队 被安打 投手侧 14 ≠ 对方打者侧 15"
+   }
+  ]
+ },
+ "P09_PITCH_SO|legacy": {
+  "code": "P09_PITCH_SO",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 36,
+  "games": 33,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "主队 被三振 投手侧 5 ≠ 对方打者侧 4"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "主队 被三振 投手侧 7 ≠ 对方打者侧 6"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "主队 被三振 投手侧 2 ≠ 对方打者侧 3"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "主队 被三振 投手侧 2 ≠ 对方打者侧 0"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "客队 被三振 投手侧 3 ≠ 对方打者侧 0"
+   },
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "客队 被三振 投手侧 3 ≠ 对方打者侧 4"
+   },
+   {
+    "gameId": 21,
+    "gameday": "2025-09-27",
+    "msg": "客队 被三振 投手侧 4 ≠ 对方打者侧 5"
+   },
+   {
+    "gameId": 25,
+    "gameday": "2025-10-12",
+    "msg": "客队 被三振 投手侧 1 ≠ 对方打者侧 2"
+   }
+  ]
+ },
+ "P10_PITCH_BBHP|legacy": {
+  "code": "P10_PITCH_BBHP",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 31,
+  "games": 27,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "主队 BB+HBP 投手侧 14 ≠ 对方打者侧 12"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "主队 BB+HBP 投手侧 3 ≠ 对方打者侧 2"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "主队 BB+HBP 投手侧 13 ≠ 对方打者侧 4"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "主队 BB+HBP 投手侧 12 ≠ 对方打者侧 11"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "客队 BB+HBP 投手侧 1 ≠ 对方打者侧 3"
+   },
+   {
+    "gameId": 12,
+    "gameday": "2025-09-14",
+    "msg": "主队 BB+HBP 投手侧 7 ≠ 对方打者侧 6"
+   },
+   {
+    "gameId": 12,
+    "gameday": "2025-09-14",
+    "msg": "客队 BB+HBP 投手侧 12 ≠ 对方打者侧 14"
+   },
+   {
+    "gameId": 15,
+    "gameday": "2025-09-27",
+    "msg": "客队 BB+HBP 投手侧 4 ≠ 对方打者侧 7"
+   }
+  ]
+ },
+ "P11_PITCH_IPHR|legacy": {
+  "code": "P11_PITCH_IPHR",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 33,
+  "games": 28,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "主队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "主队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "主队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "客队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 12,
+    "gameday": "2025-09-14",
+    "msg": "主队 被场内HR 投手侧 0 ≠ 对方打者侧 2"
+   },
+   {
+    "gameId": 12,
+    "gameday": "2025-09-14",
+    "msg": "客队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 28,
+    "gameday": "2026-03-21",
+    "msg": "主队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 29,
+    "gameday": "2026-03-21",
+    "msg": "客队 被场内HR 投手侧 0 ≠ 对方打者侧 1"
+   }
+  ]
+ },
+ "F07_CATCHER_SB|legacy": {
+  "code": "F07_CATCHER_SB",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 74,
+  "games": 56,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "客队 捕手SB允许 2 ≠ 对方SB 3"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "主队 捕手SB允许 5 ≠ 对方SB 4"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "主队 捕手SB允许 1 ≠ 对方SB 5"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "主队 捕手SB允许 3 ≠ 对方SB 6"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "客队 捕手SB允许 4 ≠ 对方SB 3"
+   },
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "客队 捕手SB允许 3 ≠ 对方SB 0"
+   },
+   {
+    "gameId": 11,
+    "gameday": "2025-09-14",
+    "msg": "主队 捕手SB允许 4 ≠ 对方SB 7"
+   },
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "主队 捕手SB允许 0 ≠ 对方SB 6"
+   }
+  ]
+ },
+ "F01_TC|legacy": {
+  "code": "F01_TC",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 1349,
+  "games": 121,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 30(team 2,2B) TC 0 ≠ PO 1+A 0+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 42(team 2,RF) TC 0 ≠ PO 0+A 0+E 1"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 32(team 2,CF) TC 0 ≠ PO 1+A 0+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 1(team 1,RF) TC 0 ≠ PO 1+A 0+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 29(team 2,C) TC 0 ≠ PO 5+A 0+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 4(team 1,C) TC 0 ≠ PO 8+A 0+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 41(team 2,3B) TC 0 ≠ PO 0+A 1+E 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 31(team 2,1B) TC 0 ≠ PO 3+A 0+E 0"
+   }
+  ]
+ },
+ "B01_PA_FORMULA|legacy": {
+  "code": "B01_PA_FORMULA",
+  "severity": "P2",
+  "kind": "legacy",
+  "total": 69,
+  "games": 32,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "球员 4(team 1) PA 4 ≠ 3（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "球员 55(team 3) PA 2 ≠ 1（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 10,
+    "gameday": "2025-09-14",
+    "msg": "球员 49(team 2) PA 2 ≠ 3（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 23,
+    "gameday": "2025-08-31",
+    "msg": "球员 96(team 4) PA 2 ≠ 1（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 23,
+    "gameday": "2025-08-31",
+    "msg": "球员 29(team 2) PA 4 ≠ 3（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 23,
+    "gameday": "2025-08-31",
+    "msg": "球员 47(team 2) PA 3 ≠ 2（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 25,
+    "gameday": "2025-10-12",
+    "msg": "球员 139(team 6) PA 2 ≠ 3（AB+BB/HBP+SF+SH）"
+   },
+   {
+    "gameId": 26,
+    "gameday": "2025-10-12",
+    "msg": "球员 34(team 2) PA 2 ≠ 3（AB+BB/HBP+SF+SH）"
+   }
+  ]
+ },
+ "P02_ER_BREAKDOWN|legacy": {
+  "code": "P02_ER_BREAKDOWN",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 270,
+  "games": 106,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 40(team 2) R=2 ≠ ER 1+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 167(team 2) R=6 ≠ ER 4+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 27(team 1) R=1 ≠ ER 0+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "投手 12(team 1) R=1 ≠ ER 0+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "投手 53(team 3) R=2 ≠ ER 1+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "投手 83(team 4) R=4 ≠ ER 3+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "投手 90(team 4) R=4 ≠ ER 3+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 7,
+    "gameday": "2025-10-12",
+    "msg": "投手 44(team 2) R=6 ≠ ER 3+UER 0+PENDING 0"
+   }
+  ]
+ },
+ "P13_NP_ZERO_ALL|legacy": {
+  "code": "P13_NP_ZERO_ALL",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 424,
+  "games": 94,
+  "samples": [
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 40(team 2) BF=4 但 NP=0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 167(team 2) BF=20 但 NP=0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 27(team 1) BF=15 但 NP=0"
+   },
+   {
+    "gameId": 3,
+    "gameday": "2025-08-31",
+    "msg": "投手 36(team 2) BF=9 但 NP=0"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "投手 26(team 1) BF=17 但 NP=0"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "投手 12(team 1) BF=5 但 NP=0"
+   },
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "投手 53(team 3) BF=28 但 NP=0"
+   },
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "投手 83(team 4) BF=6 但 NP=0"
+   }
+  ]
+ },
+ "F06_CATCHER_CS|legacy": {
+  "code": "F06_CATCHER_CS",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 18,
+  "games": 17,
+  "samples": [
+   {
+    "gameId": 4,
+    "gameday": "2025-08-31",
+    "msg": "主队 捕手CS 1 ≠ 对方CS 0"
+   },
+   {
+    "gameId": 39,
+    "gameday": "2026-03-28",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 44,
+    "gameday": "2026-03-29",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 60,
+    "gameday": "2025-03-09",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 79,
+    "gameday": "2026-04-18",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 99,
+    "gameday": "2026-05-16",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 100,
+    "gameday": "2026-05-16",
+    "msg": "客队 捕手CS 0 ≠ 对方CS 1"
+   },
+   {
+    "gameId": 101,
+    "gameday": "2026-05-16",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   }
+  ]
+ },
+ "F03_TEAM_E|legacy": {
+  "code": "F03_TEAM_E",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 56,
+  "games": 49,
+  "samples": [
+   {
+    "gameId": 6,
+    "gameday": "2025-09-14",
+    "msg": "客队 比分板 E 5 ≠ Σ个人E 4"
+   },
+   {
+    "gameId": 13,
+    "gameday": "2025-09-27",
+    "msg": "主队 比分板 E 2 ≠ Σ个人E 1"
+   },
+   {
+    "gameId": 14,
+    "gameday": "2025-09-27",
+    "msg": "客队 比分板 E 3 ≠ Σ个人E 2"
+   },
+   {
+    "gameId": 15,
+    "gameday": "2025-09-27",
+    "msg": "主队 比分板 E 2 ≠ Σ个人E 1"
+   },
+   {
+    "gameId": 23,
+    "gameday": "2025-08-31",
+    "msg": "客队 比分板 E 3 ≠ Σ个人E 2"
+   },
+   {
+    "gameId": 24,
+    "gameday": "2025-10-12",
+    "msg": "客队 比分板 E 2 ≠ Σ个人E 1"
+   },
+   {
+    "gameId": 25,
+    "gameday": "2025-10-12",
+    "msg": "主队 比分板 E 4 ≠ Σ个人E 3"
+   },
+   {
+    "gameId": 28,
+    "gameday": "2026-03-21",
+    "msg": "客队 比分板 E 8 ≠ Σ个人E 7"
+   }
+  ]
+ },
+ "P11_PITCH_HR|legacy": {
+  "code": "P11_PITCH_HR",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 4,
+  "games": 4,
+  "samples": [
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "主队 被墙外HR 投手侧 1 ≠ 对方打者侧 0"
+   },
+   {
+    "gameId": 29,
+    "gameday": "2026-03-21",
+    "msg": "客队 被墙外HR 投手侧 1 ≠ 对方打者侧 0"
+   },
+   {
+    "gameId": 67,
+    "gameday": "2026-04-12",
+    "msg": "客队 被墙外HR 投手侧 0 ≠ 对方打者侧 1"
+   },
+   {
+    "gameId": 102,
+    "gameday": "2026-05-17",
+    "msg": "主队 被墙外HR 投手侧 3 ≠ 对方打者侧 2"
+   }
+  ]
+ },
+ "B02_H_COMPONENTS|legacy": {
+  "code": "B02_H_COMPONENTS",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 3,
+  "games": 3,
+  "samples": [
+   {
+    "gameId": 9,
+    "gameday": "2025-08-31",
+    "msg": "球员 76(team 3) H=1 < 2B+3B+HR+IPHR"
+   },
+   {
+    "gameId": 150,
+    "gameday": "2026-06-07",
+    "msg": "球员 879(team 30) H=0 < 2B+3B+HR+IPHR"
+   },
+   {
+    "gameId": 212,
+    "gameday": "2026-09-13",
+    "msg": "球员 1254(team 42) H=0 < 2B+3B+HR+IPHR"
+   }
+  ]
+ },
+ "B12_TEAM_H|legacy": {
+  "code": "B12_TEAM_H",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 6,
+  "games": 6,
+  "samples": [
+   {
+    "gameId": 13,
+    "gameday": "2025-09-27",
+    "msg": "主队 比分板 H 7 ≠ Σ个人H 6"
+   },
+   {
+    "gameId": 31,
+    "gameday": "2026-03-22",
+    "msg": "主队 比分板 H 10 ≠ Σ个人H 9"
+   },
+   {
+    "gameId": 41,
+    "gameday": "2026-03-29",
+    "msg": "客队 比分板 H 12 ≠ Σ个人H 11"
+   },
+   {
+    "gameId": 227,
+    "gameday": "2026-09-25",
+    "msg": "客队 比分板 H 11 ≠ Σ个人H 12"
+   },
+   {
+    "gameId": 228,
+    "gameday": "2026-09-25",
+    "msg": "客队 比分板 H 7 ≠ Σ个人H 9"
+   },
+   {
+    "gameId": 232,
+    "gameday": "2026-09-27",
+    "msg": "客队 比分板 H 4 ≠ Σ个人H 5"
+   }
+  ]
+ },
+ "G06_DUP_BAT_ROWS|legacy": {
+  "code": "G06_DUP_BAT_ROWS",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 19,
+  "games": 6,
+  "samples": [
+   {
+    "gameId": 13,
+    "gameday": "2025-09-27",
+    "msg": "球员 4_78 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 226,
+    "gameday": "2026-09-25",
+    "msg": "球员 51_1221 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 226,
+    "gameday": "2026-09-25",
+    "msg": "球员 51_1207 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 226,
+    "gameday": "2026-09-25",
+    "msg": "球员 49_1155 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 226,
+    "gameday": "2026-09-25",
+    "msg": "球员 49_1152 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 227,
+    "gameday": "2026-09-25",
+    "msg": "球员 47_1122 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 227,
+    "gameday": "2026-09-25",
+    "msg": "球员 47_1127 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 227,
+    "gameday": "2026-09-25",
+    "msg": "球员 57_1324 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   }
+  ]
+ },
+ "B11_TEAM_R|legacy": {
+  "code": "B11_TEAM_R",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 8,
+  "games": 6,
+  "samples": [
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "主队 总分 9 ≠ Σ个人R 3（差 6）"
+   },
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "客队 总分 8 ≠ Σ个人R 4（差 4）"
+   },
+   {
+    "gameId": 31,
+    "gameday": "2026-03-22",
+    "msg": "主队 总分 9 ≠ Σ个人R 8（差 1）"
+   },
+   {
+    "gameId": 41,
+    "gameday": "2026-03-29",
+    "msg": "客队 总分 12 ≠ Σ个人R 8（差 4）"
+   },
+   {
+    "gameId": 226,
+    "gameday": "2026-09-25",
+    "msg": "客队 总分 12 ≠ Σ个人R 11（差 1）"
+   },
+   {
+    "gameId": 228,
+    "gameday": "2026-09-25",
+    "msg": "客队 总分 8 ≠ Σ个人R 4（差 4）"
+   },
+   {
+    "gameId": 232,
+    "gameday": "2026-09-27",
+    "msg": "主队 总分 7 ≠ Σ个人R 5（差 2）"
+   },
+   {
+    "gameId": 232,
+    "gameday": "2026-09-27",
+    "msg": "客队 总分 8 ≠ Σ个人R 7（差 1）"
+   }
+  ]
+ },
+ "P03_ER_GT_R|legacy": {
+  "code": "P03_ER_GT_R",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 51,
+  "games": 19,
+  "samples": [
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "投手 7(team 1) ER 3 > R 0"
+   },
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "投手 107(team 5) ER 4 > R 0"
+   },
+   {
+    "gameId": 51,
+    "gameday": "2025-03-02",
+    "msg": "投手 56(team 3) ER 1 > R 0"
+   },
+   {
+    "gameId": 52,
+    "gameday": "2025-03-02",
+    "msg": "投手 137(team 6) ER 10 > R 6"
+   },
+   {
+    "gameId": 54,
+    "gameday": "2025-03-08",
+    "msg": "投手 342(team 3) ER 6 > R 5"
+   },
+   {
+    "gameId": 55,
+    "gameday": "2025-03-08",
+    "msg": "投手 44(team 2) ER 4 > R 2"
+   },
+   {
+    "gameId": 205,
+    "gameday": "2026-09-12",
+    "msg": "投手 987(team 41) ER 11 > R 0"
+   },
+   {
+    "gameId": 207,
+    "gameday": "2026-09-12",
+    "msg": "投手 1054(team 43) ER 1 > R 0"
+   }
+  ]
+ },
+ "P06_IP_FORMAT|legacy": {
+  "code": "P06_IP_FORMAT",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 2,
+  "games": 2,
+  "samples": [
+   {
+    "gameId": 20,
+    "gameday": "2026-03-18",
+    "msg": "投手 7(team 1) IP=2.7 小数位非法"
+   },
+   {
+    "gameId": 67,
+    "gameday": "2026-04-12",
+    "msg": "投手 53(team 3) IP=1.9 小数位非法"
+   }
+  ]
+ },
+ "P07_OUTS_GT_BF|legacy": {
+  "code": "P07_OUTS_GT_BF",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 1,
+  "games": 1,
+  "samples": [
+   {
+    "gameId": 67,
+    "gameday": "2026-04-12",
+    "msg": "投手 53(team 3) IP 1.9(12出局) > BF 6"
+   }
+  ]
+ },
+ "P00_NO_PITCHER_ROWS|legacy": {
+  "code": "P00_NO_PITCHER_ROWS",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 52,
+  "games": 28,
+  "samples": [
+   {
+    "gameId": 127,
+    "gameday": "2026-06-06",
+    "msg": "主队 对方得 8 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 127,
+    "gameday": "2026-06-06",
+    "msg": "客队 对方得 6 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 130,
+    "gameday": "2026-06-06",
+    "msg": "主队 对方得 1 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 130,
+    "gameday": "2026-06-06",
+    "msg": "客队 对方得 1 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 131,
+    "gameday": "2026-06-06",
+    "msg": "主队 对方得 6 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 132,
+    "gameday": "2026-06-06",
+    "msg": "主队 对方得 6 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 132,
+    "gameday": "2026-06-06",
+    "msg": "客队 对方得 4 分，但该队没有任何 is_pitcher=1 的投手行"
+   },
+   {
+    "gameId": 133,
+    "gameday": "2026-06-06",
+    "msg": "主队 对方得 8 分，但该队没有任何 is_pitcher=1 的投手行"
+   }
+  ]
+ },
+ "B09_SO_SPLIT|legacy": {
+  "code": "B09_SO_SPLIT",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 3,
+  "games": 2,
+  "samples": [
+   {
+    "gameId": 127,
+    "gameday": "2026-06-06",
+    "msg": "球员 662(team 20) SO 2 ≠ SO_swing 0+SO_looking 1"
+   },
+   {
+    "gameId": 127,
+    "gameday": "2026-06-06",
+    "msg": "球员 735(team 23) SO 0 ≠ SO_swing 1+SO_looking 0"
+   },
+   {
+    "gameId": 131,
+    "gameday": "2026-06-06",
+    "msg": "球员 863(team 29) SO 0 ≠ SO_swing 0+SO_looking 1"
+   }
+  ]
+ },
+ "P13_NP_ZERO_MIXED|legacy": {
+  "code": "P13_NP_ZERO_MIXED",
+  "severity": "P3",
+  "kind": "legacy",
+  "total": 2,
+  "games": 1,
+  "samples": [
+   {
+    "gameId": 202,
+    "gameday": "2026-09-11",
+    "msg": "投手 1176(team 50) BF=11 但 NP=0"
+   },
+   {
+    "gameId": 202,
+    "gameday": "2026-09-11",
+    "msg": "投手 1155(team 49) BF=18 但 NP=0"
+   }
+  ]
+ },
+ "P01_PITCH_R|current": {
+  "code": "P01_PITCH_R",
+  "severity": "P0",
+  "kind": "current",
+  "total": 15,
+  "games": 9,
+  "samples": [
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "主队 投手ΣR 0 ≠ 对方总分 2（差 2）"
+   },
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "客队 投手ΣR 0 ≠ 对方总分 4（差 4）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "主队 投手ΣR 0 ≠ 对方总分 2（差 2）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "客队 投手ΣR 1 ≠ 对方总分 4（差 3）"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "客队 投手ΣR 1 ≠ 对方总分 7（差 6）"
+   },
+   {
+    "gameId": 237,
+    "gameday": "2026-10-11",
+    "msg": "客队 投手ΣR 0 ≠ 对方总分 8（差 8）"
+   },
+   {
+    "gameId": 239,
+    "gameday": "2026-10-11",
+    "msg": "主队 投手ΣR 0 ≠ 对方总分 1（差 1）"
+   },
+   {
+    "gameId": 239,
+    "gameday": "2026-10-11",
+    "msg": "客队 投手ΣR 0 ≠ 对方总分 11（差 11）"
+   }
+  ]
+ },
+ "P02_ER_BREAKDOWN|current": {
+  "code": "P02_ER_BREAKDOWN",
+  "severity": "P0",
+  "kind": "current",
+  "total": 14,
+  "games": 7,
+  "samples": [
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "投手 1293(team 55) R=0 ≠ ER 4+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "投手 1021(team 42) R=0 ≠ ER 2+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "投手 1002(team 41) R=1 ≠ ER 4+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "投手 1040(team 43) R=1 ≠ ER 3+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "投手 1307(team 56) R=9 ≠ ER 36+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "投手 1308(team 56) R=3 ≠ ER 7+UER 0+PENDING 0"
+   },
+   {
+    "gameId": 243,
+    "gameday": "2026-10-17",
+    "msg": "投手 1120(team 47) R=7 ≠ ER 22+UER 1+PENDING 0"
+   },
+   {
+    "gameId": 243,
+    "gameday": "2026-10-17",
+    "msg": "投手 1127(team 47) R=2 ≠ ER 12+UER 0+PENDING 0"
+   }
+  ]
+ },
+ "P03_ER_GT_R|current": {
+  "code": "P03_ER_GT_R",
+  "severity": "P0",
+  "kind": "current",
+  "total": 14,
+  "games": 7,
+  "samples": [
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "投手 1293(team 55) ER 4 > R 0"
+   },
+   {
+    "gameId": 233,
+    "gameday": "2026-09-29",
+    "msg": "投手 1021(team 42) ER 2 > R 0"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "投手 1002(team 41) ER 4 > R 1"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "投手 1040(team 43) ER 3 > R 1"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "投手 1307(team 56) ER 36 > R 9"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "投手 1308(team 56) ER 7 > R 3"
+   },
+   {
+    "gameId": 243,
+    "gameday": "2026-10-17",
+    "msg": "投手 1120(team 47) ER 22 > R 7"
+   },
+   {
+    "gameId": 243,
+    "gameday": "2026-10-17",
+    "msg": "投手 1127(team 47) ER 12 > R 2"
+   }
+  ]
+ },
+ "F07_CATCHER_SB|current": {
+  "code": "F07_CATCHER_SB",
+  "severity": "P2",
+  "kind": "current",
+  "total": 4,
+  "games": 3,
+  "samples": [
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "主队 捕手SB允许 0 ≠ 对方SB 4"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "主队 捕手SB允许 0 ≠ 对方SB 2"
+   },
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "客队 捕手SB允许 0 ≠ 对方SB 5"
+   },
+   {
+    "gameId": 245,
+    "gameday": "2026-10-17",
+    "msg": "主队 捕手SB允许 0 ≠ 对方SB 5"
+   }
+  ]
+ },
+ "G06_DUP_BAT_ROWS|current": {
+  "code": "G06_DUP_BAT_ROWS",
+  "severity": "P2",
+  "kind": "current",
+  "total": 31,
+  "games": 8,
+  "samples": [
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "球员 41_1002 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "球员 41_989 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "球员 45_1107 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "球员 45_1099 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 235,
+    "gameday": "2026-10-11",
+    "msg": "球员 45_1103 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "球员 43_1040 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "球员 43_1051 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   },
+   {
+    "gameId": 236,
+    "gameday": "2026-10-11",
+    "msg": "球员 42_1030 有 2 行都带 PA/AB（投手行可能复制了打击数据）"
+   }
+  ]
+ },
+ "F03_TEAM_E|current": {
+  "code": "F03_TEAM_E",
+  "severity": "P2",
+  "kind": "current",
+  "total": 4,
+  "games": 3,
+  "samples": [
+   {
+    "gameId": 242,
+    "gameday": "2026-10-16",
+    "msg": "客队 比分板 E 14 ≠ Σ个人E 13"
+   },
+   {
+    "gameId": 244,
+    "gameday": "2026-10-17",
+    "msg": "主队 比分板 E 1 ≠ Σ个人E 0"
+   },
+   {
+    "gameId": 244,
+    "gameday": "2026-10-17",
+    "msg": "客队 比分板 E 8 ≠ Σ个人E 7"
+   },
+   {
+    "gameId": 245,
+    "gameday": "2026-10-17",
+    "msg": "客队 比分板 E 2 ≠ Σ个人E 1"
+   }
+  ]
+ },
+ "F06_CATCHER_CS|current": {
+  "code": "F06_CATCHER_CS",
+  "severity": "P2",
+  "kind": "current",
+  "total": 1,
+  "games": 1,
+  "samples": [
+   {
+    "gameId": 243,
+    "gameday": "2026-10-17",
+    "msg": "主队 捕手CS 0 ≠ 对方CS 1"
+   }
+  ]
+ },
+ "C01_PITCH_DECISIONS_ZERO|coverage": {
+  "code": "C01_PITCH_DECISIONS_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有投手 GS/W/L/SV/HLD 均为 0（样本 35 行）"
+   }
+  ]
+ },
+ "C02_PITCH_GOFO_ZERO|coverage": {
+  "code": "C02_PITCH_GOFO_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有投手 GO/FO 均为 0（样本 35 行）"
+   }
+  ]
+ },
+ "C03_PITCH_BB_SPLIT_ZERO|coverage": {
+  "code": "C03_PITCH_BB_SPLIT_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有投手 BB/IBB/HBP 分项均为 0（但 BB+HP 合计有值）（样本 35 行）"
+   }
+  ]
+ },
+ "C04_FIELD_DP_ZERO|coverage": {
+  "code": "C04_FIELD_DP_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有守备员 DP 均为 0（样本 184 行）"
+   }
+  ]
+ },
+ "C05_FIELD_INN_ZERO|coverage": {
+  "code": "C05_FIELD_INN_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有守备员守备局数 INN 均为 0（样本 184 行）"
+   }
+  ]
+ },
+ "C06_CATCHER_ZERO|coverage": {
+  "code": "C06_CATCHER_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有捕手 PB/SB允许/CS 均为 0（样本 19 行）"
+   }
+  ]
+ },
+ "C07_BAT_IBB_GDP_ZERO|coverage": {
+  "code": "C07_BAT_IBB_GDP_ZERO",
+  "severity": "P1",
+  "kind": "coverage",
+  "total": 1,
+  "games": 0,
+  "samples": [
+   {
+    "gameId": null,
+    "gameday": "",
+    "msg": "当前所有打者 IBB/GIDP 均为 0（样本 204 行）"
+   }
+  ]
+ }
+}

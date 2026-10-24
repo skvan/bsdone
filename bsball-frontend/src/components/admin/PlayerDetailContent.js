@@ -4,7 +4,7 @@ import { ElRadioGroup as kt, ElImage as Kt, ElDialog as Yt, ElCol as Xt, ElDrawe
 import { nextTick as Ze, withModifiers as tt, createElementBlock as b, normalizeStyle as da, defineComponent as ft, createTextVNode as B, computed as g, toDisplayString as u, createElementVNode as c, unref as o, normalizeClass as Ye, mergeProps as yt, createBlock as I, ref as S, createVNode as p, withDirectives as It, openBlock as d, useModel as nr, withCtx as n, onUnmounted as _t, Fragment as x, withKeys as rt, resolveComponent as cr, watch as fe, onMounted as ht, renderList as Z, onBeforeUnmount as At, KeepAlive as Rt, createCommentVNode as T } from 'vue';
 import { Share as ur, QuestionFilled as pr, Select as lt } from '@element-plus/icons-vue';
 import { useI18n as $t } from 'vue-i18n';
-import { useRoute as gr } from 'vue-router';
+import { useRoute as gr, useRouter as wxUseRouter } from 'vue-router';
 import { interopDefaultCompat as Wt } from '../../utils/interopDefaultCompat';
 import { normalizeVnodeProps as qt } from '../../utils/vnodeProps';
 import { mergePropValues as er } from '../../utils/vnodeProps';
@@ -15,6 +15,10 @@ import { loadPrintExport as br } from '../../utils/printExport';
 import { exportSfc as gt } from '../../utils/exportSfc';
 import { playerApi as ca } from '../../api/business';
 import { useTenantRouter as yr } from '../../composables/useTenantRouter';
+// ---- 微信分享（Issue #343，手工补丁） ----
+import { useWechatShare, buildPlayerShareUrl, buildPlayerShareMeta } from '../../composables/useWechatShare';
+import { isWechatBrowser } from '../../utils/wechatJssdk';
+import QrCode from 'qrcode';
 import { onAvatarError as wt } from '../../utils/placeholderAssets';
 import { DEFAULT_AVATAR_SVG_PATH as Ft } from '../../utils/placeholderAssets';
 import { useHtmlScrollLock as _r } from '../../composables/useHtmlScrollLock';
@@ -228,6 +232,15 @@ var Er=["aria-label"],Lr={
     }
     ,activePhotoTarget:{
       default:null
+    }
+    ,qrUrl:{
+      default:""
+    }
+    ,qrCaption:{
+      default:""
+    }
+    ,qrBrand:{
+      default:""
     }
     
   }
@@ -487,7 +500,12 @@ var Er=["aria-label"],Lr={
     ,null,38)]),c("div",Kr,[c("div",Yr,u(E.value),1),c("div",Xr,[c("div",jr,[c("span",qr,u(h.roleLabel),1),c("span",Zr,u(h.scopeLabel),1)]),h.subScopeLabel?(d(),b("div",Jr,u(h.subScopeLabel),1)):T("",!0),c("div",Qr,[(d(!0),b(x,null,Z(h.stats,y=>(d(),b("div",{
       key:y.key,class:"card-stat"
     }
-    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])])])],14,Er))
+    ,[c("div",el,u(y.value),1),c("div",al,[c("span",tl,u(y.labelNative),1),y.labelAbbr?(d(),b("span",rl,u(y.labelAbbr),1)):T("",!0)])]))),128))])])]),// ---- 微信分享海报二维码（Issue #343，手工补丁；卡片根层定位，避免被 footer/hero 遮挡） ----
+      h.qrUrl?(d(),b("div",{class:"card-qr"},[
+        c("img",{class:"card-qr-img",src:h.qrUrl,crossorigin:"anonymous",draggable:"false"},null,8,["src"]),
+        c("div",{class:"card-qr-caption"},u(h.qrCaption),1),
+        c("div",{class:"card-qr-brand"},u(h.qrBrand),1)
+      ])):T("",!0)],14,Er))
   }
   
 }
@@ -730,6 +748,9 @@ var vl={
     ,batThrowLine:{
       
     }
+    ,posterUrl:{
+      default:""
+    }
     
   }
   ,{
@@ -743,6 +764,10 @@ var vl={
   }
   ),emits:["update:modelValue"],setup(h){
     const r=h,m=nr(h,"modelValue");
+    // ---- 微信分享提示（Issue #343，手工补丁） ----
+    const isWx = isWechatBrowser(), wxGuide = S(!1);
+    const wxQr = S("");
+    let wxQrSeq = 0;
     _r(m);
     const{
       t:v
@@ -992,7 +1017,16 @@ var vl={
     fe(()=>m.value,t=>{
       t&&(Oa(),Ze(()=>ye()))
     }
-    ),fe(()=>[m.value,$.value],([t,i])=>{
+    ),
+    // ---- 微信分享海报二维码（Issue #343，手工补丁） ----
+    // 打开弹窗或海报链接变化时重新生成（组件复用/球员切换不沿用旧码）；关闭即清空，避免旧图闪现
+    fe(()=>[m.value,r.posterUrl],([open,url])=>{
+      const seq=++wxQrSeq;
+      if(!open||!url){wxQr.value="";return}
+      QrCode.toDataURL(url,{width:480,margin:1,errorCorrectionLevel:"M"}).then((q)=>{seq===wxQrSeq&&(wxQr.value=q)}).catch(()=>{seq===wxQrSeq&&(wxQr.value="")})
+    }
+    ),
+    fe(()=>[m.value,$.value],([t,i])=>{
       t&&(i==="landscape"&&V.value===Ae&&_.value.length>0&&(V.value=He(Ae)),na(V.value),z(),Oe(),Ze(()=>ye()))
     }
     ),fe(()=>[m.value,ie.value.map(t=>t.value).join(",")],()=>{
@@ -1183,7 +1217,7 @@ var vl={
       )):[]
     }
     ),Ha=g(()=>({
-      playerName:r.displayName||r.player.shortName||r.player.name,playerNumber:r.player.number,positionLabel:r.positionLabel||"",teamName:Wa.value,batThrowLabel:(r.batThrowLine||"").trim(),teamLogoUrl:za.value,scopeLabel:Ka.value,subScopeLabel:Ya.value,heroImageUrl:$.value==="landscape"?$e.value:ga.value,backdropImageUrl:$.value==="landscape"?k.value:ga.value,roleLabel:Xa.value,stats:ae.value==="pitching"?Ta.value:ae.value==="fielding"?qa.value:ja.value,orientation:$.value,photoTune:re(G.value),heroPhotoTune:re(D.value),frameBorderColor:Ne.value,numberColor:Se.value,cardFillColor:le.value
+      playerName:r.displayName||r.player.shortName||r.player.name,playerNumber:r.player.number,positionLabel:r.positionLabel||"",teamName:Wa.value,batThrowLabel:(r.batThrowLine||"").trim(),teamLogoUrl:za.value,scopeLabel:Ka.value,subScopeLabel:Ya.value,heroImageUrl:$.value==="landscape"?$e.value:ga.value,backdropImageUrl:$.value==="landscape"?k.value:ga.value,roleLabel:Xa.value,stats:ae.value==="pitching"?Ta.value:ae.value==="fielding"?qa.value:ja.value,orientation:$.value,photoTune:re(G.value),heroPhotoTune:re(D.value),frameBorderColor:Ne.value,numberColor:Se.value,cardFillColor:le.value,qrUrl:wxQr.value,qrCaption:v("player.shareCard.qrCaption"),qrBrand:v("player.shareCard.qrBrand")
     }
     ));
     fe(()=>G.value.fit,t=>{
@@ -1316,6 +1350,7 @@ var vl={
     }
     function Qa(){
       L(),q!=null&&(clearTimeout(q),q=null),aa(),me.value=!1,ce.value="compose",X.value=null,he.value=!1,Ce.value=!1,Be.value=!1,ue.value=!1
+      wxGuide.value=!1;
     }
     return(t,i)=>{
       const w=sr,A=hr,W=rr,_e=lr,Me=dr,Ue=ir,Ea=fr,ta=Tt,sa=kt,ze=Lt,va=Jt,et=mr,La=Kt,Aa=Ht,at=Nt,e=Et,a=jt,f=Rt;
@@ -1563,7 +1598,21 @@ var vl={
           }
           ,8,["label"])]),_:1
         }
-        ,8,["modelValue"]),c("div",{
+        ,8,["modelValue"]),
+        // ---- 微信分享提示条与引导浮层（Issue #343，手工补丁） ----
+        isWx?(d(),b("div",{key:1,class:"share-wechat-tip"},[
+          c("span",{class:"share-wechat-tip__text"},u(v("player.shareCard.wechatTip")),1),
+          p(ze,{type:"primary",link:"",size:"small",onClick:()=>{wxGuide.value=!0}},{
+            default:n(()=>[B(u(v("player.shareCard.wechatGuideTitle")),1)]),_:1
+          })
+        ])):T("",!0),
+        isWx&&wxGuide.value?(d(),b("div",{key:2,class:"share-wechat-guide",onClick:()=>{wxGuide.value=!1}},[
+          c("div",{class:"share-wechat-guide__arrow"},"↑"),
+          c("div",{class:"share-wechat-guide__title"},u(v("player.shareCard.wechatGuideTitle")),1),
+          c("div",{class:"share-wechat-guide__body"},u(v("player.shareCard.wechatGuideBody")),1),
+          c("div",{class:"share-wechat-guide__ok"},u(v("player.shareCard.wechatGuideOk")),1)
+        ])):T("",!0),
+        c("div",{
           ref_key:"captureHostRef",ref:K,class:"capture-host","aria-hidden":"true"
         }
         ,[me.value?(d(),I(Pt,qt(yt({
@@ -1829,7 +1878,7 @@ var vl={
       formatStatsRate:E
     }
     =Dt(),$=gr(),{
-      portalPath:V
+      portalPath:V,tenantCode:x2
     }
     =yr(),G="/bs-ball/carousel/default_banner_2.jpg",D=S(void 0);
     function X(){
@@ -1919,13 +1968,13 @@ var vl={
     }
     function ge(e,a){
       return(e==="batting"?{
-        GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HBP":"bbHp",SO:"so"
+        GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",GDP:"gdp",IPHR:"insideParkHr",SH:"sh",SF:"sf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs",BB:"bb",IBB:"ibb",HBP:"hbp",SO:"so"
       }
       :e==="pitching"?{
-        GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"cg",PG:"pg",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HBP":"pitchBbHp",SO:"pitchSo",WP:"wp",BK:"bk"
+        GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",R:"pitchR",ER:"er",BF:"pitchBf",AB:"pitchAb",GG:"cg",PG:"pg",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HBP":"pitchBbHp",BB:"pitchBb",IBB:"pitchIbb",HBP:"pitchHbp",SO:"pitchSo",WP:"wp",BK:"bk"
       }
       :{
-        GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e","TC%":"tcPct",PB:"pb",CS:"catcherCs"
+        GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e",DP:"dp","TC%":"tcPct",PB:"pb",SB:"catcherSb",CS:"catcherCs"
       }
       )[a]??null
     }
@@ -1988,6 +2037,16 @@ var vl={
     function Ga(){
       fa(),he.value&&ue.value&&(O.value=1,le())
     }
+    // ---- 微信分享：数据就绪后自动配置右上角分享（Issue #343，手工补丁） ----
+    const wxRouter = wxUseRouter(), wxShareMeta = g(() => {
+      if (L.player == null || L.player.id == null) return null;
+      const meta = buildPlayerShareMeta(L.player, L.team, L.league, be.value, { resolveAsset: (e) => Ve(e) || "" });
+      if (!meta) return null;
+      meta.link = buildPlayerShareUrl(wxRouter, L.player.id, "share", x2.value);
+      return meta;
+    });
+    useWechatShare(wxShareMeta);
+    const wxPosterUrl = g(() => L.player == null || L.player.id == null ? "" : buildPlayerShareUrl(wxRouter, L.player.id, "poster", x2.value));
     fe(()=>L.player?.id,e=>{
       q.value="BASEBALL",e!=null?fa():(be.value=null,Ge.value=[],Oe.value=[])
     }
@@ -1996,13 +2055,13 @@ var vl={
     }
     );
     const U={
-      GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",IPHR:"insideParkHr","SH+SF":"shSf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs","BB+HBP":"bbHp",SO:"batSo"
+      GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",GDP:"gdp",IPHR:"insideParkHr",SH:"sh",SF:"sf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs",BB:"bb",IBB:"ibb",HBP:"hbp",IO:"io",SO:"batSo"
     }
     ,ee={
-      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH",HR:"pitchHr",IPHR:"pitchInsideParkHr","BB+HBP":"pitchBbHp",SO:"pitK",WP:"wp",BK:"bk"
+      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",R:"pitchR",ER:"er",UER:"unearnedR",PENDING:"pendingR",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH","2B":"pitchDoubles","3B":"pitchTriples",HR:"pitchHr",IPHR:"pitchInsideParkHr",SH:"pitchSh",SF:"pitchSf",BB:"pitchBb",IBB:"pitchIbb",HBP:"pitchHbp",IO:"pitchIo",SO:"pitK",WP:"wp",BK:"bk"
     }
     ,Ie={
-      GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e","TC%":"tcPct",PB:"fldPb",CS:"fldCatcherCs"
+      GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e",DP:"dp","TC%":"tcPct",PB:"fldPb",SB:"catcherSb",CS:"fldCatcherCs"
     };
     function la(e,a){
       if(!e)return"";
@@ -2074,13 +2133,13 @@ var vl={
 `)
     }
     const ye={
-      GP:"GP",PA:"PA",AB:"AB",AVG:"AVG",OBP:"OBP",SLG:"SLG",OPS:"OPS",H:"H","1B":"1B","2B":"2B","3B":"3B",HR:"HR",IPHR:"IPHR","SH+SF":"SH+SF",TB:"TB",RBI:"RBI",R:"R",SB:"SB",CS:"CS","BB+HBP":"BB+HBP",SO:"SO"
+      GP:"GP",PA:"PA",AB:"AB",AVG:"AVG",OBP:"OBP",SLG:"SLG",OPS:"OPS",H:"H","1B":"1B","2B":"2B","3B":"3B",HR:"HR",GDP:"GDP",IPHR:"IPHR",SH:"SH",SF:"SF",TB:"TB",RBI:"RBI",R:"R",SB:"SB",CS:"CS",BB:"BB",IBB:"IBB",HBP:"HBP",IO:"IO",SO:"SO"
     }
     ,Va={
-      GP:"GP",IP:"IP",ERA:"ERA",WHIP:"WHIP",BF:"BF",AB:"AB",GG:"GG",PG:"PG",H:"H",HR:"HR",IPHR:"IPHR","BB+HBP":"BB+HBP",SO:"SO",WP:"WP",BK:"BK"
+      GP:"GP",IP:"IP",ERA:"ERA",WHIP:"WHIP",R:"R",ER:"ER",UER:"UER",PENDING:"PENDING",BF:"BF",AB:"AB",GG:"GG",PG:"PG",H:"H","2B":"2B","3B":"3B",HR:"HR",IPHR:"IPHR",SH:"SH",SF:"SF",BB:"BB",IBB:"IBB",HBP:"HBP",IO:"IO",SO:"SO",WP:"WP",BK:"BK"
     }
     ,ba={
-      GP:"GP",INN:"INN",TC:"TC",PO:"PO",A:"A",E:"E","TC%":"TC%",PB:"PB",CS:"CS"
+      GP:"GP",INN:"INN",TC:"TC",PO:"PO",A:"A",E:"E",DP:"DP","TC%":"TC%",PB:"PB",SB:"SB",CS:"CS"
     }
     ,Ma=[{
       prop:"gp",abbr:"GP",tip:"gp",w:56
@@ -2119,10 +2178,16 @@ var vl={
       prop:"hr",abbr:"HR",tip:"hr",w:52
     }
     ,{
+      prop:"gdp",abbr:"GDP",tip:"gdp",w:56
+    }
+    ,{
       prop:"insideParkHr",abbr:"IPHR",tip:"insideParkHr",w:64
     }
     ,{
-      prop:"shSf",abbr:"SH+SF",tip:"shSf",w:72
+      prop:"sh",abbr:"SH",tip:"sh",w:52
+    }
+    ,{
+      prop:"sf",abbr:"SF",tip:"sf",w:52
     }
     ,{
       prop:"tb",abbr:"TB",tip:"tb",w:56
@@ -2140,7 +2205,16 @@ var vl={
       prop:"cs",abbr:"CS",tip:"cs",w:52
     }
     ,{
-      prop:"bbHp",abbr:"BB+HBP",tip:"bbHp",w:72
+      prop:"bb",abbr:"BB",tip:"bb",w:52
+    }
+    ,{
+      prop:"ibb",abbr:"IBB",tip:"ibb",w:52
+    }
+    ,{
+      prop:"hbp",abbr:"HBP",tip:"hbp",w:52
+    }
+    ,{
+      prop:"io",abbr:"IO",tip:"io",w:52
     }
     ,{
       prop:"so",abbr:"SO",tip:"batSo",w:52
@@ -2158,6 +2232,18 @@ var vl={
       prop:"whip",abbr:"WHIP",tip:"whip",w:68
     }
     ,{
+      prop:"pitchR",abbr:"R",tip:"pitchR",w:52
+    }
+    ,{
+      prop:"er",abbr:"ER",tip:"er",w:52
+    }
+    ,{
+      prop:"unearnedR",abbr:"UER",tip:"unearnedR",w:56
+    }
+    ,{
+      prop:"pendingR",abbr:"PENDING",tip:"pendingR",w:76
+    }
+    ,{
       prop:"pitchBf",abbr:"BF",tip:"pitchBf",w:52
     }
     ,{
@@ -2173,13 +2259,34 @@ var vl={
       prop:"pitchH",abbr:"H",tip:"pitchH",w:52
     }
     ,{
+      prop:"pitchDoubles",abbr:"2B",tip:"pitchDoubles",w:52
+    }
+    ,{
+      prop:"pitchTriples",abbr:"3B",tip:"pitchTriples",w:52
+    }
+    ,{
       prop:"pitchHr",abbr:"HR",tip:"pitchHr",w:52
     }
     ,{
       prop:"pitchInsideParkHr",abbr:"IPHR",tip:"pitchInsideParkHr",w:56
     }
     ,{
-      prop:"pitchBbHp",abbr:"BB+HBP",tip:"pitchBbHp",w:72
+      prop:"pitchSh",abbr:"SH",tip:"pitchSh",w:52
+    }
+    ,{
+      prop:"pitchSf",abbr:"SF",tip:"pitchSf",w:52
+    }
+    ,{
+      prop:"pitchBb",abbr:"BB",tip:"pitchBb",w:52
+    }
+    ,{
+      prop:"pitchIbb",abbr:"IBB",tip:"pitchIbb",w:52
+    }
+    ,{
+      prop:"pitchHbp",abbr:"HBP",tip:"pitchHbp",w:52
+    }
+    ,{
+      prop:"pitchIo",abbr:"IO",tip:"pitchIo",w:52
     }
     ,{
       prop:"pitchSo",abbr:"SO",tip:"pitK",w:52
@@ -2209,10 +2316,16 @@ var vl={
       prop:"e",abbr:"E",tip:"e",w:52
     }
     ,{
+      prop:"dp",abbr:"DP",tip:"dp",w:52
+    }
+    ,{
       prop:"tcPct",abbr:"TC%",tip:"tcPct",w:72
     }
     ,{
       prop:"pb",abbr:"PB",tip:"fldPb",w:52
+    }
+    ,{
+      prop:"catcherSb",abbr:"SB",tip:"catcherSb",w:52
     }
     ,{
       prop:"catcherCs",abbr:"CS",tip:"fldCatcherCs",w:56
@@ -2223,17 +2336,17 @@ var vl={
       if(a==="shSf")return(Number(e.sh)||0)+(Number(e.sf)||0);
       if(a==="bbHp"){
         const l=e;
-        return l.bbHp!=null?l.bbHp:(Number(l.bb)||0)+(Number(l.ibb)||0)+(Number(l.hbp)||0)
+        return l.bbHp!=null?l.bbHp:(Number(l.bb)||0)+(Number(l.hbp)||0)
       }
       if(a==="pitchBbHp"){
         const l=e;
-        return l.pitchBbHp!=null?l.pitchBbHp:(Number(l.pitchBb)||0)+(Number(l.pitchIbb)||0)+(Number(l.pitchHbp)||0)
+        return l.pitchBbHp!=null?l.pitchBbHp:(Number(l.pitchBb)||0)+(Number(l.pitchHbp)||0)
       }
       if(a==="pitchAb"){
         const l=e;
         if(l.pitchAb!=null&&l.pitchAb!==void 0)return l.pitchAb;
-        const P=Number(l.pitchBf)||0;
-        return Math.max(0,P-(Number(l.pitchBb)||0)-(Number(l.pitchIbb)||0)-(Number(l.pitchHbp)||0))
+        const P=Number(l.pitchBf)||0,T=Number(l.pitchBb)||0,H=Number(l.pitchHbp)||0,W=T+H>0?T:Math.max(0,(Number(l.pitchBbHp)||0)-H);
+        return Math.max(0,P-W-H)
       }
       const f=e[a];
       return f==null||f===""?"—":a==="ip"||a==="inn"?Je(Number(f)):f
@@ -2248,7 +2361,7 @@ var vl={
     }
     function Ca(e){
       const a=e.fielding;
-      return a&&(a.gp>0||(a.inn??0)>0||a.tc>0||(a.pb??0)>0||(a.catcherCs??0)>0)
+      return a&&(a.gp>0||(a.inn??0)>0||a.tc>0||(a.dp??0)>0||(a.pb??0)>0||(a.catcherSb??0)>0||(a.catcherCs??0)>0)
     }
     function Xe(e){
       return r("player.seasonBlock",{
@@ -2351,7 +2464,7 @@ var vl={
     }
     );
     function Ia(e){
-      return e.bbHp!=null?e.bbHp:(Number(e.bb)||0)+(Number(e.ibb)||0)+(Number(e.hbp)||0)
+      return e.bbHp!=null?e.bbHp:(Number(e.bb)||0)+(Number(e.hbp)||0)
     }
     function Za(e){
       return e.singles!=null?e.singles:Math.max(0,(e.h??0)-(e.doubles??0)-(e.triples??0)-(e.hr??0)-(e.insideParkHr??0))
@@ -2372,6 +2485,12 @@ var vl={
         case"HR":return(e.hr??0)>0;
         case"IPHR":return(e.insideParkHr??0)>0;
         case"SH+SF":return(Number(e.sh)||0)+(Number(e.sf)||0)>0;
+        case"GDP":return(e.gdp??0)>0;
+        case"SH":return(e.sh??0)>0;
+        case"SF":return(e.sf??0)>0;
+        case"BB":return(e.bb??0)>0;
+        case"IBB":return(e.ibb??0)>0;
+        case"HBP":return(e.hbp??0)>0;
         case"TB":return typeof e.tb=="number"&&e.tb!==0;
         case"RBI":return(e.rbi??0)>0;
         case"R":return(e.r??0)>0;
@@ -2390,16 +2509,16 @@ var vl={
         key:f,label:r(l),enAbbr:ye[f]??f,val:P,drillable:Ja(e,f),desc:M
       }
       );
-      return[a("GP","player.careerBat.gp",e.gp,k("batting","GP",U)),a("PA","player.careerBat.pa",e.pa,k("batting","PA",U)),a("AB","player.careerBat.ab",e.ab,k("batting","AB",U)),a("AVG","player.careerBat.avg",E(e.avg),k("batting","AVG",U)),a("OBP","player.careerBat.obp",E(e.obp),k("batting","OBP",U)),a("SLG","player.careerBat.slg",E(e.slg),k("batting","SLG",U)),a("OPS","player.careerBat.ops",E(e.ops),k("batting","OPS",U)),a("H","player.careerBat.h",e.h,k("batting","H",U)),a("1B","player.careerBat.singles",e.singles??Math.max(0,e.h-e.doubles-e.triples-e.hr-(e.insideParkHr??0)),k("batting","1B",U)),a("2B","player.careerBat.doubles",e.doubles,k("batting","2B",U)),a("3B","player.careerBat.triples",e.triples,k("batting","3B",U)),a("HR","player.careerBat.hr",e.hr,k("batting","HR",U)),a("IPHR","player.careerBat.iphr",e.insideParkHr??0,k("batting","IPHR",U)),a("SH+SF","player.careerBat.shSf",(Number(e.sh)||0)+(Number(e.sf)||0),k("batting","SH+SF",U)),a("TB","player.careerBat.tb",e.tb??"-",k("batting","TB",U)),a("RBI","player.careerBat.rbi",e.rbi,k("batting","RBI",U)),a("R","player.careerBat.r",e.r,k("batting","R",U)),a("SB","player.careerBat.sb",e.sb,k("batting","SB",U)),a("CS","player.careerBat.cs",e.cs,k("batting","CS",U)),a("BB+HBP","player.careerBat.bbHp",Ia(e),k("batting","BB+HBP",U)),a("SO","player.careerBat.so",e.so,k("batting","SO",U))]
+      return[a("GP","player.careerBat.gp",e.gp,k("batting","GP",U)),a("PA","player.careerBat.pa",e.pa,k("batting","PA",U)),a("AB","player.careerBat.ab",e.ab,k("batting","AB",U)),a("AVG","player.careerBat.avg",E(e.avg),k("batting","AVG",U)),a("OBP","player.careerBat.obp",E(e.obp),k("batting","OBP",U)),a("SLG","player.careerBat.slg",E(e.slg),k("batting","SLG",U)),a("OPS","player.careerBat.ops",E(e.ops),k("batting","OPS",U)),a("H","player.careerBat.h",e.h,k("batting","H",U)),a("1B","player.careerBat.singles",e.singles??Math.max(0,e.h-e.doubles-e.triples-e.hr-(e.insideParkHr??0)),k("batting","1B",U)),a("2B","player.careerBat.doubles",e.doubles,k("batting","2B",U)),a("3B","player.careerBat.triples",e.triples,k("batting","3B",U)),a("HR","player.careerBat.hr",e.hr,k("batting","HR",U)),a("GDP","player.careerBat.gdp",e.gdp??0,k("batting","GDP",U)),a("IPHR","player.careerBat.iphr",e.insideParkHr??0,k("batting","IPHR",U)),a("SH","player.careerBat.sh",e.sh??0,k("batting","SH",U)),a("SF","player.careerBat.sf",e.sf??0,k("batting","SF",U)),a("TB","player.careerBat.tb",e.tb??"-",k("batting","TB",U)),a("RBI","player.careerBat.rbi",e.rbi,k("batting","RBI",U)),a("R","player.careerBat.r",e.r,k("batting","R",U)),a("SB","player.careerBat.sb",e.sb,k("batting","SB",U)),a("CS","player.careerBat.cs",e.cs,k("batting","CS",U)),a("BB","player.careerBat.bb",e.bb??0,k("batting","BB",U)),a("IBB","player.careerBat.ibb",e.ibb??0,k("batting","IBB",U)),a("HBP","player.careerBat.hbp",e.hbp??0,k("batting","HBP",U)),a("IO","player.careerBat.io",e.io??0,k("batting","IO",U)),a("SO","player.careerBat.so",e.so,k("batting","SO",U))]
     }
     );
     function t(e){
-      return e.pitchBbHp!=null?e.pitchBbHp:(Number(e.pitchBb)||0)+(Number(e.pitchIbb)||0)+(Number(e.pitchHbp)||0)
+      return e.pitchBbHp!=null?e.pitchBbHp:(Number(e.pitchBb)||0)+(Number(e.pitchHbp)||0)
     }
     function i(e){
       if(e.pitchAb!=null&&e.pitchAb!==void 0)return e.pitchAb;
-      const a=Number(e.pitchBf)||0;
-      return Math.max(0,a-(Number(e.pitchBb)||0)-(Number(e.pitchIbb)||0)-(Number(e.pitchHbp)||0))
+      const a=Number(e.pitchBf)||0,T=Number(e.pitchBb)||0,H=Number(e.pitchHbp)||0,W=T+H>0?T:Math.max(0,(Number(e.pitchBbHp)||0)-H);
+      return Math.max(0,a-W-H)
     }
     function w(e,a){
       switch(a){
@@ -2407,6 +2526,8 @@ var vl={
         case"IP":return(e.ip??0)>0;
         case"ERA":return(e.ip??0)>0&&e.era!=null&&Number(e.era)!==0;
         case"WHIP":return(e.ip??0)>0&&e.whip!=null&&Number(e.whip)!==0;
+        case"R":return(e.pitchR??0)>0;
+        case"ER":return(e.er??0)>0;
         case"BF":return(e.pitchBf??0)>0;
         case"AB":return i(e)>0;
         case"GG":return(e.cg??0)>0;
@@ -2415,6 +2536,9 @@ var vl={
         case"HR":return(e.pitchHr??0)>0;
         case"IPHR":return(e.pitchInsideParkHr??0)>0;
         case"BB+HBP":return t(e)>0;
+        case"BB":return(e.pitchBb??0)>0;
+        case"IBB":return(e.pitchIbb??0)>0;
+        case"HBP":return(e.pitchHbp??0)>0;
         case"SO":return(e.pitchSo??0)>0;
         case"WP":return(e.wp??0)>0;
         case"BK":return(e.bk??0)>0;
@@ -2429,7 +2553,7 @@ var vl={
         key:f,label:r(l),enAbbr:Va[f]??f,val:P,drillable:w(e,f),desc:M
       }
       );
-      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("BB+HBP","player.careerPitch.bbHp",t(e),k("pitching","BB+HBP",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
+      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("R","player.careerPitch.pitchR",e.pitchR??0,k("pitching","R",ee)),a("ER","player.careerPitch.er",e.er??0,k("pitching","ER",ee)),a("UER","player.careerPitch.unearnedR",e.unearnedR??0,k("pitching","UER",ee)),a("PENDING","player.careerPitch.pendingR",e.pendingR??0,k("pitching","PENDING",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("2B","player.careerPitch.pitchDoubles",e.pitchDoubles??0,k("pitching","2B",ee)),a("3B","player.careerPitch.pitchTriples",e.pitchTriples??0,k("pitching","3B",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("SH","player.careerPitch.pitchSh",e.pitchSh??0,k("pitching","SH",ee)),a("SF","player.careerPitch.pitchSf",e.pitchSf??0,k("pitching","SF",ee)),a("BB","player.careerPitch.pitchBb",e.pitchBb??0,k("pitching","BB",ee)),a("IBB","player.careerPitch.pitchIbb",e.pitchIbb??0,k("pitching","IBB",ee)),a("HBP","player.careerPitch.pitchHbp",e.pitchHbp??0,k("pitching","HBP",ee)),a("IO","player.careerPitch.pitchIo",e.pitchIo??0,k("pitching","IO",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
     }
     );
     function W(e,a){
@@ -2440,8 +2564,10 @@ var vl={
         case"PO":return(e.po??0)>0;
         case"A":return(e.a??0)>0;
         case"E":return(e.e??0)!==0;
+        case"DP":return(e.dp??0)>0;
         case"TC%":return e.tcPct!=null&&Number(e.tcPct)!==0;
         case"PB":return(e.pb??0)>0;
+        case"SB":return(e.catcherSb??0)>0;
         case"CS":return(e.catcherCs??0)>0;
         default:return!1
       }
@@ -2454,7 +2580,7 @@ var vl={
         key:f,label:r(l),enAbbr:ba[f]??f,val:P,drillable:W(e,f),desc:M
       }
       );
-      return[a("GP","player.careerFld.gp",e.gp,k("fielding","GP",Ie)),a("INN","player.careerFld.inn",Je(e.inn??0),k("fielding","INN",Ie)),a("TC","player.careerFld.tc",e.tc,k("fielding","TC",Ie)),a("PO","player.careerFld.po",e.po,k("fielding","PO",Ie)),a("A","player.careerFld.a",e.a,k("fielding","A",Ie)),a("E","player.careerFld.e",e.e,k("fielding","E",Ie)),a("TC%","player.careerFld.tcPct",E(e.tcPct),k("fielding","TC%",Ie)),a("PB","player.careerFld.pb",e.pb??0,k("fielding","PB",Ie)),a("CS","player.careerFld.catcherCs",e.catcherCs??0,k("fielding","CS",Ie))]
+      return[a("GP","player.careerFld.gp",e.gp,k("fielding","GP",Ie)),a("INN","player.careerFld.inn",Je(e.inn??0),k("fielding","INN",Ie)),a("TC","player.careerFld.tc",e.tc,k("fielding","TC",Ie)),a("PO","player.careerFld.po",e.po,k("fielding","PO",Ie)),a("A","player.careerFld.a",e.a,k("fielding","A",Ie)),a("E","player.careerFld.e",e.e,k("fielding","E",Ie)),a("TC%","player.careerFld.tcPct",E(e.tcPct),k("fielding","TC%",Ie)),a("DP","player.careerFld.dp",e.dp??0,k("fielding","DP",Ie)),a("PB","player.careerFld.pb",e.pb??0,k("fielding","PB",Ie)),a("SB","player.careerFld.catcherSb",e.catcherSb??0,k("fielding","SB",Ie)),a("CS","player.careerFld.catcherCs",e.catcherCs??0,k("fielding","CS",Ie))]
     }
     ),Me=g(()=>{
       const e=L.player;
@@ -3251,9 +3377,9 @@ var vl={
         ,null,8,Bo)),c("p",So,u(Y.value.description||""),1)],64)):T("",!0)]),_:1
       }
       ,8,["modelValue","title"]),p(tn,{
-        modelValue:He.value,"onUpdate:modelValue":a[6]||(a[6]=s=>He.value=s),player:h.player,team:h.team,stats:be.value,"stats-by-season":Ge.value,"default-avatar-img":h.defaultAvatarImg,"position-label":Ue.value,"display-name":Me.value,"bat-throw-line":sa.value
+        modelValue:He.value,"onUpdate:modelValue":a[6]||(a[6]=s=>He.value=s),player:h.player,team:h.team,stats:be.value,"stats-by-season":Ge.value,"default-avatar-img":h.defaultAvatarImg,"position-label":Ue.value,"display-name":Me.value,"bat-throw-line":sa.value,"poster-url":wxPosterUrl.value
       }
-      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line"])])):T("",!0)
+      ,null,8,["modelValue","player","team","stats","stats-by-season","default-avatar-img","position-label","display-name","bat-throw-line","poster-url"])])):T("",!0)
     }
     
   }

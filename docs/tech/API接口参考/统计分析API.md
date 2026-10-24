@@ -106,13 +106,16 @@ MapRows --> Return["返回PageResult"]
 - 路径与方法：GET /stats/leaders/pitching
 - 参数与返回结构与击球排行榜一致
 - 特殊点
-  - 支持ERA、WHIP等衍生指标的排序
+  - 支持ERA、WHIP、UER（unearnedR）、PENDING（pendingR）等指标的排序
+  - ERA = 9×ER/IP；WHIP = (H+BB)/IP，不含 HBP；旧数据只有 BBHP 合计时用合计减 HBP 回退
   - 资格线与最大计划场次同样参与元数据
+  - 默认排序按 ERA 升序，使用投手榜专用排序器
 
 ### 防守数据统计接口
 - 路径与方法：GET /stats/leaders/fielding
-- 支持防守基本项与捕手专项（PB、CS）
-- 防守成功率TC_PCT由PO+A除以TC计算
+- 支持防守基本项（PO/A/E/DP）与捕手专项（PB、CS、SB允许）
+- 防守成功率TC_PCT由 (PO+A)/TC 计算
+- 默认排序按 TC 降序，使用守备榜专用排序器；支持 tcPct/dp/pb/catcherCs/catcherSb 等排序
 
 ### 团队统计接口
 - 路径与方法
@@ -133,6 +136,7 @@ MapRows --> Return["返回PageResult"]
 - 路径与方法：GET /stats/star/toplist
 - 支持指定limit与includeMetrics，从内置指标集选择输出
 - 内置指标涵盖ERA、AVG、W、H、SV、HR、HLD、RBI、SO、SB等
+- 投手指标（ERA/W/SV/HLD/SO）走投手榜排序器，默认不再回退到打击 avg
 
 ### 击球热区（Hit Spray）接口
 - 路径与方法
@@ -245,24 +249,26 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - Result<PageResult<Map<String,Object>>>
   - PageResult包含：data（List<Map>）、total（Long）、meta（Map，可能包含qualification等）
 - 击球/投球/防守行字段
-  - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、cs、singles、tb、avg、obp、slg、ops、sbPct
-  - 投球：gp、ip、er、pitchH、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
-  - 防守：gp、inn、tc、po、a、e、pb、catcherCs、tcPct
+  - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、io、cs、singles、tb、avg、obp、slg、ops、sbPct
+  - 投球：gp、ip、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
+  - 防守：gp、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 - 团队统计行字段
-  - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、hbp、tb、avg、obp、slg、ops
-  - 投球：teamId、teamName、gp、gs、w、l、sv、hld、ip、whip、era、pitchBf、np、pitchH、pitchHr、pitchInsideParkHr、pitchBb、pitchHbp、pitchSo、wp、bk、pitchR、er
-  - 防守：teamId、teamName、gp、gs、inn、tc、po、a、e、dp、pb、catcherCs、tcPct
+  - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、ibb、hbp、io、tb、avg、obp、slg、ops
+  - 投球：teamId、teamName、gp、gs、w、l、sv、hld、ip、whip、era、pitchBf、np、pitchH、pitchDoubles、pitchTriples、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchBb、pitchIbb、pitchHbp、pitchIo、pitchSo、wp、bk、pitchR、er
+  - 防守：teamId、teamName、gp、gs、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 
 ### 指标计算方法（摘要）
 - 击球
+  - PA = AB + BB + HBP + SF + SH + IO（BB 含 IBB）
   - AVG = H / AB（AB>0）
-  - OBP = (H + BB/HBP/BBSF) / PA（PA>0）
+  - OBP = (H + BB + HBP) / (AB + BB + HBP + SF)（分母>0；旧数据缺 BB/HBP 分项时用 BBHP 合计回退）
   - SLG = TB / AB（AB>0）
-  - OPS = OBP + SLG（AB>0且PA>0）
+  - OPS = OBP + SLG（AB>0且OBP分母>0）
   - SB% = SB / (SB + CS) * 100（SB+CS>0）
 - 投球
+  - PitchBbHp = PitchBb + PitchHbp（PitchBb 含 IBB）
   - ERA = ER * 27 / IP_outs（IP_outs>0）
-  - WHIP = (H + BB/HBP) / IP_outs（IP_outs>0）
+  - WHIP = (H + BB) / IP_outs（IP_outs>0；HBP 不计入，旧数据缺 BB/HBP 分项时用 BBHP 合计减 HBP 回退）
   - GO/FO比率 = GO / FO（FO>0）
 - 防守
   - TC_PCT = (PO + A) / TC * 100（TC>0）

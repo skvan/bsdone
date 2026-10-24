@@ -1,4 +1,4 @@
-// 前端单测：投手触身球术语键统一（#387）
+// 前端单测：触身球术语键与缩写统一（#387）
 // 运行：在 bsball-frontend 目录执行  node --test tests/*.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,29 +9,21 @@ import { normalizeGlossaryKey, getGlossaryEntry } from '../src/utils/baseballGlo
 
 const LOCALES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/locales');
 
-test('投手域 hbp 归一为 pitchHbp', () => {
-  assert.equal(normalizeGlossaryKey('hbp', { domain: 'pitching', subject: 'pitcher' }), 'pitchHbp');
-  assert.equal(getGlossaryEntry('hbp', { domain: 'pitching', subject: 'pitcher' }).key, 'pitchHbp');
-});
-
-test('打者域 hbp 保持原有 hbp 键', () => {
-  assert.equal(normalizeGlossaryKey('hbp', { domain: 'batting', subject: 'batter' }), 'hbp');
+test('pitchHbp 复用 hbp 术语（球队列表头别名保留）', () => {
+  assert.equal(normalizeGlossaryKey('pitchHbp'), 'hbp');
+  assert.equal(getGlossaryEntry('pitchHbp').key, 'hbp');
+  assert.equal(normalizeGlossaryKey('hbp', { domain: 'pitching', subject: 'pitcher' }), 'hbp');
   assert.equal(normalizeGlossaryKey('hbp'), 'hbp');
-});
-
-test('pitchHbp 键可直接识别', () => {
-  assert.equal(normalizeGlossaryKey('pitchHbp'), 'pitchHbp');
-  assert.equal(getGlossaryEntry('pitchHbp').key, 'pitchHbp');
 });
 
 test('旧的 hb 键不再被识别', () => {
   assert.equal(normalizeGlossaryKey('hb'), null);
 });
 
-test('五语种 glossary.term.pitchHbp 均存在且缩写为 HBP', () => {
+test('五语种 glossary.term.hb 已移除', () => {
   for (const locale of ['zh-CN', 'zh-TW', 'en', 'ja', 'ko']) {
-    const data = JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, `${locale}.json`), 'utf8'));
-    assert.equal(data.glossary.term.pitchHbp?.shortLabel, 'HBP', locale);
+    const data = JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, locale + '.json'), 'utf8'));
     assert.equal(data.glossary.term.hb, undefined, locale);
+    assert.ok(data.glossary.term.hbp, locale);
   }
 });

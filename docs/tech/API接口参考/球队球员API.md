@@ -263,8 +263,8 @@ class TeamLineupTemplate {
   - DELETE /team/{teamId}/managers/{userId}：移除负责人
 - 关键行为
   - 仅超级管理员或租户管理员可指派/移除
-  - 指派时需校验用户非空、球队存在、未重复指派
-  - 移除时为软停用，记录删除时间
+  - 指派时需校验用户非空、球队存在、未重复指派（仅校验未软删记录）
+  - 移除时为软停用，记录删除时间；解除后可再次指派同一用户
 - 数据模型要点
   - 关联租户ID、球队ID、用户ID；状态active/inactive
 
@@ -462,7 +462,7 @@ Exec --> End(["返回结果"])
 | GET | /event/{eventId}/teams/{teamId}/roster | 查看报名名单明细（姓名/头像/背号快照/位置/是否仍在队） | 登录+同租户 |
 | GET | /event/{eventId}/teams/{teamId}/roster-players | 阵容选人池（受限=该队报名名单球员；未受限=本队 current 全量在役） | 登录+同租户 |
 | GET | /team/{teamId}/player-invite-candidates | 球员候选搜索：本租户未删且**当前不在本队**的球员（排除已在本队者）；keyword 匹配姓名/昵称/简称；附认领状态、现属球队；分页，pageSize 上限 100，按 id 升序 | 可管理该球队 |
-| POST | /team/{teamId}/player-claim-invite | 创建入队邀请（body: `{playerId?, expireHours?, maxUses?, remark?}`；未认领→定向绑定该球员；否则→通用 token） | 可管理该球队 |
+| POST | /team/{teamId}/player-claim-invite | 创建入队（body: `{playerId?, expireHours?, maxUses?, remark?}`；`playerId`=未认领球员→直接追加球队经历并置 `current=true`（保留既有当前球队），返回 `mode=direct_joined/already_joined`；无 `playerId`→通用 token，供已认领球员本人接受） | 可管理该球队 |
 | GET | /team/{teamId}/player-claim-invites | 入队邀请列表（含 token 供复制链接、绑定球员名、状态/使用次数/有效期） | 可管理该球队 |
 | POST | /team/{teamId}/player-claim-invites/{id}/revoke | 撤销入队邀请（幂等；跨队/不存在 404） | 可管理该球队 |
 | GET | /team/{teamId}/event-registrations | 球队侧「我的赛事报名」列表（赛事名/赛季/模式/状态/能否撤销） | 登录+同租户 |
@@ -477,7 +477,7 @@ Exec --> End(["返回结果"])
 - 名单为快照语义：提交时校验球员为该队当前在役（`bs_player_team.is_current=true`）；提交后球员离队不自动移出，锁定前球队可自行修改；软删 = 移除报名。
 - 球队侧权限（Issue #318）：确认/谢绝/提交名单/入队邀请等统一由「可管理该球队」裁定（球队负责人或管理员）；原「联盟代管无主球队」分支已随去联盟归属移除——无主球队由租管/超管指派负责人，或由创建者「创建即负责」。
 - 排赛门槛（Issue #318 决策 8/11）：新建赛事默认报名制（`bs_event.require_roster=true`）——至少 2 支「已确认且锁定名单」球队才能建比赛，且主/客队须属该集合；历史赛事（false）有参赛记录时同口径、无参赛记录时本租户全量可选。排赛选队走 `game-team-options` 端点。
-- 邀请入队（批 4）：候选=本租户全量未删球员（非超管对跨租户球队一律 404，超管全局豁免）；未认领→定向绑定邀请、已认领→通用链接；**撤销后旧链接失效**（领取/认领接口返回 400「邀请链接已失效」）；创建邀请/候选守卫=可管理该球队（Issue #318 起无联盟代管分支）。
+- 邀请入队（批 4）：候选=本租户未删且当前不在本队的球员（非超管对跨租户球队一律 404，超管全局豁免）；未认领→直接入队（球队代管，不生成定向邀请，档案仍保持未认领，原当前球队保留）、已认领→通用链接；**撤销后旧链接失效**（领取/认领接口返回 400「邀请链接已失效」）；创建邀请/候选守卫=可管理该球队（Issue #318 起无联盟代管分支）。
 
 ### 阵容限制口径（双门校验，Issue #310）
 - 启用条件：赛事存在任意有效参赛记录（含仅邀请）即对该赛事全部比赛启用；无参赛记录的赛事不受影响。

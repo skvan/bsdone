@@ -4,23 +4,65 @@
 import { readDisplaySettings, saveDisplaySettings } from './statsDisplayStorage.js';
 import { isPortalGuideDismissed } from './portalGuide.js';
 
+export const DEFAULT_BATTER_FIELDS = [
+  { key: 'pa', label: 'PA', visible: true },
+  { key: 'ab', label: 'AB', visible: true },
+  { key: 'r', label: 'R', visible: true },
+  { key: 'h', label: 'H', visible: true },
+  { key: 'doubles', label: '2B', visible: true },
+  { key: 'triples', label: '3B', visible: true },
+  { key: 'hr', label: 'HR', visible: true },
+  { key: 'gdp', label: 'GDP', visible: true },
+  { key: 'sh', label: 'SH', visible: true },
+  { key: 'sf', label: 'SF', visible: true },
+  { key: 'rbi', label: 'RBI', visible: true },
+  { key: 'bb', label: 'BB', visible: true },
+  { key: 'ibb', label: 'IBB', visible: true },
+  { key: 'hbp', label: 'HBP', visible: true },
+  { key: 'io', label: 'IO', visible: true },
+  { key: 'so', label: 'SO', visible: true },
+  { key: 'sb', label: 'SB', visible: true },
+  { key: 'cs', label: 'CS', visible: true },
+  { key: 'e', label: 'E', visible: true },
+  { key: 'avg', label: 'AVG', visible: true },
+  { key: 'obp', label: 'OBP', visible: true },
+  { key: 'slg', label: 'SLG', visible: true },
+  { key: 'ops', label: 'OPS', visible: true }
+];
+
+export const DEFAULT_FIELDING_FIELDS = [
+  { key: 'fieldingGs', label: 'GS', visible: true },
+  { key: 'po', label: 'PO', visible: true },
+  { key: 'a', label: 'A', visible: true },
+  { key: 'e', label: 'E', visible: true },
+  { key: 'dp', label: 'DP', visible: true },
+  { key: 'defInn', label: 'INN', visible: true },
+  { key: 'pb', label: 'PB', visible: true },
+  { key: 'catcherSb', label: 'SB', visible: true },
+  { key: 'catcherCs', label: 'CS', visible: true }
+];
+
 export const DEFAULT_PITCHER_FIELDS = [
   { key: 'ip', label: 'IP', visible: true },
   { key: 'pitchR', label: 'R', visible: true },
   { key: 'er', label: 'ER', visible: true },
   { key: 'pitchH', label: 'H', visible: true },
-  { key: 'pitchBbHp', label: 'BB+HBP', visible: true },
+  { key: 'pitchDoubles', label: '2B', visible: true },
+  { key: 'pitchTriples', label: '3B', visible: true },
   { key: 'pitchSo', label: 'SO', visible: true },
   { key: 'pitchHr', label: 'HR', visible: true },
   { key: 'pitchInsideParkHr', label: 'IPHR', visible: true },
+  { key: 'pitchSh', label: 'SH', visible: true },
+  { key: 'pitchSf', label: 'SF', visible: true },
   { key: 'pitAb', label: 'AB', visible: false },
   { key: 'pitE', label: 'E', visible: false },
   { key: 'np', label: 'NP', visible: false },
-  { key: 'pitchPa', label: 'PA', visible: true },
+  { key: 'pitchPa', label: 'PA', visible: false },
   { key: 'pitchBf', label: 'BF', visible: true },
-  { key: 'pitchBb', label: 'BB', visible: false },
-  { key: 'pitchIbb', label: 'IBB', visible: false },
-  { key: 'pitchHbp', label: 'HBP', visible: false },
+  { key: 'pitchBb', label: 'BB', visible: true },
+  { key: 'pitchIbb', label: 'IBB', visible: true },
+  { key: 'pitchHbp', label: 'HBP', visible: true },
+  { key: 'pitchIo', label: 'IO', visible: true },
   { key: 'wp', label: 'WP', visible: false },
   { key: 'bk', label: 'BK', visible: false },
   { key: 'go', label: 'GO', visible: false },
@@ -46,6 +88,7 @@ const LEGACY_KEYS = [
   'bsball.admin.gameDetail.showTrailingZeros'
 ];
 const MIN_VISIBLE_FIELDS = 6;
+const MIN_VISIBLE_FIELDING = 3;
 
 function mergeFields(saved, defaults) {
   if (!Array.isArray(saved) || saved.length === 0) return defaults;
@@ -79,6 +122,11 @@ function ensureMinVisible(fields, min) {
     }
   }
   return next;
+}
+
+// 守备字段与打者/投手同规则合并；宿主未传默认列时回退内置默认值
+function normalizeFieldingFields(saved, defaults) {
+  return ensureMinVisible(mergeFields(saved, defaults || DEFAULT_FIELDING_FIELDS), MIN_VISIBLE_FIELDING);
 }
 
 function readLegacyArray(key, defaults) {
@@ -154,10 +202,11 @@ function readKeyedFieldSettings(key, defaults) {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
     if (!raw) return null;
     const stored = parseStored(raw);
-    if (!stored?.batterFields || !stored?.pitcherFields) return null;
+    if (!stored) return null;
     return {
       batterFields: ensureMinVisible(mergeFields(stored.batterFields, defaults.defaultBatterFields), MIN_VISIBLE_FIELDS),
       pitcherFields: ensureMinVisible(mergeFields(stored.pitcherFields, defaults.defaultPitcherFields), MIN_VISIBLE_FIELDS),
+      fieldingFields: normalizeFieldingFields(stored.fieldingFields, defaults.defaultFieldingFields),
       decimalPlaces: normalizeDecimalPlaces(stored.decimalPlaces, defaults.defaultDecimalPlaces),
       rateDisplayStyle: normalizeRateDisplayStyle(stored.rateDisplayStyle, defaults.defaultRateDisplayStyle),
       showTrailingZeros: typeof stored.showTrailingZeros === 'boolean' ? stored.showTrailingZeros : defaults.defaultShowTrailingZeros
@@ -176,13 +225,14 @@ function writeKeyedFieldSettings(key, state) {
 }
 
 export function buildInitialFieldSettings(options) {
-  const { defaultBatterFields, defaultPitcherFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros, tenantCode } = options;
+  const { defaultBatterFields, defaultPitcherFields, defaultFieldingFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros, tenantCode } = options;
   const display = readDisplaySettings();
   const guideDismissed =
     tenantCode != null && String(tenantCode).trim() !== '' ? isPortalGuideDismissed(String(tenantCode)) : !!display.detailPage.guideDismissed;
   return {
     batterFields: ensureMinVisible(mergeFields(display.detailPage.batterFields, defaultBatterFields), MIN_VISIBLE_FIELDS),
     pitcherFields: ensureMinVisible(mergeFields(display.detailPage.pitcherFields, defaultPitcherFields), MIN_VISIBLE_FIELDS),
+    fieldingFields: normalizeFieldingFields(display.detailPage.fieldingFields, defaultFieldingFields),
     decimalPlaces: normalizeDecimalPlaces(display.valueControl.decimalPlaces, defaultDecimalPlaces),
     rateDisplayStyle: normalizeRateDisplayStyle(display.valueControl.rateDisplayStyle, defaultRateDisplayStyle),
     showTrailingZeros: typeof display.valueControl.showTrailingZeros === 'boolean' ? display.valueControl.showTrailingZeros : defaultShowTrailingZeros,
@@ -213,7 +263,7 @@ export function writeFieldSettings(state) {
 }
 
 export function readFieldSettings(options) {
-  const { defaultBatterFields, defaultPitcherFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros } = options;
+  const { defaultBatterFields, defaultPitcherFields, defaultFieldingFields, defaultDecimalPlaces, defaultRateDisplayStyle, defaultShowTrailingZeros } = options;
   const storedSettings = readKeyedFieldSettings(FIELD_SETTINGS_STORAGE_KEY, options);
   if (storedSettings) {
     clearLegacyKeys(LEGACY_KEYS);
@@ -227,6 +277,7 @@ export function readFieldSettings(options) {
   const migrated = {
     batterFields: ensureMinVisible(batterFields, MIN_VISIBLE_FIELDS),
     pitcherFields: ensureMinVisible(pitcherFields, MIN_VISIBLE_FIELDS),
+    fieldingFields: normalizeFieldingFields(undefined, defaultFieldingFields),
     decimalPlaces,
     rateDisplayStyle,
     showTrailingZeros

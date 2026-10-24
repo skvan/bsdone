@@ -36,61 +36,9 @@ import { buildInitialFieldSettings as Fl } from '../../utils/gameDetailFieldSett
 import { saveDetailPageSettings as Ol } from '../../utils/gameDetailFieldSettingsStorage';
 import { DEFAULT_PITCHER_FIELDS as Nl } from '../../utils/gameDetailFieldSettingsStorage';
 import '../../styles/legacy/portal-stats-column-settings-drawer.css';
-var Ul="leadingZero",Ae=[{
-  key:"pa",label:"PA",visible:!0
-}
-,{
-  key:"ab",label:"AB",visible:!0
-}
-,{
-  key:"r",label:"R",visible:!0
-}
-,{
-  key:"h",label:"H",visible:!0
-}
-,{
-  key:"doubles",label:"2B",visible:!0
-}
-,{
-  key:"triples",label:"3B",visible:!0
-}
-,{
-  key:"hr",label:"HR",visible:!0
-}
-,{
-  key:"shSf",label:"SH+SF",visible:!0
-}
-,{
-  key:"rbi",label:"RBI",visible:!0
-}
-,{
-  key:"bbHp",label:"BB+HBP",visible:!0
-}
-,{
-  key:"so",label:"SO",visible:!0
-}
-,{
-  key:"sb",label:"SB",visible:!0
-}
-,{
-  key:"cs",label:"CS",visible:!0
-}
-,{
-  key:"e",label:"E",visible:!0
-}
-,{
-  key:"avg",label:"AVG",visible:!0
-}
-,{
-  key:"obp",label:"OBP",visible:!0
-}
-,{
-  key:"slg",label:"SLG",visible:!0
-}
-,{
-  key:"ops",label:"OPS",visible:!0
-}
-],Ee=Nl,Yl={
+import { DEFAULT_BATTER_FIELDS } from '../../utils/gameDetailFieldSettingsStorage';
+import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage';
+var FIELDING_MIN=3,Ul="leadingZero",Ae=DEFAULT_BATTER_FIELDS,Ee=Nl,Yl={
   class:"drawer-inner"
 }
 ,Ml={
@@ -201,13 +149,16 @@ var Ul="leadingZero",Ae=[{
     }
     function xe(){
       const e=Fl({
-        defaultBatterFields:Ae,defaultPitcherFields:Ee,defaultDecimalPlaces:2,defaultRateDisplayStyle:Ul,defaultShowTrailingZeros:!0
+        defaultBatterFields:Ae,defaultPitcherFields:Ee,defaultFieldingFields:DEFAULT_FIELDING_FIELDS,defaultDecimalPlaces:2,defaultRateDisplayStyle:Ul,defaultShowTrailingZeros:!0
       }
       );
       g.value=e.batterFields.map(l=>({
         ...l
       }
       )),p.value=e.pitcherFields.map(l=>({
+        ...l
+      }
+      )),fy.value=e.fieldingFields.map(l=>({
         ...l
       }
       ))
@@ -217,10 +168,10 @@ var Ul="leadingZero",Ae=[{
       return _?(m.splice(n,0,_),m):e
     }
     function me(e,l,n){
-      const _=e==="batter"?g.value:p.value,u=_.filter(v=>v.visible).length;
-      if(!n&&u<=6){
+      const _=e==="batter"?g.value:e==="pitcher"?p.value:fy.value,m=e==="fielding"?FIELDING_MIN:6,u=_.filter(v=>v.visible).length;
+      if(!n&&u<=m){
         F.warning(i("fieldSettings.minVisibleUncheckReject",{
-          n:6
+          n:m
         }
         ));
         return
@@ -229,7 +180,7 @@ var Ul="leadingZero",Ae=[{
         ...v,visible:n
       }
       :v);
-      e==="batter"?g.value=c:p.value=c
+      e==="batter"?g.value=c:e==="pitcher"?p.value=c:fy.value=c
     }
     function Ke(){
       const e=g.value;
@@ -249,17 +200,29 @@ var Ul="leadingZero",Ae=[{
       }
       ))
     }
+    function Uy(){
+      const e=fy.value;
+      if(!e.length)return;
+      const l=!e.every(n=>n.visible);
+      fy.value=e.map(n=>({
+        ...n,visible:l
+      }
+      ))
+    }
     const We=I(()=>g.value.map(e=>({
       key:e.key,label:e.label,visible:!!e.visible,desc:ce("batter",e.key)
     }
     ))),Ze=I(()=>p.value.map(e=>({
       key:e.key,label:e.label,visible:!!e.visible,desc:ce("pitcher",e.key)
     }
-    ))),$e=I(()=>typeof window<"u"&&window.innerWidth<420?"100%":420),ge=h(null),pe=h(null),Se=h(null),Te=h(null),he=h(null);
-    let R=null,C=null,L=null,B=null,G=null;
-    const g=h([]),p=h([]);
+    ))),Ky=I(()=>fy.value.map(e=>({
+      key:e.key,label:e.label,visible:!!e.visible,desc:ce("fielding",e.key)
+    }
+    ))),$e=I(()=>typeof window<"u"&&window.innerWidth<420?"100%":420),ge=h(null),pe=h(null),Se=h(null),Te=h(null),he=h(null),Vy=h(null);
+    let R=null,C=null,L=null,B=null,G=null,By=null;
+    const g=h([]),p=h([]),fy=h([]);
     function le(){
-      R?.destroy(),C?.destroy(),L?.destroy(),B?.destroy(),G?.destroy(),R=null,C=null,L=null,B=null,G=null,ae(()=>{
+      R?.destroy(),C?.destroy(),L?.destroy(),B?.destroy(),G?.destroy(),By?.destroy(),R=null,C=null,L=null,B=null,G=null,By=null,ae(()=>{
         const e=(n,m)=>{
           if(!n)return null;
           const _=n.querySelector("tbody");
@@ -281,13 +244,13 @@ var Ul="leadingZero",Ae=[{
           return _?new Ve(_,{
             animation:150,handle:".drag-handle",onEnd(u){
               const c=u.oldIndex??-1,v=u.newIndex??-1;
-              c<0||v<0||c===v||(m==="batter"?g.value=be(g.value,c,v):p.value=be(p.value,c,v))
+              c<0||v<0||c===v||(m==="batter"?g.value=be(g.value,c,v):m==="pitcher"?p.value=be(p.value,c,v):fy.value=be(fy.value,c,v))
             }
             
           }
           ):null
         };
-        B=l(Te.value,"batter"),G=l(he.value,"pitcher")
+        B=l(Te.value,"batter"),G=l(he.value,"pitcher"),By=l(Vy.value,"fielding")
       }
       )
     }
@@ -299,7 +262,7 @@ var Ul="leadingZero",Ae=[{
         k.value=w.scope,Ie(),El(),xe(),N.value=w.activeTab,le();
         return
       }
-      Ie(),R?.destroy(),C?.destroy(),L?.destroy(),R=null,C=null,L=null,B?.destroy(),G?.destroy(),B=null,G=null
+      Ie(),R?.destroy(),C?.destroy(),L?.destroy(),R=null,C=null,L=null,B?.destroy(),G?.destroy(),By?.destroy(),B=null,G=null,By=null
     }
     ),ie(b,()=>{
       w.modelValue&&ae(()=>le())
@@ -319,7 +282,7 @@ var Ul="leadingZero",Ae=[{
     }
     function je(){
       if(H.value){
-        const e=g.value.filter(n=>n.visible).length,l=p.value.filter(n=>n.visible).length;
+        const e=g.value.filter(n=>n.visible).length,l=p.value.filter(n=>n.visible).length,_=fy.value.filter(n=>n.visible).length;
         if(e<6){
           F.warning(i("fieldSettings.minVisibleSaveBatter",{
             n:6
@@ -334,14 +297,24 @@ var Ul="leadingZero",Ae=[{
           ));
           return
         }
+        if(_<FIELDING_MIN){
+          F.warning(i("fieldSettings.minVisibleUncheckReject",{
+            n:FIELDING_MIN
+          }
+          ));
+          return
+        }
         Ol({
-          batterFields:g.value,pitcherFields:p.value
+          batterFields:g.value,pitcherFields:p.value,fieldingFields:fy.value
         }
         ),f(ye,A.value),f(we,E.value),f(De,V.value),P("saveGameDetailSettings",{
           batterItems:g.value.map(n=>({
             ...n
           }
           )),pitcherItems:p.value.map(n=>({
+            ...n
+          }
+          )),fieldingItems:fy.value.map(n=>({
             ...n
           }
           )),decimalPlaces:V.value,rateDisplayStyle:A.value,showTrailingZeros:E.value
@@ -356,6 +329,9 @@ var Ul="leadingZero",Ae=[{
         ...e
       }
       )),p.value=Ee.map(e=>({
+        ...e
+      }
+      )),fy.value=DEFAULT_FIELDING_FIELDS.map(e=>({
         ...e
       }
       ))):b.value?(W.value=null,ee.value=null,J.value=null,z.value=Il.map(e=>e.key),X.value=Rl.map(e=>e.key),q.value=Al.map(e=>e.key)):(K.value=null,j.value=null,$.value=null,x.value=wl.map(e=>e.key),Q.value=Bl.map(e=>e.key),Z.value=Pl.map(e=>e.key)),A.value="leadingZero",E.value=!0,V.value=2,ae(()=>le())
@@ -537,6 +513,57 @@ var Ul="leadingZero",Ae=[{
                 }
                 )=>[t(c,{
                   "model-value":d.visible,"onUpdate:modelValue":D=>me("pitcher",d.key,D)
+                }
+                ,null,8,["model-value","onUpdate:modelValue"])]),_:1
+              }
+              ),t(u,{
+                prop:"label",label:a(i)("fieldSettings.field"),width:"80"
+              }
+              ,null,8,["label"]),t(u,{
+                prop:"desc",label:a(i)("fieldSettings.desc"),"min-width":"140"
+              }
+              ,null,8,["label"])]),_:1
+            }
+            ,8,["data"])],512)]),_:1
+          }
+          ),t(y,{
+            name:"fielding"
+          }
+          ,{
+            label:s(()=>[o("span",lt,r(a(i)("fieldSettings.fielding")),1)]),default:s(()=>[o("div",tt,r(a(i)("fieldSettings.hintDrag")),1),o("div",{
+              ref_key:"gameDetailFieldingTableWrapRef",ref:Vy,class:"settings-table"
+            }
+            ,[t(v,{
+              data:Ky.value,size:"small","row-key":"key"
+            }
+            ,{
+              default:s(()=>[t(u,{
+                width:"45",align:"center"
+              }
+              ,{
+                default:s(()=>[t(_,{
+                  class:"drag-handle"
+                }
+                ,{
+                  default:s(()=>[t(a(O))]),_:1
+                }
+                )]),_:1
+              }
+              ),t(u,{
+                width:"62",align:"center"
+              }
+              ,{
+                header:s(()=>[o("button",{
+                  type:"button",class:"show-col-header",title:a(i)("fieldSettings.showColumnToggleHint"),onMousedown:l[13]||(l[13]=T(()=>{
+                    
+                  }
+                  ,["stop","prevent"])),onClick:T(Uy,["stop","prevent"])
+                }
+                ,r(a(i)("fieldSettings.show")),41,at)]),default:s(({
+                  row:d
+                }
+                )=>[t(c,{
+                  "model-value":d.visible,"onUpdate:modelValue":D=>me("fielding",d.key,D)
                 }
                 ,null,8,["model-value","onUpdate:modelValue"])]),_:1
               }

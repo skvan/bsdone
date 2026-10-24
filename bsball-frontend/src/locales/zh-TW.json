@@ -100,11 +100,6 @@
         "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
         "shortLabel": "觸身"
       },
-      "pitchHbp": {
-        "fullName": "觸身球（投手）",
-        "definition": "投手投球擊中未嘗試揮棒的打者",
-        "shortLabel": "HBP"
-      },
       "so": {
         "fullName": "三振",
         "definition": "打者在一个打席中被判三次好球而出局",
@@ -424,6 +419,51 @@
         "fullName": "场内球比例",
         "definition": "打席结果为场内击球（非三振、保送、触身等）的比例",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "妨阻上壘",
+        "definition": "打者因守方妨礙或阻擋而獲判上一壘；計入打席，不計打數",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "被二壘打",
+        "definition": "投手被對方擊出的二壘安打數",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "被三壘打",
+        "definition": "投手被對方擊出的三壘安打數",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "被犧牲觸擊",
+        "definition": "投手被對方以犧牲觸擊推進出局",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "被犧牲高飛",
+        "definition": "投手被對方以高飛犧牲打送回跑者",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "被妨阻上壘",
+        "definition": "投手因其守方妨礙或阻擋導致打者上壘",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "非自責分",
+        "definition": "因守方失誤等非投手責任而失掉的分",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "待定分",
+        "definition": "自責分判定尚未完成的失分",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "被盜壘成功",
+        "definition": "捕手在場時對方成功盜壘的次數",
+        "shortLabel": "SB"
       }
     }
   },
@@ -467,6 +507,7 @@
     "themeAuto": "自動",
     "adminEntry": "管理後台 / 登入",
     "adminDashboard": "進入管理後台",
+    "clubhouse": "我的主場",
     "logout": "登出",
     "logoutSuccess": "已登出",
     "userMenu": "帳號選單",
@@ -535,6 +576,12 @@
     "guideTitle": "在這裡提交意見回饋",
     "guideDesc": "可回饋功能建議、Bug 與內容問題；提交後可在「我的回饋」查看處理進展。",
     "guideConfirm": "知道了"
+  },
+  "shareLanding": {
+    "text": "來自好友分享",
+    "home": "前往門戶首頁",
+    "learn": "了解平台",
+    "close": "關閉"
   },
   "platformDocs": {
     "backToPortal": "返回門戶首頁",
@@ -959,9 +1006,16 @@
         "cs": "盜失（Caught Stealing）",
         "e": "失誤（Errors）",
         "avg": "打擊率（H/AB）",
-        "obp": "上壘率（本頁以 (H+保送+HBP)/PA 近似）",
+        "obp": "上壘率（(H+BB+HBP)/(AB+BB+HBP+SF)）",
         "slg": "長打率（TB/AB）",
-        "ops": "攻擊指數（OBP+SLG）"
+        "ops": "攻擊指數（OBP+SLG）",
+        "gdp": "雙殺打（Grounded into Double Play）",
+        "sh": "犧牲觸擊（Sacrifice Bunt）",
+        "sf": "犧牲高飛（Sacrifice Fly）",
+        "bb": "四壞（含故意四壞）",
+        "ibb": "故意四壞（Intentional Walk）",
+        "hbp": "觸身球（Hit By Pitch）",
+        "io": "妨阻上壘（Obstruction/Interference）"
       },
       "pitcher": {
         "ip": "投球局數（Innings Pitched）",
@@ -972,7 +1026,7 @@
         "pitchSo": "奪三振（Strikeouts）",
         "pitchHr": "被牆外全壘打（Home Runs Allowed）",
         "pitchInsideParkHr": "被場內全壘打（Inside-the-park HR）",
-        "pitAb": "對手打數（BF−保送−IBB−HBP；非打者 AB）",
+        "pitAb": "對手打數（BF−BB−HBP；BB 含 IBB）",
         "pitE": "該投手本場打者數據的失誤",
         "np": "投球數",
         "pitchPa": "面對打席（PA）",
@@ -992,7 +1046,12 @@
         "hld": "中繼成功",
         "cg": "是否本場完投（不是為 0，是為 1）",
         "pg": "是否本場為完美比賽（不是為 0，是為 1）",
-        "era": "自責分率（ER×9/IP）"
+        "era": "自責分率（ER×9/IP）",
+        "pitchDoubles": "被二壘打（Doubles Allowed）",
+        "pitchTriples": "被三壘打（Triples Allowed）",
+        "pitchSh": "被犧牲觸擊（Sacrifice Bunts Allowed）",
+        "pitchSf": "被犧牲高飛（Sacrifice Flies Allowed）",
+        "pitchIo": "被妨阻上壘（Obstruction Allowed）"
       }
     }
   },
@@ -1100,6 +1159,8 @@
       "bk": "投手犯規",
       "r": "得分",
       "er": "自責分",
+      "unearnedR": "非自責分",
+      "pendingR": "待定分",
       "go": "地滾出局",
       "fo": "高飛球出局",
       "goFo": "滾飛出局比",
@@ -1128,7 +1189,14 @@
       "dp": "雙殺",
       "pb": "捕逸",
       "catcherCs": "盜壘阻殺",
-      "tcPct": "守備率"
+      "tcPct": "守備率",
+      "catcherSb": "被盜壘",
+      "io": "妨阻上壘",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧短",
+      "pitchSf": "被犧飛",
+      "pitchIo": "被妨阻上壘"
     },
     "colEn": {
       "rank": "Rank",
@@ -1172,6 +1240,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1200,7 +1270,14 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1271,13 +1348,24 @@
       "sb": "盜壘",
       "cs": "盜失",
       "bbHp": "保送+觸身",
-      "so": "三振"
+      "so": "三振",
+      "gdp": "雙殺打",
+      "sh": "犧短",
+      "sf": "犧飛",
+      "bb": "四壞（含IBB）",
+      "ibb": "故意四壞",
+      "hbp": "觸身",
+      "io": "妨阻上壘"
     },
     "careerPitch": {
       "gp": "出場場次",
       "ip": "局數",
       "era": "責失分率",
       "whip": "每局被上壘率",
+      "pitchR": "投手失分",
+      "er": "自責分",
+      "unearnedR": "非自責分",
+      "pendingR": "待定分",
       "pitchBf": "輪擊數",
       "pitchAb": "自由擊球數",
       "ggComplete": "完投",
@@ -1288,7 +1376,15 @@
       "bbHp": "保送+觸身",
       "so": "三振",
       "wp": "暴投",
-      "bk": "投手犯規"
+      "bk": "投手犯規",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧短",
+      "pitchSf": "被犧飛",
+      "pitchBb": "四壞（含IBB）",
+      "pitchIbb": "故意四壞",
+      "pitchHbp": "觸身",
+      "pitchIo": "被妨阻上壘"
     },
     "careerFld": {
       "gp": "出場場次",
@@ -1298,7 +1394,9 @@
       "a": "助殺",
       "e": "失誤",
       "tcPct": "防守率",
+      "dp": "雙殺守備",
       "pb": "捕逸",
+      "catcherSb": "被盜壘成功",
       "catcherCs": "盜壘阻殺"
     },
     "seasonBlock": "{season} · {event}",
@@ -1333,7 +1431,7 @@
       "era": "責失分率",
       "whip": "每局被上壘率",
       "pitchBf": "面對打者總人次",
-      "pitchAb": "自由打數，由面對打者人次扣除四壞、故意與觸身",
+      "pitchAb": "自由打數，由面對打者人次扣除四壞與觸身（BB 含 IBB）",
       "ggComplete": "完投",
       "pgShutout": "完封",
       "pitchH": "被安打",
@@ -1362,7 +1460,21 @@
       "er": "自責分",
       "pitchBb": "四壞球保送",
       "pitchHbp": "觸身球",
-      "dp": "雙殺"
+      "dp": "雙殺",
+      "unearnedR": "非自責分（不計入防禦率）",
+      "pendingR": "尚待判定的失分",
+      "catcherSb": "捕手在場時對手盜壘成功次數",
+      "sh": "犧牲觸擊數",
+      "sf": "犧牲高飛數",
+      "ibb": "故意四壞",
+      "hbp": "觸身球",
+      "io": "妨阻上壘",
+      "pitchDoubles": "被二壘打",
+      "pitchTriples": "被三壘打",
+      "pitchSh": "被犧牲觸擊",
+      "pitchSf": "被犧牲高飛",
+      "pitchIbb": "投手故意四壞",
+      "pitchIo": "投手被妨阻上壘"
     },
     "gameLogColTip": {
       "date": "比賽日期。",
@@ -1377,6 +1489,12 @@
     "unnamedEvent": "未命名賽事",
     "shareCard": {
       "generateButton": "分享球員卡片",
+      "wechatTip": "好友/群組：點右上角分享 · 朋友圈：儲存海報",
+      "wechatGuideTitle": "點右上角「···」分享",
+      "wechatGuideBody": "選擇傳送給朋友或分享到朋友圈",
+      "wechatGuideOk": "知道了",
+      "qrCaption": "長按辨識 QR Code · 查看球員資料",
+      "qrBrand": "BSD棒壘球資料平台",
       "dialogTitle": "分享球員卡片",
       "orientationPortrait": "直式 4:5",
       "orientationLandscape": "橫式 16:9",
@@ -1681,6 +1799,7 @@
     "threePlaces": "保留三位",
     "batter": "打者",
     "pitcher": "投手",
+    "fielding": "守備",
     "hintDrag": "勾選控制顯示，拖曳調整順序",
     "hintMinVisible": "打者與投手統計欄（不含左側名稱欄）分別至少保留 {batterMin} 欄、{pitcherMin} 欄。",
     "minVisibleUncheckReject": "至少需保留 {n} 欄顯示，無法再取消。",
@@ -1702,6 +1821,13 @@
         "shSf": "犧牲打：短打+高飛犧牲打合計",
         "rbi": "打點",
         "bbHp": "四壞球 + 觸身球",
+        "gdp": "雙殺打",
+        "sh": "犧牲觸擊",
+        "sf": "犧牲高飛",
+        "bb": "四壞保送",
+        "ibb": "故意四壞",
+        "hbp": "觸身球",
+        "io": "妨阻上壘",
         "so": "三振",
         "sb": "盜壘成功",
         "cs": "盜壘失敗（被抓）",
@@ -1710,6 +1836,17 @@
         "obp": "上壘率",
         "slg": "長打率",
         "ops": "攻擊指數（上壘率 + 長打率）"
+      },
+      "fielding": {
+        "fieldingGs": "先發守備",
+        "po": "刺殺",
+        "a": "助殺",
+        "e": "失誤",
+        "dp": "參與雙殺",
+        "defInn": "守備局數",
+        "pb": "捕逸",
+        "catcherSb": "被盜壘成功",
+        "catcherCs": "盜壘阻殺"
       },
       "pitcher": {
         "ip": "投球局數",
@@ -1932,9 +2069,12 @@
     "colTeams": "現屬球隊",
     "freeAgent": "自由球員",
     "generate": "產生邀請",
+    "directJoin": "邀請入隊",
+    "directJoinDone": "已將「{name}」加入球隊",
+    "alreadyJoined": "該球員已在本隊",
     "emptySearch": "未找到符合的球員",
     "linkTitle": "邀請連結已產生",
-    "linkHint": "將連結傳送給球員，本人登入或註冊後確認即入隊（未認領球員為定向邀請，已認領球員為通用連結）。",
+    "linkHint": "將連結傳送給球員，本人登入或註冊後確認即入隊。",
     "copy": "複製連結",
     "copyDone": "連結已複製",
     "copyUnsupported": "複製失敗，請手動複製連結",
@@ -1954,7 +2094,7 @@
     "emptyInvites": "尚無已產生的邀請",
     "createFailed": "產生失敗",
     "revokeFailed": "撤銷失敗",
-    "genericHint": "清單僅顯示未在本隊的球員；已認領球員將產生通用連結（本人確認後入隊）。",
+    "genericHint": "清單僅顯示未在本隊的球員；未認領球員點擊「邀請入隊」將直接加入（保留其現有球隊），已認領球員產生通用連結（本人確認後入隊）。",
     "loadFailed": "載入失敗"
   }
 }

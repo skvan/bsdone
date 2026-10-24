@@ -16,7 +16,7 @@ import GameDetailHitReplay from '../../components/common/GameDetailHitReplay.vue
 import FieldSettingsDrawer from '../../components/admin/GameDetailFieldSettingsDrawer.js';
 import { readFieldSettings as Ge } from '../../utils/gameDetailFieldSettingsStorage';
 import { writeFieldSettings as xe } from '../../utils/gameDetailFieldSettingsStorage';
-import { DEFAULT_PITCHER_FIELDS as Me } from '../../utils/gameDetailFieldSettingsStorage';
+import { DEFAULT_PITCHER_FIELDS as Me, DEFAULT_BATTER_FIELDS as Fa, DEFAULT_FIELDING_FIELDS as FG } from '../../utils/gameDetailFieldSettingsStorage';
 import '../../styles/legacy/game-detail.css';
 var mt={
   class:"admin-page game-detail-page"
@@ -38,76 +38,22 @@ var mt={
     ),o=m(!0),w=m(null),R=m([]),W=m([]),F=m({
       
     }
-    ),C=[{
-      key:"pa",label:"PA",visible:!0
+    ),C=Fa,z=Me,T=Ge({
+      defaultBatterFields:C,defaultPitcherFields:z,defaultFieldingFields:FG,defaultDecimalPlaces:ie,defaultRateDisplayStyle:se,defaultShowTrailingZeros:ne
     }
-    ,{
-      key:"ab",label:"AB",visible:!0
-    }
-    ,{
-      key:"r",label:"R",visible:!0
-    }
-    ,{
-      key:"h",label:"H",visible:!0
-    }
-    ,{
-      key:"doubles",label:"2B",visible:!0
-    }
-    ,{
-      key:"triples",label:"3B",visible:!0
-    }
-    ,{
-      key:"hr",label:"HR",visible:!0
-    }
-    ,{
-      key:"shSf",label:"SH+SF",visible:!0
-    }
-    ,{
-      key:"rbi",label:"RBI",visible:!0
-    }
-    ,{
-      key:"bbHp",label:"BB+HBP",visible:!0
-    }
-    ,{
-      key:"so",label:"SO",visible:!0
-    }
-    ,{
-      key:"sb",label:"SB",visible:!0
-    }
-    ,{
-      key:"cs",label:"CS",visible:!0
-    }
-    ,{
-      key:"e",label:"E",visible:!0
-    }
-    ,{
-      key:"avg",label:"AVG",visible:!0
-    }
-    ,{
-      key:"obp",label:"OBP",visible:!0
-    }
-    ,{
-      key:"slg",label:"SLG",visible:!0
-    }
-    ,{
-      key:"ops",label:"OPS",visible:!0
-    }
-    ],z=Me,T=Ge({
-      defaultBatterFields:C,defaultPitcherFields:z,defaultDecimalPlaces:ie,defaultRateDisplayStyle:se,defaultShowTrailingZeros:ne
-    }
-    ),L=m(T.batterFields),P=m(T.pitcherFields),D=m(T.decimalPlaces),p=m(T.rateDisplayStyle),f=m(T.showTrailingZeros),E=G(()=>L.value),V=G(()=>P.value),I=m(!1);
+    ),L=m(T.batterFields),P=m(T.pitcherFields),FF=m(T.fieldingFields),D=m(T.decimalPlaces),p=m(T.rateDisplayStyle),f=m(T.showTrailingZeros),E=G(()=>L.value),V=G(()=>P.value),Vf=G(()=>FF.value),I=m(!1);
     function A(){
       xe({
-        batterFields:L.value,pitcherFields:P.value,decimalPlaces:D.value,rateDisplayStyle:p.value,showTrailingZeros:f.value
+        batterFields:L.value,pitcherFields:P.value,fieldingFields:FF.value,decimalPlaces:D.value,rateDisplayStyle:p.value,showTrailingZeros:f.value
       }
       )
     }
-    ue([L,P,D,p,f],()=>A(),{
+    ue([L,P,FF,D,p,f],()=>A(),{
       deep:!0
     }
     );
     function Y(u){
-      L.value=u.batterItems,P.value=u.pitcherItems,D.value=u.decimalPlaces,p.value=u.rateDisplayStyle,f.value=u.showTrailingZeros
+      L.value=u.batterItems,P.value=u.pitcherItems,FF.value=u.fieldingItems,D.value=u.decimalPlaces,p.value=u.rateDisplayStyle,f.value=u.showTrailingZeros
     }
     const x=m(typeof window<"u"&&window.innerWidth<re);
     function M(){
@@ -160,9 +106,9 @@ var mt={
           )]),_:1
         }
         ,8,["content"])])]),default:i(()=>[w.value?(H(),q(Ze,{
-          key:0,game:w.value,stats:R.value,teams:W.value,"players-map":F.value,"batter-fields":E.value,"pitcher-fields":V.value,"decimal-places":D.value,"rate-display-style":p.value,"show-trailing-zeros":f.value,"highlight-player-id":$.value
+          key:0,game:w.value,stats:R.value,teams:W.value,"players-map":F.value,"batter-fields":E.value,"pitcher-fields":V.value,"fielding-fields":Vf.value,"decimal-places":D.value,"rate-display-style":p.value,"show-trailing-zeros":f.value,"highlight-player-id":$.value
         }
-        ,null,8,["game","stats","teams","players-map","batter-fields","pitcher-fields","decimal-places","rate-display-style","show-trailing-zeros","highlight-player-id"])):o.value?Ce("",!0):(H(),q(Z,{
+        ,null,8,["game","stats","teams","players-map","batter-fields","pitcher-fields","fielding-fields","decimal-places","rate-display-style","show-trailing-zeros","highlight-player-id"])):o.value?Ce("",!0):(H(),q(Z,{
           key:1,description:"未找到比赛"
         }
         ))]),_:1
@@ -177,9 +123,9 @@ var mt={
         ,null,8,["game-id","players-map","teams","home-team-id","away-team-id"])]),_:1
       }
       )):Ce("",!0),a(FieldSettingsDrawer,{
-        modelValue:I.value,"onUpdate:modelValue":b[1]||(b[1]=d=>I.value=d),"batter-items":E.value,"pitcher-items":V.value,"default-batter-items":C,"default-pitcher-items":l(z),"decimal-places":D.value,"default-decimal-places":ie,"rate-display-style":p.value,"default-rate-display-style":se,"show-trailing-zeros":f.value,"default-show-trailing-zeros":ne,"is-small-screen":x.value,onSave:Y
+        modelValue:I.value,"onUpdate:modelValue":b[1]||(b[1]=d=>I.value=d),"batter-items":E.value,"pitcher-items":V.value,"fielding-items":Vf.value,"default-batter-items":C,"default-pitcher-items":z,"default-fielding-items":FG,"decimal-places":D.value,"default-decimal-places":ie,"rate-display-style":p.value,"default-rate-display-style":se,"show-trailing-zeros":f.value,"default-show-trailing-zeros":ne,"is-small-screen":x.value,onSave:Y
       }
-      ,null,8,["modelValue","batter-items","pitcher-items","default-pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])])
+      ,null,8,["modelValue","batter-items","pitcher-items","fielding-items","default-pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])])
     }
     
   }

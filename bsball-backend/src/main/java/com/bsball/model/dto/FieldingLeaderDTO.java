@@ -24,6 +24,9 @@ public class FieldingLeaderDTO {
     private Integer a;
     private Integer e;
     private Integer dp;
+    private Integer pb;
+    private Integer catcherCs;
+    private Integer catcherSb;
     private Double tcPct;
 
     @Generated
@@ -101,6 +104,21 @@ public class FieldingLeaderDTO {
     }
 
     @Generated
+    public Integer getPb() {
+        return this.pb;
+    }
+
+    @Generated
+    public Integer getCatcherCs() {
+        return this.catcherCs;
+    }
+
+    @Generated
+    public Integer getCatcherSb() {
+        return this.catcherSb;
+    }
+
+    @Generated
     public Double getTcPct() {
         return this.tcPct;
     }
@@ -173,6 +191,21 @@ public class FieldingLeaderDTO {
     @Generated
     public void setDp(Integer dp) {
         this.dp = dp;
+    }
+
+    @Generated
+    public void setPb(Integer pb) {
+        this.pb = pb;
+    }
+
+    @Generated
+    public void setCatcherCs(Integer catcherCs) {
+        this.catcherCs = catcherCs;
+    }
+
+    @Generated
+    public void setCatcherSb(Integer catcherSb) {
+        this.catcherSb = catcherSb;
     }
 
     @Generated

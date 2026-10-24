@@ -74,7 +74,8 @@ class GameRosterValidationTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
-        statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository, eventRegistrationService);
+        statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
+                eventRegistrationService, earnedRunReconstructionService);
     }
 
     private static Event event() {

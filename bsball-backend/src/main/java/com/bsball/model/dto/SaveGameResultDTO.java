@@ -784,6 +784,7 @@ public class SaveGameResultDTO {
         private Integer bb;
         private Integer ibb;
         private Integer hbp;
+        private Integer io;
         private Integer cs;
         @JsonDeserialize(using=BoolToIntDeserializer.class)
         private Integer isPitcher;
@@ -791,10 +792,14 @@ public class SaveGameResultDTO {
         private Double ip;
         private Integer er;
         private Integer pitchH;
+        private Integer pitchDoubles;
+        private Integer pitchTriples;
         private Integer pitchBbHp;
         private Integer pitchSo;
         private Integer pitchHr;
         private Integer pitchInsideParkHr;
+        private Integer pitchSh;
+        private Integer pitchSf;
         private Integer pitchR;
         private Integer pitchPa;
         private Integer pitchBf;
@@ -804,6 +809,7 @@ public class SaveGameResultDTO {
         private Integer pitchBb;
         private Integer pitchIbb;
         private Integer pitchHbp;
+        private Integer pitchIo;
         private Integer wp;
         private Integer bk;
         private Integer go;
@@ -1518,6 +1524,66 @@ public class SaveGameResultDTO {
         @Generated
         public void setCatcherCs(Integer catcherCs) {
             this.catcherCs = catcherCs;
+        }
+
+        @Generated
+        public Integer getIo() {
+            return this.io;
+        }
+
+        @Generated
+        public void setIo(Integer io) {
+            this.io = io;
+        }
+
+        @Generated
+        public Integer getPitchDoubles() {
+            return this.pitchDoubles;
+        }
+
+        @Generated
+        public void setPitchDoubles(Integer pitchDoubles) {
+            this.pitchDoubles = pitchDoubles;
+        }
+
+        @Generated
+        public Integer getPitchTriples() {
+            return this.pitchTriples;
+        }
+
+        @Generated
+        public void setPitchTriples(Integer pitchTriples) {
+            this.pitchTriples = pitchTriples;
+        }
+
+        @Generated
+        public Integer getPitchSh() {
+            return this.pitchSh;
+        }
+
+        @Generated
+        public void setPitchSh(Integer pitchSh) {
+            this.pitchSh = pitchSh;
+        }
+
+        @Generated
+        public Integer getPitchSf() {
+            return this.pitchSf;
+        }
+
+        @Generated
+        public void setPitchSf(Integer pitchSf) {
+            this.pitchSf = pitchSf;
+        }
+
+        @Generated
+        public Integer getPitchIo() {
+            return this.pitchIo;
+        }
+
+        @Generated
+        public void setPitchIo(Integer pitchIo) {
+            this.pitchIo = pitchIo;
         }
 
         @Generated

@@ -43,7 +43,7 @@
                 :disabled="creating"
                 @click="generateInvite(row)"
               >
-                {{ t('invitePlayer.generate') }}
+                {{ row.claimed ? t('invitePlayer.generate') : t('invitePlayer.directJoin') }}
               </el-button>
             </template>
           </el-table-column>
@@ -253,8 +253,19 @@ async function loadInvites() {
 async function generateInvite(row) {
   creating.value = true;
   try {
-    // 未认领：定向绑定该球员档案；已认领：通用链接（服务端语义）
-    const res = await accountApi.createClaimInvite(props.teamId, { playerId: row.claimed ? null : row.id });
+    if (!row.claimed) {
+      // 未认领球员由球队代管：服务端直接追加球队经历（current=true），无需生成链接。
+      const res = await accountApi.createClaimInvite(props.teamId, { playerId: row.id });
+      if (res?.data?.mode === 'already_joined') {
+        ElMessage.info(t('invitePlayer.alreadyJoined'));
+      } else {
+        ElMessage.success(t('invitePlayer.directJoinDone', { name: row.name }));
+      }
+      await runSearch();
+      return;
+    }
+    // 已认领：通用链接，由球员本人登录/注册后确认入队。
+    const res = await accountApi.createClaimInvite(props.teamId, { playerId: null });
     linkToken.value = res?.data?.token ?? '';
     linkVisible.value = true;
     await copyLink();

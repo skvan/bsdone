@@ -2,6 +2,7 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -43,9 +44,10 @@ class EarnedRunReconstructionServiceTest {
         service = new EarnedRunReconstructionService(
                 playRepository, decisionRepository, gamePlayerStatRepository);
         GamePlayerStat tenantOnePitcher = pitcherStat(1L, 700L, 0, 0);
+        GamePlayerStat tenantOneReliever = pitcherStat(1L, 701L, 0, 0);
         GamePlayerStat tenantTenPitcher = pitcherStat(10L, 901L, 0, 0);
         lenient().when(gamePlayerStatRepository.findByGameId(20L))
-                .thenReturn(List.of(tenantOnePitcher, tenantTenPitcher));
+                .thenReturn(List.of(tenantOnePitcher, tenantOneReliever, tenantTenPitcher));
         lenient().when(playRepository.save(any(EarnedRunPlayEntity.class)))
                 .thenAnswer(invocation -> {
                     EarnedRunPlayEntity entity = invocation.getArgument(0);
@@ -74,6 +76,16 @@ class EarnedRunReconstructionServiceTest {
                 1L, 20L, 3, "top", 9L, List.of(play), 500L);
 
         assertEquals(1, result.pitcherTotals().get(700L).earnedRuns());
+        assertEquals(1, result.pitcherAbsoluteTotals().get(700L).runs());
+        assertEquals(1, result.pitcherAbsoluteTotals().get(700L).earnedRuns());
+        assertEquals(result.pitcherAbsoluteTotals().get(700L).runs(),
+                result.pitcherAbsoluteTotals().get(700L).earnedRuns()
+                        + result.pitcherAbsoluteTotals().get(700L).unearnedRuns()
+                        + result.pitcherAbsoluteTotals().get(700L).pendingRuns());
+        assertEquals(0, result.pitcherAbsoluteTotals().get(701L).runs(),
+                "同租户未触及投手也应返回绝对值");
+        // 其他租户的投手不应出现在本次绝对总量里
+        assertNull(result.pitcherAbsoluteTotals().get(901L));
         ArgumentCaptor<EarnedRunDecisionEntity> captor =
                 ArgumentCaptor.forClass(EarnedRunDecisionEntity.class);
         verify(decisionRepository).save(captor.capture());
@@ -81,6 +93,48 @@ class EarnedRunReconstructionServiceTest {
         assertEquals("EARNED", captor.getValue().getEarnedStatus());
         assertEquals("NORMAL", captor.getValue().getRunnerOrigin());
         assertEquals(null, captor.getValue().getWouldScoreWithoutMisplay());
+    }
+
+    @Test
+    @DisplayName("同一半局重复重建：绝对总量不重复累计")
+    void repeatedReconstruction_keepsAbsoluteTotalsIdempotent() {
+        EarnedRunPlayEntity oldPlay = new EarnedRunPlayEntity();
+        oldPlay.setId(901L);
+        EarnedRunDecisionEntity oldDecision = new EarnedRunDecisionEntity();
+        oldDecision.setPlayId(901L);
+        oldDecision.setResponsiblePitcherId(700L);
+        oldDecision.setEarnedStatus("EARNED");
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 5, "top")).thenReturn(List.of(), List.of(oldPlay));
+        when(decisionRepository.findByTenantIdAndGameIdAndPlayIdIn(1L, 20L, List.of(901L)))
+                .thenReturn(List.of(oldDecision));
+        EarnedRunPlay play = new EarnedRunPlay(
+                101L, 1, 0, 0, false,
+                List.of(ScoringRunner.normal(55L, 700L)));
+
+        EarnedRunReconstructionResult first = service.replaceHalfInning(
+                1L, 20L, 5, "top", 9L, List.of(play), 500L);
+        EarnedRunReconstructionResult second = service.replaceHalfInning(
+                1L, 20L, 5, "top", 9L, List.of(play), 500L);
+
+        assertEquals(1, first.pitcherAbsoluteTotals().get(700L).runs());
+        assertEquals(1, second.pitcherAbsoluteTotals().get(700L).runs());
+        assertEquals(1, second.pitcherAbsoluteTotals().get(700L).earnedRuns());
+    }
+
+    @Test
+    @DisplayName("本半局无得分事件时仍返回全投手绝对值")
+    void emptyDeltaReturnsAbsoluteTotals() {
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 4, "top")).thenReturn(List.of());
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 4, "top", 9L, List.of(), 500L);
+
+        assertEquals(0, result.pitcherTotals().size());
+        assertEquals(0, result.pitcherAbsoluteTotals().get(700L).runs());
+        assertEquals(0, result.pitcherAbsoluteTotals().get(701L).runs());
+        assertNull(result.pitcherAbsoluteTotals().get(901L));
     }
 
     @Test

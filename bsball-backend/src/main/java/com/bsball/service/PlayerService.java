@@ -448,6 +448,10 @@ public class PlayerService {
      * @return 本人档案或 {@code null}
      */
     public Player getSelfProfile(Long userId) {
+        Long tenantId = CurrentUserHolder.getTenantId();
+        if (tenantId != null) {
+            return this.playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(userId, tenantId).orElse(null);
+        }
         return this.playerRepository.findFirstByUserIdAndDeletedAtIsNull(userId).orElse(null);
     }
 

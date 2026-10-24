@@ -75,7 +75,11 @@ public class GameApi {
     @GetMapping(value={"/{id}"})
     public Result<GameResponseDTO> get(@PathVariable Long id) {
         Game data = this.gameService.get(id);
-        return Result.ok(GameResponseDTO.from((Game)data));
+        GameResponseDTO dto = GameResponseDTO.from((Game)data);
+        if (dto != null) {
+            dto.setEngineManaged(Boolean.valueOf(this.gameService.isEngineManaged(data)));
+        }
+        return Result.ok(dto);
     }
 
     @GetMapping(value={"/{id}/live-snapshot"})

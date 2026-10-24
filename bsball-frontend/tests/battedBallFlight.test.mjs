@@ -5,12 +5,15 @@ import assert from 'node:assert/strict';
 import {
   BAT_SHAPES,
   BAT_SHAPE_COLORS,
+  HR_FLIGHT_MS,
+  HOME_RUN_DOT_COLOR,
   bipCodeShape,
   battedShapeOf,
   battedShapeColor,
   battedGeo,
   battedPointAt,
   battedPathD,
+  isHomeRunBip,
 } from '../src/utils/battedBallFlight.js';
 
 test('六类球种参数齐全，且强袭滚地/短打/高飞不再与同类共用参数', () => {
@@ -39,6 +42,26 @@ test('battedShapeOf：已知球种取表，未知/缺失按平飞兜底', () => 
   assert.deepEqual(battedShapeOf('bip:pop:bo:3'), { k: 0.6, ms: 1100 });
   assert.deepEqual(battedShapeOf('bip:xx:1b'), { k: 0.14, ms: 600 });
   assert.deepEqual(battedShapeOf(undefined), { k: 0.14, ms: 600 });
+});
+
+test('越墙全垒打识别与最慢时长；场内全垒打保持原时长', () => {
+  assert.equal(isHomeRunBip('bip:fly:hr'), true);
+  assert.equal(isHomeRunBip('bip:ld:hr'), true);
+  assert.equal(isHomeRunBip('bip:pop:hr'), true);
+  assert.equal(isHomeRunBip('bip:fly:iphr'), false);
+  assert.equal(isHomeRunBip('bip:fly:1b'), false);
+  assert.equal(isHomeRunBip(null), false);
+
+  assert.deepEqual(battedShapeOf('bip:fly:hr'), { k: BAT_SHAPES.fly[0], ms: HR_FLIGHT_MS });
+  assert.deepEqual(battedShapeOf('bip:ld:hr'), { k: BAT_SHAPES.ld[0], ms: HR_FLIGHT_MS });
+  // 场内全垒打不享受 HR 专属最慢时长
+  assert.deepEqual(battedShapeOf('bip:fly:iphr'), { k: BAT_SHAPES.fly[0], ms: BAT_SHAPES.fly[1] });
+  assert.equal(HR_FLIGHT_MS > Math.max(...Object.values(BAT_SHAPES).map((s) => s[1])), true, 'HR 时长应慢于现有所有球种');
+});
+
+test('轨迹配色：越墙全垒打用专属点位色，场内全垒打沿用飞球色', () => {
+  assert.equal(battedShapeColor('bip:fly:hr'), HOME_RUN_DOT_COLOR);
+  assert.equal(battedShapeColor('bip:fly:iphr'), BAT_SHAPE_COLORS.fly);
 });
 
 test('轨迹配色：滚地系统一黄色；平飞/飞球/高飞各自独立且非黄色', () => {

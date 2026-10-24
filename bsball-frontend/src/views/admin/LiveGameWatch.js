@@ -16,7 +16,7 @@ import { readWatchFieldSettings as kt } from '../../utils/gameDetailFieldSetting
 import { writeWatchFieldSettings as watchWriteSettings } from '../../utils/gameDetailFieldSettingsStorage';
 import { LIVE_WATCH_FIELD_SETTINGS_STORAGE_KEY as watchSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
 import { FIELD_SETTINGS_STORAGE_KEY as adminFieldSettingsKey } from '../../utils/gameDetailFieldSettingsStorage';
-import { DEFAULT_PITCHER_FIELDS as _a } from '../../utils/gameDetailFieldSettingsStorage';
+import { DEFAULT_PITCHER_FIELDS as _a, DEFAULT_BATTER_FIELDS as DBF, DEFAULT_FIELDING_FIELDS as FG } from '../../utils/gameDetailFieldSettingsStorage';
 import { POSITION_CODE_MAP as Ue } from '../../utils/starterFieldingValidation';
 import { buildPitchBlocks as ga } from '../../utils/liveGameFieldLayout';
 import { parseHeaderLine as wa } from '../../utils/liveGameFieldLayout';
@@ -307,7 +307,7 @@ var Ta={
           ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
         }
         ,fielding:{
-          po:0,a:0,e:0
+          po:0,a:0,e:0,ip:0,fieldingGs:0,dp:0,pb:0,catcherSb:0,catcherCs:0
         }
         
       }
@@ -328,73 +328,40 @@ var Ta={
     const pe=f(!0),T=f(""),x=f(!1),U=f(""),Fe=f(0),Ae=f(""),Te=f("客队"),Ee=f("主队"),j=f(0),z=f(0),Q=f(null),De=f([]),He=f({
       
     }
-    ),Ze=[{
-      key:"pa",label:"PA",visible:!0
+    ),Ze=DBF,qe=_a,watchFieldOptions={
+      defaultBatterFields:Ze,defaultPitcherFields:qe,defaultFieldingFields:FG,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
     }
-    ,{
-      key:"ab",label:"AB",visible:!0
-    }
-    ,{
-      key:"r",label:"R",visible:!0
-    }
-    ,{
-      key:"h",label:"H",visible:!0
-    }
-    ,{
-      key:"doubles",label:"2B",visible:!0
-    }
-    ,{
-      key:"triples",label:"3B",visible:!0
-    }
-    ,{
-      key:"hr",label:"HR",visible:!0
-    }
-    ,{
-      key:"shSf",label:"SH+SF",visible:!0
-    }
-    ,{
-      key:"rbi",label:"RBI",visible:!0
-    }
-    ,{
-      key:"bbHp",label:"BB+HBP",visible:!0
-    }
-    ,{
-      key:"so",label:"SO",visible:!0
-    }
-    ,{
-      key:"sb",label:"SB",visible:!0
-    }
-    ,{
-      key:"cs",label:"CS",visible:!0
-    }
-    ,{
-      key:"e",label:"E",visible:!0
-    }
-    ,{
-      key:"avg",label:"AVG",visible:!0
-    }
-    ,{
-      key:"obp",label:"OBP",visible:!0
-    }
-    ,{
-      key:"slg",label:"SLG",visible:!0
-    }
-    ,{
-      key:"ops",label:"OPS",visible:!0
-    }
-    ],qe=_a,te=kt({
-      defaultBatterFields:Ze,defaultPitcherFields:qe,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
-    }
-    ),Je=f(te.batterFields),Ye=f(te.pitcherFields),Qe=f(te.decimalPlaces),Xe=f(te.rateDisplayStyle),Ke=f(te.showTrailingZeros);
+    ,te=kt(watchFieldOptions),Je=f(te.batterFields),Ye=f(te.pitcherFields),ff=f(te.fieldingFields),Qe=f(te.decimalPlaces),Xe=f(te.rateDisplayStyle),Ke=f(te.showTrailingZeros);
     function et(){
-      const e=kt({
-        defaultBatterFields:Ze,defaultPitcherFields:qe,defaultDecimalPlaces:Nt,defaultRateDisplayStyle:Bt,defaultShowTrailingZeros:Lt
-      }
-      );
-      Je.value=e.batterFields,Ye.value=e.pitcherFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
+      const e=kt(watchFieldOptions);
+      Je.value=e.batterFields,Ye.value=e.pitcherFields,ff.value=e.fieldingFields,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros
     }
     function tt(e){
-      (e.key===adminFieldSettingsKey||e.key===watchSettingsKey)&&et()
+      if(e.key===adminFieldSettingsKey||e.key===watchSettingsKey){
+        et();
+        return
+      }
+      // 本地实时兜底：录入页写观赛快照时跨标签页立即应用，不依赖 postMessage 与 5s 轮询
+      if(!$.value)return;
+      const t=mt(ue.value,Y.value);
+      if(e.key!==t&&e.key!==mt(ue.value,void 0))return;
+      if(!e.newValue?.trim())return;
+      let a;
+      try{
+        a=JSON.parse(e.newValue)
+      }
+      catch{
+        return
+      }
+      const l=Number(a?.v??1);
+      if(!Number.isFinite(l)||l<1)return;
+      xe(a).then(()=>{
+        x.value=!0,T.value="",G.value="cache",U.value=new Date().toLocaleTimeString("zh-CN",{
+          hour12:!1
+        }
+        ),Fe.value=Date.now()
+      }
+      ).catch(()=>{})
     }
     // #211 观赛页「数据项调整」：右侧齿轮 + 独立列设置抽屉（不落其他页面的存储键）
     const watchSettingsOpen=f(!1),watchSmallScreen=f(typeof window<"u"&&window.innerWidth<768);
@@ -402,8 +369,8 @@ var Ta={
       watchSmallScreen.value=window.innerWidth<768
     }
     function watchSaveSettings(e){
-      Je.value=e.batterItems,Ye.value=e.pitcherItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
-        batterFields:Je.value,pitcherFields:Ye.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
+      Je.value=e.batterItems,Ye.value=e.pitcherItems,ff.value=e.fieldingItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
+        batterFields:Je.value,pitcherFields:Ye.value,fieldingFields:ff.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
       }
       ),watchMessage.success("保存成功")
     }
@@ -722,7 +689,7 @@ var Ta={
         }
         ,V=(g.ab??0)+(g.bb??0)+(g.hbp??0)+(g.sf??0)+(g.sh??0),C=B?.isPitcher??0;
         d.push({
-          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchBbHp:k.pitchBbHp,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0)
+          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchBbHp:k.pitchBbHp,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs
         }
         )
       }
@@ -948,8 +915,8 @@ var Ta={
       const o=e.atBatSummaries;
       ve.value=Array.isArray(o)?o:[],Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
     }
-    async function ke(){
-      if($.value||Date.now()-Fe.value<4e3)return;
+    async function ke(force){
+      if($.value||(!force&&Date.now()-Fe.value<4e3))return;
       const e=Y.value;
       if(!Number.isFinite(e)||e<=0){
         T.value="无效的比赛 ID";
@@ -979,8 +946,8 @@ var Ta={
       }
       
     }
-    async function We(){
-      if(Date.now()-Fe.value<4e3)return!1;
+    async function We(force){
+      if(!force&&Date.now()-Fe.value<4e3)return!1;
       const e=Y.value,t=ue.value;
       if(!Number.isFinite(e)||e<=0||!Number.isFinite(t)||t<=0)return!1;
       try{
@@ -1023,8 +990,15 @@ var Ta={
       const t=e.data;
       t?.type===dn&&Number(t.gameId??0)===Number(Y.value)&&ea(t.payload)
     }
+    function watchOnVisibility(){
+      if(document.visibilityState!=="visible"||Q.value?.status==="final")return;
+      // 后台标签被节流/冻结后切回前台：立即补读一次，不再等下一轮 5s 轮询
+      $.value?We(!0).then(e=>{
+        e||Ie()
+      }):ke(!0)
+    }
     async function ta(){
-      $.value=!$.value,G.value="",x.value=!1,T.value="",U.value="",$.value?await We()||Ie():ke()
+      $.value=!$.value,G.value="",x.value=!1,T.value="",U.value="",$.value?await We(!0)||Ie():ke()
     }
     async function aa(){
       pe.value=!0,T.value="";
@@ -1055,7 +1029,7 @@ var Ta={
       
     }
     return ca(()=>{
-      window.addEventListener("message",_t),window.addEventListener("storage",tt),window.addEventListener("resize",watchOnResize),watchOnResize(),aa(),Se=window.setInterval(()=>{
+      window.addEventListener("message",_t),window.addEventListener("storage",tt),document.addEventListener("visibilitychange",watchOnVisibility),window.addEventListener("resize",watchOnResize),watchOnResize(),aa(),Se=window.setInterval(()=>{
         Q.value?.status!=="final"&&($.value?We().then(e=>{
           e||Ie()
         }
@@ -1067,7 +1041,7 @@ var Ta={
       ,300):ke()
     }
     ),pa(()=>{
-      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),window.removeEventListener("resize",watchOnResize),Se!=null&&(clearInterval(Se),Se=null)
+      window.removeEventListener("message",_t),window.removeEventListener("storage",tt),document.removeEventListener("visibilitychange",watchOnVisibility),window.removeEventListener("resize",watchOnResize),Se!=null&&(clearInterval(Se),Se=null)
     }
     ),(e,t)=>{
       const a=ra,l=oa,r=sa,d=la,m=na,b=ua,w=ha;
@@ -1109,9 +1083,9 @@ var Ta={
           ])
         }
         ,null,2)]))])])]),dt.value&&De.value.length>=2?(c(),h("div",Ua,[M(fa,{
-          game:dt.value,stats:qt.value,teams:De.value,"players-map":He.value,"event-name":Ae.value,"batter-fields":Je.value,"pitcher-fields":Ye.value,"decimal-places":Qe.value,"rate-display-style":Xe.value,"show-trailing-zeros":Ke.value,"live-watch-batter-player-id":Gt.value,"live-watch-pitcher-player-id":Ut.value
+          game:dt.value,stats:qt.value,teams:De.value,"players-map":He.value,"event-name":Ae.value,"batter-fields":Je.value,"pitcher-fields":Ye.value,"fielding-fields":ff.value,"decimal-places":Qe.value,"rate-display-style":Xe.value,"show-trailing-zeros":Ke.value,"live-watch-batter-player-id":Gt.value,"live-watch-pitcher-player-id":Ut.value
         }
-        ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","decimal-places","rate-display-style","show-trailing-zeros","live-watch-batter-player-id","live-watch-pitcher-player-id"])])):F("",!0),i("div",ja,[i("div",za,[i("div",Za,[i("div",qa,[i("div",Ja,[t[8]||(t[8]=i("div",{
+        ,null,8,["game","stats","teams","players-map","event-name","batter-fields","pitcher-fields","fielding-fields","decimal-places","rate-display-style","show-trailing-zeros","live-watch-batter-player-id","live-watch-pitcher-player-id"])])):F("",!0),i("div",ja,[i("div",za,[i("div",Za,[i("div",qa,[i("div",Ja,[t[8]||(t[8]=i("div",{
           class:"pbp-panel-header__title"
         }
         ,[i("span",null,"Play-by-Play")],-1)),M(r,{
@@ -1302,7 +1276,7 @@ var Ta={
         }
         ,8,["modelValue"]))])])])])])]))]),_:1
       }
-      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"default-batter-items":Ze,"default-pitcher-items":qe,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
+      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"fielding-items":ff.value,"default-batter-items":Ze,"default-pitcher-items":qe,"default-fielding-items":FG,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","fielding-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
     }
     
   }

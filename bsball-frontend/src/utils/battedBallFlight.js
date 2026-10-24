@@ -13,6 +13,17 @@ export const BAT_SHAPES = {
 // 未知/缺失球种回退参数（同录入页原兜底：按平飞球）
 const DEFAULT_SHAPE = [0.14, 600];
 
+// 越墙全垒打专用飞行时长（现有最慢 pop=1100ms；全垒打 1800ms 为全场最慢）
+export const HR_FLIGHT_MS = 1800;
+
+// 越墙全垒打统一点位色（彩虹轨迹走渐变；圆点/列表色块用这个实色）
+export const HOME_RUN_DOT_COLOR = '#FFD700';
+
+/** 是否为越墙全垒打（bip:*:hr）。场内全垒打 bip:*:iphr 不在此列。 */
+export function isHomeRunBip(bipCode) {
+  return /:hr$/i.test(String(bipCode ?? '').trim());
+}
+
 // 轨迹配色（2026-10-10 用户裁定）：滚地系（g/hg/b）统一黄色，以速度区分；
 // 平飞/飞球/内野高飞各自独立颜色
 export const BAT_SHAPE_COLORS = {
@@ -24,8 +35,9 @@ export const BAT_SHAPE_COLORS = {
   pop: '#B388FF', // 内野高飞球：紫（高弧滞空）
 };
 
-/** 球种 -> 轨迹颜色（未知回退平飞色） */
+/** 球种 -> 轨迹颜色（越墙全垒打返回专属点位色；未知回退平飞色） */
 export function battedShapeColor(bipCode) {
+  if (isHomeRunBip(bipCode)) return HOME_RUN_DOT_COLOR;
   return BAT_SHAPE_COLORS[bipCodeShape(bipCode)] ?? BAT_SHAPE_COLORS.ld;
 }
 
@@ -34,10 +46,10 @@ export function bipCodeShape(bipCode) {
   return String(bipCode ?? "").match(/^bip:([^:]+):/)?.[1] ?? null;
 }
 
-/** 球种 -> { k, ms }（含兜底，行为与录入页 battedShapeOf 一致） */
+/** 球种 -> { k, ms }（越墙全垒打时长最慢；场内全垒打保持原球种时长） */
 export function battedShapeOf(bipCode) {
   const t = BAT_SHAPES[bipCodeShape(bipCode)] ?? DEFAULT_SHAPE;
-  return { k: t[0], ms: t[1] };
+  return { k: t[0], ms: isHomeRunBip(bipCode) ? HR_FLIGHT_MS : t[1] };
 }
 
 /** 二次贝塞尔控制点：中点沿弦法线抬高 k*弦长（k<=0 时为弦中点，退化为直线） */

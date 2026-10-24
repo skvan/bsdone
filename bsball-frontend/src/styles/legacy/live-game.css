@@ -73,3 +73,10 @@
 .runner-token-circle--floater{opacity:.92}
 .runner-token-circle.flow-highlight-token{stroke-width:3;animation:defender-card-pulse 1s ease-in-out infinite}
 .runner-token-num{fill:#2f6fd0;font-size:15px;font-weight:800}
+
+/* 越墙全垒打轨迹与落点特效（实时录入） */
+/* 复合类名用于压过带 scope 属性的 .batted-trail 基础样式（同优先级、后声明生效） */
+.batted-trail.batted-trail--hr{stroke-width:7;opacity:1;filter:drop-shadow(0 0 5px rgba(255,255,255,.85)) drop-shadow(0 0 14px rgba(255,79,216,.7))}
+.hr-fireworks-layer,.hr-drag-preview{pointer-events:none}
+.hr-drag-preview circle{filter:drop-shadow(0 0 6px rgba(255,79,216,.8))}
+.hr-drag-preview__label{fill:#fff;font-size:20px;font-weight:700;paint-order:stroke;stroke:#14532d;stroke-width:4px}

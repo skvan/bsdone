@@ -20,6 +20,7 @@ const {
   writeWatchFieldSettings,
   readFieldSettings,
   writeFieldSettings,
+  DEFAULT_BATTER_FIELDS,
   DEFAULT_PITCHER_FIELDS
 } = await import('../src/utils/gameDetailFieldSettingsStorage.js');
 
@@ -63,6 +64,11 @@ function makeState(overrides = {}) {
     ...overrides
   };
 }
+
+test('默认打者/投手触身球列缩写统一为 HBP（#387）', () => {
+  assert.equal(DEFAULT_BATTER_FIELDS.find((x) => x.key === 'hbp').label, 'HBP');
+  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchHbp').label, 'HBP');
+});
 
 test('未设置任何存储时返回默认值，且不创建观赛键（现状链的迁移落盘行为保留）', () => {
   store.clear();
@@ -121,11 +127,6 @@ test('观赛键可见列少于 6 时按序补足保底', () => {
   const result = readWatchFieldSettings(DEFAULTS);
   assert.equal(result.batterFields.filter((item) => item.visible).length, 6);
   assert.equal(result.pitcherFields.filter((item) => item.visible).length, 6);
-});
-
-test('默认投手触身球列缩写统一为 HBP（#387）', () => {
-  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchHbp').label, 'HBP');
-  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchBbHp').label, 'BB+HBP');
 });
 
 test('取消勾选投手 PA/BF 后回读仍为隐藏（#211 回归：不再被夹取回默认可见）', () => {

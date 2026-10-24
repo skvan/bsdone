@@ -45,6 +45,7 @@ import PortalStats from '../views/portal/PortalStats.js';
 import PortalGameDetail from '../views/portal/PortalGameDetail.js';
 import PortalStadiumDetail from '../views/portal/PortalStadiumDetail.js';
 import PortalAccountProfile from '../views/portal/PortalAccountProfile.js';
+import PortalClubhouse from '../views/portal/PortalClubhouse.vue';
 import PortalVisitHitList from '../views/admin/PortalVisitHitList.js';
 import PortalFeedbackList from '../views/admin/PortalFeedbackList.js';
 import IpLocationCache from '../views/admin/IpLocationCache.js';
@@ -140,6 +141,7 @@ const routes = [
         { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
         { path: 'stats', name: 'PortalStats', component: PortalStats },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },
+        { path: 'me', name: 'PortalClubhouse', component: PortalClubhouse, meta: { title: '我的主场', requiresPortalAuth: true } },
         { path: 'account/profile', name: 'PortalAccountProfile', component: PortalAccountProfile },
         { path: 'account/login', name: 'PortalAccountLogin', component: AccountLogin },
         { path: 'account/register', name: 'PortalRegister', component: Register },

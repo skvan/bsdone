@@ -100,11 +100,6 @@
         "definition": "投球が打者に当たり一塁が与えられた回数",
         "shortLabel": "HBP"
       },
-      "pitchHbp": {
-        "fullName": "与死球",
-        "definition": "投手が投球で打者に死球を与えた回数",
-        "shortLabel": "HBP"
-      },
       "so": {
         "fullName": "三振",
         "definition": "打者が3ストライクでアウトになった回数",
@@ -424,6 +419,51 @@
         "fullName": "Balls in Play Percentage",
         "definition": "Share of plate appearances that end with a ball in play",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "妨害出塁",
+        "definition": "打者が守備側の妨害・阻止により一塁へ進む。打席に数え、打数には数えない",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "被二塁打",
+        "definition": "投手が打たれた二塁打",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "被三塁打",
+        "definition": "投手が打たれた三塁打",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "被犠打",
+        "definition": "投手に対する犠牲バント",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "被犠飛",
+        "definition": "投手に対する犠牲フライ",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "被妨害出塁",
+        "definition": "投手側の守備妨害・阻止により打者を出塁させる",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "非自責点",
+        "definition": "失策など投手の責任以外で失った点",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "判定保留失点",
+        "definition": "自責点判定が未確定の失点",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "盗塁許容",
+        "definition": "捕手が許した盗塁数",
+        "shortLabel": "SB"
       }
     }
   },
@@ -468,6 +508,7 @@
     "adminEntry": "管理 / ログイン",
     "portalLoginEntry": "Sign in / Register",
     "adminDashboard": "管理画面へ",
+    "clubhouse": "マイホーム",
     "logout": "ログアウト",
     "logoutSuccess": "ログアウトしました",
     "userMenu": "アカウントメニュー",
@@ -960,9 +1001,16 @@
         "cs": "Caught stealing.",
         "e": "Errors.",
         "avg": "Batting average (H/AB).",
-        "obp": "On-base percentage (approx. (H+BB+HBP)/PA on this page).",
+        "obp": "出塁率（(H+BB+HBP)/(AB+BB+HBP+SF)）",
         "slg": "Slugging percentage (TB/AB).",
-        "ops": "On-base plus slugging (OBP+SLG)."
+        "ops": "On-base plus slugging (OBP+SLG).",
+        "gdp": "併殺打（Grounded into Double Play）",
+        "sh": "犠牲バント（Sacrifice Bunt）",
+        "sf": "犠牲フライ（Sacrifice Fly）",
+        "bb": "四球（故意四球を含む）",
+        "ibb": "故意四球（Intentional Walk）",
+        "hbp": "死球（Hit By Pitch）",
+        "io": "妨害出塁（Obstruction/Interference）"
       },
       "pitcher": {
         "ip": "Innings pitched.",
@@ -973,7 +1021,7 @@
         "pitchSo": "Strikeouts recorded.",
         "pitchHr": "Home runs allowed (over the fence).",
         "pitchInsideParkHr": "Inside-the-park home runs (IPHR).",
-        "pitAb": "Batters faced minus walks, IBB, and HBP (not batter AB).",
+        "pitAb": "被打数（BF−BB−HBP；BB は IBB を含む）",
         "pitE": "Fielding errors on this pitcher’s batting-stat line for the game.",
         "np": "Total pitches thrown.",
         "pitchPa": "Plate appearances faced.",
@@ -993,7 +1041,12 @@
         "hld": "Hold.",
         "cg": "Complete game flag (0=no, 1=yes).",
         "pg": "Perfect game flag (0=no, 1=yes).",
-        "era": "Earned run average (ER×9/IP)."
+        "era": "Earned run average (ER×9/IP).",
+        "pitchDoubles": "被二塁打（Doubles Allowed）",
+        "pitchTriples": "被三塁打（Triples Allowed）",
+        "pitchSh": "被犠打（Sacrifice Bunts Allowed）",
+        "pitchSf": "被犠飛（Sacrifice Flies Allowed）",
+        "pitchIo": "被妨害出塁（Obstruction Allowed）"
       }
     }
   },
@@ -1101,6 +1154,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1129,7 +1184,14 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "被盗塁",
+      "io": "妨害出塁",
+      "pitchDoubles": "被二塁打",
+      "pitchTriples": "被三塁打",
+      "pitchSh": "被犠打",
+      "pitchSf": "被犠飛",
+      "pitchIo": "被妨害出塁"
     },
     "colEn": {
       "rank": "Rank",
@@ -1173,6 +1235,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1201,7 +1265,14 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1272,13 +1343,24 @@
       "sb": "Stolen bases",
       "cs": "Caught stealing",
       "bbHp": "Walks + HBP",
-      "so": "Strikeouts"
+      "so": "Strikeouts",
+      "gdp": "Grounded into double play",
+      "sh": "Sac bunts",
+      "sf": "Sac flies",
+      "bb": "Walks (incl. IBB)",
+      "ibb": "Intentional walks",
+      "hbp": "Hit by pitch",
+      "io": "Reached on obstruction"
     },
     "careerPitch": {
       "gp": "Games played",
       "ip": "Innings pitched",
       "era": "Earned run average",
       "whip": "WHIP",
+      "pitchR": "Runs allowed",
+      "er": "Earned runs",
+      "unearnedR": "Unearned runs",
+      "pendingR": "Pending runs",
       "pitchBf": "Batters faced (BF)",
       "pitchAb": "At bats against (BF − BB − IBB − HBP)",
       "ggComplete": "Complete games (GG)",
@@ -1289,7 +1371,15 @@
       "bbHp": "Walks + HBP allowed",
       "so": "Strikeouts",
       "wp": "Wild pitches",
-      "bk": "Balks"
+      "bk": "Balks",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchBb": "Walks (incl. IBB)",
+      "pitchIbb": "Intentional walks",
+      "pitchHbp": "Hit by pitch",
+      "pitchIo": "Obstruction allowed"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1299,7 +1389,9 @@
       "a": "Assists",
       "e": "Errors",
       "tcPct": "Fielding percentage",
+      "dp": "Double plays",
       "pb": "Passed balls (catcher)",
+      "catcherSb": "Stolen bases allowed",
       "catcherCs": "Caught stealing"
     },
     "seasonBlock": "{season} · {event}",
@@ -1334,7 +1426,7 @@
       "era": "防御率",
       "whip": "WHIP",
       "pitchBf": "対戦打者数",
-      "pitchAb": "打数相当（BF−BB−IBB−HBP）",
+      "pitchAb": "被打数：BF から四球と死球を引いた数（BB は IBB を含む）",
       "ggComplete": "完投",
       "pgShutout": "完封",
       "pitchH": "被安打",
@@ -1363,7 +1455,21 @@
       "er": "自責点",
       "pitchBb": "与四球",
       "pitchHbp": "与死球",
-      "dp": "併殺"
+      "dp": "併殺",
+      "unearnedR": "非自責点（防御率に含まれない）",
+      "pendingR": "自責点判定待ちの失点",
+      "catcherSb": "捕手時の盗塁許容数",
+      "sh": "犠打数",
+      "sf": "犠飛数",
+      "ibb": "敬遠四球",
+      "hbp": "死球",
+      "io": "妨害出塁",
+      "pitchDoubles": "被二塁打",
+      "pitchTriples": "被三塁打",
+      "pitchSh": "被犠打",
+      "pitchSf": "被犠飛",
+      "pitchIbb": "与敬遠四球",
+      "pitchIo": "被妨害出塁"
     },
     "gameLogColTip": {
       "date": "試合日。",
@@ -1682,6 +1788,7 @@
     "threePlaces": "3 places",
     "batter": "打者",
     "pitcher": "投手",
+    "fielding": "守備",
     "hintDrag": "Check to show, drag to reorder",
     "hintMinVisible": "Keep at least {batterMin} batter stat columns and {pitcherMin} pitcher stat columns visible (excluding the fixed name column).",
     "minVisibleUncheckReject": "Keep at least {n} columns visible; cannot hide more.",
@@ -1703,6 +1810,13 @@
         "shSf": "Sacrifice hits (SH + SF)",
         "rbi": "Runs batted in",
         "bbHp": "Walks + hit by pitch",
+        "gdp": "併殺打",
+        "sh": "犠牲バント",
+        "sf": "犠牲フライ",
+        "bb": "四球",
+        "ibb": "故意四球",
+        "hbp": "死球",
+        "io": "妨害出塁",
         "so": "Strikeouts",
         "sb": "Stolen bases",
         "cs": "Caught stealing",
@@ -1711,6 +1825,17 @@
         "obp": "On-base percentage",
         "slg": "Slugging percentage",
         "ops": "On-base plus slugging"
+      },
+      "fielding": {
+        "fieldingGs": "守備先発",
+        "po": "刺殺",
+        "a": "補殺",
+        "e": "失策",
+        "dp": "併殺",
+        "defInn": "守備回数",
+        "pb": "捕逸",
+        "catcherSb": "被盗塁",
+        "catcherCs": "盗塁阻止"
       },
       "pitcher": {
         "ip": "Innings pitched",
@@ -1933,9 +2058,12 @@
     "colTeams": "所属チーム",
     "freeAgent": "フリー",
     "generate": "招待を発行",
+    "directJoin": "チームに追加",
+    "directJoinDone": "「{name}」をチームに追加しました",
+    "alreadyJoined": "この選手はすでにチームにいます",
     "emptySearch": "該当選手なし",
     "linkTitle": "招待リンクを発行しました",
-    "linkHint": "リンクを選手に送付し、本人がログイン/登録後に確認すると入団します（未紐付けは個別招待、紐付け済みは共通リンク）。",
+    "linkHint": "リンクを選手に送付し、本人がログイン/登録後に確認すると入団します。",
     "copy": "リンクをコピー",
     "copyDone": "リンクをコピーしました",
     "copyUnsupported": "コピーに失敗しました。手動でコピーしてください",
@@ -1955,7 +2083,7 @@
     "emptyInvites": "発行済みの招待はありません",
     "createFailed": "発行に失敗しました",
     "revokeFailed": "取消に失敗しました",
-    "genericHint": "本チームに未在籍の選手のみ表示します。紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
+    "genericHint": "本チームに未在籍の選手のみ表示します。未紐付け選手は直接加入し（現在の所属チームは保持）、紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
     "loadFailed": "読み込みに失敗しました"
   }
 }

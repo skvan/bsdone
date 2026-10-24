@@ -100,11 +100,6 @@
         "definition": "타자가 투구에 맞아 1루가 주어진 경우",
         "shortLabel": "HBP"
       },
-      "pitchHbp": {
-        "fullName": "사구 허용",
-        "definition": "투수가 타자에게 사구를 허용한 횟수",
-        "shortLabel": "HBP"
-      },
       "so": {
         "fullName": "삼진",
         "definition": "타자가 3스트라이크로 아웃된 경우",
@@ -424,6 +419,51 @@
         "fullName": "인플레이 타구 비율",
         "definition": "타석 중 인플레이 타구로 끝난 비율",
         "shortLabel": "BIP%"
+      },
+      "io": {
+        "fullName": "방해 출루",
+        "definition": "수비 방해 또는 저지로 타자가 1루에 진루; 타석에는 포함되고 타수에는 제외",
+        "shortLabel": "IO"
+      },
+      "pitchDoubles": {
+        "fullName": "피2루타",
+        "definition": "투수가 허용한 2루타",
+        "shortLabel": "2B"
+      },
+      "pitchTriples": {
+        "fullName": "피3루타",
+        "definition": "투수가 허용한 3루타",
+        "shortLabel": "3B"
+      },
+      "pitchSh": {
+        "fullName": "피희생번트",
+        "definition": "투수 상대 희생번트",
+        "shortLabel": "SH"
+      },
+      "pitchSf": {
+        "fullName": "피희생플라이",
+        "definition": "투수 상대 희생플라이",
+        "shortLabel": "SF"
+      },
+      "pitchIo": {
+        "fullName": "피방해 출루",
+        "definition": "투수 측 수비 방해/저지로 타자가 출루",
+        "shortLabel": "IO"
+      },
+      "unearnedR": {
+        "fullName": "비자책점",
+        "definition": "실책 등 투수 책임이 아닌 실점",
+        "shortLabel": "UER"
+      },
+      "pendingR": {
+        "fullName": "판정 대기 실점",
+        "definition": "자책점 판정이 아직 확정되지 않은 실점",
+        "shortLabel": "PEND"
+      },
+      "catcherSb": {
+        "fullName": "도루 허용",
+        "definition": "포수가 허용한 도루 수",
+        "shortLabel": "SB"
       }
     }
   },
@@ -467,6 +507,7 @@
     "themeAuto": "시스템",
     "adminEntry": "관리자 / 로그인",
     "adminDashboard": "관리자 페이지",
+    "clubhouse": "내 홈",
     "logout": "로그아웃",
     "logoutSuccess": "로그아웃했습니다",
     "userMenu": "계정 메뉴",
@@ -959,9 +1000,16 @@
         "cs": "도루 실패.",
         "e": "실책.",
         "avg": "타율(H/AB).",
-        "obp": "출루율(이 페이지는 (H+BB+HBP)/PA 근사).",
+        "obp": "출루율((H+BB+HBP)/(AB+BB+HBP+SF))",
         "slg": "장타율(TB/AB).",
-        "ops": "OPS(출루율+장타율)."
+        "ops": "OPS(출루율+장타율).",
+        "gdp": "병살타(Grounded into Double Play)",
+        "sh": "희생번트(Sacrifice Bunt)",
+        "sf": "희생플라이(Sacrifice Fly)",
+        "bb": "볼넷(고의사구 포함)",
+        "ibb": "고의사구(Intentional Walk)",
+        "hbp": "사구(Hit By Pitch)",
+        "io": "방해 출루(Obstruction/Interference)"
       },
       "pitcher": {
         "ip": "이닝.",
@@ -972,7 +1020,7 @@
         "pitchSo": "탈삼진.",
         "pitchHr": "피홈런(넘어간 홈런).",
         "pitchInsideParkHr": "장내 홈런 허용.",
-        "pitAb": "상대 타수(BF−BB−IBB−HBP; 타자 AB와 다름).",
+        "pitAb": "상대 타수(BF−BB−HBP; BB는 IBB 포함)",
         "pitE": "해당 투수 타격 기록 행의 수비 실책.",
         "np": "투구 수.",
         "pitchPa": "상대 타석(PA).",
@@ -992,7 +1040,12 @@
         "hld": "홀드.",
         "cg": "완투 여부(0/1).",
         "pg": "퍼펙트 여부(0/1).",
-        "era": "방어율(ER×9/IP)."
+        "era": "방어율(ER×9/IP).",
+        "pitchDoubles": "피2루타(Doubles Allowed)",
+        "pitchTriples": "피3루타(Triples Allowed)",
+        "pitchSh": "피희생번트(Sacrifice Bunts Allowed)",
+        "pitchSf": "피희생플라이(Sacrifice Flies Allowed)",
+        "pitchIo": "피방해 출루(Obstruction Allowed)"
       }
     }
   },
@@ -1100,6 +1153,8 @@
       "bk": "보크",
       "r": "득점",
       "er": "자책",
+      "unearnedR": "비자책",
+      "pendingR": "미확정",
       "go": "GO",
       "fo": "FO",
       "goFo": "땅볼·뜬공 아웃 비율",
@@ -1126,7 +1181,14 @@
       "e": "실책",
       "inn": "수비 이닝",
       "dp": "병살",
-      "tcPct": "수비율"
+      "tcPct": "수비율",
+      "catcherSb": "도루 허용",
+      "io": "방해 출루",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchIo": "피방해 출루"
     },
     "colEn": {
       "rank": "Rank",
@@ -1170,6 +1232,8 @@
       "bk": "BK",
       "r": "R",
       "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1196,7 +1260,14 @@
       "e": "E",
       "inn": "INN",
       "dp": "DP",
-      "tcPct": "TC%"
+      "tcPct": "TC%",
+      "catcherSb": "SB",
+      "io": "IO",
+      "pitchDoubles": "2B",
+      "pitchTriples": "3B",
+      "pitchSh": "SH",
+      "pitchSf": "SF",
+      "pitchIo": "IO"
     }
   },
   "player": {
@@ -1267,13 +1338,24 @@
       "sb": "도루",
       "cs": "도루 실패",
       "bbHp": "볼넷+사구",
-      "so": "삼진"
+      "so": "삼진",
+      "gdp": "병살타",
+      "sh": "희생번트",
+      "sf": "희생플라이",
+      "bb": "볼넷(IBB 포함)",
+      "ibb": "고의사구",
+      "hbp": "사구",
+      "io": "방해 출루"
     },
     "careerPitch": {
       "gp": "출장 경기",
       "ip": "이닝",
       "era": "평균자책점",
       "whip": "WHIP",
+      "pitchR": "실점",
+      "er": "자책점",
+      "unearnedR": "비자책점",
+      "pendingR": "판정 대기 실점",
       "pitchBf": "BF",
       "pitchAb": "자유 타석(타수 성격)",
       "ggComplete": "완투(GG)",
@@ -1284,7 +1366,15 @@
       "bbHp": "볼넷+사구 허용",
       "so": "탈삼진",
       "wp": "폭투",
-      "bk": "보크"
+      "bk": "보크",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchBb": "볼넷(IBB 포함)",
+      "pitchIbb": "고의사구",
+      "pitchHbp": "사구",
+      "pitchIo": "피방해 출루"
     },
     "careerFld": {
       "gp": "출장 경기",
@@ -1294,7 +1384,9 @@
       "a": "어시스트",
       "e": "실책",
       "tcPct": "수비율",
+      "dp": "병살 수비",
       "pb": "포실",
+      "catcherSb": "도루 허용",
       "catcherCs": "도루 저지"
     },
     "seasonBlock": "{season} · {event}",
@@ -1329,7 +1421,7 @@
       "era": "자책점 평균",
       "whip": "이닝당 출루 허용",
       "pitchBf": "맞이한 타자 총인원",
-      "pitchAb": "자유 타석, 대면 타자에서 볼넷·고의·사구 제외",
+      "pitchAb": "상대 타수: BF에서 볼넷과 사구를 뺀 수(BB는 IBB 포함)",
       "ggComplete": "완투",
       "pgShutout": "완봉",
       "pitchH": "피안타",
@@ -1358,7 +1450,21 @@
       "er": "자책점",
       "pitchBb": "볼넷 허용",
       "pitchHbp": "사구",
-      "dp": "병살"
+      "dp": "병살",
+      "unearnedR": "비자책점(평균자책점 제외)",
+      "pendingR": "자책점 판정 대기 실점",
+      "catcherSb": "포수 포지션에서 도루 허용 수",
+      "sh": "희생번트",
+      "sf": "희생플라이",
+      "ibb": "고의사구",
+      "hbp": "사구",
+      "io": "방해 출루",
+      "pitchDoubles": "피2루타",
+      "pitchTriples": "피3루타",
+      "pitchSh": "피희생번트",
+      "pitchSf": "피희생플라이",
+      "pitchIbb": "고의사구 허용",
+      "pitchIo": "피방해 출루"
     },
     "gameLogColTip": {
       "date": "경기 일자.",
@@ -1677,6 +1783,7 @@
     "threePlaces": "3자리",
     "batter": "타자",
     "pitcher": "투수",
+    "fielding": "수비",
     "hintDrag": "체크로 표시, 드래그로 순서 변경",
     "hintMinVisible": "타자·투수 통계 열(이름 열 제외)은 각각 최소 {batterMin}열·{pitcherMin}열을 표시해야 합니다.",
     "minVisibleUncheckReject": "최소 {n}열은 표시해야 하며 더 줄일 수 없습니다.",
@@ -1698,6 +1805,13 @@
         "shSf": "희생타(번트+플라이)",
         "rbi": "타점",
         "bbHp": "볼넷+사구",
+        "gdp": "병살타",
+        "sh": "희생 번트",
+        "sf": "희생 플라이",
+        "bb": "볼넷",
+        "ibb": "고의사구",
+        "hbp": "사구",
+        "io": "주루 방해",
         "so": "삼진",
         "sb": "도루 성공",
         "cs": "도루 실패",
@@ -1706,6 +1820,17 @@
         "obp": "출루율",
         "slg": "장타율",
         "ops": "OPS(출루율+장타율)"
+      },
+      "fielding": {
+        "fieldingGs": "선발 수비",
+        "po": "자살",
+        "a": "보살",
+        "e": "실책",
+        "dp": "병살",
+        "defInn": "수비 이닝",
+        "pb": "포일",
+        "catcherSb": "도루 허용",
+        "catcherCs": "도루 저지"
       },
       "pitcher": {
         "ip": "이닝",
@@ -1928,9 +2053,12 @@
     "colTeams": "현 소속팀",
     "freeAgent": "무소속",
     "generate": "초대 생성",
+    "directJoin": "팀에 추가",
+    "directJoinDone": "\"{name}\" 선수를 팀에 추가했습니다",
+    "alreadyJoined": "이미 본 팀에 소속된 선수입니다",
     "emptySearch": "일치하는 선수가 없습니다",
     "linkTitle": "초대 링크 생성됨",
-    "linkHint": "링크를 선수에게 전달하세요. 본인이 로그인/가입 후 확인하면 입단합니다(미연결은 지정 초대, 연결됨은 공용 링크).",
+    "linkHint": "링크를 선수에게 전달하세요. 본인이 로그인/가입 후 확인하면 입단합니다.",
     "copy": "링크 복사",
     "copyDone": "링크를 복사했습니다",
     "copyUnsupported": "복사 실패. 수동으로 복사하세요",
@@ -1950,7 +2078,7 @@
     "emptyInvites": "생성된 초대가 없습니다",
     "createFailed": "생성 실패",
     "revokeFailed": "철회 실패",
-    "genericHint": "본 팀에 소속되지 않은 선수만 표시합니다. 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
+    "genericHint": "본 팀에 소속되지 않은 선수만 표시합니다. 미연결 선수는 현재 소속팀을 유지한 채 바로 합류하며, 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
     "loadFailed": "불러오기 실패"
   }
 }

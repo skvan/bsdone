@@ -1,5 +1,5 @@
 <template>
-  <div v-loading="loading" class="admin-page live-game-lineup-board">
+  <div v-loading="loading" class="admin-page live-game-lineup-board" :class="{ 'form-compact': formCompact }">
     <div class="lineup-board-header">
       <span class="header-left">确认先发阵容 · {{ eventName }}</span>
       <div class="header-actions">
@@ -10,10 +10,10 @@
       </div>
     </div>
 
-    <!-- 设置区：与旧件同字段同校验 -->
+    <!-- 设置区：与旧件同字段同校验；画布需要让位时（form-compact）压为两行 -->
     <el-form :model="setupForm" label-width="90px" class="setup-form">
       <el-row :gutter="16">
-        <el-col :span="12">
+        <el-col :span="formCompact ? 8 : 12">
           <el-form-item label="比赛模式">
             <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
               <el-option label="棒球" value="BASEBALL" />
@@ -21,11 +21,22 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col :span="formCompact ? 8 : 12">
           <el-form-item label="场地">
             <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
               <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
             </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col v-if="formCompact" :span="8">
+          <el-form-item label="比赛时间">
+            <el-date-picker
+              v-model="gameTime"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选择比赛时间"
+              style="width: 100%"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -57,7 +68,7 @@
           </el-form-item>
         </el-col>
       </el-row>
-      <el-row :gutter="16">
+      <el-row v-if="!formCompact" :gutter="16">
         <el-col :span="12">
           <el-form-item label="比赛时间">
             <el-date-picker
@@ -79,11 +90,16 @@
       <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
     </el-radio-group>
 
-    <div v-if="pending" class="lineup-pending-hint">
+    <div v-if="pending" ref="pendingHintEl" class="lineup-pending-hint">
       待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
     </div>
 
-    <div class="lineup-board" :class="{ 'is-mobile': isMobile }">
+    <div
+      ref="boardEl"
+      class="lineup-board"
+      :class="{ 'is-mobile': isMobile }"
+      :style="fieldCap ? { '--lineup-field-cap': `${fieldCap}px` } : null"
+    >
       <LineupFieldBoard
         ref="fieldBoard"
         :mode="mode"
@@ -143,6 +159,7 @@ import { useTabsStore } from '../../stores/tabs';
 import { useMediaQuery } from '../../composables/useMediaQuery';
 import { useLineupBoard } from '../../composables/useLineupBoard';
 import { useLineupDrag } from '../../composables/useLineupDrag';
+import { useLineupCanvasFit } from '../../composables/useLineupCanvasFit';
 import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
@@ -187,6 +204,11 @@ const templateDialog = ref({ visible: false, team: 'away', list: [], selected: n
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
+const boardEl = ref(null);          // 阵容板网格容器（画布自适应用）
+const pendingHintEl = ref(null);    // 待放置提示条（临时占据球场上方空间，判定时剔除）
+
+// 画布自适应（#344）：实测可用空间计算球场列宽上限；画布需要让位时把设置区压为两行
+const { formCompact, fieldCap } = useLineupCanvasFit({ boardEl, pendingHintEl, isMobile });
 
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
 const rosterHint = computed(() => {
@@ -365,9 +387,15 @@ function handleDrop(player, target) {
     b.sendToBench(player.id);
   }
   else if (target.kind === 'pool') {
-    // 替补卡片拖回池 = 从替补名单移除（sendBackToBench 是「加入替补」，不可混用）
-    if (b.bench.value.some((p) => String(p.id) === String(player.id))) {
+    // 替补卡片拖回池 = 从替补名单移除；场上球员 / 仅守备投手拖回池 = 直接从阵容移除
+    const inBench = b.bench.value.some((p) => String(p.id) === String(player.id));
+    const inRows = findRowIndex(b.rows.value, player.id) >= 0;
+    const fieldingPitcher =
+      b.fieldingPitcherId.value != null && String(b.fieldingPitcherId.value) === String(player.id);
+    if (inBench) {
       b.setBench(b.bench.value.filter((p) => String(p.id) !== String(player.id)).map((p) => p.id));
+    } else if (inRows || fieldingPitcher) {
+      b.sendToPool(player.id);
     }
   }
   else if (target.kind === 'outside') {

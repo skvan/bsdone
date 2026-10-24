@@ -53,7 +53,7 @@ test('catchBackDoublePlayGroup：逐名呈现接杀 PO、回传 A、踩垒 PO �
 test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/bf/提示）', () => {
   assert.match(src, /e!=="G"&&\(l\.abCatchRecorded=\{/, 'bt G/F/L/TAG 接杀置位（非 G）');
   assert.match(src, /Dn\(t\),l\.abCatchRecorded=\{\r?\n\s+pos:t\[0\]\?\?null/, 'bt SF 接杀置位');
-  assert.match(src, /function bt\(e,t,a,rbiOverride\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
+  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
   assert.match(src, /function Wt\(e\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Wt（投球）开头清除');
   assert.match(src, /function Hf\(\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Hf（故意四坏）开头清除');
   assert.match(src, /e\.id==="out_last"&&l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning/, 'kp out_last 分支（含半局校验）');
@@ -72,7 +72,7 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
 });
 
 test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账缺口）', () => {
-  assert.match(src, /l\.addLog\(LgAdvance\(\{\r?\n\s+reasonCn:"安打得分",runner:N,from:3,to:4,rbiNote:Rb\?/, 'pu 安打得分注记（含计数）');
+  assert.match(src, /l\.addLog\(LgAdvance\(\{\r?\n\s+reasonCn:LgRunCauseLabel\(runCause,"score"\),runner:N,from:3,to:4,rbiNote:Rb\?/, 'pu 得分注记（按 runCause）');
   assert.match(src, /reasonCn:"野选推进得分",runner:p,from:3,to:4,rbiNote:/, 'fp 野选推进得分注记');
   assert.match(src, /hn\("HR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'HR 注记');
   assert.match(src, /hn\("IPHR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'IPHR 注记');
