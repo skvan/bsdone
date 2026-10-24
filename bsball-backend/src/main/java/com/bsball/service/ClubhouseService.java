@@ -105,8 +105,11 @@ public class ClubhouseService {
         out.put("milestoneCatalog", ClubhouseMilestoneCatalog.catalog());
         out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
-        out.put("evaluation", evaluationService.build(
-                player.getId(), scope.teamId(), scope.eventId(), gameMode, stats));
+        Map<String, Object> careerStats = scope.teamId() == null && scope.eventId() == null
+                ? stats
+                : statsService.getPlayerStats(player.getId(), gameMode);
+        out.put("evaluation", evaluationService.buildCareer(
+                player.getId(), gameMode, careerStats, firstPosition(player)));
         List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventId(),
                 gameMode);
         out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
@@ -799,6 +802,12 @@ public class ClubhouseService {
             return "—";
         }
         return scoreFor > scoreAgainst ? "W" : scoreFor < scoreAgainst ? "L" : "D";
+    }
+
+    /** 雷达守位分组取球员档案的第一个守位；无守位时返回 null，由评价服务回退全体口径。 */
+    private String firstPosition(Player player) {
+        List<String> positions = PositionsJsonUtil.parseList(player.getPositions());
+        return positions.isEmpty() ? null : positions.get(0);
     }
 
     private Map<String, Object> playerView(Player player, List<PlayerTeam> entries) {

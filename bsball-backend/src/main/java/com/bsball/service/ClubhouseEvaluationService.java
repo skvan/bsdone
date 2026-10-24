@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -13,183 +14,352 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 个人驾驶舱「总体评价」：把职业棒球口径的打击、守备、投球指标换算为同队同赛事百分位。
+ * 个人驾驶舱「总体评价」：按全租户生涯口径计算打击、守备、投球三张六轴雷达与总体评分。
  *
- * <p>百分位只在所选代表球队与赛事内计算，不跨赛事、不跨租户。指标原始值仍返回给前端，
- * 避免只看雷达形状、不看数据。守备指标受守位影响，前端需同时展示比较口径。</p>
+ * <p>雷达与外层球队/赛事筛选无关：对比样本为当前租户、同一运动类型、有有效生涯数据的全部球员，
+ * 不跨租户、不混棒球/垒球。分项按百分位加权，再按角色权重合并，并按样本量向 50 分收缩；
+ * 指标原始值与样本量仍返回给前端，避免只看雷达形状、不看数据。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class ClubhouseEvaluationService {
-    private static final int MIN_SAMPLE = 3;
     private static final int MAX_POOL = 500;
-    private static final int MIN_BATTING_PA = 3;
-    private static final double MIN_PITCHING_IP = 1.0;
-    private static final double MIN_FIELDING_INN = 3.0;
-    private static final String NO_SCOPE_REASON = "请先选择代表球队与赛事";
+    private static final int BATTING_DISPLAY_PA = 10;
+    private static final int BATTING_STABLE_PA = 50;
+    private static final double PITCHING_DISPLAY_IP = 3.0;
+    private static final double PITCHING_STABLE_IP = 15.0;
+    private static final double FIELDING_DISPLAY_INN = 6.0;
+    private static final double FIELDING_STABLE_INN = 30.0;
+    private static final int MIN_POSITION_GROUP = 5;
+    private static final String COMPARISON = "全租户生涯";
+    private static final String SAMPLE_SUFFICIENT = "样本充足";
+    private static final String SAMPLE_REFERENCE = "参考值";
+    private static final String SAMPLE_INSUFFICIENT = "样本不足";
+    private static final String ROLE_POSITION_PLAYER = "POSITION_PLAYER";
+    private static final String ROLE_PITCHER = "PITCHER";
+    private static final String ROLE_TWO_WAY = "TWO_WAY";
+    private static final String NOTE_WOBA = "参考 wOBA";
+    private static final String NOTE_FIP = "参考 FIP";
+    private static final String NOTE_NO_POSITION_GROUP = "未按守位分组";
     private static final CardMeta BATTING_META = new CardMeta(
-            "batting", "打击评价", "AVG · OBP · SLG · RBI · SB");
+            "batting", "打击评价", "AVG · OBP · SLG · OPS · RBI · SB");
     private static final CardMeta FIELDING_META = new CardMeta(
-            "fielding", "守备评价", "FPCT · PO/G · A/G · DP/G · RF/9");
+            "fielding", "守备评价", "FPCT · TC/G · PO/G · A/G · DP/G · RF/9");
     private static final CardMeta PITCHING_META = new CardMeta(
-            "pitching", "投球评价", "ERA · WHIP · K/9 · BB/9 · IP");
+            "pitching", "投球评价", "ERA · WHIP · K/9 · BB/9 · HR/9 · IP");
 
     private final StatsService statsService;
 
     /**
-     * 构建总体评价卡片。打击、守备固定返回；有投球数据时追加投球卡。
+     * 构建全租户生涯评价。打击、守备、投球三张卡固定返回，样本不足的卡不可用。
      *
-     * @param playerId 当前球员 ID
-     * @param teamId   所选代表球队；为空时不计算百分位
-     * @param eventId  所选赛事；为空时不计算百分位
-     * @param gameMode BASEBALL / SOFTBALL
-     * @param stats    所选范围的球员统计 Map，仅用于判断领域可用性
-     * @return 含 available / comparison / minSample / cards 的评价数据
+     * @param playerId        当前球员 ID
+     * @param gameMode        BASEBALL / SOFTBALL；为空或非法时按棒球处理
+     * @param careerStats     当前运动类型下跨球队、跨赛事的生涯统计
+     * @param primaryPosition 主要守位，用于守备同守位组比较；为空时尝试取统计行守位
+     * @return 含 available / comparison / minSample / cards / overall 的评价数据
      */
-    public Map<String, Object> build(Long playerId, Long teamId, Long eventId, String gameMode,
-            Map<String, Object> stats) {
-        Map<String, Object> safeStats = stats == null ? Map.of() : stats;
-        boolean hasBatting = hasBatting(safeStats);
-        boolean hasPitching = hasPitching(safeStats);
-        boolean hasFielding = hasFielding(safeStats);
-        List<Map<String, Object>> battingPool = hasBatting
-                ? battingPool(teamId, eventId, gameMode) : List.of();
-        List<Map<String, Object>> pitchingPool = hasPitching
-                ? pitchingPool(teamId, eventId, gameMode) : List.of();
-        List<Map<String, Object>> fieldingPool = hasFielding
-                ? fieldingPool(teamId, eventId, gameMode) : List.of();
+    public Map<String, Object> buildCareer(Long playerId, String gameMode,
+            Map<String, Object> careerStats, String primaryPosition) {
+        Map<String, Object> stats = careerStats == null ? Map.of() : careerStats;
+        String mode = normalizeGameMode(gameMode);
+        List<Map<String, Object>> battingPool = battingPool(mode);
+        List<Map<String, Object>> pitchingPool = pitchingPool(mode);
+        List<Map<String, Object>> fieldingPool = fieldingPool(mode);
 
-        List<Map<String, Object>> cards = new ArrayList<>();
-        cards.add(battingCard(playerId, teamId, eventId, hasBatting, battingPool));
-        cards.add(fieldingCard(playerId, teamId, eventId, hasFielding, fieldingPool));
-        if (hasPitching) {
-            cards.add(pitchingCard(playerId, teamId, eventId, pitchingPool));
-        }
+        CardResult batting = battingCard(playerId, stats, battingPool);
+        CardResult fielding = fieldingCard(playerId, primaryPosition, stats, fieldingPool);
+        CardResult pitching = pitchingCard(playerId, stats, pitchingPool);
+        Map<String, Object> overall = overall(batting.domain(), fielding.domain(), pitching.domain());
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
-        out.put("available", cards.stream().anyMatch(card -> Boolean.TRUE.equals(card.get("available"))));
-        out.put("comparison", "同队同赛事");
-        out.put("minSample", MIN_SAMPLE);
-        out.put("cards", cards);
+        out.put("available", overall.get("score") != null);
+        out.put("comparison", COMPARISON);
+        out.put("minSample", minSample());
+        out.put("cards", List.of(batting.card(), fielding.card(), pitching.card()));
+        out.put("overall", overall);
         return out;
     }
 
-    private Map<String, Object> battingCard(Long playerId, Long teamId, Long eventId,
-            boolean available, List<Map<String, Object>> pool) {
-        if (!available) {
+    /**
+     * 旧调用兼容层：忽略球队/赛事参数，统一走全租户生涯口径。
+     *
+     * @param playerId 当前球员 ID
+     * @param teamId   旧口径代表球队，已忽略
+     * @param eventId  旧口径赛事，已忽略
+     * @param gameMode BASEBALL / SOFTBALL
+     * @param stats    生涯统计
+     * @return 与 {@link #buildCareer(Long, String, Map, String)} 相同
+     */
+    public Map<String, Object> build(Long playerId, Long teamId, Long eventId, String gameMode,
+            Map<String, Object> stats) {
+        return buildCareer(playerId, gameMode, stats, null);
+    }
+
+    private CardResult battingCard(Long playerId, Map<String, Object> stats,
+            List<Map<String, Object>> rawPool) {
+        Map<String, Object> batting = asMap(stats.get("batting"));
+        if (!hasBatting(batting)) {
             return unavailableCard(BATTING_META, "暂无打击数据");
         }
-        if (!hasScope(teamId, eventId)) {
-            return unavailableCard(BATTING_META, NO_SCOPE_REASON);
+        double plateAppearances = number(batting.get("pa"));
+        if (plateAppearances < BATTING_DISPLAY_PA) {
+            return unavailableCard(BATTING_META,
+                    "打击样本不足（至少 " + BATTING_DISPLAY_PA + " PA）");
         }
-        Map<String, Object> self = findSelf(pool, playerId);
-        if (self == null) {
-            return unavailableCard(BATTING_META, "有效打席不足（至少 " + MIN_BATTING_PA + "）");
-        }
-        if (pool.size() < MIN_SAMPLE) {
-            return sampleInsufficientCard(BATTING_META);
-        }
-        return availableCard(BATTING_META, List.of(
-                battingRateAxis("avg", "打击率", "AVG", self, pool),
-                battingRateAxis("obp", "上垒率", "OBP", self, pool),
-                battingRateAxis("slg", "长打率", "SLG", self, pool),
-                battingCountAxis("rbi", "打点", "RBI", self, pool),
-                battingCountAxis("sb", "盗垒", "SB", self, pool)));
+        List<Map<String, Object>> pool = rawPool.stream()
+                .filter(row -> number(row.get("pa")) >= BATTING_DISPLAY_PA)
+                .toList();
+        Map<String, Object> self = selfRow(playerId, null, batting, pool);
+        double reliability = ClubhouseRatingSupport.reliability(
+                plateAppearances, BATTING_STABLE_PA);
+
+        Axis avg = rateAxis("avg", "打击率", "AVG", self, pool);
+        Axis obp = rateAxis("obp", "上垒率", "OBP", self, pool);
+        Axis slg = rateAxis("slg", "长打率", "SLG", self, pool);
+        Axis ops = axis("ops", "整体攻击", "OPS", battingNumber(self, "ops"), true, pool,
+                row -> battingNumber(row, "ops"), value -> StatsFormatUtil.fmtDecimal(value, 3));
+        Axis rbi = countAxis("rbi", "打点", "RBI", self, pool);
+        Axis sb = countAxis("sb", "盗垒", "SB", self, pool);
+        Axis woba = axis("woba", "加权上垒率", "wOBA", ClubhouseRatingSupport.woba(self), true,
+                pool, ClubhouseRatingSupport::woba, value -> StatsFormatUtil.fmtDecimal(value, 3));
+
+        List<Axis> displayAxes = List.of(avg, obp, slg, ops, rbi, sb);
+        List<WeightedAxis> qualityAxes = List.of(
+                new WeightedAxis(woba, 0.50),
+                new WeightedAxis(obp, 0.20),
+                new WeightedAxis(slg, 0.15),
+                new WeightedAxis(rbi, 0.10),
+                new WeightedAxis(sb, 0.05));
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("woba", round3(ClubhouseRatingSupport.woba(self)));
+        return availableCard(BATTING_META, displayAxes, qualityAxes, reliability,
+                (int) Math.round(plateAppearances), NOTE_WOBA, meta);
     }
 
-    private Map<String, Object> fieldingCard(Long playerId, Long teamId, Long eventId,
-            boolean available, List<Map<String, Object>> pool) {
-        if (!available) {
+    private CardResult pitchingCard(Long playerId, Map<String, Object> stats,
+            List<Map<String, Object>> rawPool) {
+        Map<String, Object> pitching = asMap(stats.get("pitching"));
+        if (!hasPitching(pitching)) {
+            return unavailableCard(PITCHING_META, "暂无投球数据");
+        }
+        double innings = innings(pitching);
+        if (innings < PITCHING_DISPLAY_IP) {
+            return unavailableCard(PITCHING_META,
+                    "投球样本不足（至少 " + integer(PITCHING_DISPLAY_IP) + " 局）");
+        }
+        List<Map<String, Object>> pool = rawPool.stream()
+                .filter(row -> innings(row) >= PITCHING_DISPLAY_IP)
+                .toList();
+        Map<String, Object> self = selfRow(playerId, null, pitching, pool);
+        double constant = ClubhouseRatingSupport.fipConstant(rawPool);
+        double reliability = ClubhouseRatingSupport.reliability(innings, PITCHING_STABLE_IP);
+
+        Axis era = axis("era", "防御率", "ERA", pitchingNumber(self, "era"), false, pool,
+                row -> pitchingNumber(row, "era"), value -> StatsFormatUtil.fmtDecimal(value, 2));
+        Axis whip = axis("whip", "被上垒率", "WHIP", pitchingNumber(self, "whip"), false, pool,
+                row -> pitchingNumber(row, "whip"), value -> StatsFormatUtil.fmtDecimal(value, 2));
+        Axis k9 = perNineAxis("k9", "夺三振率", "K/9", "pitchSo", true, self, pool);
+        Axis bb9 = perNineAxis("bb9", "保送率", "BB/9", "pitchBb", false, self, pool);
+        Axis hr9 = axis("hr9", "本垒打率", "HR/9", homeRunsPerNine(self), false, pool,
+                this::homeRunsPerNine, value -> StatsFormatUtil.fmtDecimal(value, 2));
+        Axis ip = axis("ip", "投球局数", "IP", innings, true, pool, this::innings,
+                ClubhouseEvaluationService::baseballInnings);
+        Axis fipValue = axis("fip", "防御率独立值", "FIP",
+                ClubhouseRatingSupport.fip(self, constant), false, pool,
+                row -> ClubhouseRatingSupport.fip(row, constant),
+                value -> StatsFormatUtil.fmtDecimal(value, 2));
+
+        List<Axis> displayAxes = List.of(era, whip, k9, bb9, hr9, ip);
+        List<WeightedAxis> qualityAxes = List.of(
+                new WeightedAxis(fipValue, 0.50),
+                new WeightedAxis(k9, 0.20),
+                new WeightedAxis(bb9, 0.15),
+                new WeightedAxis(whip, 0.15));
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("fip", round2(ClubhouseRatingSupport.fip(self, constant)));
+        meta.put("fipConstant", round2(constant));
+        return availableCard(PITCHING_META, displayAxes, qualityAxes, reliability,
+                round1(innings), NOTE_FIP, meta);
+    }
+
+    private CardResult fieldingCard(Long playerId, String primaryPosition, Map<String, Object> stats,
+            List<Map<String, Object>> rawPool) {
+        Map<String, Object> fielding = asMap(stats.get("fielding"));
+        if (!hasFielding(fielding)) {
             return unavailableCard(FIELDING_META, "暂无守备数据");
         }
-        if (!hasScope(teamId, eventId)) {
-            return unavailableCard(FIELDING_META, NO_SCOPE_REASON);
-        }
-        Map<String, Object> self = findSelf(pool, playerId);
-        if (self == null) {
+        double innings = innings(fielding);
+        if (innings < FIELDING_DISPLAY_INN) {
             return unavailableCard(FIELDING_META,
-                    "守备局数不足（至少 " + integer(MIN_FIELDING_INN) + " 局）");
+                    "守备样本不足（至少 " + integer(FIELDING_DISPLAY_INN) + " 局）");
         }
-        if (pool.size() < MIN_SAMPLE) {
-            return sampleInsufficientCard(FIELDING_META);
-        }
-        return availableCard(FIELDING_META, List.of(
+        List<Map<String, Object>> validPool = rawPool.stream()
+                .filter(row -> innings(row) >= FIELDING_DISPLAY_INN)
+                .toList();
+        Map<String, Object> self = selfRow(playerId, primaryPosition, fielding, validPool);
+        String position = blank(primaryPosition) ? text(self.get("position")) : primaryPosition;
+        String group = ClubhouseRatingSupport.positionGroup(position);
+        List<Map<String, Object>> groupPool = validPool.stream()
+                .filter(row -> group.equals(
+                        ClubhouseRatingSupport.positionGroup(text(row.get("position")))))
+                .toList();
+        boolean grouped = groupPool.size() >= MIN_POSITION_GROUP;
+        List<Map<String, Object>> pool = grouped ? groupPool : validPool;
+        double reliability = ClubhouseRatingSupport.reliability(innings, FIELDING_STABLE_INN);
+
+        List<Axis> displayAxes = List.of(
                 axis("fpct", "守备率", "FPCT", fieldingPct(self), true, pool,
                         this::fieldingPct, value -> StatsFormatUtil.fmtDecimal(value, 3)),
-                fieldingPerGameAxis("poPerGame", "场均刺杀", "PO/G", "po", 1, self, pool),
-                fieldingPerGameAxis("aPerGame", "场均助杀", "A/G", "a", 1, self, pool),
+                fieldingPerGameAxis("tcPerGame", "场均守备机会", "TC/G", "tc", 2, self, pool),
+                fieldingPerGameAxis("poPerGame", "场均刺杀", "PO/G", "po", 2, self, pool),
+                fieldingPerGameAxis("aPerGame", "场均助杀", "A/G", "a", 2, self, pool),
                 fieldingPerGameAxis("dpPerGame", "场均双杀", "DP/G", "dp", 2, self, pool),
                 axis("rangeFactor", "守备范围", "RF/9", rangeFactor(self), true, pool,
-                        this::rangeFactor, value -> StatsFormatUtil.fmtDecimal(value, 2))));
+                        this::rangeFactor, value -> StatsFormatUtil.fmtDecimal(value, 2)));
+        List<WeightedAxis> qualityAxes = List.of(
+                new WeightedAxis(displayAxes.get(0), 0.30),
+                new WeightedAxis(displayAxes.get(1), 0.15),
+                new WeightedAxis(displayAxes.get(2), 0.15),
+                new WeightedAxis(displayAxes.get(3), 0.15),
+                new WeightedAxis(displayAxes.get(4), 0.10),
+                new WeightedAxis(displayAxes.get(5), 0.15));
+        String note = grouped ? null : NOTE_NO_POSITION_GROUP;
+        return availableCard(FIELDING_META, displayAxes, qualityAxes, reliability,
+                round1(innings), note, Map.of());
     }
 
-    private Map<String, Object> pitchingCard(Long playerId, Long teamId, Long eventId,
-            List<Map<String, Object>> pool) {
-        if (!hasScope(teamId, eventId)) {
-            return unavailableCard(PITCHING_META, NO_SCOPE_REASON);
+    private Map<String, Object> overall(DomainScore batting, DomainScore fielding,
+            DomainScore pitching) {
+        String role = role(batting, pitching);
+        Map<String, Double> baseWeights = baseWeights(role, batting);
+        List<DomainScore> domains = List.of(batting, fielding, pitching);
+        LinkedHashMap<String, Double> applied = new LinkedHashMap<>();
+        double weightSum = 0.0;
+        for (DomainScore domain : domains) {
+            Double weight = baseWeights.get(domain.key());
+            if (weight != null && domain.available()) {
+                applied.put(domain.key(), weight);
+                weightSum += weight;
+            }
         }
-        Map<String, Object> self = findSelf(pool, playerId);
-        if (self == null) {
-            return unavailableCard(PITCHING_META,
-                    "投球局数不足（至少 " + integer(MIN_PITCHING_IP) + " 局）");
+
+        double score = 0.0;
+        double reliability = 0.0;
+        LinkedHashMap<String, Double> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> entry : applied.entrySet()) {
+            double weight = entry.getValue() / weightSum;
+            normalized.put(entry.getKey(), round3(weight));
+            DomainScore domain = domain(domains, entry.getKey());
+            score += domain.score() * weight;
+            reliability += domain.reliability() * weight;
         }
-        if (pool.size() < MIN_SAMPLE) {
-            return sampleInsufficientCard(PITCHING_META);
+        boolean scored = weightSum > 0.0;
+        int roundedScore = scored ? (int) Math.round(score) : 0;
+
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        out.put("score", scored ? roundedScore : null);
+        out.put("grade", scored ? grade(roundedScore) : null);
+        out.put("reliability", round2(scored ? reliability : 0.0));
+        out.put("confidenceLabel", confidenceLabel(scored ? reliability : 0.0));
+        out.put("role", role);
+        out.put("weights", normalized);
+        out.put("sampleSize", sampleSizes(batting, fielding, pitching));
+        return out;
+    }
+
+    private String role(DomainScore batting, DomainScore pitching) {
+        if (!pitching.available()) {
+            return ROLE_POSITION_PLAYER;
         }
-        return availableCard(PITCHING_META, List.of(
-                pitchingRateAxis("era", "防御率", "ERA", self, pool),
-                pitchingRateAxis("whip", "被上垒率", "WHIP", self, pool),
-                pitchingPerNineAxis("k9", "夺三振率", "K/9", "pitchSo", true, self, pool),
-                pitchingPerNineAxis("bb9", "保送率", "BB/9", "pitchBb", false, self, pool),
-                axis("ip", "投球局数", "IP", innings(self), true, pool,
-                        this::innings, ClubhouseEvaluationService::baseballInnings)));
+        return batting.available() ? ROLE_TWO_WAY : ROLE_PITCHER;
     }
 
-    private Axis battingRateAxis(String field, String label, String abbr,
-            Map<String, Object> self, List<Map<String, Object>> pool) {
-        return axis(field, label, abbr, battingNumber(self, field), true, pool,
-                row -> battingNumber(row, field), StatsFormatUtil::fmtAvg);
+    private Map<String, Double> baseWeights(String role, DomainScore batting) {
+        LinkedHashMap<String, Double> weights = new LinkedHashMap<>();
+        switch (role) {
+            case ROLE_TWO_WAY -> {
+                weights.put("batting", 0.40);
+                weights.put("pitching", 0.40);
+                weights.put("fielding", 0.20);
+            }
+            case ROLE_PITCHER -> {
+                if (batting.available()) {
+                    weights.put("pitching", 0.70);
+                    weights.put("fielding", 0.15);
+                    weights.put("batting", 0.15);
+                } else {
+                    weights.put("pitching", 0.80);
+                    weights.put("fielding", 0.20);
+                }
+            }
+            default -> {
+                weights.put("batting", 0.55);
+                weights.put("fielding", 0.45);
+            }
+        }
+        return weights;
     }
 
-    private Axis battingCountAxis(String field, String label, String abbr,
-            Map<String, Object> self, List<Map<String, Object>> pool) {
-        return axis(field, label, abbr, number(self.get(field)), true, pool,
-                row -> number(row.get(field)), ClubhouseEvaluationService::integer);
+    private DomainScore domain(List<DomainScore> domains, String key) {
+        return domains.stream()
+                .filter(domain -> domain.key().equals(key))
+                .findFirst()
+                .orElse(new DomainScore(key, false, 0.0, 0.0, 0.0));
     }
 
-    private Axis fieldingPerGameAxis(String key, String label, String abbr, String field, int decimals,
-            Map<String, Object> self, List<Map<String, Object>> pool) {
-        return axis(key, label, abbr, perGame(self, field), true, pool,
-                row -> perGame(row, field), value -> StatsFormatUtil.fmtDecimal(value, decimals));
+    private Map<String, Object> sampleSizes(DomainScore batting, DomainScore fielding,
+            DomainScore pitching) {
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        out.put("batting", batting.sample());
+        out.put("pitching", pitching.sample());
+        out.put("fielding", fielding.sample());
+        return out;
     }
 
-    private Axis pitchingRateAxis(String field, String label, String abbr,
-            Map<String, Object> self, List<Map<String, Object>> pool) {
-        return axis(field, label, abbr, number(self.get(field)), false, pool,
-                row -> number(row.get(field)), value -> StatsFormatUtil.fmtDecimal(value, 2));
-    }
+    private CardResult availableCard(CardMeta meta, List<Axis> displayAxes,
+            List<WeightedAxis> qualityAxes, double reliability, double sampleSize, String note,
+            Map<String, Object> metaExtra) {
+        double rawScore = weightedPercentile(qualityAxes);
+        double adjusted = ClubhouseRatingSupport.shrink(rawScore, reliability);
+        int score = (int) Math.max(0, Math.min(100, Math.round(adjusted)));
 
-    private Axis pitchingPerNineAxis(String key, String label, String abbr, String field,
-            boolean higherBetter, Map<String, Object> self, List<Map<String, Object>> pool) {
-        return axis(key, label, abbr, perNine(self, field), higherBetter, pool,
-                row -> perNine(row, field), value -> StatsFormatUtil.fmtDecimal(value, 1));
-    }
-
-    private Map<String, Object> availableCard(CardMeta meta, List<Axis> axes) {
-        int sampleSize = axes.stream().mapToInt(axis -> axis.poolValues().size()).min().orElse(0);
-        int score = (int) Math.round(axes.stream()
-                .mapToInt(axis -> percentile(axis.poolValues(), axis.rawValue(), axis.higherBetter()))
-                .average()
-                .orElse(0));
-        LinkedHashMap<String, Object> card = new LinkedHashMap<>();
-        card.put("domain", meta.domain());
-        card.put("title", meta.title());
-        card.put("subtitle", meta.subtitle());
+        LinkedHashMap<String, Object> card = baseCard(meta);
         card.put("available", true);
         card.put("score", score);
         card.put("grade", grade(score));
         card.put("sampleSize", sampleSize);
-        card.put("axes", axes.stream().map(this::axisView).toList());
+        card.put("reliability", round2(reliability));
+        card.put("confidenceLabel", confidenceLabel(reliability));
+        card.put("axes", displayAxes.stream().map(this::axisView).toList());
+        if (note != null && !note.isBlank()) {
+            card.put("note", note);
+        }
+        if (metaExtra != null && !metaExtra.isEmpty()) {
+            card.put("meta", metaExtra);
+        }
+        return new CardResult(card,
+                new DomainScore(meta.domain(), true, score, reliability, sampleSize));
+    }
+
+    private CardResult unavailableCard(CardMeta meta, String reason) {
+        LinkedHashMap<String, Object> card = baseCard(meta);
+        card.put("available", false);
+        card.put("score", null);
+        card.put("grade", null);
+        card.put("sampleSize", 0);
+        card.put("reliability", 0.0);
+        card.put("confidenceLabel", SAMPLE_INSUFFICIENT);
+        card.put("axes", List.of());
+        card.put("reason", reason);
+        return new CardResult(card, new DomainScore(meta.domain(), false, 0.0, 0.0, 0.0));
+    }
+
+    private LinkedHashMap<String, Object> baseCard(CardMeta meta) {
+        LinkedHashMap<String, Object> card = new LinkedHashMap<>();
+        card.put("domain", meta.domain());
+        card.put("title", meta.title());
+        card.put("subtitle", meta.subtitle());
         return card;
     }
 
@@ -203,22 +373,44 @@ public class ClubhouseEvaluationService {
         return row;
     }
 
-    private Map<String, Object> unavailableCard(CardMeta meta, String reason) {
-        LinkedHashMap<String, Object> card = new LinkedHashMap<>();
-        card.put("domain", meta.domain());
-        card.put("title", meta.title());
-        card.put("subtitle", meta.subtitle());
-        card.put("available", false);
-        card.put("score", null);
-        card.put("grade", null);
-        card.put("sampleSize", 0);
-        card.put("axes", List.of());
-        card.put("reason", reason);
-        return card;
+    private double weightedPercentile(List<WeightedAxis> axes) {
+        double sum = 0.0;
+        double weights = 0.0;
+        for (WeightedAxis weighted : axes) {
+            Axis axis = weighted.axis();
+            if (axis.poolValues().isEmpty()) {
+                continue;
+            }
+            sum += percentile(axis.poolValues(), axis.rawValue(), axis.higherBetter())
+                    * weighted.weight();
+            weights += weighted.weight();
+        }
+        return weights > 0.0 ? sum / weights : 50.0;
     }
 
-    private Map<String, Object> sampleInsufficientCard(CardMeta meta) {
-        return unavailableCard(meta, "同队同赛事有效样本不足（至少 " + MIN_SAMPLE + " 人）");
+    private Axis rateAxis(String field, String label, String abbr, Map<String, Object> self,
+            List<Map<String, Object>> pool) {
+        return axis(field, label, abbr, battingNumber(self, field), true, pool,
+                row -> battingNumber(row, field), StatsFormatUtil::fmtAvg);
+    }
+
+    private Axis countAxis(String field, String label, String abbr, Map<String, Object> self,
+            List<Map<String, Object>> pool) {
+        return axis(field, label, abbr, number(self.get(field)), true, pool,
+                row -> number(row.get(field)), ClubhouseEvaluationService::integer);
+    }
+
+    private Axis fieldingPerGameAxis(String key, String label, String abbr, String field,
+            int decimals, Map<String, Object> self, List<Map<String, Object>> pool) {
+        return axis(key, label, abbr, perGame(self, field), true, pool,
+                row -> perGame(row, field),
+                value -> StatsFormatUtil.fmtDecimal(value, decimals));
+    }
+
+    private Axis perNineAxis(String key, String label, String abbr, String field,
+            boolean higherBetter, Map<String, Object> self, List<Map<String, Object>> pool) {
+        return axis(key, label, abbr, perNine(self, field), higherBetter, pool,
+                row -> perNine(row, field), value -> StatsFormatUtil.fmtDecimal(value, 2));
     }
 
     private Axis axis(String key, String label, String abbr, Double raw, boolean higherBetter,
@@ -235,13 +427,15 @@ public class ClubhouseEvaluationService {
 
     /**
      * 百分位：0 为同组最低，100 为最高；并列值取平均名次。反向指标先倒序再计算。
-     * 单样本时给 50，但调用方会先用 {@link #MIN_SAMPLE} 拦住。
+     * 单样本时给 50，表示缺少可比对象。
      */
     static int percentile(List<Double> values, double raw, boolean higherBetter) {
         if (values == null || values.isEmpty()) {
             return 0;
         }
-        long less = values.stream().filter(value -> higherBetter ? value < raw : value > raw).count();
+        long less = values.stream()
+                .filter(value -> higherBetter ? value < raw : value > raw)
+                .count();
         long equal = values.stream().filter(value -> Double.compare(value, raw) == 0).count();
         if (values.size() == 1) {
             return 50;
@@ -250,45 +444,26 @@ public class ClubhouseEvaluationService {
         return (int) Math.max(0, Math.min(100, Math.round(rank * 100.0 / (values.size() - 1))));
     }
 
-    private List<Map<String, Object>> battingPool(Long teamId, Long eventId, String gameMode) {
-        if (!hasScope(teamId, eventId)) {
-            return List.of();
-        }
-        return safeList(statsService.getBattingLeaders(eventId, null, null, List.of(teamId), null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "pa", "desc", false)).stream()
-                .filter(row -> number(row.get("pa")) >= MIN_BATTING_PA)
-                .toList();
+    private List<Map<String, Object>> battingPool(String gameMode) {
+        return safeList(statsService.getBattingLeaders(null, null, null, null, null, null,
+                null, null, null, gameMode, 1, MAX_POOL, "pa", "desc", false));
     }
 
-    private List<Map<String, Object>> pitchingPool(Long teamId, Long eventId, String gameMode) {
-        if (!hasScope(teamId, eventId)) {
-            return List.of();
-        }
-        return safeList(statsService.getPitchingLeaders(eventId, null, null, List.of(teamId), null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "ip", "desc", false)).stream()
-                .filter(row -> innings(row) >= MIN_PITCHING_IP)
-                .toList();
+    private List<Map<String, Object>> pitchingPool(String gameMode) {
+        return safeList(statsService.getPitchingLeaders(null, null, null, null, null, null,
+                null, null, null, gameMode, 1, MAX_POOL, "ip", "desc", false));
     }
 
-    private List<Map<String, Object>> fieldingPool(Long teamId, Long eventId, String gameMode) {
-        if (!hasScope(teamId, eventId)) {
-            return List.of();
-        }
-        return safeList(statsService.getFieldingLeaders(eventId, null, null, List.of(teamId), null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "tcPct", "desc")).stream()
-                .filter(row -> innings(row) >= MIN_FIELDING_INN)
-                .toList();
-    }
-
-    private static boolean hasScope(Long teamId, Long eventId) {
-        return teamId != null && eventId != null;
+    private List<Map<String, Object>> fieldingPool(String gameMode) {
+        return safeList(statsService.getFieldingLeaders(null, null, null, null, null, null,
+                null, null, null, gameMode, 1, MAX_POOL, "inn", "desc"));
     }
 
     private List<Map<String, Object>> safeList(PageResult<Map<String, Object>> page) {
         if (page == null || page.getList() == null) {
             return List.of();
         }
-        return page.getList();
+        return new ArrayList<>(page.getList());
     }
 
     private Map<String, Object> findSelf(List<Map<String, Object>> pool, Long playerId) {
@@ -301,17 +476,33 @@ public class ClubhouseEvaluationService {
                 .orElse(null);
     }
 
-    private boolean hasBatting(Map<String, Object> stats) {
-        Map<String, Object> batting = asMap(stats.get("batting"));
+    /**
+     * 本人行优先取池内同人；因池上限或过滤找不到时，用生涯统计构造，
+     * 仍以样本池计算百分位。
+     */
+    private Map<String, Object> selfRow(Long playerId, String position,
+            Map<String, Object> careerDomain, List<Map<String, Object>> pool) {
+        Map<String, Object> found = findSelf(pool, playerId);
+        if (found != null) {
+            return found;
+        }
+        LinkedHashMap<String, Object> self = new LinkedHashMap<>(careerDomain);
+        self.put("playerId", playerId);
+        if (self.get("position") == null) {
+            self.put("position", position);
+        }
+        return self;
+    }
+
+    private boolean hasBatting(Map<String, Object> batting) {
         return number(batting.get("pa")) > 0 || number(batting.get("ab")) > 0;
     }
 
-    private boolean hasPitching(Map<String, Object> stats) {
-        return innings(asMap(stats.get("pitching"))) > 0;
+    private boolean hasPitching(Map<String, Object> pitching) {
+        return innings(pitching) > 0;
     }
 
-    private boolean hasFielding(Map<String, Object> stats) {
-        Map<String, Object> fielding = asMap(stats.get("fielding"));
+    private boolean hasFielding(Map<String, Object> fielding) {
         return number(fielding.get("gp")) > 0 || number(fielding.get("tc")) > 0;
     }
 
@@ -324,6 +515,11 @@ public class ClubhouseEvaluationService {
             case "avg" -> ratio(row, "h", "ab");
             case "obp" -> obpFallback(row);
             case "slg" -> ratio(row, "tb", "ab");
+            case "ops" -> {
+                Double obp = battingNumber(row, "obp");
+                Double slg = battingNumber(row, "slg");
+                yield (obp == null ? 0.0 : obp) + (slg == null ? 0.0 : slg);
+            }
             default -> null;
         };
     }
@@ -343,6 +539,22 @@ public class ClubhouseEvaluationService {
             return 0.0;
         }
         return number(row.get(numerator)) / below;
+    }
+
+    private Double pitchingNumber(Map<String, Object> row, String field) {
+        Double raw = optionalNumber(row.get(field));
+        if (raw != null) {
+            return raw;
+        }
+        double innings = innings(row);
+        if (innings <= 0) {
+            return 0.0;
+        }
+        return switch (field) {
+            case "era" -> 9.0 * number(row.get("er")) / innings;
+            case "whip" -> (number(row.get("pitchH")) + number(row.get("pitchBb"))) / innings;
+            default -> null;
+        };
     }
 
     private Double perGame(Map<String, Object> row, String field) {
@@ -368,12 +580,29 @@ public class ClubhouseEvaluationService {
         return innings > 0 ? number(row.get(field)) * 9.0 / innings : 0.0;
     }
 
+    private Double homeRunsPerNine(Map<String, Object> row) {
+        double innings = innings(row);
+        if (innings <= 0) {
+            return 0.0;
+        }
+        return (number(row.get("pitchHr")) + number(row.get("pitchInsideParkHr")))
+                * 9.0 / innings;
+    }
+
     private Double innings(Map<String, Object> row) {
         double raw = number(row.get("ip"));
         if (raw <= 0) {
             raw = number(row.get("inn"));
         }
         return raw <= 0 ? 0.0 : StatsFormatUtil.baseballIpToDecimalInnings(raw);
+    }
+
+    private Map<String, Object> minSample() {
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        out.put("batting", BATTING_DISPLAY_PA);
+        out.put("pitching", (int) PITCHING_DISPLAY_IP);
+        out.put("fielding", (int) FIELDING_DISPLAY_INN);
+        return out;
     }
 
     private static String grade(int score) {
@@ -401,6 +630,21 @@ public class ClubhouseEvaluationService {
         return "D";
     }
 
+    private static String confidenceLabel(double reliability) {
+        if (reliability >= 1.0 - 1e-9) {
+            return SAMPLE_SUFFICIENT;
+        }
+        return reliability > 0.0 ? SAMPLE_REFERENCE : SAMPLE_INSUFFICIENT;
+    }
+
+    private static String normalizeGameMode(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "BASEBALL";
+        }
+        String mode = raw.trim().toUpperCase(Locale.ROOT);
+        return "SOFTBALL".equals(mode) ? "SOFTBALL" : "BASEBALL";
+    }
+
     private static String integer(double value) {
         return String.valueOf((int) Math.round(value));
     }
@@ -409,6 +653,30 @@ public class ClubhouseEvaluationService {
     private static String baseballInnings(double decimalInnings) {
         int outs = (int) Math.round(decimalInnings * 3);
         return StatsFormatUtil.fmtDecimal(StatsFormatUtil.baseballOutsToIp(outs), 1);
+    }
+
+    private static double round1(double value) {
+        return Math.round(value * 10.0) / 10.0;
+    }
+
+    private static double round2(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private static double round3(double value) {
+        return Math.round(value * 1000.0) / 1000.0;
+    }
+
+    private static boolean blank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static String text(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = String.valueOf(raw).trim();
+        return value.isEmpty() ? null : value;
     }
 
     @SuppressWarnings("unchecked")
@@ -458,5 +726,15 @@ public class ClubhouseEvaluationService {
 
     private record Axis(String key, String label, String abbr, double rawValue, String displayValue,
             boolean higherBetter, List<Double> poolValues) {
+    }
+
+    private record WeightedAxis(Axis axis, double weight) {
+    }
+
+    private record CardResult(Map<String, Object> card, DomainScore domain) {
+    }
+
+    private record DomainScore(String key, boolean available, double score, double reliability,
+            double sample) {
     }
 }
