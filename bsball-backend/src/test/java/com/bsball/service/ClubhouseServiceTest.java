@@ -292,6 +292,62 @@ class ClubhouseServiceTest {
     }
 
     @Test
+    @DisplayName("所选球队在当前运动类型下没有赛事时回落到全部球队与生涯")
+    void teamWithoutGameModeEventFallsBackToAllTeamsCareer() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStats(10L, "SOFTBALL")).thenReturn(emptyStats());
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, null, "SOFTBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertNull(scope.get("teamId"));
+        assertEquals("全部球队", scope.get("teamName"));
+        assertNull(scope.get("eventId"));
+        assertEquals("生涯", scope.get("eventName"));
+        assertEquals("SOFTBALL", scope.get("gameMode"));
+        assertEquals(true, scope.get("teamAll"));
+        assertEquals(true, scope.get("career"));
+        verify(statsService).getPlayerStats(10L, "SOFTBALL");
+    }
+
+    @Test
+    @DisplayName("所选球队与赛事都不属于请求运动类型时一起回落到全部球队与生涯")
+    void teamAndEventWithoutGameModeFallBackTogether() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStats(10L, "SOFTBALL")).thenReturn(emptyStats());
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "SOFTBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertNull(scope.get("teamId"));
+        assertEquals("全部球队", scope.get("teamName"));
+        assertNull(scope.get("eventId"));
+        assertEquals("生涯", scope.get("eventName"));
+        assertEquals("SOFTBALL", scope.get("gameMode"));
+        assertEquals(true, scope.get("teamAll"));
+        assertEquals(true, scope.get("career"));
+    }
+
+    @Test
+    @DisplayName("所选球队在当前运动类型下有赛事时保留球队与赛事")
+    void teamWithGameModeEventIsKept() {
+        stubSingleTeam("SOFTBALL");
+        when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "SOFTBALL")).thenReturn(emptyStats());
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "SOFTBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals(1L, scope.get("teamId"));
+        assertEquals(11L, scope.get("eventId"));
+        assertEquals("SOFTBALL", scope.get("gameMode"));
+        assertEquals(false, scope.get("teamAll"));
+        assertEquals(false, scope.get("career"));
+    }
+
+    @Test
     @DisplayName("非法球队回落到全部球队时赛事仍然生效")
     void invalidTeamKeepsValidEvent() {
         stubSingleTeam("BASEBALL");

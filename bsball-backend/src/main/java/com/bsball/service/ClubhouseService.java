@@ -304,6 +304,7 @@ public class ClubhouseService {
     /**
      * 解析筛选范围：null 表示全部球队/生涯；非法或不匹配的入参回落到全部/生涯，不自动选中第一项。
      * 球队与赛事相互独立：只选赛事时球队仍为全部球队。gameMode 优先级为请求参数 → 所选赛事 → 棒球。
+     * 与前端球队选项同一口径：所选球队在当前运动类型下没有已确认赛事时，球队与赛事一起回落到全部/生涯。
      */
     private Scope resolveScope(List<Map<String, Object>> teams, Long requestedTeamId,
             Long requestedEventId, String requestedGameMode) {
@@ -318,12 +319,30 @@ public class ClubhouseService {
                 .orElse(null);
         String eventGameMode = normalizeGameMode(event == null ? null : asString(event.get("gameMode")));
         String gameMode = resolveGameMode(normalizeGameMode(requestedGameMode), eventGameMode);
+        if (team != null && !hasGameModeEvent(team, gameMode)) {
+            team = null;
+            event = null;
+        }
         return new Scope(
                 team == null ? null : asLong(team.get("id")),
                 team == null ? null : asString(team.get("name")),
                 event == null ? null : asLong(event.get("id")),
                 event == null ? null : asString(event.get("name")),
                 gameMode);
+    }
+
+    /** 球队在该运动类型下是否有已确认赛事；未知或空类型按棒球处理，与前端 eventGameMode 一致。 */
+    private boolean hasGameModeEvent(Map<String, Object> team, String gameMode) {
+        if (!(team.get("events") instanceof List<?> events)) {
+            return false;
+        }
+        for (Object item : events) {
+            String mode = normalizeGameMode(asString(asMap(item).get("gameMode")));
+            if (gameMode.equals(mode == null ? DEFAULT_GAME_MODE : mode)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 规范化运动类型：仅接受 BASEBALL/SOFTBALL（忽略大小写与首尾空白），其余返回 null。 */
