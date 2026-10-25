@@ -56,7 +56,7 @@
             <span v-if="player.height || player.weight" class="tag">{{ player.height || '-' }}cm / {{ player.weight || '-' }}kg</span>
           </div>
           <div class="hero-team">
-            <span class="crest">{{ teamCrest(scopeTeam) }}</span>
+            <span class="crest">{{ heroTeamCrest }}</span>
             <div class="team-copy">
               <b>{{ heroTeamName }}</b>
               <span>{{ heroTeamSub }}</span>
@@ -83,7 +83,10 @@
                   <b>{{ player.name }}</b>
                   <span>{{ player.nameEn || 'PLAYER' }} <template v-if="player.number">· #{{ player.number }}</template></span>
                 </div>
-                <div class="card-team"><span class="crest">{{ teamCrest(scopeTeam) }}</span><span>{{ heroTeamName }} · {{ primaryPosition }}</span></div>
+                <div class="card-team">
+                  <span class="crest">{{ heroTeamCrest }}</span>
+                  <span class="card-team-name" :title="heroTeamName">{{ heroTeamName }} · {{ primaryPosition }}</span>
+                </div>
               </div>
             </div>
             <div>
@@ -186,9 +189,6 @@
           <div class="eval-meta">
             <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
             <span>{{ evaluationComparison }} · 不随筛选变化</span>
-            <el-tooltip content="雷达固定为全租户生涯百分位（同租户、同运动类型对比池，上限 500 人），6 轴 0–100，不随球队/赛事筛选变化，50 为中位基准。总分由 wOBA/FIP 等分项百分位按角色权重合成，不取雷达面积；未达稳定门槛时向 50 收缩并标注「参考值」。守备优先同守位组比较，组内不足 5 人时回退全体并标注。" placement="bottom-end" trigger="click">
-              <button type="button" class="metric-info" aria-label="评价口径">i</button>
-            </el-tooltip>
           </div>
         </div>
         <div class="radar-grid" :class="evaluationCards.length > 2 ? 'three-up' : 'two-up'">
@@ -271,10 +271,6 @@
             </div>
           </article>
         </div>
-        <p class="eval-note">
-          <i></i>
-          <span>雷达为全租户生涯百分位（同租户、同运动类型对比池，上限 500 人），每张卡 6 轴 0–100，不随球队/赛事筛选变化，50 为中位基准。总分由 wOBA/FIP 等分项百分位按角色权重合成，不取雷达面积；样本达到展示门槛但未达稳定门槛时向 50 收缩并标注「参考值」。投球反向指标已反向换算；守备优先在相同守位组内比较，组内不足 5 人时回退全体并标注。</span>
-        </p>
       </section>
 
       <section
@@ -824,13 +820,19 @@ const availableTeams = computed(() => teams.value.filter((team) => (
 )));
 const scopeEvents = computed(() => data.value?.events || []);
 const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
+/** 全部球队时展示当前运动类型下的全部代表球队；选中球队时只展示该队。 */
+const heroTeamNames = computed(() => availableTeams.value
+  .map((team) => String(team.name || '').trim())
+  .filter(Boolean));
 const heroTeamName = computed(() => {
   if (scopeTeam.value) return scopeTeam.value.name;
-  return teams.value.length ? '全部球队' : '未加入球队';
+  return heroTeamNames.value.length ? heroTeamNames.value.join(' / ') : '未加入球队';
 });
+const heroTeamCrest = computed(() => (scopeTeam.value ? teamCrest(scopeTeam.value)
+  : heroTeamNames.value.length ? '全' : '—'));
 const heroTeamSub = computed(() => {
   if (scopeTeam.value) return teamEventLabel(scopeTeam.value);
-  return teams.value.length ? '跨全部代表球队' : '尚未加入球队';
+  return heroTeamNames.value.length ? '跨全部代表球队' : '尚未加入球队';
 });
 const primaryPosition = computed(() => (player.value.positions || [])[0] || '未填写');
 const throwBatLabel = computed(() => {
@@ -905,7 +907,13 @@ const overallSampleText = computed(() => {
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : '暂无有效样本';
 });
-const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
+/** 旧数据兜底：野手（POSITION_PLAYER）不渲染投球卡，即使接口仍返回了投球卡。 */
+const evaluationCards = computed(() => {
+  const role = evaluationOverall.value.role;
+  return (data.value?.evaluation?.cards || [])
+    .filter((card) => !(role === 'POSITION_PLAYER' && card.domain === 'pitching'))
+    .map(prepareEvaluationCard);
+});
 const milestoneData = computed(() => milestonePayload.value || {});
 const milestoneItems = computed(() => milestoneData.value.items || []);
 const milestoneTimeline = computed(() => milestoneData.value.timeline || []);
@@ -2434,7 +2442,7 @@ onBeforeUnmount(() => {
 .hero-intro { max-width: 470px; margin: 18px 0 0; font-size: 12px; line-height: 1.9; color: var(--bs-hero-muted); }
 .hero-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .tag { font-size: 10px; padding: 6px 9px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; }
-.hero-team { display: flex; align-items: center; gap: 10px; margin-top: 19px; padding-top: 14px; border-top: 1px solid var(--bs-hero-line); max-width: 470px; }
+.hero-team { display: flex; align-items: flex-start; gap: 10px; margin-top: 19px; padding-top: 14px; border-top: 1px solid var(--bs-hero-line); max-width: 470px; min-width: 0; }
 .hero-actions { display: flex; gap: 9px; margin-top: 16px; }
 .hero-btn { height: 36px; padding: 0 16px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 700; cursor: pointer; transition: background 160ms ease-out, border-color 160ms ease-out; }
 .hero-btn.primary { color: var(--bs-on-accent); border: 1px solid var(--bs-accent); background: linear-gradient(135deg, var(--bs-accent-hover), var(--bs-accent)); }
@@ -2444,7 +2452,8 @@ onBeforeUnmount(() => {
 .hero-btn:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .crest { width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 11px; font-weight: 800; color: #071a33; background: linear-gradient(145deg, var(--bs-accent-soft), var(--bs-accent)); }
 .crest.dark { color: #fff; background: linear-gradient(145deg, #173e62, #0a1b2e); border: 1px solid rgba(201,164,91,.5); }
-.team-copy b { display: block; font-size: 12px; }
+.team-copy { min-width: 0; }
+.team-copy b { display: block; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .team-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 
 .card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; perspective: 1200px; }
@@ -2464,9 +2473,10 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .card-name { margin-top: 12px; text-align: center; }
 .card-name b { font-family: var(--bs-font-serif); font-size: 23px; font-weight: 700; letter-spacing: .04em; }
 .card-name span { display: block; margin-top: 3px; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .24em; color: var(--bs-hero-muted); }
-.card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; }
+.card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; padding: 0 4px; }
 .card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
 .card-team span:last-child { font-size: 10px; color: rgba(255,255,255,.65); }
+.card-team-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; overflow-wrap: anywhere; text-align: center; }
 .card-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
 .card-stat { text-align: center; border-right: 1px solid rgba(255,255,255,.09); }
 .card-stat:last-child { border-right: 0; }
@@ -2579,9 +2589,6 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
 .radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
 .radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
-.eval-note { display: flex; align-items: flex-start; gap: 8px; margin: 11px 0 0; padding: 9px 11px; border: 1px dashed var(--bs-hairline); border-radius: 8px; background: var(--bs-surface-soft); font-size: 11px; line-height: 1.7; color: var(--bs-text-muted); }
-.eval-note i { flex: 0 0 auto; width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--bs-accent); }
-.eval-note span { flex: 1; }
 
 .milestone-panel { padding: 19px 21px 16px; }
 .milestone-head { align-items: flex-end; }
