@@ -182,7 +182,7 @@ class ClubhouseEvaluationServiceTest {
     }
 
     @Test
-    @DisplayName("低于展示门槛的分项不参与总体，剩余权重归一化")
+    @DisplayName("低于展示门槛的分项不参与总体，剩余权重归一化；非投手不返回投球卡")
     void belowDisplayThresholdExcludesDomain() {
         Map<String, Object> lowBatting = battingRow(10L, "CF", 5, 4, 1, 0, 0, 0,
                 1, 0, 0, 0, 0, 0);
@@ -193,11 +193,10 @@ class ClubhouseEvaluationServiceTest {
         Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
         List<Map<String, Object>> cards = cards(evaluation);
 
-        assertEquals(3, cards.size());
+        assertEquals(2, cards.size());
+        assertTrue(cards.stream().noneMatch(row -> "pitching".equals(row.get("domain"))));
         assertEquals(false, card(cards, "batting").get("available"));
         assertTrue(String.valueOf(card(cards, "batting").get("reason")).contains("样本不足"));
-        assertEquals(false, card(cards, "pitching").get("available"));
-        assertTrue(String.valueOf(card(cards, "pitching").get("reason")).contains("样本不足"));
         assertEquals(false, card(cards, "fielding").get("available"));
         assertTrue(String.valueOf(card(cards, "fielding").get("reason")).contains("样本不足"));
         assertEquals(false, evaluation.get("available"));
@@ -208,6 +207,80 @@ class ClubhouseEvaluationServiceTest {
         assertEquals("样本不足", overall.get("confidenceLabel"));
         assertEquals(Map.of(), overall.get("weights"));
         verifyNoInteractions(statsService);
+    }
+
+    @Test
+    @DisplayName("非投手生涯 4.2 局（4⅔）不足 5 局：不返回投球卡，按野手 55/45 计算")
+    void nonPitcherWithFourPointTwoInningsIsExcluded() {
+        stubBattingPool(bigBattingPool());
+        stubFieldingPool(bigFieldingPool());
+        Map<String, Object> career = careerStats(bigBattingRow(),
+                pitchingRow(10L, 4.2, 6, 1, 4, 0, 8, 1.4), bigFieldingRow());
+
+        Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
+        List<Map<String, Object>> cards = cards(evaluation);
+
+        assertEquals(2, cards.size());
+        assertTrue(cards.stream().noneMatch(row -> "pitching".equals(row.get("domain"))));
+        Map<String, Object> overall = overall(evaluation);
+        assertEquals("POSITION_PLAYER", overall.get("role"));
+        assertEquals(Map.of("batting", 0.55, "fielding", 0.45), overall.get("weights"));
+        assertEquals(0.0, ((Map<?, ?>) overall.get("sampleSize")).get("pitching"));
+        verifyPitchingPoolNotFetched();
+    }
+
+    @Test
+    @DisplayName("非投手生涯 5.0 局达标：返回投球卡，打击达 50 PA 时按二刀流 40/40/20")
+    void nonPitcherWithFiveInningsIsIncluded() {
+        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        Map<String, Object> career = careerStats(bigBattingRow(),
+                pitchingRow(10L, 5.0, 6, 1, 4, 0, 8, 1.4), bigFieldingRow());
+
+        Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "CF");
+        Map<String, Object> pitching = card(cards(evaluation), "pitching");
+
+        assertEquals(true, pitching.get("available"));
+        assertEquals(5.0, pitching.get("ownSample"));
+        Map<String, Object> overall = overall(evaluation);
+        assertEquals("TWO_WAY", overall.get("role"));
+        assertEquals(Map.of("batting", 0.4, "pitching", 0.4, "fielding", 0.2),
+                overall.get("weights"));
+    }
+
+    @Test
+    @DisplayName("非投手 5 局但打击不足 50 PA：按投手 70/15/15，无打击时 80/20")
+    void nonPitcherWithFiveInningsUsesPitcherWeights() {
+        stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
+        Map<String, Object> lowPa = careerStats(
+                battingRow(10L, "CF", 30, 24, 9, 2, 0, 2, 4, 1, 0, 15, 4, 0),
+                pitchingRow(10L, 5.0, 6, 1, 4, 0, 8, 1.4), bigFieldingRow());
+
+        Map<String, Object> overall = overall(
+                service.buildCareer(10L, "BASEBALL", lowPa, "CF"));
+
+        assertEquals("PITCHER", overall.get("role"));
+        assertEquals(Map.of("pitching", 0.7, "fielding", 0.15, "batting", 0.15),
+                overall.get("weights"));
+    }
+
+    @Test
+    @DisplayName("主要守位为 P 但没有投球样本：仍返回不可用的投球卡并计为投手")
+    void primaryPitcherWithoutPitchingSampleStillReturnsCard() {
+        stubBattingPool(bigBattingPool());
+        stubFieldingPool(bigFieldingPool());
+        Map<String, Object> career = careerStats(bigBattingRow(), Map.of(), bigFieldingRow());
+
+        Map<String, Object> evaluation = service.buildCareer(10L, "BASEBALL", career, "p");
+        List<Map<String, Object>> cards = cards(evaluation);
+
+        assertEquals(3, cards.size());
+        Map<String, Object> pitching = card(cards, "pitching");
+        assertEquals(false, pitching.get("available"));
+        assertEquals("暂无投球数据", pitching.get("reason"));
+        Map<String, Object> overall = overall(evaluation);
+        assertEquals("PITCHER", overall.get("role"));
+        assertEquals(Map.of("batting", 0.5, "fielding", 0.5), overall.get("weights"));
+        verifyPitchingPoolNotFetched();
     }
 
     @Test
@@ -350,16 +423,16 @@ class ClubhouseEvaluationServiceTest {
     }
 
     @Test
-    @DisplayName("打击 PA 与投球 IP 均达门槛时按二刀流 40/40/20")
+    @DisplayName("主守位 P 的打击 PA 与投球 IP 均达门槛时按二刀流 40/40/20")
     void twoWayRequiresBothThresholds() {
         stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
         Map<String, Object> career = careerStats(
-                battingRow(10L, "CF", 50, 40, 16, 4, 0, 4, 8, 1, 0, 30, 10, 0),
+                battingRow(10L, "P", 50, 40, 16, 4, 0, 4, 8, 1, 0, 30, 10, 0),
                 pitchingRow(10L, 15.0, 6, 1, 4, 0, 8, 1.4),
                 bigFieldingRow());
 
         Map<String, Object> overall = overall(
-                service.buildCareer(10L, "BASEBALL", career, "CF"));
+                service.buildCareer(10L, "BASEBALL", career, "P"));
 
         assertEquals("TWO_WAY", overall.get("role"));
         assertEquals(Map.of("batting", 0.4, "pitching", 0.4, "fielding", 0.2),
@@ -371,15 +444,17 @@ class ClubhouseEvaluationServiceTest {
     void pitcherWithBattingBelowTwoWayThresholdUsesSeventyFifteenFifteen() {
         stubCareerPools(bigBattingPool(), bigPitchingPool(), bigFieldingPool());
         Map<String, Object> lowPa = careerStats(
-                battingRow(10L, "CF", 30, 24, 9, 2, 0, 2, 4, 1, 0, 15, 4, 0),
+                battingRow(10L, "P", 30, 24, 9, 2, 0, 2, 4, 1, 0, 15, 4, 0),
                 bigPitchingRow(), bigFieldingRow());
         Map<String, Object> lowIp = careerStats(
                 bigBattingRow(), pitchingRow(10L, 10.0, 6, 1, 4, 0, 8, 1.4), bigFieldingRow());
 
-        for (Map<String, Object> career : List.of(lowPa, lowIp)) {
-            Map<String, Object> overall = overall(
-                    service.buildCareer(10L, "BASEBALL", career, "CF"));
+        Map<String, Object> lowPaOverall = overall(
+                service.buildCareer(10L, "BASEBALL", lowPa, "P"));
+        Map<String, Object> lowIpOverall = overall(
+                service.buildCareer(10L, "BASEBALL", lowIp, "P"));
 
+        for (Map<String, Object> overall : List.of(lowPaOverall, lowIpOverall)) {
             assertEquals("PITCHER", overall.get("role"));
             assertEquals(Map.of("pitching", 0.7, "fielding", 0.15, "batting", 0.15),
                     overall.get("weights"));

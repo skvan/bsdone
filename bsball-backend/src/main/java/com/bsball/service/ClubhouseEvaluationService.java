@@ -15,7 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 个人驾驶舱「总体评价」：按全租户生涯口径计算打击、守备、投球三张六轴雷达与总体评分。
+ * 个人驾驶舱「总体评价」：按全租户生涯口径计算打击、守备雷达与总体评分；
+ * 投球雷达只在本人具备投手资格时返回。
  *
  * <p>雷达与外层球队/赛事筛选无关：对比池为当前租户、同一运动类型、有有效生涯数据的球员，
  * 每个分项取排行榜前 500 名（上限 500 人），不跨租户、不混棒球/垒球。分项按百分位加权，
@@ -30,10 +31,12 @@ public class ClubhouseEvaluationService {
     private static final int BATTING_STABLE_PA = 50;
     private static final double PITCHING_DISPLAY_IP = 3.0;
     private static final double PITCHING_STABLE_IP = 15.0;
+    private static final double PITCHER_MIN_IP = 5.0;
     private static final double FIELDING_DISPLAY_INN = 6.0;
     private static final double FIELDING_STABLE_INN = 30.0;
     private static final int TWO_WAY_MIN_PA = 50;
     private static final double TWO_WAY_MIN_IP = 15.0;
+    private static final String POSITION_PITCHER = "P";
     private static final int MIN_POSITION_GROUP = 5;
     private static final String UNIT_PA = "PA";
     private static final String UNIT_IP = "IP";
@@ -58,15 +61,17 @@ public class ClubhouseEvaluationService {
     private final StatsService statsService;
 
     /**
-     * 构建全租户生涯评价。打击、守备、投球三张卡固定返回，样本不足的卡不可用。
+     * 构建全租户生涯评价。打击、守备卡固定返回，样本不足时标记不可用；
+     * 投球卡只在本人具备投手资格（主要守位为 P，或生涯投球局数 ≥ 5.0）时返回。
      *
-     * <p>仅为可用的分项拉取对比池：无数据或未达展示门槛时不再查询该分项排行榜，
+     * <p>仅为可用的分项拉取对比池：无数据、未达展示门槛或不具备投手资格时不再查询该分项排行榜，
      * 避免驾驶舱首屏为不可用分项付出额外查询。</p>
      *
      * @param playerId        当前球员 ID
      * @param gameMode        BASEBALL / SOFTBALL；为空或非法时按棒球处理
      * @param careerStats     当前运动类型下跨球队、跨赛事的生涯统计
-     * @param primaryPosition 主要守位，用于守备同守位组比较；为空时尝试取统计行守位
+     * @param primaryPosition 主要守位（球员档案守位列表首项）：判定投手资格，并用于守备同守位组比较；
+     *                        为空时尝试取统计行守位
      * @return 含 available / comparison / minSample / cards / overall 的评价数据
      */
     public Map<String, Object> buildCareer(Long playerId, String gameMode,
@@ -76,23 +81,33 @@ public class ClubhouseEvaluationService {
         Map<String, Object> battingStats = asMap(stats.get("batting"));
         Map<String, Object> pitchingStats = asMap(stats.get("pitching"));
         Map<String, Object> fieldingStats = asMap(stats.get("fielding"));
+        boolean primaryPitcher = isPrimaryPitcher(primaryPosition);
+        boolean pitcherEligible = primaryPitcher || innings(pitchingStats) >= PITCHER_MIN_IP;
         List<Map<String, Object>> battingPool = battingReady(battingStats)
                 ? battingPool(mode) : List.of();
-        List<Map<String, Object>> pitchingPool = pitchingReady(pitchingStats)
+        List<Map<String, Object>> pitchingPool = pitcherEligible && pitchingReady(pitchingStats)
                 ? pitchingPool(mode) : List.of();
         List<Map<String, Object>> fieldingPool = fieldingReady(fieldingStats)
                 ? fieldingPool(mode) : List.of();
 
         CardResult batting = battingCard(playerId, stats, battingPool);
         CardResult fielding = fieldingCard(playerId, primaryPosition, stats, fieldingPool);
-        CardResult pitching = pitchingCard(playerId, stats, pitchingPool);
-        Map<String, Object> overall = overall(batting.domain(), fielding.domain(), pitching.domain());
+        CardResult pitching = pitcherEligible ? pitchingCard(playerId, stats, pitchingPool) : null;
+        Map<String, Object> overall = overall(batting.domain(), fielding.domain(),
+                pitching == null ? null : pitching.domain(), pitcherEligible, primaryPitcher);
+
+        List<Map<String, Object>> cards = new ArrayList<>();
+        cards.add(batting.card());
+        cards.add(fielding.card());
+        if (pitching != null) {
+            cards.add(pitching.card());
+        }
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("available", overall.get("score") != null);
         out.put("comparison", COMPARISON);
         out.put("minSample", minSample());
-        out.put("cards", List.of(batting.card(), fielding.card(), pitching.card()));
+        out.put("cards", cards);
         out.put("overall", overall);
         return out;
     }
@@ -246,10 +261,12 @@ public class ClubhouseEvaluationService {
     }
 
     private Map<String, Object> overall(DomainScore batting, DomainScore fielding,
-            DomainScore pitching) {
-        String role = role(batting, pitching);
+            DomainScore pitching, boolean pitcherEligible, boolean primaryPitcher) {
+        String role = role(batting, pitching, pitcherEligible, primaryPitcher);
         Map<String, Double> baseWeights = baseWeights(role, batting);
-        List<DomainScore> domains = List.of(batting, fielding, pitching);
+        List<DomainScore> domains = pitching == null
+                ? List.of(batting, fielding)
+                : List.of(batting, fielding, pitching);
         double weightSum = 0.0;
         for (DomainScore domain : domains) {
             Double weight = baseWeights.get(domain.key());
@@ -287,15 +304,18 @@ public class ClubhouseEvaluationService {
         return out;
     }
 
-    private String role(DomainScore batting, DomainScore pitching) {
-        if (!pitching.available()) {
+    /**
+     * 角色判定：只有具备投手资格（主要守位 P 或生涯投球 ≥ 5.0 局）才进入投手 / 二刀流，
+     * 否则一律按野手。
+     */
+    private String role(DomainScore batting, DomainScore pitching, boolean pitcherEligible,
+            boolean primaryPitcher) {
+        if (!pitcherEligible) {
             return ROLE_POSITION_PLAYER;
         }
-        if (!batting.available()) {
-            return ROLE_PITCHER;
-        }
-        boolean twoWay = batting.ownSample() >= TWO_WAY_MIN_PA
-                && pitching.ownSample() >= TWO_WAY_MIN_IP;
+        double innings = pitching == null ? 0.0 : pitching.ownSample();
+        boolean twoWay = batting.available() && batting.ownSample() >= TWO_WAY_MIN_PA
+                && (!primaryPitcher || innings >= TWO_WAY_MIN_IP);
         return twoWay ? ROLE_TWO_WAY : ROLE_PITCHER;
     }
 
@@ -329,7 +349,7 @@ public class ClubhouseEvaluationService {
             DomainScore pitching) {
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("batting", batting.ownSample());
-        out.put("pitching", pitching.ownSample());
+        out.put("pitching", pitching == null ? 0.0 : pitching.ownSample());
         out.put("fielding", fielding.ownSample());
         return out;
     }
@@ -652,6 +672,12 @@ public class ClubhouseEvaluationService {
             return (int) Math.round(ownSample);
         }
         return round1(ownSample);
+    }
+
+    /** 主要守位是否为投手（忽略大小写与首尾空白）。 */
+    private static boolean isPrimaryPitcher(String primaryPosition) {
+        return primaryPosition != null
+                && POSITION_PITCHER.equals(primaryPosition.trim().toUpperCase(Locale.ROOT));
     }
 
     /**
