@@ -3,7 +3,6 @@ package com.bsball.service;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.GamePlayerStat;
-import com.bsball.stats.earnedrun.UnearnedRunReason;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.GamePlayerStatRepository;
@@ -53,14 +52,12 @@ public class EarnedRunReconstructionService {
         List<EarnedRunPlayEntity> existing = playRepository
                 .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                         tenantId, gameId, inning, half);
-        List<EarnedRunDecisionEntity> oldDecisions = findExistingDecisions(
-                tenantId, gameId, existing);
         deleteExistingDecisions(tenantId, gameId, existing);
         playRepository.deleteByTenantIdAndGameIdAndInningAndHalf(
                 tenantId, gameId, inning, half);
         persistReconstruction(tenantId, gameId, inning, half, operatorId, plays, result);
         Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals =
-                applyPitcherStatDeltas(tenantId, gameId, fieldingTeamId, oldDecisions, result.decisions());
+                recomputePitcherStats(tenantId, gameId, fieldingTeamId);
         return result.withPitcherAbsoluteTotals(absoluteTotals);
     }
 
@@ -86,83 +83,73 @@ public class EarnedRunReconstructionService {
         EarnedRunDecisionEntity entity = decisionRepository
                 .findByIdAndTenantIdAndGameId(decisionId, tenantId, gameId)
                 .orElseThrow(() -> new IllegalArgumentException("Earned-run decision not found"));
-        EarnedRunStatus previous = EarnedRunStatus.valueOf(entity.getEarnedStatus());
-        if (previous != next) {
-            adjustPitcherStat(tenantId, gameId, entity.getResponsiblePitcherId(), previous, -1);
-            adjustPitcherStat(tenantId, gameId, entity.getResponsiblePitcherId(), next, 1);
-        }
         entity.setEarnedStatus(next.name());
         entity.setUnearnedReason(next == EarnedRunStatus.UNEARNED ? unearnedReason : null);
         entity.setOverriddenBy(operatorId);
         entity.setOverriddenAt(LocalDateTime.now());
-        return decisionRepository.save(entity);
+        EarnedRunDecisionEntity saved = decisionRepository.save(entity);
+        // 覆核只改单条判定，但仍按该场全量判定绝对重算，避免增量误差残留。
+        recomputePitcherStats(tenantId, gameId, null);
+        return saved;
     }
 
-    private void adjustPitcherStat(long tenantId, long gameId, long pitcherId,
-            EarnedRunStatus status, int direction) {
-        GamePlayerStat stat = gamePlayerStatRepository.findByGameId(gameId).stream()
-                .filter(row -> Objects.equals(row.getTenantId(), tenantId))
-                .filter(row -> Objects.equals(row.getPlayerId(), pitcherId))
-                .filter(row -> Integer.valueOf(1).equals(row.getIsPitcher()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Missing pitcher stat row for responsible pitcher " + pitcherId));
-        stat.setPitchR(Math.max(0, valueOrZero(stat.getPitchR()) + direction));
-        if (status == EarnedRunStatus.EARNED) stat.setEr(Math.max(0, valueOrZero(stat.getEr()) + direction));
-        if (status == EarnedRunStatus.UNEARNED) stat.setUnearnedR(Math.max(0, valueOrZero(stat.getUnearnedR()) + direction));
-        if (status == EarnedRunStatus.PENDING) stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + direction));
-        gamePlayerStatRepository.save(stat);
-    }
-
-    private List<EarnedRunDecisionEntity> findExistingDecisions(
-            long tenantId, long gameId, List<EarnedRunPlayEntity> existing) {
-        List<Long> playIds = existing.stream().map(EarnedRunPlayEntity::getId).toList();
-        if (playIds.isEmpty()) {
-            return List.of();
-        }
-        return decisionRepository.findByTenantIdAndGameIdAndPlayIdIn(
-                tenantId, gameId, playIds);
-    }
-
-    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> applyPitcherStatDeltas(
-            long tenantId,
-            long gameId,
-            Long fieldingTeamId,
-            List<EarnedRunDecisionEntity> oldDecisions,
-            List<EarnedRunDecision> newDecisions) {
-        Map<Long, int[]> deltas = new HashMap<>();
-        for (EarnedRunDecisionEntity decision : oldDecisions) {
-            addDelta(deltas, decision.getResponsiblePitcherId(), -1,
-                    "EARNED".equals(decision.getEarnedStatus()) ? -1 : 0,
-                    "UNEARNED".equals(decision.getEarnedStatus()) ? -1 : 0,
-                    "PENDING".equals(decision.getEarnedStatus()) ? -1 : 0);
-        }
-        for (EarnedRunDecision decision : newDecisions) {
-            addDelta(deltas, decision.responsiblePitcherId(), 1,
-                    decision.status() == EarnedRunStatus.EARNED ? 1 : 0,
-                    decision.status() == EarnedRunStatus.UNEARNED ? 1 : 0,
-                    decision.status() == EarnedRunStatus.PENDING ? 1 : 0);
-        }
-
+    /**
+     * 以该场全部逐分判定为唯一事实来源，绝对覆盖每名责任投手的 R/ER/UER/PENDING。
+     * 增量维护在漏记、重复重建或人工覆核后无法自愈，因此每次都做全量重算。
+     */
+    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> recomputePitcherStats(
+            long tenantId, long gameId, Long fallbackTeamId) {
         Map<Long, GamePlayerStat> pitcherStats = new HashMap<>();
+        Map<Long, Long> teamByPlayer = new HashMap<>();
         for (GamePlayerStat stat : gamePlayerStatRepository.findByGameId(gameId)) {
-            if (stat.getTenantId() != null
-                    && stat.getTenantId() == tenantId
-                    && stat.getPlayerId() != null
-                    && Integer.valueOf(1).equals(stat.getIsPitcher())) {
+            if (stat.getTenantId() == null || stat.getTenantId() != tenantId
+                    || stat.getPlayerId() == null) {
+                continue;
+            }
+            teamByPlayer.putIfAbsent(stat.getPlayerId(), stat.getTeamId());
+            if (Integer.valueOf(1).equals(stat.getIsPitcher())) {
                 pitcherStats.put(stat.getPlayerId(), stat);
             }
         }
-        for (Map.Entry<Long, int[]> entry : deltas.entrySet()) {
+
+        Map<Long, int[]> totals = new HashMap<>();
+        for (EarnedRunDecisionEntity decision : decisionRepository
+                .findByTenantIdAndGameId(tenantId, gameId)) {
+            Long pitcherId = decision.getResponsiblePitcherId();
+            if (pitcherId == null) {
+                continue;
+            }
+            int[] value = totals.computeIfAbsent(pitcherId, ignored -> new int[4]);
+            value[0] += 1;
+            String status = decision.getEarnedStatus();
+            if (EarnedRunStatus.EARNED.name().equals(status)) {
+                value[1] += 1;
+            } else if (EarnedRunStatus.UNEARNED.name().equals(status)) {
+                value[2] += 1;
+            } else if (EarnedRunStatus.PENDING.name().equals(status)) {
+                value[3] += 1;
+            }
+        }
+
+        for (Map.Entry<Long, int[]> entry : totals.entrySet()) {
             GamePlayerStat stat = pitcherStats.get(entry.getKey());
             if (stat == null) {
-                stat = createPitcherStatRow(tenantId, gameId, fieldingTeamId, entry.getKey());
+                Long teamId = teamByPlayer.get(entry.getKey());
+                if (teamId == null) {
+                    teamId = fallbackTeamId;
+                }
+                if (teamId == null) {
+                    throw new IllegalStateException(
+                            "Missing pitcher stat row for responsible pitcher " + entry.getKey());
+                }
+                stat = createPitcherStatRow(tenantId, gameId, teamId, entry.getKey());
                 pitcherStats.put(entry.getKey(), stat);
             }
-            int[] delta = entry.getValue();
-            stat.setPitchR(Math.max(0, valueOrZero(stat.getPitchR()) + delta[0]));
-            stat.setEr(Math.max(0, valueOrZero(stat.getEr()) + delta[1]));
-            stat.setUnearnedR(Math.max(0, valueOrZero(stat.getUnearnedR()) + delta[2]));
-            stat.setPendingR(Math.max(0, valueOrZero(stat.getPendingR()) + delta[3]));
+            int[] total = entry.getValue();
+            stat.setPitchR(total[0]);
+            stat.setEr(total[1]);
+            stat.setUnearnedR(total[2]);
+            stat.setPendingR(total[3]);
             gamePlayerStatRepository.save(stat);
         }
 
@@ -197,20 +184,6 @@ public class EarnedRunReconstructionService {
         stat.setUnearnedR(0);
         stat.setPendingR(0);
         return stat;
-    }
-
-    private void addDelta(
-            Map<Long, int[]> deltas,
-            Long pitcherId,
-            int runDelta,
-            int earnedDelta,
-            int unearnedDelta,
-            int pendingDelta) {
-        int[] value = deltas.computeIfAbsent(pitcherId, ignored -> new int[4]);
-        value[0] += runDelta;
-        value[1] += earnedDelta;
-        value[2] += unearnedDelta;
-        value[3] += pendingDelta;
     }
 
     private int valueOrZero(Integer value) {
