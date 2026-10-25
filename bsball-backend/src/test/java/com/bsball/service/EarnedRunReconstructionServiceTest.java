@@ -54,6 +54,8 @@ class EarnedRunReconstructionServiceTest {
                     entity.setId(900L);
                     return entity;
                 });
+        lenient().when(decisionRepository.save(any(EarnedRunDecisionEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -71,6 +73,8 @@ class EarnedRunReconstructionServiceTest {
         EarnedRunPlay play = new EarnedRunPlay(
                 101L, 1, 0, 0, false,
                 List.of(ScoringRunner.normal(55L, 700L)));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision(700L, "EARNED")));
 
         EarnedRunReconstructionResult result = service.replaceHalfInning(
                 1L, 20L, 3, "top", 9L, List.of(play), 500L);
@@ -100,14 +104,10 @@ class EarnedRunReconstructionServiceTest {
     void repeatedReconstruction_keepsAbsoluteTotalsIdempotent() {
         EarnedRunPlayEntity oldPlay = new EarnedRunPlayEntity();
         oldPlay.setId(901L);
-        EarnedRunDecisionEntity oldDecision = new EarnedRunDecisionEntity();
-        oldDecision.setPlayId(901L);
-        oldDecision.setResponsiblePitcherId(700L);
-        oldDecision.setEarnedStatus("EARNED");
         when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                 1L, 20L, 5, "top")).thenReturn(List.of(), List.of(oldPlay));
-        when(decisionRepository.findByTenantIdAndGameIdAndPlayIdIn(1L, 20L, List.of(901L)))
-                .thenReturn(List.of(oldDecision));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision(700L, "EARNED")));
         EarnedRunPlay play = new EarnedRunPlay(
                 101L, 1, 0, 0, false,
                 List.of(ScoringRunner.normal(55L, 700L)));
@@ -135,6 +135,32 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(0, result.pitcherAbsoluteTotals().get(700L).runs());
         assertEquals(0, result.pitcherAbsoluteTotals().get(701L).runs());
         assertNull(result.pitcherAbsoluteTotals().get(901L));
+    }
+
+    @Test
+    @DisplayName("人工覆核后按全量判定绝对重算投手统计")
+    void overrideDecisionRecomputesPitcherTotalsAbsolutely() {
+        EarnedRunDecisionEntity decision = decision(700L, "EARNED");
+        decision.setId(77L);
+        decision.setTenantId(1L);
+        decision.setGameId(20L);
+        GamePlayerStat pitcher = pitcherStat(1L, 700L, 3, 2);
+        when(decisionRepository.findByIdAndTenantIdAndGameId(77L, 1L, 20L))
+                .thenReturn(java.util.Optional.of(decision));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision));
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(pitcher));
+
+        EarnedRunDecisionEntity saved = service.overrideDecision(
+                1L, 20L, 77L, 9L, "UNEARNED", "ERROR_REACHED_BASE");
+
+        assertEquals("UNEARNED", saved.getEarnedStatus());
+        assertEquals(9L, saved.getOverriddenBy());
+        assertNotNull(saved.getOverriddenAt());
+        assertEquals(1, pitcher.getPitchR());
+        assertEquals(0, pitcher.getEr());
+        assertEquals(1, pitcher.getUnearnedR());
+        assertEquals(0, pitcher.getPendingR());
     }
 
     @Test
@@ -193,19 +219,17 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
-    @DisplayName("重判半局时只以新旧差额更新投手 R 与 ER")
-    void appliesPitcherRunAndEarnedRunDeltas() {
+    @DisplayName("重判半局时按全量判定绝对覆盖投手 R/ER/UER（可修正历史膨胀）")
+    void recomputesPitcherTotalsAbsolutely() {
         EarnedRunPlayEntity oldPlay = new EarnedRunPlayEntity();
         oldPlay.setId(88L);
-        EarnedRunDecisionEntity oldDecision = new EarnedRunDecisionEntity();
-        oldDecision.setResponsiblePitcherId(901L);
-        oldDecision.setEarnedStatus("EARNED");
-        GamePlayerStat pitcher = pitcherStat(10L, 901L, 5, 4);
+        GamePlayerStat pitcher = pitcherStat(10L, 901L, 6, 14);
         when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                 10L, 20L, 3, "top")).thenReturn(List.of(oldPlay));
-        when(decisionRepository.findByTenantIdAndGameIdAndPlayIdIn(
-                10L, 20L, List.of(88L))).thenReturn(List.of(oldDecision));
         when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(pitcher));
+        when(decisionRepository.findByTenantIdAndGameId(10L, 20L)).thenReturn(List.of(
+                decision(901L, "EARNED"),
+                decision(901L, "UNEARNED")));
 
         service.replaceHalfInning(10L, 20L, 3, "top", 30L, List.of(
                 play(101L, 1, 0, 0, false,
@@ -213,15 +237,19 @@ class EarnedRunReconstructionServiceTest {
                 play(102L, 2, 0, 0, false,
                         ScoringRunner.normal(502L, 901L))), 500L);
 
-        assertEquals(6, pitcher.getPitchR());
-        assertEquals(4, pitcher.getEr());
+        assertEquals(2, pitcher.getPitchR());
+        assertEquals(1, pitcher.getEr());
+        assertEquals(1, pitcher.getUnearnedR());
+        assertEquals(0, pitcher.getPendingR());
         verify(gamePlayerStatRepository).save(pitcher);
     }
 
     @Test
-    @DisplayName("责任投手统计行缺失时自动补建（teamId 取该半局守备方）并累计失分")
+    @DisplayName("责任投手统计行缺失时自动补建（teamId 取该半局守备方）并写入绝对失分")
     void createsMissingPitcherStatForResponsiblePitcher() {
         when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(10L, 20L))
+                .thenReturn(List.of(decision(901L, "EARNED")));
         ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
 
         service.replaceHalfInning(10L, 20L, 3, "top", 30L,
@@ -252,6 +280,13 @@ class EarnedRunReconstructionServiceTest {
                 reconstructedOutsAdded,
                 rulingPending,
                 List.of(runners));
+    }
+
+    private EarnedRunDecisionEntity decision(long pitcherId, String status) {
+        EarnedRunDecisionEntity decision = new EarnedRunDecisionEntity();
+        decision.setResponsiblePitcherId(pitcherId);
+        decision.setEarnedStatus(status);
+        return decision;
     }
 
     private GamePlayerStat pitcherStat(

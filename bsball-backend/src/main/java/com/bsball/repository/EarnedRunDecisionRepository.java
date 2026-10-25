@@ -9,6 +9,7 @@ public interface EarnedRunDecisionRepository extends JpaRepository<EarnedRunDeci
             Long id, Long tenantId, Long gameId);
     List<EarnedRunDecisionEntity> findByTenantIdAndGameIdAndPlayIdIn(
             Long tenantId, Long gameId, List<Long> playIds);
+    List<EarnedRunDecisionEntity> findByTenantIdAndGameId(Long tenantId, Long gameId);
 
     void deleteByTenantIdAndGameIdAndPlayIdIn(Long tenantId, Long gameId, List<Long> playIds);
 }
