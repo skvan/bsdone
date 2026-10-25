@@ -10408,7 +10408,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       
     }
     function Ho(){
-      oe.value=!oe.value,oe.value?(document.body.classList.add("live-game-fullscreen-active"),document.body.style.overflow="hidden"):(document.body.classList.remove("live-game-fullscreen-active"),document.body.style.overflow="");
+      ji.value=!1,oe.value=!oe.value,oe.value?(document.body.classList.add("live-game-fullscreen-active"),document.body.style.overflow="hidden"):(document.body.classList.remove("live-game-fullscreen-active"),document.body.style.overflow="");
       try{
         const e=Lt.value??R.value,t=[bl(Re.value,void 0)];
         e&&t.push(bl(Re.value,e));
@@ -10773,7 +10773,76 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[Q("↪ 重做",-1)]),_:1
         }
-        ,8,["disabled"])):W("",!0),c(F)&&c(R)?(h(),Oe(g,{
+        ,8,["disabled"])):W("",!0),c(F)&&!c(oe)?(h(),C(me,{key:"entry-tools"},[v(A,{
+          placement:"bottom-start",width:360,trigger:"click","popper-class":"live-field-settings-popover"
+        }
+        ,{
+          reference:L(()=>[v(s,{
+            size:"small",icon:c(xc),circle:"",title:"场上设置"
+          }
+          ,null,8,["icon"])]),default:L(()=>[n("div",Hg,[t[255]||(t[255]=n("div",{
+            class:"live-field-settings-extra-text"
+          }
+          ,[n("div",{
+            class:"live-field-settings-extra-title"
+          }
+          ,"投球菜单选项图标"),n("div",{
+            class:"live-field-settings-extra-desc"
+          }
+          ,"Pitch 浮层每行左侧的图示（B/K/HP 等）")],-1)),v(P,{
+            modelValue:c(Al),"onUpdate:modelValue":t[172]||(t[172]=d=>Vo(Al)?Al.value=d:null)
+          }
+          ,null,8,["modelValue"])])]),_:1
+        }
+        ),v(A,{
+          visible:ji.value,"onUpdate:visible":t[173]||(t[173]=d=>ji.value=d),placement:"bottom-start",width:ol.value,trigger:"click","popper-class":"live-field-settings-popover live-field-bench-ops-popover"
+        }
+        ,{
+          reference:L(()=>[v(s,{
+            size:"small",circle:"",title:"垒况纠偏、得分纠偏"
+          }
+          ,{
+            default:L(()=>[v(a,{
+              size:14
+            }
+            ,{
+              default:L(()=>[v(c(ed))]),_:1
+            }
+            )]),_:1
+          }
+          )]),default:L(()=>[n("div",Dg,[t[261]||(t[261]=n("div",{
+            class:"live-field-settings-title"
+          }
+          ,"局面纠偏",-1)),t[262]||(t[262]=n("p",{
+            class:"live-field-settings-hint"
+          }
+          ,"修正一二三垒跑者；扣回误记的本垒得分（局分/总分），可选同步扣 RBI 与跑者得分(R)。",-1)),n("div",Mg,[v(s,{
+            size:"small",type:"primary",plain:"",disabled:!!Ln.value,title:Ln.value||"手动指定一、二、三垒跑者，纠正与真实局面不符的垒况",class:"live-field-bench-ops-tile",onClick:Dp
+          }
+          ,{
+            default:L(()=>[...t[259]||(t[259]=[Q(" 垒况纠偏 ",-1)])]),_:1
+          }
+          ,8,["disabled","title"]),v(s,{
+            size:"small",type:"warning",plain:"",disabled:!!Ln.value,title:Ln.value||"从指定局次扣回分数，可选同步扣 RBI / 跑者得分(R)",class:"live-field-bench-ops-tile",onClick:Mp
+          }
+          ,{
+            default:L(()=>[...t[260]||(t[260]=[Q(" 得分纠偏 ",-1)])]),_:1
+          }
+          ,8,["disabled","title"]),c(forceHalfOn)?(h(),Oe(s,{
+            key:0,size:"small",type:"danger",plain:"",disabled:c(l).isGameEnd,title:"特殊换局规则：一键结束本半局并攻守交换（打者顺序保持不变）",class:"live-field-bench-ops-tile",onClick:forceHalf
+          }
+          ,{
+            default:L(()=>[Q(" 强制换局 ",-1)]),_:1
+          }
+          ,8,["disabled"])):W("",!0)])])]),_:1
+        }
+        ,8,["visible","width"]),v(s,{
+          size:"small",onClick:ec
+        }
+        ,{
+          default:L(()=>[...t[263]||(t[263]=[Q("击球落点分布",-1)])]),_:1
+        }
+        )],64)):W("",!0),c(F)&&c(R)?(h(),Oe(g,{
           key:0,trigger:"click",teleported:!1,onCommand:Mu
         }
         ,{
@@ -10857,19 +10926,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ])
         }
-        ,[c(F)?(h(),C("div",fg,[c(F)&&c(oe)?(h(),C("div",cg,[c(F)?(h(),Oe(s,{
-          key:"fs-undo",size:"small",link:"",type:"primary",disabled:!c(f).canUndo,onClick:as
-        }
-        ,{
-          default:L(()=>[Q("↩ 撤销",-1)]),_:1
-        }
-        ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
-          key:"fs-redo",size:"small",link:"",type:"primary",disabled:!c(f).canRedo,onClick:Ff
-        }
-        ,{
-          default:L(()=>[Q("↪ 重做",-1)]),_:1
-        }
-        ,8,["disabled"])):W("",!0),v(s,{
+        ,[c(F)?(h(),C("div",fg,[c(F)&&c(oe)?(h(),C("div",cg,[v(s,{
           type:"primary",link:"",onClick:Ho
         }
         ,{
@@ -10986,7 +11043,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )):W("",!0)],64))])],2)):(h(),C(me,{
           key:0
         }
-        ,[W("",!0)],64))])):W("",!0),n("div",Ag,[n("div",Og,[n("div",Lg,[n("div",Eg,[v(A,{
+        ,[W("",!0)],64))])):W("",!0),n("div",Ag,[c(oe)?(h(),C("div",Og,[n("div",Lg,[n("div",Eg,[v(A,{
           placement:"bottom-start",width:360,trigger:"click","popper-class":"live-field-settings-popover"
         }
         ,{
@@ -11049,13 +11106,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,8,["disabled"])):W("",!0)])])]),_:1
         }
-        ,8,["visible","width"])]),n("div",Ug,[v(s,{
+        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:!c(f).canUndo,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:!c(f).canRedo,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{
           size:"small",onClick:ec
         }
         ,{
           default:L(()=>[...t[95]||(t[95]=[Q("击球落点分布",-1)])]),_:1
         }
-        )])])]),n("div",{
+        )])])])):W("",!0),n("div",{
           class:re(["field-svg-wrap",{
             "field-svg-wrap--drag-mode":!0,"field-svg-wrap--runner-drag":!!ne.value
           }

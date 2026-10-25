@@ -90,7 +90,7 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 .card-body-fullscreen .field-panel[data-v-78b7b6a8]{flex:1 1 auto;min-height:0;margin-bottom:0;overflow:auto!important}
 @media (min-width:769px){
 .card-body-fullscreen .field-panel[data-v-78b7b6a8]{display:flex;flex-direction:column}
-.card-body-fullscreen .field-svg-wrap[data-v-78b7b6a8]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.card-body-fullscreen .field-svg-wrap>.ballpark-svg[data-v-78b7b6a8]{flex:1 1 auto;min-height:200px;width:100%;height:auto;max-width:900px;margin:0 auto}}
+.card-body-fullscreen .field-svg-wrap[data-v-78b7b6a8]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+.card-body-fullscreen .field-svg-wrap>.ballpark-svg[data-v-78b7b6a8]{flex:1 1 auto;min-height:200px;width:auto;height:100%;max-width:100%!important;margin:0 auto}}
 .hr-drag-preview circle{filter:drop-shadow(0 0 6px rgba(255,79,216,.8))}
 .hr-drag-preview__label{fill:#fff;font-size:20px;font-weight:700;paint-order:stroke;stroke:#14532d;stroke-width:4px}
