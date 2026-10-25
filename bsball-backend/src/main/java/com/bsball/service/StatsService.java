@@ -45,6 +45,7 @@ import com.bsball.model.dto.BattingLeaderDTO;
 import com.bsball.model.dto.EventStatRow;
 import com.bsball.model.dto.FieldingLeaderDTO;
 import com.bsball.model.dto.PitchingLeaderDTO;
+import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
@@ -105,6 +106,30 @@ public class StatsService {
         }
         catch (Exception e) {
             LoggerFactory.getLogger(StatsService.class).error("getPlayerStats failed for playerId={}", (Object)playerId, (Object)e);
+            return this.emptyPlayerStats();
+        }
+    }
+
+    /**
+     * 球队维度统计：只统计该球员代表该队的比赛。
+     * <p>{@code eventId} 为空表示该队跨赛事生涯合计；非空表示该队在该赛事的合计，
+     * 不能用赛事总合计代替。返回结构与 {@link #getPlayerStats(Long, String)} 一致。</p>
+     */
+    public Map<String, Object> getPlayerStatsByTeam(Long playerId, Long teamId, Long eventId, String gameMode) {
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            HashMap<String, Object> result = new HashMap<String, Object>();
+            result.put("batting", this.formatBatting(bat));
+            result.put("pitching", this.formatPitching(pit));
+            result.put("fielding", this.formatFielding(fld));
+            return result;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerStatsByTeam failed for playerId={}, teamId={}", (Object)playerId, (Object)teamId, (Object)e);
             return this.emptyPlayerStats();
         }
     }
@@ -177,6 +202,76 @@ public class StatsService {
         }
     }
 
+    /**
+     * 驾驶舱赛事下拉：按球员（可选球队）聚合赛事、代表球队与最后一场比赛日期。
+     * <p>{@code teamId} 为空时统计全部代表球队，非空时只统计该队；只计入排行的比赛。
+     * 返回按最后一场倒序、同日期按赛事名升序，球队聚合结果解析为数组。</p>
+     */
+    public List<PlayerEventSummaryDTO> getPlayerEventSummaries(Long playerId, Long teamId, String gameMode) {
+        if (playerId == null) {
+            return List.of();
+        }
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            List<PlayerEventSummaryDTO> rows = this.playerStatsMapper.selectPlayerEventSummaries(playerId, Long.valueOf(tid), teamId, gm);
+            if (rows == null || rows.isEmpty()) {
+                return List.of();
+            }
+            ArrayList<PlayerEventSummaryDTO> list = new ArrayList<PlayerEventSummaryDTO>();
+            for (PlayerEventSummaryDTO row : rows) {
+                row.setTeamIdList(StatsService.parseTeamIds(row.getTeamIds()));
+                row.setTeamNameList(StatsService.parseTeamNames(row.getTeamNames()));
+                list.add(row);
+            }
+            // SQL 已排序，这里再兜底一次，避免不同数据库/null 排序差异影响下拉顺序
+            list.sort(Comparator
+                    .comparing(PlayerEventSummaryDTO::getLastGameday,
+                            Comparator.nullsLast(Comparator.<String>reverseOrder()))
+                    .thenComparing(PlayerEventSummaryDTO::getEventName,
+                            Comparator.nullsLast(Comparator.<String>naturalOrder())));
+            return list;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerEventSummaries failed for playerId={}", (Object)playerId, (Object)e);
+            return List.of();
+        }
+    }
+
+    private static List<Long> parseTeamIds(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        ArrayList<Long> ids = new ArrayList<Long>();
+        for (String part : raw.split(",")) {
+            String value = part.trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            try {
+                ids.add(Long.valueOf(value));
+            }
+            catch (NumberFormatException e) {
+                // 忽略非数字片段，赛事下拉不因脏数据整体失败
+            }
+        }
+        return ids;
+    }
+
+    private static List<String> parseTeamNames(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        ArrayList<String> names = new ArrayList<String>();
+        for (String part : raw.split(",")) {
+            String name = part.trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
     public List<PlayerGameLogEntryDTO> getPlayerGameLog(Long playerId, int limit, String gameMode) {
         return this.loadGameLog(playerId, limit, gameMode, false);
     }
@@ -191,6 +286,30 @@ public class StatsService {
         return this.loadGameLog(playerId, null, gameMode, true);
     }
 
+    /**
+     * 驾驶舱表现/战报用：先按球队/赛事过滤再取最近 {@code limit} 场。
+     * <p>{@code teamId}/{@code eventId} 为空表示不限制该维度（全部球队/生涯）；
+     * {@code rankingOnly=true} 只取计入排行的比赛，与生涯统计口径一致。</p>
+     */
+    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId, Long eventId,
+            int limit, String gameMode, boolean rankingOnly) {
+        if (playerId == null || limit <= 0) {
+            return List.of();
+        }
+        try {
+            long tid = this.resolveTenantId();
+            String gm = StatsService.normalizeGameMode(gameMode);
+            Integer queryLimit = Integer.valueOf(Math.min(limit, 100));
+            List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLogForScope(
+                    playerId, Long.valueOf(tid), teamId, eventId, queryLimit, gm, rankingOnly);
+            return this.toGameLogEntries(rows);
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLogForScope failed for playerId={}, teamId={}, eventId={}", (Object)playerId, (Object)teamId, (Object)eventId, (Object)e);
+            return List.of();
+        }
+    }
+
     private List<PlayerGameLogEntryDTO> loadGameLog(Long playerId, Integer limit, String gameMode, boolean rankingOnly) {
         if (playerId == null || (limit != null && limit <= 0)) {
             return List.of();
@@ -200,32 +319,39 @@ public class StatsService {
             String gm = StatsService.normalizeGameMode(gameMode);
             Integer queryLimit = limit == null ? null : Integer.valueOf(Math.min(limit, 100));
             List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLog(playerId, Long.valueOf(tid), queryLimit, gm, rankingOnly);
-            ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
-            for (Map<String, Object> row : rows) {
-                PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
-                dto.setGameId(StatsService.getLong(row, "gameId"));
-                dto.setEventId(StatsService.getLong(row, "eventId"));
-                dto.setGameday(StatsService.strVal(row, "gameday"));
-                dto.setEventName(StatsService.strVal(row, "eventName"));
-                dto.setHomeTeamId(StatsService.getLong(row, "homeTeamId"));
-                dto.setAwayTeamId(StatsService.getLong(row, "awayTeamId"));
-                dto.setHomeScore(Integer.valueOf(StatsService.getInt(row, "homeScore")));
-                dto.setAwayScore(Integer.valueOf(StatsService.getInt(row, "awayScore")));
-                dto.setTeamId(StatsService.getLong(row, "teamId"));
-                dto.setTeamName(StatsService.strVal(row, "teamName"));
-                Object isHome = StatsService.mapGet(row, "isHome");
-                dto.setIsHome(Boolean.valueOf(isHome instanceof Boolean ? (Boolean)isHome : isHome instanceof Number && ((Number)isHome).intValue() != 0));
-                dto.setBatting(this.formatBatting(this.mapToBatting(row)));
-                dto.setPitching(this.formatPitching(this.mapToPitching(row)));
-                dto.setFielding(this.formatFielding(this.mapToFielding(row)));
-                list.add(dto);
-            }
-            return list;
+            return this.toGameLogEntries(rows);
         }
         catch (Exception e) {
             LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLog failed for playerId={}", (Object)playerId, (Object)e);
             return List.of();
         }
+    }
+
+    private List<PlayerGameLogEntryDTO> toGameLogEntries(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<PlayerGameLogEntryDTO> list = new ArrayList<PlayerGameLogEntryDTO>();
+        for (Map<String, Object> row : rows) {
+            PlayerGameLogEntryDTO dto = new PlayerGameLogEntryDTO();
+            dto.setGameId(StatsService.getLong(row, "gameId"));
+            dto.setEventId(StatsService.getLong(row, "eventId"));
+            dto.setGameday(StatsService.strVal(row, "gameday"));
+            dto.setEventName(StatsService.strVal(row, "eventName"));
+            dto.setHomeTeamId(StatsService.getLong(row, "homeTeamId"));
+            dto.setAwayTeamId(StatsService.getLong(row, "awayTeamId"));
+            dto.setHomeScore(Integer.valueOf(StatsService.getInt(row, "homeScore")));
+            dto.setAwayScore(Integer.valueOf(StatsService.getInt(row, "awayScore")));
+            dto.setTeamId(StatsService.getLong(row, "teamId"));
+            dto.setTeamName(StatsService.strVal(row, "teamName"));
+            Object isHome = StatsService.mapGet(row, "isHome");
+            dto.setIsHome(Boolean.valueOf(isHome instanceof Boolean ? (Boolean)isHome : isHome instanceof Number && ((Number)isHome).intValue() != 0));
+            dto.setBatting(this.formatBatting(this.mapToBatting(row)));
+            dto.setPitching(this.formatPitching(this.mapToPitching(row)));
+            dto.setFielding(this.formatFielding(this.mapToFielding(row)));
+            list.add(dto);
+        }
+        return list;
     }
 
     private static Object mapGet(Map<String, Object> m, String key) {

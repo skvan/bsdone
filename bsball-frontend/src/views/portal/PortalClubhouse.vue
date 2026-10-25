@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="!layoutEditing && activeModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="!layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -17,14 +17,27 @@
 
       <div class="scope-bar">
         <span class="scope-title">数据范围</span>
-        <el-select v-model="teamId" size="small" class="scope-select" :disabled="layoutEditing" @change="onTeamChange">
-          <el-option v-for="team in teams" :key="team.id" :label="team.name" :value="team.id" />
+        <el-select
+          v-if="availableGameModes.length > 1"
+          v-model="gameMode"
+          size="small"
+          class="scope-select scope-game-mode"
+          aria-label="运动类型"
+          :disabled="layoutEditing"
+          @change="onGameModeChange"
+        >
+          <el-option v-for="mode in availableGameModes" :key="mode" :label="gameModeLabel(mode)" :value="mode" />
         </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select" :disabled="layoutEditing || !scopeEvents.length" @change="load">
-          <el-option v-for="event in scopeEvents" :key="event.id" :label="event.name" :value="event.id" />
+        <el-select v-model="teamId" size="small" class="scope-select scope-team" aria-label="球队" :disabled="layoutEditing" @change="onTeamChange">
+          <el-option label="全部球队" :value="SCOPE_ALL" />
+          <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
-        <span class="scope-hint">上方数据按所选赛事聚合；队内排名按所选球队与赛事计算</span>
-        <span class="scope-right">代表 <b>{{ teams.length }}</b> 支球队</span>
+        <el-select v-model="eventId" size="small" class="scope-select scope-event" aria-label="赛事" :disabled="layoutEditing" @change="onEventChange">
+          <el-option label="生涯" :value="SCOPE_ALL" />
+          <el-option v-for="event in scopeEvents" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
+        </el-select>
+        <span class="scope-hint">{{ scopeHint }}</span>
+        <span class="scope-right">代表 <b>{{ availableTeams.length }}</b> 支球队</span>
       </div>
 
       <section class="hero">
@@ -45,8 +58,8 @@
           <div class="hero-team">
             <span class="crest">{{ teamCrest(scopeTeam) }}</span>
             <div class="team-copy">
-              <b>{{ scopeTeam?.name || '未加入球队' }}</b>
-              <span>{{ teamEventLabel(scopeTeam) }}</span>
+              <b>{{ heroTeamName }}</b>
+              <span>{{ heroTeamSub }}</span>
             </div>
           </div>
           <div class="hero-actions">
@@ -70,7 +83,7 @@
                   <b>{{ player.name }}</b>
                   <span>{{ player.nameEn || 'PLAYER' }} <template v-if="player.number">· #{{ player.number }}</template></span>
                 </div>
-                <div class="card-team"><span class="crest">{{ teamCrest(scopeTeam) }}</span><span>{{ scopeTeam?.name || '未加入球队' }} · {{ primaryPosition }}</span></div>
+                <div class="card-team"><span class="crest">{{ teamCrest(scopeTeam) }}</span><span>{{ heroTeamName }} · {{ primaryPosition }}</span></div>
               </div>
             </div>
             <div>
@@ -79,7 +92,7 @@
                 <div class="card-stat"><b>{{ heroStats[1].value }}</b><span>{{ heroStats[1].label }}</span></div>
                 <div class="card-stat"><b>{{ heroStats[2].value }}</b><span>{{ heroStats[2].label }}</span></div>
               </div>
-              <div class="card-foot"><span>代表 {{ teams.length }} 队 · {{ totalEvents }} 项赛事</span><b>{{ performanceScopeLabel }}</b></div>
+              <div class="card-foot"><span>代表 {{ availableTeams.length }} 队 · {{ totalEvents }} 项赛事</span><b>{{ performanceScopeLabel }}</b></div>
             </div>
           </div>
         </div>
@@ -103,9 +116,9 @@
         </div>
       </div>
 
-      <div v-if="activeModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }" @click.self="clearModuleSelection()">
+      <div v-if="renderableModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }" @click.self="clearModuleSelection()">
       <section
-        v-if="isModuleVisible('ranks')"
+        v-if="isModuleVisible('ranks') && teamId"
         class="rank-band dashboard-module"
         data-module-key="ranks"
         :tabindex="layoutEditing ? 0 : undefined"
@@ -116,15 +129,15 @@
         <div class="rank-band-head">
           <div>
             <span class="kicker">TEAM RANKING</span>
-            <h2>队内坐标
-              <el-tooltip content="排名按所选代表球队与赛事统计；无最低打席门槛；全垒打不进入排名。" placement="bottom-start" trigger="click">
+            <h2>队内坐标 <small>{{ rankScopeLabel }}</small>
+              <el-tooltip content="排名按当前代表球队的同队同赛事或球队跨赛事生涯口径统计；无最低打席门槛；全垒打不进入排名。" placement="bottom-start" trigger="click">
                 <button type="button" class="metric-info" aria-label="排名口径">i</button>
               </el-tooltip>
             </h2>
           </div>
-          <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '全部赛事' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
+          <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '生涯' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
         </div>
-        <p class="rank-note"><b>口径</b><span>所选代表球队 + 赛事 · 无最低打席门槛 · 全垒打不进入排名</span></p>
+        <p class="rank-note"><b>口径</b><span>{{ rankNote }}</span></p>
         <div class="rank-band-grid">
           <div v-for="(rank, index) in data.ranks" :key="rank.metricKey || index" class="rank-feature" :class="{ neutral: rank.rank == null || rank.metricKey === 'batting.obp' }">
             <div class="line">
@@ -153,12 +166,12 @@
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
-            <h3>总体评价 <small>职业指标 · 同队同赛事百分位</small></h3>
+            <h3>总体评价 <small>职业指标 · {{ evaluationComparison }}百分位</small></h3>
           </div>
           <div class="eval-meta">
             <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
-            <span>{{ data.evaluation?.comparison || '同队同赛事' }}</span>
-            <el-tooltip content="五个职业指标在同队同赛事内的百分位；样本少于 3 人不评分；投球反向指标已换算。" placement="bottom-end" trigger="click">
+            <span>{{ evaluationComparison }}</span>
+            <el-tooltip content="职业指标按当前总体评价口径计算；样本少于 3 人不评分；投球反向指标已换算。" placement="bottom-end" trigger="click">
               <button type="button" class="metric-info" aria-label="评价口径">i</button>
             </el-tooltip>
           </div>
@@ -239,7 +252,7 @@
         </div>
         <p class="eval-note">
           <i></i>
-          <span>百分位越高代表同队同赛事排名越靠前；投球指标中 ERA/WHIP/BB/9 越低越好，已反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
+          <span>按当前总体评价口径计算；百分位越高代表同口径下越靠前，投球指标中 ERA/WHIP/BB/9 越低越好，已反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
         </p>
       </section>
 
@@ -343,7 +356,7 @@
               </div>
             </div>
 
-            <div v-if="data.performance.viz === 'donut'" class="donut-wrap">
+            <div v-if="data.performance.available && data.performance.viz === 'donut'" class="donut-wrap">
               <div class="donut" :style="{ background: donutStyle }">
                 <div class="donut-center"><b>{{ donutTotal }}</b><span>安打</span></div>
               </div>
@@ -354,7 +367,7 @@
               </div>
             </div>
 
-            <div v-else-if="data.performance.viz === 'kpi'" class="kpi-view">
+            <div v-else-if="data.performance.available && data.performance.viz === 'kpi'" class="kpi-view">
               <b>{{ performanceSummary }}</b>
               <span>{{ performanceLabel }} · {{ performanceScopeLabel }}</span>
             </div>
@@ -384,7 +397,7 @@
 
             <div v-else class="data-empty">所选范围暂无比赛数据。</div>
 
-            <div class="matrix-grid">
+            <div v-if="matrixItems.length" class="matrix-grid">
               <div v-for="item in matrixItems" :key="item.label" class="matrix-item">
                 <b>{{ item.value }}</b><span>{{ item.label }}</span>
               </div>
@@ -400,7 +413,7 @@
             @click="selectModule('schedule')"
             @keydown="onModuleKeydown('schedule', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>{{ featuredGameIsCurrent ? '当前赛事优先 · 跨赛事汇总' : '跨赛事汇总' }}</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
+            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>{{ scheduleScopeLabel }}</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
             <div v-if="currentEvent" class="event-context">
               <span class="ec-label">当前赛事</span>
               <b>{{ currentEvent.name }}</b>
@@ -420,7 +433,7 @@
                 <el-button link type="primary" @click="goGame(featuredGame)">赛事详情 ›</el-button>
               </div>
             </div>
-            <div v-else class="data-empty">暂无未开赛的比赛。</div>
+            <div v-else class="data-empty">{{ scheduleEmptyText }}</div>
             <div v-if="upcomingGames.length" class="schedule-list">
               <div v-for="game in upcomingGames" :key="game.gameId" class="schedule-row">
                 <div class="sch-date">{{ formatDay(game.gameday) }}<span>{{ weekday(game.gameday) }}</span></div>
@@ -450,7 +463,7 @@
                 <div class="result-line">{{ recentLine(game) }}</div>
               </article>
             </div>
-            <div v-else class="data-empty">暂无比赛记录。</div>
+            <div v-else class="data-empty">{{ recentEmptyText }}</div>
           </section>
         </div>
 
@@ -465,7 +478,7 @@
             @keydown="onModuleKeydown('teams', $event)"
           >
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
-            <div v-for="team in teams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
+            <div v-for="team in availableTeams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
               <span class="crest-lg">{{ teamCrest(team) }}</span>
               <div class="rep-name"><b>{{ team.name }}</b><span>{{ teamEventLabel(team) }}</span></div>
               <div class="rep-stat"><b>{{ standingRank(team) }}</b><span>{{ standingRecord(team) }}</span></div>
@@ -570,6 +583,12 @@
         <p>可以随时在数据设置里重新打开需要的内容。</p>
         <el-button type="primary" @click="openSettings">去设置</el-button>
       </div>
+      <div v-else-if="!renderableModules.length" class="panel dashboard-empty">
+        <span class="kicker">SCOPE EMPTY</span>
+        <h3>当前范围暂无展示模块</h3>
+        <p>选择球队或在数据设置中启用其他模块。</p>
+        <el-button type="primary" @click="openSettings">去设置</el-button>
+      </div>
     </template>
 
     <div v-else-if="loading" class="page-state">
@@ -610,7 +629,7 @@
             <span class="module-drag" aria-hidden="true"></span>
             <div class="module-sort-name">
               <b>{{ module.label }}</b>
-              <span>{{ moduleSizeLabel(module) }}</span>
+              <span>{{ moduleSizeLabel(module) }}<template v-if="module.key === 'ranks'"> · 仅在选择球队后显示</template></span>
             </div>
             <div class="module-sort-actions">
               <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveModule(index, -1)" />
@@ -678,7 +697,7 @@
 
       <div class="settings-section">
         <div class="settings-label">队内排名 · 四个指标</div>
-        <p class="settings-hint">排名按当前代表球队与赛事计算；默认不提供全垒打。</p>
+        <p class="settings-hint">排名按当前代表球队的同队同赛事或球队跨赛事生涯计算；未选择球队时模块不显示。默认不提供全垒打。</p>
         <el-form label-position="top">
           <el-form-item v-for="(slot, index) in draft.ranks" :key="index" :label="`排名位 ${index + 1}`">
             <el-select v-model="slot.metricKey" filterable class="settings-control">
@@ -716,6 +735,7 @@ import { useTenantRouter } from '../../composables/useTenantRouter';
 const router = useRouter();
 const { tenantCode } = useTenantRouter();
 
+const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
 const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
 const MAX_MODULE_HEIGHT_ROWS = 80;
@@ -724,8 +744,9 @@ const mobileLayoutQuery = window.matchMedia('(max-width: 980px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
-const teamId = ref(null);
-const eventId = ref(null);
+const teamId = ref(SCOPE_ALL);
+const eventId = ref(SCOPE_ALL);
+const gameMode = ref('BASEBALL');
 const settingsOpen = ref(false);
 const saving = ref(false);
 const pageEl = ref(null);
@@ -754,6 +775,8 @@ let keyboardLayoutTimer = null;
 let selectionFrameRaf = 0;
 let layoutStatusTimer = null;
 let requestSeq = 0;
+let autoGameModeAdjusted = false;
+let eventScopeResetApplied = false;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
 
 const draft = reactive({
@@ -766,11 +789,28 @@ const draft = reactive({
 const player = computed(() => data.value?.player || {});
 const teams = computed(() => data.value?.teams || []);
 const catalog = computed(() => data.value?.catalog || []);
-const scopeEvents = computed(() => {
-  const team = teams.value.find((item) => item.id === teamId.value) || teams.value[0];
-  return team?.events || [];
+const gameModeLabel = (mode) => ({ BASEBALL: '棒球', SOFTBALL: '垒球' }[mode] || mode);
+function eventGameMode(event) {
+  return String(event?.gameMode || '').trim().toUpperCase() === 'SOFTBALL' ? 'SOFTBALL' : 'BASEBALL';
+}
+const availableGameModes = computed(() => {
+  const modes = new Set();
+  teams.value.forEach((team) => (team.events || []).forEach((event) => modes.add(eventGameMode(event))));
+  return ['BASEBALL', 'SOFTBALL'].filter((mode) => modes.has(mode));
 });
-const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || teams.value[0] || null);
+const availableTeams = computed(() => teams.value.filter((team) => (
+  (team.events || []).some((event) => eventGameMode(event) === gameMode.value)
+)));
+const scopeEvents = computed(() => data.value?.events || []);
+const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
+const heroTeamName = computed(() => {
+  if (scopeTeam.value) return scopeTeam.value.name;
+  return teams.value.length ? '全部球队' : '未加入球队';
+});
+const heroTeamSub = computed(() => {
+  if (scopeTeam.value) return teamEventLabel(scopeTeam.value);
+  return teams.value.length ? '跨全部代表球队' : '尚未加入球队';
+});
 const primaryPosition = computed(() => (player.value.positions || [])[0] || '未填写');
 const throwBatLabel = computed(() => {
   const throwHand = String(player.value.throwHand || '-').replace(/投$/, '');
@@ -779,23 +819,56 @@ const throwBatLabel = computed(() => {
 });
 const totalEvents = computed(() => {
   const ids = new Set();
-  teams.value.forEach((team) => (team.events || []).forEach((event) => ids.add(event.id)));
+  availableTeams.value.forEach((team) => (team.events || [])
+    .filter((event) => eventGameMode(event) === gameMode.value)
+    .forEach((event) => ids.add(event.id)));
   return ids.size;
 });
+const scopeHint = computed(() => (teamId.value
+  ? '队内排名按所选球队与赛事/生涯口径计算'
+  : '生涯合计跨全部球队与赛事；队内排名需选择球队'));
+const scopeLabel = computed(() => {
+  const scope = data.value?.scope || {};
+  if (scope.teamAll && scope.career) return '生涯';
+  return [scope.teamAll ? null : scope.teamName, scope.career ? '生涯' : scope.eventName]
+    .filter(Boolean)
+    .join(' · ');
+});
+const rankScopeLabel = computed(() => (eventId.value ? '同队同赛事' : '球队跨赛事生涯'));
+const rankNote = computed(() => `${rankScopeLabel.value} · 无最低打席门槛 · 全垒打不进入排名`);
+const scheduleScopeLabel = computed(() => {
+  if (eventId.value) return teamId.value ? '同队同赛事' : '当前赛事';
+  return teamId.value ? '球队跨赛事生涯' : '跨球队生涯';
+});
+const recentEmptyText = computed(() => (eventId.value
+  ? '该赛事暂无比赛记录。'
+  : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
+const scheduleEmptyText = computed(() => (eventId.value
+  ? '该赛事暂无未开赛的比赛。'
+  : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
 const rankPopulation = computed(() => {
   const totals = (data.value?.ranks || []).map((item) => item.total).filter((total) => total > 0);
   return totals.length && totals.every((total) => total === totals[0]) ? totals[0] : 0;
 });
 const performance = computed(() => data.value?.performance || {});
 const performanceLabel = computed(() => performance.value.label || '数据');
-const performanceScopeLabel = computed(() => eventId.value ? (data.value?.scope?.eventName || '所选赛事') : '全部赛事');
+const performanceScopeLabel = computed(() => scopeLabel.value);
 const performanceSummary = computed(() => {
   const value = performance.value.summaryValue;
   return value == null || value === '-' || value === '' ? '—' : value;
 });
 const batting = computed(() => data.value?.stats?.batting || {});
 const pitching = computed(() => data.value?.stats?.pitching || {});
-const hasBatting = computed(() => batting.value.ab > 0 || batting.value.pa > 0);
+const hasBatting = computed(() => Number(batting.value.ab) > 0 || Number(batting.value.pa) > 0);
+const hasPitchingData = computed(() => Number(pitching.value.gp) > 0 || Number(pitching.value.ip) > 0);
+const hasStatsData = computed(() => (
+  Number(batting.value.gp) > 0
+  || Number(batting.value.ab) > 0
+  || Number(batting.value.pa) > 0
+  || hasPitchingData.value
+  || Number(data.value?.stats?.fielding?.gp) > 0
+));
+const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '当前口径');
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
 const milestoneData = computed(() => milestonePayload.value || {});
 const milestoneItems = computed(() => milestoneData.value.items || []);
@@ -860,7 +933,11 @@ const activeModules = computed(() => {
   const source = configured?.length ? configured : defaultModules();
   return source.filter((module) => module.enabled !== false).map(resolveModule);
 });
-const moduleIndex = computed(() => new Map(activeModules.value.map((module, index) => [module.key, index])));
+/** 当前范围下真正渲染的模块：队内坐标仅在选中具体球队时出现，其余模块按配置回流。 */
+const renderableModules = computed(() => activeModules.value.filter((module) => (
+  module.key !== 'ranks' || Boolean(teamId.value)
+)));
+const moduleIndex = computed(() => new Map(renderableModules.value.map((module, index) => [module.key, index])));
 function isModuleVisible(key) {
   return moduleIndex.value.has(key);
 }
@@ -873,7 +950,7 @@ function moduleLayoutStyle(key) {
   };
 }
 
-const selectedModule = computed(() => activeModules.value.find((item) => item.key === selectedModuleKey.value) || null);
+const selectedModule = computed(() => renderableModules.value.find((item) => item.key === selectedModuleKey.value) || null);
 const selectionFrameStyle = computed(() => {
   const rect = selectionRect.value;
   if (!rect) return {};
@@ -1061,7 +1138,7 @@ function onReorderHandleKeydown(event) {
 }
 
 function moveSelectedModuleBy(direction) {
-  const visible = activeModules.value;
+  const visible = renderableModules.value;
   const index = visible.findIndex((item) => item.key === selectedModuleKey.value);
   if (index < 0) return false;
   const target = visible[index + direction];
@@ -1223,12 +1300,12 @@ function autoScrollDuringReorder() {
 }
 
 function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !activeModules.value.length || mobileLayoutQuery.matches) return;
+  if (!data.value || layoutSaving.value || !renderableModules.value.length || mobileLayoutQuery.matches) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
   setLayoutStatus('');
-  nextTick(() => moduleElement(activeModules.value[0]?.key)?.focus());
+  nextTick(() => moduleElement(renderableModules.value[0]?.key)?.focus());
 }
 
 function finishLayoutEditing() {
@@ -1485,6 +1562,13 @@ function onViewportResize() {
   nextTick(updateSelectionRect);
 }
 const heroStats = computed(() => {
+  if (!hasStatsData.value || (!hasBatting.value && !hasPitchingData.value)) {
+    return [
+      { label: 'AVG', value: '—' },
+      { label: 'OBP', value: '—' },
+      { label: 'RBI', value: '—' }
+    ];
+  }
   const b = batting.value;
   if (hasBatting.value) {
     return [
@@ -1501,6 +1585,7 @@ const heroStats = computed(() => {
   ];
 });
 const matrixItems = computed(() => {
+  if (!hasStatsData.value) return [];
   const b = batting.value;
   if (hasBatting.value) {
     return [
@@ -1513,19 +1598,28 @@ const matrixItems = computed(() => {
     ];
   }
   const p = pitching.value;
+  if (hasPitchingData.value) {
+    return [
+      { label: '防御率 ERA', value: p.era ?? '-' },
+      { label: 'WHIP', value: p.whip ?? '-' },
+      { label: '夺三振 SO', value: p.pitchSo ?? '-' },
+      { label: '胜投 W', value: p.w ?? '-' },
+      { label: '救援 SV', value: p.sv ?? '-' },
+      { label: '投球局数 IP', value: p.ip ?? '-' }
+    ];
+  }
+  const f = data.value?.stats?.fielding || {};
   return [
-    { label: '防御率 ERA', value: p.era ?? '-' },
-    { label: 'WHIP', value: p.whip ?? '-' },
-    { label: '夺三振 SO', value: p.pitchSo ?? '-' },
-    { label: '胜投 W', value: p.w ?? '-' },
-    { label: '救援 SV', value: p.sv ?? '-' },
-    { label: '投球局数 IP', value: p.ip ?? '-' }
+    { label: '守备率 FPCT', value: f.tcPct ?? '-' },
+    { label: '守备机会 TC', value: f.tc ?? '-' },
+    { label: '刺杀 PO', value: f.po ?? '-' },
+    { label: '助杀 A', value: f.a ?? '-' },
+    { label: '失误 E', value: f.e ?? '-' },
+    { label: '双杀 DP', value: f.dp ?? '-' }
   ];
 });
 const nextGame = computed(() => data.value?.nextGame || null);
-const currentEvent = computed(() => scopeEvents.value.find((event) => event.id === eventId.value)
-  || scopeEvents.value[0]
-  || null);
+const currentEvent = computed(() => scopeEvents.value.find((event) => event.id === eventId.value) || null);
 const currentEventStatus = computed(() => {
   const status = currentEvent.value?.status;
   return { draft: '未开始', ongoing: '进行中', ended: '已结束' }[status] || '赛程中';
@@ -1705,10 +1799,10 @@ function radarKicker(domain) {
 
 function radarFoot(domain) {
   return {
-    batting: '打击指标 · 同队同赛事',
-    fielding: '守备指标 · 同队同赛事',
+    batting: `打击指标 · ${evaluationComparison.value}`,
+    fielding: `守备指标 · ${evaluationComparison.value}`,
     pitching: '投球指标 · ERA/WHIP/BB/9 已反向'
-  }[domain] || '同队同赛事';
+  }[domain] || evaluationComparison.value;
 }
 
 function radarAria(card) {
@@ -2018,16 +2112,63 @@ async function resetSettings() {
   }
 }
 
+/** 当前球队（或全部球队）在当前运动类型下的赛事 id，用于切换后校验赛事是否仍然可选。 */
+function eventIdsForScope(teamIdValue) {
+  const source = teamIdValue
+    ? teams.value.filter((team) => team.id === teamIdValue)
+    : availableTeams.value;
+  const ids = new Set();
+  source.forEach((team) => (team.events || []).forEach((event) => {
+    if (eventGameMode(event) === gameMode.value) ids.add(event.id);
+  }));
+  return ids;
+}
+
+/** 当前运动类型没有任何赛事且只存在另一种类型时，返回应切换到的类型；否则返回 null。 */
+function fallbackGameMode() {
+  const modes = availableGameModes.value;
+  if (!modes.length || modes.includes(gameMode.value) || modes.length !== 1) return null;
+  return modes[0];
+}
+
+function onGameModeChange() {
+  if (!data.value) return;
+  if (layoutEditing.value) finishLayoutEditing();
+  eventScopeResetApplied = false;
+  if (teamId.value && !availableTeams.value.some((team) => team.id === teamId.value)) {
+    teamId.value = SCOPE_ALL;
+  }
+  if (eventId.value && !eventIdsForScope(teamId.value).has(eventId.value)) {
+    eventId.value = SCOPE_ALL;
+  }
+  load();
+}
+
 function onTeamChange() {
   if (!data.value) return;
   if (layoutEditing.value) finishLayoutEditing();
-  eventId.value = scopeEvents.value[0]?.id ?? null;
+  eventScopeResetApplied = false;
+  if (eventId.value && !eventIdsForScope(teamId.value).has(eventId.value)) {
+    eventId.value = SCOPE_ALL;
+  }
+  load();
+}
+
+function onEventChange() {
+  if (!data.value) return;
+  if (layoutEditing.value) finishLayoutEditing();
+  eventScopeResetApplied = false;
   load();
 }
 
 function switchTeam(team) {
   teamId.value = team.id;
   onTeamChange();
+}
+
+function scopeEventLabel(event) {
+  const last = dayjs(event?.lastGameday);
+  return `${event?.name || '赛事'} · ${event?.lastGameday && last.isValid() ? last.format('MM.DD') : '暂无比赛'}`;
 }
 
 async function load() {
@@ -2038,15 +2179,42 @@ async function load() {
   milestonesError.value = '';
   milestonesLoading.value = false;
   try {
-    const result = await clubhouseApi.dashboard({ teamId: teamId.value, eventId: eventId.value });
+    const result = await clubhouseApi.dashboard({
+      teamId: teamId.value || null,
+      eventId: eventId.value || null,
+      gameMode: gameMode.value
+    });
     if (seq !== requestSeq) return;
     if (!result) {
       await goUnclaimed();
       return;
     }
     data.value = result;
-    teamId.value = result.scope?.teamId ?? null;
-    eventId.value = result.scope?.eventId ?? null;
+    teamId.value = result.scope?.teamId ?? SCOPE_ALL;
+    eventId.value = result.scope?.eventId ?? SCOPE_ALL;
+    gameMode.value = result.scope?.gameMode || gameMode.value;
+    // 仅垒球（或仅棒球）球员：当前类型没有任何赛事且只存在另一种类型时，自动切换一次并重载。
+    if (!autoGameModeAdjusted) {
+      const fallbackMode = fallbackGameMode();
+      if (fallbackMode) {
+        autoGameModeAdjusted = true;
+        gameMode.value = fallbackMode;
+        teamId.value = SCOPE_ALL;
+        eventId.value = SCOPE_ALL;
+        await load();
+        return;
+      }
+    }
+    // 赛事以后端返回的 events[] 为准：已从下拉消失的赛事回退「生涯」，只重载一次。
+    const responseEventIds = new Set((result.events || []).map((event) => String(event.id)));
+    if (eventId.value && !responseEventIds.has(String(eventId.value))) {
+      eventId.value = SCOPE_ALL;
+      if (!eventScopeResetApplied) {
+        eventScopeResetApplied = true;
+        await load();
+        return;
+      }
+    }
     resetDraft();
     void loadMilestones(seq);
   } catch (error) {
@@ -2066,7 +2234,7 @@ async function load() {
 }
 
 async function loadMilestones(seq) {
-  if (!activeModules.value.some((module) => module.key === 'milestones')) {
+  if (!renderableModules.value.some((module) => module.key === 'milestones')) {
     milestonePayload.value = null;
     milestonesLoading.value = false;
     return;
@@ -2112,7 +2280,8 @@ function goPublicProfile() {
   if (player.value.id) router.push({ name: 'PortalPlayerDetail', params: { tenantCode: tenantCode.value, id: player.value.id } });
 }
 function goTeam() {
-  if (scopeTeam.value?.id) router.push({ name: 'PortalTeamDetail', params: { tenantCode: tenantCode.value, id: scopeTeam.value.id } });
+  const team = scopeTeam.value || availableTeams.value[0];
+  if (team?.id) router.push({ name: 'PortalTeamDetail', params: { tenantCode: tenantCode.value, id: team.id } });
 }
 function goEvents() {
   router.push({ name: 'PortalEvents', params: { tenantCode: tenantCode.value } });
@@ -2170,7 +2339,7 @@ onBeforeUnmount(() => {
 .clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
-.scope-select { width: 148px; }
+.scope-select { width: 148px; max-width: 100%; }
 .scope-select :deep(.el-select__wrapper) { min-height: 30px; border-radius: 7px; box-shadow: 0 0 0 1px var(--bs-hairline) inset; background: var(--bs-surface-soft); }
 .scope-hint { font-size: 10px; color: var(--bs-text-faint); margin-left: 4px; }
 .scope-right { margin-left: auto; font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
@@ -2252,6 +2421,7 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .rank-band { margin-top: 22px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 18px 22px 17px; }
 .rank-band-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
 .rank-band-head h2 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 23px; line-height: 1.2; font-weight: 700; color: var(--bs-ink); }
+.rank-band-head h2 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 10px; font-weight: 400; color: var(--bs-text-faint); }
 .rank-band-head span { font-size: 10px; color: var(--bs-text-faint); }
 .rank-scope a { color: var(--bs-accent-ink); font-weight: 700; margin-left: 5px; }
 .rank-note { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 10px; line-height: 1.5; color: var(--bs-text-muted); }
@@ -2594,6 +2764,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 @media (max-width: 560px) {
   .page-head { align-items: flex-start; flex-direction: column; }
   .page-actions { align-self: flex-end; }
+  .scope-select { width: calc(50% - 5px); }
   .hero h1 { font-size: 38px; }
   .hero-intro { font-size: 11px; }
   .hero-team { max-width: none; }

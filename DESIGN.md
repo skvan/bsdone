@@ -435,7 +435,13 @@ Sticky, 68px high, canvas background at 92% opacity with backdrop blur, 1px head
 Breadcrumb in caption; page title in `{typography.heading-lg}`; actions on the right. Do not add a second hero above this.
 
 ### Scope bar
-A single-line surface bar with a gold "数据范围" label, two scope pills ("全部赛事", "全部代表球队"), a short hint and a right-aligned summary ("代表 2 支球队 · 3 项赛事"). It is the canonical place to switch event/team scope. It must wrap gracefully on tablet.
+A single-line surface bar with a gold "数据范围" label, scope selects, a short hint and a right-aligned summary ("代表 2 支球队"). It is the canonical place to switch game mode/team/event scope. It must wrap gracefully on tablet.
+
+- Default scope is **棒球 + 全部球队 + 生涯**. Selects, in order: 运动类型 (`棒球` / `垒球`; shown only when the player has events in both modes; use only these two labels), 球队 (default `全部球队`), 赛事 (default `生涯`).
+- Event options come from the API `events[]`: label `赛事名 · 最后一场 MM.DD` (or `赛事名 · 暂无比赛` when there is no game), newest last game first; an event where the player represented several teams appears once.
+- Team and event are independent: changing the event never changes the team, and changing the team resets the event to `生涯` only when the current event is no longer in scope. Changing game mode resets the team to `全部球队` when it has no event of that mode, and the event to `生涯` when it is not in the new event list.
+- Hint copy: 全部球队 → “生涯合计跨全部球队与赛事；队内排名需选择球队”; a specific team → “队内排名按所选球队与赛事/生涯口径计算”.
+- Do not add event summary cards, a second scope row, or a permanent filter summary below the hero.
 
 ### Hero
 Deep navy gradient with the player name in serif, short intro, tags and team strip. In V3 the right side holds the player card stack. One gold primary CTA and one ghost CTA. Do not use a white hero in light mode.
@@ -450,14 +456,16 @@ The nine configurable modules and their default / minimum widths are `队内坐�
 - Reordering is visual and follows the saved array. Cards do not pack densely; if a card is taller than the card beside it, the next row starts after the taller card. This blank space is intentional and approved.
 - Width snaps to the 12-column grid; height snaps to `10px` rows and `0` means auto. A module can never be shorter than its rendered content. Enlarging a module pushes later rows down; it does not overlap neighbours.
 - All modules can be hidden. Show a panel empty state with “所有内容模块已隐藏” and a primary “去设置” action; keep the top-right “数据设置” entry visible.
+- **Team-only module:** `队内坐标` renders only when a specific team is selected. With `全部球队` it is removed from the grid (no DOM), other modules reflow into the saved layout, and its config is kept. The settings drawer still lists it and adds “仅在选择球队后显示”; “已启用 N / 9” counts configuration, not the current visible subset.
+- **Scope empty state:** if the current scope leaves no renderable module (for example only `队内坐标` is enabled while `全部球队` is selected), show “当前范围暂无展示模块” / “选择球队或在数据设置中启用其他模块” instead of an empty grid. Keep this copy separate from the all-hidden state.
 - The module settings drawer lists every module with a drag handle, label, size badge (`N 列 · 高度自适应` / `N 列 · 至少 N px`), up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
 - **Layout editing is desktop-only.** Show a top-right “编辑布局” button at `>980px`; entering edit mode shows a gold instruction bar with “完成”. The hero, identity strip and scope bar stay fixed, and scope selects are disabled.
 - **Selection:** in edit mode, click any module to select it; do not require a long press. Show a 2px gold frame with soft outer glow and no layout shift. Module content is non-interactive while editing; clicking blank grid space clears the selection. Pressing a handle must not select text or trigger module links. Entering edit mode focuses the first module; leaving it returns focus to “编辑布局”.
 - **Keyboard:** in edit mode each module is tabbable and shows a 2px accent-ink focus ring. Enter/Space selects it and focuses the corner handle (both axes); arrow keys on a focused handle resize by one column/row (left/right = width, up/down = height, corner = both). The selected module itself also accepts arrow keys. Save status uses `role="status"` / `aria-live="polite"`.
 - **Resize handles:** right edge changes width, bottom edge changes height, bottom-right corner changes both. Anchor the top-left corner. Keep the visible gold bar compact but give every handle a ≥24×24px transparent hit area. Show the module name, current `N 列 × M 行`, “移动”, “重置尺寸” and close in a compact surface toolbar inside the frame’s top-right. Drag previews live; release auto-saves.
 - **Move:** drag the toolbar’s “移动” control to reorder. The module lifts (surface shadow + slight opacity) and swaps live as the pointer enters another module; the frame follows; dragging back across a module reverses the swap. Use pointer capture so a release outside the window still ends the drag. Near the viewport top/bottom edge, auto-scroll up to 12px per frame. Release saves the new array order; Esc or leaving edit mode cancels and restores the pre-drag order. ArrowUp/ArrowDown on the focused “移动” control reorders one visible slot; the settings drawer up/down buttons remain the full fallback.
-- **Current event context:** the “接下来的比赛” module shows a compact current-event row (name, status, date range) above the featured game. The featured game prefers the selected event’s next game; the list below remains cross-event. The API caps the combined schedule at 6 upcoming games, so when the selected event’s next game is outside that cap, drop the “当前赛事优先” header promise, show the dashed note “当前赛事近期暂无未开赛比赛”, and let the featured card’s own event pill identify the fallback. Do not duplicate current event/next game above the hero.
-- **Data definitions:** the rank band has a persistent one-line 口径 note. Rank, overall evaluation and performance headers have a 24px info button that opens a click tooltip; the button must be keyboard focusable and tappable on mobile.
+- **Schedule and recent scope:** “接下来的比赛” and “最近战报” both follow the top scope. A specific team shows only that team’s games; 全部球队 + 赛事 shows every represented team in that event and each row names the actual team. The schedule is limited to `scheduled` / `live` games from today onward, ascending by date/time, capped at 6 per scope; its first row is the featured game. When an event is selected, a compact row (name, status, date range) sits above the featured game and the list stays inside that event. Empty states name the scope (“该赛事暂无未开赛的比赛” / “该球队暂无比赛记录” / “暂无比赛记录”). Do not duplicate current event/next game above the hero.
+- **Data definitions:** the rank band has a persistent one-line 口径 note; it reads 同队同赛事 when an event is selected and 球队跨赛事生涯 for a team’s career. The 数据表现 chart follows the same scope: a 30-game window, then the last 12 appearances with data for the selected metric. Rank, overall evaluation and performance headers have a 24px info button that opens a click tooltip; the button must be keyboard focusable and tappable on mobile.
 - **Readability:** dashboard labels use a 10px minimum and key captions 11px; do not reintroduce 7–9px production text. Keep the scope hint short.
 - **Failure:** save failure restores the pre-drag size/order and shows an error toast. Reset size restores the catalog default width and auto height. Mobile width never exposes the editor, handles or move control and ignores saved widths/heights.
 - Do not expose free positioning in this phase; canvas drag-reorder is supported only inside desktop layout edit mode.
@@ -480,10 +488,10 @@ The module list sits above “表现图” and “队内排名”. Use `sortable
 White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercase gold kicker, serif title, optional "切换/完整数据" link. Do not nest more than one panel level.
 
 ### Rank band
-Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band header must name the team and event scope.
+Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band renders only when a specific team is selected; with 全部球队 it is absent. The header must name the team and either 同队同赛事 (event selected) or 球队跨赛事生涯 (career).
 
 ### Overall evaluation cards
-Full-width module in the default order directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
+Full-width module in the default order directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color. The header and axis footnotes take the comparison scope from the API `evaluation.comparison` (currently 同队同赛事). The module still requires both a team and an event; with 全部球队 or a career scope it shows the API’s unavailable reason instead of a fabricated shape. A career-wide radar is a separate change.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
@@ -603,7 +611,7 @@ Rules:
 
 - **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their saved width/height in saved order; layout editing is available.
 - **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; saved module widths and heights remain active; layout editing remains available.
-- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2; evaluation radar cards stack; scope pills wrap; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2 when rendered; evaluation radar cards stack; the three scope selects wrap (two per row at ≤560px); chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
 - **≤560px**: phone typography and spacing; settings module hit targets remain 44×44px from the ≤980px rule.
 - The page must never scroll horizontally at 390px.
 
@@ -632,7 +640,7 @@ Phased adoption:
 - **Header height**: existing 60px vs 68px in V3. Adopt 68px on the portal shell when touched; admin header can remain.
 - **Micro typography**: mockups use 7–9px labels. Production must use 10px labels / 11px captions minimum.
 - **Serif availability**: Songti/Noto Serif SC fallbacks are good on macOS/Windows; verify Android/WebView rendering and bundle only if needed.
-- **Data contract**: multi-team / multi-event scope and ranking computation are a separate backend/API decision; this document only fixes presentation.
+- **Data contract**: team/event scope for stats, ranks, performance, recent games and schedule is implemented by `GET /account/clubhouse` (team career and team+event are distinct). Overall evaluation/radar still uses the backend `evaluation.comparison` (同队同赛事) and requires a selected team and event; a career-wide radar is a separate backend/design decision.
 
 ## Known Gaps
 
