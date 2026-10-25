@@ -27,3 +27,13 @@ test('五语种 glossary.term.hb 已移除', () => {
     assert.ok(data.glossary.term.hbp, locale);
   }
 });
+
+test('PBP 浮层文案与事件映射统一使用 HBP', () => {
+  const liveGame = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js'),
+    'utf8'
+  );
+  assert.equal(liveGame.includes('B/K/HP'), false, 'PBP 浮层仍残留 B/K/HP');
+  assert.ok(liveGame.includes('B/K/HBP'), 'PBP 浮层未改为 B/K/HBP');
+  assert.match(liveGame, /"pitch:HBP":"hbp"/, 'PBP 事件映射未改为 hbp');
+});

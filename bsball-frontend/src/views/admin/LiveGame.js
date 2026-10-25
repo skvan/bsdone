@@ -10789,7 +10789,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,"投球菜单选项图标"),n("div",{
             class:"live-field-settings-extra-desc"
           }
-          ,"Pitch 浮层每行左侧的图示（B/K/HP 等）")],-1)),v(P,{
+          ,"Pitch 浮层每行左侧的图示（B/K/HBP 等）")],-1)),v(P,{
             modelValue:c(Al),"onUpdate:modelValue":t[172]||(t[172]=d=>Vo(Al)?Al.value=d:null)
           }
           ,null,8,["modelValue"])])]),_:1
