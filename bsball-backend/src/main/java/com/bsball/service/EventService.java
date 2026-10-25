@@ -35,7 +35,9 @@ import com.bsball.repository.GameRepository;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -55,6 +57,7 @@ public class EventService {
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final GameRepository gameRepository;
     private final LeagueSpecialRuleService leagueSpecialRuleService;
+    private final EventSpecialRuleService eventSpecialRuleService;
 
     public PageResult<Event> list(Integer page, Integer pageSize, String sortProp, String sortOrder) {
         Page result;
@@ -93,12 +96,22 @@ public class EventService {
         if (visibleLeagueIds != null && (entity.getLeagueId() == null || !visibleLeagueIds.contains(entity.getLeagueId()))) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8d5b\u4e8b");
         }
-        // 联赛特殊规则生效值（Issue #275，设计稿 §3.3）：随详情响应附带；
-        // 未挂联赛（leagueId 为空）由服务直接返回默认值（内部早退、零查库），此处不重复默认值字面量
-        entity.setSpecialRules(this.leagueSpecialRuleService.getEffective(entity.getLeagueId()));
+        // 赛事级特殊规则（Issue #275，2026-10-24 口径调整）：随详情响应附带生效值与可用标识。
+        // 联赛能力关闭时，已配置规则的赛事仍保留规则；无规则赛事按默认值（extraBatter=false、forceHalf=true）装配。
+        boolean hasEventRules = this.eventSpecialRuleService.hasRules(entity.getId());
+        Map<String, Boolean> eventRules = hasEventRules
+                ? this.eventSpecialRuleService.getEffective(entity.getId())
+                : Map.of();
+        Map<String, Boolean> specialRules = new LinkedHashMap<>();
+        specialRules.put("specialRulesEnabled", this.leagueSpecialRuleService.isSpecialRulesEnabled(entity.getLeagueId()));
+        specialRules.put("hasEventRules", hasEventRules);
+        specialRules.put("extraBatter", Boolean.TRUE.equals(eventRules.get("extraBatter")));
+        specialRules.put("forceHalf", !Boolean.FALSE.equals(eventRules.get("forceHalf")));
+        entity.setSpecialRules(specialRules);
         return entity;
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public Event create(Event entity) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         if (entity.getRequireRoster() == null) {
@@ -112,10 +125,23 @@ public class EventService {
             }
             this.resourceGuard.assertCanManageLeague(entity.getLeagueId());
         }
+        Map<String, Boolean> rules = entity.getSpecialRules();
+        boolean writeRules = rules != null && !rules.isEmpty();
+        if (writeRules) {
+            Long leagueId = entity.getLeagueId();
+            if (leagueId == null || !this.leagueSpecialRuleService.isSpecialRulesEnabled(leagueId)) {
+                throw new BusinessException(400, "该联盟未开放特殊规则能力");
+            }
+        }
         entity.setTenantId(Long.valueOf(tid));
-        return (Event)this.eventRepository.save(entity);
+        Event saved = (Event)this.eventRepository.save(entity);
+        if (writeRules) {
+            this.eventSpecialRuleService.updateRules(saved.getId(), saved.getTenantId(), rules);
+        }
+        return saved;
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public Event update(Long id, Event entity) {
         League league;
         Long leagueId;
@@ -146,7 +172,18 @@ public class EventService {
         // 报名制标记创建时定型（决策 11：不提供 UI 开关）：编辑一律沿用旧值，
         // 防请求体缺省值（实体默认 TRUE）把存量赛事静默翻成报名制。
         entity.setRequireRoster(existing.getRequireRoster());
-        return (Event)this.eventRepository.save(entity);
+        Map<String, Boolean> rules = entity.getSpecialRules();
+        boolean writeRules = rules != null && !rules.isEmpty();
+        if (writeRules && !this.eventSpecialRuleService.hasRules(id)) {
+            if (leagueId == null || !this.leagueSpecialRuleService.isSpecialRulesEnabled(leagueId)) {
+                throw new BusinessException(400, "该联盟未开放特殊规则能力");
+            }
+        }
+        Event saved = (Event)this.eventRepository.save(entity);
+        if (writeRules) {
+            this.eventSpecialRuleService.updateRules(id, entity.getTenantId(), rules);
+        }
+        return saved;
     }
 
     @Transactional(rollbackFor={Exception.class})
@@ -180,7 +217,7 @@ public class EventService {
     }
 
     @Generated
-    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, GameRepository gameRepository, LeagueSpecialRuleService leagueSpecialRuleService) {
+    public EventService(EventRepository eventRepository, LeagueRepository leagueRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, GameRepository gameRepository, LeagueSpecialRuleService leagueSpecialRuleService, EventSpecialRuleService eventSpecialRuleService) {
         this.eventRepository = eventRepository;
         this.leagueRepository = leagueRepository;
         this.accountScopeService = accountScopeService;
@@ -189,6 +226,7 @@ public class EventService {
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.gameRepository = gameRepository;
         this.leagueSpecialRuleService = leagueSpecialRuleService;
+        this.eventSpecialRuleService = eventSpecialRuleService;
     }
 }
 

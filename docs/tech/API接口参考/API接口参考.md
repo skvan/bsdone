@@ -271,18 +271,20 @@ A-->>C : Result包装的响应
     - 响应：Result<Object>
   - GET /league/{id}/special-rules
     - 路径参数：id
-    - 响应：Result<Map>，形状 {rules:{extraBatter:boolean, forceHalf:boolean}}；为生效值（无记录按默认兜底：extraBatter=false、forceHalf=true）；联赛不存在 / 跨租户不可见返回404
+    - 响应：Result<Map>，形状 {rules:{specialRulesEnabled:boolean, extraBatter:boolean, forceHalf:boolean}}；specialRulesEnabled 为联赛收费能力（无记录默认 false）；extraBatter/forceHalf 为已迁移旧键（deprecated）；联赛不存在 / 跨租户不可见返回404
   - PUT /league/{id}/special-rules
     - 路径参数：id
-    - 请求体：{rules:{extraBatter:boolean, forceHalf:boolean}}（camelCase 键，支持子集更新；未知键名 / 非布尔 JSON 值 / 缺失值返回400）
-    - 响应：Result<Map>，返回更新后的生效值 {rules:{extraBatter, forceHalf}}
+    - 请求体：{rules:{specialRulesEnabled:boolean}}（支持子集更新；未知键名 / 非布尔 JSON 值 / 缺失值返回400）；extraBatter/forceHalf 键保留 deprecated
+    - 响应：Result<Map>，返回更新后的生效值
 - 赛事
   - GET /event/list
     - 查询参数：page, pageSize, sortProp, sortOrder
     - 响应：Result<PageResult<Event>>
   - GET /event/{id}
     - 路径参数：id
-    - 响应：Result<Event>，不存在返回404；详情附带 specialRules 字段（{extraBatter:boolean, forceHalf:boolean} 联赛特殊规则生效值，未挂联赛按默认兜底；仅详情接口附带，列表/创建/更新不含）
+    - 响应：Result<Event>，不存在返回404；详情附带 specialRules 字段（{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean} 赛事级规则 + 联赛收费能力标识；仅详情接口附带）
+  - PUT /event/update/{id}
+    - 请求体可携带 specialRules:{extraBatter:boolean, forceHalf:boolean}；赛事已有规则始终允许写入，无规则时要求联赛 specialRulesEnabled=true，否则400；写入与赛事更新同一事务
   - POST /event/create
     - 请求体：Event
     - 响应：Result<Map>，返回id

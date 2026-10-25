@@ -353,23 +353,32 @@ EventService --> EventRepository
 - `require_roster` 创建时定型：编辑赛事一律沿用存量值（无 UI 开关，防请求体缺省把存量 false 赛事翻转）。
 - 排赛选队候选：`GET /event/{eventId}/game-team-options`（见《球队球员API》）；联盟解散守卫同步改为「名下赛事全部 ended 才可解散」（决策 6）。
 
-## 联赛特殊规则开关与 EP 制（Issue #275 / #274）
+## 特殊规则：联赛收费能力 + 赛事级规则（Issue #275 / #274）
 
-联赛级特殊规则开关：`extra_batter`（EP 制 / 额外打击者）与 `force_half`（强制换局），存储于 `bs_league_special_rule`（唯一约束 `(league_id, rule_key)`，规则行只写不删）。取值语义：**行存在 = 以记录为准（支持显式关闭）；无记录 = 默认值**（extraBatter=false、forceHalf=true）。
+2026-10-24 口径调整：特殊规则改为两层——
+1. 联赛收费能力 `special_rules_enabled`（租户管理员/超管在联赛编辑弹窗开启）；
+2. 赛事级实际规则 `extra_batter` / `force_half`（赛事编辑弹窗配置）。
+已配置规则的赛事在联赛能力关闭后保留规则；该联赛新建赛事不再提供特殊规则开关。
 
-### 规则读写端点（联赛级配置）
+### 联赛收费能力（联赛级）
 
 | 方法 | 路径 | 用途 | 说明 |
 |---|---|---|---|
-| GET | /league/{id}/special-rules | 读取生效值（含默认兜底） | 响应 `Result<Map>`，形状 `{rules:{extraBatter:boolean, forceHalf:boolean}}` |
-| PUT | /league/{id}/special-rules | 更新规则（camelCase 键，支持子集 / 全集） | body `{rules:{extraBatter, forceHalf}}`；未知键名 / 非布尔 JSON 值 / 缺失值 / 空映射 400，联赛不存在或已软删 404，跨租户 403；返回更新后生效值 |
+| GET | /league/{id}/special-rules | 读取生效值（含能力与旧规则默认兜底） | 响应 `Result<Map>`，形状 `{rules:{specialRulesEnabled:boolean, extraBatter:boolean, forceHalf:boolean}}`；`specialRulesEnabled` 无记录默认 false |
+| PUT | /league/{id}/special-rules | 更新能力（支持子集 / 全集） | body `{rules:{specialRulesEnabled:boolean}}`；未知键名 / 非布尔值 / 空映射 400，联赛不存在或已软删 404，跨租户 403；`extraBatter`/`forceHalf` 键保留 deprecated（不再影响赛事） |
 
-- 权限点：`business:league:specialRule`（联赛列表行内「特殊规则」按钮 + 两接口注册）；租管仅可操作本租户联赛，超管可跨租户。
-- 存量回填（迁移 `V20261015100000__league_special_rule.sql`）：含超默认阵型（棒球 >9 / 垒球 >10 打击）的联赛自动开启 `extra_batter`（打序统计 ∪ 阵容快照双证据，幂等；未挂联赛赛事跳过）。
+- 权限点：`business:league:specialRule`（联赛编辑弹窗「特殊规则能力」入口 + 两接口注册）；租管仅可操作本租户联赛，超管可跨租户。
+- 迁移 `V20261025100000__event_special_rule.sql`：旧 `extra_batter` / `force_half` 行复制到该联赛下每个赛事；对存在旧规则行的联赛写入 `special_rules_enabled=true`（保持现状）。
 
-### 赛事详情附带（消费侧下发）
+### 赛事级规则
 
-- `GET /event/{id}` 响应新增 `specialRules: {extraBatter, forceHalf}`：由 EventService 按赛事 `leagueId` 取生效值附带（未挂联赛 / 无记录 → 默认兜底）；该字段为瞬态（不落表），仅详情接口装配，list / create / update 等响应不含（null 省略）。
+- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true。
+- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean}`；已有规则赛事能力关闭时仍返回并生效。
+- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf}`：
+  - 赛事已有规则（hasEventRules）→ 允许写入（能力关闭也保留）；
+  - 无既有规则 → 要求赛事挂联赛且 `specialRulesEnabled=true`，否则 400「该联盟未开放特殊规则能力」。
+- `POST /event/create` 携带规则时同样要求联赛能力开启；不携带则按默认。
+- 权限点：复用 `business:event:edit`（赛事编辑入口）。
 - 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
 
 ---

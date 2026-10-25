@@ -137,7 +137,8 @@ class BatchOnboardingRuleTest {
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
-                guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService);
+                guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
+                org.mockito.Mockito.mock(EventSpecialRuleService.class));
     }
 
     @AfterEach
