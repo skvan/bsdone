@@ -14,11 +14,26 @@
 
 /* 球场按可用宽度填满（#415）：列宽上限 = 容器宽 - 右侧两列上限 560 - 间距 28；
    宽屏三列铺满，窄屏球场保底 300px、右侧两列吸收余量并居中；
-   画布高度随 400:470 比例增长，页面纵向滚动查看完整守位 */
+   高度：桌面取一屏（见 .lineup-field），移动端随 400:470 比例增长、纵向滚动看完整守位 */
 .lineup-board { display: grid; grid-template-columns: minmax(300px, calc(100% - 588px)) minmax(170px, 240px) minmax(240px, 320px); justify-content: safe center; gap: 14px; align-items: start; }
 
-/* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中） */
-.lineup-field { position: relative; width: 100%; }
+/* 球场：SVG 铺满 + 卡槽绝对定位（卡片是 DOM，便于拖拽与命中）。
+   桌面端解除固定宽高比：宽度继续占满列宽，高度 = 屏高 - 128px 页面头尾预留
+   （外野背景允许拉伸）；移动端保留 400:470 比例，布局不变。 */
+.lineup-field { position: relative; width: 100%; aspect-ratio: 400 / 470; }
+@media (min-width: 769px) {
+  .lineup-field {
+    aspect-ratio: auto;
+    height: calc(100vh - 128px);
+    height: calc(100dvh - 128px);
+    min-height: 360px;
+  }
+  /* 解比例后纵向行距随屏高变化：卡槽尺寸同时受屏高约束（76/470 ≈ 16.2%，取 15.5% 留余量），
+     防止宽而矮窗口下 C/P 等相邻卡槽重叠 */
+  .lineup-slot {
+    width: min(clamp(56px, 15%, 72px), 18.5%, calc((100dvh - 128px) * 0.155));
+  }
+}
 .lineup-field__bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .field-grass { fill: #2d7a32; }
 .field-grass-infield { fill: #2f8b36; }
