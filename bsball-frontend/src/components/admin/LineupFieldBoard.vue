@@ -1,6 +1,11 @@
 <template>
-  <div class="lineup-field" :style="{ aspectRatio: `${FIELD_VIEWBOX.width} / ${FIELD_VIEWBOX.height}` }">
-    <svg class="lineup-field__bg" :viewBox="`0 0 ${FIELD_VIEWBOX.width} ${FIELD_VIEWBOX.height}`" aria-hidden="true">
+  <div class="lineup-field">
+    <svg
+      class="lineup-field__bg"
+      :viewBox="`0 0 ${FIELD_VIEWBOX.width} ${FIELD_VIEWBOX.height}`"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       <!-- 草地与外野弧 -->
       <rect x="0" y="0" :width="FIELD_VIEWBOX.width" :height="FIELD_VIEWBOX.height" class="field-grass" />
       <path :d="OUTFIELD_ARC" class="field-grass-infield" />

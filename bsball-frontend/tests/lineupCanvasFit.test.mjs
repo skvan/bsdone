@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SLOT_SIZE } from '../src/utils/lineupFieldPositions.js';
+import { FIELD_VIEWBOX, SLOT_SIZE } from '../src/utils/lineupFieldPositions.js';
 
 const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
@@ -34,6 +34,30 @@ test('底部仅保留 EP 未开放提示，空位/投手提示已移除', () => 
   assert.ok(!vue.includes('须指定先发投手后才可开始录入'), '投手提示未移除');
   const css = read('../src/styles/lineup-board.css');
   assert.ok(css.includes('.lineup-warn'), 'EP 提示样式缺失');
+});
+
+test('桌面球场解除宽高比：高度按屏高自适应，移动端保留比例', () => {
+  const css = read('../src/styles/lineup-board.css');
+  const field = read('../src/components/admin/LineupFieldBoard.vue');
+  const desktopStart = css.indexOf('@media (min-width: 769px)');
+  const mobileStart = css.indexOf('@media (max-width: 768px)');
+  const desktop = css.slice(desktopStart, mobileStart);
+  const base = css.slice(0, desktopStart);
+  assert.ok(field.includes('preserveAspectRatio="none"'), '背景 SVG 未拉伸铺满');
+  assert.ok(!field.includes('aspectRatio'), '球场不应再内联锁定宽高比');
+  assert.ok(
+    base.includes(`aspect-ratio: ${FIELD_VIEWBOX.width} / ${FIELD_VIEWBOX.height}`),
+    '基础/移动端比例与 FIELD_VIEWBOX 不一致',
+  );
+  for (const need of [
+    'aspect-ratio: auto',
+    'height: calc(100vh - 128px)',
+    'height: calc(100dvh - 128px)',
+    'min-height: 360px',
+    'calc((100dvh - 128px) * 0.155)',
+  ]) {
+    assert.ok(desktop.includes(need), `桌面媒体查询缺少：${need}`);
+  }
 });
 
 test('移动端保持单列，球场撑满', () => {
