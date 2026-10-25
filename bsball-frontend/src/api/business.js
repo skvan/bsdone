@@ -16,7 +16,8 @@ export const leagueApi = {
   owners: (id) => getData(`/api/league/${id}/owners`).then((d) => d ?? []),
   assignOwner: (id, userId) => post(`/api/league/${id}/owner/assign`, { userId }),
   revokeOwner: (id, userId) => del(`/api/league/${id}/owner/${userId}`),
-  // ---- 联赛特殊规则（Issue #275）：EP 制（额外打击者）/ 强制换局开关；GET 返回生效值（含默认兜底） ----
+  // ---- 联赛收费能力（Issue #275）：specialRulesEnabled 控制该联赛是否可配置赛事级特殊规则；
+  //      extraBatter/forceHalf 旧键 deprecated（已迁移到赛事级）；GET 返回生效值（含默认兜底） ----
   specialRules: (id) => getData(`/api/league/${id}/special-rules`),
   updateSpecialRules: (id, rules) => put(`/api/league/${id}/special-rules`, { rules })
 };

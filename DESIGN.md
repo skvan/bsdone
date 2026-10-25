@@ -337,28 +337,30 @@ Chart rules:
 - Line charts: maximum 30 points per series; show a tooltip and a summary sentence for screen readers.
 - Bar charts: maximum 12 categories; sort intentionally (time, value or rank), not alphabetically by accident.
 - Donut/pie: only for composition metrics (for example hit types: singles / doubles / triples / home runs); never for rates such as AVG, OBP or ERA. Put the total or the leading share in the center, not a decorative number.
-- Radar: approved only for the player “总体评价” (overall evaluation) section. Use one card per domain: batting and defense are always shown together; pitchers get a third pitching card. Never use tabs or a switcher to hide one of them. A radar must show the raw value and percentile for every axis, plus the comparison scope and sample size. Do not use radar for time series, rankings over time or arbitrary dashboards.
+- Radar: approved only for the player “总体评价” (overall evaluation) section. Use one card per domain: batting and defense are always shown together; a pitching card is rendered **only when the player is a pitcher** (primary position `P` or career pitching ≥ 5.0 IP). A non-pitcher must not render a pitching radar card at all, including an empty or placeholder one. Never use tabs or a switcher to hide one of them. A radar must show the raw value and percentile for every axis, plus the comparison scope and sample size. Do not use radar for time series, rankings over time or arbitrary dashboards.
 - Scatter/heatmap are not approved chart types yet. Do not add them without a design decision.
 - Implementation variables are `--bs-chart-1` … `--bs-chart-6`; use them in order and do not introduce local series hex values.
 
 #### Overall evaluation radar
 
-The approved player radar uses five axes per domain, in this fixed order:
+The approved player radar uses six axes per domain, in this fixed order:
 
 | Card | Axes | Domain color |
 |---|---|---|
-| Batting | AVG, OBP, SLG, RBI, SB | `chart-6` (deep navy) |
-| Defense | FPCT, PO/G, A/G, DP/G, RF/9 | `{colors.primary}` gold |
-| Pitching | ERA, WHIP, K/9, BB/9, IP | `chart-3` (teal) |
+| Batting | AVG, OBP, SLG, OPS, RBI, SB | `chart-6` (deep navy) |
+| Defense | FPCT, TC/G, PO/G, A/G, DP/G, RF/9 | `{colors.primary}` gold |
+| Pitching | ERA, WHIP, K/9, BB/9, HR/9, IP | `chart-3` (teal) |
 
-- Normalize each axis to a `0–100` percentile within the selected represented team and event. Do not mix events or teams. Show the comparison scope (“同队同赛事”) and the number of players in the sample.
-- Require at least three comparable players. Below that, show an empty state with the reason instead of inventing a shape.
-- Lower-is-better metrics (ERA, WHIP, BB/9) must be reversed before plotting. State this in the section footnote. IP keeps baseball notation on the axis (`5.2` = 5⅔ innings); percentile math uses outs.
+- Normalize each axis to a `0–100` percentile inside the **all-tenant career** pool (same tenant, same sport). The radar never follows the team/event scope: show “全租户生涯” and the number of players in the sample even when a team or event is selected. Do not mix tenants or baseball/softball.
+- Pitcher eligibility: render the pitching card only when the primary position (first entry of the player’s position list) is `P`, or the career pitching total is ≥ 5.0 innings. `4.2` (4⅔ = 4.667 innings) is below 5.0 and must not produce a pitching card. Non-pitchers get no pitching card, no empty placeholder and no pitching weight in the overall score.
+- Show thresholds are 10 PA / 3 IP / 6 fielding innings; stable thresholds are 50 PA / 15 IP / 30 innings. Below the show threshold the card is unavailable with the API reason; between show and stable the score is shrunk toward 50 and tagged `参考值`. Reaching the stable threshold shows `样本充足`, and the reliability value (2 decimals) stays visible.
+- `50` is the midpoint baseline (between the 40 and 60 rings); do not draw a separate 50 ring. Draw five concentric rings at 20% intervals with a 1px hairline; no ring labels are required. Fill the data polygon with the domain color at 15% opacity and a 2px outline; dots use the surface color with a 2px domain stroke.
+- Lower-is-better metrics (ERA, WHIP, BB/9, HR/9) must be reversed before plotting. Reversal and all other formulas are documented in `docs/tech/个人驾驶舱评价算法.md`; do not add a UI formula footnote. IP keeps baseball notation on the axis (`5.2` = 5⅔ innings); percentile math uses decimal innings.
+- The radar is a profile, not a score: the header score is the weighted quality score (wOBA/FIP etc.), never the polygon area. wOBA and FIP are quality inputs only and do not become radar axes.
+- Defense compares within the same position group (C / 1B / INF / OF / DH / P) when the group has at least 5 qualified players; otherwise fall back to all fielders and show `未按守位分组`. Keep the note visible; do not imply that PO/G or A/G compare like-for-like across every position.
 - At widths where three cards would fall below roughly 300px each, wrap to two columns + one rather than shrinking the chart labels. The final mobile breakpoint stacks all cards in domain order.
-- Draw five concentric rings at 20% intervals with a 1px hairline; no ring labels are required. Fill the data polygon with the domain color at 15% opacity and a 2px outline; dots use the surface color with a 2px domain stroke.
-- Use the domain color as a 3px card edge, not as a background wash. The score and grade sit in the card header; the strongest and weakest axes are named below the chart.
-- The batting and defense cards appear side by side on desktop and stack on mobile. All cards remain visible simultaneously; no accordion, carousel or tab. Pitching is appended as a third card when the player has pitching data.
-- Defense is position-sensitive. Keep the scope note visible and do not imply that PO/G or A/G compare like-for-like across every position.
+- Use the domain color as a 3px card edge, not as a background wash. The per-domain 0–100 score and letter grade (S/A+/A/B+/B/C+/C/D) sit in the card header; the strongest and weakest axes are named below the chart.
+- The batting and defense cards appear side by side on desktop and stack on mobile. All eligible cards remain visible simultaneously; no accordion, carousel or tab. Pitching is appended only for eligible pitchers (primary position `P` or career ≥ 5.0 IP) and shows its unavailable reason when the pitcher has no pitching sample; non-pitchers never get a pitching card or placeholder.
 
 ## Typography
 
@@ -435,13 +437,23 @@ Sticky, 68px high, canvas background at 92% opacity with backdrop blur, 1px head
 Breadcrumb in caption; page title in `{typography.heading-lg}`; actions on the right. Do not add a second hero above this.
 
 ### Scope bar
-A single-line surface bar with a gold "数据范围" label, two scope pills ("全部赛事", "全部代表球队"), a short hint and a right-aligned summary ("代表 2 支球队 · 3 项赛事"). It is the canonical place to switch event/team scope. It must wrap gracefully on tablet.
+A single-line surface bar with a gold "数据范围" label, scope selects, a short hint and a right-aligned summary ("代表 2 支球队"). It is the canonical place to switch game mode/team/event scope. It must wrap gracefully on tablet.
+
+- Default scope is **棒球 + 全部球队 + 生涯**. Selects, in order: 运动类型 (`棒球` / `垒球`; shown only when the player has events in both modes; use only these two labels), 球队 (default `全部球队`), 赛事 (default `生涯`).
+- Event options come from the API `events[]`: label `赛事名 · 最后一场 MM.DD` (or `赛事名 · 暂无比赛` when there is no game), newest last game first; an event where the player represented several teams appears once.
+- Team and event are independent: changing the event never changes the team, and changing the team resets the event to `生涯` only when the current event is no longer in scope. Changing game mode resets the team to `全部球队` when it has no event of that mode, and the event to `生涯` when it is not in the new event list.
+- Hint copy: 全部球队 → “生涯合计跨全部球队与赛事；队内排名需选择球队”; a specific team → “队内排名按所选球队与赛事/生涯口径计算”.
+- Do not add event summary cards, a second scope row, or a permanent filter summary below the hero.
 
 ### Hero
 Deep navy gradient with the player name in serif, short intro, tags and team strip. In V3 the right side holds the player card stack. One gold primary CTA and one ghost CTA. Do not use a white hero in light mode.
 
+- **Team strip:** with `全部球队` show every current team of the selected sport, joined with ` / ` (for example `广州猎豹 / 海珠蓝鸟`), never the literal “全部球队”; the crest shows a neutral `全`. With a specific team selected show only that team’s name and crest. Long lists wrap on desktop and mobile instead of being hidden.
+
 ### Player card
 The signature object: dark navy card, gold hairline, inner hairline frame, monogram avatar, player name, team line and three headline stats. It is decorative but must be built from real player data. It is not a generic "image card".
+
+- The team line follows the same rule as the hero strip: all selected-sport teams joined with ` / ` when `全部球队`, only the chosen team otherwise. Allow up to two lines with a `title`/tooltip fallback; do not truncate to a single ambiguous team. The footer keeps “代表 N 队 · N 项赛事”.
 
 ### Dashboard modules
 The nine configurable modules and their default / minimum widths are `队内坐标` (12/6), `总体评价` (12/8), `生涯里程碑` (12/8), `数据表现` (8/6), `代表球队` (4/4), `接下来的比赛` (8/6), `关于我` (4/4), `最近战报` (8/6), `快捷入口` (4/4). The default order follows the approved V3 page; default height is auto.
@@ -450,14 +462,16 @@ The nine configurable modules and their default / minimum widths are `队内坐�
 - Reordering is visual and follows the saved array. Cards do not pack densely; if a card is taller than the card beside it, the next row starts after the taller card. This blank space is intentional and approved.
 - Width snaps to the 12-column grid; height snaps to `10px` rows and `0` means auto. A module can never be shorter than its rendered content. Enlarging a module pushes later rows down; it does not overlap neighbours.
 - All modules can be hidden. Show a panel empty state with “所有内容模块已隐藏” and a primary “去设置” action; keep the top-right “数据设置” entry visible.
+- **Team-only module:** `队内坐标` renders only when a specific team is selected. With `全部球队` it is removed from the grid (no DOM), other modules reflow into the saved layout, and its config is kept. The settings drawer still lists it and adds “仅在选择球队后显示”; “已启用 N / 9” counts configuration, not the current visible subset.
+- **Scope empty state:** if the current scope leaves no renderable module (for example only `队内坐标` is enabled while `全部球队` is selected), show “当前范围暂无展示模块” / “选择球队或在数据设置中启用其他模块” instead of an empty grid. Keep this copy separate from the all-hidden state.
 - The module settings drawer lists every module with a drag handle, label, size badge (`N 列 · 高度自适应` / `N 列 · 至少 N px`), up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
 - **Layout editing is desktop-only.** Show a top-right “编辑布局” button at `>980px`; entering edit mode shows a gold instruction bar with “完成”. The hero, identity strip and scope bar stay fixed, and scope selects are disabled.
 - **Selection:** in edit mode, click any module to select it; do not require a long press. Show a 2px gold frame with soft outer glow and no layout shift. Module content is non-interactive while editing; clicking blank grid space clears the selection. Pressing a handle must not select text or trigger module links. Entering edit mode focuses the first module; leaving it returns focus to “编辑布局”.
 - **Keyboard:** in edit mode each module is tabbable and shows a 2px accent-ink focus ring. Enter/Space selects it and focuses the corner handle (both axes); arrow keys on a focused handle resize by one column/row (left/right = width, up/down = height, corner = both). The selected module itself also accepts arrow keys. Save status uses `role="status"` / `aria-live="polite"`.
 - **Resize handles:** right edge changes width, bottom edge changes height, bottom-right corner changes both. Anchor the top-left corner. Keep the visible gold bar compact but give every handle a ≥24×24px transparent hit area. Show the module name, current `N 列 × M 行`, “移动”, “重置尺寸” and close in a compact surface toolbar inside the frame’s top-right. Drag previews live; release auto-saves.
 - **Move:** drag the toolbar’s “移动” control to reorder. The module lifts (surface shadow + slight opacity) and swaps live as the pointer enters another module; the frame follows; dragging back across a module reverses the swap. Use pointer capture so a release outside the window still ends the drag. Near the viewport top/bottom edge, auto-scroll up to 12px per frame. Release saves the new array order; Esc or leaving edit mode cancels and restores the pre-drag order. ArrowUp/ArrowDown on the focused “移动” control reorders one visible slot; the settings drawer up/down buttons remain the full fallback.
-- **Current event context:** the “接下来的比赛” module shows a compact current-event row (name, status, date range) above the featured game. The featured game prefers the selected event’s next game; the list below remains cross-event. The API caps the combined schedule at 6 upcoming games, so when the selected event’s next game is outside that cap, drop the “当前赛事优先” header promise, show the dashed note “当前赛事近期暂无未开赛比赛”, and let the featured card’s own event pill identify the fallback. Do not duplicate current event/next game above the hero.
-- **Data definitions:** the rank band has a persistent one-line 口径 note. Rank, overall evaluation and performance headers have a 24px info button that opens a click tooltip; the button must be keyboard focusable and tappable on mobile.
+- **Schedule and recent scope:** “接下来的比赛” and “最近战报” both follow the top scope. A specific team shows only that team’s games; 全部球队 + 赛事 shows every represented team in that event and each row names the actual team. The schedule is limited to `scheduled` / `live` games from today onward, ascending by date/time, capped at 6 per scope; its first row is the featured game. When an event is selected, a compact row (name, status, date range) sits above the featured game and the list stays inside that event. Empty states name the scope (“该赛事暂无未开赛的比赛” / “该球队暂无比赛记录” / “暂无比赛记录”). Do not duplicate current event/next game above the hero.
+- **Data definitions:** the rank band has a persistent one-line 口径 note; it reads 同队同赛事 when an event is selected and 球队跨赛事生涯 for a team’s career. The 数据表现 chart follows the same scope: a 30-game window, then the last 12 appearances with data for the selected metric. Rank and performance headers have a 24px info button that opens a click tooltip; the button must be keyboard focusable and tappable on mobile. The overall evaluation header has **no** info button and no formula note.
 - **Readability:** dashboard labels use a 10px minimum and key captions 11px; do not reintroduce 7–9px production text. Keep the scope hint short.
 - **Failure:** save failure restores the pre-drag size/order and shows an error toast. Reset size restores the catalog default width and auto height. Mobile width never exposes the editor, handles or move control and ignores saved widths/heights.
 - Do not expose free positioning in this phase; canvas drag-reorder is supported only inside desktop layout edit mode.
@@ -480,10 +494,14 @@ The module list sits above “表现图” and “队内排名”. Use `sortable
 White/dark surface, 18px radius, 1px soft hairline, low shadow. Header: uppercase gold kicker, serif title, optional "切换/完整数据" link. Do not nest more than one panel level.
 
 ### Rank band
-Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band header must name the team and event scope.
+Full-width surface with four rank features. Each feature has a large numeric rank, a metric name, a supporting note and a 3px progress track. The band renders only when a specific team is selected; with 全部球队 it is absent. The header must name the team and either 同队同赛事 (event selected) or 球队跨赛事生涯 (career).
 
 ### Overall evaluation cards
-Full-width module in the default order directly below the rank band. The header names the section “总体评价” and the current team/event scope. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a numeric overall score with letter grade, a five-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
+Full-width module in the default order directly below the rank band. The header names the section “总体评价” and shows the fixed comparison “职业指标 · 全租户生涯百分位”; the radar and overall score are independent of the team/event scope and must say “不随筛选变化”. Cards use a 14px radius inside the 18px panel, a 3px domain-colored left edge, a six-axis radar, a compact raw-value matrix, strongest/weakest callouts, and a sample footer. Batting and defense are never separated into tabs. A pitching card appears only for pitchers (primary position `P` or career ≥ 5.0 IP); non-pitchers see two cards with no empty pitching slot. On mobile all cards stack in the same order. Use `{colors.surface-soft}` for the metric strip; do not fill the whole card with the domain color.
+
+The header carries the overall 0–100 score, its letter grade, the role label (野手 / 投手 / 二刀流), the confidence tag (`样本充足` / `参考值` / `样本不足`), the per-domain own samples (“X PA · X IP · X 局”) and the weighted overall reliability. Each card header repeats its own 0–100 score and grade; the radar shape never substitutes for them. The card footer shows the pool size (“样本池 N 人”), the player’s own sample (“本人 X PA / X IP / X 局”) and the axis count with the career scope.
+
+**The UI shows a summary, not the algorithm.** Do not render a long explanation paragraph or an info tooltip describing the six axes, wOBA/FIP, the 500-player pool, shrinkage, role weights or position groups. Keep only: the comparison label “职业指标 · 全租户生涯百分位”, per-axis raw value and percentile, pool size / own sample, reliability and confidence, and short card notes such as `参考 wOBA`, `参考 FIP` and `未按守位分组`. All formulas live in `docs/tech/个人驾驶舱评价算法.md` (and the API reference); never document formulas in the UI. Never invent a rank or shape when the API returns `available=false`; show its `reason`.
 
 ### Buttons
 - `{components.button-primary}`: gold gradient fill, dark brown text. One per section.
@@ -603,7 +621,7 @@ Rules:
 
 - **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their saved width/height in saved order; layout editing is available.
 - **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; saved module widths and heights remain active; layout editing remains available.
-- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2; evaluation radar cards stack; scope pills wrap; chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2 when rendered; evaluation radar cards stack; the three scope selects wrap (two per row at ≤560px); chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
 - **≤560px**: phone typography and spacing; settings module hit targets remain 44×44px from the ≤980px rule.
 - The page must never scroll horizontally at 390px.
 
@@ -632,7 +650,7 @@ Phased adoption:
 - **Header height**: existing 60px vs 68px in V3. Adopt 68px on the portal shell when touched; admin header can remain.
 - **Micro typography**: mockups use 7–9px labels. Production must use 10px labels / 11px captions minimum.
 - **Serif availability**: Songti/Noto Serif SC fallbacks are good on macOS/Windows; verify Android/WebView rendering and bundle only if needed.
-- **Data contract**: multi-team / multi-event scope and ranking computation are a separate backend/API decision; this document only fixes presentation.
+- **Data contract**: team/event scope for stats, ranks, performance, recent games and schedule is implemented by `GET /account/clubhouse` (team career and team+event are distinct). Overall evaluation/radar is separate: `evaluation.comparison` is fixed to `全租户生涯`, radar/scores use the same-tenant, same-sport career pool, and the module stays available when 全部球队 / 生涯 is selected. `evaluation.cards` returns batting + fielding always and pitching only for eligible pitchers (primary position `P` or career ≥ 5.0 IP); the client also filters a pitching card when `overall.role === 'POSITION_PLAYER'` for older payloads. All-tenant view displays every selected-sport team name in hero and player card. The algorithm contract lives in `docs/tech/个人驾驶舱评价算法.md`.
 
 ## Known Gaps
 

@@ -31,6 +31,7 @@ import { getLineHead as It } from '../../utils/liveGameFieldLayout';
 import { groupLinesIntoBlocks as La } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as Fa } from '../../utils/liveGameFieldLayout';
 import { getFinalCount as Aa } from '../../utils/liveGameFieldLayout';
+import { resolveAtBatGroupBases } from '../../utils/liveGameGroupBases';
 import '../../styles/legacy/live-game-watch.css';
 var Ta={
   class:"header-left"
@@ -392,7 +393,7 @@ var Ta={
       }
       
     }
-    ),ve=f([]),ne=f([]),at=f({
+    ),ve=f([]),activeContext=f(null),ne=f([]),at=f({
       
     }
     ),At=I(()=>{
@@ -508,13 +509,16 @@ var Ta={
       :l
     }
     function K(e,t,a){
-      return oe(t,a,e)?{
-        1:H[1],2:H[2],3:H[3]
-      }
-      :$e(t,a,e)?.basesBefore??{
-        1:!1,2:!1,3:!1
-      }
-      
+      const current=oe(t,a,e);
+      const active=current?activeContext.value:null;
+      const currentBatter=ut();
+      const activeBases=active&&(active.batterId==null||currentBatter?.id==null||Number(active.batterId)===Number(currentBatter.id))?active.basesBefore:null;
+      return resolveAtBatGroupBases({
+        isCurrent:current,
+        liveBases:{1:H[1],2:H[2],3:H[3]},
+        summary:$e(t,a,e),
+        activeBases
+      })
     }
     function Ct(){
       return`${_.inning}-${_.isTop?"top":"bottom"}`
@@ -850,7 +854,7 @@ var Ta={
       b(t,"home"),b(a,"away"),b(l,"homeB"),b(r,"awayB")
     }
     function vt(){
-      H[1]=!1,H[2]=!1,H[3]=!1
+      H[1]=!1,H[2]=!1,H[3]=!1,activeContext.value=null
     }
     function Kt(e){
       if(vt(),!e)return;
@@ -913,7 +917,7 @@ var Ta={
       }
       ne.value=Fa(e.eventLog);
       const o=e.atBatSummaries;
-      ve.value=Array.isArray(o)?o:[],Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
+      ve.value=Array.isArray(o)?o:[],activeContext.value=e.activeAbContext??null,Xt(e.playerStatsById,E.value,D.value,he.value,de.value),e.playerStatsById&&typeof e.playerStatsById=="object"&&(at.value=e.playerStatsById),await Qt([...l,...b],[...r,...w]),Ne(E),Ne(D),Ne(he),Ne(de),et()
     }
     async function ke(force){
       if($.value||(!force&&Date.now()-Fe.value<4e3))return;
@@ -1131,13 +1135,13 @@ var Ta={
                 key:`${n.inning}-${n.half}-${s.key}`,name:rt(n.inning,n.half,s.key)
               }
               ,{
-                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,"第"+u(ct(s,n.inning,n.half))+"棒",1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(3,o=>i("span",{
+                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,"第"+u(ct(s,n.inning,n.half))+"棒",1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).strikes
                   }
                   ])
                 }
-                ,null,2)),64))]),i("div",gs,[(c(),h(L,null,O(4,o=>i("span",{
+                ,null,2)),64))]),i("div",gs,[(c(),h(L,null,O(3,o=>i("span",{
                   key:`b-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).balls
                   }
@@ -1218,13 +1222,13 @@ var Ta={
                 name:s.id
               }
               ,{
-                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,"第"+u(ct(s.group,s.inning,s.half))+"棒",1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(3,o=>i("span",{
+                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,"第"+u(ct(s.group,s.inning,s.half))+"棒",1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.id}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s.group,s.inning,s.half).strikes
                   }
                   ])
                 }
-                ,null,2)),64))]),i("div",en,[(c(),h(L,null,O(4,o=>i("span",{
+                ,null,2)),64))]),i("div",en,[(c(),h(L,null,O(3,o=>i("span",{
                   key:`b-${s.id}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s.group,s.inning,s.half).balls
                   }

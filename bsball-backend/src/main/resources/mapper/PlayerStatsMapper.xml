@@ -163,6 +163,134 @@
           )
     </select>
 
+    <!-- 球队维度统计：固定按代表球队过滤；eventId 为空表示该队生涯，非空表示该队在该赛事（不能拿赛事合计代替） -->
+    <select id="selectBattingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Batting">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            COALESCE(SUM(s.pa), 0) AS pa,
+            COALESCE(SUM(s.ab), 0) AS ab,
+            COALESCE(SUM(s.r), 0) AS r,
+            COALESCE(SUM(s.h), 0) AS h,
+            COALESCE(SUM(s.rbi), 0) AS rbi,
+            COALESCE(SUM(s.hr), 0) AS hr,
+            COALESCE(SUM(s.inside_park_hr), 0) AS insideParkHr,
+            COALESCE(SUM(s.sb), 0) AS sb,
+            COALESCE(SUM(s.bb_hp), 0) AS bbHp,
+            COALESCE(SUM(s.so), 0) AS so,
+            COALESCE(SUM(s.doubles), 0) AS doubles,
+            COALESCE(SUM(s.triples), 0) AS triples,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.gdp), 0) AS gdp,
+            COALESCE(SUM(s.sh), 0) AS sh,
+            COALESCE(SUM(s.sf), 0) AS sf,
+            COALESCE(SUM(s.bb), 0) AS bb,
+            COALESCE(SUM(s.ibb), 0) AS ibb,
+            COALESCE(SUM(s.hbp), 0) AS hbp,
+            COALESCE(SUM(s.io), 0) AS io,
+            COALESCE(SUM(s.cs), 0) AS cs
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND s.team_id = #{teamId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="battingRowWhereCareerLeaders"/>
+    </select>
+
+    <select id="selectPitchingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            END) AS ip,
+            COALESCE(SUM(s.er), 0) AS er,
+            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
+            COALESCE(SUM(s.pending_r), 0) AS pendingR,
+            COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
+            COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
+            COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
+            COALESCE(SUM(s.pitch_bb_hp), 0) AS pitchBbHp,
+            COALESCE(SUM(s.pitch_so), 0) AS pitchSo,
+            COALESCE(SUM(s.pitch_hr), 0) AS pitchHr,
+            COALESCE(SUM(s.pitch_inside_park_hr), 0) AS pitchInsideParkHr,
+            COALESCE(SUM(s.pitch_sh), 0) AS pitchSh,
+            COALESCE(SUM(s.pitch_sf), 0) AS pitchSf,
+            COALESCE(SUM(s.gs), 0) AS gs,
+            COALESCE(SUM(s.svo), 0) AS svo,
+            COALESCE(SUM(s.cg), 0) AS cg,
+            COALESCE(SUM(s.pg), 0) AS pg,
+            COALESCE(SUM(s.w), 0) AS w,
+            COALESCE(SUM(s.l), 0) AS l,
+            COALESCE(SUM(s.sv), 0) AS sv,
+            COALESCE(SUM(s.hld), 0) AS hld,
+            COALESCE(SUM(s.pitch_pa), 0) AS pitchPa,
+            COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
+            COALESCE(SUM(<include refid="pitchAbEffectiveCol"/>), 0) AS pitchAb,
+            COALESCE(SUM(s.np), 0) AS np,
+            COALESCE(SUM(s.pitch_bb), 0) AS pitchBb,
+            COALESCE(SUM(s.pitch_ibb), 0) AS pitchIbb,
+            COALESCE(SUM(s.pitch_hbp), 0) AS pitchHbp,
+            COALESCE(SUM(s.pitch_io), 0) AS pitchIo,
+            COALESCE(SUM(s.wp), 0) AS wp,
+            COALESCE(SUM(s.bk), 0) AS bk,
+            COALESCE(SUM(<include refid="pitchRCol"/>), 0) AS pitchR,
+            COALESCE(SUM(s.go), 0) AS go,
+            COALESCE(SUM(s.fo), 0) AS fo
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND s.team_id = #{teamId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+          AND s.is_pitcher = 1
+          AND s.ip IS NOT NULL AND s.ip > 0
+    </select>
+
+    <select id="selectFieldingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
+        SELECT
+            COUNT(DISTINCT s.game_id) AS gp,
+            (CASE WHEN COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) / 3.0)) / 10.0
+            END) AS inn,
+            COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) AS tc,
+            COALESCE(SUM(s.po), 0) AS po,
+            COALESCE(SUM(s.a), 0) AS a,
+            COALESCE(SUM(s.e), 0) AS e,
+            COALESCE(SUM(s.dp), 0) AS dp,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
+            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+        FROM bs_game_player_stat s
+        INNER JOIN bs_game g ON s.game_id = g.id
+        INNER JOIN bs_event e ON g.event_id = e.id
+        WHERE s.player_id = #{playerId}
+          AND e.tenant_id = #{tenantId}
+          AND s.team_id = #{teamId}
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <include refid="gameModeFilter"/>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+          AND s.position IS NOT NULL
+          AND s.position NOT IN ('P', 'DH', 'PH')
+          AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
+            OR COALESCE(s.def_inn,0) > 0
+            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
+          )
+    </select>
+
     <!-- 按赛事分组：JOIN game + event -->
     <select id="selectBattingStatsByEvent" resultType="com.bsball.model.dto.EventStatRow">
         SELECT
@@ -323,8 +451,39 @@
         GROUP BY sub.event_id
     </select>
 
-    <!-- 比赛日志：最近 limit 场，每场一行，含 game 与 stat 列 -->
-    <select id="selectGameLog" resultType="map">
+    <!-- 驾驶舱赛事下拉：按赛事聚合代表球队与最后一场（仅计入排行的比赛），最后一场倒序。
+         先按（赛事, 球队）聚合再汇总，保证 teamIds 与 teamNames 共用同一球队顺序（球队 ID 升序）。 -->
+    <select id="selectPlayerEventSummaries" resultType="com.bsball.model.dto.PlayerEventSummaryDTO">
+        SELECT e.id AS eventId, e.name AS eventName, e.status AS status,
+               e.start_date AS startDate, e.end_date AS endDate, e.game_mode AS gameMode,
+               STRING_AGG(ts.team_id::text, ',' ORDER BY ts.team_id) AS teamIds,
+               STRING_AGG(ts.team_name, ', ' ORDER BY ts.team_id) AS teamNames,
+               MAX(ts.last_gameday) AS lastGameday,
+               SUM(ts.game_count) AS gameCount
+        FROM (
+            SELECT g.event_id AS event_id, s.team_id AS team_id,
+                   MAX(t.name) AS team_name,
+                   MAX(g.gameday) AS last_gameday,
+                   COUNT(DISTINCT s.game_id) AS game_count
+            FROM bs_game_player_stat s
+            INNER JOIN bs_game g ON s.game_id = g.id
+            LEFT JOIN bs_team t ON t.id = s.team_id
+            WHERE s.player_id = #{playerId}
+              AND g.deleted_at IS NULL
+              AND COALESCE(g.include_stats_in_ranking, true) = true
+            <if test="teamId != null">AND s.team_id = #{teamId}</if>
+            GROUP BY g.event_id, s.team_id
+        ) ts
+        INNER JOIN bs_event e ON e.id = ts.event_id
+        WHERE e.tenant_id = #{tenantId}
+          AND e.deleted_at IS NULL
+        <include refid="gameModeFilter"/>
+        GROUP BY e.id, e.name, e.status, e.start_date, e.end_date, e.game_mode
+        ORDER BY MAX(ts.last_gameday) DESC NULLS LAST, e.name ASC
+    </select>
+
+    <!-- 比赛日志公共列与基础过滤：每场一行，含 game 与 stat 列 -->
+    <sql id="gameLogSelectBody">
         SELECT
             g.id AS gameId,
             g.event_id AS eventId,
@@ -362,8 +521,25 @@
           AND e.deleted_at IS NULL
           AND (#{rankingOnly} = false OR COALESCE(g.include_stats_in_ranking, true) = true)
         <include refid="gameModeFilter"/>
+    </sql>
+
+    <sql id="gameLogOrderAndLimit">
         ORDER BY g.gameday DESC, g.id DESC
         <if test="limit != null">LIMIT #{limit}</if>
+    </sql>
+
+    <!-- 比赛日志：最近 limit 场（个人档案、里程碑等不带球队/赛事范围的调用方） -->
+    <select id="selectGameLog" resultType="map">
+        <include refid="gameLogSelectBody"/>
+        <include refid="gameLogOrderAndLimit"/>
+    </select>
+
+    <!-- 驾驶舱范围日志：teamId/eventId 可选，先过滤再取最近 limit 场，避免先截断再过滤 -->
+    <select id="selectGameLogForScope" resultType="map">
+        <include refid="gameLogSelectBody"/>
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="gameLogOrderAndLimit"/>
     </select>
 
     <!-- 生涯打击钻取：valueSql 仅来自 PlayerStatDrillBattingMetric，禁止用户输入 -->

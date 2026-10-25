@@ -59,9 +59,10 @@ extends BaseEntity {
     private Boolean platformOwned = Boolean.FALSE;
 
     /**
-     * 非持久化：联赛特殊规则生效值（Issue #275，设计稿 §3.3），
-     * 仅 GET /event/{id} 详情由 EventService 按 leagueId 装配（未挂联赛为服务默认值）；
-     * 其余路径保持 null，序列化时省略（list/create/update 等响应不受影响）。
+     * 非持久化：赛事级特殊规则与联赛收费能力标识（Issue #275，2026-10-24 口径）。
+     * GET /event/{id} 返回 {specialRulesEnabled, hasEventRules, extraBatter, forceHalf}；
+     * create/update 请求可携带 {extraBatter, forceHalf} 写入赛事规则；
+     * 其余路径保持 null，序列化时省略。
      */
     @JsonInclude(value=JsonInclude.Include.NON_NULL)
     @Transient
@@ -189,12 +190,12 @@ extends BaseEntity {
         this.platformOwned = platformOwned;
     }
 
-    /** 联赛特殊规则生效值（瞬态，仅详情路径装配；null 表示未装配）。 */
+    /** 赛事级特殊规则与能力标识（瞬态；null 表示未装配）。 */
     public Map<String, Boolean> getSpecialRules() {
         return this.specialRules;
     }
 
-    /** 联赛特殊规则生效值（瞬态，仅详情路径装配）。 */
+    /** 赛事级特殊规则（瞬态；详情响应装配，create/update 可作入参）。 */
     public void setSpecialRules(Map<String, Boolean> specialRules) {
         this.specialRules = specialRules;
     }
