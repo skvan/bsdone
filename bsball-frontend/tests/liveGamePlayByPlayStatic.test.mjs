@@ -58,7 +58,7 @@ test('全屏上下分屏样式约束场地缩放与 PBP 高度', () => {
   );
   assert.match(
     css,
-    /\.card-body-fullscreen \.field-svg-wrap>\.ballpark-svg\[data-v-78b7b6a8\]\{flex:1 1 auto;min-height:200px;width:100%;height:auto;max-width:900px;margin:0 auto\}/
+    /\.card-body-fullscreen \.field-svg-wrap>\.ballpark-svg\[data-v-78b7b6a8\]\{flex:1 1 auto;min-height:200px;width:auto;height:100%;max-width:100%!important;margin:0 auto\}/
   );
   assert.match(css, /body\.lg-pbp-resize-active\{user-select:none!important;cursor:row-resize!important\}/);
 });
