@@ -1253,7 +1253,7 @@ function Zd(u){
   return u in su?su[u]:null
 }
 var em={
-  "play:SH":"lblSAC","pitch:B":"ballB","pitch:S":"strikeLook","pitch:F":"foulF","pitch:FOUL_TIP_OUT":"tip","pitch:HBP":"hp","pitch:INT_BALL":"ib","walk:IBB":"ibb","extra:CI":"ci","extra:ILLEGAL_ADVANCE":"ilp","extra:ILLEGAL_NO_ADVANCE":"ilp","extra:BATTER_OUT_OTHER":"lblO","extra:PUT_ON":"puton","evt:COACH_TIMEOUT":"puton"
+  "play:SH":"lblSAC","pitch:B":"ballB","pitch:S":"strikeLook","pitch:F":"foulF","pitch:FOUL_TIP_OUT":"tip","pitch:HBP":"hbp","pitch:INT_BALL":"ib","walk:IBB":"ibb","extra:CI":"ci","extra:ILLEGAL_ADVANCE":"ilp","extra:ILLEGAL_NO_ADVANCE":"ilp","extra:BATTER_OUT_OTHER":"lblO","extra:PUT_ON":"puton","evt:COACH_TIMEOUT":"puton"
 }
 ,tm={
   swing_miss:"swingK",dropped_3rd:"dk3",illegal:"ilp",dropped_3rd_swing:"swingK",dropped_3rd_look:"strikeLook",bip:"bat",bip_g:"lblG",bip_hg:"lblHG",bip_fly:"lblFlyKind",bip_ld:"lblLD",bip_bunt:"lblBU",bip_pop:"lblPF",bip_g_bo:"lblBO",bip_hg_bo:"lblBO",bip_fly_bo:"lblBO",bip_ld_bo:"lblBO",bip_bunt_bo:"lblBO",bip_bunt_sac:"lblSAC",bip_pop_bo:"lblBO"
@@ -1347,7 +1347,7 @@ var am={
     ,[o.value!=null?(h(),C("span",am,H(o.value),1)):u.variant==="ballB"?(h(),C("span",lm,"B")):u.variant==="strikeLook"?(h(),C("span",im,[...S[0]||(S[0]=[n("span",{
       class:"pmg__k-rev"
     }
-    ,"K",-1)])])):u.variant==="swingK"?(h(),C("span",sm,"K")):u.variant==="foulF"?(h(),C("span",rm,"F")):u.variant==="hp"?(h(),C("span",om,"HP")):u.variant==="ib"?(h(),C("span",um,"IB")):u.variant==="ibb"?(h(),C("span",pm,"IBB")):u.variant==="ci"?(h(),C("span",fm,"C")):u.variant==="ilp"?(h(),C("span",cm,"?")):u.variant==="dk3"?(h(),C("span",dm,"D3")):u.variant==="tip"?(h(),C("span",mm,"FT")):u.variant==="puton"?(h(),C("span",vm,"PO")):u.variant==="bat"?(h(),C("span",gm,[(h(),Oe(Dc(c(f)),{
+    ,"K",-1)])])):u.variant==="swingK"?(h(),C("span",sm,"K")):u.variant==="foulF"?(h(),C("span",rm,"F")):u.variant==="hbp"?(h(),C("span",om,"HBP")):u.variant==="ib"?(h(),C("span",um,"IB")):u.variant==="ibb"?(h(),C("span",pm,"IBB")):u.variant==="ci"?(h(),C("span",fm,"C")):u.variant==="ilp"?(h(),C("span",cm,"?")):u.variant==="dk3"?(h(),C("span",dm,"D3")):u.variant==="tip"?(h(),C("span",mm,"FT")):u.variant==="puton"?(h(),C("span",vm,"PO")):u.variant==="bat"?(h(),C("span",gm,[(h(),Oe(Dc(c(f)),{
       class:"pmg__bat-icon"
     }
     ))])):(h(),C("span",bm))],2))
@@ -10789,7 +10789,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,"投球菜单选项图标"),n("div",{
             class:"live-field-settings-extra-desc"
           }
-          ,"Pitch 浮层每行左侧的图示（B/K/HP 等）")],-1)),v(P,{
+          ,"Pitch 浮层每行左侧的图示（B/K/HBP 等）")],-1)),v(P,{
             modelValue:c(Al),"onUpdate:modelValue":t[172]||(t[172]=d=>Vo(Al)?Al.value=d:null)
           }
           ,null,8,["modelValue"])])]),_:1
@@ -11059,7 +11059,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,"投球菜单选项图标"),n("div",{
             class:"live-field-settings-extra-desc"
           }
-          ,"Pitch 浮层每行左侧的图示（B/K/HP 等）")],-1)),v(P,{
+          ,"Pitch 浮层每行左侧的图示（B/K/HBP 等）")],-1)),v(P,{
             modelValue:c(Al),"onUpdate:modelValue":t[4]||(t[4]=d=>Vo(Al)?Al.value=d:null)
           }
           ,null,8,["modelValue"])])]),_:1

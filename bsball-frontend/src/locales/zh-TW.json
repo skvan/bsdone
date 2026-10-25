@@ -100,11 +100,6 @@
         "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
         "shortLabel": "觸身"
       },
-      "hb": {
-        "fullName": "触身球（投手）",
-        "definition": "投手投球击中未尝试挥棒的打者",
-        "shortLabel": "HB"
-      },
       "so": {
         "fullName": "三振",
         "definition": "打者在一个打席中被判三次好球而出局",
@@ -1862,7 +1857,7 @@
         "pitchSo": "三振",
         "pitchHr": "被全壘打",
         "pitchInsideParkHr": "被場內全壘打",
-        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HP）",
+        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HBP）",
         "pitE": "同場該員守備失誤數（與統計源一致）",
         "np": "投球數",
         "pitchPa": "對局打席",

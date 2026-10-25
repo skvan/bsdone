@@ -20,6 +20,7 @@ const {
   writeWatchFieldSettings,
   readFieldSettings,
   writeFieldSettings,
+  DEFAULT_BATTER_FIELDS,
   DEFAULT_PITCHER_FIELDS
 } = await import('../src/utils/gameDetailFieldSettingsStorage.js');
 
@@ -34,7 +35,7 @@ const DEFAULTS = {
     { key: 'hr', label: 'HR', visible: true },
     { key: 'shSf', label: 'SH+SF', visible: true },
     { key: 'rbi', label: 'RBI', visible: true },
-    { key: 'bbHp', label: 'BB+HP', visible: true },
+    { key: 'bbHp', label: 'BB+HBP', visible: true },
     { key: 'so', label: 'SO', visible: false },
     { key: 'sb', label: 'SB', visible: false }
   ],
@@ -43,7 +44,7 @@ const DEFAULTS = {
     { key: 'pitchR', label: 'R', visible: true },
     { key: 'er', label: 'ER', visible: true },
     { key: 'pitchH', label: 'H', visible: true },
-    { key: 'pitchBbHp', label: 'BB+HP', visible: true },
+    { key: 'pitchBbHp', label: 'BB+HBP', visible: true },
     { key: 'pitchSo', label: 'SO', visible: true },
     { key: 'wp', label: 'WP', visible: false },
     { key: 'np', label: 'NP', visible: false }
@@ -63,6 +64,11 @@ function makeState(overrides = {}) {
     ...overrides
   };
 }
+
+test('默认打者/投手触身球列缩写统一为 HBP（#387）', () => {
+  assert.equal(DEFAULT_BATTER_FIELDS.find((x) => x.key === 'hbp').label, 'HBP');
+  assert.equal(DEFAULT_PITCHER_FIELDS.find((x) => x.key === 'pitchHbp').label, 'HBP');
+});
 
 test('未设置任何存储时返回默认值，且不创建观赛键（现状链的迁移落盘行为保留）', () => {
   store.clear();

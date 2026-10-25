@@ -1594,7 +1594,7 @@ var Li={
       key:"ibb",label:"IBB",minWidth:70,title:"故意四坏"
     }
     ,{
-      key:"hbp",label:"HB",minWidth:70,title:"触身球"
+      key:"hbp",label:"HBP",minWidth:70,title:"触身球"
     }
     ,{
       key:"io",label:"IO",minWidth:70,title:"妨阻上垒"
@@ -1667,7 +1667,7 @@ var Li={
       key:"pitchIbb",label:"IBB",minWidth:65,title:"故意四坏"
     }
     ,{
-      key:"pitchHbp",label:"HP",minWidth:65,title:"触身"
+      key:"pitchHbp",label:"HBP",minWidth:65,title:"触身"
     }
     ,{
       key:"pitchIo",label:"IO",minWidth:65,title:"被妨阻上垒"
