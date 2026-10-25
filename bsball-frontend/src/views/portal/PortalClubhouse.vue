@@ -2476,7 +2476,7 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; padding: 0 4px; }
 .card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
 .card-team span:last-child { font-size: 10px; color: rgba(255,255,255,.65); }
-.card-team-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; overflow-wrap: anywhere; text-align: center; }
+.card-team-name { display: block; line-height: 1.45; overflow-wrap: anywhere; text-align: center; }
 .card-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
 .card-stat { text-align: center; border-right: 1px solid rgba(255,255,255,.09); }
 .card-stat:last-child { border-right: 0; }
