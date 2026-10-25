@@ -9,9 +9,11 @@ export const DEFAULT_BATTER_FIELDS = [
   { key: 'ab', label: 'AB', visible: true },
   { key: 'r', label: 'R', visible: true },
   { key: 'h', label: 'H', visible: true },
+  { key: 'singles', label: '1B', visible: true },
   { key: 'doubles', label: '2B', visible: true },
   { key: 'triples', label: '3B', visible: true },
   { key: 'hr', label: 'HR', visible: true },
+  { key: 'insideParkHr', label: 'IPHR', visible: true },
   { key: 'gdp', label: 'GDP', visible: true },
   { key: 'sh', label: 'SH', visible: true },
   { key: 'sf', label: 'SF', visible: true },
@@ -109,6 +111,24 @@ function mergeFields(saved, defaults) {
   return result;
 }
 
+// 新增打者列缺省时的插入锚点：旧配置补列放到语义相邻位置，不重排用户已有顺序
+const BATTER_FIELD_ANCHORS = { singles: 'h', insideParkHr: 'hr' };
+
+// 只保留用户已保存的列，再把缺失列按默认顺序插到锚点之后；锚点也不存在时追加到末尾
+function mergeBatterFields(saved, defaults) {
+  const merged = mergeFields(saved, defaults);
+  if (!Array.isArray(saved) || saved.length === 0) return merged;
+  const savedKeys = new Set(saved.map((item) => item?.key).filter(Boolean));
+  const result = merged.filter((item) => savedKeys.has(item.key));
+  for (const item of defaults) {
+    if (savedKeys.has(item.key)) continue;
+    const anchorIndex = result.findIndex((row) => row.key === BATTER_FIELD_ANCHORS[item.key]);
+    if (anchorIndex >= 0) result.splice(anchorIndex + 1, 0, item);
+    else result.push(item);
+  }
+  return result;
+}
+
 function ensureMinVisible(fields, min) {
   if (min <= 0) return fields;
   let visibleCount = fields.filter((item) => item.visible).length;
@@ -129,12 +149,12 @@ function normalizeFieldingFields(saved, defaults) {
   return ensureMinVisible(mergeFields(saved, defaults || DEFAULT_FIELDING_FIELDS), MIN_VISIBLE_FIELDING);
 }
 
-function readLegacyArray(key, defaults) {
+function readLegacyArray(key, defaults, merge = mergeFields) {
   try {
     const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? mergeFields(parsed, defaults) : null;
+    return Array.isArray(parsed) ? merge(parsed, defaults) : null;
   } catch {
     return null;
   }
@@ -204,7 +224,7 @@ function readKeyedFieldSettings(key, defaults) {
     const stored = parseStored(raw);
     if (!stored) return null;
     return {
-      batterFields: ensureMinVisible(mergeFields(stored.batterFields, defaults.defaultBatterFields), MIN_VISIBLE_FIELDS),
+      batterFields: ensureMinVisible(mergeBatterFields(stored.batterFields, defaults.defaultBatterFields), MIN_VISIBLE_FIELDS),
       pitcherFields: ensureMinVisible(mergeFields(stored.pitcherFields, defaults.defaultPitcherFields), MIN_VISIBLE_FIELDS),
       fieldingFields: normalizeFieldingFields(stored.fieldingFields, defaults.defaultFieldingFields),
       decimalPlaces: normalizeDecimalPlaces(stored.decimalPlaces, defaults.defaultDecimalPlaces),
@@ -230,7 +250,7 @@ export function buildInitialFieldSettings(options) {
   const guideDismissed =
     tenantCode != null && String(tenantCode).trim() !== '' ? isPortalGuideDismissed(String(tenantCode)) : !!display.detailPage.guideDismissed;
   return {
-    batterFields: ensureMinVisible(mergeFields(display.detailPage.batterFields, defaultBatterFields), MIN_VISIBLE_FIELDS),
+    batterFields: ensureMinVisible(mergeBatterFields(display.detailPage.batterFields, defaultBatterFields), MIN_VISIBLE_FIELDS),
     pitcherFields: ensureMinVisible(mergeFields(display.detailPage.pitcherFields, defaultPitcherFields), MIN_VISIBLE_FIELDS),
     fieldingFields: normalizeFieldingFields(display.detailPage.fieldingFields, defaultFieldingFields),
     decimalPlaces: normalizeDecimalPlaces(display.valueControl.decimalPlaces, defaultDecimalPlaces),
@@ -269,7 +289,7 @@ export function readFieldSettings(options) {
     clearLegacyKeys(LEGACY_KEYS);
     return storedSettings;
   }
-  const batterFields = readLegacyArray(LEGACY_KEYS[0], defaultBatterFields) ?? defaultBatterFields;
+  const batterFields = readLegacyArray(LEGACY_KEYS[0], defaultBatterFields, mergeBatterFields) ?? defaultBatterFields;
   const pitcherFields = readLegacyArray(LEGACY_KEYS[1], defaultPitcherFields) ?? defaultPitcherFields;
   const decimalPlaces = readLegacyNumber(LEGACY_KEYS[2], defaultDecimalPlaces) ?? defaultDecimalPlaces;
   const rateDisplayStyle = readLegacyRateStyle(LEGACY_KEYS[3]) ?? defaultRateDisplayStyle;

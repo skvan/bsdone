@@ -16,6 +16,7 @@ import { useTenantRouter as _l } from '../../composables/useTenantRouter';
 import { onTeamLogoError as R } from '../../utils/placeholderAssets';
 import { DEFAULT_TEAM_SVG_PATH as kl } from '../../utils/placeholderAssets';
 import { resolveAtBats as La } from '../../utils/gamePlayerStat';
+import { resolveSingles, sumHitTypes } from '../../utils/battingHits';
 import { resolveBoxViewLabel } from '../../utils/i18nText';
 import { isLegacyPositionLabel as wl } from '../../utils/gamePlayerStat';
 import { isPitcherFlag as ke } from '../../utils/gamePlayerStat';
@@ -842,6 +843,9 @@ var Sl={
       key:"h",label:"H",visible:!0
     }
     ,{
+      key:"singles",label:"1B",visible:!0
+    }
+    ,{
       key:"doubles",label:"2B",visible:!0
     }
     ,{
@@ -849,6 +853,9 @@ var Sl={
     }
     ,{
       key:"hr",label:"HR",visible:!0
+    }
+    ,{
+      key:"insideParkHr",label:"IPHR",visible:!0
     }
     ,{
       key:"gdp",label:"GDP",visible:!0
@@ -913,7 +920,7 @@ var Sl={
     }
     );
     const za={
-      doubles:48,triples:48,hr:44,shSf:72,bbHp:76,avg:54,obp:54,slg:54,ops:54,ip:50,era:72,whip:84,pitchBbHp:72,pitchHr:44,pitchInsideParkHr:56,np:52,pitchPa:52,pitchBf:52,pitchBb:52,pitchIbb:52,pitchHbp:48,svo:52
+      singles:44,doubles:48,triples:48,hr:44,insideParkHr:56,shSf:72,bbHp:76,avg:54,obp:54,slg:54,ops:54,ip:50,era:72,whip:84,pitchBbHp:72,pitchHr:44,pitchInsideParkHr:56,np:52,pitchPa:52,pitchBf:52,pitchBb:52,pitchIbb:52,pitchHbp:48,svo:52
     };
     function Ua(e){
       const t=String(e??"").trim();
@@ -1049,8 +1056,9 @@ var Sl={
     }
     const ut=m(()=>[...c.stats.filter(e=>e.teamId===c.game.awayTeamId&&(!ke(e)||e.battingOrder!=null))].sort(Kt)),dt=m(()=>[...c.stats.filter(e=>e.teamId===c.game.homeTeamId&&(!ke(e)||e.battingOrder!=null))].sort(Kt));
     function jt(e){
+      const hitTypes=sumHitTypes(e);
       return{
-        _totals:!0,battingOrder:null,playerId:0,position:"",pa:e.reduce((t,l)=>t+(Number(l.pa)??Number(l.ab)??0),0),ab:e.reduce((t,l)=>t+(Number(l.ab)||0),0),r:e.reduce((t,l)=>t+(Number(l.r)||0),0),h:e.reduce((t,l)=>t+(Number(l.h)||0),0),doubles:e.reduce((t,l)=>t+(Number(l.doubles)||0),0),triples:e.reduce((t,l)=>t+(Number(l.triples)||0),0),hr:e.reduce((t,l)=>t+(Number(l.hr)||0)+(Number(l.insideParkHr)||0),0),rbi:e.reduce((t,l)=>t+(Number(l.rbi)||0),0),bbHp:e.reduce((t,l)=>t+(Number(l.bbHp)||0),0),sb:e.reduce((t,l)=>t+(Number(l.sb)||0),0),cs:e.reduce((t,l)=>t+(Number(l.cs)||0),0),shSf:e.reduce((t,l)=>t+(Number(l.sh)||0)+(Number(l.sf)||0),0),gdp:e.reduce((t,l)=>t+(Number(l.gdp)||0),0),sh:e.reduce((t,l)=>t+(Number(l.sh)||0),0),sf:e.reduce((t,l)=>t+(Number(l.sf)||0),0),bb:e.reduce((t,l)=>t+(Number(l.bb)||0),0),ibb:e.reduce((t,l)=>t+(Number(l.ibb)||0),0),hbp:e.reduce((t,l)=>t+(Number(l.hbp)||0),0),io:e.reduce((t,l)=>t+(Number(l.io)||0),0),so:e.reduce((t,l)=>t+(Number(l.so)||0),0),e:e.reduce((t,l)=>t+(Number(l.e)||0),0)
+        _totals:!0,battingOrder:null,playerId:0,position:"",pa:e.reduce((t,l)=>t+(Number(l.pa)??Number(l.ab)??0),0),ab:e.reduce((t,l)=>t+(Number(l.ab)||0),0),r:e.reduce((t,l)=>t+(Number(l.r)||0),0),h:e.reduce((t,l)=>t+(Number(l.h)||0),0),singles:hitTypes.singles,doubles:hitTypes.doubles,triples:hitTypes.triples,hr:hitTypes.hr,insideParkHr:hitTypes.insideParkHr,rbi:e.reduce((t,l)=>t+(Number(l.rbi)||0),0),bbHp:e.reduce((t,l)=>t+(Number(l.bbHp)||0),0),sb:e.reduce((t,l)=>t+(Number(l.sb)||0),0),cs:e.reduce((t,l)=>t+(Number(l.cs)||0),0),shSf:e.reduce((t,l)=>t+(Number(l.sh)||0)+(Number(l.sf)||0),0),gdp:e.reduce((t,l)=>t+(Number(l.gdp)||0),0),sh:e.reduce((t,l)=>t+(Number(l.sh)||0),0),sf:e.reduce((t,l)=>t+(Number(l.sf)||0),0),bb:e.reduce((t,l)=>t+(Number(l.bb)||0),0),ibb:e.reduce((t,l)=>t+(Number(l.ibb)||0),0),hbp:e.reduce((t,l)=>t+(Number(l.hbp)||0),0),io:e.reduce((t,l)=>t+(Number(l.io)||0),0),so:e.reduce((t,l)=>t+(Number(l.so)||0),0),e:e.reduce((t,l)=>t+(Number(l.e)||0),0)
       }
       
     }
@@ -1638,10 +1646,10 @@ var Sl={
           )=>[a.key==="pa"?(r(),i(b,{
             key:0
           }
-          ,[p(n(A(o)?C(o,"pa"):$(o,"pa")||$(o,"ab")),1)],64)):a.key==="hr"?(r(),i(b,{
-            key:1
+          ,[p(n(A(o)?C(o,"pa"):$(o,"pa")||$(o,"ab")),1)],64)):a.key==="singles"?(r(),i(b,{
+            key:9
           }
-          ,[p(n(A(o)?C(o,"hr"):ft(o)),1)],64)):a.key==="shSf"?(r(),i(b,{
+          ,[p(n(A(o)?C(o,"singles"):ce(resolveSingles(o))),1)],64)):a.key==="shSf"?(r(),i(b,{
             key:2
           }
           ,[p(n(ua(o)),1)],64)):a.key==="cs"?(r(),i(b,{
@@ -1746,10 +1754,10 @@ var Sl={
           )=>[a.key==="pa"?(r(),i(b,{
             key:0
           }
-          ,[p(n(A(o)?C(o,"pa"):$(o,"pa")||$(o,"ab")),1)],64)):a.key==="hr"?(r(),i(b,{
-            key:1
+          ,[p(n(A(o)?C(o,"pa"):$(o,"pa")||$(o,"ab")),1)],64)):a.key==="singles"?(r(),i(b,{
+            key:9
           }
-          ,[p(n(A(o)?C(o,"hr"):ft(o)),1)],64)):a.key==="shSf"?(r(),i(b,{
+          ,[p(n(A(o)?C(o,"singles"):ce(resolveSingles(o))),1)],64)):a.key==="shSf"?(r(),i(b,{
             key:2
           }
           ,[p(n(ua(o)),1)],64)):a.key==="cs"?(r(),i(b,{
