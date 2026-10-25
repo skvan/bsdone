@@ -63,26 +63,35 @@ var Ae={
       M.value=n||"id",U.value=e==="descending"?"desc":"asc",i.page=1,u()
     }
     function h(n){
-      applyMode.value=!1,_.value=n?.id??null,o.name=n?.name??"",o.nameEn=n?.nameEn??"",o.description=n?.description??"",o.verified=n?.verified?1:0,o.sort=n?.sort??0,g.value=!0,oe(()=>b.value?.clearValidate())
+      applyMode.value=!1,_.value=n?.id??null,o.name=n?.name??"",o.nameEn=n?.nameEn??"",o.description=n?.description??"",o.verified=n?.verified?1:0,o.sort=n?.sort??0,g.value=!0,oe(()=>b.value?.clearValidate()),loadSpecialRules(_.value)
     }
     async function j(){
       await A(async()=>{
         if(b.value)try{
+          const id=_.value,enabled=specialRulesEnabled.value,canWrite=Ab("business:league:specialRule")&&specialRulesLoaded.value,payload={...o};
           await b.value.validate();
           if(applyMode.value){
             const e=await k.portalCreate(o),a=e&&e.data||e||{};
-            a.pending?v.success("已提交申请，待上级审核"):v.success("创建成功"),applyMode.value=!1
+            a.pending?v.success("已提交申请，待上级审核"):v.success("创建成功"),applyMode.value=!1,g.value=!1
+          }
+          else if(id){
+            await k.update(id,payload);
+            let rulesSaved=!0;
+            if(canWrite)try{
+              await k.updateSpecialRules(id,{
+                specialRulesEnabled:enabled
+              })
+            }
+            catch(e){
+              rulesSaved=!1,v.error("联盟信息已保存，但特殊规则能力保存失败："+(e?.message??"请重试"))
+            }
+            rulesSaved&&v.success("修改成功"),_.value===id&&(g.value=!1)
           }
           else{
-            if(_.value){
-              await k.update(_.value,o),v.success("修改成功")
-            }
-            else{
-              const e=await k.create(o),a=e&&e.data||e||{};
-              a.pending?v.success("已提交申请，待上级审核"):v.success("新增成功")
-            }
+            const e=await k.create(o),a=e&&e.data||e||{};
+            a.pending?v.success("已提交申请，待上级审核"):v.success("新增成功"),g.value=!1
           }
-          g.value=!1,u()
+          u()
         }
         catch(n){
           v.error(n?.message||"保存失败")
@@ -299,38 +308,21 @@ var Ae={
         ownBusy.value=!1
       }
     }
-    // ---- 联赛特殊规则收费能力（Issue #275）：决定该联赛赛事是否可配置 EP 制 / 强制换局 ----
-    const ruleDlg=f(!1),ruleLeague=f(null),ruleLoading=f(!1),ruleForm=E({
-      specialRulesEnabled:!1
-    }
-    ),{
-      submitting:ruleSaving,withSubmitLock:lockRuleSave
-    }
-    =I();
-    async function openSpecialRules(n){
-      ruleLeague.value=n,ruleDlg.value=!0,ruleLoading.value=!0,ruleForm.specialRulesEnabled=!1;
-      const e=await k.specialRules(n.id);
-      if(e?.rules){
-        ruleForm.specialRulesEnabled=e.rules.specialRulesEnabled===!0,ruleLoading.value=!1
+    // ---- 联赛特殊规则收费能力（Issue #275/#429）：编辑表单内联开关 ----
+    const specialRulesEnabled=f(!1),specialRulesLoaded=f(!1),specialRulesLoading=f(!1);
+    let specialRulesRequestSeq=0;
+    async function loadSpecialRules(n){
+      const e=++specialRulesRequestSeq;
+      specialRulesEnabled.value=!1,specialRulesLoaded.value=!1,specialRulesLoading.value=!1;
+      if(!n||!Ab("business:league:specialRule"))return;
+      specialRulesLoading.value=!0;
+      const t=await k.specialRules(n);
+      // 快速连开不同联赛时，只接受最后一次请求的响应
+      if(e!==specialRulesRequestSeq||_.value!==n)return;
+      if(t?.rules){
+        specialRulesEnabled.value=t.rules.specialRulesEnabled===!0,specialRulesLoaded.value=!0
       }
-      else{
-        // 读取失败：404（不可见/跨租户）走 getData 静默分支不 toast，仅非 404 异常由请求层提示；此处关窗防误把默认值当生效值保存
-        ruleLoading.value=!1,ruleDlg.value=!1
-      }
-    }
-    async function saveSpecialRules(){
-      await lockRuleSave(async()=>{
-        try{
-          await k.updateSpecialRules(ruleLeague.value.id,{
-            specialRulesEnabled:ruleForm.specialRulesEnabled
-          }
-          ),v.success("保存成功"),ruleDlg.value=!1
-        }
-        catch(e){
-          v.error(e?.message||"保存失败")
-        }
-      }
-      )
+      specialRulesLoading.value=!1;
     }
     function S(){
       i.page=1,u()
@@ -505,25 +497,20 @@ var Ae={
         modelValue:g.value,"onUpdate:modelValue":e[10]||(e[10]=l=>g.value=l),title:_.value?"编辑联盟":applyMode.value?"申请成立联盟":"新增联盟",width:"480","close-on-click-modal":d(R)
       }
       ,{
-        footer:a(()=>[_.value&&d(Ab)("business:league:specialRule")?(C(),D(m,{
-          key:0,onClick:()=>openSpecialRules({id:_.value,name:o.name})
-        }
-        ,{
-          default:a(()=>[s("特殊规则能力",-1)]),_:1
-        })):Ee("",!0),t(m,{
+        footer:a(()=>[t(m,{
           onClick:e[9]||(e[9]=l=>g.value=!1)
         }
         ,{
           default:a(()=>[...e[18]||(e[18]=[s("取消",-1)])]),_:1
         }
         ),t(m,{
-          type:"primary",loading:d(L),disabled:d(L),onClick:j
+          type:"primary",loading:d(L),disabled:d(L)||d(specialRulesLoading),onClick:j
         }
         ,{
           default:a(()=>[...e[19]||(e[19]=[s("确定",-1)])]),_:1
         }
         ,8,["loading","disabled"])]),default:a(()=>[t(z,{
-          ref_key:"formRef",ref:b,model:o,rules:Q,"label-width":"90px"
+          ref_key:"formRef",ref:b,model:o,rules:Q,"label-width":"110px"
         }
         ,{
           default:a(()=>[t(p,{
@@ -574,7 +561,18 @@ var Ae={
             }
             ,null,8,["modelValue"])]),_:1
           }
-          )]),_:1
+          ),d(Ab)("business:league:specialRule")&&_.value?(C(),D(p,{
+            key:0,label:"特殊规则能力"
+          }
+          ,{
+            default:a(()=>[t(Z,{
+              modelValue:specialRulesEnabled.value,"onUpdate:modelValue":R5=>specialRulesEnabled.value=R5,disabled:!specialRulesLoaded.value||d(L)
+            }
+            ,null,8,["modelValue","disabled"]),x("span",{
+              class:"form-hint"
+            }
+            ,specialRulesLoading.value?"正在读取特殊规则能力...":specialRulesLoaded.value?"开启后该联盟可配置赛事级特殊规则；关闭后新建赛事不再提供开关，已配置赛事保留":"规则能力加载失败，请重新打开编辑",-1)]),_:1
+          })):Ee("",!0)]),_:1
         }
         ,8,["model"])]),_:1
       }
@@ -647,43 +645,7 @@ var Ae={
         }
         ,8,["data"])])
       }
-      ,8,["modelValue"]),t(te,{
-        modelValue:ruleDlg.value,"onUpdate:modelValue":R5=>ruleDlg.value=R5,title:`特殊规则能力：${ruleLeague.value?.name??""}`,width:"480","close-on-click-modal":d(R)
-      }
-      ,{
-        footer:a(()=>[t(m,{
-          onClick:R5=>ruleDlg.value=!1
-        }
-        ,{
-          default:a(()=>[s("取消",-1)]),_:1
-        }
-        ),t(m,{
-          type:"primary",loading:d(ruleSaving),disabled:d(ruleSaving)||ruleLoading.value,onClick:saveSpecialRules
-        }
-        ,{
-          default:a(()=>[s("保存",-1)]),_:1
-        }
-        ,8,["loading","disabled"])]),default:a(()=>[fe(t(z,{
-          "label-width":"90px"
-        }
-        ,{
-          default:a(()=>[t(p,{
-            label:"特殊规则能力"
-          }
-          ,{
-            default:a(()=>[t(Z,{
-              modelValue:ruleForm.specialRulesEnabled,"onUpdate:modelValue":R5=>ruleForm.specialRulesEnabled=R5
-            }
-            ,null,8,["modelValue"]),e[21]||(e[21]=x("span",{
-              class:"form-hint"
-            }
-            ,"开启后该联盟可配置赛事级特殊规则；关闭后新建赛事不再提供开关，已配置赛事保留",-1))]),_:1
-          }
-          )]),_:1
-        }
-        ),[[ae,ruleLoading.value]])]),_:1
-      }
-      ,8,["modelValue","title","close-on-click-modal"])
+      ,8,["modelValue"])
       ])
     }
     
