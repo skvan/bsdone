@@ -11118,7 +11118,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ])
         }
-        ,[v(LiveGameScoreboard,{awayName:At.value?.name??"客队",homeName:xt.value?.name??"主队",awayLogo:resolveUploadUrl(At.value?.logo??""),homeLogo:resolveUploadUrl(xt.value?.logo??""),awayScore:c(o).away.score,homeScore:c(o).home.score,inning:c(l).inning,isTop:c(l).isTop,bases:{1:!!c(l).runners[1],2:!!c(l).runners[2],3:!!c(l).runners[3]},balls:c(l).balls,strikes:c(l).strikes,outs:c(l).outs,batter:{name:be.value?.name??"",number:be.value?.number??"",order:Dl.value+1},pitcher:{name:Se.value?.name??"",number:Se.value?.number??"",np:Se.value?.stats?.pitching?.np??0}}),(h(),C("svg",{
+        ,[v(LiveGameScoreboard,{awayName:At.value?.name??"客队",homeName:xt.value?.name??"主队",awayLogo:resolveUploadUrl(At.value?.logo??""),homeLogo:resolveUploadUrl(xt.value?.logo??""),awayScore:c(o).away.score,homeScore:c(o).home.score,inning:c(l).inning,isTop:c(l).isTop,bases:{1:!!c(l).runners[1],2:!!c(l).runners[2],3:!!c(l).runners[3]},balls:c(l).balls,strikes:c(l).strikes,outs:c(l).outs,batter:{name:be.value?.name??"",number:be.value?.number??"",order:Dl.value+1},pitcher:{name:Se.value?.name??"",number:Se.value?.number??"",np:Se.value?.stats?.pitching?.np??0}},null,16),(h(),C("svg",{
           ref_key:"fieldSvgRef",ref:Rn,viewBox:"-300 -150 1080 780",class:"ballpark-svg",onClick:zf
         }
         ,[n("defs",null,[n("linearGradient",{id:"lg-hr-trail",gradientUnits:"userSpaceOnUse",x1:"240",y1:"555",x2:"240",y2:"-80"},[(h(!0),C(me,null,et(LgHrTrailStops,(s,i)=>n("stop",{
@@ -11434,7 +11434,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,"界内球",-1))]),_:1
         }
-        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value}):W("",!0)],512)])):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value},null,16):W("",!0)],512)])):(h(),C("div",pg,[v(m,{
           description:"正在校验比赛现场，若未完成先发阵容将自动跳转…"
         }
         )]))],2)]),_:1
