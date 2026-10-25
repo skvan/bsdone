@@ -38,6 +38,13 @@ test('实时录入用右上角浮层替换旧顶部文本条，并透传球队 L
   assert.doesNotMatch(liveGame, /les-teams|les-actors/);
 });
 
+test('记分牌 vnode 带 patchFlag 16，父组件重渲染时 props 才会更新', () => {
+  assert.match(
+    liveGame,
+    /v\(LiveGameScoreboard,\{[^\n]*?np:Se\.value\?\.stats\?\.pitching\?\.np\?\?0\}\},null,16\)/
+  );
+});
+
 test('实时动态两处打席均只保留 2 个好球灯与 3 个坏球灯', () => {
   const count = (pattern) => (watch.match(pattern) || []).length;
   assert.equal(count(/O\(2,o=>i\("span",\{\s*key:`s-/g), 2);

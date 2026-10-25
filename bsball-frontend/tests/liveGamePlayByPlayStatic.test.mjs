@@ -30,12 +30,15 @@ test('全屏 PBP 面板包含可拖动分隔条与日志列表', () => {
   assert.match(component, /buildPbpEntries/);
 });
 
-test('PBP 面板只在全屏时挂载，并透传实时 eventLog', () => {
+test('PBP 面板只在全屏时挂载，透传实时 eventLog 且 vnode 带 patchFlag 16', () => {
   assert.match(
     liveGame,
     /import LiveGamePlayByPlay from '\.\.\/\.\.\/components\/admin\/LiveGamePlayByPlay\.vue'/
   );
-  assert.match(liveGame, /c\(oe\)\?v\(LiveGamePlayByPlay,\{logs:ke\.value\}\):W\("",!0\)/);
+  assert.match(
+    liveGame,
+    /c\(oe\)\?v\(LiveGamePlayByPlay,\{logs:ke\.value\},null,16\):W\("",!0\)/
+  );
 });
 
 test('全屏上下分屏样式约束场地缩放与 PBP 高度', () => {
