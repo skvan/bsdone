@@ -314,10 +314,8 @@ public class ClubhouseEvaluationService {
             return ROLE_POSITION_PLAYER;
         }
         double innings = pitching == null ? 0.0 : pitching.ownSample();
-        boolean twoWay = primaryPitcher
-                ? batting.available() && batting.ownSample() >= TWO_WAY_MIN_PA
-                        && innings >= TWO_WAY_MIN_IP
-                : batting.available() && batting.ownSample() >= TWO_WAY_MIN_PA;
+        boolean twoWay = batting.available() && batting.ownSample() >= TWO_WAY_MIN_PA
+                && (!primaryPitcher || innings >= TWO_WAY_MIN_IP);
         return twoWay ? ROLE_TWO_WAY : ROLE_PITCHER;
     }
 
