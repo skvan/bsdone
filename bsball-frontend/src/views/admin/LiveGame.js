@@ -4764,7 +4764,7 @@ var sg={
   class:"field-column"
 }
 ,mg={
-  key:0,class:"live-entry-score-strip","aria-label":"当前比分与球数"
+  key:0,class:"live-entry-flow-wrap"
 }
 ,vg={
   class:"les-meta"
@@ -10761,7 +10761,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     ),(e,t)=>{
       const a=xs,s=mi,r=Oc,p=Ic,g=kc,m=Lc,y=Uc,w=Sc,P=Mc,A=Rc,T=Ec,Y=Bc,j=Ac,ee=Nc,V=Fc,E=Cc,U=Hc;
       return h(),C("div",sg,[Vn((h(),Oe(T,null,{
-        header:L(()=>[n("div",rg,[n("span",null,"实时比赛录入 · "+H(c(S)),1)]),n("div",og,[c(F)&&c(R)?(h(),Oe(g,{
+        header:L(()=>[n("div",rg,[n("span",null,"实时比赛录入 · "+H(c(S)),1)]),n("div",og,[c(F)?(h(),Oe(s,{
+          key:"undo",size:"small",disabled:!c(f).canUndo,onClick:as
+        }
+        ,{
+          default:L(()=>[Q("↩ 撤销",-1)]),_:1
+        }
+        ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
+          key:"redo",size:"small",disabled:!c(f).canRedo,onClick:Ff
+        }
+        ,{
+          default:L(()=>[Q("↪ 重做",-1)]),_:1
+        }
+        ,8,["disabled"])):W("",!0),c(F)&&c(R)?(h(),Oe(g,{
           key:0,trigger:"click",teleported:!1,onCommand:Mu
         }
         ,{
@@ -10845,7 +10857,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ])
         }
-        ,[c(F)?(h(),C("div",fg,[c(F)&&c(oe)?(h(),C("div",cg,[v(s,{
+        ,[c(F)?(h(),C("div",fg,[c(F)&&c(oe)?(h(),C("div",cg,[c(F)?(h(),Oe(s,{
+          key:"fs-undo",size:"small",link:"",type:"primary",disabled:!c(f).canUndo,onClick:as
+        }
+        ,{
+          default:L(()=>[Q("↩ 撤销",-1)]),_:1
+        }
+        ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
+          key:"fs-redo",size:"small",link:"",type:"primary",disabled:!c(f).canRedo,onClick:Ff
+        }
+        ,{
+          default:L(()=>[Q("↪ 重做",-1)]),_:1
+        }
+        ,8,["disabled"])):W("",!0),v(s,{
           type:"primary",link:"",onClick:Ho
         }
         ,{
@@ -10857,52 +10881,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )])):W("",!0),n("div",{
           ref_key:"entryMainContentRef",ref:ul,class:"main-content main-content--entry-only"
         }
-        ,[n("div",dg,[c(F)?(h(),C("div",mg,[n("div",vg,[n("span",gg,"第 "+H(c(l).inning)+" 局 "+H(c(l).isTop?"上":"下"),1),n("span",bg,[n("span",_g,[t[64]||(t[64]=n("span",{
-          class:"les-count-label"
-        }
-        ,"B",-1)),n("span",{
-          class:re(["les-count-value",{
-            "les-count-value--flash-b":Br.value
-          }
-          ])
-        }
-        ,H(c(l).balls),3)]),t[67]||(t[67]=n("span",{
-          class:"les-count-sep"
-        }
-        ,"·",-1)),n("span",hg,[t[65]||(t[65]=n("span",{
-          class:"les-count-label"
-        }
-        ,"S",-1)),n("span",{
-          class:re(["les-count-value",{
-            "les-count-value--flash-s":Ir.value
-          }
-          ])
-        }
-        ,H(c(l).strikes),3)]),t[68]||(t[68]=n("span",{
-          class:"les-count-sep"
-        }
-        ,"·",-1)),n("span",yg,[t[66]||(t[66]=n("span",{
-          class:"les-count-label"
-        }
-        ,"O",-1)),v(y,{
-          placement:"bottom",trigger:$r.value,disabled:c(l).outs===0,"show-after":$r.value==="hover"?120:0
-        }
-        ,{
-          content:L(()=>[n("div",wg,[c(l).halfInningOuts.length?(h(!0),C(me,{
-            key:0
-          }
-          ,et(c(l).halfInningOuts,(d,z)=>(h(),C("div",{
-            key:z
-          }
-          ,H(z+1)+". "+H(d),1))),128)):(h(),C("div",Sg,"暂无出局球员记录"))])]),default:L(()=>[n("span",{
-            class:re(["les-count-value les-count-value--outs",{
-              "les-count-value--flash-o":Fr.value
-            }
-            ]),role:"button",tabindex:"0","aria-label":`出局数 ${c(l).outs}`
-          }
-          ,H(c(l).outs),11,kg)]),_:1
-        }
-        ,8,["trigger","disabled","show-after"])])])]),Pp.value?(h(),C("div",{
+        ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
           key:1,class:re(["les-flow-card",`les-flow-card--${c(zt)}`])
         }
         ,[n("div",Rg,H(c(k)||cf.value),1),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
@@ -11076,19 +11055,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[95]||(t[95]=[Q("击球落点分布",-1)])]),_:1
         }
-        ),v(s,{
-          size:"small",disabled:!c(f).canUndo,onClick:as
-        }
-        ,{
-          default:L(()=>[...t[96]||(t[96]=[Q("↩ 撤销",-1)])]),_:1
-        }
-        ,8,["disabled"]),v(s,{
-          size:"small",disabled:!c(f).canRedo,onClick:Ff
-        }
-        ,{
-          default:L(()=>[...t[97]||(t[97]=[Q("↪ 重做",-1)])]),_:1
-        }
-        ,8,["disabled"])])])]),n("div",{
+        )])])]),n("div",{
           class:re(["field-svg-wrap",{
             "field-svg-wrap--drag-mode":!0,"field-svg-wrap--runner-drag":!!ne.value
           }

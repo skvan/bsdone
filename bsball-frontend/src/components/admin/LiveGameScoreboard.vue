@@ -373,9 +373,9 @@ const fieldingLogoStyle = computed(() => ({
   box-sizing: border-box;
   width: 9px;
   height: 9px;
-  border: 1px solid rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.75);
   border-radius: 2px;
-  background: #f8fafc;
+  background: transparent;
   transform: rotate(45deg);
   transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
@@ -397,8 +397,8 @@ const fieldingLogoStyle = computed(() => ({
 
 .lg-base.is-on {
   border: 2px solid var(--lg-gold);
-  background: #0b1220;
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.22), 0 0 7px rgba(251, 191, 36, 0.18);
+  background: var(--lg-gold);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.22), 0 0 7px rgba(251, 191, 36, 0.55);
 }
 
 .lg-lights {

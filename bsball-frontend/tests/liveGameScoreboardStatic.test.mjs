@@ -13,6 +13,8 @@ const watchCss = read('../src/styles/legacy/live-game-watch.css');
 test('顶部记分牌组件包含垒包、球数灯与打者/投手信息', () => {
   assert.match(scoreboard, /class="lg-scoreboard"/);
   assert.match(scoreboard, /lg-base/);
+  assert.match(scoreboard, /\.lg-base \{[\s\S]*?border: 1px solid rgba\(148, 163, 184, 0\.75\);[\s\S]*?background: transparent;[\s\S]*?\}/);
+  assert.match(scoreboard, /\.lg-base\.is-on \{[\s\S]*?background: var\(--lg-gold\);[\s\S]*?\}/);
   assert.match(scoreboard, /lg-light--ball/);
   assert.match(scoreboard, /lg-light--strike/);
   assert.match(scoreboard, /lg-light--out/);
@@ -43,9 +45,17 @@ test('实时动态两处打席均只保留 2 个好球灯与 3 个坏球灯', ()
   assert.doesNotMatch(watch, /O\(4,o=>i\("span",\{/);
 });
 
-test('实时动态垒包有人深色、没人白色，球数灯保留发光', () => {
-  assert.match(watchCss, /watch-column \.watch-bases__base\[data-v-80ab5033\]\{fill:#f8fafc;stroke:#64748b\}/);
-  assert.match(watchCss, /watch-column \.watch-bases__base--on\[data-v-80ab5033\]\{fill:#0b1220;stroke:#fbbf24\}/);
+test('实时动态垒包有人实心、没人空心，球数灯保留发光', () => {
+  assert.match(watchCss, /watch-column \.watch-bases__base\[data-v-80ab5033\]\{fill:#0000;stroke:#64748b\}/);
+  assert.match(
+    watchCss,
+    /watch-column \.watch-bases__base--on\[data-v-80ab5033\]\{fill:#0b1220;stroke:#fbbf24;/
+  );
+  assert.match(watchCss, /fill:#fbbf24;stroke:#fbbf24/);
+  assert.match(
+    watchCss,
+    /\[data-admin-theme=dark\] \.watch-column \.watch-bases__base\[data-v-80ab5033\][^}]*\{stroke:#94a3b8\}/
+  );
   assert.match(watchCss, /\.pbp-sbo__strikes \.pbp-sbo__dot--active\[data-v-80ab5033\]\{box-shadow:/);
   assert.match(watchCss, /\.pbp-sbo__balls \.pbp-sbo__dot--active\[data-v-80ab5033\]\{box-shadow:/);
 });
