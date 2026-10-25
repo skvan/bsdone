@@ -168,10 +168,25 @@
             <span class="kicker">OVERALL PROFILE</span>
             <h3>总体评价 <small>职业指标 · {{ evaluationComparison }}百分位</small></h3>
           </div>
+          <div v-if="evaluationOverall.score != null" class="eval-overall">
+            <div class="eo-score">
+              <b>{{ evaluationOverall.score }}</b>
+              <span class="eo-scale">/ 100</span>
+              <em>{{ evaluationOverall.grade }}</em>
+            </div>
+            <div class="eo-side">
+              <span class="eo-tags">
+                <b class="eo-role">{{ overallRoleLabel }}</b>
+                <i class="eo-confidence" :class="confidenceTone(evaluationOverall.confidenceLabel)">{{ evaluationOverall.confidenceLabel }}</i>
+              </span>
+              <span class="eo-sample">{{ overallSampleText }}</span>
+              <span class="eo-reliability">总体可靠性 {{ formatReliability(evaluationOverall.reliability) }}</span>
+            </div>
+          </div>
           <div class="eval-meta">
             <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
-            <span>{{ evaluationComparison }}</span>
-            <el-tooltip content="职业指标按当前总体评价口径计算；样本少于 3 人不评分；投球反向指标已换算。" placement="bottom-end" trigger="click">
+            <span>{{ evaluationComparison }} · 不随筛选变化</span>
+            <el-tooltip content="雷达固定为全租户生涯百分位（同租户、同运动类型对比池，上限 500 人），6 轴 0–100，不随球队/赛事筛选变化，50 为中位基准。总分由 wOBA/FIP 等分项百分位按角色权重合成，不取雷达面积；未达稳定门槛时向 50 收缩并标注「参考值」。守备优先同守位组比较，组内不足 5 人时回退全体并标注。" placement="bottom-end" trigger="click">
               <button type="button" class="metric-info" aria-label="评价口径">i</button>
             </el-tooltip>
           </div>
@@ -240,8 +255,14 @@
                 <span>提升<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
               </div>
               <div class="radar-foot">
-                <span><b>样本</b> {{ card.sampleSize }} 人</span>
-                <span>{{ radarFoot(card.domain) }}</span>
+                <span><b>样本池</b> {{ card.sampleSize }} 人</span>
+                <span><b>本人</b> {{ ownSampleText(card) }}</span>
+                <span>{{ radarFoot(card) }}</span>
+              </div>
+              <div class="radar-tags">
+                <i class="radar-confidence" :class="confidenceTone(card.confidenceLabel)">{{ card.confidenceLabel }}</i>
+                <span class="radar-reliability">可靠性 {{ formatReliability(card.reliability) }}</span>
+                <span v-if="radarNote(card)" class="radar-note">{{ radarNote(card) }}</span>
               </div>
             </template>
             <div v-else class="radar-empty">
@@ -252,7 +273,7 @@
         </div>
         <p class="eval-note">
           <i></i>
-          <span>按当前总体评价口径计算；百分位越高代表同口径下越靠前，投球指标中 ERA/WHIP/BB/9 越低越好，已反向换算。守备指标受守位影响，请结合球员位置阅读。</span>
+          <span>雷达为全租户生涯百分位（同租户、同运动类型对比池，上限 500 人），每张卡 6 轴 0–100，不随球队/赛事筛选变化，50 为中位基准。总分由 wOBA/FIP 等分项百分位按角色权重合成，不取雷达面积；样本达到展示门槛但未达稳定门槛时向 50 收缩并标注「参考值」。投球反向指标已反向换算；守备优先在相同守位组内比较，组内不足 5 人时回退全体并标注。</span>
         </p>
       </section>
 
@@ -825,8 +846,8 @@ const totalEvents = computed(() => {
   return ids.size;
 });
 const scopeHint = computed(() => (teamId.value
-  ? '队内排名按所选球队与赛事/生涯口径计算'
-  : '生涯合计跨全部球队与赛事；队内排名需选择球队'));
+  ? '队内排名按所选球队与赛事/生涯口径计算；雷达为全租户生涯，不随筛选变化'
+  : '生涯合计跨全部球队与赛事；队内排名需选择球队；雷达不随筛选变化'));
 const scopeLabel = computed(() => {
   const scope = data.value?.scope || {};
   if (scope.teamAll && scope.career) return '生涯';
@@ -868,7 +889,22 @@ const hasStatsData = computed(() => (
   || hasPitchingData.value
   || Number(data.value?.stats?.fielding?.gp) > 0
 ));
-const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '当前口径');
+const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
+const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
+const overallRoleLabel = computed(() => ({
+  POSITION_PLAYER: '野手',
+  PITCHER: '投手',
+  TWO_WAY: '二刀流'
+}[evaluationOverall.value.role] || '球员'));
+const overallSampleText = computed(() => {
+  const sizes = evaluationOverall.value.sampleSize || {};
+  const parts = [
+    formatOwnSample(sizes.batting, 'PA'),
+    formatOwnSample(sizes.pitching, 'IP'),
+    formatOwnSample(sizes.fielding, 'INN')
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : '暂无有效样本';
+});
 const evaluationCards = computed(() => (data.value?.evaluation?.cards || []).map(prepareEvaluationCard));
 const milestoneData = computed(() => milestonePayload.value || {});
 const milestoneItems = computed(() => milestoneData.value.items || []);
@@ -1797,12 +1833,42 @@ function radarKicker(domain) {
   return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
 }
 
-function radarFoot(domain) {
-  return {
-    batting: `打击指标 · ${evaluationComparison.value}`,
-    fielding: `守备指标 · ${evaluationComparison.value}`,
-    pitching: '投球指标 · ERA/WHIP/BB/9 已反向'
-  }[domain] || evaluationComparison.value;
+function radarFoot(card) {
+  return `${(card.axes || []).length} 轴 · ${evaluationComparison.value}`;
+}
+
+function ownSampleText(card) {
+  return formatOwnSample(card.ownSample, card.sampleUnit) || '暂无';
+}
+
+function formatOwnSample(value, unit) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return '';
+  if (unit === 'IP') return `${amount.toFixed(1)} IP`;
+  if (unit === 'INN') return `${Number.isInteger(amount) ? amount : amount.toFixed(1)} 局`;
+  return `${Math.round(amount)} PA`;
+}
+
+function formatReliability(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(2) : '—';
+}
+
+function confidenceTone(label) {
+  if (label === '样本不足') return 'is-insufficient';
+  if (label === '参考值') return 'is-reference';
+  return 'is-sufficient';
+}
+
+function radarNote(card) {
+  const note = String(card.note || '').trim();
+  const meta = card.meta || {};
+  if (meta.woba != null) return `${note || '参考 wOBA'} ${meta.woba}`;
+  if (meta.fip != null) {
+    const constant = meta.fipConstant != null ? `（C ${meta.fipConstant}）` : '';
+    return `${note || '参考 FIP'} ${meta.fip}${constant}`;
+  }
+  return note;
 }
 
 function radarAria(card) {
@@ -2451,6 +2517,20 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
 .eval-meta { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 11px; color: var(--bs-text-muted); }
 .eval-meta b { color: var(--bs-ink); font-family: var(--bs-font-num); font-size: 14px; margin-right: 3px; }
+.eval-overall { display: flex; align-items: center; gap: 14px; padding: 7px 13px; border: 1px solid var(--bs-hairline); border-radius: 12px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
+.eo-score { display: flex; align-items: baseline; gap: 5px; }
+.eo-score b { font-family: var(--bs-font-num); font-size: 38px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
+.eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
+.eo-score em { align-self: center; padding: 3px 6px; font-style: normal; font-family: var(--bs-font-num); font-size: 11px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 5px; background: var(--bs-surface-soft); }
+.eo-side { display: flex; flex-direction: column; gap: 3px; font-size: 10px; line-height: 1.3; color: var(--bs-text-muted); }
+.eo-tags { display: flex; align-items: center; gap: 6px; }
+.eo-role { font-size: 10px; font-weight: 700; color: var(--bs-text); }
+.eo-confidence, .radar-confidence { padding: 1px 6px; font-style: normal; font-size: 10px; font-weight: 600; line-height: 1.5; color: var(--bs-text-muted); border: 1px solid var(--bs-hairline); border-radius: 99px; background: var(--bs-surface-soft); }
+.eo-confidence.is-reference, .radar-confidence.is-reference { color: var(--bs-accent-ink); border-color: var(--bs-accent-soft); background: var(--bs-accent-soft); }
+.eo-confidence.is-insufficient, .radar-confidence.is-insufficient { color: var(--bs-text-faint); }
+.eo-confidence.is-sufficient, .radar-confidence.is-sufficient { color: var(--bs-text); border-color: var(--bs-hairline); }
+.eo-sample { font-family: var(--bs-font-num); letter-spacing: .02em; color: var(--bs-text); }
+.eo-reliability { font-size: 9px; letter-spacing: .04em; color: var(--bs-text-faint); }
 .radar-grid { display: grid; gap: 14px; margin-top: 14px; }
 .radar-grid.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .radar-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2489,8 +2569,13 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .radar-highlights span { font-size: 10px; color: var(--bs-text-muted); }
 .radar-highlights b { margin-left: 3px; font-size: 10px; color: var(--bs-text); }
 .radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot b { color: var(--bs-text-muted); font-weight: 500; }
+.radar-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; font-size: 10px; color: var(--bs-text-muted); }
+.radar-foot span:last-child { margin-left: auto; }
+.radar-foot b { color: var(--bs-text-faint); font-weight: 500; }
+.radar-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 9px; line-height: 1.5; color: var(--bs-text-faint); }
+.radar-reliability { letter-spacing: .03em; }
+.radar-note { flex-basis: 100%; color: var(--bs-text-muted); }
+.radar-note::before { content: "· "; color: var(--bs-text-faint); }
 .radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
 .radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
 .radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
@@ -2733,7 +2818,8 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .rank-band-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .rank-feature { padding: 0; border-right: 0; }
   .evaluation-panel { padding: 17px 16px 14px; }
-  .eval-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .eval-head { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .eval-overall { align-self: stretch; justify-content: space-between; }
   .eval-meta { align-self: flex-end; }
   .milestone-panel { padding: 17px 16px 14px; }
   .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
@@ -2779,6 +2865,9 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .radar-metrics { gap: 0 20px; }
   .radar-metric { padding: 7px 0; }
   .radar-metric em { font-size: 13px; }
+  .eval-overall { flex-wrap: wrap; gap: 8px 12px; }
+  .eo-side { flex-basis: 100%; }
+  .eo-tags, .eo-sample { overflow-wrap: anywhere; }
 }
 </style>
 

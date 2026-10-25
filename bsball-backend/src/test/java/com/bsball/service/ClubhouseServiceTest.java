@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -270,6 +271,24 @@ class ClubhouseServiceTest {
         assertEquals(false, scope.get("teamAll"));
         assertEquals(false, scope.get("career"));
         verify(statsService).getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL");
+    }
+
+    @Test
+    @DisplayName("雷达使用全租户生涯统计与第一守位，不随球队赛事筛选变化")
+    void evaluationUsesCareerStatsAndFirstPosition() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerStatsByTeam(10L, 1L, 11L, "BASEBALL")).thenReturn(emptyStats());
+        Map<String, Object> career = emptyStats();
+        career.put("batting", Map.of("pa", 60));
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(career);
+        Map<String, Object> evaluation = Map.of("comparison", "全租户生涯");
+        when(evaluationService.buildCareer(10L, "BASEBALL", career, "CF")).thenReturn(evaluation);
+
+        Map<String, Object> result = service.getDashboard(7L, 1L, 11L, "BASEBALL");
+
+        assertEquals(evaluation, result.get("evaluation"));
+        verify(evaluationService).buildCareer(10L, "BASEBALL", career, "CF");
+        verify(evaluationService, never()).build(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -798,6 +817,7 @@ class ClubhouseServiceTest {
         Player player = new Player();
         player.setId(10L);
         player.setTenantId(1L);
+        player.setPositions("[\"CF\",\"RF\"]");
         when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
                 .thenReturn(Optional.of(player));
         PlayerTeam entry = new PlayerTeam();
