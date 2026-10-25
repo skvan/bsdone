@@ -3,3 +3,12 @@
 .live-game-watch-page .floating-settings-wrap{right:28px;bottom:204px;z-index:92;width:40px;justify-content:center;display:flex;position:fixed}
 .live-game-watch-page .floating-settings-btn{width:40px;height:40px;background:var(--el-bg-color-overlay,#fff);color:var(--el-text-color-primary);border:1px solid var(--el-border-color-lighter);box-shadow:var(--el-box-shadow-light,0 2px 12px #0000001f);box-sizing:border-box;border-radius:50%}
 .live-game-watch-page .floating-settings-wrap{transition:opacity .25s,transform .25s}
+
+/* #407 实时动态：转播风垒包/球数（有人实心、没人空心；球数灯保留绿/红并加发光） */
+.watch-column .pbp-sbo__dot[data-v-80ab5033]{width:8px;height:8px}
+.watch-column .pbp-sbo__strikes .pbp-sbo__dot--active[data-v-80ab5033]{box-shadow:0 0 6px rgba(34,197,94,.55)}
+.watch-column .pbp-sbo__balls .pbp-sbo__dot--active[data-v-80ab5033]{box-shadow:0 0 6px rgba(239,68,68,.55)}
+.watch-column .watch-bases__base[data-v-80ab5033]{fill:#0000;stroke:#64748b}
+.watch-column .watch-bases__base--on[data-v-80ab5033]{fill:#0b1220;stroke:#fbbf24;filter:drop-shadow(0 0 3px rgba(251,191,36,.55))}
+[data-admin-theme=dark] .watch-column .watch-bases__base[data-v-80ab5033],html.dark .watch-column .watch-bases__base[data-v-80ab5033]{stroke:#94a3b8}
+[data-admin-theme=dark] .watch-column .watch-bases__base--on[data-v-80ab5033],html.dark .watch-column .watch-bases__base--on[data-v-80ab5033],[data-admin-theme=dark] .watch-column .watch-bases--blue .watch-bases__base--on[data-v-80ab5033],html.dark .watch-column .watch-bases--blue .watch-bases__base--on[data-v-80ab5033]{fill:#fbbf24;stroke:#fbbf24}

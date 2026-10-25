@@ -84,9 +84,14 @@ public final class ClubhouseMetricCatalog {
         performance.put("metricKey", DEFAULT_PERFORMANCE_KEY);
         performance.put("viz", DEFAULT_VIZ);
 
+        LinkedHashMap<String, Object> milestones = new LinkedHashMap<>();
+        milestones.put("metricKeys", ClubhouseMilestoneCatalog.defaultKeys());
+
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-        config.put("version", 1);
-        config.put("layout", "v3-fixed");
+        config.put("version", 3);
+        config.put("layout", "v3-modular");
+        config.put("modules", ClubhouseModuleCatalog.defaultModules());
+        config.put("milestones", milestones);
         config.put("performance", performance);
         config.put("ranks", defaultRankEntries());
         return config;

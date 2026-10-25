@@ -100,11 +100,6 @@
         "definition": "When a batter is struck by a pitched ball which he is not attempting to hit and is awarded first base",
         "shortLabel": "HBP"
       },
-      "hb": {
-        "fullName": "Hit Batsmen",
-        "definition": "When a batter is struck by a pitched ball which he is not attempting to hit",
-        "shortLabel": "HB"
-      },
       "so": {
         "fullName": "Strikeouts",
         "definition": "When the batter is retired on three strikes",

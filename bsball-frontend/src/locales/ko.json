@@ -100,11 +100,6 @@
         "definition": "타자가 투구에 맞아 1루가 주어진 경우",
         "shortLabel": "HBP"
       },
-      "hb": {
-        "fullName": "사구 허용",
-        "definition": "투수가 타자에게 사구를 허용한 횟수",
-        "shortLabel": "HB"
-      },
       "so": {
         "fullName": "삼진",
         "definition": "타자가 3스트라이크로 아웃된 경우",

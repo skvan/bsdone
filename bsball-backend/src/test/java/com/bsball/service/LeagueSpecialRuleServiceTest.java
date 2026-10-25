@@ -10,7 +10,9 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -76,9 +78,10 @@ class LeagueSpecialRuleServiceTest {
 
         Map<String, Boolean> effective = service.getEffective(LEAGUE_ID);
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.FALSE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("specialRulesEnabled"));
         // 读取路径不做联赛存在性 / 权限判定（默认兜底，仅供赛事详情与只读消费）
         verifyNoInteractions(leagueRepository, resourceGuard);
     }
@@ -88,9 +91,10 @@ class LeagueSpecialRuleServiceTest {
     void getEffective_nullLeagueId_returnsDefaultsWithoutQuery() {
         Map<String, Boolean> effective = service.getEffective(null);
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.FALSE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("specialRulesEnabled"));
         // 未挂联赛不得查库：仓储 / 联赛仓 / 守卫均零交互
         verifyNoInteractions(leagueSpecialRuleRepository, leagueRepository, resourceGuard);
     }
@@ -105,9 +109,16 @@ class LeagueSpecialRuleServiceTest {
 
         Map<String, Boolean> effective = service.getEffective(LEAGUE_ID);
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.TRUE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("specialRulesEnabled"));
+
+        assertFalse(service.isSpecialRulesEnabled(LEAGUE_ID));
+        assertFalse(service.isSpecialRulesEnabled(null));
+        when(leagueSpecialRuleRepository.findByLeagueId(LEAGUE_ID)).thenReturn(List.of(
+                rule(LEAGUE_ID, LeagueSpecialRuleService.RULE_SPECIAL_RULES_ENABLED, true)));
+        assertTrue(service.isSpecialRulesEnabled(LEAGUE_ID));
     }
 
     @Test
@@ -136,7 +147,7 @@ class LeagueSpecialRuleServiceTest {
 
         Map<String, Boolean> effective = service.updateRules(LEAGUE_ID, Map.of("extraBatter", true, "forceHalf", false));
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.TRUE, effective.get("extraBatter"));
         assertEquals(Boolean.FALSE, effective.get("forceHalf"));
         assertEquals(2, savedRows.size());
