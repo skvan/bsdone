@@ -4041,10 +4041,10 @@ var hm=["aria-label"],ym={
   }
   
 }
-),pv=wa(uv,[["__scopeId","data-v-c1b809be"]]),fv=["x","y"],cv={
+),pv=wa(uv,[["__scopeId","data-v-c1b809be"]]),fv=["cx","cy"],cv={
   key:1,class:"runner-path-anim-token"
 }
-,dv=["x","y"],mv=["x","y"],vv=["x"],gv=["x"],bv=["x"],_v=Wn({
+,dv=["cx","cy"],mv=["x","y"],vv=["x"],gv=["x"],bv=["x"],_v=Wn({
   __name:"RunnerPathAnimDot",props:{
     pathD:{
       default:""
@@ -4100,14 +4100,14 @@ var hm=["aria-label"],ym={
     return yu(R),Ce(()=>[f.pathD,f.dur,f.mode,f.exitX,f.exitY],()=>F(),{
       immediate:!0
     }
-    ),(N,K)=>f.mode==="exit"?(h(),C("rect",{
-      key:0,x:l.value-8,y:o.value-8,width:"16",height:"16",rx:"2",class:"runner-path-anim-dot runner-path-anim-dot--exit-square",style:ba({
+    ),(N,K)=>f.mode==="exit"?(h(),C("circle",{
+      key:0,cx:l.value,cy:o.value,r:"8",class:"runner-path-anim-dot runner-path-anim-dot--exit-circle",style:ba({
         animationDuration:`${Math.max(.42,f.dur)}s`
       }
       )
     }
-    ,null,12,fv)):(h(),C("g",cv,[n("rect",{
-      x:l.value-18,y:o.value-18,width:"36",height:"36",class:"runner-path-anim-dot runner-path-anim-dot--path-square"
+    ,null,12,fv)):(h(),C("g",cv,[n("circle",{
+      cx:l.value,cy:o.value,r:"18",class:"runner-path-anim-dot runner-path-anim-dot--path-circle"
     }
     ,null,8,dv),n("text",{
       x:l.value,y:o.value+2,"text-anchor":"middle",class:"runner-path-anim-label"
