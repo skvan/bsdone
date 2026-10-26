@@ -180,3 +180,44 @@ test('10 元件层：名单没重建成功时不改指针，也不会踩到 fe=n
   assert.ok(brLine.includes('(le.value??[])') && brLine.includes('(fe.value??[])'),
     'br() 仍直接对初值 null 的 fe 调 .every()，无快照重建会先抛 TypeError（#445 现场走不进还原）');
 });
+
+/**
+ * 11) 真实 b() 的占位渲染：第 7 案把 b() 换成 stub，挡不住「占位行显示成空白/undefined」。
+ *     这里把 LiveGame.js 里 b() 的原文取出来真的执行，钉住：姓名兜底「队员」、背号可回落到统计行、
+ *     统计行数值不因缺 roster 而被抹成 0。
+ */
+test('11 元件层：真实 b() 对占位球员的渲染与统计承接', () => {
+  const i = src.indexOf(',b=(P,A,T,Y)=>{');
+  assert(i > 0, '找不到 b() 构造段，Do() 内的建档函数可能已改名');
+  const j = src.indexOf('\n      ,w=(P,A)=>{', i);
+  assert(j > i, '找不到 b() 构造段终点');
+  const text = src.slice(i + 1, j).trim();
+  const b = new Function('Pt', 'return ' + text)(( ) => ({ batting: {}, pitching: {}, fielding: {} }));
+  const row = {
+    teamId: TEAM, playerId: 9999, isPitcher: 0, battingOrder: 4, position: '3B', number: '88',
+    pa: 4, ab: 3, hbp: 1, bb: 0, sf: 0, sh: 0, r: 1, h: 2, rbi: 2,
+  };
+  const built = b({ id: 9999 }, TEAM, row, 3);
+  assert.equal(built.name, '队员', 'roster 查不到时用 b() 的姓名兜底（不得是 undefined/空串）');
+  assert.equal(built.number, '88', '背号可回落到统计行，占位行不该整栏空白');
+  assert.equal(built.position, '3B', '守位取服务端统计行，保证守备数据仍挂在本人身上');
+  assert.equal(built.stats.batting.ab, 3, 'AB 承接统计行（不得被 ??0 抹除）');
+  assert.equal(built.stats.batting.hbp, 1, 'HBP 承接统计行');
+  assert.equal(built.stats.batting.r, 1, 'R 承接统计行');
+});
+
+/**
+ * 12) 投手列不得混入打席合计：线上响应实证（game202 dump）同一 playerId 同时存在
+ *     isPitcher=1 列（ab 是「被打者数」）与 isPitcher=0 打者列（pa 才是本人打席）。
+ *     若不排除投手列，指针回溯会一次跳好几格。
+ */
+test('12 纯函数层：同一球员的投手列不计入打席合计（真实响应形态）', () => {
+  const rows = [
+    { teamId: TEAM, playerId: 1180, isPitcher: 1, battingOrder: null, pa: 0, ab: 40, bb: 12, hbp: 3, sf: 0, sh: 0 },
+    { teamId: TEAM, playerId: 1180, isPitcher: 0, battingOrder: 1, pa: 4, ab: 1, bb: 1, hbp: 2, sf: 0, sh: 0 },
+    { teamId: TEAM, playerId: 1181, isPitcher: 0, battingOrder: 2, pa: 3, ab: 2, bb: 1, hbp: 0, sf: 0, sh: 0 },
+    { teamId: TEAM + 1, playerId: 2180, isPitcher: 0, battingOrder: 1, pa: 7, ab: 5, bb: 2, hbp: 0, sf: 0, sh: 0 },
+  ];
+  assert.equal(teamPlateAppearances(rows, TEAM), 7, '只累加本队打者列（4+3），投手列 ab=40 与它队列都不算');
+  assert.notEqual(teamPlateAppearances(rows, TEAM), 47, '常见错法：把投手「被打数」当打席');
+});
