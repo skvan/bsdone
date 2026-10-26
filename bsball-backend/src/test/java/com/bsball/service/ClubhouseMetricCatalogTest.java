@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 class ClubhouseMetricCatalogTest {
 
     @Test
-    @DisplayName("默认配置包含九个模块并升级到 v3-modular")
+    @DisplayName("默认配置包含九个模块并升级到 v4 自由画布")
     void defaultConfigContainsModules() {
         Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
 
-        assertEquals(3, config.get("version"));
-        assertEquals("v3-modular", config.get("layout"));
+        assertEquals(4, config.get("version"));
+        assertEquals("v4-board", config.get("layout"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
         assertEquals(ClubhouseModuleCatalog.defaultModules(), modules);

@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,23 +40,32 @@ class UserClubhouseConfigServiceTest {
     }
 
     @Test
-    @DisplayName("无配置时返回 version 3 默认配置且不在读接口落库")
+    @DisplayName("无配置时返回 v4 默认画布且不在读接口落库")
     void returnsDefaultsWithoutWriting() {
         when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
                 .thenReturn(Optional.empty());
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals(3, config.get("version"));
-        assertEquals("v3-modular", config.get("layout"));
+        assertEquals(4, config.get("version"));
+        assertEquals("v4-board", config.get("layout"));
         assertNotNull(config.get("performance"));
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         assertEquals(9, ((List<?>) config.get("modules")).size());
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
-        assertEquals(12, modules.get(0).get("width"));
-        assertEquals(0, modules.get(0).get("height"));
-        assertEquals(4, modules.get(4).get("width"));
+        Map<String, Object> ranks = moduleRow(config, "ranks");
+        assertEquals(0, ranks.get("x"));
+        assertEquals(0, ranks.get("y"));
+        assertEquals(1216, ranks.get("width"));
+        assertEquals(220, ranks.get("height"));
+        Map<String, Object> performance = moduleRow(config, "performance");
+        assertEquals(1468, performance.get("y"));
+        assertEquals(800, performance.get("width"));
+        assertEquals(500, performance.get("height"));
+        Map<String, Object> teams = moduleRow(config, "teams");
+        assertEquals(816, teams.get("x"));
+        assertEquals(1468, teams.get("y"));
+        assertEquals(400, teams.get("width"));
+        assertEquals(300, teams.get("height"));
         @SuppressWarnings("unchecked")
         Map<String, Object> milestones = (Map<String, Object>) config.get("milestones");
         assertEquals(ClubhouseMilestoneCatalog.defaultKeys(), milestones.get("metricKeys"));
@@ -183,6 +193,7 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> saved = service.save(7L, 1L, body);
 
+        assertEquals("v4-board", saved.get("layout"));
         assertEquals(9, ((List<?>) saved.get("modules")).size());
     }
 
@@ -190,12 +201,9 @@ class UserClubhouseConfigServiceTest {
     @DisplayName("全部关闭的配置写入后读取仍保持关闭")
     void allDisabledConfigRemainsDisabledAfterReload() throws Exception {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.all().stream()
-                .map(def -> Map.<String, Object>of("key", def.key(), "enabled", false))
+                .map(def -> module(def.key(), false, 0, 0, def.defaultWidth(), def.defaultHeight()))
                 .toList();
-        Map<String, Object> saved = service.save(7L, 1L, Map.of(
-                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
-                "ranks", validRanks(),
-                "modules", modules));
+        Map<String, Object> saved = service.save(7L, 1L, boardBody(modules));
 
         UserClubhouseConfig entity = new UserClubhouseConfig();
         entity.setConfigJson(new ObjectMapper().writeValueAsString(saved));
@@ -277,19 +285,17 @@ class UserClubhouseConfigServiceTest {
     }
 
     @Test
-    @DisplayName("保存模块宽高并在回读时保留")
-    void savesAndReloadsModuleSizes() throws Exception {
-        List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
-        modules.get(3).put("width", 10);
-        modules.get(3).put("height", 22);
-        Map<String, Object> saved = service.save(7L, 1L, Map.of(
-                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
-                "ranks", validRanks(),
-                "modules", modules));
+    @DisplayName("v4 保存模块几何并在回读时保留")
+    void savesAndReloadsBoardGeometry() throws Exception {
+        Map<String, Object> saved = service.save(7L, 1L, boardBody(List.of(
+                module("performance", true, 0, 16, 800, 460),
+                module("teams", true, 816, 16, 400, 300))));
 
         Map<String, Object> performance = moduleRow(saved, "performance");
-        assertEquals(10, performance.get("width"));
-        assertEquals(22, performance.get("height"));
+        assertEquals(0, performance.get("x"));
+        assertEquals(16, performance.get("y"));
+        assertEquals(800, performance.get("width"));
+        assertEquals(460, performance.get("height"));
 
         UserClubhouseConfig entity = new UserClubhouseConfig();
         entity.setConfigJson(new ObjectMapper().writeValueAsString(saved));
@@ -297,55 +303,142 @@ class UserClubhouseConfigServiceTest {
                 .thenReturn(Optional.of(entity));
 
         Map<String, Object> loaded = service.getOrCreate(7L, 1L);
+        assertEquals(4, loaded.get("version"));
+        assertEquals("v4-board", loaded.get("layout"));
         Map<String, Object> loadedPerformance = moduleRow(loaded, "performance");
-        assertEquals(10, loadedPerformance.get("width"));
-        assertEquals(22, loadedPerformance.get("height"));
+        assertEquals(0, loadedPerformance.get("x"));
+        assertEquals(16, loadedPerformance.get("y"));
+        assertEquals(800, loadedPerformance.get("width"));
+        assertEquals(460, loadedPerformance.get("height"));
     }
 
     @Test
-    @DisplayName("模块宽高缺省时补目录默认值")
-    void missingModuleSizeFallsBackToDefaults() {
-        Map<String, Object> saved = service.save(7L, 1L, Map.of(
-                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
-                "ranks", validRanks(),
-                "modules", List.of(Map.of("key", "performance", "enabled", true))));
+    @DisplayName("v4 模块几何缺省时补目录默认值")
+    void missingModuleGeometryFallsBackToDefaults() {
+        Map<String, Object> saved = service.save(7L, 1L,
+                boardBody(List.of(Map.of("key", "performance", "enabled", true))));
 
         Map<String, Object> performance = moduleRow(saved, "performance");
-        assertEquals(8, performance.get("width"));
-        assertEquals(0, performance.get("height"));
+        assertEquals(0, performance.get("x"));
+        assertEquals(0, performance.get("y"));
+        assertEquals(800, performance.get("width"));
+        assertEquals(500, performance.get("height"));
         assertEquals(9, ((List<?>) saved.get("modules")).size());
     }
 
     @Test
-    @DisplayName("模块宽度必须为整数、不低于模块最小列宽且不超过 12")
-    void rejectsInvalidModuleWidth() {
+    @DisplayName("v4 拒绝越界、负坐标、非整数、过小过大尺寸与缺字段")
+    void rejectsInvalidBoardGeometry() {
         assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 5, 0)));
+                boardBody(List.of(module("performance", true, -1, 0, 800, 460)))));
         assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("ranks", 4, 0)));
+                boardBody(List.of(module("performance", true, 0, 12001, 800, 460)))));
         assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 13, 0)));
+                boardBody(List.of(module("performance", true, 0, 0, 359, 460)))));
         assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 8.5, 0)));
+                boardBody(List.of(module("performance", true, 0, 0, 1217, 460)))));
         assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", "8", 0)));
+                boardBody(List.of(module("performance", true, 0, 0, 800, 319)))));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                boardBody(List.of(module("performance", true, 0, 0, 800, 1601)))));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                boardBody(List.of(module("performance", true, 600, 0, 800, 460)))));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                boardBody(List.of(rawModule("performance", 0, 0, 800.5, 460)))));
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                boardBody(List.of(rawModule("performance", 0, 0, 800, "460")))));
+
+        LinkedHashMap<String, Object> partial = new LinkedHashMap<>();
+        partial.put("key", "performance");
+        partial.put("enabled", true);
+        partial.put("x", 0);
+        partial.put("width", 800);
+        partial.put("height", 460);
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
+                boardBody(List.of(partial))));
     }
 
     @Test
-    @DisplayName("模块高度必须为 0–80 的整数")
-    void rejectsInvalidModuleHeight() {
-        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 8, -1)));
-        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 8, 81)));
-        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 8, 7.5)));
-        assertThrows(BusinessException.class, () -> service.save(7L, 1L,
-                moduleSizeBody("performance", 8, "12")));
+    @DisplayName("启用模块重叠时后出现模块下移，输出无重叠")
+    void resolvesOverlappingEnabledModules() {
+        Map<String, Object> saved = service.save(7L, 1L, boardBody(List.of(
+                module("performance", true, 0, 0, 800, 460),
+                module("teams", true, 0, 0, 400, 300))));
+
+        Map<String, Object> teams = moduleRow(saved, "teams");
+        assertEquals(0, teams.get("x"));
+        assertEquals(476, teams.get("y"));
+        assertNoOverlap(saved);
     }
 
     @Test
-    @DisplayName("version 2 已存配置读取时补齐 v3 默认宽高且不写库")
+    @DisplayName("禁用模块保留几何且不参与重叠检测")
+    void ignoresOverlapWithDisabledModules() {
+        Map<String, Object> saved = service.save(7L, 1L, boardBody(List.of(
+                module("teams", false, 0, 0, 400, 300),
+                module("performance", true, 0, 0, 800, 460))));
+
+        Map<String, Object> teams = moduleRow(saved, "teams");
+        assertEquals(false, teams.get("enabled"));
+        assertEquals(0, teams.get("x"));
+        assertEquals(0, teams.get("y"));
+        assertEquals(400, teams.get("width"));
+        assertEquals(300, teams.get("height"));
+        Map<String, Object> performance = moduleRow(saved, "performance");
+        assertEquals(0, performance.get("x"));
+        assertEquals(0, performance.get("y"));
+    }
+
+    @Test
+    @DisplayName("v4 缺失模块追加到所有模块底部且不重叠")
+    void appendsMissingBoardModulesBelowExisting() {
+        Map<String, Object> saved = service.save(7L, 1L, boardBody(List.of(
+                module("ranks", true, 0, 0, 1216, 220))));
+
+        assertEquals(9, ((List<?>) saved.get("modules")).size());
+        assertEquals(0, moduleRow(saved, "ranks").get("y"));
+        assertEquals(236, moduleRow(saved, "evaluation").get("y"));
+        assertEquals(952, moduleRow(saved, "milestones").get("y"));
+        assertEquals(1468, moduleRow(saved, "performance").get("y"));
+        assertEquals(1984, moduleRow(saved, "teams").get("y"));
+        assertNoOverlap(saved);
+    }
+
+    @Test
+    @DisplayName("v3 配置读取迁移为 v4 自由画布且不写库")
+    void migratesVersionThreeToBoard() {
+        UserClubhouseConfig entity = new UserClubhouseConfig();
+        entity.setConfigJson("""
+                {"version":3,"layout":"v3-modular",
+                 "modules":[{"key":"performance","enabled":true,"width":8,"height":22},
+                            {"key":"teams","enabled":true,"width":4,"height":0}],
+                 "performance":{"metricKey":"batting.avg","viz":"line"},
+                 "ranks":[{"metricKey":"batting.avg"},{"metricKey":"batting.h"},
+                          {"metricKey":"batting.obp"},{"metricKey":"batting.rbi"}]}
+                """);
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(entity));
+
+        Map<String, Object> config = service.getOrCreate(7L, 1L);
+
+        assertEquals(4, config.get("version"));
+        assertEquals("v4-board", config.get("layout"));
+        Map<String, Object> performance = moduleRow(config, "performance");
+        assertEquals(805, performance.get("width"));
+        assertEquals(320, performance.get("height"));
+        assertEquals(0, performance.get("x"));
+        assertEquals(0, performance.get("y"));
+        Map<String, Object> teams = moduleRow(config, "teams");
+        assertEquals(395, teams.get("width"));
+        assertEquals(300, teams.get("height"));
+        assertEquals(821, teams.get("x"));
+        assertEquals(0, teams.get("y"));
+        assertEquals(9, ((List<?>) config.get("modules")).size());
+        verify(configRepository, never()).save(any(UserClubhouseConfig.class));
+    }
+
+    @Test
+    @DisplayName("version 2 已存配置读取时补齐 v4 默认几何且不写库")
     void migratesVersionTwoModuleSizes() {
         UserClubhouseConfig entity = new UserClubhouseConfig();
         entity.setConfigJson("""
@@ -360,12 +453,15 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals(3, config.get("version"));
+        assertEquals(4, config.get("version"));
         Map<String, Object> performance = moduleRow(config, "performance");
-        assertEquals(8, performance.get("width"));
-        assertEquals(0, performance.get("height"));
+        assertEquals(800, performance.get("width"));
+        assertEquals(500, performance.get("height"));
+        assertEquals(0, performance.get("y"));
         Map<String, Object> teams = moduleRow(config, "teams");
-        assertEquals(4, teams.get("width"));
+        assertEquals(400, teams.get("width"));
+        assertEquals(300, teams.get("height"));
+        assertEquals(816, teams.get("x"));
         assertEquals(false, teams.get("enabled"));
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
@@ -388,8 +484,8 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> saved = service.save(7L, 1L, body);
 
-        assertEquals(3, saved.get("version"));
-        assertEquals("v3-modular", saved.get("layout"));
+        assertEquals(4, saved.get("version"));
+        assertEquals("v4-board", saved.get("layout"));
         assertEquals(9, ((List<?>) saved.get("modules")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> savedPerformance = (Map<String, Object>) saved.get("performance");
@@ -414,8 +510,8 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals(3, config.get("version"));
-        assertEquals("v3-modular", config.get("layout"));
+        assertEquals(4, config.get("version"));
+        assertEquals("v4-board", config.get("layout"));
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) config.get("performance");
         assertEquals("batting.h", performance.get("metricKey"));
@@ -433,23 +529,60 @@ class UserClubhouseConfigServiceTest {
 
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
-        assertEquals("v3-modular", config.get("layout"));
+        assertEquals("v4-board", config.get("layout"));
         assertEquals(9, ((List<?>) config.get("modules")).size());
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
 
-    private Map<String, Object> moduleSizeBody(String key, Object width, Object height) {
-        List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
-        modules.stream()
-                .filter(row -> key.equals(row.get("key")))
-                .findFirst()
-                .orElseThrow()
-                .putAll(Map.of("width", width, "height", height));
-        return Map.of(
-                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
-                "ranks", validRanks(),
-                "modules", modules);
+    private Map<String, Object> boardBody(List<Map<String, Object>> modules) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("version", 4);
+        body.put("layout", "v4-board");
+        body.put("performance", Map.of("metricKey", "batting.avg", "viz", "line"));
+        body.put("ranks", validRanks());
+        body.put("modules", modules);
+        return body;
+    }
+
+    private Map<String, Object> module(String key, boolean enabled,
+            int x, int y, int width, int height) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("key", key);
+        row.put("enabled", enabled);
+        row.put("x", x);
+        row.put("y", y);
+        row.put("width", width);
+        row.put("height", height);
+        return row;
+    }
+
+    private Map<String, Object> rawModule(String key, Object x, Object y, Object width, Object height) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("key", key);
+        row.put("enabled", true);
+        row.put("x", x);
+        row.put("y", y);
+        row.put("width", width);
+        row.put("height", height);
+        return row;
+    }
+
+    private void assertNoOverlap(Map<String, Object> config) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        List<ClubhouseBoardLayout.ModulePlacement> enabled = modules.stream()
+                .filter(row -> Boolean.TRUE.equals(row.get("enabled")))
+                .map(row -> new ClubhouseBoardLayout.ModulePlacement(
+                        (String) row.get("key"), true,
+                        (Integer) row.get("x"), (Integer) row.get("y"),
+                        (Integer) row.get("width"), (Integer) row.get("height")))
+                .toList();
+        for (int i = 0; i < enabled.size(); i++) {
+            for (int j = i + 1; j < enabled.size(); j++) {
+                assertFalse(ClubhouseBoardLayout.overlaps(enabled.get(i), enabled.get(j)));
+            }
+        }
     }
 
     private Map<String, Object> moduleRow(Map<String, Object> config, String key) {

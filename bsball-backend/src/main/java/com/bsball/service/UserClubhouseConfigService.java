@@ -18,12 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 个人驾驶舱配置的读取、校验与保存。
  * <p>服务端只接受 {@link ClubhouseMetricCatalog} 中的指标、兼容图表类型和
- * {@link ClubhouseModuleCatalog} 中的模块；模块顺序即展示顺序，宽高在白名单范围内可调。</p>
+ * {@link ClubhouseModuleCatalog} 中的模块；数组顺序用于手机端与设置排序，
+ * 桌面端位置与像素尺寸由 x/y/width/height 决定。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class UserClubhouseConfigService {
+    private static final int CONFIG_VERSION = 4;
+    private static final String CONFIG_LAYOUT = "v4-board";
     private static final int RANK_SLOT_COUNT = 4;
+    private static final int LEGACY_MAX_SPAN = 12;
+    private static final int LEGACY_MAX_HEIGHT_ROWS = 80;
 
     private final UserClubhouseConfigRepository configRepository;
     private final ObjectMapper objectMapper;
@@ -77,6 +82,7 @@ public class UserClubhouseConfigService {
 
     /**
      * 校验并收敛为固定字段结构；非法指标/图表/排名/模块直接拒绝。
+     * <p>v1–v3 旧网格配置在内存中迁移为 v4 像素画布，GET 不会写库。</p>
      */
     Map<String, Object> normalize(Map<String, Object> body) {
         Map<String, Object> source = body == null ? Map.of() : body;
@@ -92,11 +98,11 @@ public class UserClubhouseConfigService {
         }
 
         List<Map<String, Object>> ranks = normalizeRanks(source.get("ranks"));
-        List<Map<String, Object>> modules = normalizeModules(source.get("modules"));
+        List<Map<String, Object>> modules = normalizeModules(source.get("modules"), isBoardConfig(source));
         List<String> milestoneKeys = normalizeMilestones(source.get("milestones"));
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
-        config.put("version", 3);
-        config.put("layout", "v3-modular");
+        config.put("version", CONFIG_VERSION);
+        config.put("layout", CONFIG_LAYOUT);
         config.put("modules", modules);
         LinkedHashMap<String, Object> outMilestones = new LinkedHashMap<>();
         outMilestones.put("metricKeys", milestoneKeys);
@@ -109,11 +115,30 @@ public class UserClubhouseConfigService {
         return config;
     }
 
-    private List<Map<String, Object>> normalizeModules(Object raw) {
+    /** version >= 4、v4-board 或任一模块带 x/y 时按自由画布解析，否则按旧网格迁移。 */
+    private static boolean isBoardConfig(Map<String, Object> source) {
+        if (CONFIG_LAYOUT.equals(asText(source.get("layout")))) {
+            return true;
+        }
+        if (source.get("version") instanceof Number number && number.doubleValue() >= CONFIG_VERSION) {
+            return true;
+        }
+        Object raw = source.get("modules");
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> row && (row.containsKey("x") || row.containsKey("y"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private List<Map<String, Object>> normalizeModules(Object raw, boolean boardMode) {
         if (!(raw instanceof List<?> list) || list.isEmpty()) {
             return ClubhouseModuleCatalog.defaultModules();
         }
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<ClubhouseBoardLayout.ModulePlacement> placements = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (Object item : list) {
             Map<String, Object> row = asMap(item);
@@ -124,52 +149,102 @@ public class UserClubhouseConfigService {
             if (!seen.add(def.key())) {
                 throw new BusinessException(400, "驾驶舱模块不能重复");
             }
-            out.add(moduleEntry(
-                    def,
-                    enabled(row.get("enabled")),
-                    normalizeWidth(def, row.get("width")),
-                    normalizeHeight(row.get("height"))));
+            boolean enabled = enabled(row.get("enabled"));
+            placements.add(boardMode
+                    ? boardPlacement(def, row, enabled)
+                    : legacyPlacement(def, row, enabled));
         }
+        List<ClubhouseBoardLayout.ModulePlacement> all = new ArrayList<>(placements);
         for (ClubhouseModuleCatalog.ModuleDef def : ClubhouseModuleCatalog.all()) {
             if (!seen.contains(def.key())) {
-                out.add(moduleEntry(def, def.enabledByDefault(), def.span(), 0));
+                all.add(ClubhouseBoardLayout.placeBelow(defaultPlacement(def, def.enabledByDefault()), all));
             }
         }
-        return out;
+        List<ClubhouseBoardLayout.ModulePlacement> resolved = boardMode
+                ? ClubhouseBoardLayout.resolveOverlaps(all)
+                : ClubhouseBoardLayout.pack(all);
+        for (ClubhouseBoardLayout.ModulePlacement placement : resolved) {
+            if (placement.enabled() && placement.y() > ClubhouseBoardLayout.MAX_Y) {
+                throw new BusinessException(400, "模块坐标超出范围");
+            }
+        }
+        return toRows(resolved);
     }
 
-    private static Map<String, Object> moduleEntry(
-            ClubhouseModuleCatalog.ModuleDef def, boolean enabled, int width, int height) {
-        LinkedHashMap<String, Object> entry = new LinkedHashMap<>();
-        entry.put("key", def.key());
-        entry.put("enabled", enabled);
-        entry.put("width", width);
-        entry.put("height", height);
-        return entry;
+    /** 解析 v4 模块行；字段缺失时回退默认几何，部分缺失视为非法。 */
+    private static ClubhouseBoardLayout.ModulePlacement boardPlacement(
+            ClubhouseModuleCatalog.ModuleDef def, Map<String, Object> row, boolean enabled) {
+        if (row.get("x") == null && row.get("y") == null
+                && row.get("width") == null && row.get("height") == null) {
+            return defaultPlacement(def, enabled);
+        }
+        int x = asInt(row.get("x"), "模块 x 坐标必须为整数");
+        int y = asInt(row.get("y"), "模块 y 坐标必须为整数");
+        int width = asInt(row.get("width"), "模块宽度必须为整数");
+        int height = asInt(row.get("height"), "模块高度必须为整数");
+        if (x < 0 || y < 0 || y > ClubhouseBoardLayout.MAX_Y) {
+            throw new BusinessException(400, "模块坐标超出范围");
+        }
+        if (width < def.minWidth() || width > ClubhouseBoardLayout.BOARD_WIDTH) {
+            throw new BusinessException(400, def.label() + "宽度需在 " + def.minWidth()
+                    + "–" + ClubhouseBoardLayout.BOARD_WIDTH + " 之间");
+        }
+        if (height < def.minHeight() || height > ClubhouseBoardLayout.MAX_HEIGHT) {
+            throw new BusinessException(400, def.label() + "高度需在 " + def.minHeight()
+                    + "–" + ClubhouseBoardLayout.MAX_HEIGHT + " 之间");
+        }
+        if (x + width > ClubhouseBoardLayout.BOARD_WIDTH) {
+            throw new BusinessException(400, def.label() + "横向位置超出画布");
+        }
+        return new ClubhouseBoardLayout.ModulePlacement(def.key(), enabled, x, y, width, height);
     }
 
-    private static int normalizeWidth(ClubhouseModuleCatalog.ModuleDef def, Object raw) {
-        if (raw == null) {
-            return def.span();
+    /** 旧网格宽（列）高（10px 行）转像素；高度 0 表示使用目录默认高度。 */
+    private static ClubhouseBoardLayout.ModulePlacement legacyPlacement(
+            ClubhouseModuleCatalog.ModuleDef def, Map<String, Object> row, boolean enabled) {
+        int width = def.defaultWidth();
+        if (row.get("width") != null) {
+            int span = asInt(row.get("width"), "模块宽度必须为整数");
+            if (span < 1 || span > LEGACY_MAX_SPAN) {
+                throw new BusinessException(400, def.label() + "宽度需在 1–" + LEGACY_MAX_SPAN + " 列之间");
+            }
+            width = Math.min(ClubhouseBoardLayout.BOARD_WIDTH,
+                    Math.max(def.minWidth(), ClubhouseModuleCatalog.legacyWidth(span)));
         }
-        int width = asInt(raw, "模块宽度必须为整数");
-        if (width < def.minSpan() || width > ClubhouseModuleCatalog.MAX_SPAN) {
-            throw new BusinessException(400,
-                    def.label() + "宽度需在 " + def.minSpan() + "–" + ClubhouseModuleCatalog.MAX_SPAN + " 列之间");
+        int height = def.defaultHeight();
+        if (row.get("height") != null) {
+            int rows = asInt(row.get("height"), "模块高度必须为整数");
+            if (rows < 0 || rows > LEGACY_MAX_HEIGHT_ROWS) {
+                throw new BusinessException(400,
+                        "模块高度需在 0–" + LEGACY_MAX_HEIGHT_ROWS + " 行之间");
+            }
+            if (rows > 0) {
+                height = Math.min(ClubhouseBoardLayout.MAX_HEIGHT,
+                        Math.max(def.minHeight(), rows * 10));
+            }
         }
-        return width;
+        return new ClubhouseBoardLayout.ModulePlacement(def.key(), enabled, 0, 0, width, height);
     }
 
-    private static int normalizeHeight(Object raw) {
-        if (raw == null) {
-            return 0;
+    private static ClubhouseBoardLayout.ModulePlacement defaultPlacement(
+            ClubhouseModuleCatalog.ModuleDef def, boolean enabled) {
+        return new ClubhouseBoardLayout.ModulePlacement(
+                def.key(), enabled, 0, 0, def.defaultWidth(), def.defaultHeight());
+    }
+
+    private static List<Map<String, Object>> toRows(List<ClubhouseBoardLayout.ModulePlacement> placements) {
+        List<Map<String, Object>> rows = new ArrayList<>(placements.size());
+        for (ClubhouseBoardLayout.ModulePlacement placement : placements) {
+            LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+            row.put("key", placement.key());
+            row.put("enabled", placement.enabled());
+            row.put("x", placement.x());
+            row.put("y", placement.y());
+            row.put("width", placement.width());
+            row.put("height", placement.height());
+            rows.add(row);
         }
-        int height = asInt(raw, "模块高度必须为整数");
-        if (height < 0 || height > ClubhouseModuleCatalog.MAX_HEIGHT_ROWS) {
-            throw new BusinessException(400,
-                    "模块高度需在 0–" + ClubhouseModuleCatalog.MAX_HEIGHT_ROWS + " 行之间");
-        }
-        return height;
+        return rows;
     }
 
     private static int asInt(Object raw, String message) {

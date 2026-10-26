@@ -395,10 +395,10 @@ Serif is reserved for portal/dashboard display headings and the player name. Do 
 - Scope bar sits directly under the page head and above the hero.
 - Hero on desktop: 2-column split (identity / player card or snapshot); on mobile it stacks.
 - Rank band: 4 equal columns on desktop, 2×2 on mobile.
-- Dashboard module grid: one 12-column CSS Grid on desktop. Module widths default to `12` / `8` / `4` from the module catalog but can be resized between each module's `minSpan` and `12`; height snaps to `10px` rows and never shrinks below rendered content. Order comes from the user's module config; do not use dense packing.
+- Dashboard module canvas: a free pixel canvas (`1216px` logical width, `16px` gap, `8px` snap) above `1340px`; modules have saved `x/y/width/height` and can be dragged/resized from eight handles. Below `1340px`, use a compact two-column flow (`981–1339px`) or a single column (`≤980px`) in saved array order and ignore pixel geometry.
 - Touch targets: at least `44px` on mobile.
 
-Breakpoints: the dashboard switches from the 12-column module grid to a single column at `980px`; phone typography and spacing tighten at `560px`. The page content max width is `1280px`.
+Breakpoints: free canvas at `>=1340px`; compact two-column flow at `981–1339px`; single column at `<=980px`; phone typography and spacing tighten at `560px`. The page content max width is `1280px`.
 
 ## Elevation & Depth
 
@@ -456,25 +456,40 @@ The signature object: dark navy card, gold hairline, inner hairline frame, monog
 - The team line follows the same rule as the hero strip: all selected-sport teams joined with ` / ` when `全部球队`, only the chosen team otherwise. Allow up to two lines with a `title`/tooltip fallback; do not truncate to a single ambiguous team. The footer keeps “代表 N 队 · N 项赛事”.
 
 ### Dashboard modules
-The nine configurable modules and their default / minimum widths are `队内坐标` (12/6), `总体评价` (12/8), `生涯里程碑` (12/8), `数据表现` (8/6), `代表球队` (4/4), `接下来的比赛` (8/6), `关于我` (4/4), `最近战报` (8/6), `快捷入口` (4/4). The default order follows the approved V3 page; default height is auto.
+The nine configurable modules use a **free pixel canvas** on wide desktop screens: modules are absolutely positioned by `x / y / width / height`, can be dragged anywhere, and can be resized from any of eight handles. The logical canvas is `1216px` wide with a `16px` minimum gap between modules. The array order remains the logical/mobile order; desktop ignores it.
 
-- Hidden modules are removed from the grid; the page header, hero, identity strip and scope bar stay fixed.
-- Reordering is visual and follows the saved array. Cards do not pack densely; if a card is taller than the card beside it, the next row starts after the taller card. This blank space is intentional and approved.
-- Width snaps to the 12-column grid; height snaps to `10px` rows and `0` means auto. A module can never be shorter than its rendered content. Enlarging a module pushes later rows down; it does not overlap neighbours.
-- All modules can be hidden. Show a panel empty state with “所有内容模块已隐藏” and a primary “去设置” action; keep the top-right “数据设置” entry visible.
-- **Team-only module:** `队内坐标` renders only when a specific team is selected. With `全部球队` it is removed from the grid (no DOM), other modules reflow into the saved layout, and its config is kept. The settings drawer still lists it and adds “仅在选择球队后显示”; “已启用 N / 9” counts configuration, not the current visible subset.
-- **Scope empty state:** if the current scope leaves no renderable module (for example only `队内坐标` is enabled while `全部球队` is selected), show “当前范围暂无展示模块” / “选择球队或在数据设置中启用其他模块” instead of an empty grid. Keep this copy separate from the all-hidden state.
-- The module settings drawer lists every module with a drag handle, label, size badge (`N 列 · 高度自适应` / `N 列 · 至少 N px`), up/down buttons and a switch. Gold is the on state for both themes. Hidden rows dim only the drag handle; labels stay at full contrast and the switch remains fully interactive. Use 44×44px hit areas for the handle, arrows and switch wrapper at `≤980px`.
-- **Layout editing is desktop-only.** Show a top-right “编辑布局” button at `>980px`; entering edit mode shows a gold instruction bar with “完成”. The hero, identity strip and scope bar stay fixed, and scope selects are disabled.
-- **Selection:** in edit mode, click any module to select it; do not require a long press. Show a 2px gold frame with soft outer glow and no layout shift. Module content is non-interactive while editing; clicking blank grid space clears the selection. Pressing a handle must not select text or trigger module links. Entering edit mode focuses the first module; leaving it returns focus to “编辑布局”.
-- **Keyboard:** in edit mode each module is tabbable and shows a 2px accent-ink focus ring. Enter/Space selects it and focuses the corner handle (both axes); arrow keys on a focused handle resize by one column/row (left/right = width, up/down = height, corner = both). The selected module itself also accepts arrow keys. Save status uses `role="status"` / `aria-live="polite"`.
-- **Resize handles:** right edge changes width, bottom edge changes height, bottom-right corner changes both. Anchor the top-left corner. Keep the visible gold bar compact but give every handle a ≥24×24px transparent hit area. Show the module name, current `N 列 × M 行`, “移动”, “重置尺寸” and close in a compact surface toolbar inside the frame’s top-right. Drag previews live; release auto-saves.
-- **Move:** drag the toolbar’s “移动” control to reorder. The module lifts (surface shadow + slight opacity) and swaps live as the pointer enters another module; the frame follows; dragging back across a module reverses the swap. Use pointer capture so a release outside the window still ends the drag. Near the viewport top/bottom edge, auto-scroll up to 12px per frame. Release saves the new array order; Esc or leaving edit mode cancels and restores the pre-drag order. ArrowUp/ArrowDown on the focused “移动” control reorders one visible slot; the settings drawer up/down buttons remain the full fallback.
-- **Schedule and recent scope:** “接下来的比赛” and “最近战报” both follow the top scope. A specific team shows only that team’s games; 全部球队 + 赛事 shows every represented team in that event and each row names the actual team. The schedule is limited to `scheduled` / `live` games from today onward, ascending by date/time, capped at 6 per scope; its first row is the featured game. When an event is selected, a compact row (name, status, date range) sits above the featured game and the list stays inside that event. Empty states name the scope (“该赛事暂无未开赛的比赛” / “该球队暂无比赛记录” / “暂无比赛记录”). Do not duplicate current event/next game above the hero.
-- **Data definitions:** the rank band has a persistent one-line 口径 note; it reads 同队同赛事 when an event is selected and 球队跨赛事生涯 for a team’s career. The 数据表现 chart follows the same scope: a 30-game window, then the last 12 appearances with data for the selected metric. Rank and performance headers have a 24px info button that opens a click tooltip; the button must be keyboard focusable and tappable on mobile. The overall evaluation header has **no** info button and no formula note.
-- **Readability:** dashboard labels use a 10px minimum and key captions 11px; do not reintroduce 7–9px production text. Keep the scope hint short.
-- **Failure:** save failure restores the pre-drag size/order and shows an error toast. Reset size restores the catalog default width and auto height. Mobile width never exposes the editor, handles or move control and ignores saved widths/heights.
-- Do not expose free positioning in this phase; canvas drag-reorder is supported only inside desktop layout edit mode.
+Default geometry (pixels):
+
+| Module | Default | Min |
+|---|---|---|
+| 队内坐标 | 1216 × 220 | 600 × 160 |
+| 总体评价 | 1216 × 700 | 720 × 360 |
+| 生涯里程碑 | 1216 × 500 | 680 × 360 |
+| 数据表现 | 800 × 500 | 360 × 320 |
+| 代表球队 | 400 × 300 | 280 × 220 |
+| 接下来的比赛 | 800 × 560 | 420 × 300 |
+| 关于我 | 400 × 280 | 300 × 220 |
+| 最近战报 | 800 × 320 | 360 × 260 |
+| 快捷入口 | 400 × 220 | 240 × 180 |
+
+The default layout is packed in array order: `ranks` y0, `evaluation` y236, `milestones` y952, `performance` y1468 at x0 / `teams` y1468 at x816, `schedule` y1984 at x0 / `about` y1984 at x816, `recentGames` y2560 at x0 / `quickLinks` y2560 at x816.
+
+- **Free layout is desktop-only and only at `>=1340px` viewport width.** The page max width (1280px) includes 32px side padding; the portal shell adds 20px each side, and the browser scrollbar needs room. At `>=1340px` the content box reaches 1280px and the canvas is exactly 1216px; at 1320px it would be 10–20px short and 1216-wide modules would overhang. At `981–1339px` show a compact two-column flow; at `<=980px` show a single column. Both fallbacks follow the saved array order and ignore x/y/width/height. Hide the “编辑布局” entry, sticky edit bar, selection frame and handles there.
+- **Fixed height:** desktop modules use the saved pixel height. If live data makes content taller, the module body scrolls vertically with a thin scrollbar; editing temporarily disables inner scrolling. Do not auto-grow a module and overlap neighbours. Width/height resize is clamped to the catalog minimums and a maximum width of 1216px / height of 1600px.
+- **Canvas height** is `max(720, max(y + height))` and recalculates while dragging; dragging down grows it, dragging back shrinks it.
+- **Hidden 队内坐标:** in view mode with `全部球队`, the hidden rank slot is collapsed upward so the page does not start with a large blank area. In edit mode the slot is shown as a dashed placeholder (“选择球队后显示；此位置会保留”) so users can position it; collisions still account for it. If collapsing would cause a collision (for example the rank band was narrowed and another module sits beside it), keep the original slot rather than moving modules unexpectedly.
+- **All modules hidden:** show “所有内容模块已隐藏” and a primary “去设置” action, keeping the top-right “数据设置” entry. If the current scope leaves no renderable module (for example only 队内坐标 is enabled while 全部球队 is selected), show “当前范围暂无展示模块” / “选择球队或在数据设置中启用其他模块” instead of an empty canvas.
+- **Layout editing:** show “编辑布局” at the top right only in free mode when at least one module is visible. Entering edit mode disables the scope selects and “数据设置”, focuses the first module, and shows a sticky gold edit bar below the portal header. The bar contains the title, the selected module name and live `width × height px`, “重置尺寸”, save status (`role="status"`, `aria-live="polite"`) and “完成”. No manual width/height inputs.
+- **Selection:** click a module to select; a 2px gold frame with soft glow and no page-wide dimming appears. Eight 10×10px gold square handles sit at the four corners and four edge midpoints, each with a 24×24px hit area. Clicking blank canvas clears the selection. Module content is non-interactive while editing. Enter/Space selects and focuses the bottom-right handle; Tab traverses modules and handles; focus rings are 2px accent-ink.
+- **Move:** drag anywhere on the module body. Movement starts after a 4px threshold; coordinates snap to 8px. The candidate must stay inside the canvas and keep at least 16px from every other enabled module. An invalid candidate keeps the last valid position and turns the frame red; release saves the last valid position. Near the viewport top/bottom edge, auto-scroll up to 12px per frame and include the scroll delta in the drag. Esc cancels and restores the pre-drag layout.
+- **Resize:** drag any of the eight handles. Edge handles move one edge; corner handles move two. The opposite edge/corner stays fixed: dragging west changes x and width with the right edge fixed; dragging north changes y and height with the bottom edge fixed. Apply the same 8px snap, minimum sizes, canvas bounds and collision rule. Resize also auto-scrolls and saves on release; Esc cancels.
+- **Keyboard:** on a selected module, arrow keys move by 8px; Shift+arrow resizes by 8px in that direction. On a focused handle, arrow keys resize along that handle. Consecutive keyboard changes auto-save after 320ms.
+- **Reset size:** restore the selected module to its catalog default width/height while keeping its top-left as close as possible. If the default size would overlap another module at that position, do not apply it and show “默认尺寸会与其他模块重叠，请先调整位置”.
+- **Save/rollback:** save after every completed move/resize, keyboard debounce and reset. Persist the complete v4 config. Disable handles while saving. On failure restore the pre-gesture snapshot and show an error toast. Leaving edit mode flushes pending keyboard changes.
+- **All-team name display:** the hero/team strip and player-card team line follow the existing all-teams rule (join all current sport team names with ` / `; a specific team shows only that team). This is unchanged by the free canvas.
+- **Schedule and recent scope:** unchanged: both follow the top scope; a specific team shows only that team, 全部球队 + event shows every represented team in the event and each row names the actual team; schedule is limited to scheduled/live games from today, ascending, capped at 6; the first is the featured game. Empty states name the scope.
+- **Settings drawer:** module sort order only affects compact/mobile order; the desktop visual layout is controlled by x/y. The size badge shows `width × height px`. Saving persists order, enabled state, geometry and metric choices together. Hidden modules keep their geometry; if re-enabling would overlap, the server moves the module below occupied modules and returns the normalized config. Hiding a module never clears its metrics or geometry.
+- **Readability:** dashboard labels use a 10px minimum and key captions 11px; do not reintroduce 7–9px production text. Keep the scope hint short. The overall evaluation header has no info button and no formula note; formulas stay in `docs/tech/个人驾驶舱评价算法.md`.
 
 ### Career milestones
 A full-width module in the default order after overall evaluation. It combines career cumulative progress and a recent milestone timeline. Its data loads lazily from `GET /account/clubhouse/milestones` only when the module is enabled; hiding it must not read the full career log.
@@ -619,9 +634,9 @@ Rules:
 
 ## Responsive Behavior
 
-- **≥1200px**: 12-column dashboard; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; configurable modules use their saved width/height in saved order; layout editing is available.
-- **981–1199px**: reduce page padding; hero right column narrows; scope hint may hide; evaluation radar cards retain the same column count if each card remains at least 300px wide; saved module widths and heights remain active; layout editing remains available.
-- **≤980px**: single column; every dashboard module spans the full row in saved order; saved width and height are ignored, height is content-driven; hide “编辑布局”, the instruction bar and selection handles; hero stacks; rank band 2×2 when rendered; evaluation radar cards stack; the three scope selects wrap (two per row at ≤560px); chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
+- **≥1340px**: free 1216px canvas; modules at saved x/y/width/height; eight-handle editing available; hero 2 columns; rank band 4 columns; player card stack on the right; evaluation radar cards 2- or 3-up; module internals use container queries down to their minimum widths.
+- **981–1339px**: compact two-column flow in saved array order; pixel geometry is ignored and heights are content-driven; hide “编辑布局”, the sticky edit bar and handles; hero stays desktop-like with reduced padding; module internals adapt by container width.
+- **≤980px**: single column; every dashboard module spans the full row in saved order; saved geometry is ignored, height is content-driven; hide “编辑布局”, the edit bar and handles; hero stacks; rank band 2×2 when rendered; evaluation radar cards stack; the three scope selects wrap (two per row at ≤560px); chart and data matrix stack; schedule rows become two-line cards; result cards stack; touch targets ≥44px.
 - **≤560px**: phone typography and spacing; settings module hit targets remain 44×44px from the ≤980px rule.
 - The page must never scroll horizontally at 390px.
 
