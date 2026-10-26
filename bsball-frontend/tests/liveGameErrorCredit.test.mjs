@@ -69,6 +69,7 @@ test('LiveGame 接线：E 默认单选、显式多失误与日志姓名', () => 
   assert.ok(src.includes('切回单选'), 'E 流程缺少切回单选入口');
   assert.ok(src.includes('normalizeErrorFlow(pe.flow'), '撤销恢复未归一化 E flow');
   assert.ok(src.includes('normalizeErrorFlow(l.flow)'), '历史快照恢复未归一化 E flow');
+  assert.ok(src.includes('e=normalizeErrorFlow(e)'), '云端/流程恢复未归一化 E flow');
   const toggleStart = src.indexOf('function toggleErrorMulti(){');
   const toggleBody = src.slice(toggleStart, src.indexOf('function ds(', toggleStart));
   assert.ok(toggleStart >= 0, '缺少 toggleErrorMulti');
