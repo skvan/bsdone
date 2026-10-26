@@ -702,7 +702,9 @@ public class GameService {
         if (part.getPitchTriples() != null) {
             stat.setPitchTriples(part.getPitchTriples());
         }
-        stat.setPitchBbHp(part.getPitchBbHp());
+        if (part.getPitchBbHp() != null) {
+            stat.setPitchBbHp(part.getPitchBbHp());
+        }
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(Integer.valueOf(part.getPitchInsideParkHr() != null ? part.getPitchInsideParkHr() : 0));
@@ -716,9 +718,17 @@ public class GameService {
         stat.setPitchBf(part.getPitchBf());
         stat.setPitchAb(part.getPitchAb());
         stat.setNp(part.getNp());
-        stat.setPitchBb(part.getPitchBb());
-        stat.setPitchIbb(part.getPitchIbb());
-        stat.setPitchHbp(part.getPitchHbp());
+        // 四死球拆分栏（四坏/故意四坏/触身）与 saveLive 同口径：缺栏时保留既有值，
+        // 避免旧客户端或部分 payload 把已记录的投手四死静默抹成 NULL→显示 0（issue #387）。
+        if (part.getPitchBb() != null) {
+            stat.setPitchBb(part.getPitchBb());
+        }
+        if (part.getPitchIbb() != null) {
+            stat.setPitchIbb(part.getPitchIbb());
+        }
+        if (part.getPitchHbp() != null) {
+            stat.setPitchHbp(part.getPitchHbp());
+        }
         if (part.getPitchIo() != null) {
             stat.setPitchIo(part.getPitchIo());
         }
@@ -878,7 +888,11 @@ public class GameService {
         if (part.getPitchTriples() != null) {
             stat.setPitchTriples(part.getPitchTriples());
         }
-        stat.setPitchBbHp(part.getPitchBbHp());
+        // 四死合计栏同样缺栏即保留：拆分栏（pitchBb/pitchIbb/pitchHbp）已有守卫，
+        // 合计栏漏守则「只送拆分的载荷」会把四死合计写成 NULL（issue #387）。
+        if (part.getPitchBbHp() != null) {
+            stat.setPitchBbHp(part.getPitchBbHp());
+        }
         stat.setPitchSo(part.getPitchSo());
         stat.setPitchHr(part.getPitchHr());
         stat.setPitchInsideParkHr(part.getPitchInsideParkHr());
