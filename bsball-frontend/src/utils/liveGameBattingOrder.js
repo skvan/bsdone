@@ -21,11 +21,35 @@ const num = (v) => {
  * 单行的打席数（PA）。
  * 存档 payload 里 pa 是推导值（LiveGame.js Eo()：ab+bb+hbp+sf+sh+io），
  * 所以服务端行的 pa 为空时，必须用同一套口径回填，不能当成 0。
+ * 空串/纯空格按「缺字段」处理：Number('') === 0 会被误判成有效值，把该队 PA 少数（评审 N-1）。
  */
 export function plateAppearances(row) {
   if (!row) return 0;
-  if (row.pa !== null && row.pa !== undefined && Number.isFinite(Number(row.pa))) return Number(row.pa);
+  const raw = typeof row.pa === 'string' ? row.pa.trim() : row.pa;
+  if (raw !== null && raw !== undefined && raw !== '' && Number.isFinite(Number(raw))) return Number(raw);
   return num(row.ab) + num(row.bb) + num(row.hbp) + num(row.sf) + num(row.sh) + num(row.io);
+}
+
+/**
+ * 该队「真实打线人数」：排进打序的最大棒次（无任何棒次时为 0）。
+ * 这是现场 fo() 取模所用的长度，不是 w() 补齐后的数组长度——两者在
+ * 未开 EP 制的棒球 9 人／垒球 10 人场次里必然不同（补齐上限是 12／11）。
+ * 同时取 count 与 max 的较大值：换人会把部分列的 battingOrder 留成 null（#444），
+ * 只数行数会低估，只看最大棒次在有空洞时也会低估。
+ */
+export function orderLengthOf(statRows, teamId) {
+  if (!Array.isArray(statRows)) return 0;
+  const tid = Number(teamId);
+  let ordered = 0, maxOrder = 0;
+  statRows.forEach((row) => {
+    if (!row || Number(row.teamId) !== tid || num(row.isPitcher) === 1) return;
+    const o = num(row.battingOrder);
+    if (o > 0) {
+      ordered += 1;
+      if (o > maxOrder) maxOrder = o;
+    }
+  });
+  return Math.max(ordered, maxOrder);
 }
 
 /** 该队已完成打席总数（只算打者列；投手列的 ab 是「被打者」口径，不参与打序回溯） */
@@ -73,8 +97,9 @@ export function resolveBattingSlots({ statRows, roster, teamId, sport } = {}) {
 
 /**
  * 名单数组 → lineupStarterIds（长度 12、空位 null），与 LiveGame.js 的 gr() 同口径。
- * 单独实现而非直接调 br()：br() 写死 fe.value.every(...)，而 fe 的初值是 null（x(null)），
- * 走「无快照重建」这条路径时它会先抛 TypeError，正好把要复原的时机挡住。
+ * 单独实现而不是直接调 br()：br()/gr() 绑在 store 作用域（Ee(e) 的各队容器）上，
+ * 纯函数版才可脱开 Vue 与 store 做单测。口径漂移由测试第 13 案逐格对齐把关：
+ * gr() 将来若改动（长度、Et() 负 id 过滤、id>0 判定），本函数必须同步。
  */
 export function starterIdsFromLineup(lineup) {
   const list = Array.isArray(lineup) ? lineup : [];
@@ -86,11 +111,15 @@ export function starterIdsFromLineup(lineup) {
 
 /**
  * 回溯「当前打者」在打序数组里的下标。
- * 依据：录入时每完成一个打席就推进一格（fo()：batterIndex+1 mod 名单长度），全程不按局重置，
- * 所以「该队已完成打席数 mod 名单长度」就是当前站位。进行中的半个打席尚未计入 PA，指针正停在他身上。
+ * 依据：录入时每完成一个打席就推进一格（fo()：batterIndex+1 mod 打线人数），全程不按局重置，
+ * 所以「该队已完成打席数 mod 真实打线人数」就是当前站位。进行中的半个打席尚未计入 PA，指针正停在他身上。
+ *
+ * ⚠ 模数必须是 orderLengthOf()（真实打线人数），**不能**传补齐后的名单数组长度：
+ *   w() 会把 9 人棒球打线补到 12 格，用 12 取模时 PA=9 会得到 index 9 —— 那是没有棒次的板凳补位格，
+ *   等于把下一次打席记给一个本场从没打过的球员（他会替换掉原本该上场的第 1 棒）。
  */
-export function deriveBatterIndex(slotCount, paTotal) {
-  const n = Number(slotCount);
+export function deriveBatterIndex(orderLength, paTotal) {
+  const n = Number(orderLength);
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.max(0, Math.floor(num(paTotal))) % n;
 }

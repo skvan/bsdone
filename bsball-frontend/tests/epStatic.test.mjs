@@ -31,10 +31,14 @@ test('恢复补齐上限：棒球 12 / 垒球 11（绝对上限，不设开关�
   // 本断言改为钉住「上限仍存在、仍无开关门禁、无快照重建路径确实走它」；不要为了本条断言把内联式加回 LiveGame.js。
   const bo = fs.readFileSync(new URL('../src/utils/liveGameBattingOrder.js', import.meta.url), 'utf8');
   assert.ok(bo.includes("=== 'SOFTBALL' ? 11 : 12"), '缺少恢复补齐上限 lineupSlotCount：垒球 11 / 棒球 12');
-  assert.ok(!/lineupSlotCount[\s\S]{0,160}?(extraBatterOn|specialRules|forceHalf)/.test(bo), '补齐上限为绝对上限，不得挂联赛/事件开关门禁');
+  assert.ok(!/extraBatter|specialRules|forceHalf/.test(bo), '补齐上限是绝对上限：整个工具档都不该知道任何联赛/事件开关（原断言只扫 160 字元，而三个词在工具档里根本不出现，等于永不命中）');
   // 页面侧必须经由该工具取得槽位，不得回到自己截断（filter(Boolean) 会丢位 = #445 根因）
   assert.ok(/boResolveSlots\(\{[\s\S]{0,120}?statRows:g,roster:P,teamId:A,sport:N\.value/.test(source), '无快照重建 w() 未调用 boResolveSlots（上限与不丢位保障失效）');
-  assert.ok(!/w=\(P,A\)=>\{[\s\S]{0,600}?\.filter\(Boolean\)/.test(source), 'w() 不得回到 .filter(Boolean) 丢位写法（#445：丢位会固化 batting_order）');
+  const wi = source.indexOf(',w=(P,A)=>{');
+  assert.ok(wi > 0, '找不到 w() 起点');
+  const wj = source.indexOf('\n      };', wi);
+  assert.ok(wj > wi, '找不到 w() 终点');
+  assert.ok(!/\.filter\(Boolean\)/.test(source.slice(wi, wj)), 'w() 不得回到 .filter(Boolean) 丢位写法（#445：丢位会固化 batting_order；原断言只扫 600 字元，加注释就漏）');
   // 快照恢复 Vl 的补齐上限 z 按设计 §六「保持现状」（完整阵容 E.length>=z 时原样返回不裁剪）；
   // 此处固定当前口径防误改，若回归显示 12 人快照被裁剪需按设计放宽时，同步更新本断言。
   assert.ok(source.includes('z=N.value==="SOFTBALL"?10:9'), 'Vl 快照恢复补齐上限应保持 ?10:9（设计明示保持现状）');

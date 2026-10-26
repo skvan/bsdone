@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   lineupSlotCount,
+  orderLengthOf,
   plateAppearances,
   teamPlateAppearances,
   resolveBattingSlots,
@@ -67,10 +68,11 @@ test('3 负对照：旧语义（filter(Boolean) 丢位）会让同一格指向�
   assert.equal(oldWay[3].playerId, 1005, '丢位后第 4 格变成第 5 棒 → 指针不动就会记错人');
 });
 
-test('4 当前打者回溯：该队已完成打席数 mod 名单长度；未完成的那半个打席不算', () => {
+test('4 当前打者回溯：该队已完成打席数 mod 真实打线人数；未完成的那半个打席不算', () => {
   assert.equal(teamPlateAppearances(STAT_ROWS, TEAM), 8, '投手列的 ab 不计入，只数打者列的 8 个 PA');
   assert.equal(deriveBatterIndex(12, teamPlateAppearances(STAT_ROWS, TEAM)), 8, '第 9 棒正在打击');
   assert.equal(deriveBatterIndex(11, 12), 1, '软式 11 人圈一轮回到第 2 格');
+  assert.equal(orderLengthOf(STAT_ROWS, TEAM), 12, '样本 12 棒都带棒次 → 真实打线人数 12');
   assert.equal(deriveBatterIndex(0, 5), 0, '名单还没建好时不越界');
   assert.equal(deriveBatterIndex(12, null), 0, '没有打席记录就是第 1 棒，不该 NaN');
 });
@@ -80,6 +82,7 @@ test('5 PA 口径与存档 payload 同构：服务端 pa 为空时按 ab+bb+hbp+
   assert.equal(plateAppearances({ pa: null, ab: 2, bb: 1, hbp: 1, sf: 0, sh: 0, io: 1 }), 5,
     'payload 里 pa 本就是推导值，读取端必须用同一个公式');
   assert.equal(plateAppearances({ pa: 0, ab: 5 }), 0, '显式 0 不能被推导值覆盖');
+  assert.equal(plateAppearances({ pa: '', ab: 3, bb: 1 }), 4, '空串按缺栏走推导：Number(\'\')===0 会把该队 PA 少数');
 });
 
 test('6 服务端没有任何 battingOrder>0 的行时返回空名单（保留「请先确认先发阵容」的拦截）', () => {
@@ -133,7 +136,7 @@ function doRestoreBlock() {
     .join('\n');
 }
 
-const restoreNames = ['boStarterIds', 'boTeamPA', 'boBatterIndex', 'g', 't', 'q', 'X', 'l', 'fe', 'le'];
+const restoreNames = ['boStarterIds', 'boTeamPA', 'boOrderLength', 'boBatterIndex', 'g', 't', 'q', 'X', 'l', 'fe', 'le'];
 const runRestore = (scope) => new Function(...restoreNames, doRestoreBlock())(
   ...restoreNames.map((n) => scope[n]),
 );
@@ -141,6 +144,7 @@ const lineupOf = (from, count) => Array.from({ length: count }, (_, i) => ({ id:
 const baseScope = (over = {}) => ({
   boStarterIds: starterIdsFromLineup,
   boTeamPA: teamPlateAppearances,
+  boOrderLength: orderLengthOf,
   boBatterIndex: deriveBatterIndex,
   g: STAT_ROWS,
   t: { homeTeamId: TEAM, awayTeamId: 58 },
@@ -156,7 +160,7 @@ test('8 元件层：Do() 的还原段照原文执行，指针不再停在第 1 �
   const scope = baseScope();
   runRestore(scope);
   assert.equal(scope.l.batterIndex.home, 8, 'H 队已完成 8 个打席 → 第 9 棒在场，指针不该停在第 1 棒');
-  assert.equal(scope.l.batterIndex.away, 7, '客队按其 PA 回溯（7 个 PA → 第 8 格）');
+  assert.equal(scope.l.batterIndex.away, 0, '客队样本只有 1 个带棒次的打者 → 真实打线人数 1，7 个打席轮回来仍是同一人（模 1 恒 0）；旧算法按补齐的 12 取模会指向第 8 格——那格是补出来的板凳');
   assert.deepEqual(scope.fe.value, Array.from({ length: 12 }, (_, i) => 1001 + i),
     '先发打序回填成 12 格真实棒次，No() 才不会把 battingOrder 送成 null（#444 的「-」）');
   assert.equal(scope.le.value.length, 12);
@@ -170,15 +174,12 @@ test('9 元件层：已有先发打序时不被重建结果覆盖（快照路径
   assert.equal(scope.l.batterIndex.home, 8, '指针回溯仍照常进行');
 });
 
-test('10 元件层：名单没重建成功时不改指针，也不会踩到 fe=null 的 TypeError', () => {
+test('10 元件层：服务端没有任何棒次数据时不改指针、不凭空填先发槽位', () => {
   const scope = baseScope({ q: { value: [] }, X: { value: [] }, l: { batterIndex: { away: 3, home: 4 } }, g: [] });
   runRestore(scope);
   assert.equal(scope.l.batterIndex.home, 4, '名单空时不该把指针乱改成 0');
   assert.equal(scope.l.batterIndex.away, 3);
-  const brLine = src.split('\n').find((l) => l.includes('&&(le.value=gr("away"))'));
-  assert.ok(brLine, '找不到 br() 本体');
-  assert.ok(brLine.includes('(le.value??[])') && brLine.includes('(fe.value??[])'),
-    'br() 仍直接对初值 null 的 fe 调 .every()，无快照重建会先抛 TypeError（#445 现场走不进还原）');
+  assert.ok(scope.fe.value.every((e) => e === null), '服务端没有任何棒次数据时不凭空填人（先发槽位仍全空，等用户确认阵容）');
 });
 
 /**
@@ -220,4 +221,74 @@ test('12 纯函数层：同一球员的投手列不计入打席合计（真实�
   ];
   assert.equal(teamPlateAppearances(rows, TEAM), 7, '只累加本队打者列（4+3），投手列 ab=40 与它队列都不算');
   assert.notEqual(teamPlateAppearances(rows, TEAM), 47, '常见错法：把投手「被打数」当打席');
+});
+
+/**
+ * 13) 真实 gr() 与工具版逐格对齐（评审 S-2：同一条口径写两份，必须防止漂移）。
+ *     直接抽出 LiveGame.js 里 gr()/Et() 的原文执行，与 starterIdsFromLineup() 逐格比对。
+ *     gr() 将来改动（长度、Et() 负 id 过滤、id>0 判定）时本案会红，提醒同步工具档。
+ */
+test('13 元件层：工具版反推与真实 gr() 逐格一致', () => {
+  const gi = src.indexOf('function gr(e){');
+  assert(gi > 0, '找不到 gr() 本体');
+  const gj = src.indexOf('\n    }', gi);
+  assert(gj > gi, '找不到 gr() 终点');
+  const ei = src.indexOf('function Et(e){');
+  assert(ei > 0 && ei < gi, '找不到 Et() 本体（gr() 依赖它过滤占位）');
+  const ej = src.indexOf('\n    }', ei);
+  const lineup = [
+    { id: 1001 }, { id: -7 }, null, { id: 1004 }, { id: '1005' },
+    { id: 0 }, { id: NaN }, { id: 1008 },
+  ];
+  const scope = { Ee: () => ({ lineup: { value: lineup } }) };
+  const real = new Function('Ee', src.slice(ei, ej + 6) + '\n' + src.slice(gi, gj + 6) + '\nreturn gr("any");')(scope.Ee);
+  const mine = starterIdsFromLineup(lineup);
+  assert.deepEqual(real, mine, '工具版与页面 gr() 的反推结果必须逐格相同（否则 No() 送出的 batting_order 会与现场不一致）');
+  assert.deepEqual(mine, [1001, null, null, 1004, 1005, null, null, 1008, null, null, null, null],
+    '负 id/0/NaN → null，数字字符串仍收下，长度固定 12');
+});
+
+/**
+ * 14) 合并前评审的 Blocker 回归钉：模数必须是「真实打线人数」，不能用补齐后的数组长度。
+ *     未开 EP 制的棒球 9 人打线，w() 会补到 12 格；按 12 取模时 PA=9 会把下一次打席
+ *     交给 battingOrder=null 的板凳补位格（那人在秩序册里 → 后端名单闸门放行 → 凭空多一列统计）。
+ */
+const NINE_ROWS = Array.from({ length: 9 }, (_, i) => ({
+  teamId: TEAM, playerId: 1001 + i, isPitcher: 0, battingOrder: i + 1,
+  pa: 1, ab: 1, bb: 0, hbp: 0, sf: 0, sh: 0, io: 0,
+}));
+const ROSTER_15 = Array.from({ length: 15 }, (_, i) => ({ id: 1001 + i, name: `球员${1001 + i}` }));
+
+test('14 模数口径：9 人棒球打线补齐到 12 格时，指针仍只能落在带棒次的格上', () => {
+  const slots = resolveBattingSlots({ statRows: NINE_ROWS, roster: ROSTER_15, teamId: TEAM, sport: 'BASEBALL' });
+  assert.equal(slots.length, 12, '补齐上限不变（设计 §六：恢复补齐上限 棒 12）');
+  assert.equal(orderLengthOf(NINE_ROWS, TEAM), 9, '真实打线人数 = 9，取模必须用它');
+  assert.equal(teamPlateAppearances(NINE_ROWS, TEAM), 9);
+  for (const [pa, want] of [[0, 0], [8, 8], [9, 0], [10, 1], [18, 0], [25, 7]]) {
+    const idx = deriveBatterIndex(orderLengthOf(NINE_ROWS, TEAM), pa);
+    assert.equal(idx, want, `PA=${pa} 应指向第 ${want + 1} 棒（现场 fo() 按 9 推进的结果）`);
+    assert.ok(slots[idx].battingOrder != null, `PA=${pa} 的落点 index=${idx} 必须带真实棒次，不能是补出来的板凳格`);
+  }
+  // 负对照：旧算法（拿补齐后的 12 当模数）在 PA=9 时正好踩到没有棒次的格
+  const wrongWay = deriveBatterIndex(slots.length, 9);
+  assert.equal(wrongWay, 9);
+  assert.equal(slots[wrongWay].battingOrder, null, '旧口径的失败点：第 10 格是 roster 补位，本场从没打过');
+});
+
+/** 元件层同一场景照原文执行，钉住 Do() 真的改用真实打线人数当模数 */
+test('15 元件层：Do() 还原段对 9 人棒球打线不再指向板凳格', () => {
+  const slots12 = resolveBattingSlots({ statRows: NINE_ROWS, roster: ROSTER_15, teamId: TEAM, sport: 'BASEBALL' });
+  const scope = baseScope({
+    g: NINE_ROWS,
+    t: { homeTeamId: TEAM, awayTeamId: 58 },
+    q: { value: slots12.map((x) => ({ id: x.playerId })) },
+    X: { value: [] },
+    l: { batterIndex: { away: 7, home: 3 } },
+    fe: { value: null },
+    le: { value: [] },
+  });
+  runRestore(scope);
+  assert.equal(scope.l.batterIndex.home, 0, '9 人打线打完 9 个 PA → 该轮回到第 1 棒，而不是第 10 格板凳');
+  assert.equal(scope.q.value[scope.l.batterIndex.home].id, 1001, '指针落在第 1 棒本人身上');
+  assert.equal(scope.l.batterIndex.away, 7, '客队没有任何带棒次的行 → 指针原封不动（7 是我故意给的不对称初值，能抓住主客写反）');
 });

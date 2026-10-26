@@ -30,7 +30,7 @@ import { usePermission as ad } from '../../composables/usePermission';
 import { POSITION_LABELS as It } from '../../utils/playerOptions';
 import { parseStoredLiveRecord as Yo } from '../../utils/liveGameStorage';
 // #445 打序重建：解析不到的球员保留槽位（不丢位）＋按该队已完成打席数回溯当前打者指针（纯函数模块）
-import { resolveBattingSlots as boResolveSlots, teamPlateAppearances as boTeamPA, deriveBatterIndex as boBatterIndex, starterIdsFromLineup as boStarterIds } from '../../utils/liveGameBattingOrder';
+import { resolveBattingSlots as boResolveSlots, teamPlateAppearances as boTeamPA, orderLengthOf as boOrderLength, deriveBatterIndex as boBatterIndex, starterIdsFromLineup as boStarterIds } from '../../utils/liveGameBattingOrder';
 import { watchLocalKey as ws } from '../../utils/liveGameStorage';
 import { takeEntryBootstrap as ld } from '../../utils/liveGameStorage';
 import { pickPreferredLiveRecord as id } from '../../utils/liveGameStorage';
@@ -6466,7 +6466,7 @@ var sg={
       )
     }
     function br(){
-      (le.value??[]).every(e=>e==null)&&(le.value=gr("away")),(fe.value??[]).every(e=>e==null)&&(fe.value=gr("home"))
+      le.value.every(e=>e==null)&&(le.value=gr("away")),fe.value.every(e=>e==null)&&(fe.value=gr("home"))
     }
     function _r(e,t,a){
       if(t<0||t>=12||a==null)return;
@@ -10573,19 +10573,21 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         q.value=w(a,t.homeTeamId),X.value=w(s,t.awayTeamId);
         // #445：本路径是「没有快照、只按云端已保存统计重建」，快照里的 batterIndex／先发打序不会回来，
         // 不复原就停在第 1 棒（batterIndex 默认 0），之后的每个打席都记到第一棒头上——这就是有人 PA/AB 凭空多一次。
-        // 先发打序：就地做 br() 那份惰性推导的同款口径（No() 送 battingOrder 时也用这套），
-        // 用局部版而不是直接调 br()：br() 对 fe 的初值 null 没有守卫，会先抛 TypeError。
-        // 只在「尚未设置」时填充，快照路径回来的真实先发比较准，不能被覆盖。
+        // 先发打序：与 br()/gr() 同口径（No() 送 battingOrder 时也按这套下标反推）。
+        // 只在「尚未设置」时填充——快照路径回来的真实先发比较准，不能被推导值覆盖。
         const boFillStarters=(Y,j)=>{
           const cur=j.value;
           if(Array.isArray(cur)&&cur.some(E=>E!=null))return;
           j.value=boStarterIds(Y)
         };
         boFillStarters(q.value,fe),boFillStarters(X.value,le);
-        // 当前打者按「该队已完成打席数 mod 名单长度」回溯，与 fo() 的推进方式同构。
+        // 当前打者按「该队已完成打席数 mod 真实打线人数」回溯，与 fo() 的推进方式同构。
+        // 模数不能用 q.value/X.value 的长度：w() 把 9 人棒球打线补到 12 格，
+        // 按 12 取模时 PA=9 就把下一次打席交给没有棒次的板凳补位格（合并前评审的 Blocker）。
         const boHomePa=boTeamPA(g,t.homeTeamId),boAwayPa=boTeamPA(g,t.awayTeamId);
-        if(q.value.length>0)l.batterIndex.home=boBatterIndex(q.value.length,boHomePa);
-        if(X.value.length>0)l.batterIndex.away=boBatterIndex(X.value.length,boAwayPa);
+        const boHomeOrd=boOrderLength(g,t.homeTeamId),boAwayOrd=boOrderLength(g,t.awayTeamId);
+        if(boHomeOrd>0)l.batterIndex.home=Math.min(boBatterIndex(boHomeOrd,boHomePa),q.value.length-1);
+        if(boAwayOrd>0)l.batterIndex.away=Math.min(boBatterIndex(boAwayOrd,boAwayPa),X.value.length-1);
         const P=Y=>new Set(Y.map(j=>Number(j.id))),A=(Y,j,ee)=>{
           const V=[];
           for(const E of Y){
