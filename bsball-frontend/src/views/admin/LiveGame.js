@@ -51,7 +51,7 @@ import { getFieldingConfig as fd } from '../../utils/liveGameFieldLayout';
 import { getLineHead as ll } from '../../utils/liveGameFieldLayout';
 import { PITCHER_BALL_POSITION as cd } from '../../utils/liveGameFieldLayout';
 import { getPositionOptions as dd } from '../../utils/liveGameFieldLayout';
-import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders } from '../../utils/liveGameFieldingIp';
+import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders, reconcileTeamFieldingInnings as LgReconcileFieldingInnings } from '../../utils/liveGameFieldingIp';
 import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
@@ -7433,6 +7433,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function pa(e){
       const t=e?.includeUndoStacks??!1;
       try{
+        reconcileFieldingInningsForLiveState("snapshot");
         const a={
           v:1,savedAt:Date.now(),gameMode:N.value,...snapshotAtBatContext(),setupForm:{
             ..._
@@ -7695,6 +7696,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       finally{
         await Ks()
       }
+      fieldingIpReconcileEnabled=!!e.gameState;
+      if(e.gameState)reconcileFieldingInningsForLiveState("restore");
       restoreAtBatContext(e)
       
     }
@@ -7785,7 +7788,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       )(),ke.value=e.log??[],e.atBatSummaries&&(Me.value=JSON.parse(JSON.stringify(e.atBatSummaries))),e.playEvents&&(f.playEvents=JSON.parse(JSON.stringify(e.playEvents)));
       restoreAtBatContext(e);
       for(const t of pn)clearTimeout(t);
-      pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,restoreRunLedger(e.runLedger),pt(),syncChainVisualFromFlow()
+      pn.length=0,Ye.value=[],qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,Il(),Cl.value=!1,Aa.value=null,restoreRunLedger(e.runLedger),reconcileFieldingInningsForLiveState("undo"),pt(),syncChainVisualFromFlow()
     }
     function io(e){
       const t=e;
@@ -7873,9 +7876,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    // 只有拿到可信的当前出局数（现场快照/撤销快照）才做守备 IP 对账；Do 回退恢复没有 outs，禁止对账。
+    let fieldingIpReconcileEnabled=false;
     let zl=null,ql=null,oo="",uo="";
     function de(e){
       try{
+        reconcileFieldingInningsForLiveState("history");
         Ne.value.splice(0);
         const t=Wl(),a=JSON.stringify(q.value)+"|"+JSON.stringify(X.value)+"|"+JSON.stringify(ye.value)+"|"+JSON.stringify(ae.value),s=dn()?.stats?.pitching?.np??-1,r=a+"|np="+s;
         let p;
@@ -8204,6 +8210,32 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       addIp(Se.value,"fielding");
       for(const m of LgActiveFielders(Hn.value,fieldingPositions,Nn))if(m!==Se.value)addIp(m,"fielding")
     }
+    // 守备局数对账（#388）：野手 IP 不可能超过该队已完成守备出局数。
+    // 撤销/重开流程中断时曾出现「比赛状态已回退、野手 IP/PO 未回退」的混合快照；
+    // 在每次写撤销快照、保存、快照落库和恢复现场前统一把整队溢出扣回，避免脏值继续扩散。
+    function reconcileFieldingInningsForLiveState(reason){
+      if(!fieldingIpReconcileEnabled)return[];
+      try{
+        const fieldingPositions=new Set(dd(N.value));
+        const results=[];
+        for(const side of["away","home"]){
+          const lineup=side==="away"?X.value:q.value;
+          const pitcherId=side==="away"?O.value:te.value;
+          const result=LgReconcileFieldingInnings({
+            side,gameState:l,lineup,pitcherId,validPositions:fieldingPositions
+          });
+          if(result.changed.length){
+            results.push({side,...result});
+            console.warn("[LiveGame] 守备局数对账",reason,side,`overflow=${result.overflow}`,result.changed)
+          }
+        }
+        return results;
+      }
+      catch(error){
+        console.warn("[LiveGame] 守备局数对账失败",reason,error);
+        return[]
+      }
+    }
     function paceGoFo(e,t){
       const a=t?.stats?.pitching;
       if(!a)return;
@@ -8474,6 +8506,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       )),!0)
     }
     function Gf(){
+      if(l.flow){
+        if(!settleChainIfReady())warnFlowBusy(l.flow);
+        return !1
+      }
       return l.isGameEnd?!1:l.needNextBatter?(J("请先确认半局结束（三出局后的攻守交换）后再记界内击出","warning"),!1):(de("界内击出投球"),Ea(),l.hasPitchThisAB=!0,!0)
     }
     function rt(e){
@@ -8944,7 +8980,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!CHAIN_TYPES.has(e.type))return!1;
       if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
       const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1],lastStepAction=e.steps?.length?e.stepActions?.[e.steps.length-1]??null:null;
-      return bt(e.type,a,Sr(e),void 0,{lastStepAction}),l.flow=null,pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+      l.flow=null;
+      return bt(e.type,a,Sr(e),void 0,{lastStepAction}),pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
     }
     let chainClearTimer=null;
     function nextPitchCleanup(){
@@ -9378,7 +9415,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return
         }
         const Q1=a.runner,Q2=a.runnerBase;
-        l.flow=null,beginPlayLedger(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
+        de("接杀回传"),l.flow=null,beginPlayLedger(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
         const cbChain=[a.catchPos??"P",e];
         for(const fielding of LgCatchBackStats(cbChain[0],e)){
           const player=Vt(fielding.pos);
@@ -10415,6 +10452,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       he.value=!0;
       try{
         await co(),await earnedRunSyncPending;
+        reconcileFieldingInningsForLiveState("save");
         const a=g=>{
           let m=g.length-1;
           for(;
@@ -10548,6 +10586,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       finally{
         await Ks()
       }
+      // Do 回退只按比赛行的 inning/topBottom 重建，缺当前 outs；已有守备局数时不能对账，避免误扣。
+      fieldingIpReconcileEnabled=!(r?.list??[]).some(s=>Number(s.defInn)>0);
       Gl(e)
     }
     async function bc(){
