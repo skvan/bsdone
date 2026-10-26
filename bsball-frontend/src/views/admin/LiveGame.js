@@ -2105,6 +2105,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Safe on First (PB)")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("dk3:sw:e")
+      }
+      ,[v(B,{
+        variant:c(o)("dk3:sw:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"守备失误上一垒"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Safe on First (E)")])]),n("button",{
         type:"button",class:"lgpfm__item lgpfm__item--red-title",onClick:i[25]||(i[25]=k=>I("dk3:sw:o1"))
       }
       ,[v(B,{
@@ -2150,6 +2165,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Safe on First (PB)")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("dk3:lk:e")
+      }
+      ,[v(B,{
+        variant:c(o)("dk3:lk:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"守备失误上一垒"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Safe on First (E)")])]),n("button",{
         type:"button",class:"lgpfm__item lgpfm__item--red-title",onClick:i[28]||(i[28]=k=>I("dk3:lk:o1"))
       }
       ,[v(B,{
@@ -7078,7 +7108,7 @@ var sg={
       }
       if(e.type==="PK")return e.selectRunner?`投手牵制：${t}`:e.pkFailOptionsShown?"牵制失败后局面：":"牵制成功还是失败？";
       if(e.type==="PK_PE")return"牵制暴传：选择失误者，再选择目标垒";
-      if(e.type==="DK3_FIELDER_PICK")return"漏接三振：请选择完成处理的守备员";
+      if(e.type==="DK3_FIELDER_PICK")return e.dk3Code?.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请选择完成处理的守备员";
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
         const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
         if(C2.length>=hu)return`${Y2}出局：${nu(C2)}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
@@ -8641,20 +8671,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       `:""}`;
       D(m),Je("DK3_OUT_1ST",m),l.balls=0,l.strikes=0,Qe()
     }
+    function dk3ReachOnError(e,t){
+      const a=be.value,s=Se.value;
+      if(!a)return;
+      ue(a),ue(s??void 0),a.stats.batting.so=(a.stats.batting.so??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,e?a.stats.batting.so_looking=(a.stats.batting.so_looking??0)+1:a.stats.batting.so_swing=(a.stats.batting.so_swing??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchSo=(s.stats.pitching.pitchSo??0)+1);
+      const r=creditFieldingError(Vt(t)),p=lg(l.runners,a);
+      beginPlayLedger(),ti({origin:"ERROR"}),l.runners[1]=a,a.origin="ERROR",a.responsiblePitcherId=Number(s?.id)>0?Number(s.id):null,Ge(p),l.balls=0,l.strikes=0;
+      const g=e?"判进":"挥空",y=`${a.name}: 漏接三振（${g}）：因守备失误安全上一垒 (K+E)${r?errorCreditNote([t]):""}`;
+      D(y),Je("DK3_REACH_E",y),Qe()
+    }
     function jf(e){
       if(_o()){
         if(l.strikes<2&&l.flow?.type!=="K_CHOOSE"){
           J("漏接三振应在至少两好球后记录","warning");
           return
         }
-        if(!["dk3:sw:wp","dk3:sw:pb","dk3:sw:o1","dk3:lk:wp","dk3:lk:pb","dk3:lk:o1"].includes(e)){
+        if(!["dk3:sw:wp","dk3:sw:pb","dk3:sw:e","dk3:sw:o1","dk3:lk:wp","dk3:lk:pb","dk3:lk:e","dk3:lk:o1"].includes(e)){
           D(LgSys({kind:"dk3_guard",code:e}));
           return
         }
         l.flow={
           type:"DK3_FIELDER_PICK",dk3Code:e,selectRunner:!1
         }
-        ,J("漏接三振：请点击完成处理的守备员","info")
+        ,J(e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员","info")
       }
       
     }
@@ -8665,11 +8704,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         break;
         case"dk3:sw:pb":ii(!1,!1,e);
         break;
+        case"dk3:sw:e":dk3ReachOnError(!1,e);
+        break;
         case"dk3:sw:o1":So(!1,e);
         break;
         case"dk3:lk:wp":ii(!0,!0,e);
         break;
         case"dk3:lk:pb":ii(!1,!0,e);
+        break;
+        case"dk3:lk:e":dk3ReachOnError(!0,e);
         break;
         case"dk3:lk:o1":So(!0,e);
         break;
