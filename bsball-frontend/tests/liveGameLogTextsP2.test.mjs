@@ -78,7 +78,7 @@ test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账
   assert.match(src, /hn\("IPHR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'IPHR 注记');
   assert.match(src, /\$\{sfRbi\?`（\$\{r\.name\}：1打点）`:""\}/, 'SF 得分注记（条件化）');
   assert.match(src, /rbiWho=creditLastBatterRbi\(\)/, '上一棒内推进打点人捕获');
-  assert.match(src, /wp\(a,s,r,e\.cn,e\.id,rbiWho\?/, 'wp 注记注入');
+  assert.match(src, /wp\(a,s,r,advanceReasonCn,advanceReasonId,rbiWho\?/, 'wp 注记注入');
   assert.match(src, /fc_forced\[3\]\?\(D\(LgAdvance\(\{\r?\n\s+reasonCn:"野选推进得分",runner:fc_old\[3\],from:3,to:4,rbiNote:/, 'fcApply 被迫得分：先落文本（含打点注记）');
   assert.match(src, /\)\),ls\(1,\{runner:fc_old\[3\],batter:r,rbiDelta:1/, 'FC 得分通过逐跑者 run ledger 与 RBI 记账');
 });
