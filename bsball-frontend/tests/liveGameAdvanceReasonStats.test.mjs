@@ -19,7 +19,14 @@ test('拖拽进垒选择「捕逸 (PB)」时给捕手记 PB', () => {
   const body = slice(src, 'function Sp(e){', 'function kp(e){');
   assert.match(body, /e\.id==="safe_wp"/, '缺少暴投入账（对照路径）');
   assert.match(body, /e\.id==="safe_sb"/, '缺少盗垒/捕手 SB 入账（对照路径）');
-  assert.match(body, /e\.id==="safe_pb"&&paceCatcherStat\("pb"\)/, '捕逸进垒未给捕手记 PB');
+  assert.match(body, /e\.id==="safe_pb"&&!l\.playPbCredited\)l\.playPbCredited=!0,paceCatcherStat\("pb"\)/, '捕逸进垒未给捕手记 PB（同 play 只记一次）');
+});
+
+test('同一 play 承接暴投/捕逸走普通进垒，不再要求失误守备员', () => {
+  const src = read('../src/views/admin/LiveGame.js');
+  assert.ok(src.includes('const samePlayWpPb=e.id==="safe_same_err"'), '缺少 WP/PB 承接分支');
+  assert.ok(src.includes('zd.has(e.id)&&!samePlayWpPb'), '承接 WP/PB 仍进入失误流程');
+  assert.ok(src.includes('同一play内暴投推进') && src.includes('同一play内捕逸推进'), '承接来源日志缺失');
 });
 
 test('漏接三振捕逸仍给捕手记 PB（保留入口）', () => {
