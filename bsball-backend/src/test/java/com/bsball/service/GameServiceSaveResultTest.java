@@ -422,12 +422,14 @@ class GameServiceSaveResultTest {
         givenExistingRows(pitcher);
         pitcher.setPitchBbHp(Integer.valueOf(7));
         pitcher.setPitchBb(Integer.valueOf(5));
+        pitcher.setPitchIbb(Integer.valueOf(1));
         pitcher.setPitchHbp(Integer.valueOf(2));
 
         SaveGameResultDTO.StatPart p =
                 part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(16), Double.valueOf(3.0D));
         p.setPitchBbHp(Integer.valueOf(0));
         p.setPitchBb(Integer.valueOf(0));
+        p.setPitchIbb(Integer.valueOf(0));
         p.setPitchHbp(Integer.valueOf(0));
         SaveGameResultDTO dto = new SaveGameResultDTO();
         dto.setStats(new ArrayList<>(List.of(p)));
@@ -436,6 +438,7 @@ class GameServiceSaveResultTest {
 
         assertEquals(Integer.valueOf(0), pitcher.getPitchBbHp());
         assertEquals(Integer.valueOf(0), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
         assertEquals(Integer.valueOf(0), pitcher.getPitchHbp());
     }
 

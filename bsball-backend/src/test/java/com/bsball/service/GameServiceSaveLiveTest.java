@@ -221,6 +221,7 @@ class GameServiceSaveLiveTest {
                 .thenReturn(Boolean.FALSE);
         pitcher.setPitchBbHp(Integer.valueOf(3));
         pitcher.setPitchBb(Integer.valueOf(2));
+        pitcher.setPitchIbb(Integer.valueOf(4));
         pitcher.setPitchHbp(Integer.valueOf(1));
 
         GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
@@ -229,6 +230,7 @@ class GameServiceSaveLiveTest {
         part.setIsPitcher(Integer.valueOf(1));
         part.setPitchBbHp(Integer.valueOf(0));
         part.setPitchBb(Integer.valueOf(0));
+        part.setPitchIbb(Integer.valueOf(0));
         part.setPitchHbp(Integer.valueOf(0));
         GameSaveLiveDTO dto = new GameSaveLiveDTO();
         dto.setStats(List.of(part));
@@ -237,6 +239,7 @@ class GameServiceSaveLiveTest {
 
         assertEquals(Integer.valueOf(0), pitcher.getPitchBbHp());
         assertEquals(Integer.valueOf(0), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
         assertEquals(Integer.valueOf(0), pitcher.getPitchHbp());
     }
 

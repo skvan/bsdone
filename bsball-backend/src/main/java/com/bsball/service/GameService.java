@@ -702,6 +702,8 @@ public class GameService {
         if (part.getPitchTriples() != null) {
             stat.setPitchTriples(part.getPitchTriples());
         }
+        // 四死合计栏缺栏即保留，与下方拆分栏及 saveLive 同口径。结果页 payload 已保证四栏同送数字
+        // （bsball-frontend/tests/gameResultPitchBbHpConsistency387.test.mjs），不会出现「合计被覆写、拆分被保留」的矛盾行。
         if (part.getPitchBbHp() != null) {
             stat.setPitchBbHp(part.getPitchBbHp());
         }
