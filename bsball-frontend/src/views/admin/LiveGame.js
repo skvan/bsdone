@@ -29,6 +29,8 @@ import { useModalClose as nd } from '../../composables/useModalClose';
 import { usePermission as ad } from '../../composables/usePermission';
 import { POSITION_LABELS as It } from '../../utils/playerOptions';
 import { parseStoredLiveRecord as Yo } from '../../utils/liveGameStorage';
+// #445 打序重建：解析不到的球员保留槽位（不丢位）＋按该队已完成打席数回溯当前打者指针（纯函数模块）
+import { resolveBattingSlots as boResolveSlots, teamPlateAppearances as boTeamPA, deriveBatterIndex as boBatterIndex, starterIdsFromLineup as boStarterIds } from '../../utils/liveGameBattingOrder';
 import { watchLocalKey as ws } from '../../utils/liveGameStorage';
 import { takeEntryBootstrap as ld } from '../../utils/liveGameStorage';
 import { pickPreferredLiveRecord as id } from '../../utils/liveGameStorage';
@@ -6457,7 +6459,7 @@ var sg={
       )
     }
     function br(){
-      le.value.every(e=>e==null)&&(le.value=gr("away")),fe.value.every(e=>e==null)&&(fe.value=gr("home"))
+      (le.value??[]).every(e=>e==null)&&(le.value=gr("away")),(fe.value??[]).every(e=>e==null)&&(fe.value=gr("home"))
     }
     function _r(e,t,a){
       if(t<0||t>=12||a==null)return;
@@ -10501,28 +10503,39 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           T.set(Number(E.id),E)
         }
         );
-        const Y=new Map;
-        g.filter(E=>E.teamId===A).forEach(E=>{
-          const U=E.battingOrder??0;
-          U>0&&Y.set(U,E)
+        // #445：打序在系统里是靠「数组下标」承载的（batterIndex 取下标、br()/gr() 由下标反推棒次），
+        // 所以这里解析不到 roster 的球员不能丢位——丢一个，其后所有人的下标整体前移一格，
+        // 当前打者指针就指向另一个人，之后的打席全记到错的人头上。保留槽位、用统计行造占位球员。
+        return boResolveSlots({
+          statRows:g,roster:P,teamId:A,sport:N.value
+        }
+        ).map((E,U)=>{
+          const d=Number(E.playerId),z=T.get(d),Y=m.get(`${A}_${d}`)??m.get(`${A}_${E.playerId}`);
+          return b(z??{
+            id:d
+          }
+          ,A,Y,U)
         }
         );
-        const lineupSize=N.value==="SOFTBALL"?11:12;
-        const j=[...Y.entries()].sort(([left],[right])=>left-right).map(([,row])=>row),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
-        if(j.length>0)for(const E of P){
-          if(V.length>=lineupSize)break;
-          const U=Number(E.id);
-          ee.has(U)||V.push(U)
-        }
-        return V.map((E,U)=>{
-          const d=Number(E),z=T.get(d);
-          return z?b(z,A,m.get(`${A}_${d}`)??m.get(`${A}_${E}`),U):null
-        }
-        ).filter(Boolean)
       };
       Ys();
       try{
         q.value=w(a,t.homeTeamId),X.value=w(s,t.awayTeamId);
+        // #445：本路径是「没有快照、只按云端已保存统计重建」，快照里的 batterIndex／先发打序不会回来，
+        // 不复原就停在第 1 棒（batterIndex 默认 0），之后的每个打席都记到第一棒头上——这就是有人 PA/AB 凭空多一次。
+        // 先发打序：就地做 br() 那份惰性推导的同款口径（No() 送 battingOrder 时也用这套），
+        // 用局部版而不是直接调 br()：br() 对 fe 的初值 null 没有守卫，会先抛 TypeError。
+        // 只在「尚未设置」时填充，快照路径回来的真实先发比较准，不能被覆盖。
+        const boFillStarters=(Y,j)=>{
+          const cur=j.value;
+          if(Array.isArray(cur)&&cur.some(E=>E!=null))return;
+          j.value=boStarterIds(Y)
+        };
+        boFillStarters(q.value,fe),boFillStarters(X.value,le);
+        // 当前打者按「该队已完成打席数 mod 名单长度」回溯，与 fo() 的推进方式同构。
+        const boHomePa=boTeamPA(g,t.homeTeamId),boAwayPa=boTeamPA(g,t.awayTeamId);
+        if(q.value.length>0)l.batterIndex.home=boBatterIndex(q.value.length,boHomePa);
+        if(X.value.length>0)l.batterIndex.away=boBatterIndex(X.value.length,boAwayPa);
         const P=Y=>new Set(Y.map(j=>Number(j.id))),A=(Y,j,ee)=>{
           const V=[];
           for(const E of Y){
