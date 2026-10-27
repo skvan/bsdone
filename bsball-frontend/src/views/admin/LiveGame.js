@@ -7484,6 +7484,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
+    // #444-A：现场快照（含换人史 lineupStarterIds/slotSubHistory）同步服务器。
+    // 存了统计却没同步快照时，_c()/bc() 在跨设备/清缓存重进会取不到快照、回退 Do()
+    // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：先重试一次，
+    // 仍失败则提示一次（不阻断录入本身）；成功后清除脏标，避免每次自动保存都弹。
+    let snapshotSyncFailed=!1;
+    async function pushLiveSnapshot(e){
+      const body=JSON.stringify(e);
+      for(let attempt=0;
+      attempt<2;
+      attempt++){
+        try{
+          await ma.saveLiveSnapshot(R.value,body);
+          return !0
+        }
+        catch{
+          if(attempt===0)await new Promise(rr=>{
+            setTimeout(rr,800)
+          }
+          )
+        }
+      }
+      return !1
+    }
     async function Zr(){
       if(!R.value||!F.value)return;
       Tn(),to();
@@ -7491,13 +7514,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         includeUndoStacks:!0
       }
       );
-      if(e)try{
-        await ma.saveLiveSnapshot(R.value,JSON.stringify(e))
-      }
-      catch{
-        
-      }
-      
+      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1):snapshotSyncFailed||(snapshotSyncFailed=!0,Fe.warning("现场快照未能同步到服务器：下次从其它设备或清空缓存后进入，可能只能按已保存统计重建，换人在场状态会丢失"))
     }
     async function ZrLite(){
       // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行
@@ -7514,7 +7531,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )])
       }
       catch{
-        
+        // 离开路径不弹提示（正在卸载），但不再完全静默：留一条可诊断告警，
+        // 同设备重进仍有 localStorage 现场快照兜底
+        console.warn("[LiveGame] 离开时现场快照同步失败，已依赖本地缓存兜底")
       }
       
     }
