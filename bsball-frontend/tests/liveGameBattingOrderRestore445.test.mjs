@@ -151,8 +151,10 @@ const baseScope = (over = {}) => ({
   q: { value: lineupOf(1001, 12) },
   X: { value: lineupOf(2001, 12) },
   l: { batterIndex: { away: 0, home: 0 } },
-  fe: { value: null },
-  le: { value: [] },
+  // 真实初值：store 里 homeLineupStarterIds/awayLineupStarterIds 都是 x(Array(12).fill(null))
+  // （component 的 fe/le 由 :5065 解构自这两个 ref），不是 null/[]。
+  fe: { value: Array(12).fill(null) },
+  le: { value: Array(12).fill(null) },
   ...over,
 });
 
@@ -284,11 +286,13 @@ test('15 元件层：Do() 还原段对 9 人棒球打线不再指向板凳格', 
     q: { value: slots12.map((x) => ({ id: x.playerId })) },
     X: { value: [] },
     l: { batterIndex: { away: 7, home: 3 } },
-    fe: { value: null },
-    le: { value: [] },
+    fe: { value: Array(12).fill(null) },
+    le: { value: Array(12).fill(null) },
   });
   runRestore(scope);
   assert.equal(scope.l.batterIndex.home, 0, '9 人打线打完 9 个 PA → 该轮回到第 1 棒，而不是第 10 格板凳');
   assert.equal(scope.q.value[scope.l.batterIndex.home].id, 1001, '指针落在第 1 棒本人身上');
   assert.equal(scope.l.batterIndex.away, 7, '客队没有任何带棒次的行 → 指针原封不动（7 是我故意给的不对称初值，能抓住主客写反）');
+  assert.equal(scope.fe.value[0], 1001, '主队先发打序必须回填自「主队名单 q」；若与客队 le 写反，这里仍是 null');
+  assert.ok(scope.le.value.every((v) => v === null), '客队名单为空 → 客队先发打序保持全 null，不能被主队数据污染');
 });
