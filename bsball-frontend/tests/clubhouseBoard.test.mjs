@@ -14,7 +14,10 @@ import {
   rectsOverlap,
   collidesWithAny,
   clampToBoard,
+  movedRect,
   moveModule,
+  findSwapTarget,
+  planSwap,
   resizeModule,
   packModules,
   boardHeight,
@@ -233,4 +236,97 @@ test('重新启用模块下移到所有已占用模块底部', () => {
     { x: 0, y: 1388, width: 800, height: 460 }
   );
   assert.deepEqual(placeBelow(2000, 700, []), { x: 0, y: 0, width: 1216, height: 700 });
+});
+
+test('拖动矩形吸附并收敛到画布内，不检查碰撞', () => {
+  assert.deepEqual(movedRect(rect('a', 0, 0, 400, 320), 80, 80), rect('a', 80, 80, 400, 320));
+  assert.deepEqual(movedRect(rect('a', 800, 104, 400, 320), 500, 0), rect('a', 816, 104, 400, 320));
+  assert.deepEqual(movedRect(rect('a', 0, 0, 400, 320), -80, -80), rect('a', 0, 0, 400, 320));
+});
+
+test('交换目标按重叠比例选择，低于阈值不算', () => {
+  const dragged = rect('a', 0, 0, 800, 500);
+  assert.deepEqual(findSwapTarget(dragged, [rect('b', 0, 0, 800, 500)]), rect('b', 0, 0, 800, 500));
+  assert.equal(findSwapTarget(dragged, [rect('b', 700, 0, 400, 300)]), null);
+  // 与默认阈值 35% 的边界：140 / 400 宽 = 35%
+  assert.equal(findSwapTarget(dragged, [rect('b', 660, 0, 400, 300)])?.key, 'b');
+  assert.equal(findSwapTarget(dragged, [rect('b', 660, 0, 400, 300)], { minRatio: 0.36 }), null);
+  // 两个都完全命中时取重叠面积更大的
+  assert.equal(findSwapTarget(dragged, [
+    rect('b', 0, 0, 800, 500),
+    rect('c', 0, 0, 400, 300)
+  ]).key, 'b');
+  // 忽略自身
+  assert.equal(findSwapTarget(dragged, [rect('a', 0, 0, 800, 500)]), null);
+});
+
+test('同尺寸模块交换位置且不改入参', () => {
+  const start = rect('a', 0, 0, 400, 300);
+  const target = rect('b', 0, 400, 400, 300);
+  const others = [rect('c', 0, 800, 400, 300)];
+  const plan = planSwap(start, target, others);
+  assert.deepEqual(plan.dragged, rect('a', 0, 400, 400, 300));
+  assert.deepEqual(plan.target, rect('b', 0, 0, 400, 300));
+  assert.deepEqual(plan.moved, []);
+  assert.deepEqual(start, rect('a', 0, 0, 400, 300));
+  assert.deepEqual(target, rect('b', 0, 400, 400, 300));
+  assert.deepEqual(others, [rect('c', 0, 800, 400, 300)]);
+});
+
+test('不同尺寸同排交换：保留尺寸并收敛到画布内', () => {
+  const plan = planSwap(
+    rect('a', 0, 0, 800, 500),
+    rect('b', 816, 0, 400, 300),
+    []
+  );
+  assert.deepEqual(plan.dragged, rect('a', 416, 0, 800, 500));
+  assert.deepEqual(plan.target, rect('b', 0, 0, 400, 300));
+  assert.equal(plan.dragged.x + plan.dragged.width, BOARD_WIDTH);
+});
+
+test('交换后第三方冲突整体下移并级联', () => {
+  const plan = planSwap(
+    rect('a', 0, 0, 400, 300),
+    rect('b', 0, 400, 400, 300),
+    [rect('c', 0, 700, 400, 300), rect('d', 0, 1016, 400, 300)]
+  );
+  const moved = Object.fromEntries(plan.moved.map((module) => [module.key, module.y]));
+  assert.equal(moved.c, 716);
+  assert.equal(moved.d, 1032);
+});
+
+test('上下相邻且高度不同：上方保留、下方下移，双向结果一致', () => {
+  const ranks = rect('ranks', 0, 0, 1216, 220);
+  const evaluation = rect('evaluation', 0, 236, 1216, 700);
+  const milestones = rect('milestones', 0, 952, 1216, 500);
+  for (const plan of [
+    planSwap(ranks, evaluation, [milestones]),
+    planSwap(evaluation, ranks, [milestones])
+  ]) {
+    const byKey = {
+      [plan.dragged.key]: plan.dragged,
+      [plan.target.key]: plan.target
+    };
+    assert.equal(byKey.evaluation.y, 0);
+    assert.equal(byKey.ranks.y, 716);
+    assert.deepEqual(plan.moved, []);
+  }
+});
+
+test('交换位置互相重叠时按上/下回流，而不是放弃', () => {
+  const plan = planSwap(
+    rect('a', 0, 0, 600, 300),
+    rect('b', 100, 100, 600, 300),
+    []
+  );
+  assert.deepEqual(plan.target, rect('b', 0, 0, 600, 300));
+  assert.deepEqual(plan.dragged, rect('a', 100, 316, 600, 300));
+});
+
+test('交换后下移超限时放弃', () => {
+  assert.equal(planSwap(
+    rect('a', 0, 0, 400, 1000),
+    rect('b', 0, 11300, 400, 300),
+    [rect('c', 0, 11616, 400, 300)]
+  ), null);
 });
