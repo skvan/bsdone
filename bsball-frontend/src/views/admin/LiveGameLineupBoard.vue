@@ -516,6 +516,17 @@ function draftPayload(gid) {
 }
 
 // 旧件 Es()：载入比赛与门控
+function hasRecordedGameStat(row) {
+  return [
+    'pa', 'ab', 'r', 'h', 'e', 'bbHp', 'sb', 'so', 'soSwing', 'soLooking', 'rbi',
+    'doubles', 'triples', 'hr', 'insideParkHr', 'gdp', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'io', 'cs',
+    'ip', 'earnedR', 'unearnedR', 'pendingR', 'er', 'pitchH', 'pitchDoubles', 'pitchTriples',
+    'pitchBbHp', 'pitchSo', 'pitchHr', 'pitchInsideParkHr', 'pitchSh', 'pitchSf', 'pitchPa',
+    'pitchBf', 'pitchAb', 'np', 'pitchBb', 'pitchIbb', 'pitchHbp', 'pitchIo', 'wp', 'bk',
+    'pitchR', 'go', 'fo', 'tc', 'po', 'a', 'dp', 'pb', 'catcherSb', 'catcherCs'
+  ].some((key) => Number(row?.[key] ?? 0) > 0);
+}
+
 async function loadGame(id) {
   try {
     const e = await gameApi.get(id);
@@ -532,7 +543,7 @@ async function loadGame(id) {
     }
     if (e.status === 'live') {
       const r = await gameStatsApi.listByGame(id).catch(() => null);
-      if (r && (r.list ?? []).some((u) => (u.battingOrder ?? 0) > 0)) {
+      if ((r?.list ?? []).some(hasRecordedGameStat)) {
         ElMessage.warning('该比赛已开始录入，请从列表点「继续录入」进入录入页');
         await router.replace({ name: 'AdminGameLiveResume', params: { eventId: String(eventId.value), gameId: String(id) } });
         return;
