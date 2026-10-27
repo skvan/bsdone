@@ -31,6 +31,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -466,7 +467,14 @@ public class GameService {
         // 批次 3b（前置④）：守卫前移——位内任何 set/save 之前，基于「原域」判定（防跳域搬运）。
         this.assertGameWritable(game);
         if (dto != null && dto.getStats() != null && !Boolean.TRUE.equals(game.getIsSpecialResult())) {
-            this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            // 先发 9 人/守位校验只约束「进行中开赛」；已完赛（final）允许赛后补录，
+            // 不再强制首发打序齐全（生产比赛 250：换人后补录被误拦）。
+            String effectiveStatus = dto.getGame() != null && dto.getGame().getStatus() != null
+                    ? dto.getGame().getStatus()
+                    : game.getStatus();
+            if (!"final".equalsIgnoreCase(effectiveStatus)) {
+                this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            }
             // 门②（Issue #310）：统计写入门；若本请求同时迁移 eventId，按目标赛事口径校验
             Long rosterEventId = dto.getGame() != null && dto.getGame().getEventId() != null
                     ? dto.getGame().getEventId()
@@ -761,20 +769,52 @@ public class GameService {
         if (stats == null || stats.isEmpty()) {
             return;
         }
-        Map<Long, List<SaveGameResultDTO.StatPart>> battersByTeam = stats.stream().filter(Objects::nonNull).filter(s -> s.getTeamId() != null).filter(s -> !Boolean.TRUE.equals(s.getIsPitcher() != null && s.getIsPitcher() == 1)).collect(Collectors.groupingBy(SaveGameResultDTO.StatPart::getTeamId));
-        for (Map.Entry<Long, List<SaveGameResultDTO.StatPart>> entry : battersByTeam.entrySet()) {
+        Map<Long, List<SaveGameResultDTO.StatPart>> rowsByTeam = stats.stream().filter(Objects::nonNull).filter(s -> s.getTeamId() != null).collect(Collectors.groupingBy(SaveGameResultDTO.StatPart::getTeamId));
+        for (Map.Entry<Long, List<SaveGameResultDTO.StatPart>> entry : rowsByTeam.entrySet()) {
             Long teamId = entry.getKey();
-            List<SaveGameResultDTO.StatPart> rows = entry.getValue();
-            List<SaveGameResultDTO.StatPart> battingOrderRows = rows.stream().filter(s -> s.getBattingOrder() != null && s.getBattingOrder() > 0).sorted((a, b) -> Integer.compare(a.getBattingOrder() != null ? a.getBattingOrder() : Integer.MAX_VALUE, b.getBattingOrder() != null ? b.getBattingOrder() : Integer.MAX_VALUE)).toList();
-            if (battingOrderRows.size() < 9) {
+            // 二刀流球员会同时提交「打者行 + 投手行」（打序/守位都在打者行上），
+            // 不能把投手行整行剔除，否则 9 人打序会被算成 8 人；这里按 playerId 去重后统计。
+            List<SaveGameResultDTO.StatPart> battingOrderRows = entry.getValue().stream()
+                    .filter(s -> s.getBattingOrder() != null && s.getBattingOrder() > 0)
+                    .sorted(Comparator.comparingInt((SaveGameResultDTO.StatPart s) -> s.getBattingOrder())
+                            .thenComparingInt(s -> isPitcherStatPart(s) ? 1 : 0)
+                            .thenComparingInt(s -> isBlankPosition(s.getPosition()) ? 1 : 0))
+                    .toList();
+            // 只提交投手行的球队不参与先发校验，保持原有「投手行不受起手守位校验影响」语义；
+            // 一旦出现打者行（即使漏带打序），仍按原来的「不足 9 人」拦截，避免半套 payload 清空已有统计。
+            boolean hasBatterRow = entry.getValue().stream().anyMatch(s -> !isPitcherStatPart(s));
+            if (!hasBatterRow) {
+                continue;
+            }
+            Map<Long, SaveGameResultDTO.StatPart> startersByPlayer = new LinkedHashMap<>();
+            List<SaveGameResultDTO.StatPart> unkeyedRows = new ArrayList<>();
+            for (SaveGameResultDTO.StatPart row : battingOrderRows) {
+                if (row.getPlayerId() == null) {
+                    unkeyedRows.add(row);
+                } else {
+                    startersByPlayer.putIfAbsent(row.getPlayerId(), row);
+                }
+            }
+            List<SaveGameResultDTO.StatPart> starters = new ArrayList<>(startersByPlayer.values());
+            starters.addAll(unkeyedRows);
+            starters.sort(Comparator.comparingInt(SaveGameResultDTO.StatPart::getBattingOrder));
+            if (starters.size() < 9) {
                 throw new BusinessException(400, sceneLabel + "\u5931\u8d25\uff1a\u7403\u961f(" + teamId + ")\u6709\u6253\u5e8f\u7684\u5148\u53d1\u4e0d\u8db3 9 \u4eba\uff0c\u65e0\u6cd5\u6821\u9a8c\u5b88\u5907\u4f4d\u7f6e");
             }
-            List<SaveGameResultDTO.StatPart> starters = battingOrderRows.stream().limit(9L).toList();
-            List<String> positions = starters.stream().map(s -> s.getPosition() == null ? "" : s.getPosition().trim().toUpperCase()).filter(p -> !p.isBlank()).filter(p -> !"PH".equals(p) && !"DH".equals(p) && !"EP".equals(p)).toList();
+            List<SaveGameResultDTO.StatPart> firstNine = starters.stream().limit(9L).toList();
+            List<String> positions = firstNine.stream().map(s -> s.getPosition() == null ? "" : s.getPosition().trim().toUpperCase()).filter(p -> !p.isBlank()).filter(p -> !"PH".equals(p) && !"DH".equals(p) && !"EP".equals(p)).toList();
             LinkedHashSet<String> unique = new LinkedHashSet<>(positions);
             if (unique.size() == positions.size()) continue;
             throw new BusinessException(400, sceneLabel + "\u5931\u8d25\uff1a\u7403\u961f(" + teamId + ")\u6709\u6253\u5e8f\u7684\u5148\u53d1\u5b88\u5907\u4f4d\u7f6e\u91cd\u590d");
         }
+    }
+
+    private static boolean isPitcherStatPart(SaveGameResultDTO.StatPart part) {
+        return part.getIsPitcher() != null && part.getIsPitcher().intValue() == 1;
+    }
+
+    private static boolean isBlankPosition(String position) {
+        return position == null || position.trim().isBlank();
     }
 
     private String toInningJson(Object obj) {
