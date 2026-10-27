@@ -10448,15 +10448,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       d<12;
       d++){
         const z=d+1,se=m[d],occNow=g[d];
-        // #444：棒次跟着「槽位的当前占用者」——换上来的人继承这个棒次（除非操作者用两次
-        // 换人自行做成双重换人，那也仍由当时的占用者决定归属）。被换下的人（①记录的先发、
-        // ②该槽位的历史替换者）必须留下一列，但不再带棒次，且靠 listOrder 排在他上面，
-        // BOX SCORE 才交代得出换人顺序；keep 让「整场没打、只守了半局」的人也仍在 payload 里
-        // （原先 z==null 且无任何统计会被 T() 直接丢弃，那一列在库里就从未存在过）。
-        const boOf=pid=>!occNow||Et(occNow)||Number(occNow.id)===pid?z:null;
-        se!=null&&T(bs(e,se),boOf(Number(se)),!0);
-        for(const _e of y[d]??[])T(bs(e,_e),boOf(Number(_e)),!0);
-        T(occNow,z)
+        // #444：棒次属于「这一格原来的那个人」——他被换下仍保留自己的棒次，换上来的人不带棒次、
+        // 紧跟在他下面（BOX SCORE 首格按 listOrder 成序，即 skvan 指定的「2 Kim m / - Kim jo」）。
+        // 判据只看「记录的先发不是当前占用者」：没换人时 subIn 恒为假，行为与改动前逐字一致；
+        // 第 10~12 格没有记录先发（se==null）也不会被补上棒次，不会凭空长出第 10 棒。
+        // ②是该格的历史替换者（曾任占用者、后来又被换下），同样只留列不带棒次；keep 让
+        // 「整场没打、只守了半局」的人也仍在 payload 里（原先 z==null 且零统计会被 T() 直接丢弃）。
+        const subIn=se!=null&&occNow!=null&&!Et(occNow)&&Number(occNow.id)!==Number(se);
+        se!=null&&T(bs(e,se),z);
+        for(const _e of y[d]??[])T(bs(e,_e),null,!0);
+        T(occNow,null,subIn)
       }
       for(let d=12;
       d<g.length;

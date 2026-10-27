@@ -1,15 +1,16 @@
 /**
- * #444 换人后打序与 BOX SCORE 行序（先继承棒次，不颠倒、不吞列）
+ * #444 换人后打序与 BOX SCORE 行序（棒次留原列，换上来的人不带棒次、排在其下）
+ *
+ * 目标呈现由 skvan 以截图定案（Hustlers Batters）：
+ *   2  Kim m… #66      ← 被换下的第二棒，仍保留自己的棒次
+ *   -  Kim jo… #17     ← 换上来的人不带棒次，紧跟在原棒次下方
+ * 判定用的就是那张表的真实渲染：GameDetailContent.js 的取值器 `E(e,t)=e?.[t]`、
+ * 首格 `E(a,"battingOrder")!=null ? String(...) : "-"`，排序器 Kt()（主键 listOrder、
+ * 次键 battingOrder、再 playerId）。本 PR 不改那张表，只改喂给它的数据。
  *
  * 沿用 liveGameHbpRoundTrip387.test.mjs 的做法：把 LiveGame.js 里的**原始码文字**
- * 绑上依赖后真的执行，验的是行为，不是字段清单。
- * 本档刻意走**端到端**：先呼叫 _r()（换人记录，在名单数组被改动之前）产生状态，
- * 再原位顶替名单（cc() 的真实形态：y[A]={...P}），最后跑 No() 看送出去的 payload，
- * 因此「换人前冻结先发」与「棒次跟着占用者走」两条改动是被同一组案例串起来验的。
- *
- * 判定口径来自 GameDetailContent.js 的 BOX SCORE 排序器 Kt()：
- *   主键 listOrder（保存时的遍历序）、次键 battingOrder、再 playerId。
- *   打者表另有过滤 `!isPitcherFlag(e) || e.battingOrder != null`。
+ * 绑上依赖后真的执行。案例是端到端的：先呼叫 _r()（换人记录，发生在名单数组被改动
+ * 之前）产生状态，再原位顶替（cc() 的真实形态 y[A]={...P}），最后跑 No() 看 payload。
  *
  * 运行：node --test tests/liveGameSubstitutionBattingOrder444.test.mjs
  */
@@ -43,7 +44,7 @@ function sliceFn(header) {
   throw new Error(header + ' 括号不闭合');
 }
 
-const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'mr', 'vr', 'gr', 'br', '_s'];
+const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'dc', 'mr', 'vr', 'gr', 'br', '_s'];
 const code = DEPS.map((n) => sliceFn('function ' + n + '(')).join('\n')
   + '\n' + sliceFn('function _r(e,t,a){') + '\n' + sliceFn('function No(e,t){');
 // No/br 用到的自由变量依原文注入：Ee 取队伍上下文、_ 是赛事对象、Eo 组 payload
@@ -53,11 +54,11 @@ const make = new Function('Ee', '_', 'ft', 'Eo', 'Nn', 'le', 'fe',
 const ref = (v) => ({ value: v });
 const zero = { ab: 0, r: 0, h: 0, rbi: 0, bb: 0, hbp: 0, so: 0, sf: 0, sh: 0, sb: 0, doubles: 0, triples: 0, hr: 0, gdp: 0, ibb: 0, io: 0 };
 const stats = (b = {}, f = {}) => ({ batting: { ...zero, ...b }, pitching: { ip: 0, np: 0 }, fielding: { po: 0, a: 0, e: 0, defInn: 0, ...f } });
-const mk = (id, ab = 3, pos = 'SS') => ({ id, name: '球员' + id, number: String(id), position: pos, teamId: 7, stats: stats({ ab }, chance(pos)) });
-// 只有守备记录的人 Oo() 视为「有统计」，会被旧码照送；#444 报的是**整场什么都没留下**的那种，
-// 必须给他全零统计，否则症状②的丢弃条件根本不会触发，测试就成了假绿。
 const chance = (pos) => (pos === 'SS' ? { po: 1, a: 1, defInn: 1 } : {});
-const mkZero = (id) => ({ id, name: '球员' + id, number: String(id), position: 'SS', teamId: 7,
+const mk = (id, ab = 3, pos = 'SS') => ({ id, name: '球员' + id, number: String(id), position: pos, teamId: 7, stats: stats({ ab }, chance(pos)) });
+// 只有守备记录的人 Oo() 视为「有统计」会被旧码照送；#444 报的是**整场什么都没留下**的那种，
+// 必须给他全零统计，否则 T() 的丢弃条件根本不会触发，测试就成了假绿。
+const mkZero = (id, pos = 'SS') => ({ id, name: '球员' + id, number: String(id), position: pos, teamId: 7,
   stats: { batting: { ...zero }, pitching: { ip: 0, np: 0 }, fielding: { po: 0, a: 0, e: 0, defInn: 0 } } });
 // 第 9 棒是投手时的真实形态：既有投球统计也有打数
 const mkPitcher = (id, ab = 2) => ({ id, name: '投手' + id, number: String(id), position: 'P', teamId: 7,
@@ -69,8 +70,8 @@ const Kt = (a, b) => {
   const l = a.listOrder, d = b.listOrder, v = l != null, y = d != null;
   if (v && y && l !== d) return l - d;
   if (v !== y) return v ? -1 : 1;
-  const f2 = a.battingOrder, x = b.battingOrder, o = f2 != null, n = x != null;
-  return o && n && f2 !== x ? f2 - x : o !== n ? (o ? -1 : 1) : a.playerId - b.playerId;
+  const o = a.battingOrder, n = b.battingOrder, ho = o != null, hn = n != null;
+  return ho && hn && o !== n ? o - n : ho !== hn ? (ho ? -1 : 1) : a.playerId - b.playerId;
 };
 
 const blankCtx = () => ({
@@ -79,13 +80,14 @@ const blankCtx = () => ({
 });
 
 /**
- * 一局主队的换人流程。steps: [[slot, outId, incoming], ...]
+ * 一局主队的换人流程。steps: [[slot, outId, incomingId], ...]
  * 依 cc() 的实序：先 _r() 记录（此时名单还是换人前的样子），再原位顶替、被换下者进板凳。
  * 换上来的人继承被换下者的守备位置（原位顶替，不另开一格）。
+ * incomingOf 控制换上来的人有几个打数（默认 2；给 0 即全零统计，用来验「什么都没留下」的接手者也被送出）。
  */
-function play(steps, starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009], zeroStat = () => false, posOf = () => 'SS') {
-  const lineup = starters.map((id) => (zeroStat(id) ? mkZero(id) : mkPlayer(id, posOf(id))));
-  const bench = [mk(1010, 0, 'LF'), mk(1011, 0, 'CF')];   // 板凳未上场时就该是零打数，否则板凳回圈会把他当「打过球」送出
+function play(steps, starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009], zeroStat = () => false, posOf = () => 'SS', incomingOf = () => 2) {
+  const lineup = starters.map((id) => (zeroStat(id) ? mkZero(id, posOf(id)) : mkPlayer(id, posOf(id))));
+  const bench = [mk(1010, 0, 'LF'), mk(1011, 0, 'CF'), mkZero(1012, 'RF')];   // 板凳未上场时就该零统计，否则板凳回圈会把他当「打过球」送出
   const home = { ...blankCtx(), lineup: ref(lineup), bench: ref(bench), roster: ref([...lineup, ...bench]) };
   const away = blankCtx();
   const sent = [];
@@ -101,7 +103,8 @@ function play(steps, starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008,
     assert.equal(idx, slot, `换人前提走样：${outId} 号不在名单第 ${slot + 1} 格`);
     _r('home', slot, outId);
     const out = home.lineup.value[idx];
-    const fresh = typeof incoming === 'function' ? incoming(out) : mkPlayer(incoming, out.position, 2);
+    const ab = incomingOf(incoming);
+    const fresh = ab === 0 ? mkZero(incoming, out.position) : mkPlayer(incoming, out.position, ab);
     home.lineup.value[idx] = fresh;
     home.roster.value.push(fresh);
     // cc() 实序：换上的人离开板凳（r.value=m.filter(...)），被换下的人才进板凳
@@ -112,57 +115,76 @@ function play(steps, starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008,
   return { sent: [...sent].sort(Kt), home };
 }
 
+/** 截图那一格的呈现：首格印出来的字（数字或「-」） */
+const cell = (row) => (row.bo != null ? String(row.bo) : '-');
+
 test('#444 未换人时不回归：先发九人各带 1..9 棒，行序即打序', () => {
   const { sent } = play([]);
   assert.deepEqual(sent.map((s) => s.bo), [1, 2, 3, 4, 5, 6, 7, 8, 9], '未换人的打序应完整保序');
   assert.deepEqual(sent.map((s) => s.id), [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009]);
 });
 
-test('#444 症状①上下颠倒：替补继承第 5 棒，先发留在上面那一列', () => {
+test('#444 照截图的呈现：被换下的人保留第 5 棒，换上来的人「-」排在他下方', () => {
   const { sent } = play([[4, 1005, 1010]]);
   const i5 = sent.findIndex((s) => s.id === 1005);
   const i10 = sent.findIndex((s) => s.id === 1010);
-  assert.ok(i5 >= 0, '先发 1005 那一列不能被省略');
-  assert.ok(i10 >= 0, '替补 1010 那一列必须存在');
-  assert.ok(i5 < i10, `BOX SCORE 要能交代换人顺序：先发须在上（实测先发第 ${i5 + 1} 行、替补第 ${i10 + 1} 行）`);
-  assert.equal(sent[i10].bo, 5, '换上来的人继承被换下者的棒次');
-  assert.equal(sent[i5].bo, null, '被换下的人不再持有该棒次（否则同一棒次出现两列，打序长度也会膨胀）');
+  assert.ok(i5 >= 0 && i10 >= 0, '两列都必须在');
+  assert.equal(i10, i5 + 1, '换上来的人必须紧贴在被换下者下方（截图形态），不能隔到别处');
+  assert.equal(sent[i5].bo, 5, '棒次属于「这一格原来的那个人」，被换下仍保留');
+  assert.equal(sent[i10].bo, null, '换上来的人不带棒次（首格渲染成「-」）');
+  assert.deepEqual(sent.map(cell), ['1', '2', '3', '4', '5', '-', '6', '7', '8', '9'],
+    '整列棒次栏的印字：数字连续 1..9，替补那一列是「-」且紧跟第 5 棒');
 });
 
-test('#444 症状②整列消失：只守半局、零打数零守备的先发仍要送出', () => {
+test('#444 症状②整列消失：只守半局、零打数零守备的被换下者仍要送出', () => {
   const { sent } = play([[4, 1005, 1010]], undefined, (id) => id === 1005);
   const out = sent.find((s) => s.id === 1005);
-  assert.ok(out, 'ab=0 的先发不能因为「没带棒次又没统计」被 T() 丢弃（#444 明确要求不能省略）');
-  assert.equal(out.bo, null, '他没棒次是对的，但列必须在');
-  assert.ok(sent.findIndex((s) => s.id === 1010) > sent.findIndex((s) => s.id === 1005));
+  assert.ok(out, 'ab=0 的先发不能因为「没统计」被 T() 丢弃（#444 明确要求不能省略）');
+  assert.equal(out.bo, 5, '他仍保有第 5 棒');
+  assert.equal(sent[sent.findIndex((s) => s.id === 1010)].bo, null);
 });
 
-test('#444 手动双重换人（同槽两次换人）：棒次只属于当前占用者，行序按换人先后', () => {
+test('#444 换上来的人即使什么都没留下也要有一列（带「-」排在原棒次下方）', () => {
+  const { sent } = play([[4, 1005, 1012]], undefined, () => false, () => 'RF', () => 0);
+  const inRow = sent.find((s) => s.id === 1012);
+  assert.ok(inRow, '刚顶上来、还没打也没守备记录的人不能被丢掉');
+  assert.equal(inRow.bo, null, '他不带棒次，首格是「-」');
+  assert.equal(sent.findIndex((s) => s.id === 1012), sent.findIndex((s) => s.id === 1005) + 1);
+});
+
+test('#444 手动双重换人（同槽两次换人）：棒次始终留在原列，两位接手者都带「-」按先后排', () => {
   const { sent } = play([[4, 1005, 1010], [4, 1010, 1011]]);
-  assert.deepEqual(sent.filter((s) => [1005, 1010, 1011].includes(s.id)).map((s) => `${s.id}:${s.bo ?? '-'}`),
-    ['1005:-', '1010:-', '1011:5'], '先发→第一位替补→现任，三人各占一行，只有现任持第 5 棒');
-  assert.equal(sent.filter((s) => s.bo != null).length, 9, '带棒次的列数须恒等于 9，换人不得膨胀打序长度');
+  assert.deepEqual(sent.filter((s) => [1005, 1010, 1011].includes(s.id)).map((s) => `${s.id}:${cell(s)}`),
+    ['1005:5', '1010:-', '1011:-'], '先发→第一位替补→现任，三人各占一行，只有先发持第 5 棒');
+  assert.equal(sent.filter((s) => s.bo != null).length, 9, '带棒次的列数须恒等于 9，换人不得膨胀或缩水打序长度');
 });
 
-test('#444 投手被换下（风险最高的一格）：仍须凑足 9 个带棒次的人', () => {
-  // 无 DH 联盟里第 9 棒就是投手。换投后旧投手的棒次交给新投手，而 GameService
-  // .assertStarterFieldingPositions（#468）是按「有棒次的列数」数先发九人，
-  // 这里掉一列就会在「保存比赛」时被 400 误拦，所以单独钉住。
-  const starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009];
-  const { sent } = play([[8, 1009, 1099]], starters, () => false, (id) => (id === 1009 ? 'P' : 'SS'));
+test('#444 投手被换下（风险最高的一格）：第 9 棒仍留在原投手列上，凑足 9 个带棒次的人', () => {
+  // 无 DH 联盟里第 9 棒就是投手。GameService.assertStarterFieldingPositions（#468）
+  // 是按「有棒次的列数」数先发九人，这里掉一列就会在「保存比赛」时被 400 误拦。
+  const { sent } = play([[8, 1009, 1099]], undefined, () => false, (id) => (id === 1009 ? 'P' : 'SS'));
   const old = sent.find((s) => s.id === 1009);
   const neo = sent.find((s) => s.id === 1099);
-  assert.ok(old && neo, '旧投手与新投手各须一列');
-  assert.equal(neo.bo, 9, '新投手继承第 9 棒');
-  assert.equal(old.bo, null);
-  assert.ok(sent.findIndex((s) => s.id === 1009) < sent.findIndex((s) => s.id === 1099), '旧投手仍排在上面');
+  assert.ok(old, '旧投手那一列必须在，且保有第 9 棒');
+  assert.equal(old.bo, 9);
   assert.equal(sent.filter((s) => s.bo != null).length, 9, '换投不得让带棒次的列数少于 9（否则保存比赛被 400）');
+  assert.ok(!neo || neo.bo == null, '新投手若不在这张表里是因为他还没上场打击，会被打者表过滤器挡掉，不会抢棒次');
+});
+
+test('#444 中间接手者又被换下且什么都没留下：②分支的 keep 才真承重', () => {
+  // 先发（有统计）→ A（零统计，只守了半局就被换下）→ 现任（有统计）。
+  // A 不在①（他不是先发）、也没任何统计，旧码的丢弃条件会把他直接吞掉；
+  // 没这条案例，②分支的 keep 就是未经验证的改动。
+  const { sent } = play([[4, 1005, 1010], [4, 1010, 1011]], undefined, () => false, () => 'SS', (id) => (id === 1010 ? 0 : 2));
+  assert.deepEqual(sent.filter((s) => [1005, 1010, 1011].includes(s.id)).map((s) => `${s.id}:${cell(s)}`),
+    ['1005:5', '1010:-', '1011:-'], '三列按换人先后排在第 5 棒下方，中间那位零统计的也不能被吞');
+  assert.equal(sent.filter((s) => s.bo != null).length, 9);
 });
 
 test('#444 换人前冻结先发：_r() 之后 lineupStarterIds 记的是换人前的名单', () => {
   const { home } = play([[4, 1005, 1010]]);
   assert.deepEqual(home.lineupStarterIds.value, [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, null, null, null],
-    '第 5 格的先发必须仍是 1005，否则 br() 会拿替补当先发、行序与棒次一起错位');
+    '第 5 格的先发必须仍是 1005，否则 br() 会拿替补当先发、棒次与行序一起错位');
   assert.equal(home.slotSubHistory.value[4], null,
     '第一次换人不写历史：被换下者就是先发本身，由 ① 分支涵盖，避免重复列');
   const twice = play([[4, 1005, 1010], [4, 1010, 1011]]);
