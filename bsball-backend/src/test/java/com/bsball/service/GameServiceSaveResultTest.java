@@ -14,7 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -272,6 +274,122 @@ class GameServiceSaveResultTest {
         assertTrue(ex.getMessage().contains("守备位置重复"));
         verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
         verify(gamePlayerStatRepository, never()).findByGameId(anyLong());
+    }
+
+    // ------------------------------------------------------------------ 生产比赛 250 热修：final 补录 / 二刀流打序行
+
+    @Test
+    @DisplayName("已完赛（final）补录：先发不足 9 人不再拦截，统计正常落库")
+    void saveResult_finalGame_skipsStarterValidation() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("final");
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(List.of());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        // 赛后补录只带部分球员，不应再要求先发 9 人齐全
+        dto.setStats(List.of(starterPart(1, "SS"), starterPart(2, "2B")));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(2)).save(any(GamePlayerStat.class));
+        // 先发校验放行不代表门②放行：秩序册统计校验仍必须执行
+        verify(eventRegistrationService).assertStatsPartsInRoster(eq(Long.valueOf(EVENT_ID)), eq(Long.valueOf(GAME_ID)), anyCollection());
+    }
+
+    @Test
+    @DisplayName("现存比赛为 live、本次请求置 final：按 final 放行（同一事务内完赛）")
+    void saveResult_liveToFinalInOneRequest_skipsStarterValidation() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(List.of());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setStatus("final");
+        dto.setGame(gamePart);
+        dto.setStats(List.of(starterPart(1, "SS"), starterPart(2, "2B")));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(2)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("现存比赛为 final、本次请求改回 live：仍按 live 校验并拦截")
+    void saveResult_finalToLiveInOneRequest_stillValidates() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("final");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setStatus("live");
+        dto.setGame(gamePart);
+        dto.setStats(List.of(starterPart(1, "SS"), starterPart(2, "2B")));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("有打序的先发不足 9 人"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("进行中（live）：先发不足 9 人仍拦截")
+    void saveResult_liveGame_stillRequiresNineStarters() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(List.of(starterPart(1, "SS"), starterPart(2, "2B")));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("有打序的先发不足 9 人"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("二刀流打序行（isPitcher=1）不再被剔除：9 人打序仍可通过守位校验")
+    void saveResult_twoWayBattingRows_stillCounted() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID))).thenReturn(List.of());
+        // 结果录入页会把「打者兼投手」合并成一行（isPitcher=1 且带打序）；
+        // 旧实现先剔除 isPitcher=1 的行，9 人打序被算成 7 人而误报。
+        SaveGameResultDTO.StatPart twoWayFourth = starterPart(4, "SS");
+        twoWayFourth.setIsPitcher(Integer.valueOf(1));
+        SaveGameResultDTO.StatPart twoWayNinth = starterPart(9, "C");
+        twoWayNinth.setIsPitcher(Integer.valueOf(1));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(List.of(
+                starterPart(1, "2B"), starterPart(2, "LF"), starterPart(3, "3B"), twoWayFourth,
+                starterPart(5, "CF"), starterPart(6, "1B"), starterPart(7, "RF"), starterPart(8, "P"),
+                twoWayNinth));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(9)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("同一球员同时带打者行与投手行：按球员去重后不足 9 人仍拦截")
+    void saveResult_duplicateRowsPerPlayer_countedOnce() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        // 只有 8 名不同球员；第 8 棒二刀流同时提交打者行与投手行，凑出的 9 行不能算 9 名先发
+        SaveGameResultDTO.StatPart pitcherRow = starterPart(8, "P");
+        pitcherRow.setIsPitcher(Integer.valueOf(1));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(List.of(
+                starterPart(1, "2B"), starterPart(2, "LF"), starterPart(3, "3B"), starterPart(4, "SS"),
+                starterPart(5, "CF"), starterPart(6, "1B"), starterPart(7, "RF"), starterPart(8, "C"),
+                pitcherRow));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("有打序的先发不足 9 人"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
     }
 
     /* ---------- fixtures ---------- */
