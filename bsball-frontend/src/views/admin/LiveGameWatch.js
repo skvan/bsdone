@@ -32,6 +32,7 @@ import { groupLinesIntoBlocks as La } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as Fa } from '../../utils/liveGameFieldLayout';
 import { getFinalCount as Aa } from '../../utils/liveGameFieldLayout';
 import { resolveAtBatGroupBases } from '../../utils/liveGameGroupBases';
+import { derivePitcherStatsFromSummary as LgDerivePitcherStats, mergePitcherStatsWithSummary as LgMergePitcherStats } from '../../utils/liveGameWatchPitcherStats';
 import '../../styles/legacy/live-game-watch.css';
 var Ta={
   class:"header-left"
@@ -659,20 +660,7 @@ var Ta={
     }
     // 旧快照修复（#204 同族）：投手统计对象缺失时，由逐打席记录回算计数（仅可由 PBP 推导的字段，R/ER 不臆造）
     function derivePitcherFromSummary(e,t){
-      let outs=0,h=0,hr=0,iphr=0,bh=0,so=0,pa=0,found=!1;
-      for(const r of t??[]){
-        if(Number(r?.pitcherPlayerId)!==Number(e))continue;
-        found=!0,pa+=1,outs+=Math.max(0,(r.outsAfter??0)-(r.outsBefore??0));
-        const c=String(r.resultCode??"");
-        if(c==="H1"||c==="H2"||c==="H3"||c==="HR"||c==="IPHR")h+=1;
-        if(c==="HR")hr+=1;
-        if(c==="IPHR")iphr+=1;
-        if(c==="BB"||c==="HBP")bh+=1;
-        if(/^K/.test(c))so+=1
-      }
-      return found?{
-        ip:Math.floor(outs/3)+(outs%3)/10,pitchH:h,pitchHr:hr,pitchInsideParkHr:iphr,pitchBbHp:bh,pitchSo:so,pitchPa:pa,pitchBf:pa
-      }:null
+      return LgDerivePitcherStats(e,t)
     }
     function Zt(e,t,a,l){
       for(const s of["home","away"]){
@@ -693,7 +681,7 @@ var Ta={
         }
         ,V=(g.ab??0)+(g.bb??0)+(g.hbp??0)+(g.sf??0)+(g.sh??0),C=B?.isPitcher??0;
         d.push({
-          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchBbHp:k.pitchBbHp,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs
+          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchDoubles:k.pitchDoubles,pitchTriples:k.pitchTriples,pitchBb:k.pitchBb,pitchIbb:k.pitchIbb,pitchHbp:k.pitchHbp,pitchBbHp:k.pitchBbHp??((k.pitchBb??0)+(k.pitchHbp??0)),pitchSh:k.pitchSh,pitchSf:k.pitchSf,pitchIo:k.pitchIo,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,go:k.go,fo:k.fo,gs:k.gs,svo:k.svo,cg:k.cg,pg:k.pg,w:k.w,l:k.l,sv:k.sv,hld:k.hld,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs
         }
         )
       }
@@ -743,16 +731,15 @@ var Ta={
           let z=y.stats??W();
           const P=z.pitching??{
             
-          };
-          if((P.ip??0)===0&&(P.np??0)===0&&(P.pitchH??0)===0&&(P.pitchSo??0)===0&&(P.pitchBbHp??0)===0&&(P.pitchPa??0)===0){
-            const D=derivePitcherFromSummary(k,l);
-            D&&(z={
-              ...z,pitching:{
-                ...W().pitching,...P,...D
-              }
-            }
-            )
           }
+          ,D=derivePitcherFromSummary(k,l);
+          D&&(z={
+            ...z,pitching:LgMergePitcherStats({
+              ...W().pitching,...P
+            }
+            ,D)
+          }
+          )
           const V={
             ...y,position:"P",stats:z
           };
