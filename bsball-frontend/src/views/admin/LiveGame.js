@@ -6496,6 +6496,12 @@ var sg={
       le.value.every(e=>e==null)&&(le.value=gr("away")),fe.value.every(e=>e==null)&&(fe.value=gr("home"))
     }
     function _r(e,t,a){
+      // #444：换人前先把「当时的名单」冻进 lineupStarterIds。不冻的话它一直全 null，
+      // 保存时 No() 第一行的 br() 会拿换人后的名单反推先发 → 替补顶掉先发的棒次与行序
+      // （BOX SCORE 上下颠倒）。这里只在全 null 时填，不会覆盖快照路径带回的值；
+      // 三条换人路径（换守备/代跑/代打）都是在名单数组被改动之前调用本函数，取到的正是换人前状态。
+      const cap=mr(e).value;
+      Array.isArray(cap)&&cap.every(x=>x==null)&&(mr(e).value=gr(e));
       if(t<0||t>=12||a==null)return;
       const s=Number(a);
       if(!Number.isFinite(s)||s<=0)return;
@@ -10473,12 +10479,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       =Ee(e),g=a.value,m=mr(e).value,y=vr(e).value,b=mc(e),w=new Set,P=[];
       let A=0;
-      const T=(d,z)=>{
+      const T=(d,z,keep)=>{
         if(!d||Et(d))return;
         const se=Number(d.id);
         if(!Number.isFinite(se)||se<=0||w.has(se))return;
         const _e=b.get(se)??d;
-        ue(_e),!(z==null&&!Oo(_e))&&(P.push({
+        ue(_e),!(z==null&&!keep&&!Oo(_e))&&(P.push({
           player:_e,battingOrder:z,listOrder:A++
         }
         ),w.add(se))
@@ -10486,10 +10492,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       for(let d=0;
       d<12;
       d++){
-        const z=d+1,se=m[d];
+        const z=d+1,se=m[d],occNow=g[d];
+        // #444：棒次属于「这一格原来的那个人」——他被换下仍保留自己的棒次，换上来的人不带棒次、
+        // 紧跟在他下面（BOX SCORE 首格按 listOrder 成序，即 skvan 指定的「2 Kim m / - Kim jo」）。
+        // 判据只看「记录的先发不是当前占用者」：没换人时 subIn 恒为假，行为与改动前逐字一致；
+        // 第 10~12 格没有记录先发（se==null）也不会被补上棒次，不会凭空长出第 10 棒。
+        // ②是该格的历史替换者（曾任占用者、后来又被换下），同样只留列不带棒次；keep 让
+        // 「整场没打、只守了半局」的人也仍在 payload 里（原先 z==null 且零统计会被 T() 直接丢弃）。
+        const subIn=se!=null&&occNow!=null&&!Et(occNow)&&Number(occNow.id)!==Number(se);
         se!=null&&T(bs(e,se),z);
-        for(const _e of y[d]??[])T(bs(e,_e));
-        T(g[d])
+        for(const _e of y[d]??[])T(bs(e,_e),null,!0);
+        T(occNow,null,subIn)
       }
       for(let d=12;
       d<g.length;
