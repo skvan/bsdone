@@ -27,7 +27,18 @@ test('新增容量：槽位数组与保存循环按 12 槽落位', () => {
 });
 
 test('恢复补齐上限：棒球 12 / 垒球 11（绝对上限，不设开关门禁）', () => {
-  assert.ok(source.includes('N.value==="SOFTBALL"?11:12'), '缺少恢复补齐上限 N.value==="SOFTBALL"?11:12');
+  // PR #461（#445）：该上限从 w() 内联表达式移到 src/utils/liveGameBattingOrder.js 的 lineupSlotCount（语义不变）。
+  // 本断言改为钉住「上限仍存在、仍无开关门禁、无快照重建路径确实走它」；不要为了本条断言把内联式加回 LiveGame.js。
+  const bo = fs.readFileSync(new URL('../src/utils/liveGameBattingOrder.js', import.meta.url), 'utf8');
+  assert.ok(bo.includes("=== 'SOFTBALL' ? 11 : 12"), '缺少恢复补齐上限 lineupSlotCount：垒球 11 / 棒球 12');
+  assert.ok(!/extraBatter|specialRules|forceHalf/.test(bo), '补齐上限是绝对上限：整个工具档都不该知道任何联赛/事件开关（原断言只扫 160 字元，而三个词在工具档里根本不出现，等于永不命中）');
+  // 页面侧必须经由该工具取得槽位，不得回到自己截断（filter(Boolean) 会丢位 = #445 根因）
+  assert.ok(/boResolveSlots\(\{[\s\S]{0,120}?statRows:g,roster:P,teamId:A,sport:N\.value/.test(source), '无快照重建 w() 未调用 boResolveSlots（上限与不丢位保障失效）');
+  const wi = source.indexOf(',w=(P,A)=>{');
+  assert.ok(wi > 0, '找不到 w() 起点');
+  const wj = source.indexOf('\n      };', wi);
+  assert.ok(wj > wi, '找不到 w() 终点');
+  assert.ok(!/\.filter\(Boolean\)/.test(source.slice(wi, wj)), 'w() 不得回到 .filter(Boolean) 丢位写法（#445：丢位会固化 batting_order；原断言只扫 600 字元，加注释就漏）');
   // 快照恢复 Vl 的补齐上限 z 按设计 §六「保持现状」（完整阵容 E.length>=z 时原样返回不裁剪）；
   // 此处固定当前口径防误改，若回归显示 12 人快照被裁剪需按设计放宽时，同步更新本断言。
   assert.ok(source.includes('z=N.value==="SOFTBALL"?10:9'), 'Vl 快照恢复补齐上限应保持 ?10:9（设计明示保持现状）');
@@ -39,7 +50,7 @@ test('剩余合法 11 用法白名单：仅限编译产物下标/常量，不得
   // 2. i[11]/S[11]/t[11] —— 渲染函数内联缓存数组下标（与 i[110]…t[55] 同列，是缓存位置）
   // 3. H(...),11,kg —— createElementVNode 的 patchFlag 位掩码常量（TEXT|CLASS|PROPS 组合位）
   // 4. d.cy±d.r/2-11 —— 场上跑垒图标 SVG 坐标偏移（像素值）
-  // 5. ?11:12 —— 本任务的目标值本身（垒球 11 / 棒球 12 的恢复补齐上限）
+  // 5. ?11:12 —— 原本任务的目标值本身（垒球 11 / 棒球 12 的恢复补齐上限；PR #461 后该式已移入工具档，此处 scrub 保留以防有人把内联式加回来）
   const scrubbed = source
     .replace(/key:11,class:"pmg__pill"/g, '')
     .replace(/key:11,class:"lgpfm__scroll"/g, '')
