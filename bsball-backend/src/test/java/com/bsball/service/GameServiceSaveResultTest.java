@@ -511,6 +511,55 @@ class GameServiceSaveResultTest {
         assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
     }
 
+    @Test
+    @DisplayName("saveResult：载荷缺投手四死栏时保留既有值（与 saveLive 同口径，#387）")
+    void saveResult_missingPitchingFourDeath_preservesExisting() {
+        GamePlayerStat pitcher = pitcherRow();
+        givenExistingRows(pitcher);
+        pitcher.setPitchBbHp(Integer.valueOf(7));
+        pitcher.setPitchBb(Integer.valueOf(5));
+        pitcher.setPitchIbb(Integer.valueOf(1));
+        pitcher.setPitchHbp(Integer.valueOf(2));
+
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(16), Double.valueOf(3.0D)))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(7), pitcher.getPitchBbHp(), "四死合计缺栏不得被抹成 NULL");
+        assertEquals(Integer.valueOf(5), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchIbb());
+        assertEquals(Integer.valueOf(2), pitcher.getPitchHbp(), "触身球缺栏不得被抹成 NULL");
+    }
+
+    @Test
+    @DisplayName("saveResult：显式送 0 仍能清零")
+    void saveResult_explicitZero_stillClears() {
+        GamePlayerStat pitcher = pitcherRow();
+        givenExistingRows(pitcher);
+        pitcher.setPitchBbHp(Integer.valueOf(7));
+        pitcher.setPitchBb(Integer.valueOf(5));
+        pitcher.setPitchIbb(Integer.valueOf(1));
+        pitcher.setPitchHbp(Integer.valueOf(2));
+
+        SaveGameResultDTO.StatPart p =
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(16), Double.valueOf(3.0D));
+        p.setPitchBbHp(Integer.valueOf(0));
+        p.setPitchBb(Integer.valueOf(0));
+        p.setPitchIbb(Integer.valueOf(0));
+        p.setPitchHbp(Integer.valueOf(0));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(p)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(0), pitcher.getPitchBbHp());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchHbp());
+    }
+
     private SaveGameResultDTO.StatPart part(Long id, Long playerId, int isPitcher, Integer ab, Double ip) {
         SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
         part.setId(id);

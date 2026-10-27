@@ -189,6 +189,60 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
     }
 
+    @Test
+    @DisplayName("saveLive：载荷缺投手四死栏时保留既有值，不写成 NULL（#387）")
+    void saveLive_missingPitchingFourDeath_preservesExisting() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        pitcher.setPitchBbHp(Integer.valueOf(3));
+        pitcher.setPitchBb(Integer.valueOf(2));
+        pitcher.setPitchIbb(Integer.valueOf(0));
+        pitcher.setPitchHbp(Integer.valueOf(1));
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(3), pitcher.getPitchBbHp(), "四死合计缺栏不得被抹成 NULL");
+        assertEquals(Integer.valueOf(2), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
+        assertEquals(Integer.valueOf(1), pitcher.getPitchHbp(), "触身球缺栏不得被抹成 NULL");
+    }
+
+    @Test
+    @DisplayName("saveLive：显式送 0 仍能清零（缺栏保留不等于禁止归零，撤销语义不变）")
+    void saveLive_explicitZero_stillClears() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        pitcher.setPitchBbHp(Integer.valueOf(3));
+        pitcher.setPitchBb(Integer.valueOf(2));
+        pitcher.setPitchIbb(Integer.valueOf(4));
+        pitcher.setPitchHbp(Integer.valueOf(1));
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setPitchBbHp(Integer.valueOf(0));
+        part.setPitchBb(Integer.valueOf(0));
+        part.setPitchIbb(Integer.valueOf(0));
+        part.setPitchHbp(Integer.valueOf(0));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(0), pitcher.getPitchBbHp());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchBb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
+        assertEquals(Integer.valueOf(0), pitcher.getPitchHbp());
+    }
+
     private GameSaveLiveDTO dtoWithEr(Integer er) {
         GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
         part.setTeamId(Long.valueOf(TEAM_ID));
