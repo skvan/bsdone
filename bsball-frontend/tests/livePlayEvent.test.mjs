@@ -129,6 +129,21 @@ test('与 createLivePlayEvent 输出兼容（富事件路径保留既有值）',
   assert.equal(play.scoringRunners[0].origin, 'ERROR');
 });
 
+test('漏接三振失误上垒推断为 ERROR 来源（DK3_REACH_E）', () => {
+  const makePlay = (resultCode, runnerId) => toEarnedRunPlay({
+    inning: 1,
+    half: 'top',
+    sequence: 1,
+    pitcherPlayerId: 77,
+    resultCode,
+    scoringRunners: [{ runnerId, responsiblePitcherId: 77, origin: null }]
+  });
+
+  assert.equal(makePlay('DK3_REACH_E', 55).scoringRunners[0].origin, 'ERROR');
+  assert.equal(makePlay('DK3_REACH_WP', 56).scoringRunners[0].origin, 'WILD_PITCH');
+  assert.equal(makePlay('DK3_REACH_PB', 57).scoringRunners[0].origin, 'PASSED_BALL');
+});
+
 test('空/缺字段事件不抛错并给出安全缺省', () => {
   const play = toEarnedRunPlay({});
   assert.equal(play.sequence, 1);

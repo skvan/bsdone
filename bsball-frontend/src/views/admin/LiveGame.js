@@ -29,6 +29,8 @@ import { useModalClose as nd } from '../../composables/useModalClose';
 import { usePermission as ad } from '../../composables/usePermission';
 import { POSITION_LABELS as It } from '../../utils/playerOptions';
 import { parseStoredLiveRecord as Yo } from '../../utils/liveGameStorage';
+// #445 打序重建：解析不到的球员保留槽位（不丢位）＋按该队已完成打席数回溯当前打者指针（纯函数模块）
+import { resolveBattingSlots as boResolveSlots, teamPlateAppearances as boTeamPA, orderLengthOf as boOrderLength, deriveBatterIndex as boBatterIndex, starterIdsOfOrderedStarters as boStarterIds } from '../../utils/liveGameBattingOrder';
 import { watchLocalKey as ws } from '../../utils/liveGameStorage';
 import { takeEntryBootstrap as ld } from '../../utils/liveGameStorage';
 import { pickPreferredLiveRecord as id } from '../../utils/liveGameStorage';
@@ -2105,6 +2107,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Safe on First (PB)")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("dk3:sw:e")
+      }
+      ,[v(B,{
+        variant:c(o)("dk3:sw:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"守备失误上一垒"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Safe on First (E)")])]),n("button",{
         type:"button",class:"lgpfm__item lgpfm__item--red-title",onClick:i[25]||(i[25]=k=>I("dk3:sw:o1"))
       }
       ,[v(B,{
@@ -2150,6 +2167,21 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"Safe on First (PB)")],-1))]),n("button",{
+        type:"button",class:"lgpfm__item",onClick:k=>I("dk3:lk:e")
+      }
+      ,[v(B,{
+        variant:c(o)("dk3:lk:e")
+      }
+      ,null,8,["variant"]),n("span",{
+        class:"lgpfm__item-main"
+      }
+      ,[n("span",{
+        class:"lgpfm__cn"
+      }
+      ,"守备失误上一垒"),n("span",{
+        class:"lgpfm__en"
+      }
+      ,"Safe on First (E)")])]),n("button",{
         type:"button",class:"lgpfm__item lgpfm__item--red-title",onClick:i[28]||(i[28]=k=>I("dk3:lk:o1"))
       }
       ,[v(B,{
@@ -7084,7 +7116,7 @@ var sg={
       }
       if(e.type==="PK")return e.selectRunner?`投手牵制：${t}`:e.pkFailOptionsShown?"牵制失败后局面：":"牵制成功还是失败？";
       if(e.type==="PK_PE")return"牵制暴传：选择失误者，再选择目标垒";
-      if(e.type==="DK3_FIELDER_PICK")return"漏接三振：请选择完成处理的守备员";
+      if(e.type==="DK3_FIELDER_PICK")return e.dk3Code?.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请选择完成处理的守备员";
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
         const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
         if(C2.length>=hu)return`${Y2}出局：${nu(C2)}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
@@ -8647,20 +8679,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       `:""}`;
       D(m),Je("DK3_OUT_1ST",m),l.balls=0,l.strikes=0,Qe()
     }
+    function dk3ReachOnError(e,t){
+      const a=be.value,s=Se.value;
+      if(!a)return;
+      ue(a),ue(s??void 0),a.stats.batting.so=(a.stats.batting.so??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,e?a.stats.batting.so_looking=(a.stats.batting.so_looking??0)+1:a.stats.batting.so_swing=(a.stats.batting.so_swing??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchSo=(s.stats.pitching.pitchSo??0)+1);
+      const r=creditFieldingError(Vt(t)),p=lg(l.runners,a);
+      beginPlayLedger(),ti({origin:"ERROR"}),l.runners[1]=a,a.origin="ERROR",a.responsiblePitcherId=Number(s?.id)>0?Number(s.id):null,Ge(p),l.balls=0,l.strikes=0;
+      const g=e?"判进":"挥空",y=`${a.name}: 漏接三振（${g}）：因守备失误安全上一垒 (K+E)${r?errorCreditNote([t]):""}`;
+      D(y),Je("DK3_REACH_E",y),Qe()
+    }
     function jf(e){
       if(_o()){
         if(l.strikes<2&&l.flow?.type!=="K_CHOOSE"){
           J("漏接三振应在至少两好球后记录","warning");
           return
         }
-        if(!["dk3:sw:wp","dk3:sw:pb","dk3:sw:o1","dk3:lk:wp","dk3:lk:pb","dk3:lk:o1"].includes(e)){
+        if(!["dk3:sw:wp","dk3:sw:pb","dk3:sw:e","dk3:sw:o1","dk3:lk:wp","dk3:lk:pb","dk3:lk:e","dk3:lk:o1"].includes(e)){
           D(LgSys({kind:"dk3_guard",code:e}));
           return
         }
         l.flow={
           type:"DK3_FIELDER_PICK",dk3Code:e,selectRunner:!1
         }
-        ,J("漏接三振：请点击完成处理的守备员","info")
+        ,J(e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员","info")
       }
       
     }
@@ -8671,11 +8712,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         break;
         case"dk3:sw:pb":ii(!1,!1,e);
         break;
+        case"dk3:sw:e":dk3ReachOnError(!1,e);
+        break;
         case"dk3:sw:o1":So(!1,e);
         break;
         case"dk3:lk:wp":ii(!0,!0,e);
         break;
         case"dk3:lk:pb":ii(!1,!0,e);
+        break;
+        case"dk3:lk:e":dk3ReachOnError(!0,e);
         break;
         case"dk3:lk:o1":So(!0,e);
         break;
@@ -10591,28 +10636,43 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           T.set(Number(E.id),E)
         }
         );
-        const Y=new Map;
-        g.filter(E=>E.teamId===A).forEach(E=>{
-          const U=E.battingOrder??0;
-          U>0&&Y.set(U,E)
+        // #445：打序在系统里是靠「数组下标」承载的（batterIndex 取下标、br()/gr() 由下标反推棒次），
+        // 所以这里解析不到 roster 的球员不能丢位——丢一个，其后所有人的下标整体前移一格，
+        // 当前打者指针就指向另一个人，之后的打席全记到错的人头上。保留槽位、用统计行造占位球员。
+        return boResolveSlots({
+          statRows:g,roster:P,teamId:A,sport:N.value
+        }
+        ).map((E,U)=>{
+          const d=Number(E.playerId),z=T.get(d),Y=m.get(`${A}_${d}`)??m.get(`${A}_${E.playerId}`);
+          return b(z??{
+            id:d
+          }
+          ,A,Y,U)
         }
         );
-        const lineupSize=N.value==="SOFTBALL"?11:12;
-        const j=[...Y.entries()].sort(([left],[right])=>left-right).map(([,row])=>row),ee=new Set(j.map(E=>Number(E.playerId))),V=j.length>0?j.map(E=>E.playerId):[];
-        if(j.length>0)for(const E of P){
-          if(V.length>=lineupSize)break;
-          const U=Number(E.id);
-          ee.has(U)||V.push(U)
-        }
-        return V.map((E,U)=>{
-          const d=Number(E),z=T.get(d);
-          return z?b(z,A,m.get(`${A}_${d}`)??m.get(`${A}_${E}`),U):null
-        }
-        ).filter(Boolean)
       };
       Ys();
       try{
         q.value=w(a,t.homeTeamId),X.value=w(s,t.awayTeamId);
+        // #445：本路径是「没有快照、只按云端已保存统计重建」，快照里的 batterIndex／先发打序不会回来，
+        // 不复原就停在第 1 棒（batterIndex 默认 0），之后的每个打席都记到第一棒头上——这就是有人 PA/AB 凭空多一次。
+        // 先发打序：只在「尚未设置」时填充——快照路径回来的真实先发比较准，不能被推导值覆盖。
+        // 且只承认「本场带棒次的人」：w() 补齐进来的板凳在库里没有棒次，照 gr() 原样回送会被 No()
+        // 按槽位+1 写成第 10 棒以后的棒次（ab=0 也照送），一次保存就把真实打线人数从 9 顶成 12。
+        const boFillStarters=(Y,j,A)=>{
+          const cur=j.value;
+          if(Array.isArray(cur)&&cur.some(E=>E!=null))return;
+          j.value=boStarterIds(Y,g,A)
+        };
+        boFillStarters(q.value,fe,t.homeTeamId),boFillStarters(X.value,le,t.awayTeamId);
+        // 当前打者按「该队已完成打席数 mod 真实打线人数」回溯，与 fo() 的推进方式同构。
+        // 模数用真实打线人数，不用 q.value/X.value 的长度：fo() 现场推进按数组长度取模，而未被打断的
+        // 会话里数组长度就等于排棒人数；但 w() 重建会把数组补到上限格数（多出来的是没有棒次的替补），
+        // 按补齐长度反推时 PA=9 会把下一次打席交给那种板凳补位格（合并前评审的 Blocker）。
+        const boHomePa=boTeamPA(g,t.homeTeamId),boAwayPa=boTeamPA(g,t.awayTeamId);
+        const boHomeOrd=boOrderLength(g,t.homeTeamId),boAwayOrd=boOrderLength(g,t.awayTeamId);
+        if(boHomeOrd>0)l.batterIndex.home=Math.min(boBatterIndex(boHomeOrd,boHomePa),q.value.length-1);
+        if(boAwayOrd>0)l.batterIndex.away=Math.min(boBatterIndex(boAwayOrd,boAwayPa),X.value.length-1);
         const P=Y=>new Set(Y.map(j=>Number(j.id))),A=(Y,j,ee)=>{
           const V=[];
           for(const E of Y){
