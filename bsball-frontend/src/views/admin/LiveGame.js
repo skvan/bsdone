@@ -10609,8 +10609,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         };
         boFillStarters(q.value,fe),boFillStarters(X.value,le);
         // 当前打者按「该队已完成打席数 mod 真实打线人数」回溯，与 fo() 的推进方式同构。
-        // 模数不能用 q.value/X.value 的长度：w() 把 9 人棒球打线补到 12 格，
-        // 按 12 取模时 PA=9 就把下一次打席交给没有棒次的板凳补位格（合并前评审的 Blocker）。
+        // 模数用真实打线人数，不用 q.value/X.value 的长度：fo() 现场推进按数组长度取模，而未被打断的
+        // 会话里数组长度就等于排棒人数；但 w() 重建会把数组补到上限格数（多出来的是没有棒次的替补），
+        // 按补齐长度反推时 PA=9 会把下一次打席交给那种板凳补位格（合并前评审的 Blocker）。
         const boHomePa=boTeamPA(g,t.homeTeamId),boAwayPa=boTeamPA(g,t.awayTeamId);
         const boHomeOrd=boOrderLength(g,t.homeTeamId),boAwayOrd=boOrderLength(g,t.awayTeamId);
         if(boHomeOrd>0)l.batterIndex.home=Math.min(boBatterIndex(boHomeOrd,boHomePa),q.value.length-1);
