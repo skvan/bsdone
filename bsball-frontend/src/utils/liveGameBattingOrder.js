@@ -115,6 +115,33 @@ export function starterIdsFromLineup(lineup) {
 }
 
 /**
+ * 名单数组 → lineupStarterIds，但**只承认「本场带棒次的人」为先发**。
+ *
+ * 为什么不直接用上面的 gr() 同口径版：Do() 重建会把名单补到上限格数（棒球 12／垒球 11），
+ * 补进来的板凳在 DB 里没有棒次。若照 gr() 一样把他们填进 lineupStarterIds，保存时 No() 的
+ * ①分支会按「槽位+1」给他们送上 battingOrder=10/11/12 —— 用真实 No() 原文跑过：
+ * ab=0、整场没上场的板凳照样被送出。一次保存之后该队「带棒次的行数」就从 9 变成 12，
+ * orderLengthOf() 跟着变 12，回溯指针开始轮到空板格（#445 的 Blocker 换位置复活）。
+ *
+ * 快照路径（Vl()）带回的 lineupStarterIds 本来就只含有棒次的人，所以这不是新增口径，
+ * 而是把重建路径对齐到快照路径。板凳/换人者仍会照常出现在名单里，只是不冒充先发。
+ */
+export function starterIdsOfOrderedStarters(lineup, statRows, teamId) {
+  const tid = Number(teamId);
+  const ordered = new Set();
+  (Array.isArray(statRows) ? statRows : []).forEach((row) => {
+    if (!row || Number(row.teamId) !== tid || num(row.isPitcher) === 1) return;
+    if (num(row.battingOrder) > 0) ordered.add(Number(row.playerId));
+  });
+  const list = Array.isArray(lineup) ? lineup : [];
+  return Array.from({ length: 12 }, (_, i) => {
+    const id = Number(list[i]?.id);
+    if (!Number.isFinite(id) || id <= 0) return null;
+    return ordered.has(id) ? id : null;
+  });
+}
+
+/**
  * 回溯「当前打者」在打序数组里的下标。
  * 依据：录入时每完成一个打席推进一格（fo() 是全档唯一的「逐打席」推进写入点），换半局的 Af()
  * 只清 outs／跑垒／球数计数、不动指针（Qr() 等其余引用处一律只读），所以

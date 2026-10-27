@@ -22,6 +22,7 @@ import {
   resolveBattingSlots,
   deriveBatterIndex,
   starterIdsFromLineup,
+  starterIdsOfOrderedStarters,
 } from '../src/utils/liveGameBattingOrder.js';
 
 const SRC_PATH = process.env.LIVEGAME_PATH
@@ -142,7 +143,7 @@ const runRestore = (scope) => new Function(...restoreNames, doRestoreBlock())(
 );
 const lineupOf = (from, count) => Array.from({ length: count }, (_, i) => ({ id: from + i }));
 const baseScope = (over = {}) => ({
-  boStarterIds: starterIdsFromLineup,
+  boStarterIds: starterIdsOfOrderedStarters,
   boTeamPA: teamPlateAppearances,
   boOrderLength: orderLengthOf,
   boBatterIndex: deriveBatterIndex,
@@ -295,4 +296,38 @@ test('15 元件层：Do() 还原段对 9 人棒球打线不再指向板凳格', 
   assert.equal(scope.l.batterIndex.away, 7, '客队没有任何带棒次的行 → 指针原封不动（7 是我故意给的不对称初值，能抓住主客写反）');
   assert.equal(scope.fe.value[0], 1001, '主队先发打序必须回填自「主队名单 q」；若与客队 le 写反，这里仍是 null');
   assert.ok(scope.le.value.every((v) => v === null), '客队名单为空 → 客队先发打序保持全 null，不能被主队数据污染');
+  assert.deepEqual(scope.fe.value.slice(0, 9), [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009],
+    '9 个带棒次的人必须按槽位填回先发打序');
+  assert.ok(scope.fe.value.slice(9).every((v) => v === null),
+    'w() 补齐进来的第 10~12 格板凳不得被声明为先发（否则保存时会被写成第 10/11/12 棒）');
+});
+
+/**
+ * 16) 板凳补位冒充先发的污染回归钉（#444/#445 同源）。
+ *     用真实 No() 原文跑过：lineupStarterIds 一旦含补齐的板凳，No() 的①分支就按「槽位+1」
+ *     给他们送上棒次（ab=0 也照送），于是 orderLengthOf() 从 9 变 12、回溯指针开始轮空档。
+ *     这里钉两件事：① gr() 原口径确实会把补位格填进去（污染源存在，不是臆想）；
+ *     ② 重建路径改用的 starterIdsOfOrderedStarters() 必须把他挡成 null。
+ */
+test('16 污染钉：补齐进来的板凳不能被声明为先发（gr() 原口径对照）', () => {
+  const slots12 = resolveBattingSlots({ statRows: NINE_ROWS, roster: ROSTER_15, teamId: TEAM, sport: 'BASEBALL' });
+  const lineup = slots12.map((x) => ({ id: x.playerId }));
+  assert.equal(orderLengthOf(NINE_ROWS, TEAM), 9, '本场真实打线 9 人');
+  assert.deepEqual(grLike(lineup).slice(9), [1010, 1011, 1012],
+    'gr() 原口径会把 roster 补位格当先发——这就是 dev 现况的污染源（Do() 后保存时 br() 会全量反推）');
+  assert.deepEqual(starterIdsOfOrderedStarters(lineup, NINE_ROWS, TEAM),
+    [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, null, null, null],
+    '重建路径必须只承认带棒次的 9 人；板凳留 null，No() 就不会替他们凭空造棒次');
+  // 与快照路径对齐：带回来的先发本就只含有棒次的人，两者必须一致
+  assert.deepEqual(starterIdsOfOrderedStarters(lineup, NINE_ROWS, TEAM),
+    [...Array.from({ length: 9 }, (_, i) => 1001 + i), null, null, null],
+    '重建路径的输出必须与快照路径带回的先发同形（对齐，而不是另立一套口径）');
+});
+
+/** gr() 的等价复刻（只用于第 16 案制造对照；真正的 gr() 口径由第 13 案钉住） */
+const grLike = (lineup) => Array.from({ length: 12 }, (_, i) => {
+  const r = lineup[i];
+  if (!r || (r.id != null && r.id < 0)) return null;
+  const p = Number(r.id);
+  return Number.isFinite(p) && p > 0 ? p : null;
 });
