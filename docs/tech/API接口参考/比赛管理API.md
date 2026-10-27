@@ -272,6 +272,7 @@ EventService --> EventRepository
   - 作用：更新比赛实时比分与部分统计
   - ER 单一写方：若该场已有 `bs_earned_run_play`，请求里的 `er` 被忽略；`pitchR/ER/UER/PENDING` 只由 ER 引擎写。无引擎数据的 legacy 场次仍接受 `er`
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
+  - 换人事务（2026-10-27）：可选 `substitutions` 数组，与 `stats` 同一事务落 `bs_game_substitution_event`；同一 `transactionId` 重试幂等。元素字段：`transactionId/teamId/inning/topBottom/changeType/slot/outPlayerId/inPlayerId/outPosition/inPosition`；`changeType` 为 `SUBSTITUTION/POSITION_CHANGE/PITCHING_CHANGE/DH_CANCEL`。事件只记录净变化，统计事实仍以 `stats` 为准
   - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
   - 参考：`GameApi.java:107-111`
 - POST /game/{id}/earned-runs/reconstruct
@@ -285,7 +286,7 @@ EventService --> EventRepository
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
-  - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；管理端不再提交 `pitchBbHp` 合并列，服务端按 `pitchBb+pitchHbp` 保存拆分字段
+  - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
 - DELETE /game/delete/{id}
@@ -294,6 +295,9 @@ EventService --> EventRepository
 - GET /game/{gameId}/stats
   - 作用：查询某场比赛的球员统计
   - 参考：`GameApi.java:89-93`
+- GET /game/{gameId}/substitutions
+  - 作用：按全场 `sequence` 查询换人事务事件（`bs_game_substitution_event`），用于审计、箱线图换人顺序与现场重建
+  - 响应：`PageResult<GameSubstitutionEvent>`（`list/total`）；字段见数据模型「换人事务事件（GameSubstitutionEvent）」
 - POST /game/stats/create
 - PUT /game/stats/update/{id}
 - DELETE /game/stats/delete/{id}

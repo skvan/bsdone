@@ -18,6 +18,7 @@ import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -50,6 +51,8 @@ class GameRosterValidationTest {
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
+    private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -71,7 +74,7 @@ class GameRosterValidationTest {
 
     @BeforeEach
     void setUp() {
-        gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
+        gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
         statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,

@@ -94,3 +94,7 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 .card-body-fullscreen .field-svg-wrap>.ballpark-svg[data-v-78b7b6a8]{flex:1 1 auto;min-height:200px;width:auto;height:100%;max-width:100%!important;margin:0 auto}}
 .hr-drag-preview circle{filter:drop-shadow(0 0 6px rgba(255,79,216,.8))}
 .hr-drag-preview__label{fill:#fff;font-size:20px;font-weight:700;paint-order:stroke;stroke:#14532d;stroke-width:4px}
+
+/* ===== 换人事务模式（#444 后续） ===== */
+.live-sub-mode-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #e6a23c;background:#fdf6ec;color:#8a5a00;border-radius:6px;font-size:13px;line-height:1.4;position:relative;z-index:6}
+.live-sub-mode-banner>span{flex:1 1 260px;min-width:220px}

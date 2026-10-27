@@ -17,10 +17,12 @@ import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.GameSubstitutionEvent;
 import com.bsball.model.entity.Stadium;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -38,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
@@ -51,8 +54,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GameService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
     private final GameRepository gameRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
+    private final GameSubstitutionEventRepository gameSubstitutionEventRepository;
     private final EventRepository eventRepository;
     private final StadiumRepository stadiumRepository;
     private final AccountScopeService accountScopeService;
@@ -320,6 +325,109 @@ public class GameService {
                 this.gamePlayerStatRepository.save(newStat);
             }
         }
+        this.saveSubstitutionEvents(game, dto.getSubstitutions());
+    }
+
+    /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */
+    private void saveSubstitutionEvents(Game game, List<GameSaveLiveDTO.SubstitutionPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return;
+        }
+        if (parts.size() > 24) {
+            throw new BusinessException(400, "换人事务变更过多");
+        }
+        String transactionId = parts.get(0) == null ? null : parts.get(0).getTransactionId();
+        if (transactionId == null || transactionId.isBlank()) {
+            throw new BusinessException(400, "换人事务缺少 transactionId");
+        }
+        if (this.gameSubstitutionEventRepository.existsByGameIdAndTransactionId(game.getId(), transactionId)) {
+            return;
+        }
+        List<EventRegistrationService.StatsRef> refs = new ArrayList<>();
+        List<GameSubstitutionEvent> events = new ArrayList<>();
+        int sequence = this.gameSubstitutionEventRepository.findMaxSequence(game.getId());
+        int changeSeq = 0;
+        for (GameSaveLiveDTO.SubstitutionPart part : parts) {
+            if (part == null) {
+                continue;
+            }
+            this.validateSubstitutionPart(game, part, transactionId, refs);
+            events.add(this.toSubstitutionEvent(game, part, transactionId, ++sequence, ++changeSeq));
+        }
+        this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), game.getId(), refs);
+        this.gameSubstitutionEventRepository.saveAll(events);
+    }
+
+    private void validateSubstitutionPart(Game game, GameSaveLiveDTO.SubstitutionPart part,
+            String transactionId, List<EventRegistrationService.StatsRef> refs) {
+        if (!transactionId.equals(part.getTransactionId())) {
+            throw new BusinessException(400, "换人事务 ID 不一致");
+        }
+        Long teamId = part.getTeamId();
+        if (!Objects.equals(teamId, game.getHomeTeamId()) && !Objects.equals(teamId, game.getAwayTeamId())) {
+            throw new BusinessException(400, "换人球队不属于本场比赛");
+        }
+        String changeType = part.getChangeType() == null ? "" : part.getChangeType().trim().toUpperCase();
+        if (!ALLOWED_SUBSTITUTION_TYPES.contains(changeType)) {
+            throw new BusinessException(400, "未知换人类型：" + part.getChangeType());
+        }
+        if (part.getSlot() != null && (part.getSlot() < 1 || part.getSlot() > 12)) {
+            throw new BusinessException(400, "换人槽位越界");
+        }
+        if (part.getOutPlayerId() == null && part.getInPlayerId() == null) {
+            throw new BusinessException(400, "换人事件缺少球员");
+        }
+        if ("SUBSTITUTION".equals(changeType) && Objects.equals(part.getOutPlayerId(), part.getInPlayerId())) {
+            throw new BusinessException(400, "换下与换上球员不能相同");
+        }
+        if ("POSITION_CHANGE".equals(changeType) && !Objects.equals(part.getOutPlayerId(), part.getInPlayerId())) {
+            throw new BusinessException(400, "守位调整的球员必须一致");
+        }
+        if (part.getOutPlayerId() != null) {
+            refs.add(new EventRegistrationService.StatsRef(teamId, part.getOutPlayerId()));
+        }
+        if (part.getInPlayerId() != null) {
+            refs.add(new EventRegistrationService.StatsRef(teamId, part.getInPlayerId()));
+        }
+    }
+
+    private GameSubstitutionEvent toSubstitutionEvent(Game game, GameSaveLiveDTO.SubstitutionPart part,
+            String transactionId, int sequence, int changeSeq) {
+        GameSubstitutionEvent event = new GameSubstitutionEvent();
+        event.setGameId(game.getId());
+        event.setTenantId(game.getTenantId());
+        event.setTeamId(part.getTeamId());
+        event.setTransactionId(transactionId);
+        event.setInning(part.getInning());
+        event.setTopBottom(part.getTopBottom());
+        event.setSequence(sequence);
+        event.setChangeSeq(changeSeq);
+        event.setChangeType(part.getChangeType().trim().toUpperCase());
+        event.setSlot(part.getSlot());
+        event.setOutPlayerId(part.getOutPlayerId());
+        event.setInPlayerId(part.getInPlayerId());
+        event.setOutPosition(normalizePosition(part.getOutPosition()));
+        event.setInPosition(normalizePosition(part.getInPosition()));
+        return event;
+    }
+
+    private static String normalizePosition(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim().toUpperCase();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() > 8 ? trimmed.substring(0, 8) : trimmed;
+    }
+
+    /** 换人事务事件（按全场顺序）；读取沿用比赛详情的数据范围校验。 */
+    public List<GameSubstitutionEvent> listSubstitutions(Long gameId) {
+        if (this.get(gameId) == null) {
+            throw new BusinessException(403, "无权查看该比赛");
+        }
+        return this.gameSubstitutionEventRepository.findByGameIdOrderBySequenceAscIdAsc(gameId);
     }
 
     /** 该场是否已有 ER 引擎事件；供前端把 ER/R 设为只读。 */
@@ -1022,9 +1130,10 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.gameSubstitutionEventRepository = gameSubstitutionEventRepository;
         this.eventRepository = eventRepository;
         this.stadiumRepository = stadiumRepository;
         this.accountScopeService = accountScopeService;
