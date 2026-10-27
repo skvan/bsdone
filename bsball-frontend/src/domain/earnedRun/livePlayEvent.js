@@ -76,7 +76,7 @@ export function inferRunnerOrigin(explicitOrigin, resultCode) {
   if (RUNNER_ORIGINS.has(explicitOrigin)) return explicitOrigin;
   const code = String(resultCode ?? '').toUpperCase();
   if (code === 'TIE_BREAK' || code === 'TBR') return 'TIE_BREAK';
-  if (code === 'ADVANCE_FE' || code === 'ERROR_ADVANCE') return 'ERROR';
+  if (code === 'ADVANCE_FE' || code === 'ERROR_ADVANCE' || code === 'DK3_REACH_E') return 'ERROR';
   if (/^E(?:[0-9]+)?$/.test(code) || code.startsWith('ERROR')) return 'ERROR';
   if (code === 'WP' || code === 'WILD_PITCH' || code === 'DK3_REACH_WP') return 'WILD_PITCH';
   if (code === 'PB' || code === 'PASSED_BALL' || code === 'CATCHER_ERROR'
