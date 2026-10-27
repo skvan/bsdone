@@ -29,8 +29,7 @@ function buildStats(played = false) {
       listOrder: index,
       ...zeroStats()
     };
-    if (played && player.id === 201) Object.assign(row, { pa: 1, ab: 1, so: 1, soSwing: 1 });
-    if (played && player.id === 101) Object.assign(row, { np: 1, pitchBf: 1, pitchPa: 1, pitchSo: 1 });
+    if (played && player.id === 101) Object.assign(row, { np: 1, pitchBf: 1, pitchPa: 1 });
     return row;
   });
 }

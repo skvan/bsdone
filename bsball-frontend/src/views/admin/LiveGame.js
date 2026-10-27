@@ -5105,7 +5105,7 @@ var sg={
       const text=ll(row);
       return typeof text=="string"&&text.trim()!==""&&!text.includes("比赛开始")
     }
-    ))||(Array.isArray(Me.value)&&Me.value.length>0)||(Array.isArray(f.playEvents)&&f.playEvents.length>0)||[q.value,X.value,ye.value,ae.value].some(list=>Array.isArray(list)&&list.some(hasRecordedPlayerActivity))||(l.outs??0)>0||(l.inning??1)>1||!l.isTop||(l.batterIndex?.away??0)>0||(l.batterIndex?.home??0)>0||!!l.runners?.[1]||!!l.runners?.[2]||!!l.runners?.[3]||(o.away.score??0)>0||(o.home.score??0)>0||(l.balls??0)>(K.value??0)||(l.strikes??0)>(M.value??0)));
+    ))||(Array.isArray(Me.value)&&Me.value.length>0)||[q.value,X.value,ye.value,ae.value].some(list=>Array.isArray(list)&&list.some(hasRecordedPlayerActivity))||(l.outs??0)>0||(l.inning??1)>1||!l.isTop||(l.batterIndex?.away??0)>0||(l.batterIndex?.home??0)>0||!!l.runners?.[1]||!!l.runners?.[2]||!!l.runners?.[3]||(o.away.score??0)>0||(o.home.score??0)>0||(l.balls??0)>(K.value??0)||(l.strikes??0)>(M.value??0)));
     function Ee(e){
       return e==="away"?{
         lineup:X,bench:ae,roster:Ue,fpRow:De,fpId:O,unavail:Ie,lineupStarterIds:le,slotSubHistory:Ae,lastDhAddedFromPoolId:Xe,team:o.away

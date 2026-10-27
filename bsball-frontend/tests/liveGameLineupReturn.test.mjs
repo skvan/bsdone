@@ -20,7 +20,7 @@ test('编辑阵容按钮同时出现在常规头部与全屏工具栏', () => {
   assert.equal((src.match(/disabled:c\(firstPlayStarted\)/g) ?? []).length, 2, '两个入口都应按首个 Play 状态禁用');
 });
 
-test('首个 Play 判定排除比赛开始日志，并兼容打席与 playEvents 状态', () => {
+test('首个 Play 判定排除比赛开始日志，并兼容打席与已保存统计', () => {
   const src = read('../src/views/admin/LiveGame.js');
   const helper = slice(src, 'function hasRecordedPlayerActivity(player){', 'const firstPlayStarted=');
   assert.match(helper, /\(b\.ab\?\?0\)>0/, '未检查打者数据');
@@ -30,7 +30,7 @@ test('首个 Play 判定排除比赛开始日志，并兼容打席与 playEvents
   assert.match(body, /ke\.value/, '未使用实时日志判断');
   assert.match(body, /!text\.includes\("比赛开始"\)/, '比赛开始日志不应视为首个 Play');
   assert.match(body, /Me\.value\.length>0/, '未兼容已存在的打席摘要');
-  assert.match(body, /f\.playEvents\.length>0/, '未兼容已存在的 playEvents');
+  assert.ok(!/f\.playEvents/.test(body), '不应依赖可能跨场残留的 playEvents');
   assert.match(body, /hasRecordedPlayerActivity/, '未兼容从已保存统计重建的现场');
   assert.match(body, /\(l\.outs\?\?0\)>0/, '未兼容局面出局数');
   assert.match(body, /\(o\.away\.score\?\?0\)>0/, '未兼容比分');
