@@ -175,7 +175,7 @@ test('LiveGame 静态接线：Qr 改用统一序列；保存与强制换局前�
   assert.match(flushBody, /takeAllRuns\(runLedger\),f\.playEvents\.push\(event\),syncEarnedRunHalfInning\(event\)/,
     '清台账、入 playEvents、同步重建');
 
-  const save = liveGame.slice(liveGame.indexOf('async function hs(e){'), liveGame.indexOf('async function gc(){'));
+  const save = liveGame.slice(liveGame.indexOf('async function hsRun(e){'), liveGame.indexOf('async function gc(){'));
   assert.match(save, /flushPendingRunsToPlayEvent\(\)\|\|resyncEarnedRunHalfInningForSave\(\),await earnedRunSyncPending/,
     '保存前补记台账；无补记时也按当前半局对账（覆盖撤销后的后端判定）');
 

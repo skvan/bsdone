@@ -497,6 +497,11 @@ public class GameService {
         }
         if (dto.getGame() != null && !Boolean.TRUE.equals(dto.getGame().getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u5bfc\u5165\u6bd4\u8d5b");
+            // 导入缺省落 final（历史数据补录）；与 save-result 同口径，仅进行中场次做 P/DH 拦截
+            String importStatus = dto.getGame().getStatus() != null ? dto.getGame().getStatus() : "final";
+            if (!"final".equalsIgnoreCase(importStatus)) {
+                this.assertPitcherDhRule(dto.getStats(), "\u5bfc\u5165\u6bd4\u8d5b");
+            }
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Event ev = this.eventRepository.findById(eventId).orElse(null);
@@ -582,6 +587,11 @@ public class GameService {
                     : game.getStatus();
             if (!"final".equalsIgnoreCase(effectiveStatus)) {
                 this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            }
+            // P/DH 校验按「库内状态 + 本次请求状态」取非 final 门控：同请求置 final 不能绕过，
+            // final 重开为 live 也照常校验；仅两侧都已完赛（纯赛后补录）不拦截
+            if (!"final".equalsIgnoreCase(game.getStatus()) || !"final".equalsIgnoreCase(effectiveStatus)) {
+                this.assertPitcherDhRule(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
             }
             // 门②（Issue #310）：统计写入门；若本请求同时迁移 eventId，按目标赛事口径校验
             Long rosterEventId = dto.getGame() != null && dto.getGame().getEventId() != null
@@ -914,6 +924,44 @@ public class GameService {
             LinkedHashSet<String> unique = new LinkedHashSet<>(positions);
             if (unique.size() == positions.size()) continue;
             throw new BusinessException(400, sceneLabel + "\u5931\u8d25\uff1a\u7403\u961f(" + teamId + ")\u6709\u6253\u5e8f\u7684\u5148\u53d1\u5b88\u5907\u4f4d\u7f6e\u91cd\u590d");
+        }
+    }
+
+    /**
+     * P/DH 强校验：同一球队的打击行不可同时出现 DH 与打击投手（P）。
+     * 只按 battingOrder>0 判定打击行（isPitcher=1 也可能带打序，如二刀流合并行）；
+     * 官方规则 5.11(b) 允许同一球员既列 DH 又列投手，故仅当两侧球员集合不一致时拦截。
+     */
+    private void assertPitcherDhRule(List<SaveGameResultDTO.StatPart> stats, String sceneLabel) {
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        Map<Long, List<SaveGameResultDTO.StatPart>> rowsByTeam = stats.stream()
+                .filter(Objects::nonNull)
+                .filter(s -> s.getTeamId() != null)
+                .collect(Collectors.groupingBy(SaveGameResultDTO.StatPart::getTeamId));
+        for (List<SaveGameResultDTO.StatPart> teamRows : rowsByTeam.values()) {
+            Set<Long> dhPlayerIds = new LinkedHashSet<>();
+            Set<Long> pitcherPlayerIds = new LinkedHashSet<>();
+            for (SaveGameResultDTO.StatPart row : teamRows) {
+                if (row.getBattingOrder() == null || row.getBattingOrder() <= 0) {
+                    continue;
+                }
+                String position = row.getPosition() == null ? "" : row.getPosition().trim().toUpperCase();
+                if ("DH".equals(position)) {
+                    dhPlayerIds.add(row.getPlayerId());
+                } else if ("P".equals(position)) {
+                    pitcherPlayerIds.add(row.getPlayerId());
+                }
+            }
+            if (dhPlayerIds.isEmpty() || pitcherPlayerIds.isEmpty()) {
+                continue;
+            }
+            // 仅同一名非空球员既列 DH 又列投手时放行；多 DH 或含空球员 id 均按冲突拦截
+            if (dhPlayerIds.size() == 1 && dhPlayerIds.equals(pitcherPlayerIds) && !dhPlayerIds.contains(null)) {
+                continue;
+            }
+            throw new BusinessException(400, sceneLabel + "失败：指定打击制下 DH 与打击投手（P）不能同时进入打序");
         }
     }
 

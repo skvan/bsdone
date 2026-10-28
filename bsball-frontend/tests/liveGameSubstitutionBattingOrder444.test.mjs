@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { orderPitcherRows } from '../src/utils/liveGamePitcherOrder.js';
 
 const SRC_PATH = process.env.LIVEGAME_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js');
@@ -48,7 +49,7 @@ const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'dc', 'mr', 'vr', 
 const code = DEPS.map((n) => sliceFn('function ' + n + '(')).join('\n')
   + '\n' + sliceFn('function _r(e,t,a){') + '\n' + sliceFn('function No(e,t){');
 // No/br 用到的自由变量依原文注入：Ee 取队伍上下文、_ 是赛事对象、Eo 组 payload
-const make = new Function('Ee', '_', 'ft', 'Eo', 'Nn', 'le', 'fe',
+const make = new Function('Ee', '_', 'ft', 'Eo', 'Nn', 'le', 'fe', 'orderPitcherRows',
   'return (function(){' + code + '\nreturn {No,_r};})()');
 
 const ref = (v) => ({ value: v });
@@ -97,7 +98,7 @@ function play(steps, starters = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008,
     () => {},
     (pl, t, o) => { sent.push({ id: Number(pl.id), bo: o.battingOrder === undefined ? null : o.battingOrder, lo: o.listOrder, ab: pl.stats.batting.ab }); return {}; },
     (pos) => String(pos ?? '').toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds);
+    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows);
   for (const [slot, outId, incoming] of steps) {
     const idx = home.lineup.value.findIndex((p) => Number(p.id) === outId);
     assert.equal(idx, slot, `换人前提走样：${outId} 号不在名单第 ${slot + 1} 格`);
