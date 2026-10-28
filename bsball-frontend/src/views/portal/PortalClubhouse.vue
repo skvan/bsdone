@@ -111,11 +111,13 @@
       <div v-if="layoutEditing" class="layout-edit-banner">
         <div class="edit-copy">
           <b>布局编辑</b>
-          <span v-if="selectedModule" class="edit-selected">
+          <span v-if="swapTargetLabel" class="edit-swap" role="status" aria-live="polite">松开与「{{ swapTargetLabel }}」交换位置</span>
+          <span v-else-if="selectedModule" class="edit-selected">
             <b>{{ selectedModule.label }}</b>
             <em>{{ selectionSizeLabel }}</em>
+            <i v-if="contentLimitHeight" class="edit-content-limit">内容下限 {{ contentLimitHeight }}px</i>
           </span>
-          <span v-else>拖动模块调整位置；拖动八个小方块缩放；点击空白处取消选中</span>
+          <span v-else>拖动模块调整位置；拖到另一模块上可交换；拖动八个小方块缩放；点击空白处取消选中</span>
         </div>
         <div class="edit-actions">
           <button v-if="selectedModule" type="button" class="edit-reset" :disabled="layoutSaving" @click="resetSelectedModule">重置尺寸</button>
@@ -598,6 +600,15 @@
         ></button>
       </div>
 
+      <div
+        v-if="swapTargetRect"
+        class="layout-swap-frame"
+        :style="swapFrameStyle"
+        aria-hidden="true"
+      >
+        <span class="swap-frame-badge">松手交换</span>
+      </div>
+
       <div v-if="!activeModules.length" class="panel dashboard-empty">
         <span class="kicker">EMPTY DASHBOARD</span>
         <h3>所有内容模块已隐藏</h3>
@@ -762,8 +773,11 @@ import {
   clamp,
   clampToBoard,
   collidesWithAny,
+  findSwapTarget,
+  movedRect,
   moveModule,
   packModules,
+  planSwap,
   resizeModule
 } from './clubhouseBoard.js';
 
@@ -805,10 +819,13 @@ const layoutDragging = ref(false);
 const layoutSaving = ref(false);
 const layoutBlocked = ref(false);
 const layoutStatus = ref('');
+const contentLimitHeight = ref(0);
 const freeBoard = ref(freeBoardQuery.matches);
 const compactBoard = ref(compactBoardQuery.matches);
 const selectedModuleKey = ref('');
 const selectionRect = ref(null);
+const swapTargetKey = ref('');
+const swapTargetRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
@@ -819,6 +836,7 @@ let milestoneScrollDrag = null;
 let milestoneResizeObserver = null;
 let moduleSortable = null;
 let layoutPointer = null;
+const contentMeasureCache = new Map();
 let selectionObserver = null;
 let keyboardLayoutSnapshot = null;
 let keyboardLayoutTimer = null;
@@ -1062,7 +1080,10 @@ function moduleLayoutStyle(key) {
       left: `${module.x}px`,
       top: `${module.y}px`,
       width: `${module.width}px`,
-      height: `${module.height}px`
+      height: `${module.height}px`,
+      ...(layoutDragging.value && selectedModuleKey.value === key
+        ? { zIndex: 30, opacity: swapTargetKey.value ? 0.6 : undefined, transition: 'opacity 120ms ease-out' }
+        : {})
     };
   }
   if (compactBoard.value && module.width >= 900) {
@@ -1072,40 +1093,31 @@ function moduleLayoutStyle(key) {
 }
 
 const selectedModule = computed(() => activeModules.value.find((item) => item.key === selectedModuleKey.value) || null);
-const selectionFrameStyle = computed(() => {
-  const rect = selectionRect.value;
-  if (!rect) return {};
-  return {
-    left: `${rect.left - 2}px`,
-    top: `${rect.top - 2}px`,
-    width: `${rect.width + 4}px`,
-    height: `${rect.height + 4}px`
-  };
-});
+const selectionFrameStyle = computed(() => frameStyle(selectionRect.value));
 const selectionSizeLabel = computed(() => {
   const module = selectedModule.value;
   if (!module) return '';
   return `${module.width} × ${module.height} px`;
 });
+const swapTargetLabel = computed(() => {
+  if (!swapTargetKey.value) return '';
+  return activeModules.value.find((module) => module.key === swapTargetKey.value)?.label || '';
+});
+const swapFrameStyle = computed(() => frameStyle(swapTargetRect.value));
 
 function moduleElement(key) {
   return document.querySelector(`.dashboard-module[data-module-key="${key}"]`);
 }
 
-function updateSelectionRect() {
-  if (!layoutEditing.value || !selectedModuleKey.value) {
-    selectionRect.value = null;
-    return;
-  }
-  const el = moduleElement(selectedModuleKey.value);
+/** 模块相对页面容器的矩形；用于选中框与交换目标框。 */
+function frameRect(key) {
+  if (!key) return null;
+  const el = moduleElement(key);
   const page = pageEl.value;
-  if (!el || !page) {
-    selectionRect.value = null;
-    return;
-  }
+  if (!el || !page) return null;
   const rect = el.getBoundingClientRect();
   const pageRect = page.getBoundingClientRect();
-  selectionRect.value = {
+  return {
     left: rect.left - pageRect.left,
     top: rect.top - pageRect.top,
     width: rect.width,
@@ -1113,16 +1125,86 @@ function updateSelectionRect() {
   };
 }
 
+function frameStyle(rect) {
+  if (!rect) return {};
+  return {
+    left: `${rect.left - 2}px`,
+    top: `${rect.top - 2}px`,
+    width: `${rect.width + 4}px`,
+    height: `${rect.height + 4}px`
+  };
+}
+
+/** 量出模块在指定宽度下的内容自然高度（临时 auto 高度，量完立即还原）。 */
+function measureModuleContentHeight(key, width) {
+  const el = moduleElement(key);
+  if (!el) return 0;
+  const cacheKey = `${key}#${width == null ? 'auto' : Math.round(width)}`;
+  if (contentMeasureCache.has(cacheKey)) return contentMeasureCache.get(cacheKey);
+  const prevWidth = el.style.width;
+  const prevHeight = el.style.height;
+  if (width != null && Number.isFinite(width)) el.style.width = `${Math.max(1, Math.round(width))}px`;
+  el.style.height = 'auto';
+  const height = el.offsetHeight;
+  el.style.width = prevWidth;
+  el.style.height = prevHeight;
+  contentMeasureCache.set(cacheKey, height);
+  return height;
+}
+
+function resizeModuleWithinContent(startRect, direction, dx, dy, minWidth, minHeight, others) {
+  const base = resizeModule(startRect, direction, dx, dy, minWidth, minHeight, others);
+  if (!base) return { candidate: null, contentMin: 0, limited: false };
+  const contentMin = measureModuleContentHeight(startRect.key, base.width);
+  if (!contentMin || base.height + 0.5 >= contentMin) {
+    return { candidate: base, contentMin, limited: false };
+  }
+  const adjusted = resizeModule(
+    startRect,
+    direction,
+    dx,
+    dy,
+    minWidth,
+    Math.max(minHeight, contentMin),
+    others
+  );
+  return { candidate: adjusted, contentMin, limited: true };
+}
+
+function updateSelectionRect() {
+  if (!layoutEditing.value || !selectedModuleKey.value) {
+    selectionRect.value = null;
+    return;
+  }
+  selectionRect.value = frameRect(selectedModuleKey.value);
+}
+
 function scheduleSelectionFrame() {
   if (selectionFrameRaf) return;
   selectionFrameRaf = requestAnimationFrame(() => {
     selectionFrameRaf = 0;
     updateSelectionRect();
+    updateSwapFrame();
   });
+}
+
+function updateSwapFrame() {
+  swapTargetRect.value = swapTargetKey.value ? frameRect(swapTargetKey.value) : null;
+}
+
+function setSwapTarget(target) {
+  swapTargetKey.value = target?.key || '';
+  updateSwapFrame();
+}
+
+function clearSwapTarget() {
+  swapTargetKey.value = '';
+  swapTargetRect.value = null;
 }
 
 function applyModuleSelection(key, focusHandle = false) {
   selectedModuleKey.value = key;
+  contentLimitHeight.value = 0;
   updateSelectionRect();
   nextTick(() => {
     updateSelectionRect();
@@ -1147,6 +1229,7 @@ function clearModuleSelection({ restoreFocus = false } = {}) {
   flushKeyboardLayout();
   selectedModuleKey.value = '';
   selectionRect.value = null;
+  contentLimitHeight.value = 0;
   selectionObserver?.disconnect();
   selectionObserver = null;
   if (restoreFocus && key) {
@@ -1227,6 +1310,7 @@ function otherModuleRects(key) {
 function moveSelectedBy(dx, dy) {
   const module = selectedModule.value;
   if (!module || layoutSaving.value || !freeBoard.value) return false;
+  contentLimitHeight.value = 0;
   const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
   const candidate = moveModule(moduleRect(module), dx, dy, otherModuleRects(module.key));
   if (!candidate) return false;
@@ -1241,7 +1325,7 @@ function resizeSelectedBy(direction, dx, dy) {
   const module = selectedModule.value;
   if (!module || layoutSaving.value || !freeBoard.value || !direction) return false;
   const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
-  const candidate = resizeModule(
+  const result = resizeModuleWithinContent(
     moduleRect(module),
     direction,
     dx,
@@ -1250,8 +1334,9 @@ function resizeSelectedBy(direction, dx, dy) {
     module.minHeight,
     otherModuleRects(module.key)
   );
-  if (!candidate) return false;
-  updateModuleRect(module.key, candidate);
+  contentLimitHeight.value = result.limited ? result.contentMin : 0;
+  if (!result.candidate) return false;
+  updateModuleRect(module.key, result.candidate);
   keyboardLayoutSnapshot = snapshot;
   nextTick(updateSelectionRect);
   scheduleKeyboardLayoutSave();
@@ -1299,6 +1384,7 @@ function startModulePointer(key, event) {
   }
   const module = selectedModule.value;
   if (!module) return;
+  contentLimitHeight.value = 0;
   event.preventDefault();
   try {
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -1321,6 +1407,7 @@ function startResize(direction, event) {
   // 有未落地的键盘微调时，flush 会立即开始保存，本次手势应放弃
   flushKeyboardLayout();
   if (layoutSaving.value) return;
+  contentLimitHeight.value = 0;
   beginLayoutPointer(event, {
     mode: 'resize',
     key: module.key,
@@ -1333,6 +1420,7 @@ function startResize(direction, event) {
 }
 
 function beginLayoutPointer(event, state) {
+  contentMeasureCache.clear();
   layoutPointer = {
     ...state,
     pointerId: event.pointerId,
@@ -1342,11 +1430,13 @@ function beginLayoutPointer(event, state) {
     lastClientX: event.clientX,
     lastClientY: event.clientY,
     moved: false,
+    lastValid: state.startRect,
+    swapPlan: null,
     raf: 0
   };
   window.addEventListener('pointermove', onLayoutPointerMove, true);
   window.addEventListener('pointerup', finishLayoutPointer, true);
-  window.addEventListener('pointercancel', finishLayoutPointer, true);
+  window.addEventListener('pointercancel', cancelLayoutPointer, true);
   window.addEventListener('lostpointercapture', finishLayoutPointer, true);
   window.addEventListener('blur', cancelLayoutPointer, true);
   layoutPointer.raf = requestAnimationFrame(autoScrollLayoutPointer);
@@ -1377,10 +1467,19 @@ function applyLayoutPointer() {
   const dy = state.lastClientY - state.startY + (window.scrollY - state.startScrollY);
   const others = otherModuleRects(state.key);
   let candidate;
+  let swapPlan = null;
   if (state.mode === 'move') {
-    candidate = moveModule(state.startRect, dx, dy, others);
+    const dragged = movedRect(state.startRect, dx, dy);
+    candidate = collidesWithAny(dragged, others) ? null : dragged;
+    updateModuleRect(state.key, dragged);
+    if (candidate) {
+      state.lastValid = candidate;
+    } else {
+      const target = findSwapTarget(dragged, others);
+      swapPlan = target ? planSwap(state.startRect, target, others) : null;
+    }
   } else {
-    candidate = resizeModule(
+    const result = resizeModuleWithinContent(
       state.startRect,
       state.direction,
       dx,
@@ -1389,12 +1488,18 @@ function applyLayoutPointer() {
       state.minHeight,
       others
     );
+    candidate = result.candidate;
+    contentLimitHeight.value = result.limited ? result.contentMin : 0;
+    if (candidate) updateModuleRect(state.key, candidate);
   }
-  layoutBlocked.value = !candidate;
-  if (candidate) {
-    updateModuleRect(state.key, candidate);
-    nextTick(scheduleSelectionFrame);
+  state.swapPlan = swapPlan;
+  if (swapPlan) {
+    setSwapTarget(swapPlan.target);
+  } else {
+    clearSwapTarget();
   }
+  layoutBlocked.value = !candidate && !swapPlan;
+  nextTick(scheduleSelectionFrame);
   layoutDragging.value = state.mode === 'move';
   layoutResizing.value = state.mode === 'resize';
 }
@@ -1405,12 +1510,25 @@ function finishLayoutPointer(event) {
   const state = layoutPointer;
   clearLayoutPointer();
   nextTick(updateSelectionRect);
+  if (state.swapPlan) {
+    applySwapPlan(state.swapPlan);
+  } else if (state.mode === 'move') {
+    updateModuleRect(state.key, state.lastValid);
+  }
   if (state.moved && moduleLayoutChanged(state.snapshot, currentModuleConfig())) {
     persistLayout(state.snapshot);
   }
 }
 
+function applySwapPlan(plan) {
+  updateModuleRect(plan.dragged.key, plan.dragged);
+  updateModuleRect(plan.target.key, plan.target);
+  for (const row of plan.moved) updateModuleRect(row.key, row);
+  nextTick(scheduleSelectionFrame);
+}
+
 function cancelLayoutPointer() {
+  clearSwapTarget();
   if (!layoutPointer) return;
   const snapshot = layoutPointer.snapshot;
   clearLayoutPointer();
@@ -1421,6 +1539,7 @@ function cancelLayoutPointer() {
 }
 
 function clearLayoutPointer() {
+  clearSwapTarget();
   if (!layoutPointer) return;
   if (layoutPointer.raf) cancelAnimationFrame(layoutPointer.raf);
   layoutPointer = null;
@@ -1429,7 +1548,7 @@ function clearLayoutPointer() {
   layoutBlocked.value = false;
   window.removeEventListener('pointermove', onLayoutPointerMove, true);
   window.removeEventListener('pointerup', finishLayoutPointer, true);
-  window.removeEventListener('pointercancel', finishLayoutPointer, true);
+  window.removeEventListener('pointercancel', cancelLayoutPointer, true);
   window.removeEventListener('lostpointercapture', finishLayoutPointer, true);
   window.removeEventListener('blur', cancelLayoutPointer, true);
 }
@@ -1584,15 +1703,18 @@ function resetSelectedModule() {
   if (!module || layoutSaving.value) return;
   cancelKeyboardLayout();
   const snapshot = currentModuleConfig();
+  const width = module.defaultWidth || module.width;
+  const contentMin = measureModuleContentHeight(module.key, width);
   const candidate = clampToBoard({
     ...moduleRect(module),
-    width: module.defaultWidth || module.width,
-    height: module.defaultHeight || module.height
+    width,
+    height: Math.max(module.defaultHeight || module.height, contentMin)
   });
   if (collidesWithAny(candidate, otherModuleRects(module.key))) {
     ElMessage.warning('默认尺寸会与其他模块重叠，请先调整位置');
     return;
   }
+  contentLimitHeight.value = 0;
   updateModuleRect(module.key, candidate);
   nextTick(updateSelectionRect);
   persistLayout(snapshot);
@@ -2426,9 +2548,11 @@ onBeforeUnmount(() => {
 .layout-edit-banner .edit-selected { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .layout-edit-banner .edit-selected b { color: var(--bs-ink); font-weight: 800; }
 .layout-edit-banner .edit-selected em { padding: 2px 6px; border: 1px solid var(--bs-hairline); border-radius: 5px; background: var(--bs-surface-soft); color: var(--bs-accent-ink); font-family: var(--bs-font-num); font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.layout-edit-banner .edit-content-limit { padding: 2px 6px; border: 1px dashed var(--bs-accent); border-radius: 5px; color: var(--bs-accent-ink); font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
 .layout-edit-banner .edit-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .layout-edit-banner .edit-status { font-size: 10px; color: var(--bs-text-muted); }
 .layout-edit-banner .edit-status.is-saved { color: var(--bs-success); }
+.layout-edit-banner .edit-swap { color: var(--bs-accent-ink); font-weight: 800; }
 .layout-edit-banner .edit-reset { height: 30px; padding: 0 10px; border: 1px solid var(--bs-hairline); border-radius: 7px; background: var(--bs-surface); color: var(--bs-accent-ink); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
 .layout-edit-banner .edit-reset:hover { border-color: var(--bs-accent); background: var(--bs-accent-soft); }
 .layout-edit-banner .edit-reset:disabled { opacity: .4; cursor: not-allowed; }
@@ -2690,6 +2814,8 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .rank-placeholder-copy { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--bs-text-muted); font-size: 11px; text-align: center; }
 .rank-placeholder-copy b { font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
 .layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 14px 38px rgba(7,26,51,.14); transition: border-color 120ms ease-out, box-shadow 120ms ease-out; }
+.layout-swap-frame { position: absolute; z-index: 39; pointer-events: none; border: 2px dashed var(--bs-accent); border-radius: 20px; background: color-mix(in srgb, var(--bs-accent) 5%, transparent); box-shadow: 0 0 0 4px var(--bs-accent-soft); }
+.layout-swap-frame .swap-frame-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 3px 9px; border-radius: 999px; background: var(--bs-accent); color: var(--bs-on-accent); font-size: 10px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; box-shadow: 0 4px 12px rgba(7,26,51,.18); }
 .layout-selection-frame.is-blocked { border-color: var(--bs-danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-danger) 16%, transparent), 0 14px 38px rgba(7,26,51,.14); }
 .resize-handle { position: absolute; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
 .resize-handle::before { content: ""; width: 10px; height: 10px; border: 1px solid var(--bs-accent-ink); border-radius: 2px; background: var(--bs-accent); box-shadow: 0 1px 4px rgba(7,26,51,.22); }
@@ -2863,7 +2989,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 
 /* 紧凑桌面/平板：双列流式，保存顺序生效，禁用自由布局编辑。 */
 @media (max-width: 1339px) {
-  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame { display: none !important; }
+  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame, .layout-swap-frame { display: none !important; }
   .dashboard-board {
     display: grid;
     grid-template-columns: 1fr;

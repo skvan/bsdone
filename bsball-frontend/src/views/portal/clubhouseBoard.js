@@ -84,6 +84,24 @@ export function clampToBoard(rect) {
 }
 
 /**
+ * 计算拖动后的矩形：位移按吸附步长取整并限制在画布内（不检查碰撞）。
+ * @param {{key?:string,x:number,y:number,width:number,height:number}} start
+ * @param {number} dx
+ * @param {number} dy
+ * @param {{snap?:boolean}} [options]
+ * @returns {{key?:string,x:number,y:number,width:number,height:number}}
+ */
+export function movedRect(start, dx, dy, { snap = true } = {}) {
+  let x = start.x + dx;
+  let y = start.y + dy;
+  if (snap) {
+    x = snapToGrid(x);
+    y = snapToGrid(y);
+  }
+  return clampToBoard({ ...start, x, y });
+}
+
+/**
  * 计算拖动后的候选矩形：位移按吸附步长取整并限制在画布内。
  * 与任一其他模块冲突时返回 null，调用方应保留最近一次合法位置。
  * @param {{key?:string,x:number,y:number,width:number,height:number}} start
@@ -93,15 +111,100 @@ export function clampToBoard(rect) {
  * @param {{snap?:boolean}} [options]
  * @returns {{key?:string,x:number,y:number,width:number,height:number}|null}
  */
-export function moveModule(start, dx, dy, others, { snap = true } = {}) {
-  let x = start.x + dx;
-  let y = start.y + dy;
-  if (snap) {
-    x = snapToGrid(x);
-    y = snapToGrid(y);
-  }
-  const candidate = clampToBoard({ ...start, x, y });
+export function moveModule(start, dx, dy, others, options = {}) {
+  const candidate = movedRect(start, dx, dy, options);
   return collidesWithAny(candidate, others) ? null : candidate;
+}
+
+/** 两个矩形的重叠面积；无重叠返回 0。 */
+function overlapArea(a, b) {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return width > 0 && height > 0 ? width * height : 0;
+}
+
+/** 拖动交换的最小重叠比例（相对较小模块面积）。 */
+export const SWAP_MIN_RATIO = 0.35;
+
+/**
+ * 拖动时寻找交换目标：取重叠面积占较小模块面积比例最高者。
+ * 仅比例达到 minRatio 才视为“拖到了对方身上”。
+ * @param {{key?:string,x:number,y:number,width:number,height:number}} dragged
+ * @param {Array<{key?:string,x:number,y:number,width:number,height:number}>} others
+ * @param {{minRatio?:number}} [options]
+ * @returns {{key?:string,x:number,y:number,width:number,height:number}|null}
+ */
+export function findSwapTarget(dragged, others, { minRatio = SWAP_MIN_RATIO } = {}) {
+  if (!dragged || !Array.isArray(others)) return null;
+  let best = null;
+  let bestRatio = 0;
+  let bestArea = 0;
+  for (const other of others) {
+    if (!other || other.key === dragged.key) continue;
+    const area = overlapArea(dragged, other);
+    if (area <= 0) continue;
+    const smaller = Math.min(dragged.width * dragged.height, other.width * other.height);
+    if (smaller <= 0) continue;
+    const ratio = area / smaller;
+    if (ratio < minRatio) continue;
+    if (ratio > bestRatio + 1e-9 || (Math.abs(ratio - bestRatio) <= 1e-9 && area > bestArea)) {
+      best = other;
+      bestRatio = ratio;
+      bestArea = area;
+    }
+  }
+  return best;
+}
+
+/**
+ * 交换两个模块的位置（保留各自尺寸），并把被挤到的第三方模块整体下移。
+ * 规则：
+ *  - A 放到 B 的原位置、B 放到 A 的原位置，越界时收敛回画布；
+ *  - 两个位置互相重叠时（常见于上下相邻、高度不同的模块），上方模块保留，
+ *    下方模块整体下移到上方模块底边 + gap，再做第三方回流；
+ *  - 与 A/B 或已下移模块冲突的第三方，按 y/x 升序下移到冲突底边 + gap；
+ *  - 下移超过 MAX_MODULE_Y 或无法收敛时放弃。
+ * @param {{key?:string,x:number,y:number,width:number,height:number}} start
+ * @param {{key?:string,x:number,y:number,width:number,height:number}} target
+ * @param {Array<{key?:string,x:number,y:number,width:number,height:number}>} others
+ * @param {{gap?:number}} [options]
+ * @returns {{dragged:object,target:object,moved:Array<object>}|null}
+ */
+export function planSwap(start, target, others, { gap = BOARD_GAP } = {}) {
+  if (!start || !target || start.key === target.key) return null;
+  let dragged = clampToBoard({ ...start, x: target.x, y: target.y });
+  let targetAtStart = clampToBoard({ ...target, x: start.x, y: start.y });
+  if (rectsOverlap(dragged, targetAtStart, gap)) {
+    if (dragged.y <= targetAtStart.y) {
+      targetAtStart = { ...targetAtStart, y: dragged.y + dragged.height + gap };
+      if (targetAtStart.y > MAX_MODULE_Y) return null;
+    } else {
+      dragged = { ...dragged, y: targetAtStart.y + targetAtStart.height + gap };
+      if (dragged.y > MAX_MODULE_Y) return null;
+    }
+  }
+
+  const ordered = (Array.isArray(others) ? others : [])
+    .filter((module) => module && module.key !== start.key && module.key !== target.key)
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const accepted = [dragged, targetAtStart];
+  const moved = [];
+  for (const module of ordered) {
+    let current = { ...module };
+    for (let guard = 0; ; guard += 1) {
+      if (guard > accepted.length + 2) return null;
+      const colliders = accepted.filter((other) => rectsOverlap(current, other, gap));
+      if (!colliders.length) break;
+      const bottom = colliders.reduce((max, other) => Math.max(max, other.y + other.height), 0);
+      const nextY = bottom + gap;
+      if (nextY <= current.y) return null;
+      if (nextY > MAX_MODULE_Y) return null;
+      current = { ...current, y: nextY };
+    }
+    if (current.y !== module.y) moved.push(current);
+    accepted.push(current);
+  }
+  return { dragged, target: targetAtStart, moved };
 }
 
 /**
