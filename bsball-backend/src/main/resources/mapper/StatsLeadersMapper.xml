@@ -288,6 +288,8 @@
     <!-- PostgreSQL: 单字母后缀列名无下划线（pitchH->pitchh, pitchR->pitchr） -->
     <sql id="pitchHCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchh</when><otherwise>s.pitch_h</otherwise></choose></sql>
     <sql id="pitchRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchr</when><otherwise>s.pitch_r</otherwise></choose></sql>
+    <sql id="unearnedRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.unearnedr</when><otherwise>s.unearned_r</otherwise></choose></sql>
+    <sql id="pendingRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pendingr</when><otherwise>s.pending_r</otherwise></choose></sql>
     <!-- 与 PlayerStatsMapper.ipToOutsFromIpCol 一致：先按场转出局数再聚合 -->
     <sql id="ipToOutsFromIpCol">(
         FLOOR(s.ip) * 3 + (CASE
@@ -369,8 +371,8 @@
             COALESCE(SUM(s.bk), 0) AS bk,
             COALESCE(SUM(<include refid="pitchRCol"/>), 0) AS pitchR,
             COALESCE(SUM(s.er), 0) AS er,
-            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
-            COALESCE(SUM(s.pending_r), 0) AS pendingR,
+            COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
+            COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
             COALESCE(SUM(s.go), 0) AS go,
             COALESCE(SUM(s.fo), 0) AS fo,
             CASE WHEN COALESCE(SUM(s.fo), 0) > 0

@@ -43,8 +43,8 @@
   - 球队 + 赛事：该球队在该赛事的合计，不使用赛事总合计代替。
   - 球队维度只统计球员在该队出场的比赛；四种范围均只计入排行的比赛（`include_stats_in_ranking`）。
   - 零数据契约：球队维度查询返回完整字段（计数为 `0`、比率类为 `"0"`、投手 `goFo` 为 `"-"`）；全部球队 + 赛事无个人统计时返回三个空 Map，某领域无数据时该领域为空 Map。前端按 `gp` / `ab` / `pa` / `ip` 判断空态，不把 `0` / `0.000` 当成真实表现展示。
-- `config`：当前用户配置（version 3；`modules[]` 含 `width`/`height`，默认见 PUT 示例）。
-- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`span`（默认列宽）、`minSpan`（最小列宽）、`maxSpan`（固定 12），共 9 个模块。
+- `config`：当前用户配置（version 4；`modules[]` 含 `x`/`y`/`width`/`height` 像素几何，默认见 PUT 示例）。
+- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 9 个模块。
 - `milestoneCatalog[]`：生涯里程碑指标白名单；含 `key`、`label`、`shortLabel`、`domain`、`unit`、`defaultSelected`、`thresholds[]`。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
 - `performance`：`{ metricKey, label, viz, domain, points[], summaryValue, items[], available }`。
@@ -119,24 +119,24 @@
 
 ## PUT /api/account/clubhouse/config
 
-保存模块顺序/开关/宽高、表现图与队内排名选择。
+保存模块顺序/开关、桌面像素坐标与尺寸、表现图与队内排名选择。
 
 请求体示例：
 
 ```json
 {
-  "version": 3,
-  "layout": "v3-modular",
+  "version": 4,
+  "layout": "v4-board",
   "modules": [
-    { "key": "ranks", "enabled": true, "width": 12, "height": 0 },
-    { "key": "evaluation", "enabled": true, "width": 12, "height": 0 },
-    { "key": "milestones", "enabled": true, "width": 12, "height": 0 },
-    { "key": "performance", "enabled": true, "width": 8, "height": 0 },
-    { "key": "teams", "enabled": true, "width": 4, "height": 0 },
-    { "key": "schedule", "enabled": true, "width": 8, "height": 0 },
-    { "key": "about", "enabled": true, "width": 4, "height": 0 },
-    { "key": "recentGames", "enabled": true, "width": 8, "height": 0 },
-    { "key": "quickLinks", "enabled": true, "width": 4, "height": 0 }
+    { "key": "ranks", "enabled": true, "x": 0, "y": 0, "width": 1216, "height": 220 },
+    { "key": "evaluation", "enabled": true, "x": 0, "y": 236, "width": 1216, "height": 700 },
+    { "key": "milestones", "enabled": true, "x": 0, "y": 952, "width": 1216, "height": 500 },
+    { "key": "performance", "enabled": true, "x": 0, "y": 1468, "width": 800, "height": 500 },
+    { "key": "teams", "enabled": true, "x": 816, "y": 1468, "width": 400, "height": 300 },
+    { "key": "schedule", "enabled": true, "x": 0, "y": 1984, "width": 800, "height": 560 },
+    { "key": "about", "enabled": true, "x": 816, "y": 1984, "width": 400, "height": 280 },
+    { "key": "recentGames", "enabled": true, "x": 0, "y": 2560, "width": 800, "height": 320 },
+    { "key": "quickLinks", "enabled": true, "x": 816, "y": 2560, "width": 400, "height": 220 }
   ],
   "milestones": {
     "metricKeys": ["batting.h", "batting.rbi", "batting.sb", "batting.gp", "pitching.ip", "pitching.so"]
@@ -151,23 +151,25 @@
 }
 ```
 
-- `modules` 数组顺序即展示顺序；只接受白名单 key，且不能重复，否则返回 400。
-- `enabled` 必须是布尔值；缺省视为 `true`。允许九个模块全部关闭。
-- `width`：整数列数，范围为该模块 `minSpan`–12；缺省取该模块默认列宽。低于最小列宽、超过 12、非整数或字符串均返回 400。
-- `height`：整数，0–80，单位为 10px；`0` 表示高度随内容自适应，非 0 表示最小高度，内容更高时模块仍会自然增高。负值、超过 80、小数或字符串返回 400。
-- 最小列宽：队内坐标/数据表现/接下来的比赛/最近战报 6 列；总体评价/生涯里程碑 8 列；代表球队/关于我/快捷入口 4 列。
-- 缺失的模块会按默认顺序追加到末尾，保证始终保存完整九项；追加模块使用默认宽高。
+- 画布逻辑宽度 1216px，任意两个启用模块至少间隔 16px；坐标/尺寸均为整数像素。前端拖动吸附 8px。
+- `modules` 数组顺序 = 手机/紧凑端顺序与设置抽屉顺序；桌面自由布局只看 `x/y/width/height`。
+- 只接受白名单 key，且不能重复，否则返回 400。`enabled` 必须是布尔值；缺省视为 `true`。允许九个模块全部关闭。
+- `x` / `y`：整数，`x >= 0`、`y >= 0`、`x + width <= 1216`、`y <= 12000`；越界、负数、小数或字符串返回 400。
+- `width`：整数，范围为该模块 `minWidth`–1216；`height`：整数，范围为该模块 `minHeight`–1600。默认/最小值见 `moduleCatalog` 的 `defaultWidth/defaultHeight/minWidth/minHeight`。
+- 桌面高度是固定外框高度，内容超出时模块内部滚动；手机/紧凑端忽略几何按内容自适应。内容不自动撑高，避免与邻居重叠。
+- 启用模块之间重叠（含不足 16px 间距）时，服务端按数组顺序把后出现模块下移到已占用区域底部（x=0），返回规范化后的配置；禁用模块保留几何但不参与检测。
+- 缺失的模块会按默认顺序追加到所有模块底部，保证始终保存完整九项。
 - `milestones.metricKeys`：1–6 项、不可重复、只能使用里程碑白名单指标；缺失或空数组回退默认 6 项。
 - `modules` 缺省时按默认模块保存，兼容旧客户端。
-- 服务端统一输出 `version=3` / `layout=v3-modular`；客户端传入的 `layout`/`version` 不作为可信输入。
-- 宽高仅影响桌面 12 列网格；`≤980px` 时前端忽略保存的宽高，按单列展示，但配置本身保留。
+- 服务端统一输出 `version=4` / `layout=v4-board`；客户端传入的 `layout`/`version` 不作为可信输入。
+- 几何仅影响 `>=1320px` 的桌面自由画布；`981–1319px` 使用双列流式，`<=980px` 单列，均忽略几何但保留配置。
 - `performance.viz` 必须在指标的兼容列表内；安打构成只允许 `donut`，比率/计数指标允许 `kpi` / `line` / `bar`。
 - `ranks` 必须恰好 4 个、不可重复，且只能使用 `rankable=true` 的指标。
 - **队内排名不提供全垒打**；默认四格为打击率、安打、上垒率、打点。
 
 ### 旧配置兼容
 
-`version: 1` / `layout: v3-fixed` 以及 `version: 2` 的已存配置在读取时保留 `performance`、`ranks`、模块顺序与开关，自动补全模块默认宽高并返回 v3；GET 不写库，下次保存时落库。
+`version: 1` / `layout: v3-fixed`、`version: 2` 以及 `version: 3` / `layout: v3-modular` 的已存配置在读取时保留 `performance`、`ranks`、模块顺序与开关，把旧列宽/行高迁移为像素几何并按数组装箱，返回 v4；GET 不写库，下次保存时落库。旧列宽转像素为 `round(span * (1216 + 16) / 12) - 16`；旧高度 0 取目录默认高度，非 0 取 `rows * 10` 并收敛到最小/最大高度。
 
 ## POST /api/account/clubhouse/config/reset
 
@@ -181,7 +183,7 @@
 | 当前账号未关联球员档案 | 404 |
 | 指标、图表、排名数量或重复项非法 | 400 |
 | 未知或重复的模块 key、非布尔 enabled | 400 |
-| 模块宽度低于最小列宽/超过 12/非整数，或高度不在 0–80/非整数 | 400 |
+| 模块坐标/尺寸越界、低于最小宽高、超过 1216×1600、负坐标或非整数 | 400 |
 | 里程碑指标超过 6 项、非数组、未知或重复 | 400 |
 | 请求的代表球队/赛事不属于本人，或赛事不属于当前球队 | 回落到全部球队/生涯，不返回越权数据 |
 
@@ -195,9 +197,9 @@
 - 非投手（主要守位非 `P` 且生涯投球 < 5.0 局，如 4.2 = 4⅔ 局）不返回投球卡，也不参与总体评分；界面不展开 wOBA / FIP 等公式，只在卡片上保留「参考 wOBA」「参考 FIP」「未按守位分组」等简短提示，完整算法见 [个人驾驶舱评价算法](../个人驾驶舱评价算法.md)。
 - 评价算法无球场/联盟校正，wOBA 使用固定业余权重，FIP 常数为租户级近似值；两者均标注「参考」，且不进入雷达轴。`P` / `DH` 守备组当前必然回退到全体守备百分位并标注「未按守位分组」（守备排行榜排除 `P` / `DH` / `PH`）。评分实时计算、无缓存与历史快照，详见 [个人驾驶舱评价算法](../个人驾驶舱评价算法.md)。
 - 指标/目录标签目前为中文；多语言标签在后续统一。
-- 模块宽高只在桌面端生效；手机端固定单列，不提供编辑入口、选中框或尺寸手柄。
-- 桌面布局编辑通过「编辑布局」按钮进入；进入后单击模块选中，再拖动尺寸手柄或工具栏「移动」手柄调整大小/顺序。不支持自由定位、重叠或跨栏吸附。排序也可在设置抽屉用上移/下移完成。桌面网格按配置顺序稀疏排布，允许留白。
-- 高度以内容高度为硬下限，服务端只校验 0–80 的范围；具体内容下限由前端按实际渲染高度约束。
+- 自由画布只在 `>=1320px` 桌面视口生效；`981–1319px` 双列流式，`<=980px` 单列，均不提供编辑入口、选中框或手柄。
+- 桌面布局编辑通过「编辑布局」按钮进入：单击模块选中，拖动模块主体移动，拖动八个手柄缩放；坐标吸附 8px，任意两个模块至少间隔 16px。候选位置重叠或越界时停在最近合法位置（选中框变红），松手保存最近合法位置。顶部吸顶栏显示选中模块与像素尺寸、重置尺寸、保存状态与完成；不提供手动宽高输入。
+- 桌面高度是固定外框高度，内容超出时模块内部滚动；编辑时暂时禁用内部滚动。最小宽高由 `moduleCatalog` 提供，服务端只做范围校验。
 - 除生涯里程碑外，隐藏模块只影响展示，驾驶舱仍返回其余数据；里程碑模块隐藏时前端不发起独立请求，也不读取全量生涯日志。
-- 队内坐标模块在「全部球队」时不渲染，但配置中的开关、顺序与宽高会保留；数据设置抽屉仍显示该项并提示“仅在选择球队后显示”。
+- 队内坐标模块在「全部球队」时不渲染，但配置中的开关、顺序与几何会保留；查看态会收起其占位以避免页面顶部空白，编辑态显示虚线占位并可拖动/缩放。数据设置抽屉仍显示该项并提示“仅在选择球队后显示”。
 - `nextGame` / `schedule[]` 在每种范围内上限为 6 场；所选范围内第 7 场及以后的比赛不会返回。范围固定后不再混入其他赛事，前端按范围显示空态。

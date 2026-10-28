@@ -37,6 +37,7 @@ import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.PlayerClaimRepository;
@@ -104,6 +105,8 @@ class DataSovereigntyRuleTest {
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
+    private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
     private StadiumRepository stadiumRepository;
     @Mock
     private EarnedRunReconstructionService earnedRunReconstructionService;
@@ -138,7 +141,7 @@ class DataSovereigntyRuleTest {
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
                 org.mockito.Mockito.mock(EventSpecialRuleService.class));
-        gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
+        gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);
         platformAssetService = new PlatformAssetService(leagueRepository, teamRepository, playerRepository,

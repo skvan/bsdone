@@ -55,3 +55,20 @@ test('#226：fielding.ip 只累进实际守备位球员 + 换人 4 处注记', (
   assert.ok(src.includes('syncFieldingPitcher(a,t,P,fieldingIpNote(t))'), '换投注记');
   assert.ok(src.includes('+(b==="P"?"":fieldingIpNote(t)):'), '非 DH P 位替换：换人行不带注记（注记仅随换投行，评审 Major 1）');
 });
+
+test('#388：守备 IP 对账 + 出局分支撤销快照 + 活动流程守卫', () => {
+  assert.ok(src.includes('reconcileTeamFieldingInnings as LgReconcileFieldingInnings'), '引入守备 IP 对账工具');
+  assert.ok(src.includes('function reconcileFieldingInningsForLiveState(reason)'), '对账 helper');
+  for (const reason of ['history', 'snapshot', 'save', 'restore', 'undo']) {
+    assert.ok(src.includes(`reconcileFieldingInningsForLiveState("${reason}")`), `接入 ${reason}`);
+  }
+  assert.ok(src.includes('de("接杀回传")'), '接杀回传结果写入撤销快照');
+  assert.ok(src.includes('if(e.gameState)reconcileFieldingInningsForLiveState("restore")'), '无现场状态快照不对账');
+  assert.ok(src.includes('let fieldingIpReconcileEnabled=false'), '对账可信开关');
+  assert.ok(src.includes('if(!fieldingIpReconcileEnabled)return[]'), '开关关闭时跳过对账');
+  assert.ok(src.includes('fieldingIpReconcileEnabled=!!e.gameState'), '现场快照带 outs 才启用');
+  assert.ok(src.includes('fieldingIpReconcileEnabled=!(r?.list??[]).some(s=>Number(s.defInn)>0)'), 'Do 回退已有守备局数时不启用');
+  assert.ok(/function Gf\(\)\{\s*if\(l\.flow\)\{/.test(src), 'Gf 做活动流程守卫');
+  assert.ok(!/function _o\(\)\{\s*if\(l\.flow&&!settleChainIfReady/.test(src), '_o 不重复守卫，避免 bt→_o 递归');
+  assert.ok(/l\.flow=null;\s*return bt\(/.test(src), '结算前先清 flow，避免 bt→_o 递归');
+});

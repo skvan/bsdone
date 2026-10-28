@@ -4,6 +4,13 @@
 --       R / ER / UER / PENDING，并与 bs_game_player_stat 的库内值对比。
 -- 安全：只读事务（BEGIN TRANSACTION READ ONLY + ROLLBACK），不含任何写语句。
 --
+-- 2026-10-26 修正（Issue #436）：
+--   比赛详情/GamePlayerStat 实体在 PostgreSQL 上实际读写旧列（无下划线）：
+--     pitchr / unearnedr / pendingr / earnedr（以及 pitchh / pitch_bbhp）。
+--   聚合 Mapper 的 pitchR 在 PostgreSQL 分支也用 pitchr；unearned_r/pending_r
+--   目前仍直接读新列，因此两套列必须保持一致。
+--   2026-10-25 的修复只写了新列，导致页面 R 未变；2026-10-26 已把旧列同步。
+--
 -- 用法（连接参数由环境注入，勿写入仓库）：
 --   PGPASSWORD="$PG_PASSWORD" psql -h "$PROD_HOST" -U "$PG_USER" -d "$PG_DB" \
 --     -v ON_ERROR_STOP=1 -f docs/ops/er-audit-149.sql > er-audit.out
@@ -37,10 +44,10 @@ stats AS (
     SELECT
         s.game_id,
         s.player_id AS pitcher_id,
-        s.pitch_r AS stored_runs,
+        s.pitchr AS stored_runs,
         s.er AS stored_er,
-        s.unearned_r AS stored_uer,
-        s.pending_r AS stored_pending
+        s.unearnedr AS stored_uer,
+        s.pendingr AS stored_pending
     FROM bs_game_player_stat s
     WHERE s.is_pitcher = 1
       AND s.deleted_at IS NULL
@@ -107,8 +114,8 @@ engine_games AS (
 ),
 stats AS (
     SELECT s.game_id, s.player_id AS pitcher_id,
-           s.pitch_r AS stored_runs, s.er AS stored_er,
-           s.unearned_r AS stored_uer, s.pending_r AS stored_pending
+           s.pitchr AS stored_runs, s.er AS stored_er,
+           s.unearnedr AS stored_uer, s.pendingr AS stored_pending
     FROM bs_game_player_stat s
     WHERE s.is_pitcher = 1
       AND s.deleted_at IS NULL

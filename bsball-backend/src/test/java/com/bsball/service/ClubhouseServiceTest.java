@@ -150,7 +150,8 @@ class ClubhouseServiceTest {
         assertEquals("ranks", moduleCatalog.get(0).get("key"));
         assertEquals("evaluation", moduleCatalog.get(1).get("key"));
         assertEquals("milestones", moduleCatalog.get(2).get("key"));
-        assertEquals(12, moduleCatalog.get(2).get("span"));
+        assertEquals(1216, moduleCatalog.get(2).get("defaultWidth"));
+        assertEquals(500, moduleCatalog.get(2).get("defaultHeight"));
         assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
         assertTrue(!result.containsKey("milestones"));

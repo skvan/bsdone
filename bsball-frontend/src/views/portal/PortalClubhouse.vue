@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="!layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -111,15 +111,45 @@
       <div v-if="layoutEditing" class="layout-edit-banner">
         <div class="edit-copy">
           <b>布局编辑</b>
-          <span>点击模块选中；拖动手柄调整大小，拖动「移动」换位</span>
+          <span v-if="swapTargetLabel" class="edit-swap" role="status" aria-live="polite">松开与「{{ swapTargetLabel }}」交换位置</span>
+          <span v-else-if="selectedModule" class="edit-selected">
+            <b>{{ selectedModule.label }}</b>
+            <em>{{ selectionSizeLabel }}</em>
+            <i v-if="contentLimitHeight" class="edit-content-limit">内容下限 {{ contentLimitHeight }}px</i>
+          </span>
+          <span v-else>拖动模块调整位置；拖到另一模块上可交换；拖动八个小方块缩放；点击空白处取消选中</span>
         </div>
         <div class="edit-actions">
+          <button v-if="selectedModule" type="button" class="edit-reset" :disabled="layoutSaving" @click="resetSelectedModule">重置尺寸</button>
           <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
           <button type="button" class="edit-done" @click="finishLayoutEditing">完成</button>
         </div>
       </div>
 
-      <div v-if="renderableModules.length" class="dashboard-grid" :class="{ 'layout-editing': layoutEditing }" @click.self="clearModuleSelection()">
+      <div
+        v-if="renderableModules.length"
+        class="dashboard-board"
+        :class="{ 'is-free': freeBoard, 'layout-editing': layoutEditing }"
+        :style="freeBoard ? { height: `${boardHeight}px` } : undefined"
+        @click.self="clearModuleSelection()"
+      >
+      <section
+        v-if="freeBoard && layoutEditing && isModuleActive('ranks') && !isModuleVisible('ranks')"
+        class="rank-band dashboard-module rank-placeholder"
+        data-module-key="ranks"
+        tabindex="0"
+        :style="moduleLayoutStyle('ranks')"
+        @click="selectModule('ranks')"
+        @pointerdown="startModulePointer('ranks', $event)"
+        @keydown="onModuleKeydown('ranks', $event)"
+      >
+        <div class="rank-placeholder-copy">
+          <span class="kicker">TEAM RANKING</span>
+          <b>队内坐标</b>
+          <span>选择球队后显示；此位置会保留</span>
+        </div>
+      </section>
+
       <section
         v-if="isModuleVisible('ranks') && teamId"
         class="rank-band dashboard-module"
@@ -127,6 +157,7 @@
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('ranks')"
         @click="selectModule('ranks')"
+        @pointerdown="startModulePointer('ranks', $event)"
         @keydown="onModuleKeydown('ranks', $event)"
       >
         <div class="rank-band-head">
@@ -164,6 +195,7 @@
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('evaluation')"
         @click="selectModule('evaluation')"
+        @pointerdown="startModulePointer('evaluation', $event)"
         @keydown="onModuleKeydown('evaluation', $event)"
       >
         <div class="eval-head">
@@ -280,6 +312,7 @@
         :tabindex="layoutEditing ? 0 : undefined"
         :style="moduleLayoutStyle('milestones')"
         @click="selectModule('milestones')"
+        @pointerdown="startModulePointer('milestones', $event)"
         @keydown="onModuleKeydown('milestones', $event)"
       >
         <div class="panel-head milestone-head">
@@ -358,6 +391,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('performance')"
             @click="selectModule('performance')"
+            @pointerdown="startModulePointer('performance', $event)"
             @keydown="onModuleKeydown('performance', $event)"
           >
             <div class="panel-head">
@@ -428,6 +462,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('schedule')"
             @click="selectModule('schedule')"
+            @pointerdown="startModulePointer('schedule', $event)"
             @keydown="onModuleKeydown('schedule', $event)"
           >
             <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>{{ scheduleScopeLabel }}</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
@@ -468,6 +503,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('recentGames')"
             @click="selectModule('recentGames')"
+            @pointerdown="startModulePointer('recentGames', $event)"
             @keydown="onModuleKeydown('recentGames', $event)"
           >
             <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
@@ -492,6 +528,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('teams')"
             @click="selectModule('teams')"
+            @pointerdown="startModulePointer('teams', $event)"
             @keydown="onModuleKeydown('teams', $event)"
           >
             <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
@@ -510,6 +547,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('about')"
             @click="selectModule('about')"
+            @pointerdown="startModulePointer('about', $event)"
             @keydown="onModuleKeydown('about', $event)"
           >
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
@@ -529,6 +567,7 @@
             :tabindex="layoutEditing ? 0 : undefined"
             :style="moduleLayoutStyle('quickLinks')"
             @click="selectModule('quickLinks')"
+            @pointerdown="startModulePointer('quickLinks', $event)"
             @keydown="onModuleKeydown('quickLinks', $event)"
           >
             <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
@@ -545,53 +584,29 @@
       <div
         v-if="layoutEditing && selectedModule && selectionRect"
         class="layout-selection-frame"
+        :class="{ 'is-blocked': layoutBlocked }"
         :style="selectionFrameStyle"
       >
-        <div class="selection-toolbar">
-          <span class="selection-dot" aria-hidden="true"></span>
-          <b>{{ selectedModule.label }}</b>
-          <span class="selection-size">{{ selectionSizeLabel }}</span>
-          <button
-            type="button"
-            class="selection-move"
-            :class="{ 'is-dragging': layoutDragging }"
-            title="拖动换位；方向键上移/下移"
-            aria-label="拖动换位；方向键上移/下移"
-            :disabled="layoutSaving"
-            @pointerdown.prevent.stop="startReorder($event)"
-            @keydown="onReorderHandleKeydown($event)"
-            @contextmenu.prevent
-          >
-            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1v10M1 6h10M3.6 3.6 6 1l2.4 2.6M3.6 8.4 6 11l2.4-2.6M3.6 3.6 1 6l2.6 2.4M8.4 3.6 11 6 8.4 8.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            <span>{{ layoutDragging ? '拖动中' : '移动' }}</span>
-          </button>
-          <button type="button" class="selection-reset" :disabled="layoutSaving" @click="resetSelectedModuleSize">重置尺寸</button>
-          <button type="button" class="selection-close" aria-label="取消选中" @click="clearModuleSelection({ restoreFocus: true })">×</button>
-        </div>
         <button
+          v-for="handle in RESIZE_HANDLES"
+          :key="handle"
           type="button"
-          class="resize-handle handle-r"
-          aria-label="调整宽度"
+          class="resize-handle"
+          :class="`handle-${handle}`"
+          :aria-label="HANDLE_LABELS[handle]"
           :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('width', $event)"
-          @keydown="onResizeHandleKeydown('width', $event)"
+          @pointerdown.prevent.stop="startResize(handle, $event)"
+          @keydown="onResizeHandleKeydown(handle, $event)"
         ></button>
-        <button
-          type="button"
-          class="resize-handle handle-b"
-          aria-label="调整高度"
-          :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('height', $event)"
-          @keydown="onResizeHandleKeydown('height', $event)"
-        ></button>
-        <button
-          type="button"
-          class="resize-handle handle-br"
-          aria-label="调整宽高"
-          :disabled="layoutSaving"
-          @pointerdown.prevent.stop="startResize('both', $event)"
-          @keydown="onResizeHandleKeydown('both', $event)"
-        ></button>
+      </div>
+
+      <div
+        v-if="swapTargetRect"
+        class="layout-swap-frame"
+        :style="swapFrameStyle"
+        aria-hidden="true"
+      >
+        <span class="swap-frame-badge">松手交换</span>
       </div>
 
       <div v-if="!activeModules.length" class="panel dashboard-empty">
@@ -635,7 +650,7 @@
     >
       <div class="settings-section">
         <div class="settings-label">模块布局</div>
-        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；宽高请在页面「编辑布局」中调整。</p>
+        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；顺序用于手机/紧凑模式。桌面位置与大小请在页面「编辑布局」中拖动调整。</p>
         <div ref="moduleListEl" class="module-sort-list">
           <div
             v-for="(module, index) in draft.modules"
@@ -649,8 +664,8 @@
               <span>{{ moduleSizeLabel(module) }}<template v-if="module.key === 'ranks'"> · 仅在选择球队后显示</template></span>
             </div>
             <div class="module-sort-actions">
-              <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveModule(index, -1)" />
-              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" aria-label="下移" @click="moveModule(index, 1)" />
+              <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveDraftModule(index, -1)" />
+              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" aria-label="下移" @click="moveDraftModule(index, 1)" />
             </div>
             <div class="module-switch" @click.self="module.enabled = !module.enabled">
               <el-switch v-model="module.enabled" size="small" :aria-label="`显示${module.label}`" />
@@ -748,6 +763,23 @@ import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
 import { useTenantRouter } from '../../composables/useTenantRouter';
+import {
+  BOARD_WIDTH,
+  BOARD_GAP,
+  BOARD_SNAP,
+  MAX_MODULE_HEIGHT,
+  MAX_MODULE_Y,
+  boardHeight as computeBoardHeight,
+  clamp,
+  clampToBoard,
+  collidesWithAny,
+  findSwapTarget,
+  movedRect,
+  moveModule,
+  packModules,
+  planSwap,
+  resizeModule
+} from './clubhouseBoard.js';
 
 const router = useRouter();
 const { tenantCode } = useTenantRouter();
@@ -755,9 +787,22 @@ const { tenantCode } = useTenantRouter();
 const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
 const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
-const MAX_MODULE_HEIGHT_ROWS = 80;
+const CONFIG_VERSION = 4;
+const CONFIG_LAYOUT = 'v4-board';
 const MILESTONE_TRACK_INSET = 4;
-const mobileLayoutQuery = window.matchMedia('(max-width: 980px)');
+const RESIZE_HANDLES = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
+const HANDLE_LABELS = {
+  nw: '左上缩放',
+  n: '向上缩放',
+  ne: '右上缩放',
+  w: '向左缩放',
+  e: '向右缩放',
+  sw: '左下缩放',
+  s: '向下缩放',
+  se: '右下缩放'
+};
+const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
+const compactBoardQuery = window.matchMedia('(min-width: 981px) and (max-width: 1339px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
@@ -772,9 +817,15 @@ const layoutEditing = ref(false);
 const layoutResizing = ref(false);
 const layoutDragging = ref(false);
 const layoutSaving = ref(false);
+const layoutBlocked = ref(false);
 const layoutStatus = ref('');
+const contentLimitHeight = ref(0);
+const freeBoard = ref(freeBoardQuery.matches);
+const compactBoard = ref(compactBoardQuery.matches);
 const selectedModuleKey = ref('');
 const selectionRect = ref(null);
+const swapTargetKey = ref('');
+const swapTargetRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
@@ -784,8 +835,8 @@ const moduleListEl = ref(null);
 let milestoneScrollDrag = null;
 let milestoneResizeObserver = null;
 let moduleSortable = null;
-let resizeState = null;
-let dragState = null;
+let layoutPointer = null;
+const contentMeasureCache = new Map();
 let selectionObserver = null;
 let keyboardLayoutSnapshot = null;
 let keyboardLayoutTimer = null;
@@ -944,93 +995,129 @@ const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
 const moduleMeta = computed(() => Object.fromEntries(
   moduleCatalog.value.map((item) => [item.key, item])
 ));
-function clampModuleWidth(value, minSpan, maxSpan) {
+function finiteNumber(value, fallback) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return minSpan;
-  return Math.min(maxSpan, Math.max(minSpan, Math.round(numeric)));
-}
-function clampModuleHeight(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.min(MAX_MODULE_HEIGHT_ROWS, Math.max(0, Math.round(numeric)));
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 function resolveModule(module) {
-  const meta = moduleMeta.value[module.key];
-  const minSpan = Number(meta?.minSpan) || 4;
-  const maxSpan = Number(meta?.maxSpan) || 12;
-  const width = clampModuleWidth(module.width ?? meta?.span ?? minSpan, minSpan, maxSpan);
+  const meta = moduleMeta.value[module.key] || {};
+  const minWidth = finiteNumber(meta.minWidth, 240);
+  const minHeight = finiteNumber(meta.minHeight, 160);
+  const defaultWidth = finiteNumber(meta.defaultWidth, 400);
+  const defaultHeight = finiteNumber(meta.defaultHeight, 240);
+  const width = clamp(Math.round(finiteNumber(module.width, defaultWidth)), minWidth, BOARD_WIDTH);
+  const height = clamp(Math.round(finiteNumber(module.height, defaultHeight)), minHeight, MAX_MODULE_HEIGHT);
+  const x = clamp(Math.round(finiteNumber(module.x, 0)), 0, BOARD_WIDTH - width);
+  const y = clamp(Math.round(finiteNumber(module.y, 0)), 0, MAX_MODULE_Y);
   return {
     ...module,
     enabled: module.enabled !== false,
-    label: meta?.label || module.label || module.key,
+    label: meta.label || module.label || module.key,
+    x,
+    y,
     width,
-    height: clampModuleHeight(module.height),
-    minSpan,
-    maxSpan
+    height,
+    minWidth,
+    minHeight,
+    defaultWidth,
+    defaultHeight
   };
 }
 function defaultModules() {
-  return DEFAULT_MODULE_KEYS.map((key) => resolveModule({ key }));
+  return packModules(DEFAULT_MODULE_KEYS.map((key) => {
+    const meta = moduleMeta.value[key] || {};
+    return resolveModule({
+      key,
+      enabled: true,
+      width: meta.defaultWidth,
+      height: meta.defaultHeight
+    });
+  }));
 }
 const activeModules = computed(() => {
   const configured = data.value?.config?.modules;
   const source = configured?.length ? configured : defaultModules();
   return source.filter((module) => module.enabled !== false).map(resolveModule);
 });
-/** 当前范围下真正渲染的模块：队内坐标仅在选中具体球队时出现，其余模块按配置回流。 */
-const renderableModules = computed(() => activeModules.value.filter((module) => (
+/**
+ * 查看态全部球队时收起隐藏的队内坐标占位，避免页面顶部出现大块空白；
+ * 编辑态保留占位以便调整位置。任何潜在重叠都退回原始布局。
+ */
+const viewLayoutModules = computed(() => {
+  const modules = activeModules.value;
+  const ranks = modules.find((module) => module.key === 'ranks');
+  if (layoutEditing.value || teamId.value || !ranks) return modules;
+  const cutoff = ranks.y + ranks.height + BOARD_GAP;
+  const shift = ranks.height + BOARD_GAP;
+  const compacted = modules
+    .filter((module) => module.key !== 'ranks')
+    .map((module) => (module.y >= cutoff ? { ...module, y: module.y - shift } : module));
+  const collision = compacted.some((module) => collidesWithAny(module, compacted));
+  return collision ? modules : compacted;
+});
+/** 当前范围下真正渲染的模块：队内坐标仅在选中具体球队时出现。 */
+const renderableModules = computed(() => viewLayoutModules.value.filter((module) => (
   module.key !== 'ranks' || Boolean(teamId.value)
 )));
-const moduleIndex = computed(() => new Map(renderableModules.value.map((module, index) => [module.key, index])));
+const moduleIndex = computed(() => new Map(activeModules.value.map((module, index) => [module.key, index])));
+const renderableKeys = computed(() => new Set(renderableModules.value.map((module) => module.key)));
+const activeKeys = computed(() => new Set(activeModules.value.map((module) => module.key)));
+const boardHeight = computed(() => computeBoardHeight(viewLayoutModules.value));
 function isModuleVisible(key) {
-  return moduleIndex.value.has(key);
+  return renderableKeys.value.has(key);
+}
+function isModuleActive(key) {
+  return activeKeys.value.has(key);
 }
 function moduleLayoutStyle(key) {
-  const module = activeModules.value.find((item) => item.key === key);
-  return {
-    order: moduleIndex.value.get(key) ?? 0,
-    '--module-span': module?.width || 12,
-    '--module-min-h': module?.height ? `${module.height * 10}px` : '0px'
-  };
+  const source = layoutEditing.value ? activeModules.value : viewLayoutModules.value;
+  const module = source.find((item) => item.key === key);
+  if (!module) return {};
+  const order = moduleIndex.value.get(key) ?? 0;
+  if (freeBoard.value) {
+    return {
+      order,
+      left: `${module.x}px`,
+      top: `${module.y}px`,
+      width: `${module.width}px`,
+      height: `${module.height}px`,
+      ...(layoutDragging.value && selectedModuleKey.value === key
+        ? { zIndex: 30, opacity: swapTargetKey.value ? 0.6 : undefined, transition: 'opacity 120ms ease-out' }
+        : {})
+    };
+  }
+  if (compactBoard.value && module.width >= 900) {
+    return { order, gridColumn: '1 / -1' };
+  }
+  return { order };
 }
 
-const selectedModule = computed(() => renderableModules.value.find((item) => item.key === selectedModuleKey.value) || null);
-const selectionFrameStyle = computed(() => {
-  const rect = selectionRect.value;
-  if (!rect) return {};
-  return {
-    left: `${rect.left - 2}px`,
-    top: `${rect.top - 2}px`,
-    width: `${rect.width + 4}px`,
-    height: `${rect.height + 4}px`
-  };
-});
+const selectedModule = computed(() => activeModules.value.find((item) => item.key === selectedModuleKey.value) || null);
+const selectionFrameStyle = computed(() => frameStyle(selectionRect.value));
 const selectionSizeLabel = computed(() => {
   const module = selectedModule.value;
-  const rect = selectionRect.value;
-  if (!module || !rect) return '';
-  const rows = Math.max(1, Math.round(rect.height / 10));
-  return `${module.width} 列 × ${rows} 行`;
+  if (!module) return '';
+  return `${module.width} × ${module.height} px`;
 });
+const swapTargetLabel = computed(() => {
+  if (!swapTargetKey.value) return '';
+  return activeModules.value.find((module) => module.key === swapTargetKey.value)?.label || '';
+});
+const swapFrameStyle = computed(() => frameStyle(swapTargetRect.value));
 
 function moduleElement(key) {
   return document.querySelector(`.dashboard-module[data-module-key="${key}"]`);
 }
 
-function updateSelectionRect() {
-  if (!layoutEditing.value || !selectedModuleKey.value) {
-    selectionRect.value = null;
-    return;
-  }
-  const el = moduleElement(selectedModuleKey.value);
+/** 模块相对页面容器的矩形；用于选中框与交换目标框。 */
+function frameRect(key) {
+  if (!key) return null;
+  const el = moduleElement(key);
   const page = pageEl.value;
-  if (!el || !page) {
-    selectionRect.value = null;
-    return;
-  }
+  if (!el || !page) return null;
   const rect = el.getBoundingClientRect();
   const pageRect = page.getBoundingClientRect();
-  selectionRect.value = {
+  return {
     left: rect.left - pageRect.left,
     top: rect.top - pageRect.top,
     width: rect.width,
@@ -1038,11 +1125,93 @@ function updateSelectionRect() {
   };
 }
 
+function frameStyle(rect) {
+  if (!rect) return {};
+  return {
+    left: `${rect.left - 2}px`,
+    top: `${rect.top - 2}px`,
+    width: `${rect.width + 4}px`,
+    height: `${rect.height + 4}px`
+  };
+}
+
+/** 量出模块在指定宽度下的内容自然高度（临时 auto 高度，量完立即还原）。 */
+function measureModuleContentHeight(key, width) {
+  const el = moduleElement(key);
+  if (!el) return 0;
+  const cacheKey = `${key}#${width == null ? 'auto' : Math.round(width)}`;
+  if (contentMeasureCache.has(cacheKey)) return contentMeasureCache.get(cacheKey);
+  const prevWidth = el.style.width;
+  const prevHeight = el.style.height;
+  if (width != null && Number.isFinite(width)) el.style.width = `${Math.max(1, Math.round(width))}px`;
+  el.style.height = 'auto';
+  const height = el.offsetHeight;
+  el.style.width = prevWidth;
+  el.style.height = prevHeight;
+  contentMeasureCache.set(cacheKey, height);
+  return height;
+}
+
+function resizeModuleWithinContent(startRect, direction, dx, dy, minWidth, minHeight, others) {
+  const base = resizeModule(startRect, direction, dx, dy, minWidth, minHeight, others);
+  if (!base) return { candidate: null, contentMin: 0, limited: false };
+  const contentMin = measureModuleContentHeight(startRect.key, base.width);
+  if (!contentMin || base.height + 0.5 >= contentMin) {
+    return { candidate: base, contentMin, limited: false };
+  }
+  const adjusted = resizeModule(
+    startRect,
+    direction,
+    dx,
+    dy,
+    minWidth,
+    Math.max(minHeight, contentMin),
+    others
+  );
+  return { candidate: adjusted, contentMin, limited: true };
+}
+
+function updateSelectionRect() {
+  if (!layoutEditing.value || !selectedModuleKey.value) {
+    selectionRect.value = null;
+    return;
+  }
+  selectionRect.value = frameRect(selectedModuleKey.value);
+}
+
 function scheduleSelectionFrame() {
   if (selectionFrameRaf) return;
   selectionFrameRaf = requestAnimationFrame(() => {
     selectionFrameRaf = 0;
     updateSelectionRect();
+    updateSwapFrame();
+  });
+}
+
+function updateSwapFrame() {
+  swapTargetRect.value = swapTargetKey.value ? frameRect(swapTargetKey.value) : null;
+}
+
+function setSwapTarget(target) {
+  swapTargetKey.value = target?.key || '';
+  updateSwapFrame();
+}
+
+function clearSwapTarget() {
+  swapTargetKey.value = '';
+  swapTargetRect.value = null;
+}
+
+function applyModuleSelection(key, focusHandle = false) {
+  selectedModuleKey.value = key;
+  contentLimitHeight.value = 0;
+  updateSelectionRect();
+  nextTick(() => {
+    updateSelectionRect();
+    observeSelectedModule();
+    if (focusHandle) {
+      document.querySelector('.layout-selection-frame .handle-se')?.focus();
+    }
   });
 }
 
@@ -1051,23 +1220,16 @@ function selectModule(key, focusHandle = false) {
   if (selectedModuleKey.value && selectedModuleKey.value !== key) {
     flushKeyboardLayout();
   }
-  selectedModuleKey.value = key;
-  updateSelectionRect();
-  nextTick(() => {
-    updateSelectionRect();
-    observeSelectedModule();
-    if (focusHandle) {
-      document.querySelector('.layout-selection-frame .handle-br')?.focus();
-    }
-  });
+  applyModuleSelection(key, focusHandle);
 }
 
 function clearModuleSelection({ restoreFocus = false } = {}) {
   const key = selectedModuleKey.value;
-  if (dragState) cancelReorder();
+  cancelLayoutPointer();
   flushKeyboardLayout();
   selectedModuleKey.value = '';
   selectionRect.value = null;
+  contentLimitHeight.value = 0;
   selectionObserver?.disconnect();
   selectionObserver = null;
   if (restoreFocus && key) {
@@ -1085,11 +1247,25 @@ function observeSelectedModule() {
   selectionObserver.observe(el);
 }
 
+/** 编辑时把模块内容设为 inert，既禁用指针也移出 Tab 顺序；模块外壳仍可选中/拖动。 */
+function syncModuleContentInert() {
+  document.querySelectorAll('.dashboard-board .dashboard-module').forEach((moduleEl) => {
+    Array.from(moduleEl.children).forEach((child) => {
+      if (layoutEditing.value) child.setAttribute('inert', '');
+      else child.removeAttribute('inert');
+    });
+  });
+}
+
+watch(layoutEditing, async () => {
+  await nextTick();
+  syncModuleContentInert();
+});
+
 function onModuleKeydown(key, event) {
   if (!layoutEditing.value) return;
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
-    flushKeyboardLayout();
     selectModule(key, true);
     return;
   }
@@ -1098,46 +1274,73 @@ function onModuleKeydown(key, event) {
   const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
   if (!horizontal && !vertical) return;
   event.preventDefault();
-  adjustSelectedSize('both', horizontal, vertical);
+  if (event.shiftKey) {
+    const verticalEdge = vertical < 0 ? 'n' : vertical > 0 ? 's' : '';
+    const horizontalEdge = horizontal < 0 ? 'w' : horizontal > 0 ? 'e' : '';
+    resizeSelectedBy(`${verticalEdge}${horizontalEdge}`, horizontal * BOARD_SNAP, vertical * BOARD_SNAP);
+  } else {
+    moveSelectedBy(horizontal * BOARD_SNAP, vertical * BOARD_SNAP);
+  }
 }
 
 function onResizeHandleKeydown(direction, event) {
   const horizontal = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
   const vertical = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
-  const changesWidth = direction !== 'height' && horizontal !== 0;
-  const changesHeight = direction !== 'width' && vertical !== 0;
-  if (!changesWidth && !changesHeight) return;
+  const dx = direction.includes('e') || direction.includes('w') ? horizontal * BOARD_SNAP : 0;
+  const dy = direction.includes('n') || direction.includes('s') ? vertical * BOARD_SNAP : 0;
+  if (!dx && !dy) return;
   event.preventDefault();
-  adjustSelectedSize(direction, horizontal, vertical);
+  resizeSelectedBy(direction, dx, dy);
 }
 
-function adjustSelectedSize(direction, horizontal, vertical) {
-  if (!selectedModule.value || layoutSaving.value) return;
-  const changesWidth = direction !== 'height' && horizontal !== 0;
-  const changesHeight = direction !== 'width' && vertical !== 0;
-  if (!changesWidth && !changesHeight) return;
-  if (!keyboardLayoutSnapshot) {
-    keyboardLayoutSnapshot = currentModuleConfig();
-  }
+function moduleRect(module) {
+  return {
+    key: module.key,
+    x: module.x,
+    y: module.y,
+    width: module.width,
+    height: module.height
+  };
+}
+
+function otherModuleRects(key) {
+  return activeModules.value.filter((module) => module.key !== key);
+}
+
+function moveSelectedBy(dx, dy) {
   const module = selectedModule.value;
-  if (changesWidth) {
-    updateModuleSize(module.key, {
-      width: clampModuleWidth(module.width + horizontal, module.minSpan, module.maxSpan)
-    });
-  }
-  if (changesHeight) {
-    const el = moduleElement(module.key);
-    const contentMin = el ? measureModuleContentHeight(el) : 0;
-    const minRows = Math.max(1, Math.ceil(contentMin / 10));
-    const currentRows = module.height || minRows;
-    const rows = Math.min(
-      MAX_MODULE_HEIGHT_ROWS,
-      Math.max(minRows, currentRows + vertical)
-    );
-    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
-  }
+  if (!module || layoutSaving.value || !freeBoard.value) return false;
+  contentLimitHeight.value = 0;
+  const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
+  const candidate = moveModule(moduleRect(module), dx, dy, otherModuleRects(module.key));
+  if (!candidate) return false;
+  updateModuleRect(module.key, candidate);
+  keyboardLayoutSnapshot = snapshot;
   nextTick(updateSelectionRect);
   scheduleKeyboardLayoutSave();
+  return true;
+}
+
+function resizeSelectedBy(direction, dx, dy) {
+  const module = selectedModule.value;
+  if (!module || layoutSaving.value || !freeBoard.value || !direction) return false;
+  const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
+  const result = resizeModuleWithinContent(
+    moduleRect(module),
+    direction,
+    dx,
+    dy,
+    module.minWidth,
+    module.minHeight,
+    otherModuleRects(module.key)
+  );
+  contentLimitHeight.value = result.limited ? result.contentMin : 0;
+  if (!result.candidate) return false;
+  updateModuleRect(module.key, result.candidate);
+  keyboardLayoutSnapshot = snapshot;
+  nextTick(updateSelectionRect);
+  scheduleKeyboardLayoutSave();
+  return true;
 }
 
 function scheduleKeyboardLayoutSave() {
@@ -1170,181 +1373,209 @@ function cancelKeyboardLayout() {
   keyboardLayoutSnapshot = null;
 }
 
-function onReorderHandleKeydown(event) {
-  if (!selectedModule.value || layoutSaving.value || dragState) return;
-  const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
-  if (!direction) return;
-  event.preventDefault();
-  const snapshot = keyboardLayoutSnapshot || currentModuleConfig();
-  if (!moveSelectedModuleBy(direction)) return;
-  keyboardLayoutSnapshot = snapshot;
-  scheduleKeyboardLayoutSave();
-}
-
-function moveSelectedModuleBy(direction) {
-  const visible = renderableModules.value;
-  const index = visible.findIndex((item) => item.key === selectedModuleKey.value);
-  if (index < 0) return false;
-  const target = visible[index + direction];
-  if (!target) return false;
-  const modules = ensureModuleRows();
-  if (!modules) return false;
-  const sourceIndex = modules.findIndex((item) => item.key === selectedModuleKey.value);
-  const targetIndex = modules.findIndex((item) => item.key === target.key);
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
-  [modules[sourceIndex], modules[targetIndex]] = [modules[targetIndex], modules[sourceIndex]];
-  nextTick(updateSelectionRect);
-  return true;
-}
-
-function startReorder(event) {
-  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
+function startModulePointer(key, event) {
+  if (!layoutEditing.value || layoutSaving.value || layoutPointer || !freeBoard.value) return;
   if (event.pointerType === 'mouse' && event.button !== 0) return;
-  const pendingSnapshot = keyboardLayoutSnapshot;
-  cancelKeyboardLayout();
-  const key = selectedModule.value.key;
-  dragState = {
-    key,
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    lastX: event.clientX,
-    lastY: event.clientY,
-    moved: false,
-    lastTargetKey: '',
-    snapshot: pendingSnapshot || currentModuleConfig(),
-    raf: 0
-  };
-  layoutDragging.value = true;
-  moduleElement(key)?.classList.add('is-layout-dragging');
+  // 有未落地的键盘微调时，flush 会立即开始保存，本次手势应放弃
+  flushKeyboardLayout();
+  if (layoutSaving.value) return;
+  if (selectedModuleKey.value !== key) {
+    applyModuleSelection(key);
+  }
+  const module = selectedModule.value;
+  if (!module) return;
+  contentLimitHeight.value = 0;
+  event.preventDefault();
   try {
     event.currentTarget.setPointerCapture?.(event.pointerId);
   } catch {
-    // 某些触控/旧浏览器不支持指针捕获，窗口监听仍可完成拖动
+    // 旧浏览器不支持指针捕获，窗口监听仍可完成拖动
   }
-  window.addEventListener('pointermove', onReorderMove, true);
-  window.addEventListener('pointerup', finishReorder, true);
-  window.addEventListener('pointercancel', finishReorder, true);
-  window.addEventListener('lostpointercapture', onLostPointerCapture, true);
-  window.addEventListener('blur', cancelReorder, true);
-  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
+  beginLayoutPointer(event, {
+    mode: 'move',
+    key,
+    startRect: moduleRect(module),
+    snapshot: currentModuleConfig()
+  });
 }
 
-function onReorderMove(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
+function startResize(direction, event) {
+  if (!layoutEditing.value || layoutSaving.value || layoutPointer || !freeBoard.value) return;
+  const module = selectedModule.value;
+  if (!module) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  // 有未落地的键盘微调时，flush 会立即开始保存，本次手势应放弃
+  flushKeyboardLayout();
+  if (layoutSaving.value) return;
+  contentLimitHeight.value = 0;
+  beginLayoutPointer(event, {
+    mode: 'resize',
+    key: module.key,
+    direction,
+    startRect: moduleRect(module),
+    minWidth: module.minWidth,
+    minHeight: module.minHeight,
+    snapshot: currentModuleConfig()
+  });
+}
+
+function beginLayoutPointer(event, state) {
+  contentMeasureCache.clear();
+  layoutPointer = {
+    ...state,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startScrollY: window.scrollY,
+    lastClientX: event.clientX,
+    lastClientY: event.clientY,
+    moved: false,
+    lastValid: state.startRect,
+    swapPlan: null,
+    raf: 0
+  };
+  window.addEventListener('pointermove', onLayoutPointerMove, true);
+  window.addEventListener('pointerup', finishLayoutPointer, true);
+  window.addEventListener('pointercancel', cancelLayoutPointer, true);
+  window.addEventListener('lostpointercapture', finishLayoutPointer, true);
+  window.addEventListener('blur', cancelLayoutPointer, true);
+  layoutPointer.raf = requestAnimationFrame(autoScrollLayoutPointer);
+}
+
+function onLayoutPointerMove(event) {
+  if (!layoutPointer || event.pointerId !== layoutPointer.pointerId) return;
   if (event.buttons === 0) {
-    finishReorder(event);
+    finishLayoutPointer(event);
     return;
   }
   event.preventDefault();
-  dragState.lastX = event.clientX;
-  dragState.lastY = event.clientY;
-  const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
-  if (!dragState.moved && distance < 4) return;
-  dragState.moved = true;
-  updateReorderTarget(event.clientX, event.clientY);
+  layoutPointer.lastClientX = event.clientX;
+  layoutPointer.lastClientY = event.clientY;
+  applyLayoutPointer();
 }
 
-function updateReorderTarget(x, y) {
-  if (!dragState) return;
-  const stack = document.elementsFromPoint(x, y);
-  if (stack.some((el) => el.closest?.('.layout-selection-frame'))) {
-    dragState.lastTargetKey = '';
-    return;
+function applyLayoutPointer() {
+  const state = layoutPointer;
+  if (!state) return;
+  if (!state.moved) {
+    if (Math.hypot(state.lastClientX - state.startX, state.lastClientY - state.startY) < 4) return;
+    state.moved = true;
+    // 手柄获得焦点可能触发一次浏览器滚动；从手势真正开始时重新记录滚动原点。
+    state.startScrollY = window.scrollY;
   }
-  for (const el of stack) {
-    const moduleEl = el.closest?.('.dashboard-module');
-    if (!moduleEl) continue;
-    if (moduleEl.dataset.moduleKey === dragState.key) {
-      dragState.lastTargetKey = '';
-      return;
+  const dx = state.lastClientX - state.startX;
+  const dy = state.lastClientY - state.startY + (window.scrollY - state.startScrollY);
+  const others = otherModuleRects(state.key);
+  let candidate;
+  let swapPlan = null;
+  if (state.mode === 'move') {
+    const dragged = movedRect(state.startRect, dx, dy);
+    candidate = collidesWithAny(dragged, others) ? null : dragged;
+    updateModuleRect(state.key, dragged);
+    if (candidate) {
+      state.lastValid = candidate;
+    } else {
+      const target = findSwapTarget(dragged, others);
+      swapPlan = target ? planSwap(state.startRect, target, others) : null;
     }
-    reorderModuleTo(moduleEl.dataset.moduleKey);
-    return;
+  } else {
+    const result = resizeModuleWithinContent(
+      state.startRect,
+      state.direction,
+      dx,
+      dy,
+      state.minWidth,
+      state.minHeight,
+      others
+    );
+    candidate = result.candidate;
+    contentLimitHeight.value = result.limited ? result.contentMin : 0;
+    if (candidate) updateModuleRect(state.key, candidate);
   }
-  dragState.lastTargetKey = '';
+  state.swapPlan = swapPlan;
+  if (swapPlan) {
+    setSwapTarget(swapPlan.target);
+  } else {
+    clearSwapTarget();
+  }
+  layoutBlocked.value = !candidate && !swapPlan;
+  nextTick(scheduleSelectionFrame);
+  layoutDragging.value = state.mode === 'move';
+  layoutResizing.value = state.mode === 'resize';
 }
 
-function reorderModuleTo(targetKey) {
-  if (!dragState || !targetKey || targetKey === dragState.key) return false;
-  if (dragState.lastTargetKey === targetKey) return false;
-  const modules = ensureModuleRows();
-  if (!modules) return false;
-  const sourceIndex = modules.findIndex((item) => item.key === dragState.key);
-  const targetIndex = modules.findIndex((item) => item.key === targetKey);
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false;
-  const [moved] = modules.splice(sourceIndex, 1);
-  // The target's original index is the insert point for both directions:
-  // moving down lands after the target, moving up lands before it.
-  modules.splice(targetIndex, 0, moved);
-  dragState.lastTargetKey = targetKey;
+function finishLayoutPointer(event) {
+  if (!layoutPointer) return;
+  if (event?.pointerId !== undefined && event.pointerId !== layoutPointer.pointerId) return;
+  const state = layoutPointer;
+  clearLayoutPointer();
   nextTick(updateSelectionRect);
-  return true;
-}
-
-function finishReorder(event) {
-  if (!dragState) return;
-  if (event && event.pointerId !== undefined && event.pointerId !== dragState.pointerId) return;
-  const snapshot = dragState.snapshot;
-  clearReorderState();
-  nextTick(updateSelectionRect);
-  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
-    persistLayout(snapshot);
+  if (state.swapPlan) {
+    applySwapPlan(state.swapPlan);
+  } else if (state.mode === 'move') {
+    updateModuleRect(state.key, state.lastValid);
+  }
+  if (state.moved && moduleLayoutChanged(state.snapshot, currentModuleConfig())) {
+    persistLayout(state.snapshot);
   }
 }
 
-function onLostPointerCapture(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
-  finishReorder(event);
+function applySwapPlan(plan) {
+  updateModuleRect(plan.dragged.key, plan.dragged);
+  updateModuleRect(plan.target.key, plan.target);
+  for (const row of plan.moved) updateModuleRect(row.key, row);
+  nextTick(scheduleSelectionFrame);
 }
 
-function cancelReorder() {
-  if (!dragState) return;
-  const snapshot = dragState.snapshot;
-  clearReorderState();
+function cancelLayoutPointer() {
+  clearSwapTarget();
+  if (!layoutPointer) return;
+  const snapshot = layoutPointer.snapshot;
+  clearLayoutPointer();
   if (data.value?.config) {
     data.value.config.modules = snapshot;
   }
   nextTick(updateSelectionRect);
 }
 
-function clearReorderState() {
-  if (!dragState) {
-    layoutDragging.value = false;
-    return;
-  }
-  if (dragState.raf) cancelAnimationFrame(dragState.raf);
-  moduleElement(dragState.key)?.classList.remove('is-layout-dragging');
-  dragState = null;
+function clearLayoutPointer() {
+  clearSwapTarget();
+  if (!layoutPointer) return;
+  if (layoutPointer.raf) cancelAnimationFrame(layoutPointer.raf);
+  layoutPointer = null;
   layoutDragging.value = false;
-  window.removeEventListener('pointermove', onReorderMove, true);
-  window.removeEventListener('pointerup', finishReorder, true);
-  window.removeEventListener('pointercancel', finishReorder, true);
-  window.removeEventListener('lostpointercapture', onLostPointerCapture, true);
-  window.removeEventListener('blur', cancelReorder, true);
+  layoutResizing.value = false;
+  layoutBlocked.value = false;
+  window.removeEventListener('pointermove', onLayoutPointerMove, true);
+  window.removeEventListener('pointerup', finishLayoutPointer, true);
+  window.removeEventListener('pointercancel', cancelLayoutPointer, true);
+  window.removeEventListener('lostpointercapture', finishLayoutPointer, true);
+  window.removeEventListener('blur', cancelLayoutPointer, true);
 }
 
-function autoScrollDuringReorder() {
-  if (!dragState) return;
-  if (dragState.moved) {
+function autoScrollLayoutPointer() {
+  const state = layoutPointer;
+  if (!state) return;
+  if (state.moved) {
     const threshold = 48;
-    const y = dragState.lastY;
+    const movingUp = state.lastClientY < state.startY;
+    const movingDown = state.lastClientY > state.startY;
     let delta = 0;
-    if (y < threshold) {
-      delta = -Math.min(12, Math.ceil(((threshold - y) / threshold) * 12));
-    } else if (y > window.innerHeight - threshold) {
-      delta = Math.min(12, Math.ceil(((y - (window.innerHeight - threshold)) / threshold) * 12));
+    if (movingUp && state.lastClientY < threshold) {
+      delta = -Math.min(12, Math.ceil(((threshold - state.lastClientY) / threshold) * 12));
+    } else if (movingDown && state.lastClientY > window.innerHeight - threshold) {
+      delta = Math.min(12, Math.ceil(((state.lastClientY - (window.innerHeight - threshold)) / threshold) * 12));
     }
     if (delta) {
       window.scrollBy(0, delta);
-      updateReorderTarget(dragState.lastX, dragState.lastY);
+      applyLayoutPointer();
     }
   }
-  dragState.raf = requestAnimationFrame(autoScrollDuringReorder);
+  if (layoutPointer) layoutPointer.raf = requestAnimationFrame(autoScrollLayoutPointer);
 }
 
 function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !renderableModules.value.length || mobileLayoutQuery.matches) return;
+  if (!data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
@@ -1353,8 +1584,8 @@ function enterLayoutEditing() {
 }
 
 function finishLayoutEditing() {
-  if (dragState) cancelReorder();
-  if (resizeState) cancelResize();
+  cancelLayoutPointer();
+  flushKeyboardLayout();
   layoutEditing.value = false;
   clearModuleSelection();
   setLayoutStatus('');
@@ -1363,12 +1594,8 @@ function finishLayoutEditing() {
 
 function onLayoutKeydown(event) {
   if (!layoutEditing.value || event.key !== 'Escape') return;
-  if (dragState) {
-    cancelReorder();
-    return;
-  }
-  if (resizeState) {
-    cancelResize();
+  if (layoutPointer) {
+    cancelLayoutPointer();
     return;
   }
   if (selectedModuleKey.value) {
@@ -1380,10 +1607,7 @@ function onLayoutKeydown(event) {
 
 function currentModuleConfig() {
   const source = data.value?.config?.modules?.length ? data.value.config.modules : defaultModules();
-  return source.map((row) => {
-    const module = resolveModule(row);
-    return { key: module.key, enabled: module.enabled, width: module.width, height: module.height };
-  });
+  return toConfigRows(source.map(resolveModule));
 }
 
 function ensureModuleRows() {
@@ -1395,116 +1619,15 @@ function ensureModuleRows() {
   return config.modules;
 }
 
-function updateModuleSize(key, patch) {
+function updateModuleRect(key, rect) {
   const modules = ensureModuleRows();
   if (!modules) return;
   const row = modules.find((item) => item.key === key);
-  if (row) Object.assign(row, patch);
-}
-
-function measureModuleContentHeight(el) {
-  const previousMinHeight = el.style.minHeight;
-  el.style.minHeight = '0px';
-  const height = Math.ceil(el.getBoundingClientRect().height);
-  el.style.minHeight = previousMinHeight;
-  return height;
-}
-
-function startResize(direction, event) {
-  if (!layoutEditing.value || !selectedModule.value || layoutSaving.value || resizeState || dragState) return;
-  const pendingSnapshot = keyboardLayoutSnapshot;
-  cancelKeyboardLayout();
-  const el = moduleElement(selectedModule.value.key);
-  const grid = document.querySelector('.dashboard-grid');
-  if (!el || !grid) return;
-  const rect = el.getBoundingClientRect();
-  const gridRect = grid.getBoundingClientRect();
-  const gap = 20;
-  const colWidth = (gridRect.width - gap * 11) / 12;
-  if (colWidth <= 0) return;
-  const contentMin = measureModuleContentHeight(el);
-  resizeState = {
-    direction,
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    startWidth: rect.width,
-    startHeight: rect.height,
-    colWidth,
-    gap,
-    contentMin,
-    snapshot: pendingSnapshot || currentModuleConfig()
-  };
-  layoutResizing.value = true;
-  window.addEventListener('pointermove', onResizeMove, true);
-  window.addEventListener('pointerup', finishResize, true);
-  window.addEventListener('pointercancel', finishResize, true);
-}
-
-function onResizeMove(event) {
-  if (!resizeState || event.pointerId !== resizeState.pointerId) return;
-  event.preventDefault();
-  const state = resizeState;
-  const module = selectedModule.value;
-  if (!module) return;
-  const dx = event.clientX - state.startX;
-  const dy = event.clientY - state.startY;
-  if (state.direction !== 'height') {
-    const width = state.startWidth + dx;
-    const span = clampModuleWidth(
-      Math.round((width + state.gap) / (state.colWidth + state.gap)),
-      module.minSpan,
-      module.maxSpan
-    );
-    updateModuleSize(module.key, { width: span });
-  }
-  if (state.direction !== 'width') {
-    const minRows = Math.max(1, Math.ceil(state.contentMin / 10));
-    const height = state.startHeight + dy;
-    const rows = Math.min(
-      MAX_MODULE_HEIGHT_ROWS,
-      Math.max(minRows, Math.round(height / 10))
-    );
-    updateModuleSize(module.key, { height: rows === minRows ? 0 : rows });
-  }
-  scheduleSelectionFrame();
-}
-
-function finishResize(event) {
-  if (!resizeState) return;
-  if (event && event.pointerId !== undefined && event.pointerId !== resizeState.pointerId) return;
-  const snapshot = resizeState.snapshot;
-  clearResizeState();
-  const module = selectedModule.value;
-  const el = module ? moduleElement(module.key) : null;
-  if (module?.height && el) {
-    const contentMin = measureModuleContentHeight(el);
-    if (module.height * 10 <= contentMin + 5) {
-      updateModuleSize(module.key, { height: 0 });
-    }
-  }
-  nextTick(updateSelectionRect);
-  if (moduleLayoutChanged(snapshot, currentModuleConfig())) {
-    persistLayout(snapshot);
-  }
-}
-
-function cancelResize() {
-  if (!resizeState) return;
-  const snapshot = resizeState.snapshot;
-  clearResizeState();
-  if (data.value?.config) {
-    data.value.config.modules = snapshot;
-  }
-  nextTick(updateSelectionRect);
-}
-
-function clearResizeState() {
-  resizeState = null;
-  layoutResizing.value = false;
-  window.removeEventListener('pointermove', onResizeMove, true);
-  window.removeEventListener('pointerup', finishResize, true);
-  window.removeEventListener('pointercancel', finishResize, true);
+  if (!row) return;
+  row.x = rect.x;
+  row.y = rect.y;
+  row.width = rect.width;
+  row.height = rect.height;
 }
 
 function moduleLayoutChanged(before, after) {
@@ -1513,31 +1636,38 @@ function moduleLayoutChanged(before, after) {
     const next = after[index];
     return !next
       || item.key !== next.key
+      || item.x !== next.x
+      || item.y !== next.y
       || item.width !== next.width
       || item.height !== next.height;
   });
 }
 
-function buildConfigPayload(modules) {
+function toConfigRows(modules) {
+  return modules.map(({ key, enabled, x, y, width, height }) => ({
+    key,
+    enabled: enabled !== false,
+    x,
+    y,
+    width,
+    height
+  }));
+}
+
+function buildConfigPayload(modules, extras = {}) {
   const config = data.value?.config || {};
-  const performance = config.performance?.metricKey
-    ? { ...config.performance }
-    : { metricKey: 'batting.avg', viz: 'line' };
-  const ranks = Array.isArray(config.ranks) && config.ranks.length
-    ? config.ranks.map((row) => ({ metricKey: row.metricKey }))
-    : DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey }));
-  const milestoneKeys = Array.isArray(config.milestones?.metricKeys)
-    ? [...config.milestones.metricKeys]
-    : [];
+  const performance = extras.performance
+    || (config.performance?.metricKey ? { ...config.performance } : { metricKey: 'batting.avg', viz: 'line' });
+  const ranks = extras.ranks
+    || (Array.isArray(config.ranks) && config.ranks.length
+      ? config.ranks.map((row) => ({ metricKey: row.metricKey }))
+      : DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey })));
+  const milestoneKeys = extras.milestones?.metricKeys
+    || (Array.isArray(config.milestones?.metricKeys) ? [...config.milestones.metricKeys] : []);
   return {
-    version: 3,
-    layout: 'v3-modular',
-    modules: modules.map(({ key, enabled, width, height }) => ({
-      key,
-      enabled: enabled !== false,
-      width,
-      height
-    })),
+    version: CONFIG_VERSION,
+    layout: CONFIG_LAYOUT,
+    modules: toConfigRows(modules),
     milestones: { metricKeys: milestoneKeys },
     performance,
     ranks
@@ -1568,13 +1698,24 @@ async function persistLayout(snapshot) {
   }
 }
 
-function resetSelectedModuleSize() {
+function resetSelectedModule() {
   const module = selectedModule.value;
   if (!module || layoutSaving.value) return;
   cancelKeyboardLayout();
   const snapshot = currentModuleConfig();
-  const defaultSpan = moduleMeta.value[module.key]?.span || 12;
-  updateModuleSize(module.key, { width: defaultSpan, height: 0 });
+  const width = module.defaultWidth || module.width;
+  const contentMin = measureModuleContentHeight(module.key, width);
+  const candidate = clampToBoard({
+    ...moduleRect(module),
+    width,
+    height: Math.max(module.defaultHeight || module.height, contentMin)
+  });
+  if (collidesWithAny(candidate, otherModuleRects(module.key))) {
+    ElMessage.warning('默认尺寸会与其他模块重叠，请先调整位置');
+    return;
+  }
+  contentLimitHeight.value = 0;
+  updateModuleRect(module.key, candidate);
   nextTick(updateSelectionRect);
   persistLayout(snapshot);
 }
@@ -1592,19 +1733,22 @@ function setLayoutStatus(status) {
   }
 }
 
-function onMobileLayoutChange(event) {
-  if (event.matches && layoutEditing.value) finishLayoutEditing();
-}
-
-function onViewportResize() {
-  updateMilestoneScrollbar();
-  if (!layoutEditing.value) return;
-  if (mobileLayoutQuery.matches) {
+function syncBoardMode() {
+  freeBoard.value = freeBoardQuery.matches;
+  compactBoard.value = compactBoardQuery.matches;
+  if (!freeBoard.value && layoutEditing.value) {
     finishLayoutEditing();
     return;
   }
   nextTick(updateSelectionRect);
 }
+
+function onViewportResize() {
+  updateMilestoneScrollbar();
+  if (!layoutEditing.value) return;
+  nextTick(updateSelectionRect);
+}
+
 const heroStats = computed(() => {
   if (!hasStatsData.value || (!hasBatting.value && !hasPitchingData.value)) {
     return [
@@ -2068,7 +2212,7 @@ function recentLine(game) {
 }
 
 function openSettings() {
-  if (!data.value || layoutSaving.value) return;
+  if (!data.value || layoutSaving.value || layoutEditing.value) return;
   resetDraft();
   settingsOpen.value = true;
 }
@@ -2089,7 +2233,7 @@ function resetDraft() {
     : milestoneCatalog.value.filter((metric) => metric.defaultSelected).map((metric) => metric.key);
 }
 
-function moveModule(index, direction) {
+function moveDraftModule(index, direction) {
   const target = index + direction;
   if (target < 0 || target >= draft.modules.length) return;
   const [module] = draft.modules.splice(index, 1);
@@ -2097,8 +2241,7 @@ function moveModule(index, direction) {
 }
 
 function moduleSizeLabel(module) {
-  const width = `${module.width || 12} 列`;
-  return module.height ? `${width} · 至少 ${module.height * 10}px` : `${width} · 高度自适应`;
+  return `${module.width} × ${module.height} px`;
 }
 
 function initModuleSortable() {
@@ -2145,14 +2288,11 @@ async function saveSettings() {
   }
   saving.value = true;
   try {
-    await clubhouseApi.saveConfig({
-      version: 3,
-      layout: 'v3-modular',
-      modules: draft.modules.map(({ key, enabled, width, height }) => ({ key, enabled, width, height })),
+    await clubhouseApi.saveConfig(buildConfigPayload(draft.modules, {
       milestones: { metricKeys: [...draft.milestones.metricKeys] },
       performance: { ...draft.performance },
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
-    });
+    }));
     settingsOpen.value = false;
     ElMessage.success('数据设置已保存');
     await load();
@@ -2236,6 +2376,7 @@ function onEventChange() {
 }
 
 function switchTeam(team) {
+  if (layoutEditing.value) return;
   teamId.value = team.id;
   onTeamChange();
 }
@@ -2368,22 +2509,23 @@ function goGame(game) {
 
 onMounted(() => {
   document.documentElement.classList.add('clubhouse-route');
-  mobileLayoutQuery.addEventListener('change', onMobileLayoutChange);
+  freeBoardQuery.addEventListener('change', syncBoardMode);
+  compactBoardQuery.addEventListener('change', syncBoardMode);
   window.addEventListener('resize', onViewportResize);
   document.addEventListener('keydown', onLayoutKeydown);
   load();
 });
 onBeforeUnmount(() => {
   destroyModuleSortable();
-  cancelKeyboardLayout();
-  if (dragState) clearReorderState();
-  if (resizeState) clearResizeState();
+  flushKeyboardLayout();
+  clearLayoutPointer();
   selectionObserver?.disconnect();
   milestoneResizeObserver?.disconnect();
   if (milestoneScrollDrag) stopMilestoneScrollDrag();
   if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
   if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
-  mobileLayoutQuery.removeEventListener('change', onMobileLayoutChange);
+  freeBoardQuery.removeEventListener('change', syncBoardMode);
+  compactBoardQuery.removeEventListener('change', syncBoardMode);
   window.removeEventListener('resize', onViewportResize);
   document.removeEventListener('keydown', onLayoutKeydown);
   document.documentElement.classList.remove('clubhouse-route');
@@ -2391,7 +2533,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 页面主体沿用 V3 设计令牌；桌面 12 栏、手机单栏。 */
+/* 页面主体沿用 V3 设计令牌；宽屏自由画布，窄屏紧凑/单列。 */
 .clubhouse-page { position: relative; max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
 .breadcrumb { font-size: 10px; color: var(--bs-text-faint); }
@@ -2399,16 +2541,24 @@ onBeforeUnmount(() => {
 .page-head h1 { margin: 6px 0 0; font-size: 27px; line-height: 1.15; font-weight: 800; color: var(--bs-ink); }
 .page-sub { margin: 6px 0 0; font-size: 11px; color: var(--bs-text-muted); }
 .page-actions { display: flex; gap: 10px; }
-.layout-edit-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--bs-accent); border-radius: 10px; background: var(--bs-accent-soft); color: var(--bs-text); }
+.layout-edit-banner { position: sticky; top: 72px; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--bs-accent); border-radius: 10px; background: color-mix(in srgb, var(--bs-surface) 92%, var(--bs-accent-soft)); box-shadow: var(--bs-shadow-sm), 0 10px 30px rgba(7,26,51,.08); color: var(--bs-text); backdrop-filter: blur(10px); }
 .layout-edit-banner .edit-copy { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 11px; }
-.layout-edit-banner .edit-copy b { color: var(--bs-ink); font-weight: 800; white-space: nowrap; }
-.layout-edit-banner .edit-copy span { color: var(--bs-text-muted); }
+.layout-edit-banner .edit-copy > b { color: var(--bs-ink); font-weight: 800; white-space: nowrap; }
+.layout-edit-banner .edit-copy > span { color: var(--bs-text-muted); }
+.layout-edit-banner .edit-selected { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.layout-edit-banner .edit-selected b { color: var(--bs-ink); font-weight: 800; }
+.layout-edit-banner .edit-selected em { padding: 2px 6px; border: 1px solid var(--bs-hairline); border-radius: 5px; background: var(--bs-surface-soft); color: var(--bs-accent-ink); font-family: var(--bs-font-num); font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.layout-edit-banner .edit-content-limit { padding: 2px 6px; border: 1px dashed var(--bs-accent); border-radius: 5px; color: var(--bs-accent-ink); font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
 .layout-edit-banner .edit-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .layout-edit-banner .edit-status { font-size: 10px; color: var(--bs-text-muted); }
 .layout-edit-banner .edit-status.is-saved { color: var(--bs-success); }
+.layout-edit-banner .edit-swap { color: var(--bs-accent-ink); font-weight: 800; }
+.layout-edit-banner .edit-reset { height: 30px; padding: 0 10px; border: 1px solid var(--bs-hairline); border-radius: 7px; background: var(--bs-surface); color: var(--bs-accent-ink); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.layout-edit-banner .edit-reset:hover { border-color: var(--bs-accent); background: var(--bs-accent-soft); }
+.layout-edit-banner .edit-reset:disabled { opacity: .4; cursor: not-allowed; }
 .layout-edit-banner .edit-done { height: 30px; padding: 0 13px; border: 1px solid var(--bs-accent); border-radius: 7px; color: var(--bs-on-accent); background: var(--bs-accent); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
 .layout-edit-banner .edit-done:hover { background: var(--bs-accent-hover); }
-.layout-edit-banner .edit-done:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
+.layout-edit-banner button:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .clubhouse-page.is-resizing, .clubhouse-page.is-reordering { user-select: none; }
 .clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
@@ -2636,42 +2786,72 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
   .radar-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 20px; width: 100%; min-width: 0; }
-.dashboard-grid .panel,
-.dashboard-grid .rank-band { min-width: 0; }
-.dashboard-grid .dashboard-module { grid-column: span var(--module-span, 12); min-height: var(--module-min-h, 0px); }
-.dashboard-grid.layout-editing .dashboard-module { outline: 1px solid transparent; outline-offset: 4px; transition: outline-color 160ms ease-out; user-select: none; cursor: pointer; }
-.dashboard-grid.layout-editing .dashboard-module:hover { outline-color: var(--bs-accent-soft); }
-.dashboard-grid.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
-.dashboard-grid.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
-.dashboard-grid .dashboard-module.is-layout-dragging { box-shadow: var(--bs-shadow-md); opacity: .92; }
-.dashboard-grid .rank-band,
-.dashboard-grid .evaluation-panel { margin-top: 0; }
-.layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 0 0 9999px rgba(7, 26, 51, .035); }
-.selection-toolbar { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px 0 10px; border: 1px solid var(--bs-accent); border-radius: 8px; background: var(--bs-surface); box-shadow: var(--bs-shadow-sm); color: var(--bs-text); font-size: 10px; white-space: nowrap; pointer-events: auto; }
-.selection-toolbar .selection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bs-success); flex: 0 0 auto; }
-.selection-toolbar b { color: var(--bs-ink); font-size: 11px; font-weight: 800; }
-.selection-toolbar .selection-size { color: var(--bs-text-muted); }
-.selection-toolbar .selection-move { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 24px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-size: 10px; font-weight: 700; cursor: grab; touch-action: none; }
-.selection-toolbar .selection-move:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
-.selection-toolbar .selection-move:active, .selection-toolbar .selection-move.is-dragging { cursor: grabbing; }
-.selection-toolbar .selection-move:disabled { opacity: .4; cursor: not-allowed; }
-.selection-toolbar .selection-move svg { width: 12px; height: 12px; }
-.selection-toolbar .selection-reset { padding: 3px 6px; border: 0; border-radius: 4px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-weight: 700; cursor: pointer; }
-.selection-toolbar .selection-reset:hover { background: var(--bs-accent); color: var(--bs-on-accent); }
-.selection-toolbar .selection-close { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--bs-text-muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
-.selection-toolbar .selection-close:hover { background: var(--bs-surface-soft); color: var(--bs-ink); }
-.selection-toolbar button:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.resize-handle { position: absolute; padding: 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
-.resize-handle::before { content: ""; position: absolute; background: var(--bs-accent); }
-.resize-handle:disabled, .selection-toolbar .selection-reset:disabled { opacity: .4; cursor: not-allowed; }
+.dashboard-board { position: relative; margin-top: 20px; width: 100%; min-width: 0; }
+.dashboard-board .dashboard-module { min-width: 0; margin: 0; container-type: inline-size; }
+.dashboard-board.is-free .dashboard-module {
+  position: absolute;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.dashboard-board.is-free.layout-editing {
+  background-image: radial-gradient(circle, var(--bs-hairline-soft) 1px, transparent 1px);
+  background-size: 16px 16px;
+  border-radius: 12px;
+}
+.dashboard-board.is-free.layout-editing .dashboard-module {
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: box-shadow 160ms ease-out;
+}
+.dashboard-board.is-free.layout-editing .dashboard-module:hover { box-shadow: var(--bs-shadow-md); }
+.dashboard-board.layout-editing .dashboard-module:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 4px; }
+.dashboard-board.layout-editing .dashboard-module > * { pointer-events: none; user-select: none; }
+.clubhouse-page.is-reordering .dashboard-board.is-free.layout-editing .dashboard-module { cursor: grabbing; }
+.rank-placeholder { display: grid; place-items: center; border-style: dashed; background: transparent; box-shadow: none; }
+.rank-placeholder-copy { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--bs-text-muted); font-size: 11px; text-align: center; }
+.rank-placeholder-copy b { font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
+.layout-selection-frame { position: absolute; z-index: 40; pointer-events: none; border: 2px solid var(--bs-accent); border-radius: 20px; box-shadow: 0 0 0 4px var(--bs-accent-soft), 0 14px 38px rgba(7,26,51,.14); transition: border-color 120ms ease-out, box-shadow 120ms ease-out; }
+.layout-swap-frame { position: absolute; z-index: 39; pointer-events: none; border: 2px dashed var(--bs-accent); border-radius: 20px; background: color-mix(in srgb, var(--bs-accent) 5%, transparent); box-shadow: 0 0 0 4px var(--bs-accent-soft); }
+.layout-swap-frame .swap-frame-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 3px 9px; border-radius: 999px; background: var(--bs-accent); color: var(--bs-on-accent); font-size: 10px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; box-shadow: 0 4px 12px rgba(7,26,51,.18); }
+.layout-selection-frame.is-blocked { border-color: var(--bs-danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-danger) 16%, transparent), 0 14px 38px rgba(7,26,51,.14); }
+.resize-handle { position: absolute; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; pointer-events: auto; touch-action: none; }
+.resize-handle::before { content: ""; width: 10px; height: 10px; border: 1px solid var(--bs-accent-ink); border-radius: 2px; background: var(--bs-accent); box-shadow: 0 1px 4px rgba(7,26,51,.22); }
+.layout-selection-frame.is-blocked .resize-handle::before { border-color: var(--bs-danger); background: var(--bs-danger); }
+.resize-handle:disabled { opacity: .4; cursor: not-allowed; }
 .resize-handle:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
-.resize-handle.handle-r { right: -12px; top: 50%; width: 24px; height: 44px; transform: translateY(-50%); cursor: ew-resize; }
-.resize-handle.handle-r::before { top: 50%; left: 50%; width: 9px; height: 32px; transform: translate(-50%, -50%); border-radius: 5px; }
-.resize-handle.handle-b { bottom: -12px; left: 50%; width: 44px; height: 24px; transform: translateX(-50%); cursor: ns-resize; }
-.resize-handle.handle-b::before { top: 50%; left: 50%; width: 32px; height: 9px; transform: translate(-50%, -50%); border-radius: 5px; }
-.resize-handle.handle-br { right: -12px; bottom: -12px; width: 24px; height: 24px; cursor: nwse-resize; }
-.resize-handle.handle-br::before { top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border: 2px solid var(--bs-accent); border-radius: 4px; background: var(--bs-surface); }
+.resize-handle.handle-nw { left: -12px; top: -12px; cursor: nwse-resize; }
+.resize-handle.handle-n { left: 50%; top: -12px; transform: translateX(-50%); cursor: ns-resize; }
+.resize-handle.handle-ne { right: -12px; top: -12px; cursor: nesw-resize; }
+.resize-handle.handle-w { left: -12px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.resize-handle.handle-e { right: -12px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.resize-handle.handle-sw { left: -12px; bottom: -12px; cursor: nesw-resize; }
+.resize-handle.handle-s { left: 50%; bottom: -12px; transform: translateX(-50%); cursor: ns-resize; }
+.resize-handle.handle-se { right: -12px; bottom: -12px; cursor: nwse-resize; }
+/* 模块宽度不再固定，内部布局按模块自身宽度收敛。 */
+@container (max-width: 900px) {
+  .eval-head { flex-wrap: wrap; align-items: flex-start; }
+  .eval-overall { flex-wrap: wrap; }
+  .rank-band-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .rank-feature { padding: 0; border-right: 0; }
+  .milestone-body { grid-template-columns: 1fr; gap: 18px; }
+  .milestone-timeline { padding-left: 0; padding-top: 14px; border-top: 1px solid var(--bs-hairline-soft); }
+}
+@container (max-width: 620px) {
+  .panel-head { align-items: flex-start; flex-wrap: wrap; }
+  .panel-head-actions { flex-wrap: wrap; }
+  .matrix-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recent-cards { grid-template-columns: 1fr; }
+  .schedule-row { grid-template-columns: 46px 1fr auto; }
+  .sch-time { display: none; }
+  .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
+  .donut-wrap { flex-wrap: wrap; gap: 16px; }
+  .chart-wrap { overflow-x: auto; }
+  .trend-chart { min-width: 480px; }
+  .eval-meta { align-self: flex-start; }
+}
 .content-grid, .main-col, .side-col { display: contents; }
 .dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
 .dashboard-empty h3 { margin: 8px 0; font-family: var(--bs-font-serif); font-size: 22px; color: var(--bs-ink); }
@@ -2782,7 +2962,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-grid.layout-editing .dashboard-module { transition: none; }
+  .dashboard-board.layout-editing .dashboard-module { transition: none; }
 }
 .page-state { padding: 80px 20px; }
 .state-detail { text-align: center; font-size: 11px; color: var(--bs-text-muted); }
@@ -2806,6 +2986,27 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .module-sort-row.is-off .module-sort-name span { color: var(--bs-text-muted); }
 .module-sort-count { margin-top: 8px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
 .settings-count { margin-top: 7px; text-align: right; font-size: 11px; color: var(--bs-text-muted); }
+
+/* 紧凑桌面/平板：双列流式，保存顺序生效，禁用自由布局编辑。 */
+@media (max-width: 1339px) {
+  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame, .layout-swap-frame { display: none !important; }
+  .dashboard-board {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    height: auto !important;
+  }
+  .dashboard-board .dashboard-module {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible;
+  }
+}
+@media (min-width: 981px) and (max-width: 1339px) {
+  .dashboard-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* 手机端：单列，玩家卡全宽，图表/矩阵/赛程堆叠。 */
 @media (max-width: 980px) {
@@ -2836,10 +3037,8 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .milestone-timeline { padding-left: 0; padding-top: 14px; border-top: 1px solid var(--bs-hairline-soft); }
   .radar-grid.two-up, .radar-grid.three-up { grid-template-columns: 1fr; }
   .radar-card { padding: 16px 15px 13px; }
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .dashboard-grid .dashboard-module { grid-column: 1 / -1; min-height: 0; }
-  .layout-edit-entry, .layout-edit-banner, .layout-selection-frame { display: none !important; }
-  .dashboard-grid.layout-editing .dashboard-module > * { pointer-events: auto; }
+  .dashboard-board { grid-template-columns: 1fr; }
+  .dashboard-board .dashboard-module { grid-column: 1 / -1; min-height: 0; }
   .module-sort-row { grid-template-columns: 44px minmax(0, 1fr) auto auto; min-height: 52px; }
   .module-drag { width: 44px; height: 44px; }
   .module-sort-actions :deep(.el-button) { width: 44px; height: 44px; }

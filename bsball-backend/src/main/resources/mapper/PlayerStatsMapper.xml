@@ -17,6 +17,8 @@
     <!-- PostgreSQL: 单字母后缀列名无下划线 -->
     <sql id="pitchHCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchh</when><otherwise>s.pitch_h</otherwise></choose></sql>
     <sql id="pitchRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchr</when><otherwise>s.pitch_r</otherwise></choose></sql>
+    <sql id="unearnedRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.unearnedr</when><otherwise>s.unearned_r</otherwise></choose></sql>
+    <sql id="pendingRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pendingr</when><otherwise>s.pending_r</otherwise></choose></sql>
     <!-- 单场 IP 转出局数，与 StatsFormatUtil.baseballIpToOuts 对齐后再 SUM，避免 0.1+0.2=0.3 按小数相加 -->
     <sql id="ipToOutsFromIpCol">(
         FLOOR(s.ip) * 3 + (CASE
@@ -85,8 +87,8 @@
                 ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
             END) AS ip,
             COALESCE(SUM(s.er), 0) AS er,
-            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
-            COALESCE(SUM(s.pending_r), 0) AS pendingR,
+            COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
+            COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
             COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
             COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
@@ -209,8 +211,8 @@
                 ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
             END) AS ip,
             COALESCE(SUM(s.er), 0) AS er,
-            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
-            COALESCE(SUM(s.pending_r), 0) AS pendingR,
+            COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
+            COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
             COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
             COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
@@ -343,8 +345,8 @@
                 ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
             END) AS ip,
             COALESCE(SUM(s.er), 0) AS er,
-            COALESCE(SUM(s.unearned_r), 0) AS unearnedR,
-            COALESCE(SUM(s.pending_r), 0) AS pendingR,
+            COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
+            COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
             COALESCE(SUM(<include refid="pitchHCol"/>), 0) AS pitchH,
             COALESCE(SUM(s.pitch_doubles), 0) AS pitchDoubles,
             COALESCE(SUM(s.pitch_triples), 0) AS pitchTriples,
@@ -499,7 +501,7 @@
             s.pa AS pa, s.ab AS ab, s.r AS r, s.h AS h, s.rbi AS rbi, s.hr AS hr, s.inside_park_hr AS insideParkHr, s.sb AS sb,
             s.bb_hp AS bbHp, s.so AS so, s.doubles AS doubles, s.triples AS triples, s.e AS e,
             s.gdp AS gdp, s.sh AS sh, s.sf AS sf, s.bb AS bb, s.ibb AS ibb, s.hbp AS hbp, s.io AS io, s.cs AS cs,
-            s.ip AS ip, s.er AS er, s.unearned_r AS unearnedR, s.pending_r AS pendingR,
+            s.ip AS ip, s.er AS er, <include refid="unearnedRCol"/> AS unearnedR, <include refid="pendingRCol"/> AS pendingR,
             <include refid="pitchHCol"/> AS pitchH, s.pitch_doubles AS pitchDoubles, s.pitch_triples AS pitchTriples, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
             s.pitch_hr AS pitchHr, s.pitch_inside_park_hr AS pitchInsideParkHr, s.pitch_sh AS pitchSh, s.pitch_sf AS pitchSf, s.gs AS gs, s.svo AS svo, s.cg AS cg, s.pg AS pg,
             s.w AS w, s.l AS l, s.sv AS sv, s.hld AS hld, s.pitch_pa AS pitchPa, s.pitch_bf AS pitchBf,

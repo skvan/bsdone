@@ -130,6 +130,9 @@ extends BaseEntity {
     private Integer isPitcher;
     @Comment(value="\u6295\u7403\u5c40\u6570")
     private Double ip;
+    @Column(name="outs_recorded", columnDefinition="integer")
+    @Comment(value="投手取得的出局數（ERA 權威值）")
+    private Integer outsRecorded = 0;
     @Column(columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
@@ -139,6 +142,26 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="待判定失分")
     private Integer pendingR;
+
+    @Column(name="inherited_runners_scored", columnDefinition="integer")
+    @Comment(value="繼承跑者中得分的數量（§8.1）")
+    private Integer inheritedRunnersScored = 0;
+
+    @Column(name="passed_ball_runs", columnDefinition="integer")
+    @Comment(value="因捕逸失分數（§8.1）")
+    private Integer passedBallRuns = 0;
+
+    @Column(name="error_related_runs", columnDefinition="integer")
+    @Comment(value="因失誤相關失分數（§8.1）")
+    private Integer errorRelatedRuns = 0;
+
+    @Column(name="official_scorer_note", length=500)
+    @Comment(value="記錄員備註（§8.1）")
+    private String officialScorerNote;
+
+    @Column(name="scoring_revision_status", length=20)
+    @Comment(value="計分修訂狀態（§8.1）")
+    private String scoringRevisionStatus;
     @Column(columnDefinition="integer")
     @Comment(value="\u81ea\u8d23\u5206")
     private Integer er;
@@ -437,6 +460,16 @@ extends BaseEntity {
     @Generated
     public Double getIp() {
         return this.ip;
+    }
+
+    @Generated
+    public Integer getOutsRecorded() {
+        return this.outsRecorded;
+    }
+
+    @Generated
+    public void setOutsRecorded(Integer outsRecorded) {
+        this.outsRecorded = outsRecorded;
     }
 
     @Generated
@@ -1578,5 +1611,16 @@ extends BaseEntity {
         result = result * 59 + ($throwHand == null ? 43 : $throwHand.hashCode());
         return result;
     }
+
+    public Integer getInheritedRunnersScored() { return inheritedRunnersScored; }
+    public void setInheritedRunnersScored(Integer v) { this.inheritedRunnersScored = v; }
+    public Integer getPassedBallRuns() { return passedBallRuns; }
+    public void setPassedBallRuns(Integer v) { this.passedBallRuns = v; }
+    public Integer getErrorRelatedRuns() { return errorRelatedRuns; }
+    public void setErrorRelatedRuns(Integer v) { this.errorRelatedRuns = v; }
+    public String getOfficialScorerNote() { return officialScorerNote; }
+    public void setOfficialScorerNote(String v) { this.officialScorerNote = v; }
+    public String getScoringRevisionStatus() { return scoringRevisionStatus; }
+    public void setScoringRevisionStatus(String v) { this.scoringRevisionStatus = v; }
 }
 

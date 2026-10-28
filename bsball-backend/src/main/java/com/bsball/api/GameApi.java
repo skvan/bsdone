@@ -30,6 +30,7 @@ package com.bsball.api;
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.model.dto.GameResponseDTO;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -37,6 +38,7 @@ import com.bsball.model.dto.LiveSnapshotSaveDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.GameSubstitutionEvent;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.service.GamePlayerStatService;
 import com.bsball.service.GameService;
@@ -107,6 +109,12 @@ public class GameApi {
         return Result.ok(PageResult.of(data, (long)data.size()));
     }
 
+    @GetMapping(value={"/{gameId}/substitutions"})
+    public Result<PageResult<GameSubstitutionEvent>> listSubstitutions(@PathVariable Long gameId) {
+        List<GameSubstitutionEvent> data = this.gameService.listSubstitutions(gameId);
+        return Result.ok(PageResult.of(data, (long)data.size()));
+    }
+
     @PostMapping(value={"/create"})
     public Result<Map<String, Object>> create(@RequestBody @Valid Game body) {
         Game created = this.gameService.create(body);
@@ -130,6 +138,12 @@ public class GameApi {
             @PathVariable Long id,
             @RequestBody EarnedRunHalfInningRequest body) {
         return Result.ok(this.gameService.reconstructEarnedRuns(id, body));
+    }
+
+
+    @GetMapping(value={"/{id}/earned-runs/decisions"})
+    public Result<List<EarnedRunDecisionListDTO>> listEarnedRunDecisions(@PathVariable Long id) {
+        return Result.ok(this.gameService.listEarnedRunDecisions(id));
     }
 
     @PutMapping(value={"/{id}/earned-runs/decisions/{decisionId}"})

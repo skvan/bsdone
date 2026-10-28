@@ -90,17 +90,26 @@ test('门户 display settings 持久化不丢 fieldingFields', () => {
 });
 
 test('五语种：守备标签与新字段说明齐全', () => {
-  for (const locale of ['zh-CN', 'zh-TW', 'en', 'ja', 'ko']) {
+  const hrExcluding = {
+    'zh-CN': ['不含场内'],
+    'zh-TW': ['不含場內'],
+    en: ['excluding inside-the-park'],
+    ja: ['除く', 'excluding inside-the-park'],
+    ko: ['제외']
+  };
+  for (const locale of Object.keys(hrExcluding)) {
     const data = JSON.parse(fs.readFileSync(new URL(`../src/locales/${locale}.json`, import.meta.url), 'utf8'));
     const fieldSettings = data.fieldSettings;
     assert.equal(typeof fieldSettings.fielding, 'string', `${locale} 缺少守备标签`);
     const desc = fieldSettings.gameDetailColDesc;
-    for (const key of ['gdp', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'io']) {
+    for (const key of ['gdp', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'io', 'singles', 'insideParkHr']) {
       assert.equal(typeof desc.batter[key], 'string', `${locale} 缺少打者说明 ${key}`);
     }
     for (const key of DEFAULT_FIELDING_FIELDS.map((field) => field.key)) {
       assert.equal(typeof desc.fielding[key], 'string', `${locale} 缺少守备说明 ${key}`);
     }
+    assert.ok(hrExcluding[locale].some((marker) => desc.batter.hr.includes(marker)), `${locale} 的 HR 说明未标注不含场内`);
+    assert.ok(hrExcluding[locale].some((marker) => data.gameDetail.fieldTips.batter.hr.includes(marker)), `${locale} 的 HR 提示未标注不含场内`);
   }
 });
 

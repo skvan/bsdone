@@ -114,9 +114,11 @@ function dashboard(teamId, role) {
     },
     events: [],
     config: {
-      version: 3,
-      layout: 'v3-modular',
-      modules: [{ key: 'evaluation', enabled: true, width: 12, height: 0 }]
+      version: 4,
+      layout: 'v4-board',
+      modules: [{
+        key: 'evaluation', enabled: true, x: 0, y: 0, width: 1216, height: 700
+      }]
     },
     stats: {
       batting: { gp: 20, pa: 88, ab: 70, h: 22, avg: '.314', obp: '.402', slg: '.457', ops: '.859', rbi: 18, sb: 6 },
@@ -125,7 +127,14 @@ function dashboard(teamId, role) {
     },
     catalog: [],
     moduleCatalog: [{
-      key: 'evaluation', label: '总体评价', span: 12, minSpan: 8, maxSpan: 12
+      key: 'evaluation',
+      label: '总体评价',
+      defaultWidth: 1216,
+      defaultHeight: 700,
+      minWidth: 720,
+      minHeight: 360,
+      maxWidth: 1216,
+      maxHeight: 1600
     }],
     milestoneCatalog: [],
     performance: { points: [], available: false },
