@@ -132,7 +132,7 @@ extends BaseEntity {
     private Double ip;
     @Column(name="outs_recorded", columnDefinition="integer")
     @Comment(value="投手取得的出局數（ERA 權威值）")
-    private Integer outsRecorded;
+    private Integer outsRecorded = 0;
     @Column(columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
