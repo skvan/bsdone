@@ -1,5 +1,5 @@
 // 账户与认证 API —— 行为与端点移植自编译产物 account chunk（B0 契约）
-import { get, post, put } from './request';
+import { get, patch, post, put } from './request';
 
 // 认证 API（编译产物 authApi：登录/验证码/租户切换/当前用户/改密）
 export const authApi = {
@@ -18,7 +18,7 @@ export const authApi = {
   // 点选验证码校验（门户登录页）
   verifyClickCaptcha: (data) => post('/api/auth/captcha/verify-click', data),
   switchTenant: (tenantId) => post('/api/auth/switch-tenant', { tenantId }),
-  changePassword: (data) => post('/api/auth/change-password', data),
+  changePassword: (data) => patch('/api/auth/change-password', data),
   // 拖拽验证码校验（PortalDragCaptcha 使用）
   verifyDragCaptcha: (data) => post('/api/auth/captcha/verify-drag', data)
 };
@@ -37,7 +37,7 @@ export const accountApi = {
   sendEmailCode: (data) => post('/api/account/email/send-code', data),
   bindEmail: (data) => post('/api/account/email/bind', data),
   changePhone: (data) => post('/api/account/phone/change', data),
-  changePassword: (data) => post('/api/account/password/change', data),
+  changePassword: (data) => patch('/api/auth/change-password', data),
   forgotPassword: (data) => post('/api/auth/password/forgot', data),
   resetPassword: (data) => post('/api/auth/password/reset', data),
   submitPlayerClaim: (data) => post('/api/account/player-claim', data),
