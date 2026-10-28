@@ -710,10 +710,12 @@ public class StatsService {
         m.put("pitchR", p.getPitchR());
         m.put("go", p.getGo());
         m.put("fo", p.getFo());
-        double ipDec = StatsFormatUtil.baseballIpToDecimalInnings((double)ip);
+        // 規範 §7：ERA = ER × 27 ÷ outs（以出局數計算，避免 Double 精度問題）
+        int outs = StatsFormatUtil.baseballIpToOuts(ip);
+        double ipDec = outs / 3.0;
         int walksForWhip = StatsService.whipWalksNumerator(p);
-        m.put("whip", ipDec > 0.0 ? StatsFormatUtil.fmtDecimal((double)((double)(p.getPitchH() + walksForWhip) / ipDec), (int)2) : "0");
-        m.put("era", ipDec > 0.0 ? StatsFormatUtil.fmtDecimal((double)(9.0 * (double)p.getEr() / ipDec), (int)2) : "0");
+        m.put("whip", outs > 0 ? StatsFormatUtil.fmtDecimal((double)(p.getPitchH() + walksForWhip) / ipDec, 2) : "0");
+        m.put("era", outs > 0 ? StatsFormatUtil.fmtDecimal(27.0 * (double)p.getEr() / (double)outs, 2) : "0");
         m.put("goFo", p.getFo() > 0 ? StatsFormatUtil.fmtDecimal((double)((double)p.getGo() / (double)p.getFo()), (int)2) : "-");
         m.put("pitchAb", p.getPitchAb());
         return m;

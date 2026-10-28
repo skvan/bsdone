@@ -51,6 +51,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.bsball.utils.StatsFormatUtil;
 
 @Service
 public class GameService {
@@ -821,6 +822,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);
@@ -1085,6 +1087,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);

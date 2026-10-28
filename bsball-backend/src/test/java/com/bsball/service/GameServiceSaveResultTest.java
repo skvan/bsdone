@@ -574,6 +574,7 @@ class GameServiceSaveResultTest {
         assertEquals(Integer.valueOf(1), pitcher.getPitchSh());
         assertEquals(Integer.valueOf(1), pitcher.getPitchSf());
         assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
+        assertEquals(Integer.valueOf(19), pitcher.getOutsRecorded(), "6.1 局 = 19 个出局");
     }
 
     @Test
