@@ -41,7 +41,7 @@ function buildSnapshot({ dhBatted = false } = {}) {
     player(208, '客右外', 'RF', 2),
     player(209, '客DH', 'DH', 2, { batting: dhBatted ? { ab: 1, so: 1 } : {} }),
   ];
-  const awayPitcher = player(220, '客投手', 'P', 2);
+  const awayPitcher = player(220, '客投手', 'P', 2, { pitching: { np: 10, pitchBf: 3, pitchPa: 3 } });
   const homeLineup = [
     player(101, '主投手', 'P', 1),
     player(102, '主捕手', 'C', 1),
@@ -269,8 +269,9 @@ test('替补投手上场后拖离 DH 卡片：新投手进入 DH 棒次', async 
   const body = savedLive.at(-1);
   const dhEvent = (body.substitutions || []).find((event) => event.changeType === 'DH_CANCEL');
   expect(dhEvent).toMatchObject({ slot: 9, outPlayerId: 209, inPlayerId: 230 });
-  expect((body.stats || []).find((row) => row.teamId === 2 && row.playerId === 230))
-    .toMatchObject({ position: 'P' });
+  const awayPitchers = (body.stats || []).filter((row) => row.teamId === 2 && row.isPitcher === 1);
+  expect(awayPitchers.find((row) => row.playerId === 220)).toMatchObject({ pitcherOrder: 1 });
+  expect(awayPitchers.find((row) => row.playerId === 230)).toMatchObject({ position: 'P', pitcherOrder: 2 });
 });
 
 test('拖离 DH 卡片：先发 DH 已打击时直接取消 DH', async ({ page }) => {

@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { orderPitcherRows } from '../src/utils/liveGamePitcherOrder.js';
+
 const SRC_PATH = process.env.LIVEGAME_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js');
 const src = fs.readFileSync(SRC_PATH, 'utf8').replace(/\r\n/g, '\n');
@@ -37,7 +39,7 @@ function sliceFn(header) {
 const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'dc', 'mr', 'vr', 'gr', 'br', '_s', 'Eo'];
 const code = DEPS.map((n) => sliceFn('function ' + n + '(')).join('\n')
   + '\n' + sliceFn('function No(e,t){');
-const make = new Function('Ee', '_', 'ft', 'Nn', 'le', 'fe',
+const make = new Function('Ee', '_', 'ft', 'Nn', 'le', 'fe', 'orderPitcherRows',
   'return (function(){' + code + '\nreturn {No,Eo};})()');
 
 const ref = (v) => ({ value: v });
@@ -94,7 +96,7 @@ test('取消 DH / 投手进打序：No() 仍给投手一条打击行（不是只
     { homeTeamId: 7, awayTeamId: 8 },
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds,
+    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
   );
   const rows = No('home', 7);
   const pitcherBatting = rows.find((r) => Number(r.playerId) === 200 && r.isPitcher === 0);
@@ -117,7 +119,7 @@ test('被换下者最后守位：starter 的 bench 副本靠 lastPosition 回填
     { homeTeamId: 7, awayTeamId: 8 },
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds,
+    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
   );
   const rows = No('home', 7);
   const dh = rows.find((r) => Number(r.playerId) === 100 && r.isPitcher === 0);
@@ -163,4 +165,49 @@ test('DH 取消接线：按钮移除、DH 卡片拖离、P↔野手确认后先�
   assert.match(src, /if\(!applyCancelDh\(side\)\)return;/);
   assert.match(src, /pitcherInLineup\.position=targetPos,fielderInLineup\.position="P"/);
   assert.match(src, /syncFieldingPitcher\(side,pitcherInLineup,fielderInLineup\)/);
+});
+
+test('#478 投手登板序：换投后仍按首次登板顺序编号，不按当前投手优先', () => {
+  const starter = player(200, 'P', { pitching: { np: 30 } });
+  starter.pitcherOrder = 1;
+  const reliever = player(201, 'P', { pitching: { np: 10 } });
+  reliever.pitcherOrder = 2;
+  const home = {
+    teamId: 7,
+    lineup: ref([
+      player(1, 'C', { batting: { ab: 3 } }),
+      player(2, '1B', { batting: { ab: 3 } }),
+      player(3, '2B', { batting: { ab: 3 } }),
+      reliever,
+      player(5, 'SS', { batting: { ab: 3 } }),
+      player(6, 'LF', { batting: { ab: 3 } }),
+      player(7, 'CF', { batting: { ab: 3 } }),
+      player(8, '3B', { batting: { ab: 3 } }),
+      player(9, 'RF', { batting: { ab: 3 } }),
+    ]),
+    bench: ref([{ ...starter, position: '', lastPosition: 'P' }]),
+    roster: ref([starter, reliever]),
+    fpRow: ref(null),
+    fpId: ref(201),
+    unavail: ref([]),
+    lineupStarterIds: ref([1, 2, 3, 200, 5, 6, 7, 8, 9, null, null, null]),
+    slotSubHistory: ref([[],[],[],[200],[],[],[],[],[],[],[],[]]),
+  };
+  const away = {
+    teamId: 8,
+    lineup: ref([]), bench: ref([]), roster: ref([]), fpRow: ref(null), fpId: ref(null),
+    unavail: ref([]), lineupStarterIds: ref(Array(12).fill(null)),
+    slotSubHistory: ref(Array.from({ length: 12 }, () => [])),
+  };
+  const { No } = make(
+    (side) => (side === 'away' ? away : home),
+    { homeTeamId: 7, awayTeamId: 8 },
+    () => {},
+    (v) => String(v ?? '').trim().toUpperCase(),
+    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
+  );
+  const rows = No('home', 7);
+  const pitchers = rows.filter((row) => row.isPitcher === 1);
+  assert.deepEqual(pitchers.map((row) => row.playerId), [200, 201], '先发应排在现任投手之前');
+  assert.deepEqual(pitchers.map((row) => row.pitcherOrder), [1, 2]);
 });
