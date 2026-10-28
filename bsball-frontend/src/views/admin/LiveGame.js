@@ -5095,6 +5095,17 @@ var sg={
       eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
     =Kc(f),xt=$(()=>f.homeTeam),At=$(()=>f.awayTeam);
+    function hasRecordedPlayerActivity(player){
+      const st=player?.stats;
+      if(!st)return!1;
+      const b=st.batting??{},p=st.pitching??{},fd=st.fielding??{};
+      return (b.ab??0)>0||(b.r??0)>0||(b.h??0)>0||(b.rbi??0)>0||(b.bb??0)>0||(b.hbp??0)>0||(b.so??0)>0||(b.sb??0)>0||(b.cs??0)>0||(p.np??0)>0||(p.ip??0)>0||(p.pitchPa??0)>0||(p.pitchBf??0)>0||(p.pitchSo??0)>0||(p.pitchH??0)>0||(p.wp??0)>0||(p.bk??0)>0||(fd.po??0)>0||(fd.a??0)>0||(fd.e??0)>0||(fd.pb??0)>0
+    }
+    const firstPlayStarted=$(()=>((Array.isArray(ke.value)&&ke.value.some(row=>{
+      const text=ll(row);
+      return typeof text=="string"&&text.trim()!==""&&!text.includes("比赛开始")
+    }
+    ))||(Array.isArray(Me.value)&&Me.value.length>0)||[q.value,X.value,ye.value,ae.value].some(list=>Array.isArray(list)&&list.some(hasRecordedPlayerActivity))||(l.outs??0)>0||(l.inning??1)>1||!l.isTop||(l.batterIndex?.away??0)>0||(l.batterIndex?.home??0)>0||!!l.runners?.[1]||!!l.runners?.[2]||!!l.runners?.[3]||(o.away.score??0)>0||(o.home.score??0)>0||(l.balls??0)>(K.value??0)||(l.strikes??0)>(M.value??0)));
     function Ee(e){
       return e==="away"?{
         lineup:X,bench:ae,roster:Ue,fpRow:De,fpId:O,unavail:Ie,lineupStarterIds:le,slotSubHistory:Ae,lastDhAddedFromPoolId:Xe,team:o.away
@@ -10846,6 +10857,23 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       
     }
     );
+    async function openLineupEditor(){
+      if(!F.value||!R.value||firstPlayStarted.value||he.value)return;
+      if(Ne.value.length>0)try{
+        await hs({
+          throwOnError:!0
+        }
+        )
+      }
+      catch{
+        return
+      }
+      hc(),Pn.push({
+        name:"AdminGameLiveLineupGame",params:{
+          eventId:String(Re.value),gameId:String(R.value)
+        }
+      })
+    }
     async function Mo(e){
       const t=(e??"").trim();
       try{
@@ -10992,7 +11020,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[Q("↪ 重做",-1)]),_:1
         }
-        ,8,["disabled"])):W("",!0),c(F)&&!c(oe)?(h(),C(me,{key:"entry-tools"},[v(A,{
+        ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
+          key:"lineup-edit",size:"small",disabled:c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor
+        }
+        ,{
+          default:L(()=>[Q("编辑阵容",-1)]),_:1
+        }
+        ,8,["disabled","title"])):W("",!0),c(F)&&!c(oe)?(h(),C(me,{key:"entry-tools"},[v(A,{
           placement:"bottom-start",width:360,trigger:"click","popper-class":"live-field-settings-popover"
         }
         ,{
@@ -11331,7 +11365,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,8,["disabled"])):W("",!0)])])]),_:1
         }
-        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:!c(f).canUndo,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:!c(f).canRedo,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{
+        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:!c(f).canUndo,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:!c(f).canRedo,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor},{default:L(()=>[Q("编辑阵容",-1)]),_:1},8,["disabled","title"]),v(s,{
           size:"small",onClick:ec
         }
         ,{
