@@ -5068,8 +5068,8 @@ var sg={
     ui:{type:Object,default:null}
   }
   ,setup(u){
-    return()=>u.ui&&u.ui.moved&&u.ui.mode==="card"?da("div",{
-      class:"live-bench-ghost",style:{
+    return()=>u.ui&&u.ui.moved&&(u.ui.mode==="card"||u.ui.sourceKind==="fielder")?da("div",{
+      class:["live-bench-ghost",{"live-bench-ghost--fielder":u.ui.sourceKind==="fielder"}],style:{
         left:u.ui.x+"px",top:u.ui.y+"px"
       }
     }
@@ -10434,7 +10434,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const hits=resolveLiveSubDropHits(event.clientX,event.clientY,s.layout),kinds=liveSubTargetKinds(s.sourceKind);
       liveBenchHoverHit.value=hits.find((h)=>kinds.includes(h.kind))??null;
       const ui={
-        mode:s.mode,sourceKind:s.sourceKind,side:s.side??null,playerId:s.player?.id??null,sourcePos:s.code??null,moved:!0,x:event.clientX,y:event.clientY,label:`${s.player?.name??""} #${s.player?.number??"-"}`
+        mode:s.mode,sourceKind:s.sourceKind,side:s.side??null,playerId:s.player?.id??null,sourcePos:s.code??null,moved:!0,x:event.clientX,y:event.clientY,label:`${s.mode==="fielder"&&s.code?`${s.code} · `:""}${s.player?.name??""} #${s.player?.number??"-"}`
       }
       ;
       if(s.mode==="fielder"){
@@ -11920,7 +11920,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
           key:d,"data-pos":d,class:re(["defender-hit",{
-            "field-player-hit--disabled":nn.value,"live-sub-swap-out":liveBenchSwapFx.value&&liveBenchSwapFx.value.outPos===d
+            "field-player-hit--disabled":nn.value,"field-player-hit--ghost":ce.value&&ce.value.isDragging&&ce.value.mode==="subswap"&&ce.value.hasMoved&&ce.value.pos===d,"live-sub-swap-out":liveBenchSwapFx.value&&liveBenchSwapFx.value.outPos===d
           }
           ]),onClick:Ze(z=>Ro(d,z),["stop"]),onPointerdown:z=>Qf(d,z)
         }

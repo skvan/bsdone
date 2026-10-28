@@ -116,3 +116,8 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 .defender-hit.live-sub-swap-out .defender-card__num{fill:#e74c3c;transform:scale(1.12);transform-box:fill-box;transform-origin:center}
 .runner-draggable-group.live-sub-swap-out .runner-token-circle,.batter-at-plate-group.live-sub-swap-out .batter-token-circle{fill:#e74c3c;stroke:#fff;stroke-width:3;transform:scale(1.25);transform-box:fill-box;transform-origin:center}
 .runner-draggable-group.live-sub-swap-out .runner-token-num,.batter-at-plate-group.live-sub-swap-out .runner-token-num{fill:#fff}
+
+/* ===== #478：拖拽场员跨画布时保持可见（场上卡片移出 SVG 会被裁切；小屏隐藏替补席但浮层仍需显示） ===== */
+.defender-hit.field-player-hit--ghost{opacity:0}
+.live-bench-ghost--fielder{background:#fdecea;border-color:#e74c3c;color:#c0392b;font-weight:600;transform:translate(-50%,-150%) scale(1.08);box-shadow:0 6px 18px rgba(231,76,60,.28)}
+@media (width<=1279px){.live-bench-ghost--fielder{display:flex}}

@@ -11,7 +11,7 @@
     "package:legacy": "node scripts/package-webapps.mjs --legacy",
     "preview:legacy": "vite --config vite.legacy-preview.config.js",
     "test:e2e": "playwright test",
-    "test:e2e:local": "playwright test e2e/live-game-local-mocked.spec.js e2e/live-game-substitution-mode-local-mocked.spec.js e2e/live-game-strikeout-catcher-po-local-mocked.spec.js e2e/live-game-manual-run-local-mocked.spec.js e2e/live-game-half-inning-autosave-local-mocked.spec.js"
+    "test:e2e:local": "playwright test e2e/live-game-local-mocked.spec.js e2e/live-game-substitution-mode-local-mocked.spec.js e2e/live-game-strikeout-catcher-po-local-mocked.spec.js e2e/live-game-manual-run-local-mocked.spec.js e2e/live-game-half-inning-autosave-local-mocked.spec.js e2e/live-game-substitution-flows-local-mocked.spec.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
