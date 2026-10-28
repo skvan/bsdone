@@ -333,6 +333,27 @@ public class GameService {
             }
         }
         this.saveSubstitutionEvents(game, dto.getSubstitutions());
+        if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.logSettlementValidation(gameId, game.getTenantId());
+        }
+    }
+
+    /** §11 结算验证：非阻挡，仅记录警告供人工复核；无引擎数据时跳过。 */
+    private void logSettlementValidation(Long gameId, Long tenantId) {
+        if (gameId == null || tenantId == null) {
+            return;
+        }
+        try {
+            if (!this.earnedRunReconstructionService.hasEngineData(gameId)) {
+                return;
+            }
+            for (String violation : this.earnedRunReconstructionService.validateSettlement(tenantId, gameId)) {
+                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, tenantId, violation);
+            }
+        } catch (RuntimeException ex) {
+            log.warn("[settlement-validation] gameId={} tenant={} failed: {}",
+                    gameId, tenantId, ex.getMessage());
+        }
     }
 
     /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */
@@ -782,12 +803,7 @@ public class GameService {
             }
         }
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
-        if (statTenantId != null && this.earnedRunReconstructionService.hasEngineData(gameId)) {
-            List<String> vs = this.earnedRunReconstructionService.validateSettlement(statTenantId, gameId);
-            for (String v : vs) {
-                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, statTenantId, v);
-            }
-        }
+        this.logSettlementValidation(gameId, statTenantId);
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
