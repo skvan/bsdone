@@ -258,6 +258,7 @@ public class EarnedRunReconstructionService {
         entity.setPlayId(playId);
         entity.setRunnerId(decision.runnerId());
         entity.setResponsiblePitcherId(decision.responsiblePitcherId());
+        entity.setReachedBasePitcherId(decision.responsiblePitcherId());
         entity.setRunnerOrigin(runner.origin().name());
         entity.setWouldScoreWithoutMisplay(runner.wouldScoreWithoutMisplay());
         entity.setEarnedStatus(decision.status().name());
@@ -324,6 +325,8 @@ public class EarnedRunReconstructionService {
                             runnerName,
                             d.getResponsiblePitcherId(),
                             pitcherName,
+                            d.getReachedBasePitcherId(),
+                            resolvePlayerName(d.getReachedBasePitcherId()),
                             d.getEarnedStatus(),
                             d.getUnearnedReason(),
                             d.getRunnerOrigin(),

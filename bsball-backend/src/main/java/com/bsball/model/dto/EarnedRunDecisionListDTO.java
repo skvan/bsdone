@@ -13,6 +13,8 @@ public record EarnedRunDecisionListDTO(
         String runnerName,
         Long responsiblePitcherId,
         String pitcherName,
+        Long reachedBasePitcherId,
+        String reachedBasePitcherName,
         String earnedStatus,
         String unearnedReason,
         String runnerOrigin,
