@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EarnedRunPlayRepository extends JpaRepository<EarnedRunPlayEntity, Long> {
+    List<EarnedRunPlayEntity> findByTenantIdAndGameId(Long tenantId, Long gameId);
     List<EarnedRunPlayEntity> findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
             Long tenantId, Long gameId, Integer inning, String half);
 

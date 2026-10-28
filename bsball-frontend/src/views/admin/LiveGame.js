@@ -25,6 +25,7 @@ import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import LiveGameScoreboard from '../../components/admin/LiveGameScoreboard.vue';
 import LiveGamePlayByPlay from '../../components/admin/LiveGamePlayByPlay.vue';
+import LiveGameEarnedRunDrawer from '../../components/admin/LiveGameEarnedRunDrawer.vue';
 import { useModalClose as nd } from '../../composables/useModalClose';
 import { usePermission as ad } from '../../composables/usePermission';
 import { POSITION_LABELS as It } from '../../utils/playerOptions';
@@ -979,7 +980,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null);erDrawerVisible=x(!1);
   function applyEarnedRunTotals(result){
     const absolute=result?.pitcherAbsoluteTotals;
     if(!absolute)return;
@@ -1124,7 +1125,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -11840,7 +11841,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[95]||(t[95]=[Q("击球落点分布",-1)])]),_:1
         }
-        )])])])):W("",!0),n("div",{
+        ),v(s,{size:"small",onClick:()=>f.erDrawerVisible.value=!0},{default:L(()=>[Q("ER 覆核",-1)]),_:1})])])])):W("",!0),n("div",{
           class:re(["field-svg-wrap",{
             "field-svg-wrap--drag-mode":!0,"field-svg-wrap--runner-drag":!!ne.value
           }
@@ -12557,7 +12558,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"show-append-button":!0,"append-button-label":"追加新球员","block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc,onAppend:t[56]||(t[56]=d=>oc(ia.value))
       }
-      ,null,8,["visible","title","prompt","groups","center-offset-x"])])
+      ,null,8,["visible","title","prompt","groups","center-offset-x"]),v(LiveGameEarnedRunDrawer,{visible:f.erDrawerVisible.value,"onUpdate:visible":(v2)=>{f.erDrawerVisible.value=v2},gameId:c(R)})])
     }
     
   }

@@ -496,6 +496,15 @@ public class GameService {
     }
 
     @Transactional(rollbackFor={Exception.class})
+
+    public java.util.List<com.bsball.model.dto.EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null || game.getTenantId() == null) {
+            return java.util.List.of();
+        }
+        return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
+    }
+
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
             throw new IllegalArgumentException("\u5bfc\u5165\u6570\u636e\u7f3a\u5c11 game \u6216 stats");

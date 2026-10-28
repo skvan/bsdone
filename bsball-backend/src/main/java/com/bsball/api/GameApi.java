@@ -139,6 +139,13 @@ public class GameApi {
         return Result.ok(this.gameService.reconstructEarnedRuns(id, body));
     }
 
+
+    @GetMapping(value={"/{id}/earned-runs/decisions"})
+    public Result<java.util.List<com.bsball.model.dto.EarnedRunDecisionListDTO>> listEarnedRunDecisions(
+            @PathVariable Long id) {
+        return Result.ok(this.gameService.listEarnedRunDecisions(id));
+    }
+
     @PutMapping(value={"/{id}/earned-runs/decisions/{decisionId}"})
     public Result<EarnedRunDecisionEntity> overrideEarnedRunDecision(
             @PathVariable Long id,

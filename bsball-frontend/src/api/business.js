@@ -260,6 +260,7 @@ export const gameApi = {
   saveLive: (id, data) => post(`/api/game/${id}/save-live`, data),
   substitutions: (id) => fetchList(`/api/game/${id}/substitutions`),
   reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
+  listEarnedRunDecisions: (id) => fetchList(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
   getLiveSnapshot: async (id) => {

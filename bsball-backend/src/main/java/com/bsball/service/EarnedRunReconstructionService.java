@@ -1,11 +1,14 @@
 package com.bsball.service;
 
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.PlayerRepository;
 import com.bsball.stats.earnedrun.EarnedRunDecision;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionEngine;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +33,17 @@ public class EarnedRunReconstructionService {
     private final EarnedRunDecisionRepository decisionRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final EarnedRunReconstructionEngine engine;
+    private final PlayerRepository playerRepository;
 
     public EarnedRunReconstructionService(
             EarnedRunPlayRepository playRepository,
             EarnedRunDecisionRepository decisionRepository,
-            GamePlayerStatRepository gamePlayerStatRepository) {
+            GamePlayerStatRepository gamePlayerStatRepository,
+            PlayerRepository playerRepository) {
         this.playRepository = playRepository;
         this.decisionRepository = decisionRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.playerRepository = playerRepository;
         this.engine = new EarnedRunReconstructionEngine();
     }
 
@@ -292,6 +299,56 @@ public class EarnedRunReconstructionService {
         if (!"top".equals(half) && !"bottom".equals(half)) {
             throw new IllegalArgumentException("Half must be top or bottom");
         }
+    }
+
+    // ─── 判定清單（供覆寫 UI） ─────────────────────────────────────────────────
+
+    /** 回傳該場所有 ER 判定行，含跑者/投手名稱及半局資訊。 */
+    public List<EarnedRunDecisionListDTO> listDecisions(long tenantId, long gameId) {
+        Map<Long, EarnedRunPlayEntity> playById = playRepository
+                .findByTenantIdAndGameId(tenantId, gameId).stream()
+                .collect(Collectors.toMap(EarnedRunPlayEntity::getId, p -> p, (a, b) -> a));
+
+        return decisionRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
+                .map(d -> {
+                    EarnedRunPlayEntity play = playById.get(d.getPlayId());
+                    String runnerName = resolvePlayerName(d.getRunnerId());
+                    String pitcherName = resolvePlayerName(d.getResponsiblePitcherId());
+                    return new EarnedRunDecisionListDTO(
+                            d.getId(),
+                            d.getPlayId(),
+                            play != null ? play.getInning() : null,
+                            play != null ? play.getHalf() : null,
+                            play != null ? play.getSequence() : null,
+                            d.getRunnerId(),
+                            runnerName,
+                            d.getResponsiblePitcherId(),
+                            pitcherName,
+                            d.getEarnedStatus(),
+                            d.getUnearnedReason(),
+                            d.getRunnerOrigin(),
+                            d.getOverriddenBy(),
+                            d.getOverriddenAt());
+                })
+                .sorted((a, b) -> {
+                    int ia = a.inning() != null ? a.inning() : 0;
+                    int ib = b.inning() != null ? b.inning() : 0;
+                    if (ia != ib) return Integer.compare(ia, ib);
+                    int ha = "top".equals(a.half()) ? 0 : 1;
+                    int hb = "top".equals(b.half()) ? 0 : 1;
+                    if (ha != hb) return Integer.compare(ha, hb);
+                    int sa = a.sequence() != null ? a.sequence() : 0;
+                    int sb = b.sequence() != null ? b.sequence() : 0;
+                    return Integer.compare(sa, sb);
+                })
+                .toList();
+    }
+
+    private String resolvePlayerName(Long playerId) {
+        if (playerId == null) return null;
+        return playerRepository.findById(playerId)
+                .map(Player::getName)
+                .orElse("#" + playerId);
     }
 
     // ─── §11 結算驗證 ───────────────────────────────────────────────────────────

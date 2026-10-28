@@ -28,6 +28,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import com.bsball.repository.PlayerRepository;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -39,12 +40,14 @@ class EarnedRunReconstructionServiceTest {
     private EarnedRunDecisionRepository decisionRepository;
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
+    @Mock
+    private PlayerRepository playerRepository;
     private EarnedRunReconstructionService service;
 
     @BeforeEach
     void setUp() {
         service = new EarnedRunReconstructionService(
-                playRepository, decisionRepository, gamePlayerStatRepository);
+                playRepository, decisionRepository, gamePlayerStatRepository, playerRepository);
         GamePlayerStat tenantOnePitcher = pitcherStat(1L, 700L, 0, 0);
         GamePlayerStat tenantOneReliever = pitcherStat(1L, 701L, 0, 0);
         GamePlayerStat tenantTenPitcher = pitcherStat(10L, 901L, 0, 0);
