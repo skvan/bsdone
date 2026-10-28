@@ -138,9 +138,7 @@ var la={
     }
     async function goAfterLogin(){
       if(ne.value){await te.push(ne.value);return}
-      let profile=null;
-      try{profile=await me.getPlayerProfile()}catch{}
-      await te.push(profile?{name:"PortalClubhouse",params:{tenantCode:v.value}}:`/${v.value}/`)
+      await te.push(`/${v.value}/`)
     }
     function Q(a){
       const e=a?.message?.trim()??"";

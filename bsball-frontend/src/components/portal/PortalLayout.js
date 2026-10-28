@@ -995,16 +995,7 @@ var oa={
       ,{
         default:n(()=>[h(d(t(c)("nav.news")),1)]),_:1
       }
-      ,8,["to","class"]),we.value?(m(),N(r,{
-        key:1,
-        to:{name:"PortalClubhouse",params:{tenantCode:t(P)}},
-        "active-class":"nav-active",
-        onClick:R=>b.value=!1
-      }
-      ,{
-        default:n(()=>[h(d(t(c)("nav.clubhouse")),1)]),_:1
-      }
-      ,8,["to"])):H("",!0)],2),u("div",Ra,[o(ua),o(g,{
+      ,8,["to","class"])],2),u("div",Ra,[o(ua),o(g,{
         trigger:"click",class:"portal-theme-switch","popper-class":"portal-theme-dropdown-popper",onCommand:He
       }
       ,{
@@ -1094,24 +1085,6 @@ var oa={
             ,8,["to"])]),_:1
           }
           ,8,["divided"]),o(V,{
-            divided:""
-          }
-          ,{
-            default:n(()=>[o(r,{
-              to:{
-                name:"PortalClubhouse",params:{
-                  tenantCode:t(P)
-                }
-                
-              }
-              ,class:"portal-dropdown-nav-link"
-            }
-            ,{
-              default:n(()=>[h(d(t(c)("nav.clubhouse")),1)]),_:1
-            }
-            ,8,["to"])]),_:1
-          }
-          ),o(V,{
             divided:"",onClick:Re
           }
           ,{
