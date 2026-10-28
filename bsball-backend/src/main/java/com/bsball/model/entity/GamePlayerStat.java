@@ -49,6 +49,9 @@ extends BaseEntity {
     private Integer pitcherOrder;
     @Comment(value="\u5b88\u5907\u4f4d\u7f6e")
     private String position;
+    @Column(length=8)
+    @Comment(value="\u672c\u573a\u9996\u6b21\u4e0a\u573a\u9632\u5b88\u7684\u5b88\u4f4d")
+    private String firstPosition;
     @Comment(value="\u80cc\u53f7")
     private String number;
     @Comment(value="\u6253\u51fb\u624b")
@@ -302,6 +305,11 @@ extends BaseEntity {
     @Generated
     public String getPosition() {
         return this.position;
+    }
+
+    @Generated
+    public String getFirstPosition() {
+        return this.firstPosition;
     }
 
     @Generated
@@ -665,6 +673,11 @@ extends BaseEntity {
     @Generated
     public void setPosition(String position) {
         this.position = position;
+    }
+
+    @Generated
+    public void setFirstPosition(String firstPosition) {
+        this.firstPosition = firstPosition;
     }
 
     @Generated
@@ -1052,7 +1065,7 @@ extends BaseEntity {
 
     @Generated
     public String toString() {
-        return "GamePlayerStat(gameId=" + this.getGameId() + ", tenantId=" + this.getTenantId() + ", teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", pitcherOrder=" + this.getPitcherOrder() + ", position=" + this.getPosition() + ", number=" + this.getNumber() + ", batHand=" + this.getBatHand() + ", throwHand=" + this.getThrowHand() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", e=" + this.getE() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", ip=" + this.getIp() + ", earnedR=" + this.getEarnedR() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", gs=" + this.getGs() + ", svo=" + this.getSvo() + ", cg=" + this.getCg() + ", pg=" + this.getPg() + ", w=" + this.getW() + ", l=" + this.getL() + ", sv=" + this.getSv() + ", hld=" + this.getHld() + ", pitchPa=" + this.getPitchPa() + ", pitchBf=" + this.getPitchBf() + ", pitchAb=" + this.getPitchAb() + ", np=" + this.getNp() + ", pitchBb=" + this.getPitchBb() + ", pitchIbb=" + this.getPitchIbb() + ", pitchHbp=" + this.getPitchHbp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", pitchR=" + this.getPitchR() + ", go=" + this.getGo() + ", fo=" + this.getFo() + ", tc=" + this.getTc() + ", po=" + this.getPo() + ", a=" + this.getA() + ", fieldingGs=" + this.getFieldingGs() + ", defInn=" + this.getDefInn() + ", dp=" + this.getDp() + ", pb=" + this.getPb() + ", catcherSb=" + this.getCatcherSb() + ", catcherCs=" + this.getCatcherCs() + ")";
+        return "GamePlayerStat(gameId=" + this.getGameId() + ", tenantId=" + this.getTenantId() + ", teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", pitcherOrder=" + this.getPitcherOrder() + ", position=" + this.getPosition() + ", firstPosition=" + this.getFirstPosition() + ", number=" + this.getNumber() + ", batHand=" + this.getBatHand() + ", throwHand=" + this.getThrowHand() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", e=" + this.getE() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", ip=" + this.getIp() + ", earnedR=" + this.getEarnedR() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", gs=" + this.getGs() + ", svo=" + this.getSvo() + ", cg=" + this.getCg() + ", pg=" + this.getPg() + ", w=" + this.getW() + ", l=" + this.getL() + ", sv=" + this.getSv() + ", hld=" + this.getHld() + ", pitchPa=" + this.getPitchPa() + ", pitchBf=" + this.getPitchBf() + ", pitchAb=" + this.getPitchAb() + ", np=" + this.getNp() + ", pitchBb=" + this.getPitchBb() + ", pitchIbb=" + this.getPitchIbb() + ", pitchHbp=" + this.getPitchHbp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", pitchR=" + this.getPitchR() + ", go=" + this.getGo() + ", fo=" + this.getFo() + ", tc=" + this.getTc() + ", po=" + this.getPo() + ", a=" + this.getA() + ", fieldingGs=" + this.getFieldingGs() + ", defInn=" + this.getDefInn() + ", dp=" + this.getDp() + ", pb=" + this.getPb() + ", catcherSb=" + this.getCatcherSb() + ", catcherCs=" + this.getCatcherCs() + ")";
     }
 
     @Generated
@@ -1410,6 +1423,11 @@ extends BaseEntity {
         if (this$position == null ? other$position != null : !this$position.equals(other$position)) {
             return false;
         }
+        String this$firstPosition = this.getFirstPosition();
+        String other$firstPosition = other.getFirstPosition();
+        if (this$firstPosition == null ? other$firstPosition != null : !this$firstPosition.equals(other$firstPosition)) {
+            return false;
+        }
         String this$number = this.getNumber();
         String other$number = other.getNumber();
         if (this$number == null ? other$number != null : !this$number.equals(other$number)) {
@@ -1570,6 +1588,8 @@ extends BaseEntity {
         result = result * 59 + ($catcherCs == null ? 43 : ((Object)$catcherCs).hashCode());
         String $position = this.getPosition();
         result = result * 59 + ($position == null ? 43 : $position.hashCode());
+        String $firstPosition = this.getFirstPosition();
+        result = result * 59 + ($firstPosition == null ? 43 : $firstPosition.hashCode());
         String $number = this.getNumber();
         result = result * 59 + ($number == null ? 43 : $number.hashCode());
         String $batHand = this.getBatHand();

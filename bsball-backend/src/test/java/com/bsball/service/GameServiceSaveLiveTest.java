@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -190,6 +191,47 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(1), pitcher.getPb());
         assertEquals(Integer.valueOf(2), pitcher.getCatcherSb());
         assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
+    }
+
+    @Test
+    @DisplayName("saveLive：首个守位统一大写落库，DH/PH/EP 不视为守备位")
+    void saveLive_firstPosition_normalizedAndIgnoredForBattingOnlyPositions() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setFirstPosition("3b");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("3B", pitcher.getFirstPosition());
+
+        part.setFirstPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getFirstPosition(), "DH 不是守备位，首个守位应清空");
+    }
+
+    @Test
+    @DisplayName("saveLive：载荷缺首个守位时保留既有值（旧客户端不回退历史）")
+    void saveLive_missingFirstPosition_preservesExisting() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        pitcher.setFirstPosition("3B");
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals("3B", pitcher.getFirstPosition());
     }
 
     @Test

@@ -103,6 +103,7 @@ public class GameSaveLiveDTO {
         private Integer battingOrder;
         private Integer listOrder;
         private String position;
+        private String firstPosition;
         private Integer pa;
         private Integer ab;
         private Integer r;
@@ -189,6 +190,11 @@ public class GameSaveLiveDTO {
         @Generated
         public String getPosition() {
             return this.position;
+        }
+
+        @Generated
+        public String getFirstPosition() {
+            return this.firstPosition;
         }
 
         @Generated
@@ -399,6 +405,11 @@ public class GameSaveLiveDTO {
         @Generated
         public void setPosition(String position) {
             this.position = position;
+        }
+
+        @Generated
+        public void setFirstPosition(String firstPosition) {
+            this.firstPosition = firstPosition;
         }
 
         @Generated
@@ -995,7 +1006,12 @@ public class GameSaveLiveDTO {
             }
             String this$position = this.getPosition();
             String other$position = other.getPosition();
-            return !(this$position == null ? other$position != null : !this$position.equals(other$position));
+            if (this$position == null ? other$position != null : !this$position.equals(other$position)) {
+                return false;
+            }
+            String this$firstPosition = this.getFirstPosition();
+            String other$firstPosition = other.getFirstPosition();
+            return !(this$firstPosition == null ? other$firstPosition != null : !this$firstPosition.equals(other$firstPosition));
         }
 
         @Generated
@@ -1087,12 +1103,14 @@ public class GameSaveLiveDTO {
             result = result * 59 + ($tc == null ? 43 : ((Object)$tc).hashCode());
             String $position = this.getPosition();
             result = result * 59 + ($position == null ? 43 : $position.hashCode());
+            String $firstPosition = this.getFirstPosition();
+            result = result * 59 + ($firstPosition == null ? 43 : $firstPosition.hashCode());
             return result;
         }
 
         @Generated
         public String toString() {
-            return "GameSaveLiveDTO.GamePlayerStatPart(teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", position=" + this.getPosition() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", e=" + this.getE() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", pitcherOrder=" + this.getPitcherOrder() + ", ip=" + this.getIp() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", np=" + this.getNp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", po=" + this.getPo() + ", a=" + this.getA() + ", tc=" + this.getTc() + ")";
+            return "GameSaveLiveDTO.GamePlayerStatPart(teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", position=" + this.getPosition() + ", firstPosition=" + this.getFirstPosition() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", e=" + this.getE() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", pitcherOrder=" + this.getPitcherOrder() + ", ip=" + this.getIp() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", np=" + this.getNp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", po=" + this.getPo() + ", a=" + this.getA() + ", tc=" + this.getTc() + ")";
         }
     }
 

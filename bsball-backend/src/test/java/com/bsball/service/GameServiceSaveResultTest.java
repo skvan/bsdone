@@ -486,6 +486,48 @@ class GameServiceSaveResultTest {
     }
 
     @Test
+    @DisplayName("saveResult：仅新建行按 position 兜底首个守位；已有行不被最后守位回填")
+    void saveResult_firstPosition_onlyNewRowsFallback() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO.StatPart existingPart = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        existingPart.setPosition("lf");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(existingPart)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(batter.getFirstPosition(), "已有行不得用最后守位回填，避免代打代跑复活进守备表");
+
+        batter.setFirstPosition("3B");
+        SaveGameResultDTO.StatPart next = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        next.setPosition("P");
+        SaveGameResultDTO dto2 = new SaveGameResultDTO();
+        dto2.setStats(new ArrayList<>(List.of(next)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto2);
+        assertEquals("3B", batter.getFirstPosition(), "已有首个守位必须保留，后续换位不改写");
+
+        SaveGameResultDTO.StatPart fresh = new SaveGameResultDTO.StatPart();
+        fresh.setTeamId(Long.valueOf(TEAM_ID));
+        fresh.setPlayerId(Long.valueOf(4321L));
+        fresh.setIsPitcher(Integer.valueOf(0));
+        fresh.setBattingOrder(Integer.valueOf(1));
+        fresh.setPosition("cf");
+        SaveGameResultDTO dto3 = new SaveGameResultDTO();
+        dto3.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null),
+                fresh)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto3);
+
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
+        verify(gamePlayerStatRepository, atLeastOnce()).save(captor.capture());
+        GamePlayerStat created = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(4321L).equals(row.getPlayerId()))
+                .findFirst().orElseThrow();
+        assertEquals("CF", created.getFirstPosition(), "结果页新建行按当前守位兜底");
+    }
+
+    @Test
     @DisplayName("saveResult：纸质表单新增字段全部落库")
     void saveResult_paperFormFields_written() {
         GamePlayerStat pitcher = pitcherRow();

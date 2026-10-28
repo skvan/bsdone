@@ -179,6 +179,7 @@ public class EarnedRunReconstructionService {
         stat.setPlayerId(pitcherId);
         stat.setIsPitcher(1);
         stat.setPosition("P");
+        stat.setFirstPosition("P");
         stat.setPitchR(0);
         stat.setEr(0);
         stat.setUnearnedR(0);
