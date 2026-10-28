@@ -8183,7 +8183,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       const e=ve.value!=="THIRD_OUT";
-      Qr(),e&&fo(),l.needNextBatter=!1,await co(),Qa(!0),lt.value=!1
+      Qr(),e&&fo(),l.needNextBatter=!1,await co(),Qa(!0),lt.value=!1,await autoSaveHalfInning()
     }
     function mo(){
       lt.value=!1,l.needNextBatter&&l.outs>=3&&J("已取消攻守交换；可补记事件后点「确认半局结束 / 攻守交换」","info")
@@ -8221,7 +8221,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       catch{
         return
       }
-      de("强制换局"),lt.value=!1,pt(),l.needNextBatter=!1,ve.value=null,i.value=null,D(LgSys({kind:"force_half"})),clearRunLedger(),Qa(!0),J("强制换局完成：进入下一半局（打者顺序保持不变）","info")
+      de("强制换局"),lt.value=!1,pt(),l.needNextBatter=!1,ve.value=null,i.value=null,D(LgSys({kind:"force_half"})),clearRunLedger(),Qa(!0),J("强制换局完成：进入下一半局（打者顺序保持不变）","info"),await autoSaveHalfInning()
     }
     function Qa(e){
       l.isGameEnd||e&&(l.inning>=yn&&!l.isTop&&o.home.score===o.away.score&&D(LgSys({kind:"extend_inning"})),Af())
@@ -10973,9 +10973,24 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const e=[];
       return _.awayTeamId&&e.push(...No("away",_.awayTeamId)),_.homeTeamId&&e.push(...No("home",_.homeTeamId)),e
     }
-    async function hs(e){
+    // #478-5：半局结束自动保存统计，避免「直接离开」只留快照丢失统计
+    async function autoSaveHalfInning(){
+      if(!R.value||substitutionMode.value||l.isGameEnd)return;
+      await hs({
+        silent:!0
+      }
+      )
+    }
+    let liveSaveChain=Promise.resolve();
+    // 保存串行化：自动保存/手动保存/结束比赛/保存离开共用同一条链，避免旧 payload 后写覆盖新状态
+    function hs(e){
+      const run=()=>hsRun(e),p=liveSaveChain.then(run,run);
+      return liveSaveChain=p.then(()=>{},()=>{}),p
+    }
+    async function hsRun(e){
       if(!R.value)return;
       if(substitutionMode.value&&!e?.fromSubstitutionMode){
+        if(e?.silent)return;
         const message="换人模式进行中，请先点「结束换人」提交或取消换人模式";
         J(message,"warning");
         if(e?.throwOnError)throw new Error(message);
@@ -10999,7 +11014,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,stats:p
         };
-        Array.isArray(e?.substitutions)&&e.substitutions.length&&(payload.substitutions=e.substitutions),await ma.saveLive(R.value,payload),e?.fromSubstitutionMode||Fe.success("保存成功"),Gl(),await Pf()
+        Array.isArray(e?.substitutions)&&e.substitutions.length&&(payload.substitutions=e.substitutions),await ma.saveLive(R.value,payload),e?.fromSubstitutionMode||e?.silent||Fe.success("保存成功"),Gl(),await Pf()
       }
       catch(a){
         if(Fe.error(a?.message??"保存失败"),t)throw a
