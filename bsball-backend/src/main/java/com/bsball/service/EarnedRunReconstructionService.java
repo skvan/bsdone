@@ -200,6 +200,7 @@ public class EarnedRunReconstructionService {
         stat.setEr(0);
         stat.setUnearnedR(0);
         stat.setPendingR(0);
+        stat.setOutsRecorded(0);
         return stat;
     }
 

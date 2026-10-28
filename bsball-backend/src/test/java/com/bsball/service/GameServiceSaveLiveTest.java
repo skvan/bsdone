@@ -161,6 +161,7 @@ class GameServiceSaveLiveTest {
         part.setGs(Integer.valueOf(1));
         part.setFieldingGs(Integer.valueOf(1));
         part.setDefInn(Double.valueOf(6.1D));
+        part.setIp(Double.valueOf(2.2D));
         part.setDp(Integer.valueOf(1));
         part.setPb(Integer.valueOf(1));
         part.setCatcherSb(Integer.valueOf(2));
@@ -190,6 +191,7 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(1), pitcher.getPb());
         assertEquals(Integer.valueOf(2), pitcher.getCatcherSb());
         assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
+        assertEquals(Integer.valueOf(8), pitcher.getOutsRecorded(), "2.2 局 = 8 个出局");
     }
 
     @Test
