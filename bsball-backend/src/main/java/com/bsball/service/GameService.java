@@ -1000,7 +1000,6 @@ public class GameService {
             throw new BusinessException(400, sceneLabel + "失败：指定打击制下 DH 与打击投手（P）不能同时进入打序");
         }
     }
-
     private static boolean isPitcherStatPart(SaveGameResultDTO.StatPart part) {
         return part.getIsPitcher() != null && part.getIsPitcher().intValue() == 1;
     }
