@@ -639,4 +639,202 @@ class GameServiceSaveResultTest {
         }
         return null;
     }
+
+    @Test
+    @DisplayName("P/DH 强校验：DH 与打击投手同时进入打序返回 400")
+    void saveResult_rejectsDhAndBattingPitcherTogether() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(lineupWithPitcherAndDh(Integer.valueOf(0)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：isPitcher=1 的打击行同样算打击投手（二刀流合并行不豁免他人 DH）")
+    void saveResult_rejectsDhWithTwoWayPitcherBattingRow() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(lineupWithPitcherAndDh(Integer.valueOf(1)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：同一球员既列 DH 又列投手（5.11(b) 二刀流）放行")
+    void saveResult_allowsSamePlayerDhAndPitcher() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"};
+        for (int i = 0; i < positions.length; i++) rows.add(starterPart(i + 1, positions[i]));
+        SaveGameResultDTO.StatPart dhRow = starterPart(9, "DH");
+        dhRow.setPlayerId(Long.valueOf(2100L));
+        SaveGameResultDTO.StatPart pitcherRow = starterPart(9, "P");
+        pitcherRow.setPlayerId(Long.valueOf(2100L));
+        pitcherRow.setIsPitcher(Integer.valueOf(1));
+        rows.add(dhRow);
+        rows.add(pitcherRow);
+        dto.setStats(rows);
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(10)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：合法 DH 制（DH 打序 + 投手专用列）落库 10 行")
+    void saveResult_allowsValidDhLineup() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"};
+        for (int i = 0; i < positions.length; i++) rows.add(starterPart(i + 1, positions[i]));
+        rows.add(part(null, Long.valueOf(9001L), 1, null, Double.valueOf(5.0D)));
+        dto.setStats(rows);
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(10)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：合法无 DH 制（投手进入打序）落库 9 行")
+    void saveResult_allowsValidBattingPitcherLineup() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "P"};
+        for (int i = 0; i < positions.length; i++) rows.add(starterPart(i + 1, positions[i]));
+        dto.setStats(rows);
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(9)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：库内进行中、同请求置 final 不能绕过拦截")
+    void saveResult_requestFinalCannotBypassPitcherDhRule() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setStatus("final");
+        dto.setGame(gamePart);
+        dto.setStats(lineupWithPitcherAndDh(Integer.valueOf(0)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：库内 final 同请求重开为 live 仍拦截")
+    void saveResult_reopenFinalToLive_stillRejectsPitcherDhRule() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("final");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setStatus("live");
+        dto.setGame(gamePart);
+        dto.setStats(lineupWithPitcherAndDh(Integer.valueOf(0)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：球员 id 缺失时无法证明二刀流，按冲突拦截")
+    void saveResult_rejectsPitcherDhWithoutPlayerIds() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        List<SaveGameResultDTO.StatPart> rows = lineupWithPitcherAndDh(Integer.valueOf(0));
+        // 8 名野手保留 id，第 9 棒 P 与第 10 棒 DH 均缺球员 id
+        rows.get(8).setPlayerId(null);
+        rows.get(9).setPlayerId(null);
+        dto.setStats(rows);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：两侧球员集合相同但不止一人（两 DH 两 P）仍拦截")
+    void saveResult_rejectsMultipleDhAndPitcherSets() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("live");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF"};
+        for (int i = 0; i < positions.length; i++) rows.add(starterPart(i + 1, positions[i]));
+        rows.add(twoWayPart(8, "DH", 2201L));
+        rows.add(twoWayPart(9, "DH", 2202L));
+        rows.add(twoWayPart(10, "P", 2201L));
+        rows.add(twoWayPart(11, "P", 2202L));
+        dto.setStats(rows);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：库内已完赛（赛后补录）不拦截")
+    void saveResult_persistedFinalSkipsPitcherDhRule() {
+        existingGame.setIsSpecialResult(Boolean.FALSE);
+        existingGame.setStatus("final");
+        givenExistingRows();
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(lineupWithPitcherAndDh(Integer.valueOf(0)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(gamePlayerStatRepository, times(10)).save(any(GamePlayerStat.class));
+    }
+
+    private SaveGameResultDTO.StatPart twoWayPart(int battingOrder, String position, long playerId) {
+        SaveGameResultDTO.StatPart part = starterPart(battingOrder, position);
+        part.setPlayerId(Long.valueOf(playerId));
+        return part;
+    }
+
+    /** 8 名野手 + 第 9 棒投手（isPitcher 可调）+ 第 10 棒 DH：P 与 DH 分属不同球员 */
+    private List<SaveGameResultDTO.StatPart> lineupWithPitcherAndDh(Integer pitcherRowIsPitcher) {
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"};
+        for (int i = 0; i < positions.length; i++) rows.add(starterPart(i + 1, positions[i]));
+        SaveGameResultDTO.StatPart pitcher = starterPart(9, "P");
+        pitcher.setIsPitcher(pitcherRowIsPitcher);
+        rows.add(pitcher);
+        rows.add(starterPart(10, "DH"));
+        return rows;
+    }
 }
