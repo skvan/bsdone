@@ -60,6 +60,7 @@ import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState } from '../../utils/liveSubstitutionMode.js';
+import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
@@ -8396,6 +8397,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
       }
     }
+    // #483：三振守备记账。caught=普通/擦棒被捕三振（捕手 PO）；dropped=漏接三振（C 自己触杀=捕手 PO，其他守备员=捕手 A + 该守备员 PO）。
+    function creditStrikeoutFielding(kind,fielderCode){
+      const credit=strikeoutFieldingCredit(kind,fielderCode),catcher=Vt("C");
+      if(credit.catcherPo&&catcher?.stats?.fielding)catcher.stats.fielding.po=(catcher.stats.fielding.po??0)+credit.catcherPo;
+      if(credit.catcherA&&catcher?.stats?.fielding)catcher.stats.fielding.a=(catcher.stats.fielding.a??0)+credit.catcherA;
+      if(credit.fielderPo&&fielderCode){
+        const f=Vt(String(fielderCode).trim().toUpperCase());
+        f?.stats?.fielding&&(f.stats.fielding.po=(f.stats.fielding.po??0)+credit.fielderPo)
+      }
+    }
     function Vt(e){
       return Hn.value.find(t=>t.position===e)
     }
@@ -8480,7 +8491,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(l.flow?.type!=="K_CHOOSE")return;
       de("三振"),l.flow=null,gt();
       const t=be.value,a=Se.value,s=e==="swing",r=s?"挥空三振 (K)":"目送三振 (ꓘ)";
-      l.outs++,Ipy(),t.stats.batting.so=(t.stats.batting.so??0)+1,t.stats.batting.ab=(t.stats.batting.ab??0)+1,e==="swing"?t.stats.batting.so_swing=(t.stats.batting.so_swing??0)+1:t.stats.batting.so_looking=(t.stats.batting.so_looking??0)+1,a?.stats?.pitching&&(a.stats.pitching.pitchSo=(a.stats.pitching.pitchSo??0)+1);
+      l.outs++,Ipy(),t.stats.batting.so=(t.stats.batting.so??0)+1,t.stats.batting.ab=(t.stats.batting.ab??0)+1,e==="swing"?t.stats.batting.so_swing=(t.stats.batting.so_swing??0)+1:t.stats.batting.so_looking=(t.stats.batting.so_looking??0)+1,a?.stats?.pitching&&(a.stats.pitching.pitchSo=(a.stats.pitching.pitchSo??0)+1),creditStrikeoutFielding("caught");
       const p=Rt(`${t.name}: ${r}`);
       Je(s?"K_SWING":"K_LOOKING",p),l.balls=0,l.strikes=0,Qe()
     }
@@ -8488,7 +8499,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(l.flow?.type!=="K_CHOOSE")return;
       de("界外三振"),l.flow=null,gt();
       const e=be.value,t=Se.value;
-      l.outs++,Ipy(),e.stats.batting.so=(e.stats.batting.so??0)+1,e.stats.batting.ab=(e.stats.batting.ab??0)+1,e.stats.batting.so_swing=(e.stats.batting.so_swing??0)+1,t?.stats?.pitching&&(t.stats.pitching.pitchSo=(t.stats.pitching.pitchSo??0)+1),Je("K_SWING",Rt(`${e.name}: 界外三振 (K)`)),l.balls=0,l.strikes=0,Qe()
+      l.outs++,Ipy(),e.stats.batting.so=(e.stats.batting.so??0)+1,e.stats.batting.ab=(e.stats.batting.ab??0)+1,e.stats.batting.so_swing=(e.stats.batting.so_swing??0)+1,t?.stats?.pitching&&(t.stats.pitching.pitchSo=(t.stats.pitching.pitchSo??0)+1),creditStrikeoutFielding("caught"),Je("K_SWING",Rt(`${e.name}: 界外三振 (K)`)),l.balls=0,l.strikes=0,Qe()
     }
     function go(){
       const e=l.flow?.type==="K_CHOOSE";
@@ -8504,7 +8515,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=be.value;
       if(!t)return;
       const a=Se.value;
-      e||(l.hasPitchThisAB=!0,Ea()),l.outs++,Ipy(),t.stats.batting.so=(t.stats.batting.so??0)+1,t.stats.batting.ab=(t.stats.batting.ab??0)+1,t.stats.batting.so_swing=(t.stats.batting.so_swing??0)+1,a?.stats?.pitching&&(a.stats.pitching.pitchSo=(a.stats.pitching.pitchSo??0)+1),Je("K_SWING",Rt(`${t.name}: 擦棒被捕 (K)`)),l.balls=0,l.strikes=0,Qe()
+      e||(l.hasPitchThisAB=!0,Ea()),l.outs++,Ipy(),t.stats.batting.so=(t.stats.batting.so??0)+1,t.stats.batting.ab=(t.stats.batting.ab??0)+1,t.stats.batting.so_swing=(t.stats.batting.so_swing??0)+1,a?.stats?.pitching&&(a.stats.pitching.pitchSo=(a.stats.pitching.pitchSo??0)+1),creditStrikeoutFielding("caught"),Je("K_SWING",Rt(`${t.name}: 擦棒被捕 (K)`)),l.balls=0,l.strikes=0,Qe()
     }
     function Mf(){
       l.flow?.type==="K_CHOOSE"&&(wt(),Ha.value=["root","dropped_3rd"],aa.value=!0)
@@ -8719,8 +8730,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=be.value,s=Se.value;
       if(!a)return;
       ue(a),ue(s??void 0),Bt(Gt(a,"漏接三振出局")),a.stats.batting.so=(a.stats.batting.so??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,e?a.stats.batting.so_looking=(a.stats.batting.so_looking??0)+1:a.stats.batting.so_swing=(a.stats.batting.so_swing??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchSo=(s.stats.pitching.pitchSo??0)+1);
-      const r=t?Vt(t):null;
-      r?.stats?.fielding&&(r.stats.fielding.po=(r.stats.fielding.po??0)+1);
+      creditStrikeoutFielding("dropped",t);
       const p=e?"判进":"挥空",g=t?It[t]??t:"",m=`${a.name}: 漏接三振（${p}）：击球员于一垒出局 (K)${g?`；守备处理 ${
         g
       }
