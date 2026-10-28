@@ -52,8 +52,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class GameService {
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
     private final GameRepository gameRepository;
@@ -764,6 +768,13 @@ public class GameService {
                     continue;
                 }
                 this.gamePlayerStatRepository.delete(s);
+            }
+        }
+        // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
+        if (statTenantId != null && this.earnedRunReconstructionService.hasEngineData(gameId)) {
+            List<String> vs = this.earnedRunReconstructionService.validateSettlement(statTenantId, gameId);
+            for (String v : vs) {
+                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, statTenantId, v);
             }
         }
     }

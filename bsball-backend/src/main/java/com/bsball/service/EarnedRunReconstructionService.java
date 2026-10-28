@@ -13,10 +13,13 @@ import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.EarnedRunStatus;
 import com.bsball.stats.earnedrun.ScoringRunner;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -289,5 +292,64 @@ public class EarnedRunReconstructionService {
         if (!"top".equals(half) && !"bottom".equals(half)) {
             throw new IllegalArgumentException("Half must be top or bottom");
         }
+    }
+
+    // ─── §11 結算驗證 ───────────────────────────────────────────────────────────
+
+    /**
+     * 比賽結束時執行，回傳違規訊息列表（空 = 全部通過）。
+     * 規範 §11：R=ER+UER+PENDING、ER≤R、UER≥0、不重複判定、責任投手非空。
+     */
+    public List<String> validateSettlement(long tenantId, long gameId) {
+        List<String> violations = new ArrayList<>();
+
+        // 1-3: per-pitcher aggregated checks
+        for (GamePlayerStat p : gamePlayerStatRepository.findByGameId(gameId)) {
+            if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
+            if (!Integer.valueOf(1).equals(p.getIsPitcher())) continue;
+            long pid = p.getPlayerId() != null ? p.getPlayerId() : 0;
+            int r = nz(p.getPitchR());
+            int er = nz(p.getEr());
+            int uer = nz(p.getUnearnedR());
+            int pr = nz(p.getPendingR());
+            if (er + uer + pr != r) {
+                violations.add(String.format(
+                        "\u00a711.1 投手 %d: R(%d) \u2260 ER+UER+PENDING(%d+%d+%d=%d)",
+                        pid, r, er, uer, pr, er + uer + pr));
+            }
+            if (er > r) {
+                violations.add(String.format("\u00a711.2 投手 %d: ER(%d) > R(%d)", pid, er, r));
+            }
+            if (uer < 0) {
+                violations.add(String.format("\u00a711.3 投手 %d: UER(%d) < 0", pid, uer));
+            }
+        }
+
+        // 4-5: per-decision checks
+        List<EarnedRunDecisionEntity> decisions =
+                decisionRepository.findByTenantIdAndGameId(tenantId, gameId);
+        Set<String> seen = new HashSet<>();
+        for (EarnedRunDecisionEntity d : decisions) {
+            // \u00a711.4 同一得分（playId+runnerId）不得重複判定
+            String key = d.getPlayId() + ":" + d.getRunnerId();
+            if (!seen.add(key)) {
+                violations.add(String.format(
+                        "\u00a711.4 重複判定: decisionId=%d playId=%d runnerId=%d",
+                        d.getId(), d.getPlayId(), d.getRunnerId()));
+            }
+            // \u00a711.5 每筆判定須有責任投手（PENDING 除外：引擎尚未指派）
+            if (d.getResponsiblePitcherId() == null
+                    && !EarnedRunStatus.PENDING.name().equals(d.getEarnedStatus())) {
+                violations.add(String.format(
+                        "\u00a711.5 缺少責任投手: decisionId=%d status=%s",
+                        d.getId(), d.getEarnedStatus()));
+            }
+        }
+
+        return violations;
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
     }
 }
