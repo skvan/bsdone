@@ -61,6 +61,7 @@ import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
+import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
@@ -7651,7 +7652,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       
     }
-    async function Vl(e,t){
+    async function Vl(e,t,stats){
       Ys();
       try{
         const a=e.setupForm;
@@ -7779,7 +7780,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       fieldingIpReconcileEnabled=!!e.gameState;
       if(e.gameState)reconcileFieldingInningsForLiveState("restore");
-      restoreAtBatContext(e)
+      seedPitcherOrdersFromStats(stats),ensureInitialPitcherOrders(),restoreAtBatContext(e)
       
     }
     const no=new Map;
@@ -9784,7 +9785,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         bench:r,lineup:p,fpId:g
       }
       =Ee(e),T=g.value,Yp=[...p.value,...r.value].find(j=>Number(j.id)===Number(T)),Y=Yp?logPlayerName(Yp):t?logPlayerName(t):"上一任投手";
-      g.value=Number(P.id),ft(e),Ka(),D((T!=null&&Number(P.id)!==Number(T)?pc(Y,logPlayerName(P)):`投手 ${logPlayerName(P)} 登板`)+(ipNote??""))
+      assignPitcherOrder(substitutionModePlayers(Ee(e)),P.id),g.value=Number(P.id),ft(e),Ka(),D((T!=null&&Number(P.id)!==Number(T)?pc(Y,logPlayerName(P)):`投手 ${logPlayerName(P)} 登板`)+(ipNote??""))
     }
     function cc(e){
       if(substitutionMode.value&&substitutionModeCommitFailed.value){J("上次提交换人失败，请先重试「结束换人」或取消换人模式","warning");return}
@@ -10095,6 +10096,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function substitutionModePlayers(ctx){
       return[...ctx.lineup.value,...ctx.bench.value,...(ctx.roster.value??[]),ctx.fpRow.value].filter(Boolean)
+    }
+    function seedPitcherOrdersFromStats(stats){
+      for(const side of["away","home"])seedPitcherOrders(substitutionModePlayers(Ee(side)),stats?.list)
+    }
+    function ensureInitialPitcherOrders(){
+      for(const side of["away","home"]){
+        const ctx=Ee(side),id=Number(ctx.fpId.value);
+        id>0&&assignPitcherOrder(substitutionModePlayers(ctx),id)
+      }
     }
     function substitutionTeamForDhRule(side){
       const ctx=Ee(side);
@@ -10955,15 +10965,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!Number.isFinite(z)||z<=0||E.some(se=>Number(se.id)===z))continue;
         $z(d.player)&&E.push(d.player)
       }
-      let U=1;
-      for(const d of E){
+      const{rows:pitcherOrdered,orderById:pitcherOrderById}=orderPitcherRows(E);
+      for(const d of pitcherOrdered){
         const z=Number(d.id);
         const se=b.get(z)??d;
         ue(se);
         const _e=_s(se,e)||$z(se);
         if(!Number.isFinite(z)||z<=0||(!_e&&w.has(z)))continue;
         !Oo(se)&&ee!=null&&z!==Number(ee)||!_e&&!Lo(se)||(j.push(Eo(se,t,{
-          listOrder:A++,isPitcherRow:_e,pitcherOrder:_e?U++:void 0
+          listOrder:A++,isPitcherRow:_e,pitcherOrder:_e?pitcherOrderById.get(z):void 0
         }
         )),w.add(z))
       }
@@ -11049,7 +11059,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
         const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
         return T?{
-          ...P,name:E,number:U,teamId:A,position:V,stats:{
+          ...P,name:E,number:U,teamId:A,position:V,pitcherOrder:Number(T?.pitcherOrder)>0?Number(T.pitcherOrder):(Number(P?.pitcherOrder)>0?Number(P.pitcherOrder):void 0),stats:{
             batting:{
               ab:T?.ab??0,r:T?.r??0,h:T?.h??0,rbi:T?.rbi??0,bb:T?.bb??0,hbp:T?.hbp??0,bbHp:T?.bbHp??0,so:T?.so??0,so_swing:T?.soSwing??T?.so_swing??0,so_looking:T?.soLooking??T?.so_looking??0,sf:T?.sf??0,sh:T?.sh??0,sb:T?.sb??0,cs:T?.cs??0,doubles:T?.doubles??0,triples:T?.triples??0,hr:T?.hr??0,insideParkHr:T?.insideParkHr??0,gdp:T?.gdp??0,ibb:T?.ibb??0,io:T?.io??0
             }
@@ -11132,7 +11142,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           length:yn
         }
         ,(Y,j)=>T(t.awayScoreByInning?.[j])),l.inning=t.inning??1,l.isTop=t.topBottom!=="bottom",l.isGameEnd=t.status==="final",F.value=!p?.lineupPrepOnly&&q.value.length>0&&X.value.length>0&&g.some(E=>(E.battingOrder??0)>0),Me.value=[],ve.value=null,i.value=null,$e.value=[],Ne.value=[],ke.value=[],await ao([...q.value,...ye.value],[...X.value,...ae.value],a,s)
-        f.resetCountForNewBatter()
+        f.resetCountForNewBatter(),ensureInitialPitcherOrders()
       }
       finally{
         await Ks()
@@ -11242,7 +11252,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return y?(await Vl(y.payload,{
         homeList:s,awayList:r
       }
-      ),F.value=!0,Gl(e),jt({
+      ,p),F.value=!0,Gl(e),jt({
         persistCache:"immediate"
       }
       ),t?.quiet||Fe.success(y.source==="local"?"已从本地缓存恢复录入现场（含未保存到服务器的进度）":"已从服务器恢复录入现场"),Tn(),"ok"):(await Do(e,a,s,r,p),jt({
