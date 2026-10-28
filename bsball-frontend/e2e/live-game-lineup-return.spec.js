@@ -37,6 +37,7 @@ function buildStats(played = false) {
 async function setupLiveGame(page, { played = false } = {}) {
   const gameStats = buildStats(played);
   let savedSnapshot = '';
+  let savedStats = null;
 
   await page.addInitScript(() => {
     Object.keys(localStorage)
@@ -62,14 +63,19 @@ async function setupLiveGame(page, { played = false } = {}) {
       id: 10, eventId: 1, homeTeamId: 1, awayTeamId: 2, status: 'live',
       gameMode: 'BASEBALL', inning: 1, topBottom: 'top', homeScore: 0, awayScore: 0
     };
-    else if (path === '/game/10/stats') data = { list: gameStats, total: gameStats.length };
-    else if (path === '/game/10/live-snapshot' && request.method() === 'GET') {
+    else if (path === '/game/10/stats') {
+      const list = savedStats ?? gameStats;
+      data = { list, total: list.length };
+    } else if (path === '/game/10/live-snapshot' && request.method() === 'GET') {
       data = { snapshotJson: savedSnapshot };
     } else if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
       savedSnapshot = request.postDataJSON().snapshotJson;
       data = { snapshotJson: savedSnapshot };
-    } else if (path === '/game/10/save-live') data = { success: true };
-    else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) data = { restricted: false, players: [] };
+    } else if (path === '/game/10/save-live') {
+      const body = request.postDataJSON();
+      if (Array.isArray(body.stats)) savedStats = body.stats;
+      data = { success: true };
+    } else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) data = { restricted: false, players: [] };
     else if (path === '/player/list') {
       const teamId = Number(url.searchParams.get('teamId') ?? 1);
       const list = players.filter((player) => player.teamId === teamId);
@@ -115,6 +121,49 @@ test('首个 Play 开始后「编辑阵容」变灰不可点', async ({ page }) 
   await expect(button).toBeDisabled();
   expect(await button.getAttribute('title')).toContain('第一个 Play 已开始');
   expect(page.url()).toMatch(/\/events\/1\/games\/10\/live$/);
+});
+
+test('已有 Play 撤销后「编辑阵容」恢复可点击并可返回', async ({ page }) => {
+  await setupLiveGame(page);
+  await page.locator('button[title="坏球 Ball"]').click();
+
+  const button = page.getByRole('button', { name: '编辑阵容' });
+  await expect(button).toBeDisabled();
+  await page.getByRole('button', { name: /撤销/ }).click();
+  await expect(button).toBeEnabled();
+  expect(await button.getAttribute('title')).toContain('返回先发阵容');
+
+  await button.click();
+  await page.waitForURL(/\/events\/1\/games\/10\/lineup$/);
+  await expect(page.locator('.lineup-board-header .header-left')).toContainText('确认先发阵容');
+});
+
+test('已保存 Play 撤销后返回阵容前自动保存撤销态', async ({ page }) => {
+  await setupLiveGame(page);
+  await page.locator('button[title="坏球 Ball"]').click();
+
+  const button = page.getByRole('button', { name: '编辑阵容' });
+  await expect(button).toBeDisabled();
+
+  const firstSave = page.waitForResponse((response) =>
+    response.url().includes('/game/10/save-live') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  const firstSaveResponse = await firstSave;
+  const firstStats = firstSaveResponse.request().postDataJSON().stats ?? [];
+  expect(firstStats.some((row) => Number(row.np ?? 0) > 0)).toBe(true);
+
+  await page.getByRole('button', { name: /撤销/ }).click();
+  await expect(button).toBeEnabled();
+
+  const undoStateSave = page.waitForResponse((response) =>
+    response.url().includes('/game/10/save-live') && response.request().method() === 'POST');
+  await button.click();
+  const undoStateSaveResponse = await undoStateSave;
+  const undoneStats = undoStateSaveResponse.request().postDataJSON().stats ?? [];
+  expect(undoneStats.some((row) => Number(row.np ?? 0) > 0)).toBe(false);
+  await page.waitForURL(/\/events\/1\/games\/10\/lineup$/);
+  await page.waitForTimeout(1500);
+  expect(page.url()).toMatch(/\/events\/1\/games\/10\/lineup$/);
 });
 
 test('按已保存统计重建现场时「编辑阵容」仍为禁用', async ({ page }) => {

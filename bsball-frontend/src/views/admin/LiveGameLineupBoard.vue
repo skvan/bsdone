@@ -520,10 +520,10 @@ function hasRecordedGameStat(row) {
   return [
     'pa', 'ab', 'r', 'h', 'e', 'bbHp', 'sb', 'so', 'soSwing', 'soLooking', 'rbi',
     'doubles', 'triples', 'hr', 'insideParkHr', 'gdp', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'io', 'cs',
-    'ip', 'earnedR', 'unearnedR', 'pendingR', 'er', 'pitchH', 'pitchDoubles', 'pitchTriples',
+    'ip', 'pitchH', 'pitchDoubles', 'pitchTriples',
     'pitchBbHp', 'pitchSo', 'pitchHr', 'pitchInsideParkHr', 'pitchSh', 'pitchSf', 'pitchPa',
     'pitchBf', 'pitchAb', 'np', 'pitchBb', 'pitchIbb', 'pitchHbp', 'pitchIo', 'wp', 'bk',
-    'pitchR', 'go', 'fo', 'tc', 'po', 'a', 'dp', 'pb', 'catcherSb', 'catcherCs'
+    'go', 'fo', 'tc', 'po', 'a', 'dp', 'pb', 'catcherSb', 'catcherCs'
   ].some((key) => Number(row?.[key] ?? 0) > 0);
 }
 

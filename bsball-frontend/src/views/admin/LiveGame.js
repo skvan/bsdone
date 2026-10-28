@@ -5099,7 +5099,7 @@ var sg={
       const st=player?.stats;
       if(!st)return!1;
       const b=st.batting??{},p=st.pitching??{},fd=st.fielding??{};
-      return (b.ab??0)>0||(b.r??0)>0||(b.h??0)>0||(b.rbi??0)>0||(b.bb??0)>0||(b.hbp??0)>0||(b.so??0)>0||(b.sb??0)>0||(b.cs??0)>0||(p.np??0)>0||(p.ip??0)>0||(p.pitchPa??0)>0||(p.pitchBf??0)>0||(p.pitchSo??0)>0||(p.pitchH??0)>0||(p.er??0)>0||(p.wp??0)>0||(p.bk??0)>0||(p.pitchR??0)>0||(fd.po??0)>0||(fd.a??0)>0||(fd.e??0)>0||(fd.pb??0)>0
+      return (b.ab??0)>0||(b.r??0)>0||(b.h??0)>0||(b.rbi??0)>0||(b.bb??0)>0||(b.hbp??0)>0||(b.so??0)>0||(b.sb??0)>0||(b.cs??0)>0||(p.np??0)>0||(p.ip??0)>0||(p.pitchPa??0)>0||(p.pitchBf??0)>0||(p.pitchSo??0)>0||(p.pitchH??0)>0||(p.wp??0)>0||(p.bk??0)>0||(fd.po??0)>0||(fd.a??0)>0||(fd.e??0)>0||(fd.pb??0)>0
     }
     const firstPlayStarted=$(()=>((Array.isArray(ke.value)&&ke.value.some(row=>{
       const text=ll(row);
@@ -10857,8 +10857,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       
     }
     );
-    function openLineupEditor(){
-      if(!F.value||!R.value||firstPlayStarted.value)return;
+    async function openLineupEditor(){
+      if(!F.value||!R.value||firstPlayStarted.value||he.value)return;
+      if(Ne.value.length>0)try{
+        await hs({
+          throwOnError:!0
+        }
+        )
+      }
+      catch{
+        return
+      }
       hc(),Pn.push({
         name:"AdminGameLiveLineupGame",params:{
           eventId:String(Re.value),gameId:String(R.value)
