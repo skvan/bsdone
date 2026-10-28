@@ -47,6 +47,7 @@ import { BACKGROUND_DEVICES as ht } from '../../utils/playerBackground';
 import { compactBackgroundSettings as Hn } from '../../utils/playerBackground';
 import '../../styles/legacy/player-list.css';
 import Pte from '../../components/admin/PlayerTeamEntriesEditor.vue';
+import PlayerClaimedBadge from '../../components/admin/PlayerClaimedBadge.vue';
 function Nn(){
   const Be=v([]);
   function xe(le){
@@ -1580,7 +1581,7 @@ var $n={
               default:n(({
                 row:h
               }
-              )=>[f("div",Wn,[t(xa,{
+              )=>[f("div",Wn,[f("div",{class:"cell-avatar-wrap"},[t(xa,{
                 src:g(ve)(h.avatar)||g(Lt),size:36,shape:"square",class:na(["cell-avatar",{
                   "admin-default-avatar":!h.avatar
                 }
@@ -1589,7 +1590,7 @@ var $n={
               ,{
                 default:n(()=>[s(V(h.name?.slice(0,1)||"球"),1)]),_:2
               }
-              ,1032,["src","class"]),f("span",null,V(h.name)+V(h.number?" #"+h.number:""),1)])]),_:1
+              ,1032,["src","class"]),h.userId!=null?(m(),R(PlayerClaimedBadge,{key:0})):H("",!0)]),f("span",null,V(h.name)+V(h.number?" #"+h.number:""),1)])]),_:1
             }
             ),t(P,{
               label:"所属球队",width:"120"
