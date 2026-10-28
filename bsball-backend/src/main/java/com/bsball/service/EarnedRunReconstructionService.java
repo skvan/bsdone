@@ -69,6 +69,13 @@ public class EarnedRunReconstructionService {
         return gameId > 0 && playRepository.existsByGameId(gameId);
     }
 
+    /** 该场是否仍有以该投手为责任投手的自责分判定；删除投手统计行前的守卫。 */
+    public boolean hasResponsiblePitcherDecisions(long gameId, long pitcherId) {
+        return gameId > 0 && pitcherId > 0
+                && decisionRepository.existsByGameIdAndResponsiblePitcherId(
+                        Long.valueOf(gameId), Long.valueOf(pitcherId));
+    }
+
     @Transactional
     public EarnedRunDecisionEntity overrideDecision(
             long tenantId, long gameId, long decisionId, long operatorId,

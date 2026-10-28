@@ -1,9 +1,11 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -56,6 +58,18 @@ class EarnedRunReconstructionServiceTest {
                 });
         lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("删除投手行前按场次与责任投手查询自责分判定")
+    void hasResponsiblePitcherDecisions_delegatesAndGuardsInvalidIds() {
+        when(decisionRepository.existsByGameIdAndResponsiblePitcherId(20L, 700L))
+                .thenReturn(Boolean.TRUE);
+
+        assertTrue(service.hasResponsiblePitcherDecisions(20L, 700L));
+        verify(decisionRepository).existsByGameIdAndResponsiblePitcherId(20L, 700L);
+        assertFalse(service.hasResponsiblePitcherDecisions(0L, 700L));
+        assertFalse(service.hasResponsiblePitcherDecisions(20L, 0L));
     }
 
     @Test

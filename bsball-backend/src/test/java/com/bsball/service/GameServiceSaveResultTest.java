@@ -420,6 +420,18 @@ class GameServiceSaveResultTest {
         return row;
     }
 
+    private GamePlayerStat zeroPitcherRow() {
+        GamePlayerStat row = new GamePlayerStat();
+        row.setId(Long.valueOf(PITCHER_ROW_ID));
+        row.setGameId(Long.valueOf(GAME_ID));
+        row.setTeamId(Long.valueOf(TEAM_ID));
+        row.setPlayerId(Long.valueOf(PLAYER_ID));
+        row.setIsPitcher(Integer.valueOf(1));
+        row.setPitcherOrder(Integer.valueOf(3));
+        row.setPosition("P");
+        return row;
+    }
+
     @Test
     @DisplayName("引擎场次保存结果：payload 漏带的投手行不得被物理删除")
     void saveResult_engineManaged_keepsMissingPitcherRow() {
@@ -436,6 +448,56 @@ class GameServiceSaveResultTest {
         gameService.saveResult(Long.valueOf(GAME_ID), dto);
 
         assertEquals(0, deletedRows().size(), "引擎维护的投手行不得因 payload 漏带被删除");
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：payload 漏带的全零投手行允许清理")
+    void saveResult_engineManaged_deletesMissingZeroPitcherRow() {
+        GamePlayerStat pitcher = zeroPitcherRow();
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(1, deletedRows().size(), "全零且无判定的投手行应被清理");
+        assertSame(pitcher, deletedRows().get(0));
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：全零投手行仍在 payload 中时保留")
+    void saveResult_engineManaged_keepsZeroPitcherRowWhenPayloadIncludesIt() {
+        GamePlayerStat pitcher = zeroPitcherRow();
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1,
+                        Integer.valueOf(0), Double.valueOf(0D)))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(0, deletedRows().size(), "payload 仍带该行时不得删除");
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：全零但仍有自责分判定的投手行不得删除")
+    void saveResult_engineManaged_keepsMissingZeroPitcherRowWithDecisions() {
+        GamePlayerStat pitcher = zeroPitcherRow();
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(
+                Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(0, deletedRows().size(), "仍有自责分判定的投手行不得删除");
     }
 
     @Test

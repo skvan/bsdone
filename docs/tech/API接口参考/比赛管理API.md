@@ -285,6 +285,7 @@ EventService --> EventRepository
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
+  - 引擎场次投手行的去留：payload 漏带且仍有数据时保留（不得物理删除）；全零且没有自责分判定时物理删除（用于换人错记后的转记/清理）
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；管理端不再提交 `pitchBbHp` 合并列，服务端按 `pitchBb+pitchHbp` 保存拆分字段
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
@@ -298,7 +299,7 @@ EventService --> EventRepository
 - PUT /game/stats/update/{id}
 - DELETE /game/stats/delete/{id}
   - 作用：球员统计CRUD
-  - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 拒绝删除投手行
+  - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 对投手行要求“全零且无自责分判定”，否则返回 400（先转记数据 / 先处理判定）；零数据投手行允许删除
   - 参考：`GameApi.java:125-141`
 
 ### 精彩时刻（HighlightMoment）
