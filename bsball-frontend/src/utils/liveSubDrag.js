@@ -29,7 +29,7 @@ const withinTolerance = (x, y, r, tolerance) => {
  *  调用方按来源的可落种类过滤后取第一个命中项。 */
 export function resolveLiveSubDropHits(x, y, layout, tolerance = 1.2) {
   const hits = [];
-  const { fielderRects = [], runnerRects = [], batterRect = null } = layout ?? {};
+  const { fielderRects = [], runnerRects = [], batterRect = null, benchRects = [] } = layout ?? {};
   for (const item of fielderRects) {
     if (withinTolerance(x, y, item?.rect, tolerance)) hits.push({ kind: 'fielder', code: item.code });
   }
@@ -37,6 +37,9 @@ export function resolveLiveSubDropHits(x, y, layout, tolerance = 1.2) {
     if (withinTolerance(x, y, item?.rect, tolerance)) hits.push({ kind: 'base', base: item.base });
   }
   if (withinTolerance(x, y, batterRect, tolerance)) hits.push({ kind: 'batter' });
+  for (const item of benchRects) {
+    if (withinTolerance(x, y, item?.rect, tolerance)) hits.push({ kind: 'bench', side: item.side, playerId: item.playerId });
+  }
   return hits;
 }
 
@@ -53,6 +56,7 @@ export function liveSubDropAction(sourceKind, hit, opts = {}) {
     return targetKind === 'fielder' ? 'fieldReplace' : null;
   }
   if (sourceKind === 'fielder') {
+    if (targetKind === 'bench') return 'benchSwap';
     if (targetKind !== 'fielder' || opts.samePlayer) return null;
     return 'fieldSwap';
   }
@@ -62,6 +66,7 @@ export function liveSubDropAction(sourceKind, hit, opts = {}) {
 /** 某来源种类的可落目标种类（拖拽/待放置时用于高亮可落目标）。 */
 export function liveSubTargetKinds(sourceKind) {
   if (sourceKind === 'offenseBench') return ['base', 'batter'];
-  if (sourceKind === 'defenseBench' || sourceKind === 'fielder') return ['fielder'];
+  if (sourceKind === 'defenseBench') return ['fielder'];
+  if (sourceKind === 'fielder') return ['fielder', 'bench'];
   return [];
 }

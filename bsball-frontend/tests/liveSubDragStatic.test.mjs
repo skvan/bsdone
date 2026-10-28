@@ -57,3 +57,21 @@ test('样式门禁：双面板/幽灵/高亮环 + 小屏与打线同规则隐藏
   }
   assert.match(css, /@media \(width<=1279px\)\{\.live-bench-left-col,\.live-bench-panel--defense,\.live-bench-ghost\{display:none\}\}/, '小屏隐藏规则缺失或与打线口径不一致');
 });
+
+test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落点已接线', () => {
+  const src = read(LIVE);
+  assert.ok(src.includes('if(!substitutionMode.value||substitutionModeBusy.value||event.button!==0||liveBenchDragSession)return;'), '替补卡 pointerdown 未加模式门禁');
+  assert.ok(src.includes('if(!substitutionMode.value||l.flow||liveBenchDragSession'), '守备员拖拽未加模式门禁');
+  assert.ok(src.includes('benchRects'), '拖拽布局未收集替补席矩形');
+  assert.ok(src.includes('action==="benchSwap"'), 'applyDrop 未处理场上→替补席');
+  const css = read(CSS);
+  assert.ok(css.includes('.live-bench-card--swap-in'), '缺少替补席选中绿色放大样式');
+  assert.ok(css.includes('.defender-hit.live-sub-swap-out'), '缺少场上球员红色放大样式');
+});
+
+test('进攻方选中特效：替补→打者/跑者也走红绿反馈', () => {
+  const src = read(LIVE);
+  assert.ok(src.includes('outKind:"batter"'), '缺少打者下场反馈状态');
+  assert.ok(src.includes('outKind:out?"runner":"empty"'), '缺少跑者/空垒反馈状态');
+  assert.ok(read(CSS).includes('.batter-at-plate-group.live-sub-swap-out'), '缺少打者红色放大样式');
+});

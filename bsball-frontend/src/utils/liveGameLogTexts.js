@@ -235,6 +235,7 @@ export function sysText({ kind, detail, runs, inning, isTop, team, nextBatter, w
     case "game_start": return "比赛开始";
     case "game_end": return "比赛已结束";
     case "force_half": return "强制换局：本半局提前结束（特殊换局规则）";
+    case "dh_cancel": return `取消DH：${detail}`;
     case "extend_inning": return "进入延长局";
     case "tp_placeholder": return "滚地球：三杀（示意）";
     case "illegal_pitch":

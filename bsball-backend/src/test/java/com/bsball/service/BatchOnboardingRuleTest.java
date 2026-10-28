@@ -38,6 +38,7 @@ import com.bsball.model.entity.Team;
 import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.PlayerClaimRepository;
@@ -105,6 +106,8 @@ class BatchOnboardingRuleTest {
     private PlayerClaimRepository playerClaimRepository;
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
+    @Mock
+    private GameSubstitutionEventRepository gameSubstitutionEventRepository;
 
     // ---- GameService 依赖 ----
     @Mock
@@ -133,7 +136,7 @@ class BatchOnboardingRuleTest {
         playerService = new PlayerService(playerRepository, teamRepository, playerTeamRepository, statsService,
                 accountScopeService, scopeQuerySupport, guard, personnelHistoryRecorder, playerTeamService,
                 tenantQueryPolicyService, sysConfigService, playerClaimRepository, gamePlayerStatRepository);
-        gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository, stadiumRepository,
+        gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,

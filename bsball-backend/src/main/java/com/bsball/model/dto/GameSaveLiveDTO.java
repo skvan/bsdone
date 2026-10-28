@@ -18,6 +18,7 @@ import lombok.Generated;
 public class GameSaveLiveDTO {
     private GameUpdatePart game;
     private List<GamePlayerStatPart> stats;
+    private List<SubstitutionPart> substitutions;
 
     @Generated
     public GameSaveLiveDTO() {
@@ -34,6 +35,11 @@ public class GameSaveLiveDTO {
     }
 
     @Generated
+    public List<SubstitutionPart> getSubstitutions() {
+        return this.substitutions;
+    }
+
+    @Generated
     public void setGame(GameUpdatePart game) {
         this.game = game;
     }
@@ -41,6 +47,11 @@ public class GameSaveLiveDTO {
     @Generated
     public void setStats(List<GamePlayerStatPart> stats) {
         this.stats = stats;
+    }
+
+    @Generated
+    public void setSubstitutions(List<SubstitutionPart> substitutions) {
+        this.substitutions = substitutions;
     }
 
     @Generated
@@ -1082,6 +1093,99 @@ public class GameSaveLiveDTO {
         @Generated
         public String toString() {
             return "GameSaveLiveDTO.GamePlayerStatPart(teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", position=" + this.getPosition() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", e=" + this.getE() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", pitcherOrder=" + this.getPitcherOrder() + ", ip=" + this.getIp() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", np=" + this.getNp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", po=" + this.getPo() + ", a=" + this.getA() + ", tc=" + this.getTc() + ")";
+        }
+    }
+
+    public static class SubstitutionPart {
+        private String transactionId;
+        private Long teamId;
+        private Integer inning;
+        private String topBottom;
+        private String changeType;
+        private Integer slot;
+        private Long outPlayerId;
+        private Long inPlayerId;
+        private String outPosition;
+        private String inPosition;
+
+        public String getTransactionId() {
+            return transactionId;
+        }
+
+        public void setTransactionId(String transactionId) {
+            this.transactionId = transactionId;
+        }
+
+        public Long getTeamId() {
+            return teamId;
+        }
+
+        public void setTeamId(Long teamId) {
+            this.teamId = teamId;
+        }
+
+        public Integer getInning() {
+            return inning;
+        }
+
+        public void setInning(Integer inning) {
+            this.inning = inning;
+        }
+
+        public String getTopBottom() {
+            return topBottom;
+        }
+
+        public void setTopBottom(String topBottom) {
+            this.topBottom = topBottom;
+        }
+
+        public String getChangeType() {
+            return changeType;
+        }
+
+        public void setChangeType(String changeType) {
+            this.changeType = changeType;
+        }
+
+        public Integer getSlot() {
+            return slot;
+        }
+
+        public void setSlot(Integer slot) {
+            this.slot = slot;
+        }
+
+        public Long getOutPlayerId() {
+            return outPlayerId;
+        }
+
+        public void setOutPlayerId(Long outPlayerId) {
+            this.outPlayerId = outPlayerId;
+        }
+
+        public Long getInPlayerId() {
+            return inPlayerId;
+        }
+
+        public void setInPlayerId(Long inPlayerId) {
+            this.inPlayerId = inPlayerId;
+        }
+
+        public String getOutPosition() {
+            return outPosition;
+        }
+
+        public void setOutPosition(String outPosition) {
+            this.outPosition = outPosition;
+        }
+
+        public String getInPosition() {
+            return inPosition;
+        }
+
+        public void setInPosition(String inPosition) {
+            this.inPosition = inPosition;
         }
     }
 

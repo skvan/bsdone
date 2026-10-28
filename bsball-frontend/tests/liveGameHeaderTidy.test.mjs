@@ -27,8 +27,8 @@ test('三控件进 header；全屏场地行保留三控件与撤销/重做，顶
   const headerStart = liveGame.indexOf('n("div",og,[');
   const headerEnd = liveGame.indexOf('c(F)&&c(R)?', headerStart);
   const header = liveGame.slice(headerStart, headerEnd);
-  assert.match(header, /key:"undo",size:"small",disabled:!c\(f\)\.canUndo,onClick:as/);
-  assert.match(header, /key:"redo",size:"small",disabled:!c\(f\)\.canRedo,onClick:Ff/);
+  assert.match(header, /key:"undo",size:"small",disabled:(?:substitutionMode\.value\|\|)?!c\(f\)\.canUndo,onClick:as/);
+  assert.match(header, /key:"redo",size:"small",disabled:(?:substitutionMode\.value\|\|)?!c\(f\)\.canRedo,onClick:Ff/);
   assert.match(header, /key:"entry-tools"/);
   assert.match(header, /场上设置/);
   assert.match(header, /击球落点分布/);

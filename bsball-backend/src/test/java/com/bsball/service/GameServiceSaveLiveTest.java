@@ -12,6 +12,7 @@ import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -42,6 +43,8 @@ class GameServiceSaveLiveTest {
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
+    private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -63,7 +66,7 @@ class GameServiceSaveLiveTest {
 
     @BeforeEach
     void setUp() {
-        gameService = new GameService(gameRepository, gamePlayerStatRepository, eventRepository,
+        gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));

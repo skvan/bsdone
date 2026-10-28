@@ -258,6 +258,7 @@ export const gameApi = {
   update: (id, data) => put(`/api/game/update/${id}`, data),
   delete: (id) => del(`/api/game/delete/${id}`),
   saveLive: (id, data) => post(`/api/game/${id}/save-live`, data),
+  substitutions: (id) => fetchList(`/api/game/${id}/substitutions`),
   reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
