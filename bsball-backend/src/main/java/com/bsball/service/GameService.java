@@ -26,6 +26,7 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
+import com.bsball.utils.GamePlayerStatZeros;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -757,8 +758,12 @@ public class GameService {
             // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
             for (GamePlayerStat s : existing) {
                 if (keepIds.contains(s.getId())) continue;
-                // 引擎场次的投手行由 ER 引擎维护，payload 漏带时不得物理删除
-                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())) continue;
+                // 引擎场次的投手行由 ER 引擎维护：仍有数据时不得因 payload 漏带被物理删除；
+                // 全零且没有自责分判定的行允许清理（换人错记后的转记/删除流程）。
+                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())
+                        && !this.isDeletableEnginePitcherRow(gameId, s)) {
+                    continue;
+                }
                 this.gamePlayerStatRepository.delete(s);
             }
         }
@@ -767,6 +772,14 @@ public class GameService {
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
     private static String resultStatKey(Long teamId, Long playerId, Integer isPitcher) {
         return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
+    }
+
+    /** 引擎场次的投手行能否在 payload 漏带时清理：全零且没有以该投手为责任投手的自责分判定。 */
+    private boolean isDeletableEnginePitcherRow(Long gameId, GamePlayerStat stat) {
+        return GamePlayerStatZeros.isZero(stat)
+                && (stat.getPlayerId() == null
+                    || !this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(
+                            gameId, stat.getPlayerId()));
     }
 
     private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part,
