@@ -23,6 +23,7 @@ const layout = {
     { base: 2, rect: rect(240, 200) },
   ],
   batterRect: rect(220, 535),
+  benchRects: [{ side: 'defense', playerId: 199, rect: rect(20, 300) }],
 };
 
 /* ---------------- buildLiveBenchItems ---------------- */
@@ -85,6 +86,10 @@ test('打者与捕手标签重叠：返回有序多命中（守备员在前）',
   assert.deepEqual(hits, [{ kind: 'fielder', code: 'C' }, { kind: 'batter' }]);
 });
 
+test('命中替补席卡片：kind=bench + side/playerId', () => {
+  assert.deepEqual(resolveLiveSubDropHits(40, 310, layout), [{ kind: 'bench', side: 'defense', playerId: 199 }]);
+});
+
 test('未落入任何目标 = 空数组', () => {
   assert.deepEqual(resolveLiveSubDropHits(10, 10, layout), []);
   assert.deepEqual(resolveLiveSubDropHits(10, 10, {}), []);
@@ -113,9 +118,10 @@ test('合法性矩阵：守备替补 → 守备员（换守备/换投）', () =>
   assert.equal(liveSubDropAction('defenseBench', { kind: 'fielder', code: 'SS' }), 'fieldReplace');
 });
 
-test('合法性矩阵：守备员 → 守备员（互换守备位；同一人无效）', () => {
+test('合法性矩阵：守备员 → 守备员（互换守备位；同一人无效）/ 守备员 → 替补席（下场）', () => {
   assert.equal(liveSubDropAction('fielder', { kind: 'fielder', code: 'SS' }), 'fieldSwap');
   assert.equal(liveSubDropAction('fielder', { kind: 'fielder', code: 'SS' }, { samePlayer: true }), null);
+  assert.equal(liveSubDropAction('fielder', { kind: 'bench', side: 'defense', playerId: 199 }), 'benchSwap');
 });
 
 test('非法组合一律无效：进攻↔守备员、守备↔垒位/打者、守备员↔打者', () => {
@@ -123,15 +129,16 @@ test('非法组合一律无效：进攻↔守备员、守备↔垒位/打者、�
   assert.equal(liveSubDropAction('defenseBench', { kind: 'base', base: 1 }, { baseOccupied: true }), null);
   assert.equal(liveSubDropAction('defenseBench', { kind: 'batter' }), null);
   assert.equal(liveSubDropAction('fielder', { kind: 'batter' }), null);
+  assert.equal(liveSubDropAction('defenseBench', { kind: 'bench', side: 'defense', playerId: 199 }), null);
   assert.equal(liveSubDropAction('fielder', { kind: 'base', base: 1 }), null);
   assert.equal(liveSubDropAction('unknown', { kind: 'fielder', code: 'P' }), null);
 });
 
 /* ---------------- liveSubTargetKinds ---------------- */
 
-test('可落目标：进攻席=垒位+打者；守备席/守备员=守备员', () => {
+test('可落目标：进攻席=垒位+打者；守备席=守备员；守备员=守备员+替补席', () => {
   assert.deepEqual(liveSubTargetKinds('offenseBench'), ['base', 'batter']);
   assert.deepEqual(liveSubTargetKinds('defenseBench'), ['fielder']);
-  assert.deepEqual(liveSubTargetKinds('fielder'), ['fielder']);
+  assert.deepEqual(liveSubTargetKinds('fielder'), ['fielder', 'bench']);
   assert.deepEqual(liveSubTargetKinds('unknown'), []);
 });

@@ -98,3 +98,11 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 /* ===== 换人事务模式（#444 后续） ===== */
 .live-sub-mode-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #e6a23c;background:#fdf6ec;color:#8a5a00;border-radius:6px;font-size:13px;line-height:1.4;position:relative;z-index:6}
 .live-sub-mode-banner>span{flex:1 1 260px;min-width:220px}
+
+/* ===== 换人模式拖拽：替补↔场上 双向交换反馈 ===== */
+.live-bench-card--swap-in{border-style:solid;border-color:#2e9e5b;background:#e8f7ee;color:#1f7a44;transform:scale(1.08);box-shadow:0 0 0 2px rgba(46,158,91,.28);transition:transform .12s ease,background .12s ease,box-shadow .12s ease}
+.live-bench-card--swap-in.live-bench-card--dragging{opacity:1}
+.live-bench-card--swap-in .live-bench-card__num{color:#1f7a44}
+.defender-hit.live-sub-swap-out .defender-card__box{fill:#fdecea;stroke:#e74c3c;stroke-width:2.4;transform:scale(1.22);transform-box:fill-box;transform-origin:center}
+.defender-hit.live-sub-swap-out .defender-card__pos{fill:#c0392b;transform:scale(1.12);transform-box:fill-box;transform-origin:center}
+.defender-hit.live-sub-swap-out .defender-card__num{fill:#e74c3c;transform:scale(1.12);transform-box:fill-box;transform-origin:center}

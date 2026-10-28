@@ -5019,7 +5019,7 @@ var sg={
 ,$_="bs-ball-live-watch-close",R_="bs-ball-live-watch-snapshot-push",x_="bs-ball-live-watch-snapshot-request",mu="bs-ball-live-watch-float-size",vu=500,A_=1680,Is=260,O_="3vh",gu="--live-watch-float-left",bu="--live-watch-float-top",L_=400,E_="bs-ball-live-",_u="bs-ball-live-fullscreen-",N_=1500,yn=7,H_=16,D_=12,M_=220,U_=280,G_=10,V_=120,W_="板凳席无可用球员（已换下球员不可再上场）",X_=8e3,Fs=200,hu=8,LiveBenchPanel=Wn({
   name:"LiveBenchPanel",
   props:{
-    side:{type:String,required:!0},items:{type:Array,default:()=>[]},teamName:{type:String,default:""},emptyText:{type:String,default:""},pendingId:{type:String,default:null},draggingId:{type:String,default:null},onCardPointerDown:{type:Function,default:null},onCardClick:{type:Function,default:null},onClearPending:{type:Function,default:null}
+    side:{type:String,required:!0},items:{type:Array,default:()=>[]},teamName:{type:String,default:""},emptyText:{type:String,default:""},pendingId:{type:String,default:null},draggingId:{type:String,default:null},fxInId:{type:String,default:null},onCardPointerDown:{type:Function,default:null},onCardClick:{type:Function,default:null},onClearPending:{type:Function,default:null}
   }
   ,setup(u){
     return(f)=>da("section",{
@@ -5042,7 +5042,7 @@ var sg={
     }
     ,[da("button",{
       type:"button",class:["live-bench-card",{
-        "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id)
+        "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id),"live-bench-card--swap-in":u.fxInId!=null&&u.fxInId===String(p.id)
       }
       ],"data-player-id":p.id,"data-team-side":u.side,onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
     }
@@ -10105,7 +10105,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>liveBenchEmptyText(N.value));
     // 换人被禁的原因：文案复用既有 tf（口径不漂移），追加「跑垒待确认（ge）」与「三出局后需先确认半局结束」
     function liveBenchSubBlockedReason(){
-      return tf.value||(ge.value!=null?"请先完成或取消当前跑垒确认":l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")
+      return substitutionModeBusy.value?"正在提交换人，请稍候":substitutionModeCommitFailed.value?"上次提交换人失败，请先重试或取消换人模式":tf.value||(ge.value!=null?"请先完成或取消当前跑垒确认":l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")
     }
     const liveBenchSubBlocked=()=>!!liveBenchSubBlockedReason();
     function liveBenchClearPending(){
@@ -10148,11 +10148,22 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return!0
       }
       if(source.kind==="fielder"){
-        const targetPlayer=Vt(hit.code);
-        if(liveSubDropAction("fielder",hit,{
+        const targetPlayer=hit.kind==="fielder"?Vt(hit.code):null;
+        const action=liveSubDropAction("fielder",hit,{
           samePlayer:!targetPlayer||String(targetPlayer.id)===String(source.player?.id)
         }
-        )!=="fieldSwap")return!1;
+        );
+        if(action==="benchSwap"){
+          if(!substitutionMode.value||hit.side!=="defense")return!1;
+          const targetBench=Ee(dK).bench.value.find(p=>Number(p.id)===Number(hit.playerId));
+          if(!targetBench)return!1;
+          mt.value="fielder",Ga.value=source.player,ia.value=dK,Qt.value=null,Va.value=source.code,cc({
+            id:targetBench.id
+          }
+          ),liveBenchClearPending();
+          return!0
+        }
+        if(action!=="fieldSwap")return!1;
         mt.value="fielder",Ga.value=source.player,ia.value=dK,Qt.value=null,Va.value=source.code,cc({
           id:targetPlayer.id,groupKey:"fielders"
         }
@@ -10199,8 +10210,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       )):[];
       const batterEl=svg.querySelector(".batter-at-plate-group");
+      const benchRects=Array.from(document.querySelectorAll(".live-bench-card[data-player-id]")).map(el=>{
+        const rect=toRect(el);
+        return{
+          side:el.dataset.teamSide==="offense"?"offense":"defense",playerId:Number(el.dataset.playerId),rect
+        }
+      }
+      ).filter(item=>Number.isFinite(item.playerId)&&item.playerId>0&&item.rect.width>0&&item.rect.height>0);
       return{
-        fielderRects,runnerRects,batterRect:batterEl?toRect(batterEl):null
+        fielderRects,runnerRects,batterRect:batterEl?toRect(batterEl):null,benchRects
       }
     }
     function liveBenchInvalidateDragLayout(){
@@ -10218,7 +10236,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       liveBenchCleanupDrag()
     }
     function liveBenchCardPointerDown(player,side,event){
-      if(event.button!==0||liveBenchDragSession)return;
+      if(!substitutionMode.value||substitutionModeBusy.value||event.button!==0||liveBenchDragSession)return;
       const session={
         mode:"card",sourceKind:side==="offense"?"offenseBench":"defenseBench",side,player,pointerId:event.pointerId,pointerType:event.pointerType,startX:event.clientX,startY:event.clientY,armed:!1,moved:!1,layout:null,timerId:0
       }
@@ -10227,7 +10245,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 守备员互拖互换：仅无流程且允许换人时接管 pointerdown（流程内维持落点/自踩语义）
     function liveBenchStartFieldSwapDrag(pos,event){
-      if(l.flow||liveBenchDragSession||event.button!==0||liveBenchSubBlocked())return!1;
+      if(!substitutionMode.value||l.flow||liveBenchDragSession||event.button!==0||liveBenchSubBlocked())return!1;
       const src=Vt(pos);
       if(!src)return!1;
       liveBenchClearPending();
@@ -10308,10 +10326,27 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),out
     }
     );
+    const liveBenchSwapFx=$(()=>{
+      const ui=liveBenchDragUi.value,hit=liveBenchHoverHit.value;
+      if(!ui||!hit)return null;
+      if(ui.sourceKind==="fielder"&&hit.kind==="bench"&&hit.side==="defense"){
+        return{
+          inId:Number(hit.playerId),inSide:"defense",outPos:ui.sourcePos
+        }
+      }
+      if(ui.sourceKind==="defenseBench"&&hit.kind==="fielder"){
+        const out=Vt(hit.code);
+        return{
+          outPos:hit.code,inId:Number(ui.playerId),inSide:"defense",outId:out?Number(out.id):0
+        }
+      }
+      return null
+    }
+    );
     function liveBenchPanelProps(side){
-      const pd=liveBenchPendingCard.value,ui=liveBenchDragUi.value;
+      const pd=liveBenchPendingCard.value,ui=liveBenchDragUi.value,fx=liveBenchSwapFx.value;
       return{
-        side,items:side==="offense"?liveBenchOffenseItems.value:liveBenchDefenseItems.value,teamName:liveBenchTeamName(side),emptyText:liveBenchEmptyTextValue.value,pendingId:pd&&pd.side===side?String(pd.player.id):null,draggingId:ui&&ui.side===side&&ui.playerId!=null?String(ui.playerId):null,onCardPointerDown:(p,ev)=>liveBenchCardPointerDown(p,side,ev),onCardClick:(p)=>liveBenchCardClick(p,side),onClearPending:()=>liveBenchClearPending()
+        side,items:side==="offense"?liveBenchOffenseItems.value:liveBenchDefenseItems.value,teamName:liveBenchTeamName(side),emptyText:liveBenchEmptyTextValue.value,pendingId:pd&&pd.side===side?String(pd.player.id):null,draggingId:ui&&ui.side===side&&ui.playerId!=null?String(ui.playerId):null,fxInId:fx&&fx.inSide===side?String(fx.inId):null,onCardPointerDown:(p,ev)=>liveBenchCardPointerDown(p,side,ev),onCardClick:(p)=>liveBenchCardClick(p,side),onClearPending:()=>liveBenchClearPending()
       }
     }
     Ce(()=>l.inning+"-"+l.isTop,()=>{
@@ -11640,7 +11675,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,null,8,["x1","y1","x2","y2","class"]))),128))]),n("g",Gg,[(h(!0),C(me,null,et(Wr.value,d=>(h(),C("g",{
           key:d,"data-pos":d,class:re(["defender-hit",{
-            "field-player-hit--disabled":nn.value
+            "field-player-hit--disabled":nn.value,"live-sub-swap-out":liveBenchSwapFx.value&&liveBenchSwapFx.value.outPos===d
           }
           ]),onClick:Ze(z=>Ro(d,z),["stop"]),onPointerdown:z=>Qf(d,z)
         }
