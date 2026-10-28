@@ -482,9 +482,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0
@@ -521,7 +521,14 @@
             </if>
         )
         <if test="positionCode != null and positionCode != ''">
-            AND s.position = #{positionCode}
+            AND (
+                s.position = #{positionCode}
+                <if test='positionCode == "C"'>
+                    <!-- 捕手后改投：最终守位不是 C，但 PB/CS/SB 或首次守位仍是捕手口径 -->
+                    OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0
+                    OR s.first_position = 'C'
+                </if>
+            )
         </if>
         <include refid="gameFilter"/>
         <include refid="playerLeaderFilter"/>
@@ -708,9 +715,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0

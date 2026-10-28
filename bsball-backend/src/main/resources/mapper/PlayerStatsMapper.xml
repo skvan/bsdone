@@ -177,9 +177,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -296,9 +296,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -426,9 +426,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id

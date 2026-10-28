@@ -107,6 +107,30 @@ class FieldingAggregationMapperTest {
         assertTrue(pageSql.contains("COALESCE(s.is_pitcher, 0) <> 0"), "page 查询与 count 口径不一致");
     }
 
+    @Test
+    @DisplayName("捕手后改投：PB/CS/SB 按行累计，C 筛选按首次守位/捕手动作纳入")
+    void catcherStatsCountedByRowAfterPositionChange() {
+        String playerSql = boundSql("com.bsball.mapper.PlayerStatsMapper.selectFieldingStats", playerParams());
+        assertTrue(playerSql.contains("SUM(COALESCE(s.pb, 0))"), "个人守备 PB 仍按最终守位过滤");
+        assertTrue(playerSql.contains("SUM(COALESCE(s.catcher_cs, 0))"), "个人守备 CS 仍按最终守位过滤");
+        assertFalse(playerSql.contains("CASE WHEN s.position = 'C'"), "个人守备捕手列仍受 position 限制");
+
+        String teamSql = boundSql("com.bsball.mapper.StatsLeadersMapper.selectTeamFieldingLeadersPage", leaderParams());
+        assertTrue(teamSql.contains("SUM(COALESCE(s.pb, 0))"), "球队守备 PB 仍按最终守位过滤");
+        assertFalse(teamSql.contains("CASE WHEN s.position = 'C'"), "球队守备捕手列仍受 position 限制");
+
+        Map<String, Object> params = leaderParams();
+        params.put("positionCode", "C");
+        String countSql = boundSql("com.bsball.mapper.StatsLeadersMapper.countFieldingLeaders", params);
+        assertTrue(countSql.contains("COALESCE(s.pb,0) > 0"), "C 筛选未纳入捕手动作");
+        assertTrue(countSql.contains("s.first_position = 'C'"), "C 筛选未纳入首次守位");
+        String pageSql = boundSql("com.bsball.mapper.StatsLeadersMapper.selectFieldingLeadersPage", params);
+        assertTrue(pageSql.contains("s.first_position = 'C'"), "page 查询与 count 的 C 筛选口径不一致");
+
+        String noPosition = boundSql("com.bsball.mapper.StatsLeadersMapper.countFieldingLeaders", leaderParams());
+        assertFalse(noPosition.contains("s.first_position = 'C'"), "未筛选守位时不应附加 C 口径");
+    }
+
     private static void assertCountedRow(String sql, String id) {
         assertTrue(sql.contains("s.position IS NOT NULL"), id + " 缺少守位非空过滤");
         assertTrue(sql.contains("s.position NOT IN ('DH', 'PH', 'EP')"), id + " 缺少 DH/PH/EP 排除");
