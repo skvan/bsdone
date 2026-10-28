@@ -10340,6 +10340,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           outPos:hit.code,inId:Number(ui.playerId),inSide:"defense",outId:out?Number(out.id):0
         }
       }
+      if(ui.sourceKind==="offenseBench"){
+        if(hit.kind==="batter"){
+          const out=be.value;
+          return{
+            inId:Number(ui.playerId),inSide:"offense",outKind:"batter",outId:out?Number(out.id):0,outPos:"打者"
+          }
+        }
+        if(hit.kind==="base"){
+          const out=l.runners[hit.base];
+          return{
+            inId:Number(ui.playerId),inSide:"offense",outKind:out?"runner":"empty",outBase:hit.base,outId:out?Number(out.id):0,outPos:out?"跑者":"空垒"
+          }
+        }
+      }
       return null
     }
     );
@@ -11726,7 +11740,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,null,8,qg)],34)]),n("g",jg,[(h(),C(me,null,et([1,2,3],d=>n("g",{
           key:d,class:re(["runner-draggable-group",{
-            "runner-draggable-group--drag":ne.value&&ne.value.base===d&&ne.value.moved,"field-player-hit--disabled":nn.value
+            "runner-draggable-group--drag":ne.value&&ne.value.base===d&&ne.value.moved,"field-player-hit--disabled":nn.value,"live-sub-swap-out":liveBenchSwapFx.value&&liveBenchSwapFx.value.outKind==="runner"&&liveBenchSwapFx.value.outBase===d
           }
           ]),transform:ur(d),onPointerdown:z=>gp(d,z)
         }
@@ -11750,7 +11764,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,"#"+H(tl(ja(d))),1)],2)):W("",!0)],64))],42,Jg)),64))]),n("g",{
           class:re(["batter-at-plate-group",{
-            "field-player-hit--disabled":nn.value
+            "field-player-hit--disabled":nn.value,"live-sub-swap-out":liveBenchSwapFx.value&&liveBenchSwapFx.value.outKind==="batter"
           }
           ]),onClick:Ze(Ao,["stop"])
         }

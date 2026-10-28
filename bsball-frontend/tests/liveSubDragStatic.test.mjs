@@ -68,3 +68,10 @@ test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落�
   assert.ok(css.includes('.live-bench-card--swap-in'), '缺少替补席选中绿色放大样式');
   assert.ok(css.includes('.defender-hit.live-sub-swap-out'), '缺少场上球员红色放大样式');
 });
+
+test('进攻方选中特效：替补→打者/跑者也走红绿反馈', () => {
+  const src = read(LIVE);
+  assert.ok(src.includes('outKind:"batter"'), '缺少打者下场反馈状态');
+  assert.ok(src.includes('outKind:out?"runner":"empty"'), '缺少跑者/空垒反馈状态');
+  assert.ok(read(CSS).includes('.batter-at-plate-group.live-sub-swap-out'), '缺少打者红色放大样式');
+});
