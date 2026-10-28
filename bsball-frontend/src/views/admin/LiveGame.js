@@ -5046,7 +5046,7 @@ var sg={
       type:"button",class:["live-bench-card",{
         "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id),"live-bench-card--swap-in":u.fxInId!=null&&u.fxInId===String(p.id)
       }
-      ],"data-player-id":p.id,"data-team-side":u.side,onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
+      ],"data-player-id":p.id,"data-team-side":u.side,"aria-pressed":u.pendingId!=null&&u.pendingId===String(p.id)?"true":"false",onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
     }
     ,[da("span",{
       class:"live-bench-card__num"
@@ -6609,7 +6609,7 @@ var sg={
       Tr.value=!!Da?.matches||"ontouchstart"in window
     }
     const lt=x(!1),Ma=x(!1),Xi=x("away"),Ua=x(""),la=x(!1),On=x(!1),mt=x("fielder"),ia=x("away"),Ga=x(null),Qt=x(null),Va=x(null),sa=x(null),Tp=$(()=>mt.value==="pinchHit"?"代打":"换人");
-    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null);
+    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense");
     function $p(e){
       return Ee(e).unavail.value
     }
@@ -9970,7 +9970,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       substitutionModeBefore.value={
         away:captureSubstitutionTeam("away"),home:captureSubstitutionTeam("home"),runners:substitutionModeClone(l.runners)
       }
-      ,substitutionModeHistoryBase.value=$e.value.slice(),substitutionModeLogBase.value=ke.value.slice(),substitutionModeCommitFailed.value=!1,de("换人模式"),substitutionModeUndoEntry.value=$e.value[$e.value.length-1]??null,substitutionMode.value=!0,Fe.info("换人模式已开启：记球已暂停；调整完成后点「结束换人」提交，或点「取消换人模式」恢复")
+      ,substitutionModeHistoryBase.value=$e.value.slice(),substitutionModeLogBase.value=ke.value.slice(),substitutionModeCommitFailed.value=!1,de("换人模式"),substitutionModeUndoEntry.value=$e.value[$e.value.length-1]??null,substitutionMode.value=!0,subBenchSheetSide.value="defense",subBenchSheetOpen.value=!0,liveBenchClearPending(),Fe.info("换人模式已开启：记球已暂停；调整完成后点「结束换人」提交，或点「取消换人模式」恢复")
     }
     function toggleSubstitutionMode(){
       if(substitutionModeBusy.value)return;
@@ -9981,7 +9981,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ctx.lineup.value=substitutionModeClone(before.lineup),ctx.bench.value=substitutionModeClone(before.bench),ctx.fpId.value=before.fpId,ctx.fpRow.value=before.fpRow?substitutionModeClone(before.fpRow):null,ctx.unavail.value=[...before.unavailable],ctx.lineupStarterIds.value=[...before.starterIds],ctx.slotSubHistory.value=before.slotHistory.map(row=>[...row]),ri(side),ft(side),Ka()
     }
     function exitSubstitutionMode(){
-      substitutionMode.value=!1,substitutionModeBefore.value=null,substitutionModeHistoryBase.value=null,substitutionModeLogBase.value=null,substitutionModeUndoEntry.value=null,substitutionModeBusy.value=!1,substitutionModeTransactionId.value=null,substitutionModeCommitFailed.value=!1
+      substitutionMode.value=!1,subBenchSheetOpen.value=!1,liveBenchClearPending(),substitutionModeBefore.value=null,substitutionModeHistoryBase.value=null,substitutionModeLogBase.value=null,substitutionModeUndoEntry.value=null,substitutionModeBusy.value=!1,substitutionModeTransactionId.value=null,substitutionModeCommitFailed.value=!1
     }
     function cancelSubstitutionMode(){
       if(!substitutionMode.value||substitutionModeBusy.value)return;
@@ -10285,6 +10285,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 待放置态消费场上点击：选中卡后点目标=直接换人（不弹原浮层）；非法目标=吞掉不动作
     function liveBenchConsumePendingClicks(hit){
+      if(!substitutionMode.value)return!1;
       const card=liveBenchPendingCard.value;
       if(!card)return!1;
       if(l.flow||ge.value!=null||kt.value!=null||qe.value||lt.value)return!1;
@@ -10367,6 +10368,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function liveBenchStartFieldSwapDrag(pos,event){
       if(!substitutionMode.value||l.flow||liveBenchDragSession||event.button!==0||liveBenchSubBlocked())return!1;
+      // 待放置态（已点选替补卡）：点击守备员应由 click 消费完成换人，不再启动守备员拖拽
+      if(liveBenchPendingCard.value)return!1;
       const src=Vt(pos);
       if(!src)return!1;
       liveBenchClearPending();
@@ -10441,7 +10444,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s.timerId&&window.clearTimeout(s.timerId),window.removeEventListener("scroll",liveBenchInvalidateDragLayout,!0),window.removeEventListener("resize",liveBenchInvalidateDragLayout),window.removeEventListener("blur",liveBenchBlurCancel),document.removeEventListener("pointermove",liveBenchDragMove,!0),document.removeEventListener("pointerup",liveBenchDragEnd,!0),document.removeEventListener("pointercancel",liveBenchDragCancel,!0),s.mode==="fielder"&&ce.value&&(ce.value=null,Mn(ce)),liveBenchDragSession=null,liveBenchDragUi.value=null,liveBenchHoverHit.value=null
     }
     function liveBenchCardClick(player,side){
-      performance.now()<liveBenchDragEndAt||liveBenchTogglePending(player,side)
+      if(!substitutionMode.value||performance.now()<liveBenchDragEndAt)return;
+      liveBenchTogglePending(player,side),liveBenchPendingCard.value&&(subBenchSheetOpen.value=!1)
     }
     function liveBenchOnKeydown(e){
       e.key==="Escape"&&liveBenchPendingCard.value&&liveBenchClearPending()
@@ -11619,7 +11623,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ])
         }
-        ,[c(F)?(h(),C("div",fg,[c(F)&&substitutionMode.value?(h(),C("div",{
+        ,[c(F)?(h(),C("div",{key:1,class:re(["live-content",{"live-content--sub-mode":substitutionMode.value,"live-content--sub-bench-open":substitutionMode.value&&subBenchSheetOpen.value,"live-content--sub-bench-offense":substitutionMode.value&&subBenchSheetSide.value==="offense"}])},[c(F)&&substitutionMode.value?(h(),C("div",{
           key:"sub-mode-banner",class:"live-sub-mode-banner"
         }
         ,[n("span",null,"换人模式进行中：记球已暂停；调整完成后点「结束换人」提交，或取消恢复。DH 卡片拖离槽位可取消 DH。"),(h(!0),C(me,null,et(substitutionModeDhCards.value,(item)=>(h(),C("div",{
@@ -11642,13 +11646,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,"#"+H(item.player.number??"-"),1),n("span",{
           class:"live-sub-dh-card__hint"
         }
-        ,"拖离取消")]))),128)),v(s,{
+        ,"拖离取消")]))),128)),v(s,{size:"small",class:"live-sub-bench-toggle","aria-pressed":subBenchSheetOpen.value&&subBenchSheetSide.value==="defense"?"true":"false",type:subBenchSheetOpen.value&&subBenchSheetSide.value==="defense"?"primary":"default",plain:!(subBenchSheetOpen.value&&subBenchSheetSide.value==="defense"),onClick:()=>{const active=subBenchSheetOpen.value&&subBenchSheetSide.value==="defense";subBenchSheetSide.value="defense",subBenchSheetOpen.value=!active}},{default:L(()=>[Q("防守替补",-1)]),_:1}),v(s,{size:"small",class:"live-sub-bench-toggle","aria-pressed":subBenchSheetOpen.value&&subBenchSheetSide.value==="offense"?"true":"false",type:subBenchSheetOpen.value&&subBenchSheetSide.value==="offense"?"primary":"default",plain:!(subBenchSheetOpen.value&&subBenchSheetSide.value==="offense"),onClick:()=>{const active=subBenchSheetOpen.value&&subBenchSheetSide.value==="offense";subBenchSheetSide.value="offense",subBenchSheetOpen.value=!active}},{default:L(()=>[Q("进攻替补",-1)]),_:1}),v(s,{
           size:"small",type:"warning",plain:"",disabled:substitutionModeBusy.value,onClick:cancelSubstitutionMode
         }
         ,{
           default:L(()=>[Q("取消换人模式",-1)]),_:1
         }
-        ,8,["disabled"])])):W("",!0),c(F)&&c(oe)?(h(),C("div",cg,[v(s,{
+        ,8,["disabled"])])):W("",!0),substitutionMode.value&&!subBenchSheetOpen.value?(h(),C("button",{key:"sub-bench-pill",type:"button",class:"live-sub-bench-pill",onClick:()=>{subBenchSheetOpen.value=!0}},[Q("替补席",-1)])):W("",!0),c(F)&&c(oe)?(h(),C("div",cg,[v(s,{
           type:"primary",link:"",onClick:Ho
         }
         ,{
@@ -12162,7 +12166,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,"界内球",-1))]),_:1
         }
-        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value},null,16):W("",!0)],512)])):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value},null,16):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
           description:"正在校验比赛现场，若未完成先发阵容将自动跳转…"
         }
         )]))],2)]),_:1
