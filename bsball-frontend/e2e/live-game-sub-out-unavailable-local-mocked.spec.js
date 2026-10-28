@@ -65,7 +65,8 @@ function buildSnapshot({ dh }) {
     homeLineup[8].stats.pitching = homePitcher.stats.pitching;
   }
   const homeBench = [player(111, 'H替补', '', 1)];
-  const allPlayers = [...homeLineup, ...awayLineup, ...homeBench, ...(dh ? [homePitcher] : [])];
+  const rosterExtra = player(121, '主替补2', '', 1);
+  const allPlayers = [...homeLineup, ...awayLineup, ...homeBench, rosterExtra, ...(dh ? [homePitcher] : [])];
 
   return {
     snapshot: {
@@ -257,4 +258,64 @@ test('无 DH 队换投：被换下投手保留在板凳灰显（不再消失）'
   await expect(outCard).toBeDisabled();
   await page.mouse.click((await outCard.boundingBox()).x + 4, (await outCard.boundingBox()).y + 4);
   await expect(outCard).not.toHaveClass(/live-bench-card--pending/);
+});
+
+
+test('追加新球员：可恢复灰显球员，也可加入不在板凳的名单球员', async ({ page }) => {
+  const { savedLive, snapshots } = await setup(page, { dh: true });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await benchToPitcher(page, 111);
+  await submit(page, savedLive);
+
+  const outCard = page.locator('.live-bench-card[data-player-id="120"][data-team-side="defense"]');
+  await expect(outCard).toBeDisabled();
+
+  const picker = page.locator('.lgsfm__panel');
+  const openPicker = async () => {
+    await page.locator('g.defender-hit[data-pos="CF"]').click();
+    await expect(picker).toBeVisible();
+  };
+  const appendFromPicker = async (optionText) => {
+    await page.waitForTimeout(450);
+    await picker.getByRole('button', { name: '追加新球员' }).click();
+    const dialog = page.locator('.el-dialog', { hasText: '追加板凳球员' });
+    await expect(dialog).toBeVisible();
+    await dialog.locator('.el-select').click();
+    const option = page.locator('.el-select-dropdown__item').filter({ hasText: optionText });
+    await expect(option).toBeVisible();
+    await option.click();
+    await dialog.getByRole('button', { name: '确认追加' }).click();
+    await expect(picker).toBeVisible();
+  };
+
+  await openPicker();
+  await appendFromPicker('主投手');
+  await picker.getByRole('button', { name: '关闭' }).click();
+  await expect(outCard).toBeEnabled();
+  await expect(outCard).not.toHaveClass(/live-bench-card--disabled/);
+
+  await openPicker();
+  await appendFromPicker('主替补2');
+  await picker.getByRole('button', { name: '关闭' }).click();
+  const addedCard = page.locator('.live-bench-card[data-player-id="121"][data-team-side="defense"]');
+  await expect(addedCard).toBeVisible();
+  await expect(addedCard).toBeEnabled();
+
+  // 保存后恢复状态落库：120 不再不可上，121 已在板凳
+  const snapshotsBeforeSave = snapshots.length;
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  await expect.poll(() => snapshots.length).toBeGreaterThan(snapshotsBeforeSave);
+  const snap = JSON.parse(snapshots.at(-1));
+  expect(snap.homeUnavailablePlayerIds).not.toContain(120);
+  expect((snap.homeBench || []).map((p) => p.id)).toContain(121);
+
+  // 换人模式内不允许追加（避免只动板凳被事务回滚）
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await page.locator('g.defender-hit[data-pos="CF"]').click();
+  await expect(picker).toBeVisible();
+  await page.waitForTimeout(450);
+  await picker.getByRole('button', { name: '追加新球员' }).click();
+  await expect(page.getByText('换人模式进行中，请先结束或取消换人模式后再追加球员')).toBeVisible();
+  await expect(page.locator('.el-dialog', { hasText: '追加板凳球员' })).toBeHidden();
+  await picker.getByRole('button', { name: '关闭' }).click();
 });

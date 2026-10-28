@@ -6673,17 +6673,14 @@ var sg={
     $(()=>Ue.value),$(()=>Sn.value);
     const Rr=$(()=>{
       const e=Xi.value,{
-        roster:t,lineup:a,bench:s,unavail:u
+        roster:t,lineup:a,bench:s
       }
       =Ee(e),r=t.value,p=a.value,g=s.value,m=r.length>0?r:[...p,...g],y=new Map;
       for(const b of m){
         const w=String(b.id);
         y.has(w)||y.set(w,b)
       }
-      const vals=[...y.values()];
-      if(N.value==="SOFTBALL")return vals;
-      const blocked=new Set((u.value??[]).map(Number));
-      return vals.filter(b=>!blocked.has(Number(b.id)))
+      return[...y.values()]
     }
     ),Ll=$(()=>l.isTop?X.value:q.value),Ep=[{
       base:1,label:"一垒"
@@ -9747,6 +9744,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       )
     }
     async function oc(e){
+      if(substitutionMode.value){Fe.warning("换人模式进行中，请先结束或取消换人模式后再追加球员");return}
       const t=e??ia.value;
       sa.value=On.value?{
         mode:mt.value,oldPlayer:Ga.value,teamKey:ia.value,base:Qt.value,pos:Va.value
@@ -9775,14 +9773,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       On.value&&Kt(),Ua.value=s[0]?.id??"",Ma.value=!0
     }
     function uc(){
+      if(substitutionMode.value){Fe.warning("换人模式进行中，请先结束或取消换人模式后再追加球员");return}
       const e=Xi.value,t=e==="away"?_.awayTeamId:_.homeTeamId;
       if(!t)return;
       const a=Ua.value,s=String(a),{
-        roster:r,lineup:p,bench:g,team:m
+        roster:r,lineup:p,bench:g,team:m,unavail:unRef
       }
       =Ee(e),y=r.value,b=p.value,w=g.value;
-      if([...b,...w].some(T=>String(T.id)===s)){
-        Fe.warning("该球员已在打序或板凳中");
+      if(b.some(T=>String(T.id)===s)||Number(Ee(e).fpRow.value?.id)===Number(s)){
+        Fe.warning("该球员已在场上，无法追加");
         return
       }
       const P=y.find(T=>String(T.id)===s);
@@ -9790,16 +9789,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         Fe.warning("未找到该球员");
         return
       }
-      const un=Ee(e).unavail.value;
-      if(N.value!=="SOFTBALL"&&un.some(id=>Number(id)===Number(P.id))){
-        Fe.warning("该球员已换下，不可再上场");
+      const un=unRef.value,inBench=w.find(T=>String(T.id)===s);
+      if(inBench){
+        if(!un.some(id=>Number(id)===Number(P.id))){
+          Fe.warning("该球员已在板凳中");
+          return
+        }
+        unRef.value=un.filter(id=>Number(id)!==Number(P.id)),gs(),Fe.success(`已恢复 ${P.name}：可从板凳再次上场`);
         return
       }
       const A=[...w,{
         ...P,teamId:t,position:"",stats:P.stats??Pt()
       }
       ];
-      g.value=A,m.bench=A,gs(),Fe.success(`已追加至板凳：${P.name}`)
+      g.value=A,m.bench=A,un.some(id=>Number(id)===Number(P.id))&&(unRef.value=un.filter(id=>Number(id)!==Number(P.id))),gs(),Fe.success(`已追加至板凳：${P.name}`)
     }
     function ri(e){
       const{
