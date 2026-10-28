@@ -305,6 +305,7 @@ EventService --> EventRepository
 - DELETE /game/stats/delete/{id}
   - 作用：球员统计CRUD
   - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 对投手行要求“全零且无自责分判定”，否则返回 400（先转记数据 / 先处理判定）；零数据投手行允许删除
+  - 全零判定不包含结果页不暴露的辅助字段 `pitchPa`（投手面对打者以 `pitchBf` 为准；`pitchPa` 非零但 `pitchBf` 为 0 时仍按零数据清理）；`pitchBf`、用球数、安打、失分等实际统计仍参与
   - 参考：`GameApi.java:125-141`
 
 ### 精彩时刻（HighlightMoment）

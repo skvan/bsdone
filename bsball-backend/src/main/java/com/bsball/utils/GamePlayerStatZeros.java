@@ -7,6 +7,8 @@ import com.bsball.model.entity.GamePlayerStat;
  *
  * <p>只统计比赛数据字段；比赛/球队/球员、打序/登板序/列表序、守位、号码、
  * 左右打/投等身份与展示字段不计入，避免一条没有出赛数据的投手行因排序字段非空而无法清理。
+ * `pitchPa` 是结果页不暴露、前端无法清零的辅助计数；投手面对打者以 `pitchBf` 为准，
+ * 故仅 `pitchPa` 非零（即使 `pitchBf` 为 0）也视为零数据，否则这类投手行会永远删不掉。
  * 实体新增统计字段时，必须同步加入下面的清单。</p>
  */
 public final class GamePlayerStatZeros {
@@ -70,7 +72,6 @@ public final class GamePlayerStatZeros {
                 stat.getL(),
                 stat.getSv(),
                 stat.getHld(),
-                stat.getPitchPa(),
                 stat.getPitchBf(),
                 stat.getPitchAb(),
                 stat.getNp(),
