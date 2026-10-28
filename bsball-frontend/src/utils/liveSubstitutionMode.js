@@ -96,7 +96,7 @@ export function diffTeamState(before, after, { gameMode = 'BASEBALL' } = {}) {
     };
   }
 
-  const dhSub = substitutions.find((s) => s.outPosition === 'DH' && s.inPosition === 'P') ?? null;
+  const dhSub = substitutions.find((s) => s.outPosition === 'DH' && s.inPosition !== 'DH') ?? null;
   const dhCancel = dhSub
     ? {
       slot: dhSub.slot,
@@ -115,6 +115,70 @@ export function diffTeamState(before, after, { gameMode = 'BASEBALL' } = {}) {
     pitchingChange,
     dhCancel,
     hasChanges: substitutions.length > 0 || positionChanges.length > 0 || pitchingChange != null,
+  };
+}
+
+/** 打席数：优先取 pa，缺失时按 AB+BB+HBP+SF+SH+IO 计算。 */
+export function battingAppearances(player) {
+  const b = player?.stats?.batting;
+  if (!b) return 0;
+  const pa = Number(b.pa);
+  if (Number.isFinite(pa) && pa > 0) return pa;
+  return [b.ab, b.bb, b.hbp, b.sf, b.sh, b.io]
+    .reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+/** 实际投过球的投手数，用于判断对方是否已经换投。 */
+export function countActivePitchers(players) {
+  const activeIds = new Set();
+  for (const player of Array.isArray(players) ? players : []) {
+    const id = playerId(player);
+    if (!id) continue;
+    const p = player?.stats?.pitching ?? {};
+    const active = [p.np, p.pitchBf, p.pitchPa, p.ip, p.pitchSo, p.pitchH, p.wp, p.bk, p.er]
+      .some((value) => (Number(value) || 0) > 0);
+    if (active) activeIds.add(id);
+  }
+  return activeIds.size;
+}
+
+/** 当前 DH 槽位与先发 DH；starterIds 缺失时回落到当前 DH。 */
+export function startingDhInfo(team) {
+  const lineup = Array.isArray(team?.lineup) ? team.lineup : [];
+  const dhIndex = lineup.findIndex((player) => normalizePosition(player?.position) === 'DH');
+  if (dhIndex < 0) return null;
+  const starterIds = Array.isArray(team?.starterIds) ? team.starterIds : [];
+  const starterId = Number(starterIds[dhIndex]) || 0;
+  const current = lineup[dhIndex] ?? null;
+  const candidates = [
+    ...lineup,
+    ...(Array.isArray(team?.bench) ? team.bench : []),
+    ...(Array.isArray(team?.roster) ? team.roster : []),
+    team?.fpRow,
+  ].filter(Boolean);
+  const starter = starterId
+    ? candidates.find((player) => playerId(player) === starterId) ?? null
+    : current;
+  return { dhIndex, current, starterId, starter };
+}
+
+/**
+ * DH 取消规则（MLB OBR 5.11(a)(2)/(8)/(14)）：
+ * 先发 DH 至少完成一次打击，除非对方已经换投；P↔野手互换、DH 进守备等也会终止 DH。
+ * 实时数据无法覆盖所有换投细节，因此返回 warning 供操作员确认，而不是静默放行。
+ */
+export function canCancelDh({ team, opponentPlayers } = {}) {
+  const info = startingDhInfo(team);
+  if (!info) return { ok: false, warning: '当前打线没有 DH。' };
+  if (!info.starter) {
+    return { ok: false, warning: '无法确认先发 DH，请核对阵容后再取消 DH。' };
+  }
+  const batted = battingAppearances(info.starter) > 0;
+  const opponentChanged = countActivePitchers(opponentPlayers) >= 2;
+  if (batted || opponentChanged) return { ok: true, warning: '' };
+  return {
+    ok: false,
+    warning: `规则要求先发 DH 至少完成一次打击（对方换投除外）。先发 DH ${playerName(info.starter, info.starterId)} 尚未打击，当前取消 DH 可能不合规，请确认对方已换投或已满足条件。`,
   };
 }
 

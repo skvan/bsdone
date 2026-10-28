@@ -5,6 +5,9 @@ import {
   summarizeTeamDiff,
   buildSubstitutionEvents,
   applyNetTeamState,
+  battingAppearances,
+  countActivePitchers,
+  canCancelDh,
 } from '../src/utils/liveSubstitutionMode.js';
 
 const player = (id, name, position) => ({ id, name, position, number: String(id) });
@@ -147,4 +150,60 @@ test('事件：守位调整落 POSITION_CHANGE；P 位换人已覆盖时不重�
   assert.deepEqual(movedEvents.map((e) => e.changeType), ['POSITION_CHANGE']);
   assert.equal(movedEvents[0].outPlayerId, 1);
   assert.equal(movedEvents[0].inPlayerId, 1);
+});
+
+test('DH 取消后完成 P↔野手互换：仍识别 DH_CANCEL，并记录守位/换投', () => {
+  const before = team(
+    [player(1, 'SS甲', 'SS'), player(3, '三垒乙', '3B'), player(5, 'DH丙', 'DH')],
+    [],
+    { fpId: 20, starterIds: [1, 3, 5], fpRow: player(20, '投手丁', 'P') },
+  );
+  const after = team(
+    [player(1, 'SS甲', 'SS'), player(3, '三垒乙', 'P'), player(20, '投手丁', '3B')],
+    [],
+    { fpId: 3, starterIds: [1, 3, 5] },
+  );
+  const diff = diffTeamState(before, after);
+  assert.ok(diff.dhCancel, '互换后仍应识别取消 DH');
+  assert.equal(diff.dhCancel.outPlayerId, 5);
+  assert.equal(diff.dhCancel.inPlayerId, 20);
+  assert.deepEqual(diff.positionChanges.map((p) => [p.playerId, p.outPosition, p.inPosition]), [
+    [3, '3B', 'P'],
+  ]);
+  const events = buildSubstitutionEvents([diff], { transactionId: 'tx', inning: 3, topBottom: 'top' });
+  const types = events.map((e) => e.changeType);
+  assert.ok(types.includes('DH_CANCEL'));
+  assert.ok(types.includes('POSITION_CHANGE'));
+  assert.ok(types.includes('PITCHING_CHANGE'));
+  assert.match(summarizeTeamDiff(diff, '主队').join('\n'), /取消DH/);
+});
+
+test('DH 规则：先发 DH 未打击且对方未换投时提醒；已打击或对方换投后放行', () => {
+  const dh = { ...player(5, 'DH丙', 'DH'), stats: { batting: { ab: 0, bb: 0, hbp: 0, sf: 0, sh: 0, io: 0 } } };
+  const before = team([dh], [], { starterIds: [5], roster: [dh] });
+  const blocked = canCancelDh({ team: before, opponentPlayers: [] });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.warning, /先发 DH/);
+
+  const batted = { ...dh, stats: { batting: { ab: 1, so: 1 } } };
+  assert.equal(canCancelDh({
+    team: team([batted], [], { starterIds: [5], roster: [batted] }),
+    opponentPlayers: [],
+  }).ok, true);
+
+  const twoOpponentPitchers = [
+    { id: 31, stats: { pitching: { np: 10 } } },
+    { id: 32, stats: { pitching: { pitchBf: 1 } } },
+  ];
+  assert.equal(canCancelDh({ team: before, opponentPlayers: twoOpponentPitchers }).ok, true);
+});
+
+test('打席数/活跃投手统计口径', () => {
+  assert.equal(battingAppearances({ stats: { batting: { ab: 2, bb: 1, hbp: 0, sf: 0, sh: 0, io: 0 } } }), 3);
+  assert.equal(battingAppearances({ stats: { batting: { pa: 4 } } }), 4);
+  assert.equal(countActivePitchers([
+    { id: 1, stats: { pitching: { np: 1 } } },
+    { id: 1, stats: { pitching: { np: 1 } } },
+    { id: 2, stats: { pitching: { np: 0 } } },
+  ]), 1);
 });

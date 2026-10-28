@@ -149,3 +149,18 @@ test('撤销检查点：进入模式时压入 pre-mode 快照，提交后保留�
   assert.match(src, /le\.value=Array\.isArray\(e\.awayLineupStarterIds\)/);
   assert.match(src, /ie\.value=Array\.isArray\(e\.homeSlotSubHistory\)/);
 });
+
+test('DH 取消接线：按钮移除、DH 卡片拖离、P↔野手确认后先取消再换位', () => {
+  assert.ok(!src.includes('cancelDhForTeam'), '旧的取消DH按钮函数应已移除');
+  assert.ok(!src.includes('substitutionModeDhSides'), '旧的取消DH按钮列表应已移除');
+  assert.match(src, /substitutionModeDhCards/);
+  assert.match(src, /live-sub-dh-card/);
+  assert.match(src, /liveBenchStartDhDrag/);
+  assert.match(src, /sourceKind==="dhCard"/);
+  assert.match(src, /requestCancelDh\(s\.side\)/);
+  assert.match(src, /canCancelDh\(\{/);
+  assert.match(src, /async function confirmSwapWithDh\(side,pitcherId,fielderId\)/);
+  assert.match(src, /if\(!applyCancelDh\(side\)\)return;/);
+  assert.match(src, /pitcherInLineup\.position=targetPos,fielderInLineup\.position="P"/);
+  assert.match(src, /syncFieldingPitcher\(side,pitcherInLineup,fielderInLineup\)/);
+});
