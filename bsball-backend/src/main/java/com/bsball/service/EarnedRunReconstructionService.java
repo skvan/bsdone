@@ -1,11 +1,14 @@
 package com.bsball.service;
 
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.PlayerRepository;
 import com.bsball.stats.earnedrun.EarnedRunDecision;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionEngine;
@@ -13,10 +16,14 @@ import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.EarnedRunStatus;
 import com.bsball.stats.earnedrun.ScoringRunner;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +33,17 @@ public class EarnedRunReconstructionService {
     private final EarnedRunDecisionRepository decisionRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final EarnedRunReconstructionEngine engine;
+    private final PlayerRepository playerRepository;
 
     public EarnedRunReconstructionService(
             EarnedRunPlayRepository playRepository,
             EarnedRunDecisionRepository decisionRepository,
-            GamePlayerStatRepository gamePlayerStatRepository) {
+            GamePlayerStatRepository gamePlayerStatRepository,
+            PlayerRepository playerRepository) {
         this.playRepository = playRepository;
         this.decisionRepository = decisionRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.playerRepository = playerRepository;
         this.engine = new EarnedRunReconstructionEngine();
     }
 
@@ -249,6 +259,8 @@ public class EarnedRunReconstructionService {
         entity.setPlayId(playId);
         entity.setRunnerId(decision.runnerId());
         entity.setResponsiblePitcherId(decision.responsiblePitcherId());
+        // 引擎当前只产出责任投手；上垒投手先按责任投手回填，待逐球上垒投手接入后替换。
+        entity.setReachedBasePitcherId(decision.responsiblePitcherId());
         entity.setRunnerOrigin(runner.origin().name());
         entity.setWouldScoreWithoutMisplay(runner.wouldScoreWithoutMisplay());
         entity.setEarnedStatus(decision.status().name());
@@ -290,5 +302,116 @@ public class EarnedRunReconstructionService {
         if (!"top".equals(half) && !"bottom".equals(half)) {
             throw new IllegalArgumentException("Half must be top or bottom");
         }
+    }
+
+    // ─── 判定清單（供覆寫 UI） ─────────────────────────────────────────────────
+
+    /** 回傳該場所有 ER 判定行，含跑者/投手名稱及半局資訊。 */
+    public List<EarnedRunDecisionListDTO> listDecisions(long tenantId, long gameId) {
+        Map<Long, EarnedRunPlayEntity> playById = playRepository
+                .findByTenantIdAndGameId(tenantId, gameId).stream()
+                .collect(Collectors.toMap(EarnedRunPlayEntity::getId, p -> p, (a, b) -> a));
+
+        return decisionRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
+                .map(d -> {
+                    EarnedRunPlayEntity play = playById.get(d.getPlayId());
+                    String runnerName = resolvePlayerName(d.getRunnerId());
+                    String pitcherName = resolvePlayerName(d.getResponsiblePitcherId());
+                    return new EarnedRunDecisionListDTO(
+                            d.getId(),
+                            d.getPlayId(),
+                            play != null ? play.getInning() : null,
+                            play != null ? play.getHalf() : null,
+                            play != null ? play.getSequence() : null,
+                            d.getRunnerId(),
+                            runnerName,
+                            d.getResponsiblePitcherId(),
+                            pitcherName,
+                            d.getReachedBasePitcherId(),
+                            resolvePlayerName(d.getReachedBasePitcherId()),
+                            d.getEarnedStatus(),
+                            d.getUnearnedReason(),
+                            d.getRunnerOrigin(),
+                            d.getOverriddenBy(),
+                            d.getOverriddenAt());
+                })
+                .sorted((a, b) -> {
+                    int ia = a.inning() != null ? a.inning() : 0;
+                    int ib = b.inning() != null ? b.inning() : 0;
+                    if (ia != ib) return Integer.compare(ia, ib);
+                    int ha = "top".equals(a.half()) ? 0 : 1;
+                    int hb = "top".equals(b.half()) ? 0 : 1;
+                    if (ha != hb) return Integer.compare(ha, hb);
+                    int sa = a.sequence() != null ? a.sequence() : 0;
+                    int sb = b.sequence() != null ? b.sequence() : 0;
+                    return Integer.compare(sa, sb);
+                })
+                .toList();
+    }
+
+    private String resolvePlayerName(Long playerId) {
+        if (playerId == null) return null;
+        return playerRepository.findById(playerId)
+                .map(Player::getName)
+                .orElse("#" + playerId);
+    }
+
+    // ─── §11 結算驗證 ───────────────────────────────────────────────────────────
+
+    /**
+     * 比賽結束時執行，回傳違規訊息列表（空 = 全部通過）。
+     * 規範 §11：R=ER+UER+PENDING、ER≤R、UER≥0、不重複判定、責任投手非空。
+     */
+    public List<String> validateSettlement(long tenantId, long gameId) {
+        List<String> violations = new ArrayList<>();
+
+        // 1-3: per-pitcher aggregated checks
+        for (GamePlayerStat p : gamePlayerStatRepository.findByGameId(gameId)) {
+            if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
+            if (!Integer.valueOf(1).equals(p.getIsPitcher())) continue;
+            long pid = p.getPlayerId() != null ? p.getPlayerId() : 0;
+            int r = nz(p.getPitchR());
+            int er = nz(p.getEr());
+            int uer = nz(p.getUnearnedR());
+            int pr = nz(p.getPendingR());
+            if (er + uer + pr != r) {
+                violations.add(String.format(
+                        "\u00a711.1 投手 %d: R(%d) \u2260 ER+UER+PENDING(%d+%d+%d=%d)",
+                        pid, r, er, uer, pr, er + uer + pr));
+            }
+            if (er > r) {
+                violations.add(String.format("\u00a711.2 投手 %d: ER(%d) > R(%d)", pid, er, r));
+            }
+            if (uer < 0) {
+                violations.add(String.format("\u00a711.3 投手 %d: UER(%d) < 0", pid, uer));
+            }
+        }
+
+        // 4-5: per-decision checks
+        List<EarnedRunDecisionEntity> decisions =
+                decisionRepository.findByTenantIdAndGameId(tenantId, gameId);
+        Set<String> seen = new HashSet<>();
+        for (EarnedRunDecisionEntity d : decisions) {
+            // \u00a711.4 同一得分（playId+runnerId）不得重複判定
+            String key = d.getPlayId() + ":" + d.getRunnerId();
+            if (!seen.add(key)) {
+                violations.add(String.format(
+                        "\u00a711.4 重複判定: decisionId=%d playId=%d runnerId=%d",
+                        d.getId(), d.getPlayId(), d.getRunnerId()));
+            }
+            // \u00a711.5 每筆判定須有責任投手（PENDING 除外：引擎尚未指派）
+            if (d.getResponsiblePitcherId() == null
+                    && !EarnedRunStatus.PENDING.name().equals(d.getEarnedStatus())) {
+                violations.add(String.format(
+                        "\u00a711.5 缺少責任投手: decisionId=%d status=%s",
+                        d.getId(), d.getEarnedStatus()));
+            }
+        }
+
+        return violations;
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
     }
 }

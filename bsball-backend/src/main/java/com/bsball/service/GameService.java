@@ -9,6 +9,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -53,8 +54,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.bsball.utils.StatsFormatUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class GameService {
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
     private final GameRepository gameRepository;
@@ -493,6 +498,15 @@ public class GameService {
     }
 
     @Transactional(rollbackFor={Exception.class})
+    public List<EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
+        Game game = this.get(gameId);
+        if (game == null) {
+            throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
+        }
+        return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
+    }
+
+    @Transactional(rollbackFor={Exception.class})
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
             throw new IllegalArgumentException("\u5bfc\u5165\u6570\u636e\u7f3a\u5c11 game \u6216 stats");
@@ -765,6 +779,13 @@ public class GameService {
                     continue;
                 }
                 this.gamePlayerStatRepository.delete(s);
+            }
+        }
+        // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
+        if (statTenantId != null && this.earnedRunReconstructionService.hasEngineData(gameId)) {
+            List<String> vs = this.earnedRunReconstructionService.validateSettlement(statTenantId, gameId);
+            for (String v : vs) {
+                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, statTenantId, v);
             }
         }
     }
