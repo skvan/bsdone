@@ -142,15 +142,15 @@ extends BaseEntity {
 
     @Column(name="inherited_runners_scored", columnDefinition="integer")
     @Comment(value="繼承跑者中得分的數量（§8.1）")
-    private Integer inheritedRunnersScored;
+    private Integer inheritedRunnersScored = 0;
 
     @Column(name="passed_ball_runs", columnDefinition="integer")
     @Comment(value="因捕逸失分數（§8.1）")
-    private Integer passedBallRuns;
+    private Integer passedBallRuns = 0;
 
     @Column(name="error_related_runs", columnDefinition="integer")
     @Comment(value="因失誤相關失分數（§8.1）")
-    private Integer errorRelatedRuns;
+    private Integer errorRelatedRuns = 0;
 
     @Column(name="official_scorer_note", length=500)
     @Comment(value="記錄員備註（§8.1）")

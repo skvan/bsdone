@@ -11880,7 +11880,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[95]||(t[95]=[Q("击球落点分布",-1)])]),_:1
         }
-        ),v(s,{size:"small",onClick:()=>f.erDrawerVisible=!0},{default:L(()=>[Q("ER 覆核",-1)]),_:1})])])])):W("",!0),n("div",{
+        ),v(s,{size:"small",onClick:()=>f.erDrawerVisible=!0},{default:L(()=>[Q("ER 复核",-1)]),_:1})])])])):W("",!0),n("div",{
           class:re(["field-svg-wrap",{
             "field-svg-wrap--drag-mode":!0,"field-svg-wrap--runner-drag":!!ne.value
           }

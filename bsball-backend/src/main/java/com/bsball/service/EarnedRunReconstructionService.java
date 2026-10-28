@@ -258,6 +258,7 @@ public class EarnedRunReconstructionService {
         entity.setPlayId(playId);
         entity.setRunnerId(decision.runnerId());
         entity.setResponsiblePitcherId(decision.responsiblePitcherId());
+        // 引擎当前只产出责任投手；上垒投手先按责任投手回填，待逐球上垒投手接入后替换。
         entity.setReachedBasePitcherId(decision.responsiblePitcherId());
         entity.setRunnerOrigin(runner.origin().name());
         entity.setWouldScoreWithoutMisplay(runner.wouldScoreWithoutMisplay());

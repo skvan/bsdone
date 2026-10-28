@@ -9,6 +9,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -496,15 +497,15 @@ public class GameService {
     }
 
     @Transactional(rollbackFor={Exception.class})
-
-    public java.util.List<com.bsball.model.dto.EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
-        Game game = this.gameRepository.findById(gameId).orElse(null);
-        if (game == null || game.getTenantId() == null) {
-            return java.util.List.of();
+    public List<EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
+        Game game = this.get(gameId);
+        if (game == null) {
+            throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
         }
         return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
     }
 
+    @Transactional(rollbackFor={Exception.class})
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
             throw new IllegalArgumentException("\u5bfc\u5165\u6570\u636e\u7f3a\u5c11 game \u6216 stats");
