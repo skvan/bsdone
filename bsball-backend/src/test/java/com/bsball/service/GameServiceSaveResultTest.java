@@ -432,6 +432,8 @@ class GameServiceSaveResultTest {
         row.setIsPitcher(Integer.valueOf(1));
         row.setPitcherOrder(Integer.valueOf(3));
         row.setPosition("P");
+        // 结果页不暴露 pitchPa，前端无法清零；该字段单独残留时不应阻塞清理
+        row.setPitchPa(Integer.valueOf(1));
         return row;
     }
 
