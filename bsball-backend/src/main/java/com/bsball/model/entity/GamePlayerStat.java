@@ -130,6 +130,9 @@ extends BaseEntity {
     private Integer isPitcher;
     @Comment(value="\u6295\u7403\u5c40\u6570")
     private Double ip;
+    @Column(name="outs_recorded", columnDefinition="integer")
+    @Comment(value="投手取得的出局數（ERA 權威值）")
+    private Integer outsRecorded;
     @Column(columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
@@ -437,6 +440,16 @@ extends BaseEntity {
     @Generated
     public Double getIp() {
         return this.ip;
+    }
+
+    @Generated
+    public Integer getOutsRecorded() {
+        return this.outsRecorded;
+    }
+
+    @Generated
+    public void setOutsRecorded(Integer outsRecorded) {
+        this.outsRecorded = outsRecorded;
     }
 
     @Generated
