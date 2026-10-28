@@ -15,6 +15,7 @@ import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.utils.GamePlayerStatZeros;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -115,9 +116,22 @@ public class GamePlayerStatService {
         GamePlayerStat existing = this.gamePlayerStatRepository.findById(id).orElse(null);
         if (existing != null && this.isEngineManaged(existing.getGameId())
                 && Integer.valueOf(1).equals(existing.getIsPitcher())) {
-            throw new BusinessException(400, "引擎场次不能删除投手统计行");
+            this.assertEnginePitcherRowDeletable(existing);
         }
         this.gamePlayerStatRepository.deleteById(id);
+    }
+
+    /** 引擎投手行由 ER 引擎维护，只有“全零且没有自责分判定”时才允许删除（换人错记后的转记/清理）。 */
+    private void assertEnginePitcherRowDeletable(GamePlayerStat existing) {
+        if (!GamePlayerStatZeros.isZero(existing)) {
+            throw new BusinessException(400, "该投手行仍有数据，请先转记后再删除");
+        }
+        Long gameId = existing.getGameId();
+        Long playerId = existing.getPlayerId();
+        if (gameId != null && playerId != null
+                && this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(gameId, playerId)) {
+            throw new BusinessException(400, "该投手仍有自责分判定，请先处理后再删除");
+        }
     }
 
     private boolean isEngineManaged(Long gameId) {
