@@ -5046,9 +5046,9 @@ var sg={
     }
     ,[da("button",{
       type:"button",class:["live-bench-card",{
-        "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id),"live-bench-card--swap-in":u.fxInId!=null&&u.fxInId===String(p.id)
+        "live-bench-card--pending":u.pendingId!=null&&u.pendingId===String(p.id),"live-bench-card--dragging":u.draggingId!=null&&u.draggingId===String(p.id),"live-bench-card--swap-in":u.fxInId!=null&&u.fxInId===String(p.id),"live-bench-card--disabled":!!p.disabled
       }
-      ],"data-player-id":p.id,"data-team-side":u.side,onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
+      ],"data-player-id":p.id,"data-team-side":u.side,disabled:!!p.disabled,"aria-disabled":p.disabled?"true":void 0,title:p.disabled?"已换下，不可再上场":void 0,onPointerdown:(ev)=>u.onCardPointerDown&&u.onCardPointerDown(p,ev),onClick:(ev)=>(ev&&ev.stopPropagation&&ev.stopPropagation(),u.onCardClick&&u.onCardClick(p))
     }
     ,[da("span",{
       class:"live-bench-card__num"
@@ -6673,14 +6673,17 @@ var sg={
     $(()=>Ue.value),$(()=>Sn.value);
     const Rr=$(()=>{
       const e=Xi.value,{
-        roster:t,lineup:a,bench:s
+        roster:t,lineup:a,bench:s,unavail:u
       }
       =Ee(e),r=t.value,p=a.value,g=s.value,m=r.length>0?r:[...p,...g],y=new Map;
       for(const b of m){
         const w=String(b.id);
         y.has(w)||y.set(w,b)
       }
-      return[...y.values()]
+      const vals=[...y.values()];
+      if(N.value==="SOFTBALL")return vals;
+      const blocked=new Set((u.value??[]).map(Number));
+      return vals.filter(b=>!blocked.has(Number(b.id)))
     }
     ),Ll=$(()=>l.isTop?X.value:q.value),Ep=[{
       base:1,label:"一垒"
@@ -9787,6 +9790,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         Fe.warning("未找到该球员");
         return
       }
+      const un=Ee(e).unavail.value;
+      if(N.value!=="SOFTBALL"&&un.some(id=>Number(id)===Number(P.id))){
+        Fe.warning("该球员已换下，不可再上场");
+        return
+      }
       const A=[...w,{
         ...P,teamId:t,position:"",stats:P.stats??Pt()
       }
@@ -9856,7 +9864,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(w<0)return;
         const P=m[w];
         if(b==="P"&&!oa(y)){
-          de("换投"),syncFieldingPitcher(a,t,P,fieldingIpNote(t)),Kt();
+          de("换投"),Ki(a,t),syncFieldingPitcher(a,t,P,fieldingIpNote(t)),!substitutionMode.value&&t&&t.id&&!r.value.some(T=>Number(T.id)===Number(t.id))&&!y.some(T=>Number(T.id)===Number(t.id))&&(r.value=[...r.value,{...t,position:"",lastPosition:t.position||"P"}],ri(a)),Kt();
           return
         }
         de("换守备");
@@ -10047,6 +10055,21 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         1:substitutionModeRebindRunner(snapshot?.[1]),2:substitutionModeRebindRunner(snapshot?.[2]),3:substitutionModeRebindRunner(snapshot?.[3])
       }
     }
+    // 换下球员（含 DH 队仅换投的旧投手）回落到板凳并灰显；不含重复、不覆盖已有在席
+    function ensureSubstitutedOutBench(side,before,diff){
+      const ctx=Ee(side),activeIds=new Set([...ctx.lineup.value,...ctx.bench.value,ctx.fpRow.value].filter(Boolean).map(p=>Number(p.id))),candidates=[...(before?.lineup??[]),...(before?.bench??[]),before?.fpRow].filter(Boolean),outs=[];
+      for(const s of diff?.substitutions??[])s.outPlayerId&&!activeIds.has(Number(s.outPlayerId))&&outs.push({id:Number(s.outPlayerId),pos:s.outPosition});
+      const pc=diff?.pitchingChange;
+      pc?.outPlayerId&&!activeIds.has(Number(pc.outPlayerId))&&outs.push({id:Number(pc.outPlayerId),pos:"P"});
+      let added=!1;
+      for(const item of outs){
+        if(activeIds.has(item.id))continue;
+        const src=candidates.find(p=>Number(p.id)===item.id);
+        if(!src)continue;
+        ctx.bench.value=[...ctx.bench.value,{...substitutionModeClone(src),position:"",lastPosition:item.pos||src.position||""}],activeIds.add(item.id),added=!0
+      }
+      added&&ri(side)
+    }
     function applySubstitutionNet(side,net){
       const ctx=Ee(side);
       ctx.lineupStarterIds.value=[...net.starterIds],ctx.slotSubHistory.value=net.slotHistory.map(row=>[...row]),ctx.unavail.value=[...net.unavailable];
@@ -10118,7 +10141,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             sport:N.value
           }
           );
-          applySubstitutionNet(side,net)
+          applySubstitutionNet(side,net),ensureSubstitutedOutBench(side,before[side],diffs[index])
         }
         Array.isArray(substitutionModeHistoryBase.value)&&($e.value=substitutionModeUndoEntry.value?[...substitutionModeHistoryBase.value,substitutionModeUndoEntry.value]:[...substitutionModeHistoryBase.value]),Ne?.value&&(Ne.value=[]),await hs({
           throwOnError:!0,fromSubstitutionMode:!0,substitutions:events
@@ -10259,11 +10282,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       liveBenchPendingCard.value=null
     }
     function liveBenchTogglePending(player,side){
+      if(player?.disabled)return;
       const e=liveBenchPendingCard.value;
       e&&String(e.player.id)===String(player.id)&&e.side===side?liveBenchClearPending():liveBenchPendingCard.value={player,side,teamKey:liveBenchTeamKey(side)}
     }
     // 执行换人：source={kind,player,code?}，hit=落点命中项；成功返回 true（统一走 cc 记账）
     function liveBenchApplyDrop(source,hit){
+      if(source?.player?.disabled){J("该球员已换下，不可再上场","warning");return!1}
       const blockReason=liveBenchSubBlockedReason();
       if(blockReason){
         J(blockReason,"warning");
@@ -10357,7 +10382,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       )):[];
       const batterEl=svg.querySelector(".batter-at-plate-group");
-      const benchRects=Array.from(document.querySelectorAll(".live-bench-card[data-player-id]")).map(el=>{
+      const benchRects=Array.from(document.querySelectorAll(".live-bench-card[data-player-id]:not([disabled])")).map(el=>{
         const rect=toRect(el);
         return{
           side:el.dataset.teamSide==="offense"?"offense":"defense",playerId:Number(el.dataset.playerId),rect
@@ -10383,7 +10408,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       liveBenchCleanupDrag()
     }
     function liveBenchCardPointerDown(player,side,event){
-      if(!substitutionMode.value||substitutionModeBusy.value||event.button!==0||liveBenchDragSession)return;
+      if(!substitutionMode.value||substitutionModeBusy.value||player?.disabled||event.button!==0||liveBenchDragSession)return;
       const session={
         mode:"card",sourceKind:side==="offense"?"offenseBench":"defenseBench",side,player,pointerId:event.pointerId,pointerType:event.pointerType,startX:event.clientX,startY:event.clientY,armed:!1,moved:!1,layout:null,timerId:0
       }
@@ -10477,7 +10502,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s.timerId&&window.clearTimeout(s.timerId),window.removeEventListener("scroll",liveBenchInvalidateDragLayout,!0),window.removeEventListener("resize",liveBenchInvalidateDragLayout),window.removeEventListener("blur",liveBenchBlurCancel),document.removeEventListener("pointermove",liveBenchDragMove,!0),document.removeEventListener("pointerup",liveBenchDragEnd,!0),document.removeEventListener("pointercancel",liveBenchDragCancel,!0),s.mode==="fielder"&&ce.value&&(ce.value=null,Mn(ce)),liveBenchDragSession=null,liveBenchDragUi.value=null,liveBenchHoverHit.value=null
     }
     function liveBenchCardClick(player,side){
-      performance.now()<liveBenchDragEndAt||liveBenchTogglePending(player,side)
+      if(player?.disabled||performance.now()<liveBenchDragEndAt)return;
+      liveBenchTogglePending(player,side)
     }
     function liveBenchOnKeydown(e){
       e.key==="Escape"&&liveBenchPendingCard.value&&liveBenchClearPending()

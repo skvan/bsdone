@@ -4,13 +4,17 @@ import { sortByJersey } from './sortByJersey.js';
 const BASEBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员（已换下球员不可再上场）';
 const SOFTBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员';
 
-/** 替补席可用球员（棒球过滤已换下不可再上场；垒球不过滤）；id 类型不敏感比较 */
+/** 替补席球员：棒球把已换下球员保留并标 disabled（灰显不可操作）；垒球按现规则仍可再上 */
 export function buildLiveBenchItems(bench, unavailableIds, gameMode) {
   const list = Array.isArray(bench) ? bench : [];
-  const toItem = (p) => ({ id: p.id, name: p.name, number: p.number });
-  if (gameMode === 'SOFTBALL') return sortByJersey(list.map(toItem));
   const blocked = new Set((Array.isArray(unavailableIds) ? unavailableIds : []).map((id) => String(id)));
-  return sortByJersey(list.filter((p) => !blocked.has(String(p.id))).map(toItem));
+  const toItem = (p) => ({
+    id: p.id,
+    name: p.name,
+    number: p.number,
+    disabled: gameMode !== 'SOFTBALL' && blocked.has(String(p.id)),
+  });
+  return sortByJersey(list.map(toItem));
 }
 
 export function liveBenchEmptyText(gameMode) {

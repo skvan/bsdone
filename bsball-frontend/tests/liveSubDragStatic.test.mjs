@@ -60,7 +60,12 @@ test('样式门禁：双面板/幽灵/高亮环 + 小屏与打线同规则隐藏
 
 test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落点已接线', () => {
   const src = read(LIVE);
-  assert.ok(src.includes('if(!substitutionMode.value||substitutionModeBusy.value||event.button!==0||liveBenchDragSession)return;'), '替补卡 pointerdown 未加模式门禁');
+  assert.ok(src.includes('if(!substitutionMode.value||substitutionModeBusy.value||player?.disabled||event.button!==0||liveBenchDragSession)return;'), '替补卡 pointerdown 未加模式门禁/已换下禁用');
+  assert.ok(src.includes('live-bench-card--disabled'), '缺少已换下球员灰显样式接线');
+  assert.ok(src.includes(':not([disabled])'), '拖拽落点未排除已换下球员');
+  assert.ok(src.includes('ensureSubstitutedOutBench('), '换下球员未回落到板凳');
+  assert.ok(src.includes('ensureSubstitutedOutBench(side,before[side],diffs[index])'), '换人提交后未调用换下球员回落');
+  assert.ok(src.includes('该球员已换下，不可再上场'), '缺少已换下球员拦截提示');
   assert.ok(src.includes('if(!substitutionMode.value||l.flow||liveBenchDragSession'), '守备员拖拽未加模式门禁');
   assert.ok(src.includes('benchRects'), '拖拽布局未收集替补席矩形');
   assert.ok(src.includes('action==="benchSwap"'), 'applyDrop 未处理场上→替补席');
