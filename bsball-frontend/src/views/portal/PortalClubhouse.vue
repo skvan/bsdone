@@ -863,12 +863,21 @@ function eventGameMode(event) {
 }
 const availableGameModes = computed(() => {
   const modes = new Set();
+  (data.value?.gameModes || []).forEach((mode) => modes.add(eventGameMode({ gameMode: mode })));
   teams.value.forEach((team) => (team.events || []).forEach((event) => modes.add(eventGameMode(event))));
+  scopeEvents.value.forEach((event) => modes.add(eventGameMode(event)));
   return ['BASEBALL', 'SOFTBALL'].filter((mode) => modes.has(mode));
 });
-const availableTeams = computed(() => teams.value.filter((team) => (
-  (team.events || []).some((event) => eventGameMode(event) === gameMode.value)
-)));
+const availableTeams = computed(() => {
+  const playedTeamIds = new Set();
+  scopeEvents.value
+    .filter((event) => eventGameMode(event) === gameMode.value)
+    .forEach((event) => (event.teamIds || []).forEach((id) => playedTeamIds.add(String(id))));
+  return teams.value.filter((team) => (
+    (team.events || []).some((event) => eventGameMode(event) === gameMode.value)
+    || playedTeamIds.has(String(team.id))
+  ));
+});
 const scopeEvents = computed(() => data.value?.events || []);
 const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
 /** 全部球队时展示当前运动类型下的全部代表球队；选中球队时只展示该队。 */
@@ -2335,6 +2344,11 @@ function eventIdsForScope(teamIdValue) {
   source.forEach((team) => (team.events || []).forEach((event) => {
     if (eventGameMode(event) === gameMode.value) ids.add(event.id);
   }));
+  scopeEvents.value.forEach((event) => {
+    if (eventGameMode(event) !== gameMode.value) return;
+    const playedTeamIds = (event.teamIds || []).map(String);
+    if (!teamIdValue || playedTeamIds.includes(String(teamIdValue))) ids.add(event.id);
+  });
   return ids;
 }
 
