@@ -19,6 +19,8 @@ import lombok.Generated;
 public class SaveGameResultDTO {
     private GamePart game;
     private List<StatPart> stats;
+    /** 本次保存要显式删除的既有统计行 id；payload 中未出现的行不再自动删除。 */
+    private List<Long> removedStatIds;
 
     @Generated
     public SaveGameResultDTO() {
@@ -35,6 +37,11 @@ public class SaveGameResultDTO {
     }
 
     @Generated
+    public List<Long> getRemovedStatIds() {
+        return this.removedStatIds;
+    }
+
+    @Generated
     public void setGame(GamePart game) {
         this.game = game;
     }
@@ -42,6 +49,11 @@ public class SaveGameResultDTO {
     @Generated
     public void setStats(List<StatPart> stats) {
         this.stats = stats;
+    }
+
+    @Generated
+    public void setRemovedStatIds(List<Long> removedStatIds) {
+        this.removedStatIds = removedStatIds;
     }
 
     @Generated
@@ -63,7 +75,14 @@ public class SaveGameResultDTO {
         }
         List this$stats = this.getStats();
         List other$stats = other.getStats();
-        return !(this$stats == null ? other$stats != null : !((Object)this$stats).equals(other$stats));
+        if (this$stats == null ? other$stats != null : !this$stats.equals(other$stats)) {
+            return false;
+        }
+        List this$removedStatIds = this.getRemovedStatIds();
+        List other$removedStatIds = other.getRemovedStatIds();
+        return !(this$removedStatIds == null
+                ? other$removedStatIds != null
+                : !this$removedStatIds.equals(other$removedStatIds));
     }
 
     @Generated
@@ -79,12 +98,16 @@ public class SaveGameResultDTO {
         result = result * 59 + ($game == null ? 43 : $game.hashCode());
         List $stats = this.getStats();
         result = result * 59 + ($stats == null ? 43 : ((Object)$stats).hashCode());
+        List $removedStatIds = this.getRemovedStatIds();
+        result = result * 59 + ($removedStatIds == null ? 43 : ((Object)$removedStatIds).hashCode());
         return result;
     }
 
     @Generated
     public String toString() {
-        return "SaveGameResultDTO(game=" + String.valueOf(this.getGame()) + ", stats=" + String.valueOf(this.getStats()) + ")";
+        return "SaveGameResultDTO(game=" + String.valueOf(this.getGame())
+                + ", stats=" + String.valueOf(this.getStats())
+                + ", removedStatIds=" + String.valueOf(this.getRemovedStatIds()) + ")";
     }
 
     public static class GamePart {

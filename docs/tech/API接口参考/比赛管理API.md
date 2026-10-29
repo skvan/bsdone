@@ -288,7 +288,8 @@ EventService --> EventRepository
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）
   - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
-  - 引擎场次投手行的去留：payload 漏带且仍有数据时保留（不得物理删除）；全零且没有自责分判定时物理删除（用于换人错记后的转记/清理）
+  - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
+  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定不含 `pitchPa`
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`

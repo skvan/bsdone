@@ -798,17 +798,12 @@ public class GameService {
                 keepIds.add(stat.getId());
                 existingByKey.put(key, stat);
             }
-            // 刪除改為「本次沒有被任何一筆落點命中的列」，而不是「id 沒出現在 payload 裡」。
-            // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
-            for (GamePlayerStat s : existing) {
-                if (keepIds.contains(s.getId())) continue;
-                // 引擎场次的投手行由 ER 引擎维护：仍有数据时不得因 payload 漏带被物理删除；
-                // 全零且没有自责分判定的行允许清理（换人错记后的转记/删除流程）。
-                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())
-                        && !this.isDeletableEnginePitcherRow(gameId, s)) {
-                    continue;
-                }
-                this.gamePlayerStatRepository.delete(s);
+            // 删除改为显式名单：只有 removedStatIds 里列出的既有行才删除。
+            // payload 中没出现但未显式删除的行一律保留，避免旧页面/多标签页漏带
+            // 把真实打者行一并物理删除。
+            if (dto.getRemovedStatIds() != null) {
+                this.deleteRemovedStatRows(gameId, engineManaged, dto.getRemovedStatIds(),
+                        existingById, keepIds);
             }
         }
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
@@ -820,12 +815,38 @@ public class GameService {
         return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
     }
 
-    /** 引擎场次的投手行能否在 payload 漏带时清理：全零且没有以该投手为责任投手的自责分判定。 */
-    private boolean isDeletableEnginePitcherRow(Long gameId, GamePlayerStat stat) {
-        return GamePlayerStatZeros.isZero(stat)
-                && (stat.getPlayerId() == null
-                    || !this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(
-                            gameId, stat.getPlayerId()));
+    /**
+     * 显式删除本次保存要求移除的统计行。
+     *
+     * <p>只有调用方在 {@code removedStatIds} 中明确列出的行才删除；
+     * payload 缺失但未列出的行不再自动删除，避免旧页面/多标签页漏带导致真实球员数据丢失。
+     * 重复 id 只删除一次；null 或本场不存在的 id 忽略。</p>
+     */
+    private void deleteRemovedStatRows(Long gameId, boolean engineManaged, List<Long> removedStatIds,
+            Map<Long, GamePlayerStat> existingById, LinkedHashSet<Long> keepIds) {
+        for (Long statId : new LinkedHashSet<>(removedStatIds)) {
+            if (statId == null) {
+                continue;
+            }
+            if (keepIds.contains(statId)) {
+                throw new BusinessException(400, "同一统计行不能同时保存和删除");
+            }
+            GamePlayerStat row = existingById.get(statId);
+            if (row == null) {
+                continue;
+            }
+            if (engineManaged && Integer.valueOf(1).equals(row.getIsPitcher())) {
+                if (!GamePlayerStatZeros.isZero(row)) {
+                    throw new BusinessException(400, "该投手行仍有数据，请先转记后再删除");
+                }
+                if (row.getPlayerId() != null
+                        && this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(
+                                gameId, row.getPlayerId())) {
+                    throw new BusinessException(400, "该投手仍有自责分判定，请先处理后再删除");
+                }
+            }
+            this.gamePlayerStatRepository.delete(row);
+        }
     }
 
     private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part,
