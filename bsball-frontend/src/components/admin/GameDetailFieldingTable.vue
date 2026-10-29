@@ -5,19 +5,22 @@
       :data="rows"
       size="small"
       border
+      :show-summary="rows.length > 0"
+      :summary-method="summaryMethod"
       :class="['box-table', 'box-table-fielding', sideClass]"
     >
-      <el-table-column label="球员" min-width="150" show-overflow-tooltip>
+      <el-table-column prop="playerName" label="球员" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
           <span :class="['gd-fielding-table__player', { 'is-sub': row.subRow }]">{{ nameOf(row) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="POS" width="70" align="center">
+      <el-table-column prop="fieldPosition" label="POS" width="70" align="center">
         <template #default="{ row }">{{ row.fieldPosition || '-' }}</template>
       </el-table-column>
       <el-table-column
         v-for="col in visibleFields"
         :key="col.key"
+        :prop="col.key"
         :label="col.label"
         :width="columnWidth(col)"
         align="center"
@@ -30,7 +33,12 @@
 
 <script setup>
 import { computed } from 'vue';
-import { buildFieldingDisplayRows } from '../../utils/gameFieldingRows.js';
+import {
+  buildFieldingDisplayRows,
+  buildFieldingSummaryCells,
+  buildFieldingTotals
+} from '../../utils/gameFieldingRows.js';
+import { formatInningsPitched } from '../../utils/inningsFormat.js';
 import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage.js';
 
 const props = defineProps({
@@ -51,6 +59,7 @@ const visibleFields = computed(() => {
   return fields.filter((field) => field.visible !== false);
 });
 
+const totals = computed(() => buildFieldingTotals(rows.value, visibleFields.value));
 const title = computed(() => `${props.teamName || ''} 守备`.trim());
 
 function columnWidth(col) {
@@ -58,7 +67,11 @@ function columnWidth(col) {
 }
 
 function cellValue(col, row) {
-  return col.key === 'defInn' ? innings(row.defInn) : (row[col.key] ?? 0);
+  return col.key === 'defInn' ? formatInningsPitched(row.defInn) : (row[col.key] ?? 0);
+}
+
+function summaryMethod({ columns }) {
+  return buildFieldingSummaryCells(columns, totals.value);
 }
 
 function nameOf(row) {
@@ -66,14 +79,6 @@ function nameOf(row) {
   const fallback = props.playersMap?.[row.playerId];
   const player = composite || fallback;
   return player?.name || player?.shortName || row.playerName || `#${row.playerId ?? '-'}`;
-}
-
-function innings(value) {
-  const n = Number(value) || 0;
-  if (n <= 0) return '0';
-  const whole = Math.floor(n + 1e-9);
-  const frac = Math.round((n - whole) * 10);
-  return frac > 0 ? `${whole}.${frac}` : String(whole);
 }
 </script>
 
@@ -95,6 +100,20 @@ function innings(value) {
   content: '└';
   margin-right: 4px;
   color: var(--el-text-color-placeholder);
+}
+/* Totals 汇总行：与打击/投手表合计行一致的灰底、加粗、上边框 */
+.gd-fielding-table :deep(.el-table__footer-wrapper td.el-table__cell) {
+  background: var(--bsball-gray-50, #fafafa) !important;
+  border-top: 1px solid var(--el-border-color-lighter, var(--el-border-color)) !important;
+  font-weight: 700;
+}
+.gd-fielding-table :deep(.el-table__footer-wrapper td.el-table__cell .cell) {
+  color: var(--el-text-color-primary) !important;
+  font-weight: 700;
+}
+html.dark .gd-fielding-table :deep(.el-table__footer-wrapper td.el-table__cell),
+[data-admin-theme='dark'] .gd-fielding-table :deep(.el-table__footer-wrapper td.el-table__cell) {
+  background: var(--el-fill-color, var(--el-fill-color-light)) !important;
 }
 
 /* 守备表是子组件，父组件 GameDetailContent 的 .box-table 样式带父 scope，无法命中这里的 el-table；

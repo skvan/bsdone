@@ -1,9 +1,14 @@
-// 比赛详情守备表：按首次上场守位归组、替补缩进、投手必在、同球员去重
+// 比赛详情守备表：按首次上场守位归组、替补缩进、投手必在、同球员去重、Totals 汇总
 // 运行：node --test tests/gameFieldingRows.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { buildFieldingDisplayRows } from '../src/utils/gameFieldingRows.js';
+import {
+  buildFieldingDisplayRows,
+  buildFieldingSummaryCells,
+  buildFieldingTotals
+} from '../src/utils/gameFieldingRows.js';
+import { formatInningsPitched } from '../src/utils/inningsFormat.js';
 import { normalizeFieldingPosition, resolveFirstFieldPosition } from '../src/utils/gamePlayerStat.js';
 
 const stats = [
@@ -129,13 +134,91 @@ test('首个守位工具：大小写归一，DH/PH/EP 视为未守备', () => {
   assert.equal(resolveFirstFieldPosition({ position: 'DH', firstPosition: 'DH' }), '');
 });
 
-test('比赛详情守备表接线：使用首个守位与替补缩进标记', () => {
+test('守备 Totals：计数列求和，INN 取全队最大守备局数', () => {
+  const rows = [
+    { po: 3, a: 1, e: 0, dp: 0, defInn: 3, pb: 1, catcherSb: 1, catcherCs: 0, fieldingGs: 1 },
+    { po: 2, a: 4, e: 1, dp: 1, defInn: 2.1, pb: 0, catcherSb: 2, catcherCs: 1, fieldingGs: 0 }
+  ];
+  const fields = [
+    { key: 'fieldingGs' }, { key: 'po' }, { key: 'a' }, { key: 'e' },
+    { key: 'dp' }, { key: 'defInn' }, { key: 'pb' }, { key: 'catcherSb' }, { key: 'catcherCs' }
+  ];
+  assert.deepEqual(buildFieldingTotals(rows, fields), {
+    fieldingGs: 1, po: 5, a: 5, e: 1, dp: 1, defInn: 3,
+    pb: 1, catcherSb: 3, catcherCs: 1
+  });
+});
+
+test('守备 Totals：空表全 0，且不修改入参', () => {
+  const fields = [{ key: 'po' }, { key: 'a' }, { key: 'defInn' }];
+  assert.deepEqual(buildFieldingTotals([], fields), { po: 0, a: 0, defInn: 0 });
+  const rows = [{ po: 1, a: 2, defInn: 3 }];
+  const snapshot = JSON.stringify(rows);
+  buildFieldingTotals(rows, fields);
+  assert.equal(JSON.stringify(rows), snapshot);
+});
+
+test('守备 Totals：只汇总传入字段，隐藏列不参与', () => {
+  assert.deepEqual(buildFieldingTotals([{ po: 2, a: 1 }], [{ key: 'po' }]), { po: 2 });
+});
+
+test('守备 Totals：二刀流去重后按单行求和，不重复计入', () => {
+  const rows = buildFieldingDisplayRows([
+    { teamId: 1, playerId: 11, position: 'P', firstPosition: '3B', po: 2, a: 1, dp: 1, defInn: 3, listOrder: 0 },
+    { teamId: 1, playerId: 11, position: 'P', firstPosition: '3B', po: 2, a: 1, dp: 1, defInn: 3, listOrder: 20, isPitcher: 1 }
+  ], 1);
+  assert.equal(rows.length, 1, '去重后只剩一行');
+  assert.deepEqual(
+    buildFieldingTotals(rows, [{ key: 'po' }, { key: 'a' }, { key: 'dp' }, { key: 'defInn' }]),
+    { po: 2, a: 1, dp: 1, defInn: 3 }
+  );
+});
+
+test('守备汇总行：按列 prop 映射，字段隐藏/重排后仍对齐', () => {
+  const totals = { po: 20, defInn: 3, catcherSb: 2 };
+  assert.deepEqual(buildFieldingSummaryCells([
+    { property: 'playerName' },
+    { property: 'fieldPosition' },
+    { property: 'po' },
+    { property: 'defInn' },
+    { property: 'catcherSb' }
+  ], totals), ['Totals', '', '20', '3', '2']);
+  // 隐藏 PO、SB 列后重排：每列仍取自己的合计，不按位置串列
+  assert.deepEqual(buildFieldingSummaryCells([
+    { property: 'playerName' },
+    { property: 'fieldPosition' },
+    { property: 'catcherSb' },
+    { property: 'defInn' }
+  ], totals), ['Totals', '', '2', '3']);
+  assert.deepEqual(buildFieldingSummaryCells([
+    { property: 'playerName' },
+    { property: 'fieldPosition' }
+  ], totals), ['Totals', '']);
+  assert.deepEqual(buildFieldingSummaryCells([], totals), []);
+});
+
+test('守备局数显示复用投球局数格式化（.1/.2 记法）', () => {
+  assert.equal(formatInningsPitched(3), '3');
+  assert.equal(formatInningsPitched(2.2), '2.2');
+  assert.equal(formatInningsPitched(2.1), '2.1');
+  assert.equal(formatInningsPitched(0), '0');
+  assert.equal(formatInningsPitched(null), '0');
+});
+
+test('比赛详情守备表接线：首个守位、替补缩进与 Totals 汇总', () => {
   const detail = fs.readFileSync(new URL('../src/components/admin/GameDetailFieldingTable.vue', import.meta.url), 'utf8');
   assert.match(detail, /buildFieldingDisplayRows/, '详情守备表复用行构建');
+  assert.match(detail, /prop="playerName"/, '首列缺少 playerName prop，Totals 标签会丢失');
   assert.match(detail, /row\.fieldPosition/, 'POS 列显示首次上场守位');
   assert.match(detail, /row\.subRow/, '替补行缩进标记');
   assert.match(detail, /visibleFields/, '列由字段设置控制');
   assert.match(detail, /DEFAULT_FIELDING_FIELDS/, '缺省字段包含守备/捕手列');
+  assert.match(detail, /buildFieldingTotals/, '详情守备表未接入 Totals 汇总');
+  assert.match(detail, /buildFieldingSummaryCells\(columns, totals\.value\)/, '汇总行未按列 prop 取合计');
+  assert.match(detail, /:prop="col\.key"/, '动态列未绑定 prop，汇总行无法稳定映射');
+  assert.match(detail, /:show-summary="rows\.length > 0"/, '详情守备表未开启合计行');
+  assert.match(detail, /summary-method="summaryMethod"/, '详情守备表缺少合计行方法');
+  assert.match(detail, /el-table__footer-wrapper/, '合计行缺少样式钩子');
   const entry = fs.readFileSync(new URL('../src/components/admin/GameFieldingTable.vue', import.meta.url), 'utf8');
   for (const key of ['pb', 'catcherSb', 'catcherCs']) {
     assert.ok(entry.includes(`key: '${key}'`), `录入页守备表缺少 ${key} 列`);

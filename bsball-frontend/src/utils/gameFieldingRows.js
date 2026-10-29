@@ -1,5 +1,6 @@
 // 比赛详情守备表行构建：按本场首次上场守位归组（含投手），同组替补缩进，缺失数据补 0
 import { normalizeFieldingPosition, resolveFirstFieldPosition } from './gamePlayerStat.js';
+import { formatInningsPitched } from './inningsFormat.js';
 
 const POSITION_ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF'];
 const BATTING_ONLY_POSITIONS = new Set(['DH', 'PH', 'EP']);
@@ -114,4 +115,40 @@ export function buildFieldingDisplayRows(stats, teamId) {
     if (row.fieldPosition) previousPosition = row.fieldPosition;
   }
   return rows;
+}
+
+/**
+ * 守备表 Totals 汇总：计数项求和；INN 取全队最大守备局数（各球员守备局不叠加）。
+ * DP 按现有球队守备口径汇总球员 DP 记分（与球队守备榜一致；双杀会按参与人数重复计入）。
+ * INN 取 max 在全员轮换/末局换替补时可能低于全队实际守备局数，属于展示口径。
+ */
+export function buildFieldingTotals(rows, fields = []) {
+  const list = Array.isArray(rows) ? rows : [];
+  const totals = {};
+  for (const field of fields) {
+    const key = field?.key;
+    if (!key) continue;
+    if (key === 'defInn') {
+      totals[key] = list.reduce((max, row) => Math.max(max, Number(row?.defInn) || 0), 0);
+      continue;
+    }
+    totals[key] = list.reduce((sum, row) => sum + (Number(row?.[key]) || 0), 0);
+  }
+  return totals;
+}
+
+/**
+ * 守备表 Totals 行：按 el-table 列的 prop 映射合计值，首列 playerName→Totals，POS 等非合计列留空。
+ * 不依赖列下标，字段显隐/排序后仍与对应列对齐。
+ */
+export function buildFieldingSummaryCells(columns, totals) {
+  const list = Array.isArray(columns) ? columns : [];
+  const values = totals || {};
+  return list.map((column) => {
+    const key = column?.property;
+    if (key === 'playerName') return 'Totals';
+    if (!key || !(key in values)) return '';
+    const value = values[key] ?? 0;
+    return key === 'defInn' ? formatInningsPitched(value) : String(value);
+  });
 }
