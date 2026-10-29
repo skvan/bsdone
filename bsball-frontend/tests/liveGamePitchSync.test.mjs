@@ -24,7 +24,8 @@ test('存在统一帮手 syncFieldingPitcher：fpId 落位 → ft → Ka → 换
 
 test('分支②（板凳替换+DH 制 P 位=换投）改调统一帮手且行为链保留', () => {
   const body = pick('if(b==="P"&&!oa(y)){', 'de("换守备");');
-  assert.match(body, /de\("换投"\),syncFieldingPitcher\(a,t,P,fieldingIpNote\(t\)\),Kt\(\)/, '换投分支须走统一帮手（P3：附守备局数结清注记）后收尾');
+  assert.match(body, /de\("换投"\),Ki\(a,t\),syncFieldingPitcher\(a,t,P,fieldingIpNote\(t\)\),[\s\S]*Kt\(\)/, '换投分支须走统一帮手（P3：附守备局数结清注记）后收尾');
+  assert.match(body, /!substitutionMode\.value&&t&&t\.id/, '非模式内换投须把旧投手回落到板凳');
   assert.doesNotMatch(body, /ft\(a\),Ka\(\)/, '旧的内联链不得残留（切片仅覆盖换投分支）');
 });
 

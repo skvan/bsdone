@@ -287,9 +287,29 @@ export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = 
     }
   }
 
+  const pitchingChange = diff?.pitchingChange;
+  const outPitcherId = Number(pitchingChange?.outPlayerId) || 0;
+  const inPitcherId = Number(pitchingChange?.inPlayerId) || 0;
+  const outPitcherStillActive = outPitcherId > 0 && (
+    (after?.lineup ?? []).some((p) => playerId(p) === outPitcherId)
+    || Number(after?.fpId) === outPitcherId
+    || playerId(after?.fpRow) === outPitcherId
+  );
+  if (outPitcherId > 0 && outPitcherId !== inPitcherId && !outPitcherStillActive
+      && String(sport).toUpperCase() !== 'SOFTBALL' && !unavailable.includes(outPitcherId)) {
+    unavailable.push(outPitcherId);
+  }
+  if (inPitcherId > 0) {
+    const idx = unavailable.indexOf(inPitcherId);
+    if (idx >= 0) unavailable.splice(idx, 1);
+  }
+
   const outPositions = new Map();
   for (const s of diff?.substitutions ?? []) {
     if (s.outPlayerId && s.outPosition) outPositions.set(Number(s.outPlayerId), s.outPosition);
+  }
+  if (outPitcherId > 0 && !outPitcherStillActive && !outPositions.has(outPitcherId)) {
+    outPositions.set(outPitcherId, 'P');
   }
   return {
     starterIds,
