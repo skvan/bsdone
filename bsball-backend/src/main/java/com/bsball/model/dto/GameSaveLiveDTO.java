@@ -1475,6 +1475,10 @@ public class GameSaveLiveDTO {
         private Integer po;
         private Integer a;
         private Integer e;
+        private Integer dp;
+        private Integer pb;
+        private Integer catcherCs;
+        private Integer catcherSb;
         private Boolean fieldingGs;
 
         public Long getTeamId() {
@@ -1531,6 +1535,38 @@ public class GameSaveLiveDTO {
 
         public void setE(Integer e) {
             this.e = e;
+        }
+
+        public Integer getDp() {
+            return dp;
+        }
+
+        public void setDp(Integer dp) {
+            this.dp = dp;
+        }
+
+        public Integer getPb() {
+            return pb;
+        }
+
+        public void setPb(Integer pb) {
+            this.pb = pb;
+        }
+
+        public Integer getCatcherCs() {
+            return catcherCs;
+        }
+
+        public void setCatcherCs(Integer catcherCs) {
+            this.catcherCs = catcherCs;
+        }
+
+        public Integer getCatcherSb() {
+            return catcherSb;
+        }
+
+        public void setCatcherSb(Integer catcherSb) {
+            this.catcherSb = catcherSb;
         }
 
         public Boolean getFieldingGs() {

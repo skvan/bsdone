@@ -190,12 +190,16 @@ class GameServiceFieldingPositionsTest {
     }
 
     @Test
-    @DisplayName("逐位置 PO/A/E：保存到对应行，缺省为 0")
+    @DisplayName("逐位置 PO/A/E/DP/捕手专项：保存到对应行，缺省为 0")
     void saveLive_persistsFieldingCredits() {
-        GameSaveLiveDTO.FieldingPositionPart credited = part(HOME_ID, 108L, "CF", 4, true);
+        GameSaveLiveDTO.FieldingPositionPart credited = part(HOME_ID, 102L, "C", 4, true);
         credited.setPo(Integer.valueOf(2));
         credited.setA(Integer.valueOf(1));
         credited.setE(Integer.valueOf(1));
+        credited.setDp(Integer.valueOf(1));
+        credited.setPb(Integer.valueOf(2));
+        credited.setCatcherCs(Integer.valueOf(3));
+        credited.setCatcherSb(Integer.valueOf(4));
         GameSaveLiveDTO.FieldingPositionPart plain = part(HOME_ID, 101L, "P", 3, true);
 
         gameService.saveLive(Long.valueOf(GAME_ID), dtoWith(List.of(credited, plain)));
@@ -203,14 +207,22 @@ class GameServiceFieldingPositionsTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
         verify(gameFieldingPosStatRepository).saveAll(captor.capture());
-        GameFieldingPosStat cf = captor.getValue().get(0);
-        assertEquals(2, cf.getPo().intValue());
-        assertEquals(1, cf.getA().intValue());
-        assertEquals(1, cf.getE().intValue());
+        GameFieldingPosStat catcherRow = captor.getValue().get(0);
+        assertEquals(2, catcherRow.getPo().intValue());
+        assertEquals(1, catcherRow.getA().intValue());
+        assertEquals(1, catcherRow.getE().intValue());
+        assertEquals(1, catcherRow.getDp().intValue());
+        assertEquals(2, catcherRow.getPb().intValue());
+        assertEquals(3, catcherRow.getCatcherCs().intValue());
+        assertEquals(4, catcherRow.getCatcherSb().intValue());
         GameFieldingPosStat p = captor.getValue().get(1);
         assertEquals(0, p.getPo().intValue());
         assertEquals(0, p.getA().intValue());
         assertEquals(0, p.getE().intValue());
+        assertEquals(0, p.getDp().intValue());
+        assertEquals(0, p.getPb().intValue());
+        assertEquals(0, p.getCatcherCs().intValue());
+        assertEquals(0, p.getCatcherSb().intValue());
     }
 
     @Test
@@ -221,6 +233,16 @@ class GameServiceFieldingPositionsTest {
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 gameService.saveLive(Long.valueOf(GAME_ID), dtoWith(List.of(part))));
         assertEquals(400, ex.getCode());
+        verifyNoInteractions(gameFieldingPosStatRepository);
+    }
+
+    @Test
+    @DisplayName("逐位置 DP/捕手专项：负数 400 且不写库")
+    void saveLive_negativeCatcherCredit_rejects() {
+        GameSaveLiveDTO.FieldingPositionPart dp = part(HOME_ID, 102L, "C", 4, true);
+        dp.setDp(Integer.valueOf(-1));
+        assertEquals(400, assertThrows(BusinessException.class, () ->
+                gameService.saveLive(Long.valueOf(GAME_ID), dtoWith(List.of(dp)))).getCode());
         verifyNoInteractions(gameFieldingPosStatRepository);
     }
 

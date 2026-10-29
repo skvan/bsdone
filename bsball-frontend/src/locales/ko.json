@@ -1271,6 +1271,8 @@
       "e": "E",
       "inn": "INN",
       "dp": "DP",
+      "pb": "PB",
+      "catcherCs": "CS",
       "tcPct": "TC%",
       "catcherSb": "SB",
       "io": "IO",

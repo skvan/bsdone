@@ -774,6 +774,10 @@
             COALESCE(SUM(f.po), 0) AS po,
             COALESCE(SUM(f.a), 0) AS a,
             COALESCE(SUM(f.e), 0) AS e,
+            COALESCE(SUM(f.dp), 0) AS dp,
+            COALESCE(SUM(f.pb), 0) AS pb,
+            COALESCE(SUM(f.catcher_cs), 0) AS catcherCs,
+            COALESCE(SUM(f.catcher_sb), 0) AS catcherSb,
             COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) AS tc,
             CASE
                 WHEN COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) = 0 THEN 0

@@ -135,8 +135,8 @@ MapRows --> Return["返回PageResult"]
   - homeAway（可选）：home/away，按 `f.team_id` 与比赛主客队比较
   - minOuts（可选，默认 9）：资格线，按 `SUM(outs) >= minOuts` 过滤；传 0 关闭资格线
   - 其余筛选（年份/赛事/球队/比赛模式/关键字）与个人排行榜一致
-- 返回行字段：playerId、playerName、teamId、teamName、position、gp（该位置出场场次）、gs（该位置先发场次）、inn（局数，3 出局=1.0 口径）、po/a/e（该位置接杀/助杀/失误）、tc（守备机会=po+a+e）、tcPct（守备率，tc=0 时为 0）；不返回原始 outs
-- 排序白名单：gp/gs/inn/tc/po/a/e/tcPct（默认 `SUM(outs) DESC`，即局数降序；`inn` 排序按 outs、`tcPct` 排序按派生守备率）；非法字段回落默认
+- 返回行字段：playerId、playerName、teamId、teamName、position、gp（该位置出场场次）、gs（该位置先发场次）、inn（局数，3 出局=1.0 口径）、po/a/e（该位置接杀/助杀/失误）、dp/pb/catcherCs/catcherSb（该位置双杀/捕逸/盗垒阻杀/被盗垒）、tc（守备机会=po+a+e）、tcPct（守备率，tc=0 时为 0）；不返回原始 outs
+- 排序白名单：gp/gs/inn/tc/po/a/e/dp/pb/catcherCs/catcherSb/tcPct（默认 `SUM(outs) DESC`，即局数降序；`inn` 排序按 outs、`tcPct` 排序按派生守备率）；非法字段回落默认
 - 返回 meta 含 `minOuts`，便于前端展示资格线
 
 ### 积分榜接口

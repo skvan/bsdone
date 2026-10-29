@@ -1,4 +1,4 @@
-// 逐位置守备局数：按出局累计 outs（3 outs = 1.0 局），供 save-live 与按位置排行使用
+// 逐位置守备统计：按出局累计 outs（3 outs = 1.0 局），并按守位累计 PO/A/E/DP/PB/CS/SB，供 save-live 与按位置排行使用
 const NON_FIELDING_POSITIONS = new Set(['DH', 'PH', 'EP']);
 
 export function normalizeFieldingPosition(value) {
@@ -24,9 +24,13 @@ function byPosEntry(fielding, position) {
     current.po = countOf(current.po);
     current.a = countOf(current.a);
     current.e = countOf(current.e);
+    current.dp = countOf(current.dp);
+    current.pb = countOf(current.pb);
+    current.catcherCs = countOf(current.catcherCs);
+    current.catcherSb = countOf(current.catcherSb);
     return current;
   }
-  const entry = { outs: countOf(current), po: 0, a: 0, e: 0 };
+  const entry = { outs: countOf(current), po: 0, a: 0, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 };
   byPos[position] = entry;
   return entry;
 }
@@ -45,19 +49,29 @@ export function resolveFieldingCreditTarget(position, player, livePitcher) {
   return normalizeFieldingPosition(position) === 'P' && livePitcher ? livePitcher : player;
 }
 
-/** 按当前守位累计 PO/A/E；返回是否计入（非法守位或全零不计） */
-export function accrueFieldingPlay(fielding, position, { po = 0, a = 0, e = 0 } = {}) {
+/** 按当前守位累计 PO/A/E/DP/PB/CS/SB；返回是否计入（非法守位或全零不计） */
+export function accrueFieldingPlay(fielding, position, {
+  po = 0, a = 0, e = 0, dp = 0, pb = 0, catcherCs = 0, catcherSb = 0,
+} = {}) {
   if (!fielding) return false;
   const pos = normalizeFieldingPosition(position);
   if (!isFieldingPosition(pos)) return false;
   const addPo = countOf(po);
   const addA = countOf(a);
   const addE = countOf(e);
-  if (addPo + addA + addE === 0) return false;
+  const addDp = countOf(dp);
+  const addPb = countOf(pb);
+  const addCatcherCs = countOf(catcherCs);
+  const addCatcherSb = countOf(catcherSb);
+  if (addPo + addA + addE + addDp + addPb + addCatcherCs + addCatcherSb === 0) return false;
   const entry = byPosEntry(fielding, pos);
   entry.po += addPo;
   entry.a += addA;
   entry.e += addE;
+  entry.dp += addDp;
+  entry.pb += addPb;
+  entry.catcherCs += addCatcherCs;
+  entry.catcherSb += addCatcherSb;
   return true;
 }
 
@@ -80,7 +94,11 @@ export function buildFieldingPositionRows(teamId, players, starterIds) {
       const po = countOf(entry.po);
       const a = countOf(entry.a);
       const e = countOf(entry.e);
-      if (outs + po + a + e === 0) continue;
+      const dp = countOf(entry.dp);
+      const pb = countOf(entry.pb);
+      const catcherCs = countOf(entry.catcherCs);
+      const catcherSb = countOf(entry.catcherSb);
+      if (outs + po + a + e + dp + pb + catcherCs + catcherSb === 0) continue;
       rows.push({
         teamId: Number(teamId),
         playerId,
@@ -89,6 +107,10 @@ export function buildFieldingPositionRows(teamId, players, starterIds) {
         po,
         a,
         e,
+        dp,
+        pb,
+        catcherCs,
+        catcherSb,
         fieldingGs: starters.has(playerId) && position === firstPos,
       });
     }
@@ -119,7 +141,10 @@ export function hasFieldingByPosBaseline(players) {
   });
 }
 
-/** 历史统计行是否已有守备局数（Do 重建路径据此判断逐位置基线是否可信） */
-export function hasHistoricalFieldingInnings(statRows) {
-  return (Array.isArray(statRows) ? statRows : []).some((row) => (Number(row?.defInn) || 0) > 0);
+/** 历史统计行是否已有守备数据（Do 重建路径据此判断逐位置基线是否可信；含零出局的 E/DP/捕手专项） */
+export function hasHistoricalFieldingStats(statRows) {
+  const keys = ['defInn', 'po', 'a', 'e', 'dp', 'pb', 'catcherCs', 'catcherSb'];
+  return (Array.isArray(statRows) ? statRows : []).some((row) =>
+    keys.some((key) => (Number(row?.[key]) || 0) > 0)
+  );
 }

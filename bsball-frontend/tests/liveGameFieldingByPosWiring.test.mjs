@@ -50,6 +50,20 @@ test('失误记账：E 写入失误责任人的当前守位', () => {
   );
 });
 
+test('双杀守备：DP 写入参与双杀的当前守位', () => {
+  assert.ok(
+    live.includes('accrueFieldingPlay(p.stats.fielding,r.pos,{dp:1})'),
+    'applyChainFieldingStats 的 DP 未同步逐位置'
+  );
+});
+
+test('捕手专项：PB/CS/SB 统一写入 C 位', () => {
+  assert.ok(
+    live.includes('accrueFieldingPlay(t.stats.fielding,"C",{[e]:1})'),
+    'paceCatcherStat 未同步逐位置 PB/CS/SB'
+  );
+});
+
 test('三振守备：捕手 PO/A 记 C，接球野手 PO 记其守位', () => {
   assert.ok(live.includes('accrueFieldingPlay(catcher.stats.fielding,"C",{po:credit.catcherPo})'), '捕手 PO 未同步');
   assert.ok(live.includes('accrueFieldingPlay(catcher.stats.fielding,"C",{a:credit.catcherA})'), '捕手 A 未同步');
@@ -62,6 +76,13 @@ test('三振守备：捕手 PO/A 记 C，接球野手 PO 记其守位', () => {
 test('牵制出局 / 盗垒死：PO 记守备员守位', () => {
   assert.ok(live.includes('accrueFieldingPlay(P0.stats.fielding,e,{po:1})'), '牵制出局 PO 未同步');
   assert.ok(live.includes('accrueFieldingPlay(p.stats.fielding,e,{po:1})'), '盗垒死 PO 未同步');
+});
+
+test('云端重建可信判定覆盖零出局的扩展指标', () => {
+  assert.ok(
+    live.includes('fieldingPositionsTrusted=!hasHistoricalFieldingStats(r?.list)'),
+    'Do() 仍只按 def_inn 判定，零出局 E/DP/PB 等会丢失'
+  );
 });
 
 test('球队失误总数包含 DH 仅守备投手 fpRow', () => {

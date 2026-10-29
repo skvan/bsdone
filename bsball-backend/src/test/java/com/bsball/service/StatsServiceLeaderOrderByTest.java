@@ -195,6 +195,10 @@ class StatsServiceLeaderOrderByTest {
         row.put("po", Integer.valueOf(10));
         row.put("a", Integer.valueOf(2));
         row.put("e", Integer.valueOf(1));
+        row.put("dp", Integer.valueOf(2));
+        row.put("pb", Integer.valueOf(1));
+        row.put("catcherCs", Integer.valueOf(1));
+        row.put("catcherSb", Integer.valueOf(3));
         when(statsLeadersMapper.countFieldingPositionLeaders(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
         when(statsLeadersMapper.selectFieldingPositionLeadersPage(
@@ -212,6 +216,10 @@ class StatsServiceLeaderOrderByTest {
         assertEquals(1, out.get("e"));
         assertEquals(13, out.get("tc"));
         assertEquals("92.3%", out.get("tcPct"));
+        assertEquals(2, out.get("dp"));
+        assertEquals(1, out.get("pb"));
+        assertEquals(1, out.get("catcherCs"));
+        assertEquals(3, out.get("catcherSb"));
     }
 
     @Test
@@ -230,6 +238,24 @@ class StatsServiceLeaderOrderByTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
                 orderBy.capture(), anyInt(), anyLong());
         assertTrue(orderBy.getValue().contains("q.po DESC"), orderBy.getValue());
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：catcherCs 排序映射到 PostgreSQL 小写别名")
+    void fieldingPositionsSortByCatcherCs() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, null, 1, 20, "catcherCs", "desc");
+
+        ArgumentCaptor<String> orderBy = ArgumentCaptor.forClass(String.class);
+        verify(statsLeadersMapper).selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                orderBy.capture(), anyInt(), anyLong());
+        assertTrue(orderBy.getValue().contains("q.catchercs DESC"), orderBy.getValue());
     }
 
     @Test

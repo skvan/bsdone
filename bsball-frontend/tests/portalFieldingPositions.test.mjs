@@ -50,7 +50,7 @@ test('榜单组件：端点、资格线、列与筛选监听齐全', () => {
   assert.ok(board.includes('const minOuts = 9'), '资格线应为 9 出局');
   assert.ok(board.match(/minOuts,\s*\n\s*page:/), '请求未携带 minOuts');
   assert.ok(board.includes("prop=\"gp\"") && board.includes("prop=\"gs\"") && board.includes("prop=\"inn\""), '缺少 GP/GS/INN 列');
-  for (const prop of ['po', 'a', 'e', 'tcPct']) {
+  for (const prop of ['po', 'a', 'e', 'dp', 'pb', 'catcherCs', 'catcherSb', 'tcPct']) {
     assert.ok(board.includes(`prop="${prop}"`), `缺少 ${prop} 列`);
     assert.ok(board.includes(`t('stats.colEn.${prop}')`), `${prop} 列应复用现有列头文案`);
   }
@@ -74,6 +74,10 @@ test('5 语种文案齐全（Tab/标题/资格线/列名）', () => {
     'stats.colEn.po',
     'stats.colEn.a',
     'stats.colEn.e',
+    'stats.colEn.dp',
+    'stats.colEn.pb',
+    'stats.colEn.catcherCs',
+    'stats.colEn.catcherSb',
     'stats.colEn.tcPct'
   ];
   for (const [name, dict] of Object.entries(locales)) {

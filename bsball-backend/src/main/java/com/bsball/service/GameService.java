@@ -420,6 +420,10 @@ public class GameService {
         row.setPo(normalizeFieldingCredit(part.getPo(), "接杀数"));
         row.setA(normalizeFieldingCredit(part.getA(), "助杀数"));
         row.setE(normalizeFieldingCredit(part.getE(), "失误数"));
+        row.setDp(normalizeFieldingCredit(part.getDp(), "双杀数"));
+        row.setPb(normalizeFieldingCredit(part.getPb(), "捕逸数"));
+        row.setCatcherCs(normalizeFieldingCredit(part.getCatcherCs(), "盗垒阻杀数"));
+        row.setCatcherSb(normalizeFieldingCredit(part.getCatcherSb(), "被盗垒数"));
         row.setFieldingGs(Boolean.TRUE.equals(part.getFieldingGs()));
         row.setSource("LIVE");
         return row;

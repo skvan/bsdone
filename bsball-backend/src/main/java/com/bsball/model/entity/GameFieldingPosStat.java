@@ -28,6 +28,16 @@ public class GameFieldingPosStat extends BaseEntity {
     private Integer a;
     @Comment("失误数")
     private Integer e;
+    @Comment("双杀守备数")
+    private Integer dp;
+    @Comment("捕逸数")
+    private Integer pb;
+    @Column(name = "catcher_cs")
+    @Comment("盗垒阻杀数")
+    private Integer catcherCs;
+    @Column(name = "catcher_sb")
+    @Comment("被盗垒数")
+    private Integer catcherSb;
     @Column(name = "fielding_gs")
     @Comment("该位置是否先发")
     private Boolean fieldingGs;
@@ -105,6 +115,38 @@ public class GameFieldingPosStat extends BaseEntity {
 
     public void setE(Integer e) {
         this.e = e;
+    }
+
+    public Integer getDp() {
+        return dp;
+    }
+
+    public void setDp(Integer dp) {
+        this.dp = dp;
+    }
+
+    public Integer getPb() {
+        return pb;
+    }
+
+    public void setPb(Integer pb) {
+        this.pb = pb;
+    }
+
+    public Integer getCatcherCs() {
+        return catcherCs;
+    }
+
+    public void setCatcherCs(Integer catcherCs) {
+        this.catcherCs = catcherCs;
+    }
+
+    public Integer getCatcherSb() {
+        return catcherSb;
+    }
+
+    public void setCatcherSb(Integer catcherSb) {
+        this.catcherSb = catcherSb;
     }
 
     public Boolean getFieldingGs() {

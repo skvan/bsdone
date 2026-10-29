@@ -941,6 +941,10 @@ public class StatsService {
         m.put("po", Integer.valueOf(po));
         m.put("a", Integer.valueOf(a));
         m.put("e", Integer.valueOf(e));
+        m.put("dp", Integer.valueOf(StatsService.getInt(d, "dp")));
+        m.put("pb", Integer.valueOf(StatsService.getInt(d, "pb")));
+        m.put("catcherCs", Integer.valueOf(StatsService.getInt(d, "catcherCs")));
+        m.put("catcherSb", Integer.valueOf(StatsService.getInt(d, "catcherSb")));
         m.put("tc", Integer.valueOf(tc));
         m.put("tcPct", tc > 0 ? StatsFormatUtil.fmtPct((Double)(100.0 * (double)(po + a) / (double)tc)) : "0");
         return m;
