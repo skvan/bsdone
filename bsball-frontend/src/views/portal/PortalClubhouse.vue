@@ -878,11 +878,14 @@ const heroTeamSub = computed(() => {
   return heroTeamNames.value.length ? '跨全部代表球队' : '尚未加入球队';
 });
 const primaryPosition = computed(() => (player.value.positions || [])[0] || '未填写');
-const throwBatLabel = computed(() => {
-  const throwHand = String(player.value.throwHand || '-').replace(/投$/, '');
-  const batHand = String(player.value.batHand || '-').replace(/打$/, '');
-  return `${throwHand}投${batHand}打`;
-});
+function handSideText(raw) {
+  const side = String(raw || '').replace(/[投打]$/, '');
+  if (side === 'L') return '左';
+  if (side === 'R') return '右';
+  if (side === 'B') return '左右';
+  return side || '-';
+}
+const throwBatLabel = computed(() => `${handSideText(player.value.throwHand)}投${handSideText(player.value.batHand)}打`);
 const cardFaceProps = computed(() => {
   const logoTeam = scopeTeam.value || availableTeams.value[0];
   return {
@@ -927,8 +930,8 @@ const fanLegendCards = computed(() => {
     teamCrest: cardFaceProps.value.teamCrest
   };
   return [
-    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: 'R投L打', ...team },
-    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: 'L投L打', ...team }
+    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: '右投左打', ...team },
+    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: '左投左打', ...team }
   ];
 });
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
