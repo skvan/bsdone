@@ -69,7 +69,13 @@
         </div>
 
         <div class="card-stage">
-          <button ref="heroCardBtnRef" type="button" class="card-slot" aria-label="放大查看球星卡" @click="openCardZoom">
+          <button ref="heroCardBtnRef" type="button" class="card-slot" :style="{ '--hero-tilt': `${heroTiltDeg}deg` }" aria-label="放大查看球星卡" @click="openCardZoom">
+            <span class="card-stack one" aria-hidden="true">
+              <ClubhousePlayerCard v-bind="fanLegendCards[0]" :scale="heroCardScale" />
+            </span>
+            <span class="card-stack two" aria-hidden="true">
+              <ClubhousePlayerCard v-bind="fanLegendCards[1]" :scale="heroCardScale" />
+            </span>
             <ClubhousePlayerCard v-bind="cardFaceProps" :scale="heroCardScale" />
           </button>
         </div>
@@ -912,7 +918,14 @@ function onNarrowCardChange(event) {
   isNarrowCard.value = event.matches;
 }
 narrowCardQuery.addEventListener('change', onNarrowCardChange);
+// 扇形背景：固定两张 The Show 风格传奇卡，纯装饰不参与数据口径
+const fanLegendCards = [
+  { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: 'R投L打', teamName: 'LEGENDS', teamLogo: '', teamCrest: '★' },
+  { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: 'L投L打', teamName: 'LEGENDS', teamLogo: '', teamCrest: '★' }
+];
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
+// 手持扇形：桌面端主卡歪斜，放大飞入时顺势转正
+const heroTiltDeg = computed(() => (isNarrowCard.value ? 0 : -8));
 
 function calcZoomScale() {
   const scale = Math.min((window.innerHeight - 140) / CARD_BASE_HEIGHT, (window.innerWidth - 56) / CARD_BASE_WIDTH, 1.8);
@@ -941,19 +954,20 @@ const zoomCardStyle = computed(() => {
     top: `${ty}px`,
     width: `${tw}px`,
     height: `${th}px`,
-    transform: cardZoomShown.value ? 'none' : `translate(${dx}px, ${dy}px) scale(${k})`
+    transform: cardZoomShown.value ? 'none' : `translate(${dx}px, ${dy}px) scale(${k}) rotate(${heroTiltDeg.value}deg)`
   };
 });
 
 function openCardZoom() {
   applyZoomLayout();
   const { tx, ty, tw, th } = zoomTarget.value;
-  const origin = heroCardBtnRef.value?.getBoundingClientRect();
+  // 主卡带扇形歪斜：取视觉包围盒中心定位，缩放比按卡面名义宽度算（包围盒因旋转偏宽）
+  const origin = heroCardBtnRef.value?.querySelector(':scope > .pcard')?.getBoundingClientRect();
   zoomFrom.value = origin
     ? {
       dx: origin.left + origin.width / 2 - (tx + tw / 2),
       dy: origin.top + origin.height / 2 - (ty + th / 2),
-      k: origin.width / tw
+      k: (CARD_BASE_WIDTH * heroCardScale.value) / tw
     }
     : { dx: 0, dy: 0, k: 0.6 };
   cardZoomOpen.value = true;
@@ -2685,6 +2699,10 @@ onBeforeUnmount(() => {
 .card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; cursor: zoom-in; transition: transform 220ms ease-out; }
 .card-slot:hover { transform: translateY(-5px); }
 .card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
+.card-stack { position: absolute; inset: 0; pointer-events: none; transform-origin: 50% 100%; }
+.card-stack.one { transform: rotate(4deg); filter: brightness(.9); }
+.card-stack.two { transform: rotate(16deg); filter: brightness(.78); }
+.card-slot .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; }
 .pcard-zoom { position: fixed; inset: 0; z-index: 3000; }
 .pcard-zoom-backdrop { position: absolute; inset: 0; background: rgba(4, 8, 14, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; transition: opacity 320ms ease-out; }
 .pcard-zoom-backdrop.on { opacity: 1; }
@@ -3072,6 +3090,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .hero h1 { font-size: 44px; }
   .hero-27 { font-size: 260px; right: -20px; }
   .card-stage { min-height: 0; margin-top: 20px; justify-content: flex-start; }
+  .card-stack { display: none; }
   .identity-band { grid-template-columns: 1fr 1fr; }
   .id-item { padding: 11px 14px; border-bottom: 1px solid var(--bs-hairline); }
   .id-item:nth-child(odd) { padding-left: 0; border-right: 1px solid var(--bs-hairline); }
