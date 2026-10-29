@@ -69,35 +69,9 @@
         </div>
 
         <div class="card-stage">
-          <div class="card-back one"></div>
-          <div class="card-back two"></div>
-          <div class="player-card">
-            <div>
-              <div class="card-top"><span>BSD PLAYER CARD</span><b>{{ new Date().getFullYear() }} / 001</b></div>
-              <div class="card-portrait">
-                <div class="card-avatar">
-                  <img v-if="player.avatar" :src="resolveAssetUrl(player.avatar)" :alt="player.name" />
-                  <span v-else>{{ (player.name || '?').slice(0, 1) }}</span>
-                </div>
-                <div class="card-name">
-                  <b>{{ player.name }}</b>
-                  <span>{{ player.nameEn || 'PLAYER' }} <template v-if="player.number">· #{{ player.number }}</template></span>
-                </div>
-                <div class="card-team">
-                  <span class="crest">{{ heroTeamCrest }}</span>
-                  <span class="card-team-name" :title="heroTeamName">{{ heroTeamName }} · {{ primaryPosition }}</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div class="card-stats">
-                <div class="card-stat"><b>{{ heroStats[0].value }}</b><span>{{ heroStats[0].label }}</span></div>
-                <div class="card-stat"><b>{{ heroStats[1].value }}</b><span>{{ heroStats[1].label }}</span></div>
-                <div class="card-stat"><b>{{ heroStats[2].value }}</b><span>{{ heroStats[2].label }}</span></div>
-              </div>
-              <div class="card-foot"><span>代表 {{ availableTeams.length }} 队 · {{ totalEvents }} 项赛事</span><b>{{ performanceScopeLabel }}</b></div>
-            </div>
-          </div>
+          <button ref="heroCardBtnRef" type="button" class="card-slot" aria-label="放大查看球星卡" @click="openCardZoom">
+            <ClubhousePlayerCard v-bind="cardFaceProps" :scale="heroCardScale" />
+          </button>
         </div>
       </section>
 
@@ -750,6 +724,16 @@
         <el-button type="primary" :loading="saving" @click="saveSettings">保存</el-button>
       </template>
     </el-drawer>
+
+    <Teleport to="body">
+      <div v-if="cardZoomOpen" class="pcard-zoom" role="dialog" aria-modal="true" aria-label="球星卡放大查看">
+        <div class="pcard-zoom-backdrop" :class="{ on: cardZoomShown }" @click="closeCardZoom"></div>
+        <div class="pcard-zoom-card" :class="{ on: cardZoomShown }" :style="zoomCardStyle">
+          <ClubhousePlayerCard v-bind="cardFaceProps" :scale="zoomScaleValue" />
+        </div>
+        <button ref="zoomCloseBtnRef" type="button" class="pcard-zoom-close" aria-label="关闭放大" @click="closeCardZoom">×</button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -761,6 +745,8 @@ import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
+import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
+import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
 import { useTenantRouter } from '../../composables/useTenantRouter';
 import {
@@ -891,12 +877,124 @@ const throwBatLabel = computed(() => {
   const batHand = String(player.value.batHand || '-').replace(/打$/, '');
   return `${throwHand}投${batHand}打`;
 });
-const totalEvents = computed(() => {
-  const ids = new Set();
-  availableTeams.value.forEach((team) => (team.events || [])
-    .filter((event) => eventGameMode(event) === gameMode.value)
-    .forEach((event) => ids.add(event.id)));
-  return ids.size;
+const cardFaceProps = computed(() => {
+  const logoTeam = scopeTeam.value || availableTeams.value[0];
+  return {
+    player: player.value,
+    grade: evaluationOverall.value.grade || '',
+    score: evaluationOverall.value.score ?? null,
+    positionLabel: primaryPosition.value,
+    throwBatLabel: throwBatLabel.value,
+    teamName: heroTeamName.value,
+    teamLogo: resolveAssetUrl(logoTeam?.logo),
+    teamCrest: heroTeamCrest.value
+  };
+});
+
+const heroCardBtnRef = ref(null);
+const zoomCloseBtnRef = ref(null);
+const cardZoomOpen = ref(false);
+const cardZoomShown = ref(false);
+const ZOOM_INITIAL_SCALE = 1.4;
+const zoomScaleValue = ref(ZOOM_INITIAL_SCALE);
+const zoomTarget = ref({
+  tx: 0,
+  ty: 0,
+  tw: Math.round(CARD_BASE_WIDTH * ZOOM_INITIAL_SCALE),
+  th: Math.round(CARD_BASE_HEIGHT * ZOOM_INITIAL_SCALE)
+});
+const zoomFrom = ref({ dx: 0, dy: 0, k: 1 });
+let zoomCloseTimer = 0;
+
+const narrowCardQuery = window.matchMedia('(max-width: 980px)');
+const isNarrowCard = ref(narrowCardQuery.matches);
+function onNarrowCardChange(event) {
+  isNarrowCard.value = event.matches;
+}
+narrowCardQuery.addEventListener('change', onNarrowCardChange);
+const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
+
+function calcZoomScale() {
+  const scale = Math.min((window.innerHeight - 140) / CARD_BASE_HEIGHT, (window.innerWidth - 56) / CARD_BASE_WIDTH, 1.8);
+  return Math.max(1.05, Math.round(scale * 100) / 100);
+}
+
+/** 按视口重算放大卡的缩放与居中目标位 */
+function applyZoomLayout() {
+  const scale = calcZoomScale();
+  const tw = Math.round(CARD_BASE_WIDTH * scale);
+  const th = Math.round(CARD_BASE_HEIGHT * scale);
+  zoomScaleValue.value = scale;
+  zoomTarget.value = {
+    tx: Math.round((window.innerWidth - tw) / 2),
+    ty: Math.round((window.innerHeight - th) / 2),
+    tw,
+    th
+  };
+}
+
+const zoomCardStyle = computed(() => {
+  const { tx, ty, tw, th } = zoomTarget.value;
+  const { dx, dy, k } = zoomFrom.value;
+  return {
+    left: `${tx}px`,
+    top: `${ty}px`,
+    width: `${tw}px`,
+    height: `${th}px`,
+    transform: cardZoomShown.value ? 'none' : `translate(${dx}px, ${dy}px) scale(${k})`
+  };
+});
+
+function openCardZoom() {
+  applyZoomLayout();
+  const { tx, ty, tw, th } = zoomTarget.value;
+  const origin = heroCardBtnRef.value?.getBoundingClientRect();
+  zoomFrom.value = origin
+    ? {
+      dx: origin.left + origin.width / 2 - (tx + tw / 2),
+      dy: origin.top + origin.height / 2 - (ty + th / 2),
+      k: origin.width / tw
+    }
+    : { dx: 0, dy: 0, k: 0.6 };
+  cardZoomOpen.value = true;
+  cardZoomShown.value = false;
+  document.body.style.overflow = 'hidden';
+  window.addEventListener('keydown', onZoomKeydown);
+  window.addEventListener('resize', applyZoomLayout);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    cardZoomShown.value = true;
+  }));
+  nextTick(() => zoomCloseBtnRef.value?.focus());
+}
+
+function closeCardZoom() {
+  if (!cardZoomOpen.value) return;
+  cardZoomShown.value = false;
+  window.removeEventListener('keydown', onZoomKeydown);
+  window.removeEventListener('resize', applyZoomLayout);
+  clearTimeout(zoomCloseTimer);
+  zoomCloseTimer = setTimeout(() => {
+    cardZoomOpen.value = false;
+    document.body.style.overflow = '';
+    heroCardBtnRef.value?.focus();
+  }, 420);
+}
+
+function onZoomKeydown(event) {
+  if (event.key === 'Escape') closeCardZoom();
+  // 弹层内仅关闭按钮可聚焦，锁住 Tab 防止焦点跑到遮罩后的页面
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    zoomCloseBtnRef.value?.focus();
+  }
+}
+
+onBeforeUnmount(() => {
+  narrowCardQuery.removeEventListener('change', onNarrowCardChange);
+  window.removeEventListener('keydown', onZoomKeydown);
+  window.removeEventListener('resize', applyZoomLayout);
+  clearTimeout(zoomCloseTimer);
+  if (cardZoomOpen.value) document.body.style.overflow = '';
 });
 const scopeHint = computed(() => (teamId.value
   ? '队内排名按所选球队与赛事/生涯口径计算；雷达为全租户生涯，不随筛选变化'
@@ -1749,29 +1847,6 @@ function onViewportResize() {
   nextTick(updateSelectionRect);
 }
 
-const heroStats = computed(() => {
-  if (!hasStatsData.value || (!hasBatting.value && !hasPitchingData.value)) {
-    return [
-      { label: 'AVG', value: '—' },
-      { label: 'OBP', value: '—' },
-      { label: 'RBI', value: '—' }
-    ];
-  }
-  const b = batting.value;
-  if (hasBatting.value) {
-    return [
-      { label: 'AVG', value: b.avg ?? '-' },
-      { label: 'OBP', value: b.obp ?? '-' },
-      { label: 'RBI', value: b.rbi ?? '-' }
-    ];
-  }
-  const p = pitching.value;
-  return [
-    { label: 'ERA', value: p.era ?? '-' },
-    { label: 'WHIP', value: p.whip ?? '-' },
-    { label: 'SO', value: p.pitchSo ?? '-' }
-  ];
-});
 const matrixItems = computed(() => {
   if (!hasStatsData.value) return [];
   const b = batting.value;
@@ -2606,35 +2681,17 @@ onBeforeUnmount(() => {
 .team-copy b { display: block; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .team-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 
-.card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; perspective: 1200px; }
-.card-back { position: absolute; width: 252px; height: 334px; border-radius: 15px; border: 1px solid rgba(201,164,91,.26); background: rgba(255,255,255,.035); backdrop-filter: blur(3px); }
-.card-back.one { transform: rotate(7deg) translate(18px, 8px); }
-.card-back.two { transform: rotate(-8deg) translate(-16px, 2px); opacity: .55; }
-.player-card { position: relative; z-index: 3; width: 264px; height: 348px; padding: 18px 18px 16px; border-radius: 15px; border: 1px solid rgba(201,164,91,.55); background: radial-gradient(90% 70% at 84% 0%, rgba(201,164,91,.2), transparent 55%), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 8px, transparent 8px 16px), linear-gradient(160deg, #0d2b4a, #081524 70%); box-shadow: 0 34px 70px rgba(0,0,0,.4); transform: rotate(-3deg); display: flex; flex-direction: column; justify-content: space-between; }
-html.dark .player-card,
-html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70% at 84% 0%, rgba(212,175,106,.18), transparent 55%), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 8px, transparent 8px 16px), linear-gradient(160deg, #132f4c, #0a1727 70%); border-color: rgba(212,175,106,.55); }
-.player-card::before { content: ""; position: absolute; inset: 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; pointer-events: none; }
-.card-top { display: flex; align-items: center; justify-content: space-between; }
-.card-top span { font-size: 10px; font-weight: 700; letter-spacing: .2em; color: var(--bs-accent-ink); }
-.card-top b { font-family: var(--bs-font-num); font-size: 10px; color: rgba(255,255,255,.45); }
-.card-portrait { display: flex; flex-direction: column; align-items: center; margin-top: 9px; }
-.card-avatar { width: 92px; height: 92px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-family: var(--bs-font-serif); font-size: 38px; color: #f7ebd4; background: radial-gradient(circle at 35% 22%, rgba(255,255,255,.16), transparent 38%), repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 7px, transparent 7px 14px), linear-gradient(145deg, #214a74, #0a1c33); border: 1px solid rgba(201,164,91,.6); box-shadow: 0 0 0 5px rgba(201,164,91,.12), inset 0 0 24px rgba(0,0,0,.25); }
-.card-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.card-name { margin-top: 12px; text-align: center; }
-.card-name b { font-family: var(--bs-font-serif); font-size: 23px; font-weight: 700; letter-spacing: .04em; }
-.card-name span { display: block; margin-top: 3px; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .24em; color: var(--bs-hero-muted); }
-.card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; padding: 0 4px; }
-.card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
-.card-team span:last-child { font-size: 10px; color: rgba(255,255,255,.65); }
-.card-team-name { display: block; line-height: 1.45; overflow-wrap: anywhere; text-align: center; }
-.card-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
-.card-stat { text-align: center; border-right: 1px solid rgba(255,255,255,.09); }
-.card-stat:last-child { border-right: 0; }
-.card-stat b { display: block; font-family: var(--bs-font-num); font-size: 19px; line-height: 1; color: #fff; }
-.card-stat span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-hero-muted); }
-.card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.1); }
-.card-foot span { font-size: 10px; color: var(--bs-hero-muted); }
-.card-foot b { font-size: 10px; color: var(--bs-accent-ink); letter-spacing: .1em; }
+.card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; }
+.card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; cursor: zoom-in; transition: transform 220ms ease-out; }
+.card-slot:hover { transform: translateY(-5px); }
+.card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
+.pcard-zoom { position: fixed; inset: 0; z-index: 3000; }
+.pcard-zoom-backdrop { position: absolute; inset: 0; background: rgba(4, 8, 14, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; transition: opacity 320ms ease-out; }
+.pcard-zoom-backdrop.on { opacity: 1; }
+.pcard-zoom-card { position: absolute; transition: transform 400ms cubic-bezier(.22, .9, .26, 1); will-change: transform; }
+.pcard-zoom-close { position: absolute; right: max(16px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .28); background: rgba(10, 16, 26, .72); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
+.pcard-zoom-close:hover { border-color: rgba(255, 255, 255, .5); }
+.pcard-zoom-close:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 
 .identity-band { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 18px; border-top: 1px solid var(--bs-hairline); border-bottom: 1px solid var(--bs-hairline); padding: 13px 0; }
 .id-item { padding: 0 24px; border-right: 1px solid var(--bs-hairline); }
@@ -3015,8 +3072,6 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .hero h1 { font-size: 44px; }
   .hero-27 { font-size: 260px; right: -20px; }
   .card-stage { min-height: 0; margin-top: 20px; justify-content: flex-start; }
-  .card-back { display: none; }
-  .player-card { width: 100%; max-width: 330px; height: auto; min-height: 300px; transform: none; }
   .identity-band { grid-template-columns: 1fr 1fr; }
   .id-item { padding: 11px 14px; border-bottom: 1px solid var(--bs-hairline); }
   .id-item:nth-child(odd) { padding-left: 0; border-right: 1px solid var(--bs-hairline); }
