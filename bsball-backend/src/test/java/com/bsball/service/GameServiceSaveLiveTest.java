@@ -1,8 +1,11 @@
 package com.bsball.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -111,6 +114,59 @@ class GameServiceSaveLiveTest {
         gameService.saveLive(Long.valueOf(GAME_ID), dtoWithEr(99));
 
         assertEquals(Integer.valueOf(3), pitcher.getEr());
+    }
+
+    @Test
+    @DisplayName("saveLive：status=final 时触发 §11 结算验证")
+    void saveLive_final_triggersSettlementValidation() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService)
+                .validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID));
+    }
+
+    @Test
+    @DisplayName("saveLive：非 final 场次不触发 §11 结算验证")
+    void saveLive_liveStatus_skipsSettlementValidation() {
+        lenient().when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("live");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService, never())
+                .validateSettlement(TENANT_ID, GAME_ID);
+    }
+
+    @Test
+    @DisplayName("saveLive：结算验证异常不影响保存")
+    void saveLive_settlementValidationFailure_doesNotBlockSave() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenThrow(new IllegalStateException("validation boom"));
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        assertDoesNotThrow(() -> gameService.saveLive(Long.valueOf(GAME_ID), dto));
+        verify(gameRepository).save(any(Game.class));
     }
 
     @Test

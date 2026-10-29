@@ -36,6 +36,7 @@ public class EventStatRow {
     private int io;
     private int cs;
     private double ip;
+    private int outsRecorded;
     private int er;
     private int unearnedR;
     private int pendingR;
@@ -205,6 +206,11 @@ public class EventStatRow {
     @Generated
     public double getIp() {
         return this.ip;
+    }
+
+    @Generated
+    public int getOutsRecorded() {
+        return this.outsRecorded;
     }
 
     @Generated
@@ -510,6 +516,11 @@ public class EventStatRow {
     @Generated
     public void setIp(double ip) {
         this.ip = ip;
+    }
+
+    @Generated
+    public void setOutsRecorded(int outsRecorded) {
+        this.outsRecorded = outsRecorded;
     }
 
     @Generated
