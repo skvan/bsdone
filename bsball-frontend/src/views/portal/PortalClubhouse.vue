@@ -919,10 +919,18 @@ function onNarrowCardChange(event) {
 }
 narrowCardQuery.addEventListener('change', onNarrowCardChange);
 // 扇形背景：固定两张 The Show 风格传奇卡，纯装饰不参与数据口径
-const fanLegendCards = [
-  { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: 'R投L打', teamName: 'LEGENDS', teamLogo: '', teamCrest: '★' },
-  { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: 'L投L打', teamName: 'LEGENDS', teamLogo: '', teamCrest: '★' }
-];
+// 队徽与主卡同源：叠卡底部露角处显示真实队徽，避免空区穿帮
+const fanLegendCards = computed(() => {
+  const team = {
+    teamName: cardFaceProps.value.teamName,
+    teamLogo: cardFaceProps.value.teamLogo,
+    teamCrest: cardFaceProps.value.teamCrest
+  };
+  return [
+    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: 'R投L打', ...team },
+    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: 'L投L打', ...team }
+  ];
+});
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
 // 手持扇形：桌面端主卡歪斜，放大飞入时顺势转正
 const heroTiltDeg = computed(() => (isNarrowCard.value ? 0 : -14));
@@ -2699,8 +2707,8 @@ onBeforeUnmount(() => {
 .card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; pointer-events: none; }
 .card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
 .card-stack { position: absolute; inset: 0; pointer-events: none; transform-origin: 50% 100%; }
-.card-stack.one { transform: rotate(7deg); filter: brightness(.9); }
-.card-stack.two { transform: rotate(17deg); filter: brightness(.78); }
+.card-stack.one { transform: rotate(-1deg); filter: brightness(.9); }
+.card-stack.two { transform: rotate(12deg); filter: brightness(.78); }
 .card-slot > .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; transition: transform 220ms ease-out; pointer-events: auto; cursor: zoom-in; }
 .card-slot > .pcard:hover,
 .card-slot:focus-visible > .pcard { transform: rotate(var(--hero-tilt, 0deg)) translateY(-6px); }
