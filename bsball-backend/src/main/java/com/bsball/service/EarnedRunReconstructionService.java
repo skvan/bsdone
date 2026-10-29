@@ -311,12 +311,13 @@ public class EarnedRunReconstructionService {
         Map<Long, EarnedRunPlayEntity> playById = playRepository
                 .findByTenantIdAndGameId(tenantId, gameId).stream()
                 .collect(Collectors.toMap(EarnedRunPlayEntity::getId, p -> p, (a, b) -> a));
+        List<EarnedRunDecisionEntity> decisions =
+                decisionRepository.findByTenantIdAndGameId(tenantId, gameId);
+        Map<Long, String> playerNames = loadPlayerNames(decisions);
 
-        return decisionRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
+        return decisions.stream()
                 .map(d -> {
                     EarnedRunPlayEntity play = playById.get(d.getPlayId());
-                    String runnerName = resolvePlayerName(d.getRunnerId());
-                    String pitcherName = resolvePlayerName(d.getResponsiblePitcherId());
                     return new EarnedRunDecisionListDTO(
                             d.getId(),
                             d.getPlayId(),
@@ -324,11 +325,11 @@ public class EarnedRunReconstructionService {
                             play != null ? play.getHalf() : null,
                             play != null ? play.getSequence() : null,
                             d.getRunnerId(),
-                            runnerName,
+                            resolvePlayerName(playerNames, d.getRunnerId()),
                             d.getResponsiblePitcherId(),
-                            pitcherName,
+                            resolvePlayerName(playerNames, d.getResponsiblePitcherId()),
                             d.getReachedBasePitcherId(),
-                            resolvePlayerName(d.getReachedBasePitcherId()),
+                            resolvePlayerName(playerNames, d.getReachedBasePitcherId()),
                             d.getEarnedStatus(),
                             d.getUnearnedReason(),
                             d.getRunnerOrigin(),
@@ -336,24 +337,44 @@ public class EarnedRunReconstructionService {
                             d.getOverriddenAt());
                 })
                 .sorted((a, b) -> {
-                    int ia = a.inning() != null ? a.inning() : 0;
-                    int ib = b.inning() != null ? b.inning() : 0;
+                    int ia = a.inning() != null ? a.inning() : Integer.MAX_VALUE;
+                    int ib = b.inning() != null ? b.inning() : Integer.MAX_VALUE;
                     if (ia != ib) return Integer.compare(ia, ib);
                     int ha = "top".equals(a.half()) ? 0 : 1;
                     int hb = "top".equals(b.half()) ? 0 : 1;
                     if (ha != hb) return Integer.compare(ha, hb);
-                    int sa = a.sequence() != null ? a.sequence() : 0;
-                    int sb = b.sequence() != null ? b.sequence() : 0;
+                    int sa = a.sequence() != null ? a.sequence() : Integer.MAX_VALUE;
+                    int sb = b.sequence() != null ? b.sequence() : Integer.MAX_VALUE;
                     return Integer.compare(sa, sb);
                 })
                 .toList();
     }
 
-    private String resolvePlayerName(Long playerId) {
+    /** 批次載入判定列涉及的球員名稱，避免逐列查詢。 */
+    private Map<Long, String> loadPlayerNames(List<EarnedRunDecisionEntity> decisions) {
+        Set<Long> playerIds = new HashSet<>();
+        for (EarnedRunDecisionEntity decision : decisions) {
+            addIfPresent(playerIds, decision.getRunnerId());
+            addIfPresent(playerIds, decision.getResponsiblePitcherId());
+            addIfPresent(playerIds, decision.getReachedBasePitcherId());
+        }
+        Map<Long, String> playerNames = new HashMap<>();
+        if (!playerIds.isEmpty()) {
+            for (Player player : playerRepository.findAllById(playerIds)) {
+                playerNames.put(player.getId(), player.getName());
+            }
+        }
+        return playerNames;
+    }
+
+    private static void addIfPresent(Set<Long> ids, Long id) {
+        if (id != null) ids.add(id);
+    }
+
+    private static String resolvePlayerName(Map<Long, String> playerNames, Long playerId) {
         if (playerId == null) return null;
-        return playerRepository.findById(playerId)
-                .map(Player::getName)
-                .orElse("#" + playerId);
+        String name = playerNames.get(playerId);
+        return name != null ? name : "#" + playerId;
     }
 
     // ─── §11 結算驗證 ───────────────────────────────────────────────────────────

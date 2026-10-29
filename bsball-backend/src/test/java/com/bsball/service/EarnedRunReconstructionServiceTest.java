@@ -25,7 +25,6 @@ import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.ScoringRunner;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -348,14 +347,20 @@ class EarnedRunReconstructionServiceTest {
         decision.setReachedBasePitcherId(701L);
         decision.setRunnerOrigin("ERROR");
         decision.setOverriddenBy(9L);
-        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(decision));
-        when(playerRepository.findById(55L)).thenReturn(Optional.of(player("跑者甲")));
-        when(playerRepository.findById(700L)).thenReturn(Optional.of(player("投手乙")));
-        when(playerRepository.findById(701L)).thenReturn(Optional.of(player("上垒投手丙")));
+        EarnedRunDecisionEntity orphan = decision(700L, "EARNED");
+        orphan.setId(12L);
+        orphan.setPlayId(999L);
+        orphan.setRunnerId(56L);
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(orphan, decision));
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(55L, "跑者甲"), player(700L, "投手乙"), player(701L, "上垒投手丙")));
 
         List<EarnedRunDecisionListDTO> rows = service.listDecisions(1L, 20L);
 
-        assertEquals(1, rows.size());
+        assertEquals(2, rows.size());
+        assertEquals(11L, rows.get(0).decisionId(), "有半局信息的行排在前面");
+        assertNull(rows.get(1).inning(), "找不到 play 的行排最后");
         EarnedRunDecisionListDTO row = rows.get(0);
         assertEquals(11L, row.decisionId());
         assertEquals(3, row.inning());
@@ -368,8 +373,9 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(9L, row.overriddenBy());
     }
 
-    private Player player(String name) {
+    private Player player(long id, String name) {
         Player player = new Player();
+        player.setId(id);
         player.setName(name);
         return player;
     }
