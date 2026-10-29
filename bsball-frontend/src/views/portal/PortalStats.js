@@ -35,6 +35,7 @@ import { collectCascadeKeys as Tt } from '../../components/portal/statsEventCasc
 import { resolveCascadeRows as Ka } from '../../components/portal/statsEventCascade.js';
 import { createCascadeState as I } from '../../components/portal/statsEventCascade.js';
 import { filterCascadeRows as Qa } from '../../components/portal/statsEventCascade.js';
+import PortalFieldingPositions from './PortalFieldingPositions.vue';
 import '../../styles/legacy/portal-stats.css';
 var ha=["tab","years","eventIds","teamIds","position","homeAway","gameMode","player","scope","sort","order","row","rank","col","page","pageSize","hscroll"],_n=new Set(["batRow","pitRow","fldRow","stdRow","batCol","pitCol","fldCol","batRank","pitRank","fldRank","stdPage","batPage","pitPage","fldPage","batSort","batOrder","pitSort","pitOrder","fldSort","fldOrder"]),bn=new Set(["gp","pa","ab","r","h","doubles","triples","hr","gdp","sh","sf","insideParkHr","rbi","bb","ibb","hbp","io","so","sb","cs","avg","obp","slg","ops","tb"]),wn=new Set(["w","l","era","gp","gs","cg","sv","svo","ip","pitchH","pitchDoubles","pitchTriples","pitchR","er","unearnedR","pendingR","pitchHr","pitchInsideParkHr","pitchSh","pitchSf","pitchHbp","pitchBb","pitchIbb","pitchIo","pitchSo","whip","pitchPa","pitchBf","np"]),kn=new Set(["gp","gs","inn","tc","po","a","e","dp","pb","catcherCs","catcherSb","tcPct"]),Qe={
   prop:"avg",order:"descending"
@@ -344,7 +345,7 @@ var En={
       try{
         T.value=(Array.isArray(e.scope)?e.scope[0]:e.scope)==="team"?"team":"player";
         const t=Array.isArray(e.tab)?e.tab[0]:e.tab;
-        t==="standings"||t==="pitching"||t==="batting"||t==="fielding"?T.value==="player"&&t==="standings"?m.value="pitching":m.value=t:m.value=T.value==="team"?"standings":"pitching",X.value=Pn(e.years);
+        t==="standings"||t==="pitching"||t==="batting"||t==="fielding"||t==="fieldingPositions"?T.value==="player"&&t==="standings"?m.value="pitching":m.value=t:m.value=T.value==="team"?"standings":"pitching",X.value=Pn(e.years);
         const l=Ya(e.eventIds),b=Ya(e.teamIds);
         V.value=l,$.value=b;
         const f=Array.isArray(e.position)?e.position[0]:e.position;
@@ -398,7 +399,7 @@ var En={
     function al(){
       Da(),U(),h();
       const e=m.value;
-      e==="batting"||e==="pitching"||e==="fielding"?M():qt()
+      e==="batting"||e==="pitching"||e==="fielding"?M():e==="standings"&&qt()
     }
     function ll(){
       T.value==="player"&&m.value==="standings"&&(m.value="pitching"),T.value==="team"&&(m.value="standings",ee.value="",ue.value="",Ae.value=""),L.value=1,C.value=1,E.value=1,U(),h(),M()
@@ -1071,6 +1072,9 @@ var En={
         ,null,8,["label"]),s(S,{
           label:i(o)("stats.tabFielding"),name:"fielding"
         }
+        ,null,8,["label"]),s(S,{
+          label:i(o)("stats.tabFieldingPositions"),name:"fieldingPositions"
+        }
         ,null,8,["label"])]),_:1
       }
       ,8,["modelValue"]),m.value==="standings"?bt((d(),A("div",{
@@ -1451,7 +1455,7 @@ var En={
       ,[s(Ve,{
         "current-page":E.value,"onUpdate:currentPage":t[15]||(t[15]=a=>E.value=a),"page-size":_.value,"onUpdate:pageSize":t[16]||(t[16]=a=>_.value=a),"page-sizes":i(wt),total:ve.value,layout:pt.value,"pager-count":gt.value,size:vt.value,background:"",onCurrentChange:Zt,onSizeChange:Jt
       }
-      ,null,8,["current-page","page-size","page-sizes","total","layout","pager-count","size"])],2)],8,ni)),[[Ke,q.value]]):ge("",!0),m.value==="batting"||m.value==="pitching"||m.value==="fielding"?(d(),x(Ge,{
+      ,null,8,["current-page","page-size","page-sizes","total","layout","pager-count","size"])],2)],8,ni)),[[Ke,q.value]]):m.value==="fieldingPositions"?(d(),x(PortalFieldingPositions,{key:5,years:X.value,eventIds:V.value,teamIds:$.value,position:T.value==="team"?"":ee.value,homeAway:T.value==="team"?"":ue.value,gameMode:te.value,scope:T.value,playerName:T.value==="team"?"":Ae.value},null,8,["years","eventIds","teamIds","position","homeAway","gameMode","scope","playerName"])):ge("",!0),m.value==="batting"||m.value==="pitching"||m.value==="fielding"?(d(),x(Ge,{
         key:4,visible:j.value,placement:"left",width:220,trigger:"manual","popper-class":"field-settings-guide"
       }
       ,{

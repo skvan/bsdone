@@ -1,20 +1,25 @@
 package com.bsball.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bsball.common.PageResult;
 import com.bsball.config.TenantProperties;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.mapper.PlayerStatsMapper;
 import com.bsball.mapper.StatsLeadersMapper;
 import com.bsball.repository.TeamRepository;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -154,5 +159,110 @@ class StatsServiceLeaderOrderByTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
                 orderBy.capture(), anyInt(), anyLong());
         return orderBy.getValue();
+    }
+
+    @Test
+    @DisplayName("按位置守备榜默认按 INN（outs）降序，不回退球员守备/打击排序")
+    void fieldingPositionsDefaultSortByInnings() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, 9, 1, 20, null, null);
+
+        ArgumentCaptor<String> orderBy = ArgumentCaptor.forClass(String.class);
+        verify(statsLeadersMapper).selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                orderBy.capture(), anyInt(), anyLong());
+        assertTrue(orderBy.getValue().contains("q.outs DESC"), orderBy.getValue());
+        assertFalse(orderBy.getValue().contains("q.tc"), orderBy.getValue());
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：outs 换算棒球局数并保留位置字段")
+    void fieldingPositionsMapOutsToInnings() {
+        Map<String, Object> row = new HashMap<>();
+        row.put("playerId", Long.valueOf(108L));
+        row.put("playerName", "中外野");
+        row.put("teamId", Long.valueOf(1L));
+        row.put("teamName", "主队");
+        row.put("position", "CF");
+        row.put("gp", Integer.valueOf(5));
+        row.put("gs", Integer.valueOf(4));
+        row.put("outs", Integer.valueOf(10));
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of(row));
+
+        Map<String, Object> out = service.getFieldingPositionLeaders(null, null, null, null, "中外", "CF", null, null, null, 1, 20, null, null).getList().get(0);
+
+        assertEquals("CF", out.get("position"));
+        assertEquals(5, out.get("gp"));
+        assertEquals(4, out.get("gs"));
+        assertEquals(3.1D, ((Number)out.get("inn")).doubleValue(), 0.0001D);
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：minOuts 缺省 9，并回传 meta.minOuts")
+    void fieldingPositionsDefaultMinOuts() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        PageResult<Map<String, Object>> page =
+                service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, null, 1, 20, null, null);
+
+        ArgumentCaptor<Integer> minOuts = ArgumentCaptor.forClass(Integer.class);
+        verify(statsLeadersMapper).countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), minOuts.capture());
+        assertEquals(9, minOuts.getValue());
+        assertEquals(9, page.getMeta().get("minOuts"));
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：minOuts 越界钳制到 0..999，非法排序回落局数降序")
+    void fieldingPositionsClampMinOutsAndRejectUnknownSort() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, -5, 1, 20, "avg", "asc");
+        service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, 5000, 1, 20, null, null);
+
+        ArgumentCaptor<Integer> minOuts = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<String> orderBy = ArgumentCaptor.forClass(String.class);
+        verify(statsLeadersMapper, times(2)).countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), minOuts.capture());
+        verify(statsLeadersMapper, times(2)).selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                orderBy.capture(), anyInt(), anyLong());
+        assertEquals(List.of(0, 999), minOuts.getAllValues());
+        assertTrue(orderBy.getAllValues().get(0).contains("q.outs DESC"), orderBy.getAllValues().get(0));
+        assertTrue(orderBy.getAllValues().get(1).contains("q.outs DESC"), orderBy.getAllValues().get(1));
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：homeAway 归一化后传给 Mapper")
+    void fieldingPositionsNormalizeHomeAway() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        service.getFieldingPositionLeaders(null, null, null, null, null, "CF", "AWAY", null, null, 1, 20, null, null);
+
+        ArgumentCaptor<String> homeAway = ArgumentCaptor.forClass(String.class);
+        verify(statsLeadersMapper).countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), homeAway.capture(), any(), any());
+        assertEquals("away", homeAway.getValue());
     }
 }

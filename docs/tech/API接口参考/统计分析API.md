@@ -127,6 +127,18 @@ MapRows --> Return["返回PageResult"]
 - 支持按OPS/ERA/TC_PCT等默认指标排序，允许在白名单内自定义排序字段
 - 返回结构与个人排行榜一致
 
+### 按位置守备统计接口
+- 路径与方法：GET /stats/leaders/fielding-positions
+- 数据来源：`bs_game_fielding_pos_stat`（save-live 全量替换写入的逐位置守备片段），按 球员×球队×位置 聚合（球队取该场守备球队 `f.team_id`，赛季中转队不合并）
+- 关键参数
+  - position（可选）：守备位置码（P/C/1B…LF/RF，区分大小写，与 save-live 写入的大写位置码一致；OF/IF/DH 无对应逐位置行），不传为全部位置
+  - homeAway（可选）：home/away，按 `f.team_id` 与比赛主客队比较
+  - minOuts（可选，默认 9）：资格线，按 `SUM(outs) >= minOuts` 过滤；传 0 关闭资格线
+  - 其余筛选（年份/赛事/球队/比赛模式/关键字）与个人排行榜一致
+- 返回行字段：playerId、playerName、teamId、teamName、position、gp（该位置出场场次）、gs（该位置先发场次）、inn（局数，3 出局=1.0 口径）；不返回原始 outs
+- 排序白名单：gp/gs/inn（默认 `SUM(outs) DESC`，即局数降序）；非法字段回落默认
+- 返回 meta 含 `minOuts`，便于前端展示资格线
+
 ### 积分榜接口
 - 路径与方法：GET /stats/standings
 - 逻辑要点
@@ -235,6 +247,8 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - GET /stats/leaders/team-batting?years=2024&gameMode=BASEBALL
   - GET /stats/leaders/team-pitching?years=2024&gameMode=BASEBALL
   - GET /stats/leaders/team-fielding?years=2024&gameMode=BASEBALL
+- 按位置守备榜
+  - GET /stats/leaders/fielding-positions?years=2024&position=C&minOuts=9&page=1&pageSize=20&sortProp=inn&sortOrder=desc
 - 积分榜
   - GET /stats/standings?eventId=123&years=2024&gameMode=BASEBALL
 - 明星榜单

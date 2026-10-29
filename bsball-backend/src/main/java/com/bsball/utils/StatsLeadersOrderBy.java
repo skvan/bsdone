@@ -18,6 +18,7 @@ public final class StatsLeadersOrderBy {
     private static final Set<String> PITCHING = Set.of("w", "l", "era", "gp", "gs", "cg", "sv", "svo", "ip", "pitchH", "pitchDoubles", "pitchTriples", "pitchR", "er", "unearnedR", "pendingR", "pitchHr", "pitchInsideParkHr", "pitchSh", "pitchSf", "pitchHbp", "pitchBb", "pitchIbb", "pitchIo", "pitchSo", "whip", "pitchPa", "pitchBf", "np");
     private static final Set<String> FIELDING = Set.of("gp", "gs", "inn", "tc", "po", "a", "e", "dp",
             "pb", "catcherCs", "catcherSb", "tcPct");
+    private static final Set<String> FIELDING_POSITIONS = Set.of("gp", "gs", "inn");
 
     private StatsLeadersOrderBy() {
     }
@@ -56,6 +57,17 @@ public final class StatsLeadersOrderBy {
             default -> "q." + p + " " + d;
         };
         return primary + ", q.gp DESC, q.playerid ASC";
+    }
+
+    public static String fieldingPositions(String sortProp, String sortOrder) {
+        String p = sortProp == null ? "inn" : sortProp.trim();
+        String d = StatsLeadersOrderBy.dir((String)sortOrder);
+        if (!FIELDING_POSITIONS.contains(p)) {
+            p = "inn";
+            d = "DESC";
+        }
+        String col = "inn".equals(p) ? "outs" : p;
+        return "q." + col + " " + d + ", q.gp DESC, q.playerid ASC, q.position ASC, q.teamid ASC";
     }
 
     public static String fielding(String sortProp, String sortOrder) {
