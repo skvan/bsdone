@@ -983,7 +983,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1),logBatterOverride=x(null);
   function applyEarnedRunTotals(result){
     const absolute=result?.pitcherAbsoluteTotals;
     if(!absolute)return;
@@ -1128,7 +1128,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,logBatterOverride,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -1168,7 +1168,7 @@ function LgPick(options,title,message){
 function qd(){
   const u=Bu();
   function f(S){
-    const R=u.currentBatter;
+    const R=u.logBatterOverride??u.currentBatter;
     if(!R)return S;
     const F=`${R.name}:`,N=S.indexOf(F);
     if(N===-1)return S;
@@ -5908,7 +5908,20 @@ var sg={
       const e=kt.value;
       if(!e)return;
       const t=at.value.map(a=>a.outcome==="out"&&a.outReason?"out_"+a.outReason:a.outcome);
-      qe.value=!1,kt.value=null,at.value=[],St.value=0,await pp(e,t),fn.value=!1,cn.value=null
+      qe.value=!1,at.value=[],St.value=0,fn.value=!1,cn.value=null;
+      // #457：得分确认浮层延后落定时，打者索引可能已推进；写日志前临时切回浮层打开时的打者，
+      // 让 addLog 的「第N棒」反查标注归回原打席（PBP 顺序问题在写入侧修，不改观赛端分组）。
+      const abBatter=e.batter;
+      if(abBatter){
+        try{
+          f.logBatterOverride=abBatter,kt.value=null,await pp(e,t)
+        }
+        finally{
+          f.logBatterOverride=null
+        }
+        
+      }
+      else kt.value=null,await pp(e,t)
     }
     function $l(e,t,a,s){
       const r=$s(t,l.runners);
@@ -5918,7 +5931,7 @@ var sg={
       gt();
       const g=(e==="H2"||e==="H3")&&!!(l.runners[1]&&l.runners[2]&&l.runners[3]);
       kt.value={
-        kind:"hit",playType:e,bases:t,fielders:a,opts:s
+        kind:"hit",playType:e,bases:t,fielders:a,opts:s,batter:be.value
       }
       ,at.value=r.map(b=>({
         runner:b.runner,outcome:"safe",allowViolation:g?!1:b.hasBehindOccupied,allowDidntScore:g?!1:!b.hasBehindOccupied
@@ -5935,7 +5948,7 @@ var sg={
       const r=be.value;
       if(!r)return!1;
       gt(),kt.value={
-        kind:"walk",playType:e,fielders:t,opts:a
+        kind:"walk",playType:e,fielders:t,opts:a,batter:be.value
       }
       ,at.value=s.map(g=>({
         runner:g,outcome:"safe",allowViolation:!0,allowDidntScore:!1
@@ -5949,7 +5962,7 @@ var sg={
       if(r.length===0)return!1;
       const p=be.value;
       return p?(gt(),kt.value={
-        kind:"fchoice",playType:e,outsToAdd:t,fielders:a,opts:s
+        kind:"fchoice",playType:e,outsToAdd:t,fielders:a,opts:s,batter:be.value
       }
       ,at.value=r.map(g=>({
         runner:g.runner,outcome:"safe",allowViolation:!1,allowDidntScore:!1
