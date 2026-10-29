@@ -925,7 +925,7 @@ const fanLegendCards = [
 ];
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
 // 手持扇形：桌面端主卡歪斜，放大飞入时顺势转正
-const heroTiltDeg = computed(() => (isNarrowCard.value ? 0 : -8));
+const heroTiltDeg = computed(() => (isNarrowCard.value ? 0 : -14));
 
 function calcZoomScale() {
   const scale = Math.min((window.innerHeight - 140) / CARD_BASE_HEIGHT, (window.innerWidth - 56) / CARD_BASE_WIDTH, 1.8);
@@ -2696,13 +2696,14 @@ onBeforeUnmount(() => {
 .team-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 
 .card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; }
-.card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; cursor: zoom-in; transition: transform 220ms ease-out; }
-.card-slot:hover { transform: translateY(-5px); }
+.card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; pointer-events: none; }
 .card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
 .card-stack { position: absolute; inset: 0; pointer-events: none; transform-origin: 50% 100%; }
-.card-stack.one { transform: rotate(4deg); filter: brightness(.9); }
-.card-stack.two { transform: rotate(16deg); filter: brightness(.78); }
-.card-slot .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; }
+.card-stack.one { transform: rotate(7deg); filter: brightness(.9); }
+.card-stack.two { transform: rotate(17deg); filter: brightness(.78); }
+.card-slot > .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; transition: transform 220ms ease-out; pointer-events: auto; cursor: zoom-in; }
+.card-slot > .pcard:hover,
+.card-slot:focus-visible > .pcard { transform: rotate(var(--hero-tilt, 0deg)) translateY(-6px); }
 .pcard-zoom { position: fixed; inset: 0; z-index: 3000; }
 .pcard-zoom-backdrop { position: absolute; inset: 0; background: rgba(4, 8, 14, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; transition: opacity 320ms ease-out; }
 .pcard-zoom-backdrop.on { opacity: 1; }
