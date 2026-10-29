@@ -8148,8 +8148,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const id=Number(runner?.responsiblePitcherId);
       if(!Number.isInteger(id)||id<=0)return fallback;
       if(Number(fallback?.id)===id)return fallback;
-      for(const list of[Te.value,Ie.value,I.value,le.value]){
-        const pitcher=list.find(player=>Number(player?.id)===id);
+      // 责任投手可能已被换下（现存于替补/名单）：在真实球员数组里按 id 找，
+      // 不能用 unavail/lineupStarterIds 这类 id 数组（DH 池 id 为 null 时会直接抛错）
+      const lists=[q.value,X.value,ye.value,ae.value];
+      xe.value&&lists.push([xe.value]);
+      De.value&&lists.push([De.value]);
+      Array.isArray(Sn.value)&&lists.push(Sn.value);
+      Array.isArray(Ue.value)&&lists.push(Ue.value);
+      for(const list of lists){
+        const pitcher=Array.isArray(list)?list.find(player=>Number(player?.id)===id):null;
         if(pitcher)return pitcher
       }
       return fallback
