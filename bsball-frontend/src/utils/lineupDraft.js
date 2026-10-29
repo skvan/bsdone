@@ -48,6 +48,19 @@ export function buildLineupDraft(input) {
   };
 }
 
+/** 赛前补齐替补席：全队名册中未进打序（含仅守备投手）、且未被标记不可上的球员 id */
+export function buildFullBenchIds(roster, rows, blockedIds, extraStarterIds) {
+  const blocked = new Set((Array.isArray(blockedIds) ? blockedIds : []).map(String));
+  const starters = new Set(
+    [...(Array.isArray(rows) ? rows : []), ...(Array.isArray(extraStarterIds) ? extraStarterIds : [])]
+      .filter((p) => Number(p?.id ?? p) > 0)
+      .map((p) => String(p?.id ?? p))
+  );
+  return (Array.isArray(roster) ? roster : [])
+    .filter((p) => !starters.has(String(p.id)) && !blocked.has(String(p.id)))
+    .map((p) => String(p.id));
+}
+
 /** 解析远端快照字符串：非 v:1 或非法 JSON 一律返回 null（不抛错） */
 export function parseLineupDraft(raw) {
   if (typeof raw !== 'string' || !raw.trim()) return null;
