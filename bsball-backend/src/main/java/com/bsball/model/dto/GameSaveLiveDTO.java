@@ -19,6 +19,7 @@ public class GameSaveLiveDTO {
     private GameUpdatePart game;
     private List<GamePlayerStatPart> stats;
     private List<SubstitutionPart> substitutions;
+    private List<FieldingPositionPart> fieldingPositions;
 
     @Generated
     public GameSaveLiveDTO() {
@@ -52,6 +53,14 @@ public class GameSaveLiveDTO {
     @Generated
     public void setSubstitutions(List<SubstitutionPart> substitutions) {
         this.substitutions = substitutions;
+    }
+
+    public List<FieldingPositionPart> getFieldingPositions() {
+        return this.fieldingPositions;
+    }
+
+    public void setFieldingPositions(List<FieldingPositionPart> fieldingPositions) {
+        this.fieldingPositions = fieldingPositions;
     }
 
     @Generated
@@ -1458,6 +1467,54 @@ public class GameSaveLiveDTO {
             return "GameSaveLiveDTO.GameUpdatePart(homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + String.valueOf(this.getHomeScoreByInning()) + ", awayScoreByInning=" + String.valueOf(this.getAwayScoreByInning()) + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", status=" + this.getStatus() + ", gameEndTime=" + this.getGameEndTime() + ", inning=" + this.getInning() + ", topBottom=" + this.getTopBottom() + ")";
         }
     }
+    public static class FieldingPositionPart {
+        private Long teamId;
+        private Long playerId;
+        private String position;
+        private Integer outs;
+        private Boolean fieldingGs;
+
+        public Long getTeamId() {
+            return teamId;
+        }
+
+        public void setTeamId(Long teamId) {
+            this.teamId = teamId;
+        }
+
+        public Long getPlayerId() {
+            return playerId;
+        }
+
+        public void setPlayerId(Long playerId) {
+            this.playerId = playerId;
+        }
+
+        public String getPosition() {
+            return position;
+        }
+
+        public void setPosition(String position) {
+            this.position = position;
+        }
+
+        public Integer getOuts() {
+            return outs;
+        }
+
+        public void setOuts(Integer outs) {
+            this.outs = outs;
+        }
+
+        public Boolean getFieldingGs() {
+            return fieldingGs;
+        }
+
+        public void setFieldingGs(Boolean fieldingGs) {
+            this.fieldingGs = fieldingGs;
+        }
+    }
+
 }
 
 

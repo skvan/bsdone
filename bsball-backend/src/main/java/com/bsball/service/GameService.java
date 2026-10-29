@@ -24,6 +24,8 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -65,6 +67,7 @@ public class GameService {
     private final GameRepository gameRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
     private final EventRepository eventRepository;
     private final StadiumRepository stadiumRepository;
     private final AccountScopeService accountScopeService;
@@ -333,6 +336,7 @@ public class GameService {
             }
         }
         this.saveSubstitutionEvents(game, dto.getSubstitutions());
+        this.saveFieldingPositions(game, dto.getFieldingPositions());
         if ("final".equalsIgnoreCase(game.getStatus())) {
             this.logSettlementValidation(gameId, game.getTenantId());
         }
@@ -354,6 +358,90 @@ public class GameService {
             log.warn("[settlement-validation] gameId={} tenant={} failed: {}",
                     gameId, tenantId, ex.getMessage());
         }
+    }
+
+    /** 逐位置守备：请求带 fieldingPositions 时视为该场全量替换，并回写球员级 def_inn。 */
+    private void saveFieldingPositions(Game game, List<GameSaveLiveDTO.FieldingPositionPart> parts) {
+        if (parts == null) {
+            return;
+        }
+        if (parts.size() > 200) {
+            throw new BusinessException(400, "逐位置守备数据过多");
+        }
+        List<GameFieldingPosStat> rows = new ArrayList<>();
+        Set<String> keys = new LinkedHashSet<>();
+        List<EventRegistrationService.StatsRef> refs = new ArrayList<>();
+        for (GameSaveLiveDTO.FieldingPositionPart part : parts) {
+            if (part == null) continue;
+            GameFieldingPosStat row = toFieldingPosStat(game, part, keys);
+            rows.add(row);
+            refs.add(new EventRegistrationService.StatsRef(row.getTeamId(), row.getPlayerId()));
+        }
+        if (!refs.isEmpty()) {
+            this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), game.getId(), refs);
+        }
+        this.gameFieldingPosStatRepository.deleteByGameId(game.getId());
+        this.gameFieldingPosStatRepository.flush();
+        if (rows.isEmpty()) {
+            return;
+        }
+        this.gameFieldingPosStatRepository.saveAll(rows);
+        this.applyFieldingInningsTotals(game.getId(), rows);
+    }
+
+    /** 校验单行并转实体；同队同球员同守位只允许一行。 */
+    private static GameFieldingPosStat toFieldingPosStat(Game game, GameSaveLiveDTO.FieldingPositionPart part, Set<String> keys) {
+        Long teamId = part.getTeamId();
+        Long playerId = part.getPlayerId();
+        if (!Objects.equals(teamId, game.getHomeTeamId()) && !Objects.equals(teamId, game.getAwayTeamId())) {
+            throw new BusinessException(400, "守备球队不属于本场比赛");
+        }
+        if (playerId == null || playerId <= 0) {
+            throw new BusinessException(400, "逐位置守备缺少球员");
+        }
+        String position = normalizePosition(part.getPosition());
+        if (position == null || "DH".equals(position) || "PH".equals(position) || "EP".equals(position)) {
+            throw new BusinessException(400, "逐位置守备位置无效：" + part.getPosition());
+        }
+        Integer outs = part.getOuts();
+        if (outs == null || outs < 0 || outs > 999) {
+            throw new BusinessException(400, "逐位置守备出局数无效");
+        }
+        if (!keys.add(teamId + "_" + playerId + "_" + position)) {
+            throw new BusinessException(400, "逐位置守备存在重复行");
+        }
+        GameFieldingPosStat row = new GameFieldingPosStat();
+        row.setTenantId(game.getTenantId());
+        row.setGameId(game.getId());
+        row.setTeamId(teamId);
+        row.setPlayerId(playerId);
+        row.setPosition(position);
+        row.setOuts(outs);
+        row.setFieldingGs(Boolean.TRUE.equals(part.getFieldingGs()));
+        row.setSource("LIVE");
+        return row;
+    }
+
+    /** 由逐位置出局数汇总回写球员级 def_inn（10 outs → 3.1）。 */
+    private void applyFieldingInningsTotals(Long gameId, List<GameFieldingPosStat> rows) {
+        Map<String, Integer> totals = new HashMap<>();
+        for (GameFieldingPosStat row : rows) {
+            totals.merge(row.getTeamId() + "_" + row.getPlayerId(), row.getOuts(), Integer::sum);
+        }
+        for (GamePlayerStat stat : this.gamePlayerStatRepository.findByGameId(gameId)) {
+            Integer outs = totals.get(stat.getTeamId() + "_" + stat.getPlayerId());
+            if (outs == null) continue;
+            stat.setDefInn((outs / 3) + (outs % 3) / 10.0);
+            this.gamePlayerStatRepository.save(stat);
+        }
+    }
+
+    /** 比赛维度逐位置守备数据（读取沿用比赛数据范围校验）。 */
+    public List<GameFieldingPosStat> listFieldingPositions(Long gameId) {
+        if (this.get(gameId) == null) {
+            throw new BusinessException(403, "无权查看该比赛");
+        }
+        return this.gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscPositionAsc(gameId);
     }
 
     /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */
@@ -1249,7 +1337,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameSubstitutionEventRepository = gameSubstitutionEventRepository;
@@ -1261,6 +1349,7 @@ public class GameService {
         this.tenantQueryPolicyService = tenantQueryPolicyService;
         this.earnedRunReconstructionService = earnedRunReconstructionService;
         this.eventRegistrationService = eventRegistrationService;
+        this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
     }
 }
 

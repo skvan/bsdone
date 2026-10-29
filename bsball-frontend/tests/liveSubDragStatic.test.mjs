@@ -67,6 +67,8 @@ test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落�
   assert.ok(src.includes('ensureSubstitutedOutBench(side,before[side],diffs[index])'), '换人提交后未调用换下球员回落');
   assert.ok(src.includes('该球员已换下，不可再上场'), '缺少已换下球员拦截提示');
   assert.ok(!src.includes('"show-append-button":!0'), '追加新球员入口必须移除');
+  assert.ok(src.includes('fieldingPositionsBaseline') && src.includes('awayStarterFpId'), '逐位置基线/开局投手未持久化');
+  assert.ok(src.includes('hasHistoricalFieldingInnings('), 'Do 重建路径未做逐位置基线可信判定');
   assert.ok(src.includes('if(!substitutionMode.value||l.flow||liveBenchDragSession'), '守备员拖拽未加模式门禁');
   assert.ok(src.includes('benchRects'), '拖拽布局未收集替补席矩形');
   assert.ok(src.includes('action==="benchSwap"'), 'applyDrop 未处理场上→替补席');
