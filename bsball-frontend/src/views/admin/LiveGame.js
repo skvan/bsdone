@@ -6259,7 +6259,7 @@ var sg={
         t>=1&&t<=3?m(LgAdvance({reasonCn:s,runner:e,from:t,to:t})):m(`跑者 ${logPlayerName(e)} 留在垒上`),Qa(!1);
         return
       }
-      t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]&&ds(a,{origin:g}),l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
+      t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]&&ds(a,{origin:g,reasonCn:s}),l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
     }
     function fr(e){
       const t=[];
@@ -6287,7 +6287,7 @@ var sg={
       if(e.id==="safe_pb"&&!l.playPbCredited)l.playPbCredited=!0,paceCatcherStat("pb");
       const g=Se.value;
       if(e.id==="safe_wp"&&!l.playWpCredited){
-        l.playWpCredited=!0,g?.stats?.pitching&&(g.stats.pitching.wp=(g.stats.pitching.wp??0)+1)
+        l.playWpCredited=!0,g?.stats?.pitching&&(g.stats.pitching.wp=(g.stats.pitching.wp??0)+1),D(LgPitch({who:g?.name??"投手",kind:"wild_pitch"}))
       }
       // 同一 play 内先有暴投/捕逸时，承接推进走普通进垒并沿用 WP/PB 来源；
       // 只有前一次事件是失误时才需要选失误责任守备员（否则会产生幽灵失误日志与非自责分归因）。
@@ -9489,7 +9489,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt();
       const credited=credit&&creditFieldingError(r);
       const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
-      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]&&ds(e,{origin:"ERROR",runCause:"ERROR"}),l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
+      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]&&ds(e,{origin:"ERROR",runCause:"ERROR",reasonCn:t.advanceFeReasonCn??b}),l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
         playerId:g,from:a,to:e
       }
       ]),Qa(!1)
@@ -9521,9 +9521,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=e+1;
       if(a===4){
         t.stats.batting.r=(t.stats.batting.r??0)+1;
-        ls(1,{runner:t,pitcher:Se.value??void 0,origin:cause.origin??"NORMAL",runCause:cause.runCause})
+        ls(1,{runner:t,pitcher:Se.value??void 0,origin:cause.origin??"NORMAL",runCause:cause.runCause});
+        // 被前位跑者挤回本垒的得分同样要留日志，否则记分板有分、日志无分
+        cause.reasonCn&&D(LgAdvance({reasonCn:cause.reasonCn,runner:t,from:e,to:4}))
       }
-      else l.runners[a]&&ds(a,cause),l.runners[a]=t
+      else{
+        l.runners[a]&&ds(a,cause),l.runners[a]=t;
+        cause.reasonCn&&D(LgAdvance({reasonCn:cause.reasonCn,runner:t,from:e,to:a}))
+      }
     }
     function ms(){
       na(),clearChainVisual();
