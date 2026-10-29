@@ -6886,8 +6886,12 @@ var sg={
         
       }
       if(!V||b.some(U=>Number(U.id)===Number(y)))return b;
+      V.stats||(V.stats=Pt());
       const E={
-        ...JSON.parse(JSON.stringify(V)),position:"P"
+        ...JSON.parse(JSON.stringify(V)),position:"P",
+        // DH 仅守备投手是场上展示副本；stats 必须指向真实球员对象，
+        // 否则 PO/A/E 记在副本上，保存与快照都会丢失（滚地 1-3 投手丢助杀）
+        stats:V.stats
       };
       return jo([...b,E],N.value)
     }
@@ -8338,13 +8342,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=e.number!=null&&String(e.number).trim()!==""&&String(e.number)!=="-"?` #${e.number}`:"";
       return`${e.name??"球员"}${a} | ${t}`
     }
-    // P3 · #226：每出局累进——投手 pitching.ip（原口径）+ 守备全员 fielding.ip；DH 制下 Hn 内投手为深拷贝，故对活体显式补记并按引用去重
+    // P3 · #226：每出局累进——投手 pitching.ip（原口径）+ 守备全员 fielding.ip；DH 制下 Hn 内投手为展示副本，故对活体显式补记并按 stats 引用去重
     function Ipy(){
       const addIp=(o,key)=>{if(!o?.stats?.[key])return;o.stats[key].ip=LgAddOutToInnings(o.stats[key].ip)};
       const fieldingPositions=new Set(dd(N.value));
       addIp(Se.value,"pitching");
       addIp(Se.value,"fielding");
-      for(const m of LgActiveFielders(Hn.value,fieldingPositions,Nn))if(m!==Se.value)addIp(m,"fielding")
+      for(const m of LgActiveFielders(Hn.value,fieldingPositions,Nn))if(m.stats!==Se.value?.stats)addIp(m,"fielding")
     }
     // 守备局数对账（#388）：野手 IP 不可能超过该队已完成守备出局数。
     // 撤销/重开流程中断时曾出现「比赛状态已回退、野手 IP/PO 未回退」的混合快照；
