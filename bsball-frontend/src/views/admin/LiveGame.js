@@ -10047,6 +10047,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(tf.value,"warning");
         return
       }
+      // 换人模式需看清野手背号：清掉上一球残留的球图标/传球高亮/轨迹，避免遮挡
+      clearChainVisual();
       ensureSubstitutionStarters("away"),ensureSubstitutionStarters("home");
       substitutionModeBefore.value={
         away:captureSubstitutionTeam("away"),home:captureSubstitutionTeam("home"),runners:substitutionModeClone(l.runners)
