@@ -2707,9 +2707,9 @@ onBeforeUnmount(() => {
 .card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; pointer-events: none; }
 .card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
 .card-stack { position: absolute; inset: 0; pointer-events: none; transform-origin: 50% 100%; }
-.card-stack.one { transform: rotate(-1deg); filter: brightness(.9); }
-.card-stack.two { transform: rotate(12deg); filter: brightness(.78); }
-.card-slot > .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; transition: transform 220ms ease-out; pointer-events: auto; cursor: zoom-in; }
+.card-stack.one { transform: translateY(20px) rotate(-1deg); filter: brightness(.9); }
+.card-stack.two { transform: translateY(26px) rotate(12deg); filter: brightness(.78); }
+.card-slot > .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; transition: transform 220ms ease-out; pointer-events: auto; }
 .card-slot > .pcard:hover,
 .card-slot:focus-visible > .pcard { transform: rotate(var(--hero-tilt, 0deg)) translateY(-6px); }
 .pcard-zoom { position: fixed; inset: 0; z-index: 3000; }
