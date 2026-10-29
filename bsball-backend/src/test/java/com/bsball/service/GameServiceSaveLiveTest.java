@@ -1,8 +1,11 @@
 package com.bsball.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -114,6 +117,59 @@ class GameServiceSaveLiveTest {
     }
 
     @Test
+    @DisplayName("saveLive：status=final 时触发 §11 结算验证")
+    void saveLive_final_triggersSettlementValidation() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService)
+                .validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID));
+    }
+
+    @Test
+    @DisplayName("saveLive：非 final 场次不触发 §11 结算验证")
+    void saveLive_liveStatus_skipsSettlementValidation() {
+        lenient().when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("live");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService, never())
+                .validateSettlement(TENANT_ID, GAME_ID);
+    }
+
+    @Test
+    @DisplayName("saveLive：结算验证异常不影响保存")
+    void saveLive_settlementValidationFailure_doesNotBlockSave() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenThrow(new IllegalStateException("validation boom"));
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        assertDoesNotThrow(() -> gameService.saveLive(Long.valueOf(GAME_ID), dto));
+        verify(gameRepository).save(any(Game.class));
+    }
+
+    @Test
     @DisplayName("无引擎数据的 legacy 场次：saveLive 仍可写入客户端 er")
     void saveLive_legacy_writesClientEr() {
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
@@ -161,6 +217,7 @@ class GameServiceSaveLiveTest {
         part.setGs(Integer.valueOf(1));
         part.setFieldingGs(Integer.valueOf(1));
         part.setDefInn(Double.valueOf(6.1D));
+        part.setIp(Double.valueOf(2.2D));
         part.setDp(Integer.valueOf(1));
         part.setPb(Integer.valueOf(1));
         part.setCatcherSb(Integer.valueOf(2));
@@ -190,6 +247,7 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(1), pitcher.getPb());
         assertEquals(Integer.valueOf(2), pitcher.getCatcherSb());
         assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
+        assertEquals(Integer.valueOf(8), pitcher.getOutsRecorded(), "2.2 局 = 8 个出局");
     }
 
     @Test

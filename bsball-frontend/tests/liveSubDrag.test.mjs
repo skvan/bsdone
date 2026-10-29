@@ -28,22 +28,29 @@ const layout = {
 
 /* ---------------- buildLiveBenchItems ---------------- */
 
-test('棒球：过滤已换下不可再上场的球员', () => {
+test('棒球：已换下球员保留在替补席并标记 disabled', () => {
   const bench = [
     { id: 1, name: '甲', number: 5 },
     { id: 2, name: '乙', number: 7 },
   ];
-  assert.deepEqual(buildLiveBenchItems(bench, [2], 'BASEBALL'), [{ id: 1, name: '甲', number: 5 }]);
+  assert.deepEqual(buildLiveBenchItems(bench, [2], 'BASEBALL'), [
+    { id: 1, name: '甲', number: 5, disabled: false },
+    { id: 2, name: '乙', number: 7, disabled: true },
+  ]);
 });
 
-test('棒球：unavailable 与 bench 的 id 类型不一致（字符串/数字）仍能过滤', () => {
+test('棒球：unavailable 与 bench 的 id 类型不一致仍能标记', () => {
   const bench = [{ id: 2, name: '乙', number: 7 }];
-  assert.deepEqual(buildLiveBenchItems(bench, ['2'], 'BASEBALL'), []);
+  assert.deepEqual(buildLiveBenchItems(bench, ['2'], 'BASEBALL'), [
+    { id: 2, name: '乙', number: 7, disabled: true },
+  ]);
 });
 
 test('垒球：不过滤已换下球员（可再上场）', () => {
   const bench = [{ id: 1, name: '甲', number: 5 }];
-  assert.deepEqual(buildLiveBenchItems(bench, [1], 'SOFTBALL'), [{ id: 1, name: '甲', number: 5 }]);
+  assert.deepEqual(buildLiveBenchItems(bench, [1], 'SOFTBALL'), [
+    { id: 1, name: '甲', number: 5, disabled: false },
+  ]);
 });
 
 test('空/缺省输入安全', () => {

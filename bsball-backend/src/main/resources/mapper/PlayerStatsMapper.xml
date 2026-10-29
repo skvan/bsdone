@@ -30,6 +30,13 @@
             ELSE 0
         END)
     )</sql>
+    <!-- 优先读权威 outs_recorded；旧行缺值(0)且 ip>0 时回退按 ip 换算 -->
+    <sql id="outsRecordedPerRow">(
+        CASE WHEN COALESCE(s.outs_recorded, 0) &gt; 0 OR COALESCE(s.ip, 0) &lt;= 0
+             THEN COALESCE(s.outs_recorded, 0)
+             ELSE <include refid="ipToOutsFromIpCol"/>
+        END
+    )</sql>
     <!-- 单场守备局转出局数再聚合，与投球 IP 同理，避免 SUM(def_inn) 小数误加 -->
     <sql id="defInnToOutsFromCol">(
         FLOOR(COALESCE(s.def_inn, 0)) * 3 + (CASE
@@ -83,9 +90,10 @@
     <select id="selectPitchingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -207,9 +215,10 @@
     <select id="selectPitchingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -341,9 +350,10 @@
             e.name AS eventName,
             COALESCE(e.season, '') AS season,
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -501,7 +511,7 @@
             s.pa AS pa, s.ab AS ab, s.r AS r, s.h AS h, s.rbi AS rbi, s.hr AS hr, s.inside_park_hr AS insideParkHr, s.sb AS sb,
             s.bb_hp AS bbHp, s.so AS so, s.doubles AS doubles, s.triples AS triples, s.e AS e,
             s.gdp AS gdp, s.sh AS sh, s.sf AS sf, s.bb AS bb, s.ibb AS ibb, s.hbp AS hbp, s.io AS io, s.cs AS cs,
-            s.ip AS ip, s.er AS er, <include refid="unearnedRCol"/> AS unearnedR, <include refid="pendingRCol"/> AS pendingR,
+            s.ip AS ip, <include refid="outsRecordedPerRow"/> AS outsRecorded, s.er AS er, <include refid="unearnedRCol"/> AS unearnedR, <include refid="pendingRCol"/> AS pendingR,
             <include refid="pitchHCol"/> AS pitchH, s.pitch_doubles AS pitchDoubles, s.pitch_triples AS pitchTriples, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
             s.pitch_hr AS pitchHr, s.pitch_inside_park_hr AS pitchInsideParkHr, s.pitch_sh AS pitchSh, s.pitch_sf AS pitchSf, s.gs AS gs, s.svo AS svo, s.cg AS cg, s.pg AS pg,
             s.w AS w, s.l AS l, s.sv AS sv, s.hld AS hld, s.pitch_pa AS pitchPa, s.pitch_bf AS pitchBf,

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,12 +104,64 @@ class GamePlayerStatServiceEngineTest {
     }
 
     @Test
-    @DisplayName("引擎场次不能物理删除投手统计行")
-    void delete_engineManagedPitcher_rejected() {
+    @DisplayName("引擎场次不能删除仍有数据的投手行")
+    void delete_engineManagedPitcherWithData_rejected() {
         when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(row(3, 5, 1, 0)));
         when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
 
         assertThrows(BusinessException.class, () -> service.delete(ROW_ID));
+        verify(gamePlayerStatRepository, never()).deleteById(ROW_ID);
+    }
+
+    @Test
+    @DisplayName("引擎场次允许删除全零且无自责分判定的投手行")
+    void delete_engineManagedZeroPitcher_allowed() {
+        when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(row(0, 0, 0, 0)));
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
+        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(GAME_ID, PLAYER_ID))
+                .thenReturn(false);
+
+        service.delete(ROW_ID);
+
+        verify(gamePlayerStatRepository).deleteById(ROW_ID);
+    }
+
+    @Test
+    @DisplayName("引擎场次全零投手行仅残留隐藏 pitchPa 时允许删除")
+    void delete_engineManagedZeroPitcherWithPitchPaOnly_allowed() {
+        GamePlayerStat zero = row(0, 0, 0, 0);
+        zero.setPitchPa(Integer.valueOf(1));
+        when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(zero));
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
+        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(GAME_ID, PLAYER_ID))
+                .thenReturn(false);
+
+        service.delete(ROW_ID);
+
+        verify(gamePlayerStatRepository).deleteById(ROW_ID);
+    }
+
+    @Test
+    @DisplayName("引擎场次全零投手行若仍有自责分判定则拒绝删除")
+    void delete_engineManagedZeroPitcherWithDecisions_rejected() {
+        when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(row(0, 0, 0, 0)));
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
+        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(GAME_ID, PLAYER_ID))
+                .thenReturn(true);
+
+        assertThrows(BusinessException.class, () -> service.delete(ROW_ID));
+        verify(gamePlayerStatRepository, never()).deleteById(ROW_ID);
+    }
+
+    @Test
+    @DisplayName("legacy 场次投手行不受全零守卫影响")
+    void delete_legacyPitcherWithData_allowed() {
+        when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(row(3, 5, 1, 0)));
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(false);
+
+        service.delete(ROW_ID);
+
+        verify(gamePlayerStatRepository).deleteById(ROW_ID);
     }
 
     @Test

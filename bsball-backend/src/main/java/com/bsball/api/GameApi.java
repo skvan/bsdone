@@ -30,6 +30,7 @@ package com.bsball.api;
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.model.dto.GameResponseDTO;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -137,6 +138,12 @@ public class GameApi {
             @PathVariable Long id,
             @RequestBody EarnedRunHalfInningRequest body) {
         return Result.ok(this.gameService.reconstructEarnedRuns(id, body));
+    }
+
+
+    @GetMapping(value={"/{id}/earned-runs/decisions"})
+    public Result<List<EarnedRunDecisionListDTO>> listEarnedRunDecisions(@PathVariable Long id) {
+        return Result.ok(this.gameService.listEarnedRunDecisions(id));
     }
 
     @PutMapping(value={"/{id}/earned-runs/decisions/{decisionId}"})

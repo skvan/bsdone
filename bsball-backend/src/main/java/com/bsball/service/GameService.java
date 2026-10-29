@@ -9,6 +9,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -26,6 +27,7 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
+import com.bsball.utils.GamePlayerStatZeros;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -50,9 +52,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.bsball.utils.StatsFormatUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class GameService {
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
     private final GameRepository gameRepository;
@@ -326,6 +333,27 @@ public class GameService {
             }
         }
         this.saveSubstitutionEvents(game, dto.getSubstitutions());
+        if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.logSettlementValidation(gameId, game.getTenantId());
+        }
+    }
+
+    /** §11 结算验证：非阻挡，仅记录警告供人工复核；无引擎数据时跳过。 */
+    private void logSettlementValidation(Long gameId, Long tenantId) {
+        if (gameId == null || tenantId == null) {
+            return;
+        }
+        try {
+            if (!this.earnedRunReconstructionService.hasEngineData(gameId)) {
+                return;
+            }
+            for (String violation : this.earnedRunReconstructionService.validateSettlement(tenantId, gameId)) {
+                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, tenantId, violation);
+            }
+        } catch (RuntimeException ex) {
+            log.warn("[settlement-validation] gameId={} tenant={} failed: {}",
+                    gameId, tenantId, ex.getMessage());
+        }
     }
 
     /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */
@@ -488,6 +516,15 @@ public class GameService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
+    }
+
+    @Transactional(rollbackFor={Exception.class})
+    public List<EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
+        Game game = this.get(gameId);
+        if (game == null) {
+            throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
+        }
+        return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
     }
 
     @Transactional(rollbackFor={Exception.class})
@@ -756,16 +793,30 @@ public class GameService {
             // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
             for (GamePlayerStat s : existing) {
                 if (keepIds.contains(s.getId())) continue;
-                // 引擎场次的投手行由 ER 引擎维护，payload 漏带时不得物理删除
-                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())) continue;
+                // 引擎场次的投手行由 ER 引擎维护：仍有数据时不得因 payload 漏带被物理删除；
+                // 全零且没有自责分判定的行允许清理（换人错记后的转记/删除流程）。
+                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())
+                        && !this.isDeletableEnginePitcherRow(gameId, s)) {
+                    continue;
+                }
                 this.gamePlayerStatRepository.delete(s);
             }
         }
+        // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
+        this.logSettlementValidation(gameId, statTenantId);
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
     private static String resultStatKey(Long teamId, Long playerId, Integer isPitcher) {
         return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
+    }
+
+    /** 引擎场次的投手行能否在 payload 漏带时清理：全零且没有以该投手为责任投手的自责分判定。 */
+    private boolean isDeletableEnginePitcherRow(Long gameId, GamePlayerStat stat) {
+        return GamePlayerStatZeros.isZero(stat)
+                && (stat.getPlayerId() == null
+                    || !this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(
+                            gameId, stat.getPlayerId()));
     }
 
     private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part,
@@ -808,6 +859,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);
@@ -1072,6 +1124,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);
