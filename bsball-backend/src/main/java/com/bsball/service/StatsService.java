@@ -459,6 +459,7 @@ public class StatsService {
         PlayerStatsDTO.Pitching p = new PlayerStatsDTO.Pitching();
         p.setGp(r.getGp());
         p.setIp(r.getIp());
+        p.setOutsRecorded(r.getOutsRecorded());
         p.setEr(r.getEr());
         p.setUnearnedR(r.getUnearnedR());
         p.setPendingR(r.getPendingR());
@@ -541,6 +542,7 @@ public class StatsService {
         PlayerStatsDTO.Pitching p = new PlayerStatsDTO.Pitching();
         p.setGp(StatsService.getInt(row, "isPitcher") != 0 ? 1 : 0);
         p.setIp(StatsService.getDouble(row, "ip"));
+        p.setOutsRecorded(StatsService.getInt(row, "outsRecorded"));
         p.setEr(StatsService.getInt(row, "er"));
         p.setUnearnedR(StatsService.getInt(row, "unearnedR"));
         p.setPendingR(StatsService.getInt(row, "pendingR"));
@@ -676,8 +678,11 @@ public class StatsService {
             return m;
         }
         double ip = p.getIp();
+        // 規範 §7：ERA = ER × 27 ÷ outs（以出局數計算，避免 Double 精度問題）
+        int outs = p.getOutsRecorded() > 0 ? p.getOutsRecorded() : StatsFormatUtil.baseballIpToOuts(ip);
+        // IP 展示与 ERA/WHIP 同源：有权威出局数时由 outs 反推，避免两者不一致
+        m.put("ip", outs > 0 ? StatsFormatUtil.baseballOutsToIp(outs) : ip);
         m.put("gp", p.getGp());
-        m.put("ip", ip);
         m.put("er", p.getEr());
         m.put("unearnedR", p.getUnearnedR());
         m.put("pendingR", p.getPendingR());
@@ -710,10 +715,10 @@ public class StatsService {
         m.put("pitchR", p.getPitchR());
         m.put("go", p.getGo());
         m.put("fo", p.getFo());
-        double ipDec = StatsFormatUtil.baseballIpToDecimalInnings((double)ip);
+        double ipDec = outs / 3.0;
         int walksForWhip = StatsService.whipWalksNumerator(p);
-        m.put("whip", ipDec > 0.0 ? StatsFormatUtil.fmtDecimal((double)((double)(p.getPitchH() + walksForWhip) / ipDec), (int)2) : "0");
-        m.put("era", ipDec > 0.0 ? StatsFormatUtil.fmtDecimal((double)(9.0 * (double)p.getEr() / ipDec), (int)2) : "0");
+        m.put("whip", outs > 0 ? StatsFormatUtil.fmtDecimal((double)(p.getPitchH() + walksForWhip) / ipDec, 2) : "0");
+        m.put("era", outs > 0 ? StatsFormatUtil.fmtDecimal(27.0 * (double)p.getEr() / (double)outs, 2) : "0");
         m.put("goFo", p.getFo() > 0 ? StatsFormatUtil.fmtDecimal((double)((double)p.getGo() / (double)p.getFo()), (int)2) : "-");
         m.put("pitchAb", p.getPitchAb());
         return m;

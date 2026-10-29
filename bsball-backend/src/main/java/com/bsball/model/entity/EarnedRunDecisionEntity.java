@@ -18,6 +18,7 @@ public class EarnedRunDecisionEntity {
     private Long playId;
     private Long runnerId;
     private Long responsiblePitcherId;
+    private Long reachedBasePitcherId;
     private String runnerOrigin;
     private Boolean wouldScoreWithoutMisplay;
     private String earnedStatus;
@@ -38,6 +39,10 @@ public class EarnedRunDecisionEntity {
     public Long getResponsiblePitcherId() { return responsiblePitcherId; }
     public void setResponsiblePitcherId(Long responsiblePitcherId) {
         this.responsiblePitcherId = responsiblePitcherId;
+    }
+    public Long getReachedBasePitcherId() { return reachedBasePitcherId; }
+    public void setReachedBasePitcherId(Long reachedBasePitcherId) {
+        this.reachedBasePitcherId = reachedBasePitcherId;
     }
     public String getRunnerOrigin() { return runnerOrigin; }
     public void setRunnerOrigin(String runnerOrigin) { this.runnerOrigin = runnerOrigin; }

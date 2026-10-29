@@ -106,7 +106,8 @@ test('LiveGame 的得分与撤销接线到边界台账', () => {
   assert.match(liveGame, /addRun\(runLedger,run\)/);
   assert.match(liveGame, /voidCurrentPlayRuns\(runLedger\)/);
   assert.match(liveGame, /takeAllRuns\(runLedger\)/);
-  assert.match(liveGame, /scoringRunners:scoringEntries\.flatMap/);
+  assert.match(liveGame, /const scoringRunners=scoringEntries\.map\(\(entry\)=>toScoringRunner\(entry,w\.pitcherPlayerId\)\)\.filter\(Boolean\)/);
+  assert.match(liveGame, /scoringRunnerIds:scoringRunners\.map\(\(runner\)=>runner\.runnerId\),scoringRunners/);
   assert.match(liveGame, /runOrigin\(/);
   assert.match(liveGame, /advanceOrigin\(/);
   assert.ok((liveGame.match(/beginPlayLedger\(\)/g) ?? []).length >= 5,
@@ -118,7 +119,8 @@ test('代跑与上垒路径继承或记录责任投手', () => {
   assert.match(liveGame, /o\.origin=l\.runCause==="ERROR"\?"ERROR":"NORMAL",o\.responsiblePitcherId=Number\(l\.pitcher\?\.id\)/);
   assert.match(liveGame, /l\.responsiblePitcherId=Number\(f\.pitcher\?\.id\)/);
   assert.match(liveGame, /responsiblePitcherId=Number\(Se\.value\?\.id\)>0/);
-  assert.match(liveGame, /responsiblePitcherId:Number\(t\.responsiblePitcherId/);
+  assert.match(liveGame, /toScoringRunner\(entry,w\.pitcherPlayerId\)/,
+    '打席落定与保存补记共用同一跑者映射，责任投手回退当前投手');
   assert.match(liveGame, /isBatterRun\?t\.pitcher\?\?null:runnerPitcher/,
     '打者本人得分必须取当前投手，不得沿用其上次上垒的陈旧责任投手');
   assert.match(liveGame, /const metaId=isBatterRun\?NaN/);
@@ -136,7 +138,7 @@ test('捕手妨碍上垒及其被迫进垒得分记为 INTERFERENCE', () => {
 
 test('撤销/重做快照携带击球台账并在恢复时按 id 重绑球员', () => {
   const snapshots = liveGame.match(/runLedger:snapshotRunLedger\(\)/g) ?? [];
-  assert.equal(snapshots.length, 4, 'de/as/Ff/ms 四处快照都要带台账');
+  assert.equal(snapshots.length, 5, 'de/as/Ff/ms 四处撤销快照 + 现场快照都要带台账（#449）');
   assert.match(liveGame, /function restoreRunLedger\(snapshot\)\{/);
   assert.match(liveGame, /restoreRunLedger\(e\.runLedger\)/);
   assert.ok(!liveGame.includes('Aa.value=null,clearRunLedger()'), '恢复快照不得无条件清空台账');
@@ -145,7 +147,7 @@ test('撤销/重做快照携带击球台账并在恢复时按 id 重绑球员', 
     '恢复时按 id 重新绑定投手，找不到再退回责任投手');
 });
 
-test('强制换局丢弃未结算台账，避免得分串到下一半局', () => {
-  assert.match(liveGame, /D\(LgSys\(\{kind:"force_half"\}\)\),clearRunLedger\(\),Qa\(!0\)/);
+test('强制换局先补记得分再清空台账，避免得分串到下一半局（#449）', () => {
+  assert.match(liveGame, /D\(LgSys\(\{kind:"force_half"\}\)\),flushPendingRunsToPlayEvent\(\),clearRunLedger\(\),Qa\(!0\)/);
 });
 

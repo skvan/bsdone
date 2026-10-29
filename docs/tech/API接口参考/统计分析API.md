@@ -252,7 +252,7 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - PageResult包含：data（List<Map>）、total（Long）、meta（Map，可能包含qualification等）
 - 击球/投球/防守行字段
   - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、io、cs、singles、tb、avg、obp、slg、ops、sbPct
-  - 投球：gp、ip、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
+  - 投球：gp、ip、outsRecorded、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
   - 防守：gp、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 - 团队统计行字段
   - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、ibb、hbp、io、tb、avg、obp、slg、ops
@@ -268,6 +268,7 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - OPS = OBP + SLG（AB>0且OBP分母>0）
   - SB% = SB / (SB + CS) * 100（SB+CS>0）
 - 投球
+  - 出局数以 `bs_game_player_stat.outs_recorded` 为准（旧数据缺值/为 0 且 IP>0 时回退按 ip 换算）；个人/赛事/榜单的 IP、ERA、WHIP 与投手榜资格线统一按出局数聚合
   - PitchBbHp = PitchBb + PitchHbp（PitchBb 含 IBB）
   - ERA = ER * 27 / IP_outs（IP_outs>0）
   - WHIP = (H + BB) / IP_outs（IP_outs>0；HBP 不计入，旧数据缺 BB/HBP 分项时用 BBHP 合计减 HBP 回退）

@@ -9,6 +9,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
+import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -26,6 +27,7 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
+import com.bsball.utils.GamePlayerStatZeros;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -50,9 +52,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.bsball.utils.StatsFormatUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class GameService {
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
     private final GameRepository gameRepository;
@@ -326,6 +333,27 @@ public class GameService {
             }
         }
         this.saveSubstitutionEvents(game, dto.getSubstitutions());
+        if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.logSettlementValidation(gameId, game.getTenantId());
+        }
+    }
+
+    /** §11 结算验证：非阻挡，仅记录警告供人工复核；无引擎数据时跳过。 */
+    private void logSettlementValidation(Long gameId, Long tenantId) {
+        if (gameId == null || tenantId == null) {
+            return;
+        }
+        try {
+            if (!this.earnedRunReconstructionService.hasEngineData(gameId)) {
+                return;
+            }
+            for (String violation : this.earnedRunReconstructionService.validateSettlement(tenantId, gameId)) {
+                log.warn("[settlement-validation] gameId={} tenant={}: {}", gameId, tenantId, violation);
+            }
+        } catch (RuntimeException ex) {
+            log.warn("[settlement-validation] gameId={} tenant={} failed: {}",
+                    gameId, tenantId, ex.getMessage());
+        }
     }
 
     /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */
@@ -500,12 +528,26 @@ public class GameService {
     }
 
     @Transactional(rollbackFor={Exception.class})
+    public List<EarnedRunDecisionListDTO> listEarnedRunDecisions(Long gameId) {
+        Game game = this.get(gameId);
+        if (game == null) {
+            throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
+        }
+        return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
+    }
+
+    @Transactional(rollbackFor={Exception.class})
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
             throw new IllegalArgumentException("\u5bfc\u5165\u6570\u636e\u7f3a\u5c11 game \u6216 stats");
         }
         if (dto.getGame() != null && !Boolean.TRUE.equals(dto.getGame().getIsSpecialResult())) {
             this.assertStarterFieldingPositions(dto.getStats(), "\u5bfc\u5165\u6bd4\u8d5b");
+            // 导入缺省落 final（历史数据补录）；与 save-result 同口径，仅进行中场次做 P/DH 拦截
+            String importStatus = dto.getGame().getStatus() != null ? dto.getGame().getStatus() : "final";
+            if (!"final".equalsIgnoreCase(importStatus)) {
+                this.assertPitcherDhRule(dto.getStats(), "\u5bfc\u5165\u6bd4\u8d5b");
+            }
         }
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         Event ev = this.eventRepository.findById(eventId).orElse(null);
@@ -591,6 +633,11 @@ public class GameService {
                     : game.getStatus();
             if (!"final".equalsIgnoreCase(effectiveStatus)) {
                 this.assertStarterFieldingPositions(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
+            }
+            // P/DH 校验按「库内状态 + 本次请求状态」取非 final 门控：同请求置 final 不能绕过，
+            // final 重开为 live 也照常校验；仅两侧都已完赛（纯赛后补录）不拦截
+            if (!"final".equalsIgnoreCase(game.getStatus()) || !"final".equalsIgnoreCase(effectiveStatus)) {
+                this.assertPitcherDhRule(dto.getStats(), "\u4fdd\u5b58\u6bd4\u8d5b");
             }
             // 门②（Issue #310）：统计写入门；若本请求同时迁移 eventId，按目标赛事口径校验
             Long rosterEventId = dto.getGame() != null && dto.getGame().getEventId() != null
@@ -755,16 +802,30 @@ public class GameService {
             // 兩者對正常 payload 等價，但可避免前端少帶一根 id 時把同一球員的另一列物理刪除。
             for (GamePlayerStat s : existing) {
                 if (keepIds.contains(s.getId())) continue;
-                // 引擎场次的投手行由 ER 引擎维护，payload 漏带时不得物理删除
-                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())) continue;
+                // 引擎场次的投手行由 ER 引擎维护：仍有数据时不得因 payload 漏带被物理删除；
+                // 全零且没有自责分判定的行允许清理（换人错记后的转记/删除流程）。
+                if (engineManaged && Integer.valueOf(1).equals(s.getIsPitcher())
+                        && !this.isDeletableEnginePitcherRow(gameId, s)) {
+                    continue;
+                }
                 this.gamePlayerStatRepository.delete(s);
             }
         }
+        // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
+        this.logSettlementValidation(gameId, statTenantId);
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
     private static String resultStatKey(Long teamId, Long playerId, Integer isPitcher) {
         return String.valueOf(teamId) + "_" + playerId + "_" + (isPitcher == null ? 0 : isPitcher.intValue());
+    }
+
+    /** 引擎场次的投手行能否在 payload 漏带时清理：全零且没有以该投手为责任投手的自责分判定。 */
+    private boolean isDeletableEnginePitcherRow(Long gameId, GamePlayerStat stat) {
+        return GamePlayerStatZeros.isZero(stat)
+                && (stat.getPlayerId() == null
+                    || !this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(
+                            gameId, stat.getPlayerId()));
     }
 
     private void applyResultPartToStat(GamePlayerStat stat, SaveGameResultDTO.StatPart part,
@@ -812,6 +873,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);
@@ -931,6 +993,44 @@ public class GameService {
         }
     }
 
+    /**
+     * P/DH 强校验：同一球队的打击行不可同时出现 DH 与打击投手（P）。
+     * 只按 battingOrder>0 判定打击行（isPitcher=1 也可能带打序，如二刀流合并行）；
+     * 官方规则 5.11(b) 允许同一球员既列 DH 又列投手，故仅当两侧球员集合不一致时拦截。
+     */
+    private void assertPitcherDhRule(List<SaveGameResultDTO.StatPart> stats, String sceneLabel) {
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        Map<Long, List<SaveGameResultDTO.StatPart>> rowsByTeam = stats.stream()
+                .filter(Objects::nonNull)
+                .filter(s -> s.getTeamId() != null)
+                .collect(Collectors.groupingBy(SaveGameResultDTO.StatPart::getTeamId));
+        for (List<SaveGameResultDTO.StatPart> teamRows : rowsByTeam.values()) {
+            Set<Long> dhPlayerIds = new LinkedHashSet<>();
+            Set<Long> pitcherPlayerIds = new LinkedHashSet<>();
+            for (SaveGameResultDTO.StatPart row : teamRows) {
+                if (row.getBattingOrder() == null || row.getBattingOrder() <= 0) {
+                    continue;
+                }
+                String position = row.getPosition() == null ? "" : row.getPosition().trim().toUpperCase();
+                if ("DH".equals(position)) {
+                    dhPlayerIds.add(row.getPlayerId());
+                } else if ("P".equals(position)) {
+                    pitcherPlayerIds.add(row.getPlayerId());
+                }
+            }
+            if (dhPlayerIds.isEmpty() || pitcherPlayerIds.isEmpty()) {
+                continue;
+            }
+            // 仅同一名非空球员既列 DH 又列投手时放行；多 DH 或含空球员 id 均按冲突拦截
+            if (dhPlayerIds.size() == 1 && dhPlayerIds.equals(pitcherPlayerIds) && !dhPlayerIds.contains(null)) {
+                continue;
+            }
+            throw new BusinessException(400, sceneLabel + "失败：指定打击制下 DH 与打击投手（P）不能同时进入打序");
+        }
+    }
+
     private static boolean isPitcherStatPart(SaveGameResultDTO.StatPart part) {
         return part.getIsPitcher() != null && part.getIsPitcher().intValue() == 1;
     }
@@ -1042,6 +1142,7 @@ public class GameService {
         stat.setIsPitcher(Integer.valueOf(part.getIsPitcher() != null ? part.getIsPitcher() : 0));
         stat.setPitcherOrder(part.getPitcherOrder());
         stat.setIp(part.getIp());
+        stat.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(part.getIp() != null ? part.getIp() : 0.0));
         if (preserveEngineTotals) {
             if (stat.getId() == null) {
                 zeroEngineTotals(stat);

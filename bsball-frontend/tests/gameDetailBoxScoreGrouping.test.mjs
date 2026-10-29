@@ -96,7 +96,7 @@ test('实时观赛链路：打者行与投手行都携带首个守位', () => {
 });
 
 test('后端：first_position 迁移与映射齐全', () => {
-  const migration = read('../../bsball-backend/src/main/resources/db/migration/postgresql/V20261028100000__game_player_stat_first_position.sql');
+  const migration = read('../../bsball-backend/src/main/resources/db/migration/postgresql/V20261028160000__game_player_stat_first_position.sql');
   assert.ok(migration.includes('first_position'), '迁移缺少 first_position');
   const entity = read('../../bsball-backend/src/main/java/com/bsball/model/entity/GamePlayerStat.java');
   assert.ok(entity.includes('private String firstPosition;'), '实体缺少 firstPosition');

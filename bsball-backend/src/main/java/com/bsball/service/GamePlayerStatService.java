@@ -15,6 +15,8 @@ import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.utils.GamePlayerStatZeros;
+import com.bsball.utils.StatsFormatUtil;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -46,6 +48,7 @@ public class GamePlayerStatService {
         if (entity != null) {
             // create 只允许新建；带 id 的请求必须走 update，避免 merge 绕过引擎守卫
             entity.setId(null);
+            this.deriveOutsRecorded(entity, null);
             this.assertRosterForWrite(entity.getGameId(), entity.getTeamId(), entity.getPlayerId());
             if (this.isEngineManaged(entity.getGameId())) {
                 this.zeroEngineTotals(entity);
@@ -94,7 +97,19 @@ public class GamePlayerStatService {
         }
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
+        this.deriveOutsRecorded(entity, existing);
         return (GamePlayerStat)this.gamePlayerStatRepository.save(entity);
+    }
+
+    /** ip 是展示值，outs_recorded 是其权威派生值；更新缺 ip 时保留既有出局数。 */
+    private void deriveOutsRecorded(GamePlayerStat entity, GamePlayerStat existing) {
+        if (entity.getIp() != null) {
+            entity.setOutsRecorded(StatsFormatUtil.baseballIpToOuts(entity.getIp()));
+        } else if (existing != null && existing.getOutsRecorded() != null) {
+            entity.setOutsRecorded(existing.getOutsRecorded());
+        } else if (entity.getOutsRecorded() == null) {
+            entity.setOutsRecorded(0);
+        }
     }
 
     /** 门②：统计单条写入的秩序册校验（首次引入名单外球员 → 400；未受限赛事跳过）。 */
@@ -115,9 +130,22 @@ public class GamePlayerStatService {
         GamePlayerStat existing = this.gamePlayerStatRepository.findById(id).orElse(null);
         if (existing != null && this.isEngineManaged(existing.getGameId())
                 && Integer.valueOf(1).equals(existing.getIsPitcher())) {
-            throw new BusinessException(400, "引擎场次不能删除投手统计行");
+            this.assertEnginePitcherRowDeletable(existing);
         }
         this.gamePlayerStatRepository.deleteById(id);
+    }
+
+    /** 引擎投手行由 ER 引擎维护，只有“全零且没有自责分判定”时才允许删除（换人错记后的转记/清理）。 */
+    private void assertEnginePitcherRowDeletable(GamePlayerStat existing) {
+        if (!GamePlayerStatZeros.isZero(existing)) {
+            throw new BusinessException(400, "该投手行仍有数据，请先转记后再删除");
+        }
+        Long gameId = existing.getGameId();
+        Long playerId = existing.getPlayerId();
+        if (gameId != null && playerId != null
+                && this.earnedRunReconstructionService.hasResponsiblePitcherDecisions(gameId, playerId)) {
+            throw new BusinessException(400, "该投手仍有自责分判定，请先处理后再删除");
+        }
     }
 
     private boolean isEngineManaged(Long gameId) {

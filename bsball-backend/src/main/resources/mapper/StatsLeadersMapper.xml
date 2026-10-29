@@ -141,10 +141,10 @@
 
     <sql id="pitchingLeaderHaving">
         <if test="positionCode == null or positionCode == ''">
-            HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+            HAVING COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
         </if>
         <if test="applyQualification != null and applyQualification and (positionCode == null or positionCode == '')">
-            AND COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt;= <include refid="pitchingMinIpOutsThresholdExpr"/>
+            AND COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt;= <include refid="pitchingMinIpOutsThresholdExpr"/>
         </if>
     </sql>
 
@@ -301,6 +301,13 @@
             ELSE 0
         END)
     )</sql>
+    <!-- 优先读权威 outs_recorded；旧行缺值(0)且 ip>0 时回退按 ip 换算 -->
+    <sql id="outsRecordedPerRow">(
+        CASE WHEN COALESCE(s.outs_recorded, 0) &gt; 0 OR COALESCE(s.ip, 0) &lt;= 0
+             THEN COALESCE(s.outs_recorded, 0)
+             ELSE <include refid="ipToOutsFromIpCol"/>
+        END
+    )</sql>
     <!-- 与 PlayerStatsMapper.defInnToOutsFromCol 一致 -->
     <sql id="defInnToOutsFromCol">(
         FLOOR(COALESCE(s.def_inn, 0)) * 3 + (CASE
@@ -339,17 +346,17 @@
             COALESCE(SUM(s.l), 0) AS l,
             COALESCE(SUM(s.sv), 0) AS sv,
             COALESCE(SUM(s.hld), 0) AS hld,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
                 THEN ROUND(CAST(
                     (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
-                    / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+                    / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
-                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
+                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS era,
             COALESCE(SUM(s.pitch_pa), 0) AS pitchPa,
@@ -644,17 +651,17 @@
             COALESCE(SUM(s.l), 0) AS l,
             COALESCE(SUM(s.sv), 0) AS sv,
             COALESCE(SUM(s.hld), 0) AS hld,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) > 0
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) > 0
                 THEN ROUND(CAST(
                     (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
-                    / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+                    / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) > 0
-                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) > 0
+                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS era,
             COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
@@ -684,7 +691,7 @@
         <include refid="teamLeaderFilter"/>
         
         GROUP BY s.team_id, t.name
-        HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+        HAVING COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
     </sql>
 
     <select id="countTeamPitchingLeaders" resultType="long">

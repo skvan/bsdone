@@ -2,11 +2,13 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +24,7 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -328,5 +331,70 @@ class GameRosterValidationTest {
 
         verify(eventRegistrationService).assertGameTeamsEligible(EVENT_ID, HOME_ID, AWAY_ID);
         verify(gameRepository).save(any(Game.class));
+    }
+
+    // ------------------------------------------------------------------ P/DH 强校验（#478）
+
+    @Test
+    @DisplayName("P/DH 强校验：导入进行中比赛时 DH 与打击投手同队返回 400")
+    void importGameResult_live_rejectsDhAndBattingPitcher() {
+        SaveGameResultDTO dto = pitcherDhImportPayload();
+        dto.getGame().setStatus("live");
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.importGameResult(Long.valueOf(EVENT_ID), dto));
+
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("DH 与打击投手"));
+        verify(gameRepository, never()).save(any(Game.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：导入缺省 final（历史补录）不拦截并落库 10 行")
+    void importGameResult_defaultFinal_skipsPitcherDh() {
+        stubWritableContext();
+        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        gameService.importGameResult(Long.valueOf(EVENT_ID), pitcherDhImportPayload());
+
+        verify(gameRepository).save(any(Game.class));
+        verify(gamePlayerStatRepository, times(10)).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("P/DH 强校验：特殊赛果（弃权等）不拦截")
+    void importGameResult_specialResult_skipsPitcherDh() {
+        stubWritableContext();
+        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+        SaveGameResultDTO dto = pitcherDhImportPayload();
+        dto.getGame().setIsSpecialResult(Boolean.TRUE);
+        dto.getGame().setStatus("live");
+
+        gameService.importGameResult(Long.valueOf(EVENT_ID), dto);
+
+        verify(gamePlayerStatRepository, times(10)).save(any(GamePlayerStat.class));
+    }
+
+    /** 主队 8 野手 + 第 9 棒投手 + 第 10 棒 DH（P 与 DH 分属不同球员，属冲突阵容） */
+    private SaveGameResultDTO pitcherDhImportPayload() {
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        SaveGameResultDTO.GamePart gamePart = new SaveGameResultDTO.GamePart();
+        gamePart.setHomeTeamId(Long.valueOf(HOME_ID));
+        gamePart.setAwayTeamId(Long.valueOf(AWAY_ID));
+        gamePart.setIsSpecialResult(Boolean.FALSE);
+        dto.setGame(gamePart);
+        List<SaveGameResultDTO.StatPart> rows = new ArrayList<>();
+        String[] positions = {"C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "P", "DH"};
+        for (int i = 0; i < positions.length; i++) {
+            SaveGameResultDTO.StatPart part = new SaveGameResultDTO.StatPart();
+            part.setTeamId(Long.valueOf(HOME_ID));
+            part.setPlayerId(Long.valueOf(3000L + i));
+            part.setIsPitcher(Integer.valueOf(0));
+            part.setBattingOrder(Integer.valueOf(i + 1));
+            part.setPosition(positions[i]);
+            rows.add(part);
+        }
+        dto.setStats(rows);
+        return dto;
     }
 }
