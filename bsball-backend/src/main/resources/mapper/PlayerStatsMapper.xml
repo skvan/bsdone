@@ -140,6 +140,40 @@
           AND s.ip IS NOT NULL AND s.ip > 0
     </select>
 
+    <!-- 守备统计按「球员行」计一次：投手另有 is_pitcher=1 的并行记账行（守备数值相同），
+         不能按 position 排除 P，否则野手改投后整行守备数据丢失；投手行仅在该球员没有
+         带守备数据的可计入球员行时补计（兼容旧数据把守备值只写在投手行的情况）。 -->
+        <sql id="fieldingCountedPlayerRow">
+        s.position IS NOT NULL
+        AND s.position NOT IN ('DH', 'PH', 'EP')
+        AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR COALESCE(s.e,0) > 0
+            OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0
+            OR COALESCE(s.def_inn,0) > 0 OR COALESCE(s.fielding_gs,0) > 0
+        )
+        AND (
+            COALESCE(s.is_pitcher, 0) = 0
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM bs_game_player_stat b
+                    WHERE b.game_id = s.game_id
+                      AND b.player_id = s.player_id
+                      AND b.team_id = s.team_id
+                      AND COALESCE(b.is_pitcher, 0) = 0
+                      AND b.position IS NOT NULL
+                      AND b.position NOT IN ('DH', 'PH', 'EP')
+                      AND (
+                        COALESCE(b.tc,0) > 0 OR COALESCE(b.po,0) > 0 OR COALESCE(b.a,0) > 0
+                        OR COALESCE(b.dp,0) > 0 OR COALESCE(b.e,0) > 0
+                        OR COALESCE(b.pb,0) > 0 OR COALESCE(b.catcher_cs,0) > 0 OR COALESCE(b.catcher_sb,0) > 0
+                        OR COALESCE(b.def_inn,0) > 0 OR COALESCE(b.fielding_gs,0) > 0
+                      )
+                )
+            )
+        )
+    </sql>
+
     <select id="selectFieldingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
@@ -151,9 +185,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -163,14 +197,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
     <!-- 球队维度统计：固定按代表球队过滤；eventId 为空表示该队生涯，非空表示该队在该赛事（不能拿赛事合计代替） -->
@@ -278,9 +305,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -292,14 +319,7 @@
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
         <if test="eventId != null">AND g.event_id = #{eventId}</if>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
     <!-- 按赛事分组：JOIN game + event -->
@@ -416,9 +436,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -428,14 +448,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
         GROUP BY e.id, e.name, e.season
         ORDER BY e.season DESC, e.id DESC
     </select>
@@ -645,14 +658,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) &gt; 0 OR COALESCE(s.po,0) &gt; 0 OR COALESCE(s.a,0) &gt; 0
-            OR COALESCE(s.dp,0) &gt; 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) &gt; 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) &gt; 0 OR COALESCE(s.catcher_cs,0) &gt; 0 OR COALESCE(s.catcher_sb,0) &gt; 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
         <if test="eventId != null">AND g.event_id = #{eventId}</if>
         <if test="season != null and season != ''">AND e.season = #{season}</if>
     </sql>

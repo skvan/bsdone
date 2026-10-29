@@ -4,3 +4,8 @@
 .gd-box-view-tab.is-active[data-v-764190f8]{color:var(--el-color-primary);border-color:var(--el-color-primary);background:var(--el-color-primary-light-9)}
 .gd-box-view-tab[data-v-764190f8]:focus-visible{outline:2px solid var(--el-color-primary);outline-offset:1px}
 .gd-pitchers-section[data-v-764190f8]{margin-top:16px}
+/* 进攻表：首格去掉守位列后为三列；投手表仍保留四列（见 .player-info-cell 默认值） */
+.box-table-batters[data-v-764190f8] .player-info-cell{grid-template-columns:48px 1fr 48px}
+/* 进攻表：替补（无棒次）缩进在对应棒次下方，不再显示守位（#446 关联） */
+.box-table-batters[data-v-764190f8] tr.row-sub .td2{padding-left:14px}
+.box-table-batters[data-v-764190f8] tr.row-sub .td2::before{content:"└";margin-right:3px;color:var(--el-text-color-placeholder)}

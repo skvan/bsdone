@@ -450,6 +450,15 @@ public class GameService {
         return trimmed.length() > 8 ? trimmed.substring(0, 8) : trimmed;
     }
 
+    /** 首个守位只保留实际守备位；DH/PH/EP 等打击专用身份视为未上场防守。 */
+    private static String normalizeFirstPosition(String value) {
+        String pos = normalizePosition(value);
+        if (pos == null || "DH".equals(pos) || "PH".equals(pos) || "EP".equals(pos)) {
+            return null;
+        }
+        return pos;
+    }
+
     /** 换人事务事件（按全场顺序）；读取沿用比赛详情的数据范围校验。 */
     public List<GameSubstitutionEvent> listSubstitutions(Long gameId) {
         if (this.get(gameId) == null) {
@@ -828,6 +837,11 @@ public class GameService {
         stat.setBattingOrder(part.getBattingOrder());
         stat.setListOrder(part.getListOrder());
         stat.setPosition(part.getPosition());
+        // 赛后补录没有换位历史：仅新建行按当前守位兜底。
+        // 已有行（尤其实时录入的代打/代跑）不得用最后守位回填，否则会把从未防守的球员重新写进守备表。
+        if (stat.getId() == null && (stat.getFirstPosition() == null || stat.getFirstPosition().isBlank())) {
+            stat.setFirstPosition(normalizeFirstPosition(part.getPosition()));
+        }
         stat.setNumber(part.getNumber());
         stat.setBatHand(part.getBatHand());
         stat.setThrowHand(part.getThrowHand());
@@ -1092,6 +1106,10 @@ public class GameService {
         stat.setBattingOrder(part.getBattingOrder());
         stat.setListOrder(part.getListOrder());
         stat.setPosition(part.getPosition());
+        // 首个守位只由实时录入首次上场时写入；旧客户端不带该字段时保留库中已有值
+        if (part.getFirstPosition() != null) {
+            stat.setFirstPosition(normalizeFirstPosition(part.getFirstPosition()));
+        }
         stat.setPa(part.getPa());
         stat.setAb(part.getAb());
         stat.setR(part.getR());
