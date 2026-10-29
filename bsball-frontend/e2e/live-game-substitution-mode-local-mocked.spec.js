@@ -24,8 +24,8 @@ const stats = players.map((player, index) => ({
   ...zeroStats()
 }));
 
-test('换人模式：进入后暂停记球，无变化退出不发保存请求', async ({ page }) => {
-  let savedLiveBody;
+async function setup(page) {
+  const saved = { liveBody: undefined };
   await page.addInitScript(() => {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('bs-ball-live-'))
@@ -53,7 +53,7 @@ test('换人模式：进入后暂停记球，无变化退出不发保存请求',
     else if (path === '/game/10/live-snapshot' && request.method() === 'GET') data = { snapshotJson: '' };
     else if (path === '/game/10/live-snapshot' && request.method() === 'POST') data = { snapshotJson: '' };
     else if (path === '/game/10/save-live') {
-      savedLiveBody = request.postDataJSON();
+      saved.liveBody = request.postDataJSON();
       data = { success: true };
     } else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) data = { restricted: false, players: [] };
     else if (path === '/player/list') {
@@ -75,6 +75,29 @@ test('换人模式：进入后暂停记球，无变化退出不发保存请求',
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
   await expect(page.getByRole('button', { name: '换人模式' })).toBeVisible();
+  return saved;
+}
+
+async function recordGroundOut13(page) {
+  await page.getByRole('button', { name: '界内球' }).click();
+  const menu = page.locator('.lgpfm__panel');
+  await expect(menu).toBeVisible();
+  // 浮层打开后 240ms 内会拦截点击
+  await page.waitForTimeout(350);
+  await menu.locator('.lgpfm__cn').filter({ hasText: /^滚地球$/ }).click();
+  await menu.locator('.lgpfm__cn').filter({ hasText: /^出局$/ }).click();
+  await menu.locator('.lgpfm__cn').filter({ hasText: /^一垒前出局$/ }).click();
+
+  const flowBar = page.locator('.les-flow-card');
+  await expect(flowBar).toContainText('点击守备位置确认落点');
+  await page.locator('g.defender-hit[data-pos="P"]').click();
+  await page.locator('g.defender-hit[data-pos="1B"]').click();
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await expect(flowBar).toHaveCount(0);
+}
+
+test('换人模式：进入后暂停记球，无变化退出不发保存请求', async ({ page }) => {
+  const saved = await setup(page);
 
   await page.getByRole('button', { name: '换人模式' }).click();
   await expect(page.getByText('换人模式进行中')).toBeVisible();
@@ -84,11 +107,26 @@ test('换人模式：进入后暂停记球，无变化退出不发保存请求',
   await page.getByRole('button', { name: '结束换人' }).click();
   await expect(page.getByText('没有阵容变化，已退出换人模式')).toBeVisible();
   await expect(page.getByText('换人模式进行中')).toHaveCount(0);
-  expect(savedLiveBody).toBeUndefined();
+  expect(saved.liveBody).toBeUndefined();
 
   await page.getByRole('button', { name: '换人模式' }).click();
   await expect(page.getByText('换人模式进行中')).toBeVisible();
   await page.getByRole('button', { name: '取消换人模式' }).click();
   await expect(page.getByText('换人模式进行中')).toHaveCount(0);
   await expect(page.locator('button[title="坏球 Ball"]')).toBeEnabled();
+});
+
+test('进入换人模式清除上一球残留：球图标与高亮不遮挡野手背号', async ({ page }) => {
+  await setup(page);
+  await recordGroundOut13(page);
+
+  const ball = page.locator('g.hit-spray-fly-anim');
+  const ring = page.locator('circle.chain-hl-ring');
+  await expect(ball).toHaveCount(1);
+  await expect(ring).toHaveCount(1);
+
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.getByText('换人模式进行中')).toBeVisible();
+  await expect(ball).toHaveCount(0);
+  await expect(ring).toHaveCount(0);
 });
