@@ -115,6 +115,8 @@ MapRows --> Return["返回PageResult"]
 - 路径与方法：GET /stats/leaders/fielding
 - 支持防守基本项（PO/A/E/DP）与捕手专项（PB、CS、SB允许）
 - 防守成功率TC_PCT由 (PO+A)/TC 计算
+- 守备行口径：仅统计 `position` 非空且非 DH/PH/EP 的行；`is_pitcher=0` 的球员行计入（`position=P` 不再排除，野手改投后整行守备数据保留）；投手并行行仅在该球员本场没有带守备数据（TC/PO/A/E/DP/PB/CS/SB/INN/GS）的可计入球员行时补计，避免二刀流重复累计；补计要求该行上述任一项有值。显式按 P 筛选时，零动作投手行也会补入，但同位置已有带数据球员行时不重复
+- 捕手专项 PB/CS/SB 为捕手动作，按行无条件累计（不因最终守位变成 P 而丢失）；显式按 C 筛选时，除 `position=C` 外也纳入 `first_position='C'` 或 PB/CS/SB 有值的球员
 - 默认排序按 TC 降序，使用守备榜专用排序器；支持 tcPct/dp/pb/catcherCs/catcherSb 等排序
 
 ### 团队统计接口

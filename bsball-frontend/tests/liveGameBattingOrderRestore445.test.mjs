@@ -24,6 +24,7 @@ import {
   starterIdsFromLineup,
   starterIdsOfOrderedStarters,
 } from '../src/utils/liveGameBattingOrder.js';
+import { normalizeFieldingPosition } from '../src/utils/gamePlayerStat.js';
 
 const SRC_PATH = process.env.LIVEGAME_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js');
@@ -137,7 +138,7 @@ function doRestoreBlock() {
     .join('\n');
 }
 
-const restoreNames = ['boStarterIds', 'boTeamPA', 'boOrderLength', 'boBatterIndex', 'g', 't', 'q', 'X', 'l', 'fe', 'le'];
+const restoreNames = ['boStarterIds', 'boTeamPA', 'boOrderLength', 'boBatterIndex', 'g', 't', 'q', 'X', 'l', 'fe', 'le', 'ensureFirstFieldPositions'];
 const runRestore = (scope) => new Function(...restoreNames, doRestoreBlock())(
   ...restoreNames.map((n) => scope[n]),
 );
@@ -156,6 +157,8 @@ const baseScope = (over = {}) => ({
   // （component 的 fe/le 由 :5065 解构自这两个 ref），不是 null/[]。
   fe: { value: Array(12).fill(null) },
   le: { value: Array(12).fill(null) },
+  // 首个守位补齐与棒次还原正交；本文件用空实现，专门断言见 gameDetailBoxScoreGrouping.test.mjs
+  ensureFirstFieldPositions: () => {},
   ...over,
 });
 
@@ -196,7 +199,10 @@ test('11 元件层：真实 b() 对占位球员的渲染与统计承接', () => 
   const j = src.indexOf('\n      ,w=(P,A)=>{', i);
   assert(j > i, '找不到 b() 构造段终点');
   const text = src.slice(i + 1, j).trim();
-  const b = new Function('Pt', 'return ' + text)(( ) => ({ batting: {}, pitching: {}, fielding: {} }));
+  const b = new Function('Pt', 'normalizeFieldPos', 'return ' + text)(
+    () => ({ batting: {}, pitching: {}, fielding: {} }),
+    normalizeFieldingPosition
+  );
   const row = {
     teamId: TEAM, playerId: 9999, isPitcher: 0, battingOrder: 4, position: '3B', number: '88',
     pa: 4, ab: 3, hbp: 1, bb: 0, sf: 0, sh: 0, r: 1, h: 2, rbi: 2,
@@ -208,6 +214,9 @@ test('11 元件层：真实 b() 对占位球员的渲染与统计承接', () => 
   assert.equal(built.stats.batting.ab, 3, 'AB 承接统计行（不得被 ??0 抹除）');
   assert.equal(built.stats.batting.hbp, 1, 'HBP 承接统计行');
   assert.equal(built.stats.batting.r, 1, 'R 承接统计行');
+  assert.equal(built.firstPosition, '3B', '有棒次的先发按当前守位兜底首个守位');
+  const benchBuilt = b({ id: 9999 }, TEAM, { ...row, battingOrder: null }, 9);
+  assert.equal(benchBuilt.firstPosition, '', '无棒次的代打/板凳不得把花名册守位当首个守位');
 });
 
 /**

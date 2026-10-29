@@ -40,6 +40,8 @@ import { liveStorageKey as Ko } from '../../utils/liveGameStorage';
 import { findForeignWatchRecord as zo } from '../../utils/liveGameStorage';
 import { POSITION_CODE_MAP as Ss } from '../../utils/starterFieldingValidation';
 import { validateRosterPositions as sd } from '../../utils/starterFieldingValidation';
+// 盒子比分守备表：首个上场守位（#446），后续换位不覆盖
+import { normalizeFieldingPosition as normalizeFieldPos } from '../../utils/gamePlayerStat';
 import { appendTextSuffix as rd } from '../../utils/liveGameFieldLayout';
 import { parseBatterLine as qo } from '../../utils/liveGameFieldLayout';
 import { isBattingOrderLine as od } from '../../utils/liveGameFieldLayout';
@@ -7530,6 +7532,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=e?.includeUndoStacks??!1;
       try{
         reconcileFieldingInningsForLiveState("snapshot");
+        ensureFirstFieldPositions();
         const a={
           v:1,savedAt:Date.now(),gameMode:N.value,...snapshotAtBatContext(),setupForm:{
             ..._
@@ -7806,7 +7809,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         const V=[...q.value,...X.value,...ye.value,...ae.value];
         for(const E of V)ue(E);
-        xe.value&&ue(xe.value),De.value&&ue(De.value)
+        xe.value&&ue(xe.value),De.value&&ue(De.value);
+        // 必须等 gameState 还原 isTop 后再补首个守位：否则下半局重进会把主队代打误当守备中
+        ensureFirstFieldPositions()
       }
       finally{
         await Ks()
@@ -7874,6 +7879,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       q.value=e.homeLineup,X.value=e.awayLineup;
       const t=xl(e.homeBench??[]),a=xl(e.awayBench??[]);
       ye.value=t,ae.value=a,o.home.roster=e.homeLineup,o.away.roster=e.awayLineup,o.home.bench=t,o.away.bench=a,O.value=st(e.awayFieldingPitcherId),te.value=st(e.homeFieldingPitcherId),De.value=e.awayFieldingPitcherRow?JSON.parse(JSON.stringify(e.awayFieldingPitcherRow)):null,xe.value=e.homeFieldingPitcherRow?JSON.parse(JSON.stringify(e.homeFieldingPitcherRow)):null,Xe.value=st(e.awayLastDhAddedFromPoolId),Te.value=st(e.homeLastDhAddedFromPoolId),Ie.value=Array.isArray(e.awayUnavailablePlayerIds)?e.awayUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],I.value=Array.isArray(e.homeUnavailablePlayerIds)?e.homeUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],le.value=Array.isArray(e.awayLineupStarterIds)?e.awayLineupStarterIds.map(s=>Number(s)||null):le.value,fe.value=Array.isArray(e.homeLineupStarterIds)?e.homeLineupStarterIds.map(s=>Number(s)||null):fe.value,Ae.value=Array.isArray(e.awaySlotSubHistory)?e.awaySlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):Ae.value,ie.value=Array.isArray(e.homeSlotSubHistory)?e.homeSlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):ie.value
+      ensureFirstFieldPositions()
     }
     function lo(e,t){
       e.push(t),e.length>Fs&&e.shift()
@@ -9811,6 +9817,30 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       =Ee(e);
       s.roster=t.value,s.bench=a.value
     }
+    // 首个守位（#446）：上场时记录一次，之后场上换位不覆盖；DH/PH/EP 视为未上场防守
+    function firstFieldPositionOf(e,t){
+      return normalizeFieldPos(e?.firstPosition)||normalizeFieldPos(t)||""
+    }
+    function ensureFirstFieldPositions(){
+      // 开赛前阵容还能改：首个守位跟着当前守位走；开赛后冻结。
+      // 开赛后只有「该队正在守备」的场上球员才补首个守位：代打/代跑虽占着
+      // 被换下者的守位、但还没真正上场防守，不能提前记入守备表。
+      const started=!!F.value,homeDefending=l.isTop===!0,awayDefending=l.isTop===!1;
+      for(const[e,t]of[[q.value,homeDefending],[X.value,awayDefending]])for(const a of e??[]){
+        if(!a)continue;
+        const s=normalizeFieldPos(a.position);
+        if(!started){
+          a.firstPosition=s||"";
+          continue
+        }
+        const o=normalizeFieldPos(a.firstPosition);
+        a.firstPosition=o||(t?s||"":"")
+      }
+      for(const e of[ye.value,ae.value])for(const t of e??[]){
+        if(!t)continue;
+        t.firstPosition=started?normalizeFieldPos(t.firstPosition)||"":""
+      }
+    }
     function pc(e,t){
       return`投手 ${e} 更换为 ${t}`
     }
@@ -9876,18 +9906,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ...t,position:"",lastPosition:t.position??"",stats:t.stats??Pt()
         }
         ),Ki(a,t),y[A]={
-          ...P,position:b,stats:P.stats
+          ...P,position:b,firstPosition:firstFieldPositionOf(P,b),stats:P.stats
         };
         else{
           const T=y.findIndex(j=>String(j.position??"").toUpperCase()===b),Y=y.findIndex(j=>!String(j.position??"").trim());
           T>=0?y[T]={
-            ...P,position:b,stats:P.stats
+            ...P,position:b,firstPosition:firstFieldPositionOf(P,b),stats:P.stats
           }
           :Y>=0?y[Y]={
-            ...P,position:b,stats:P.stats
+            ...P,position:b,firstPosition:firstFieldPositionOf(P,b),stats:P.stats
           }
           :y.push({
-            ...P,position:b,stats:P.stats
+            ...P,position:b,firstPosition:firstFieldPositionOf(P,b),stats:P.stats
           }
           )
         }
@@ -10209,7 +10239,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ...dh,position:"",lastPosition:dh.position??"DH",stats:dh.stats??Pt()
       }
       ]),ctx.unavail.value=(ctx.unavail.value??[]).filter(id=>Number(id)!==Number(pitcher.id)),ctx.lineup.value[dhIndex]={
-        ...pitcher,position:"P",stats:pitcher.stats??Pt()
+        ...pitcher,position:"P",firstPosition:firstFieldPositionOf(pitcher,"P"),stats:pitcher.stats??Pt()
       }
       ,ctx.fpId.value=Number(pitcher.id),ctx.fpRow.value=null,ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 换下，投手 ${logPlayerName(pitcher)} 进入打序`}));
       return!0
@@ -10968,7 +10998,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         
       };
       return{
-        teamId:t,playerId:e.id,battingOrder:a.isPitcherRow?void 0:a.battingOrder,listOrder:a.listOrder,position:a.isPitcherRow?"P":(e.position||e.lastPosition||""),pa:(s.ab??0)+(s.bb??0)+(s.hbp??0)+(s.sf??0)+(s.sh??0)+(s.io??0),ab:s.ab??0,r:s.r??0,h:s.h??0,bbHp:(s.bb??0)+(s.hbp??0),sb:s.sb??0,so:s.so??0,soSwing:s.so_swing??0,soLooking:s.so_looking??0,e:p.e??0,rbi:s.rbi??0,doubles:s.doubles??0,triples:s.triples??0,hr:s.hr??0,insideParkHr:s.insideParkHr??0,gdp:s.gdp??0,sh:s.sh??0,sf:s.sf??0,bb:s.bb??0,ibb:s.ibb??0,hbp:s.hbp??0,io:s.io??0,cs:s.cs??0,isPitcher:a.isPitcherRow?1:0,pitcherOrder:a.isPitcherRow?a.pitcherOrder??1:void 0,ip:r.ip??0,pitchH:r.pitchH??0,pitchDoubles:r.pitchDoubles??0,pitchTriples:r.pitchTriples??0,pitchBbHp:(r.pitchBb??0)+(r.pitchHbp??0),pitchSo:r.pitchSo??0,pitchHr:r.pitchHr??0,pitchInsideParkHr:r.pitchInsideParkHr??0,pitchSh:r.pitchSh??0,pitchSf:r.pitchSf??0,pitchPa:r.pitchPa??0,pitchBf:r.pitchBf??0,np:r.np??0,pitchBb:r.pitchBb??0,pitchIbb:r.pitchIbb??0,pitchHbp:r.pitchHbp??0,pitchIo:r.pitchIo??0,go:r.go??0,fo:r.fo??0,gs:r.gs??0,wp:r.wp??0,bk:r.bk??0,po:p.po??0,a:p.a??0,tc:(p.po??0)+(p.a??0)+(p.e??0)||void 0,defInn:p.ip??0,dp:p.dp??0,pb:p.pb??0,catcherSb:p.catcherSb??0,catcherCs:p.catcherCs??0
+        teamId:t,playerId:e.id,battingOrder:a.isPitcherRow?void 0:a.battingOrder,listOrder:a.listOrder,position:a.isPitcherRow?"P":(e.position||e.lastPosition||""),firstPosition:normalizeFieldPos(e.firstPosition)||(a.isPitcherRow?"P":""),pa:(s.ab??0)+(s.bb??0)+(s.hbp??0)+(s.sf??0)+(s.sh??0)+(s.io??0),ab:s.ab??0,r:s.r??0,h:s.h??0,bbHp:(s.bb??0)+(s.hbp??0),sb:s.sb??0,so:s.so??0,soSwing:s.so_swing??0,soLooking:s.so_looking??0,e:p.e??0,rbi:s.rbi??0,doubles:s.doubles??0,triples:s.triples??0,hr:s.hr??0,insideParkHr:s.insideParkHr??0,gdp:s.gdp??0,sh:s.sh??0,sf:s.sf??0,bb:s.bb??0,ibb:s.ibb??0,hbp:s.hbp??0,io:s.io??0,cs:s.cs??0,isPitcher:a.isPitcherRow?1:0,pitcherOrder:a.isPitcherRow?a.pitcherOrder??1:void 0,ip:r.ip??0,pitchH:r.pitchH??0,pitchDoubles:r.pitchDoubles??0,pitchTriples:r.pitchTriples??0,pitchBbHp:(r.pitchBb??0)+(r.pitchHbp??0),pitchSo:r.pitchSo??0,pitchHr:r.pitchHr??0,pitchInsideParkHr:r.pitchInsideParkHr??0,pitchSh:r.pitchSh??0,pitchSf:r.pitchSf??0,pitchPa:r.pitchPa??0,pitchBf:r.pitchBf??0,np:r.np??0,pitchBb:r.pitchBb??0,pitchIbb:r.pitchIbb??0,pitchHbp:r.pitchHbp??0,pitchIo:r.pitchIo??0,go:r.go??0,fo:r.fo??0,gs:r.gs??0,wp:r.wp??0,bk:r.bk??0,po:p.po??0,a:p.a??0,tc:(p.po??0)+(p.a??0)+(p.e??0)||void 0,defInn:p.ip??0,dp:p.dp??0,pb:p.pb??0,catcherSb:p.catcherSb??0,catcherCs:p.catcherCs??0
       }
       
     }
@@ -11045,6 +11075,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return j
     }
     function vc(){
+      ensureFirstFieldPositions();
       const e=[];
       return _.awayTeamId&&e.push(...No("away",_.awayTeamId)),_.homeTeamId&&e.push(...No("home",_.homeTeamId)),e
     }
@@ -11141,7 +11172,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
         const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
         return T?{
-          ...P,name:E,number:U,teamId:A,position:V,pitcherOrder:Number(T?.pitcherOrder)>0?Number(T.pitcherOrder):(Number(P?.pitcherOrder)>0?Number(P.pitcherOrder):void 0),stats:{
+          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),pitcherOrder:Number(T?.pitcherOrder)>0?Number(T.pitcherOrder):(Number(P?.pitcherOrder)>0?Number(P.pitcherOrder):void 0),stats:{
             batting:{
               ab:T?.ab??0,r:T?.r??0,h:T?.h??0,rbi:T?.rbi??0,bb:T?.bb??0,hbp:T?.hbp??0,bbHp:T?.bbHp??0,so:T?.so??0,so_swing:T?.soSwing??T?.so_swing??0,so_looking:T?.soLooking??T?.so_looking??0,sf:T?.sf??0,sh:T?.sh??0,sb:T?.sb??0,cs:T?.cs??0,doubles:T?.doubles??0,triples:T?.triples??0,hr:T?.hr??0,insideParkHr:T?.insideParkHr??0,gdp:T?.gdp??0,ibb:T?.ibb??0,io:T?.io??0
             }
@@ -11157,7 +11188,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           
         }
         :{
-          ...P,name:E,number:U,teamId:A,position:V,stats:Pt()
+          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),stats:Pt()
         }
         
       }

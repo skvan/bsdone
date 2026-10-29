@@ -8,10 +8,12 @@
       :class="['box-table', 'box-table-fielding', sideClass]"
     >
       <el-table-column label="球员" min-width="150" show-overflow-tooltip>
-        <template #default="{ row }">{{ nameOf(row) }}</template>
+        <template #default="{ row }">
+          <span :class="['gd-fielding-table__player', { 'is-sub': row.subRow }]">{{ nameOf(row) }}</span>
+        </template>
       </el-table-column>
       <el-table-column label="POS" width="70" align="center">
-        <template #default="{ row }">{{ row.position || '-' }}</template>
+        <template #default="{ row }">{{ row.fieldPosition || '-' }}</template>
       </el-table-column>
       <el-table-column
         v-for="col in visibleFields"
@@ -83,6 +85,16 @@ function innings(value) {
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
+}
+/* 同守位组的替补缩进在首个上场者下一行 */
+.gd-fielding-table__player.is-sub {
+  padding-left: 18px;
+  color: var(--el-text-color-regular);
+}
+.gd-fielding-table__player.is-sub::before {
+  content: '└';
+  margin-right: 4px;
+  color: var(--el-text-color-placeholder);
 }
 
 /* 守备表是子组件，父组件 GameDetailContent 的 .box-table 样式带父 scope，无法命中这里的 el-table；

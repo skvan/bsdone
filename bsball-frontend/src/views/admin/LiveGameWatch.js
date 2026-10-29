@@ -681,7 +681,7 @@ var Ta={
         }
         ,V=(g.ab??0)+(g.bb??0)+(g.hbp??0)+(g.sf??0)+(g.sh??0),C=B?.isPitcher??0;
         d.push({
-          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchDoubles:k.pitchDoubles,pitchTriples:k.pitchTriples,pitchBb:k.pitchBb,pitchIbb:k.pitchIbb,pitchHbp:k.pitchHbp,pitchBbHp:k.pitchBbHp??((k.pitchBb??0)+(k.pitchHbp??0)),pitchSh:k.pitchSh,pitchSf:k.pitchSf,pitchIo:k.pitchIo,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,go:k.go,fo:k.fo,gs:k.gs,svo:k.svo,cg:k.cg,pg:k.pg,w:k.w,l:k.l,sv:k.sv,hld:k.hld,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs
+          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),firstPosition:String(s.firstPosition??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchDoubles:k.pitchDoubles,pitchTriples:k.pitchTriples,pitchBb:k.pitchBb,pitchIbb:k.pitchIbb,pitchHbp:k.pitchHbp,pitchBbHp:k.pitchBbHp??((k.pitchBb??0)+(k.pitchHbp??0)),pitchSh:k.pitchSh,pitchSf:k.pitchSf,pitchIo:k.pitchIo,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,go:k.go,fo:k.fo,gs:k.gs,svo:k.svo,cg:k.cg,pg:k.pg,w:k.w,l:k.l,sv:k.sv,hld:k.hld,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs
         }
         )
       }
@@ -741,7 +741,7 @@ var Ta={
           }
           )
           const V={
-            ...y,position:"P",stats:z
+            ...y,position:"P",firstPosition:String(y.firstPosition??""),stats:z
           };
           m(V,o,void 0,g+B*100,{
             pitcherOrder:B,isPitcher:1
