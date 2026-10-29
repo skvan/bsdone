@@ -14,8 +14,8 @@ const teams = [
   { id: 2, name: '乙队' }
 ];
 const positionRows = [
-  { playerId: 108, playerName: '王中外', teamId: 1, teamName: '甲队', position: 'CF', gp: 5, gs: 4, inn: 3.1 },
-  { playerId: 109, playerName: '李捕手', teamId: 2, teamName: '乙队', position: 'C', gp: 4, gs: 4, inn: 3.0 }
+  { playerId: 108, playerName: '王中外', teamId: 1, teamName: '甲队', position: 'CF', gp: 5, gs: 4, inn: 3.1, po: 6, a: 1, e: 0, tc: 7, tcPct: '100.0%' },
+  { playerId: 109, playerName: '李捕手', teamId: 2, teamName: '乙队', position: 'C', gp: 4, gs: 4, inn: 3.0, po: 5, a: 0, e: 1, tc: 6, tcPct: '83.3%' }
 ];
 
 async function mockApi(page, captured) {
@@ -41,7 +41,7 @@ async function mockApi(page, captured) {
   });
 }
 
-test('位置守备榜：Tab 渲染、资格线请求与 GP/GS/INN 展示', async ({ page }) => {
+test('位置守备榜：Tab 渲染、资格线请求与 GP/GS/INN/PO/A/E/TC% 展示', async ({ page }) => {
   const captured = [];
   await mockApi(page, captured);
 
@@ -55,6 +55,8 @@ test('位置守备榜：Tab 渲染、资格线请求与 GP/GS/INN 展示', async
   await expect(page.getByText('李捕手')).toBeVisible();
   await expect(page.getByText('CF', { exact: true })).toBeVisible();
   await expect(page.getByText('3.1')).toBeVisible();
+  await expect(page.getByText('100.0%')).toBeVisible();
+  await expect(page.getByText('83.3%')).toBeVisible();
 
   const request = captured.find((entry) => entry.startsWith('GET /stats/leaders/fielding-positions'));
   expect(request, captured.join('\n')).toBeTruthy();

@@ -192,6 +192,9 @@ class StatsServiceLeaderOrderByTest {
         row.put("gp", Integer.valueOf(5));
         row.put("gs", Integer.valueOf(4));
         row.put("outs", Integer.valueOf(10));
+        row.put("po", Integer.valueOf(10));
+        row.put("a", Integer.valueOf(2));
+        row.put("e", Integer.valueOf(1));
         when(statsLeadersMapper.countFieldingPositionLeaders(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
         when(statsLeadersMapper.selectFieldingPositionLeadersPage(
@@ -204,6 +207,29 @@ class StatsServiceLeaderOrderByTest {
         assertEquals(5, out.get("gp"));
         assertEquals(4, out.get("gs"));
         assertEquals(3.1D, ((Number)out.get("inn")).doubleValue(), 0.0001D);
+        assertEquals(10, out.get("po"));
+        assertEquals(2, out.get("a"));
+        assertEquals(1, out.get("e"));
+        assertEquals(13, out.get("tc"));
+        assertEquals("92.3%", out.get("tcPct"));
+    }
+
+    @Test
+    @DisplayName("按位置守备榜：支持按 PO/A/E/TC/TC% 排序")
+    void fieldingPositionsSortByCreditColumns() {
+        when(statsLeadersMapper.countFieldingPositionLeaders(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+        when(statsLeadersMapper.selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyString(), anyInt(), anyLong())).thenReturn(List.of());
+
+        service.getFieldingPositionLeaders(null, null, null, null, null, null, null, null, null, 1, 20, "po", "desc");
+
+        ArgumentCaptor<String> orderBy = ArgumentCaptor.forClass(String.class);
+        verify(statsLeadersMapper).selectFieldingPositionLeadersPage(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                orderBy.capture(), anyInt(), anyLong());
+        assertTrue(orderBy.getValue().contains("q.po DESC"), orderBy.getValue());
     }
 
     @Test

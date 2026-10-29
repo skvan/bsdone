@@ -1472,6 +1472,9 @@ public class GameSaveLiveDTO {
         private Long playerId;
         private String position;
         private Integer outs;
+        private Integer po;
+        private Integer a;
+        private Integer e;
         private Boolean fieldingGs;
 
         public Long getTeamId() {
@@ -1504,6 +1507,30 @@ public class GameSaveLiveDTO {
 
         public void setOuts(Integer outs) {
             this.outs = outs;
+        }
+
+        public Integer getPo() {
+            return po;
+        }
+
+        public void setPo(Integer po) {
+            this.po = po;
+        }
+
+        public Integer getA() {
+            return a;
+        }
+
+        public void setA(Integer a) {
+            this.a = a;
+        }
+
+        public Integer getE() {
+            return e;
+        }
+
+        public void setE(Integer e) {
+            this.e = e;
         }
 
         public Boolean getFieldingGs() {

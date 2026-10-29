@@ -22,6 +22,12 @@ public class GameFieldingPosStat extends BaseEntity {
     private String position;
     @Comment("守备出局数（3 outs = 1 局）")
     private Integer outs;
+    @Comment("接杀数")
+    private Integer po;
+    @Comment("助杀数")
+    private Integer a;
+    @Comment("失误数")
+    private Integer e;
     @Column(name = "fielding_gs")
     @Comment("该位置是否先发")
     private Boolean fieldingGs;
@@ -75,6 +81,30 @@ public class GameFieldingPosStat extends BaseEntity {
 
     public void setOuts(Integer outs) {
         this.outs = outs;
+    }
+
+    public Integer getPo() {
+        return po;
+    }
+
+    public void setPo(Integer po) {
+        this.po = po;
+    }
+
+    public Integer getA() {
+        return a;
+    }
+
+    public void setA(Integer a) {
+        this.a = a;
+    }
+
+    public Integer getE() {
+        return e;
+    }
+
+    public void setE(Integer e) {
+        this.e = e;
     }
 
     public Boolean getFieldingGs() {

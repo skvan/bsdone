@@ -934,6 +934,15 @@ public class StatsService {
         m.put("gs", Integer.valueOf(StatsService.getInt(d, "gs")));
         int outs = StatsService.getInt(d, "outs");
         m.put("inn", StatsFormatUtil.baseballOutsToIp(outs));
+        int po = StatsService.getInt(d, "po");
+        int a = StatsService.getInt(d, "a");
+        int e = StatsService.getInt(d, "e");
+        int tc = po + a + e;
+        m.put("po", Integer.valueOf(po));
+        m.put("a", Integer.valueOf(a));
+        m.put("e", Integer.valueOf(e));
+        m.put("tc", Integer.valueOf(tc));
+        m.put("tcPct", tc > 0 ? StatsFormatUtil.fmtPct((Double)(100.0 * (double)(po + a) / (double)tc)) : "0");
         return m;
     }
 

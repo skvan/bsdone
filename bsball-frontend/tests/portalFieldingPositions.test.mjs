@@ -50,6 +50,10 @@ test('榜单组件：端点、资格线、列与筛选监听齐全', () => {
   assert.ok(board.includes('const minOuts = 9'), '资格线应为 9 出局');
   assert.ok(board.match(/minOuts,\s*\n\s*page:/), '请求未携带 minOuts');
   assert.ok(board.includes("prop=\"gp\"") && board.includes("prop=\"gs\"") && board.includes("prop=\"inn\""), '缺少 GP/GS/INN 列');
+  for (const prop of ['po', 'a', 'e', 'tcPct']) {
+    assert.ok(board.includes(`prop="${prop}"`), `缺少 ${prop} 列`);
+    assert.ok(board.includes(`t('stats.colEn.${prop}')`), `${prop} 列应复用现有列头文案`);
+  }
   assert.ok(board.includes('formatPositionDisplay(row)'), '守位列应按整行格式化（传字符串会恒显示 -）');
   assert.ok(!board.includes('formatPositionDisplay(row.position)'), '不得把字符串传给 formatPositionDisplay');
   assert.ok(board.includes('props.position') && board.includes('props.homeAway') && board.includes('props.playerName'), '未按位置/主客场/球员筛选请求');
@@ -66,7 +70,11 @@ test('5 语种文案齐全（Tab/标题/资格线/列名）', () => {
     'stats.positionBoardPosition',
     'stats.positionBoardGp',
     'stats.positionBoardGs',
-    'stats.positionBoardInn'
+    'stats.positionBoardInn',
+    'stats.colEn.po',
+    'stats.colEn.a',
+    'stats.colEn.e',
+    'stats.colEn.tcPct'
   ];
   for (const [name, dict] of Object.entries(locales)) {
     for (const key of keys) {

@@ -18,7 +18,7 @@ public final class StatsLeadersOrderBy {
     private static final Set<String> PITCHING = Set.of("w", "l", "era", "gp", "gs", "cg", "sv", "svo", "ip", "pitchH", "pitchDoubles", "pitchTriples", "pitchR", "er", "unearnedR", "pendingR", "pitchHr", "pitchInsideParkHr", "pitchSh", "pitchSf", "pitchHbp", "pitchBb", "pitchIbb", "pitchIo", "pitchSo", "whip", "pitchPa", "pitchBf", "np");
     private static final Set<String> FIELDING = Set.of("gp", "gs", "inn", "tc", "po", "a", "e", "dp",
             "pb", "catcherCs", "catcherSb", "tcPct");
-    private static final Set<String> FIELDING_POSITIONS = Set.of("gp", "gs", "inn");
+    private static final Set<String> FIELDING_POSITIONS = Set.of("gp", "gs", "inn", "tc", "po", "a", "e", "tcPct");
 
     private StatsLeadersOrderBy() {
     }
@@ -66,7 +66,7 @@ public final class StatsLeadersOrderBy {
             p = "inn";
             d = "DESC";
         }
-        String col = "inn".equals(p) ? "outs" : p;
+        String col = switch (p) { case "inn" -> "outs"; case "tcPct" -> "tcpct"; default -> p; };
         return "q." + col + " " + d + ", q.gp DESC, q.playerid ASC, q.position ASC, q.teamid ASC";
     }
 

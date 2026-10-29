@@ -273,7 +273,7 @@ EventService --> EventRepository
   - ER 单一写方：若该场已有 `bs_earned_run_play`，请求里的 `er` 被忽略；`pitchR/ER/UER/PENDING` 只由 ER 引擎写。无引擎数据的 legacy 场次仍接受 `er`
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
   - 盒子比分守备表（关联 #446）：`stats` 新增 `firstPosition`（本场首次上场防守的守位，后续换位不覆盖；DH/PH/EP 为空；旧客户端缺栏保留库中原值）。仅在实际守备/换守备落位时写入，代打/代跑未防守前不继承被换下者守位
-  - 逐位置守备（2026-10-29，P1）：可选 `fieldingPositions` 数组，元素 `teamId/playerId/position/outs/fieldingGs`（`outs` 为守备出局数，3 outs=1 局）。出现该键即视为该场全量替换 `bs_game_fielding_pos_stat`，并按球员 `sum(outs)` 回写 `def_inn`（10 outs→3.1）；`DH/PH/EP` 不接受；缺省不触碰
+  - 逐位置守备（2026-10-29，P1/P3）：可选 `fieldingPositions` 数组，元素 `teamId/playerId/position/outs/po/a/e/fieldingGs`（`outs` 为守备出局数，3 outs=1 局；`po/a/e` 为该位置刺杀/助杀/失误数，缺省 0，范围 0..999）。出现该键即视为该场全量替换 `bs_game_fielding_pos_stat`，并按球员 `sum(outs)` 回写 `def_inn`（10 outs→3.1）；`DH/PH/EP` 不接受；缺省不触碰
   - 换人事务（2026-10-27）：可选 `substitutions` 数组，与 `stats` 同一事务落 `bs_game_substitution_event`；同一 `transactionId` 重试幂等。元素字段：`transactionId/teamId/inning/topBottom/changeType/slot/outPlayerId/inPlayerId/outPosition/inPosition`；`changeType` 为 `SUBSTITUTION/POSITION_CHANGE/PITCHING_CHANGE/DH_CANCEL`。事件只记录净变化，统计事实仍以 `stats` 为准
   - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
   - 参考：`GameApi.java:107-111`

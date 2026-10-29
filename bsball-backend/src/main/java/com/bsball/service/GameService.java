@@ -417,9 +417,22 @@ public class GameService {
         row.setPlayerId(playerId);
         row.setPosition(position);
         row.setOuts(outs);
+        row.setPo(normalizeFieldingCredit(part.getPo(), "接杀数"));
+        row.setA(normalizeFieldingCredit(part.getA(), "助杀数"));
+        row.setE(normalizeFieldingCredit(part.getE(), "失误数"));
         row.setFieldingGs(Boolean.TRUE.equals(part.getFieldingGs()));
         row.setSource("LIVE");
         return row;
+    }
+
+    private static int normalizeFieldingCredit(Integer value, String label) {
+        if (value == null) {
+            return 0;
+        }
+        if (value < 0 || value > 999) {
+            throw new BusinessException(400, "逐位置守备" + label + "无效");
+        }
+        return value;
     }
 
     /** 由逐位置出局数汇总回写球员级 def_inn（10 outs → 3.1）。 */

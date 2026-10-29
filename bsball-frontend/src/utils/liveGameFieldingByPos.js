@@ -10,13 +10,54 @@ export function isFieldingPosition(position) {
   return !!pos && !NON_FIELDING_POSITIONS.has(pos);
 }
 
+function countOf(value) {
+  const n = Math.floor(Number(value) || 0);
+  return n > 0 ? n : 0;
+}
+
+/** 取或升级某守位的逐位置条目；旧快照的数字值视为仅有 outs */
+function byPosEntry(fielding, position) {
+  const byPos = fielding.byPos ?? (fielding.byPos = {});
+  const current = byPos[position];
+  if (current && typeof current === 'object') {
+    current.outs = countOf(current.outs);
+    current.po = countOf(current.po);
+    current.a = countOf(current.a);
+    current.e = countOf(current.e);
+    return current;
+  }
+  const entry = { outs: countOf(current), po: 0, a: 0, e: 0 };
+  byPos[position] = entry;
+  return entry;
+}
+
 /** 给球员 fielding 统计按当前守位 +1 出局；返回是否计入（DH/PH/EP/空守位不计） */
 export function accrueFieldingOut(fielding, position) {
   if (!fielding) return false;
   const pos = normalizeFieldingPosition(position);
   if (!isFieldingPosition(pos)) return false;
-  const byPos = fielding.byPos ?? (fielding.byPos = {});
-  byPos[pos] = (Number(byPos[pos]) || 0) + 1;
+  byPosEntry(fielding, pos).outs += 1;
+  return true;
+}
+
+/** DH 制投手不在打线时 Hn 里是深拷贝；P 位记账必须落回活体投手行 */
+export function resolveFieldingCreditTarget(position, player, livePitcher) {
+  return normalizeFieldingPosition(position) === 'P' && livePitcher ? livePitcher : player;
+}
+
+/** 按当前守位累计 PO/A/E；返回是否计入（非法守位或全零不计） */
+export function accrueFieldingPlay(fielding, position, { po = 0, a = 0, e = 0 } = {}) {
+  if (!fielding) return false;
+  const pos = normalizeFieldingPosition(position);
+  if (!isFieldingPosition(pos)) return false;
+  const addPo = countOf(po);
+  const addA = countOf(a);
+  const addE = countOf(e);
+  if (addPo + addA + addE === 0) return false;
+  const entry = byPosEntry(fielding, pos);
+  entry.po += addPo;
+  entry.a += addA;
+  entry.e += addE;
   return true;
 }
 
@@ -30,17 +71,24 @@ export function buildFieldingPositionRows(teamId, players, starterIds) {
     const byPos = player?.stats?.fielding?.byPos;
     if (!byPos || typeof byPos !== 'object') continue;
     let firstPos = null;
-    for (const [rawPos, rawOuts] of Object.entries(byPos)) {
+    for (const [rawPos, rawEntry] of Object.entries(byPos)) {
       const position = normalizeFieldingPosition(rawPos);
       if (!isFieldingPosition(position)) continue;
       if (firstPos == null) firstPos = position;
-      const outs = Math.floor(Number(rawOuts) || 0);
-      if (outs <= 0) continue;
+      const entry = rawEntry && typeof rawEntry === 'object' ? rawEntry : { outs: rawEntry };
+      const outs = countOf(entry.outs);
+      const po = countOf(entry.po);
+      const a = countOf(entry.a);
+      const e = countOf(entry.e);
+      if (outs + po + a + e === 0) continue;
       rows.push({
         teamId: Number(teamId),
         playerId,
         position,
         outs,
+        po,
+        a,
+        e,
         fieldingGs: starters.has(playerId) && position === firstPos,
       });
     }

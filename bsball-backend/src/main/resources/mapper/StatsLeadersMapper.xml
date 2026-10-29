@@ -770,7 +770,16 @@
             f.position AS position,
             COUNT(DISTINCT f.game_id) AS gp,
             COALESCE(SUM(CASE WHEN f.fielding_gs THEN 1 ELSE 0 END), 0) AS gs,
-            COALESCE(SUM(f.outs), 0) AS outs
+            COALESCE(SUM(f.outs), 0) AS outs,
+            COALESCE(SUM(f.po), 0) AS po,
+            COALESCE(SUM(f.a), 0) AS a,
+            COALESCE(SUM(f.e), 0) AS e,
+            COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) AS tc,
+            CASE
+                WHEN COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) = 0 THEN 0
+                ELSE 100.0 * (COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0))
+                    / (COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0))
+            END AS tcPct
         FROM bs_game_fielding_pos_stat f
         JOIN bs_game g ON f.game_id = g.id
         JOIN bs_event e ON g.event_id = e.id

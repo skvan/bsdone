@@ -190,6 +190,41 @@ class GameServiceFieldingPositionsTest {
     }
 
     @Test
+    @DisplayName("逐位置 PO/A/E：保存到对应行，缺省为 0")
+    void saveLive_persistsFieldingCredits() {
+        GameSaveLiveDTO.FieldingPositionPart credited = part(HOME_ID, 108L, "CF", 4, true);
+        credited.setPo(Integer.valueOf(2));
+        credited.setA(Integer.valueOf(1));
+        credited.setE(Integer.valueOf(1));
+        GameSaveLiveDTO.FieldingPositionPart plain = part(HOME_ID, 101L, "P", 3, true);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dtoWith(List.of(credited, plain)));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
+        verify(gameFieldingPosStatRepository).saveAll(captor.capture());
+        GameFieldingPosStat cf = captor.getValue().get(0);
+        assertEquals(2, cf.getPo().intValue());
+        assertEquals(1, cf.getA().intValue());
+        assertEquals(1, cf.getE().intValue());
+        GameFieldingPosStat p = captor.getValue().get(1);
+        assertEquals(0, p.getPo().intValue());
+        assertEquals(0, p.getA().intValue());
+        assertEquals(0, p.getE().intValue());
+    }
+
+    @Test
+    @DisplayName("逐位置 PO/A/E：负数 400 且不写库")
+    void saveLive_negativeCredit_rejects() {
+        GameSaveLiveDTO.FieldingPositionPart part = part(HOME_ID, 108L, "CF", 4, true);
+        part.setPo(Integer.valueOf(-1));
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                gameService.saveLive(Long.valueOf(GAME_ID), dtoWith(List.of(part))));
+        assertEquals(400, ex.getCode());
+        verifyNoInteractions(gameFieldingPosStatRepository);
+    }
+
+    @Test
     @DisplayName("读取：无权比赛 403；有权返回仓库顺序结果")
     void listFieldingPositions_scoped() {
         GameFieldingPosStat row = new GameFieldingPosStat();

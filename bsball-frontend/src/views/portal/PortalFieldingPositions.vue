@@ -21,6 +21,10 @@
       <el-table-column prop="gp" :label="t('stats.positionBoardGp')" width="72" align="center" />
       <el-table-column prop="gs" :label="t('stats.positionBoardGs')" width="72" align="center" />
       <el-table-column prop="inn" :label="t('stats.positionBoardInn')" width="90" align="center" />
+      <el-table-column prop="po" :label="t('stats.colEn.po')" width="64" align="center" />
+      <el-table-column prop="a" :label="t('stats.colEn.a')" width="64" align="center" />
+      <el-table-column prop="e" :label="t('stats.colEn.e')" width="64" align="center" />
+      <el-table-column prop="tcPct" :label="t('stats.colEn.tcPct')" width="84" align="center" />
     </el-table>
     <div class="portal-fp__pager">
       <el-pagination
