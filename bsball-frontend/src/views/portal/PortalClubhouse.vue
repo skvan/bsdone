@@ -70,11 +70,11 @@
 
         <div class="card-stage">
           <button ref="heroCardBtnRef" type="button" class="card-slot" :style="{ '--hero-tilt': `${heroTiltDeg}deg` }" aria-label="放大查看球星卡" @click="openCardZoom">
-            <span class="card-stack one" aria-hidden="true">
-              <ClubhousePlayerCard v-bind="fanLegendCards[0]" :scale="heroCardScale" />
-            </span>
             <span class="card-stack two" aria-hidden="true">
               <ClubhousePlayerCard v-bind="fanLegendCards[1]" :scale="heroCardScale" />
+            </span>
+            <span class="card-stack one" aria-hidden="true">
+              <ClubhousePlayerCard v-bind="fanLegendCards[0]" :scale="heroCardScale" />
             </span>
             <ClubhousePlayerCard v-bind="cardFaceProps" :scale="heroCardScale" />
           </button>
