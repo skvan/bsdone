@@ -137,7 +137,6 @@ import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
 import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
 import { fetchResult } from '../../api/request';
 import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
-import { buildFullBenchIds } from '../../utils/lineupDraft';
 import { isBusinessError } from '../../utils/apiError';
 import { usePermission } from '../../composables/usePermission';
 import { useTabsStore } from '../../stores/tabs';
@@ -201,17 +200,6 @@ const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId
   extraBatter,
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
-
-// 赛前补齐替补席：全队可上场且未先发的球员都进替补席（不依赖「追加新球员」入口）
-function fillBenchWithEligible(boardRef, side) {
-  if (!boardRef?.roster?.value?.length) return;
-  const ids = buildFullBenchIds(boardRef.roster.value, boardRef.rows.value, unavailable.value?.[side], [boardRef.fieldingPitcherId.value]);
-  boardRef.setBench(ids);
-}
-function fillBenchesWithEligible() {
-  fillBenchWithEligible(homeBoard, 'home');
-  fillBenchWithEligible(awayBoard, 'away');
-}
 const board = computed(() => boardOf(activeTeam.value));
 
 const teamsReady = computed(() =>
@@ -652,7 +640,6 @@ async function save(exit) {
         },
       });
     }
-    fillBenchesWithEligible();
     const payload = draftPayload(id);
     await gameApi.saveLineup(id, JSON.stringify(payload));
     ElMessage.success('已保存，可在赛程/结果页继续录入');
@@ -710,7 +697,6 @@ async function startEntry() {
         },
       });
     }
-    fillBenchesWithEligible();
     const payload = {
       v: 1,
       savedAt: Date.now(),
