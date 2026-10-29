@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// 三垒跑者拖回本垒选「暴投」：必须同时留下暴投投球行与回本垒得分行（#536 回归）
+// 三垒跑者拖回本垒选「暴投」：必须同时留下暴投投球行与回本垒得分行
 const zeroBatting = () => ({
   ab: 0, r: 0, h: 0, rbi: 0, bb: 0, hbp: 0, so: 0, so_swing: 0, so_looking: 0,
   sf: 0, sh: 0, sb: 0, cs: 0, doubles: 0, triples: 0, hr: 0, insideParkHr: 0, gdp: 0, ibb: 0, io: 0,
