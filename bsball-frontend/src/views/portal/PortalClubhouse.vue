@@ -183,7 +183,7 @@
             <span class="kicker">OVERALL PROFILE</span>
             <h3>总体评价 <small>职业指标 · {{ evaluationComparison }}百分位</small></h3>
           </div>
-          <div v-if="evaluationOverall.score != null" class="eval-overall">
+          <div v-if="evaluationOverall.score != null" class="eval-overall" :style="{ '--eo-grade': overallGradeAccent }">
             <div class="eo-score">
               <b>{{ evaluationOverall.score }}</b>
               <span class="eo-scale">/ 100</span>
@@ -195,7 +195,10 @@
                 <i class="eo-confidence" :class="confidenceTone(evaluationOverall.confidenceLabel)">{{ evaluationOverall.confidenceLabel }}</i>
               </span>
               <span class="eo-sample">{{ overallSampleText }}</span>
-              <span class="eo-reliability">总体可靠性 {{ formatReliability(evaluationOverall.reliability) }}</span>
+              <span class="eo-reliability">
+                <span>总体可靠性 <b>{{ formatReliability(evaluationOverall.reliability) }}</b></span>
+                <i class="eo-meter"><i :style="{ width: overallReliabilityPct }"></i></i>
+              </span>
             </div>
           </div>
           <div class="eval-meta">
@@ -752,7 +755,7 @@ import Sortable from 'sortablejs';
 import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
 import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
-import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT } from '../../components/portal/clubhouseCardGrade.js';
+import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT, cardGradeMaterial } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
 import { useTenantRouter } from '../../composables/useTenantRouter';
 import {
@@ -1076,6 +1079,14 @@ const hasStatsData = computed(() => (
 ));
 const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
 const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
+const overallGradeAccent = computed(() => cardGradeMaterial(evaluationOverall.value.grade).color);
+const overallReliabilityPct = computed(() => {
+  const value = Number(evaluationOverall.value.reliability);
+  if (!Number.isFinite(value)) {
+    return '0%';
+  }
+  return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+});
 const overallRoleLabel = computed(() => ({
   POSITION_PLAYER: '野手',
   PITCHER: '投手',
@@ -2778,20 +2789,24 @@ onBeforeUnmount(() => {
 .eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
 .eval-meta { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 11px; color: var(--bs-text-muted); }
 .eval-meta b { color: var(--bs-ink); font-family: var(--bs-font-num); font-size: 14px; margin-right: 3px; }
-.eval-overall { display: flex; align-items: center; gap: 14px; padding: 7px 13px; border: 1px solid var(--bs-hairline); border-radius: 12px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
-.eo-score { display: flex; align-items: baseline; gap: 5px; }
-.eo-score b { font-family: var(--bs-font-num); font-size: 38px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
-.eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
-.eo-score em { align-self: center; padding: 3px 6px; font-style: normal; font-family: var(--bs-font-num); font-size: 11px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 5px; background: var(--bs-surface-soft); }
-.eo-side { display: flex; flex-direction: column; gap: 3px; font-size: 10px; line-height: 1.3; color: var(--bs-text-muted); }
-.eo-tags { display: flex; align-items: center; gap: 6px; }
-.eo-role { font-size: 10px; font-weight: 700; color: var(--bs-text); }
+.eval-overall { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 16px 22px 15px 24px; border: 1px solid var(--bs-hairline-soft); border-radius: 16px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
+.eval-overall::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, var(--eo-grade, var(--bs-accent)), transparent); opacity: .9; }
+.eo-score { display: flex; align-items: baseline; gap: 7px; }
+.eo-score b { font-family: var(--bs-font-num); font-size: 54px; line-height: .85; font-weight: 700; letter-spacing: -.05em; color: var(--bs-ink); }
+.eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 12px; color: var(--bs-text-faint); }
+.eo-score em { align-self: center; margin-left: 2px; padding: 5px 9px; font-style: normal; font-family: var(--bs-font-num); font-size: 15px; font-weight: 800; color: var(--bs-ink); border: 1px solid color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 45%, var(--bs-hairline)); border-radius: 7px; background: color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 12%, var(--bs-surface)); }
+.eo-side { display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.35; color: var(--bs-text-muted); }
+.eo-tags { display: flex; align-items: center; gap: 8px; }
+.eo-role { font-size: 12px; font-weight: 700; color: var(--bs-text); }
 .eo-confidence, .radar-confidence { padding: 1px 6px; font-style: normal; font-size: 10px; font-weight: 600; line-height: 1.5; color: var(--bs-text-muted); border: 1px solid var(--bs-hairline); border-radius: 99px; background: var(--bs-surface-soft); }
 .eo-confidence.is-reference, .radar-confidence.is-reference { color: var(--bs-accent-ink); border-color: var(--bs-accent-soft); background: var(--bs-accent-soft); }
 .eo-confidence.is-insufficient, .radar-confidence.is-insufficient { color: var(--bs-text-faint); }
 .eo-confidence.is-sufficient, .radar-confidence.is-sufficient { color: var(--bs-text); border-color: var(--bs-hairline); }
-.eo-sample { font-family: var(--bs-font-num); letter-spacing: .02em; color: var(--bs-text); }
-.eo-reliability { font-size: 9px; letter-spacing: .04em; color: var(--bs-text-faint); }
+.eo-sample { font-family: var(--bs-font-num); font-size: 12px; letter-spacing: .02em; color: var(--bs-text); }
+.eo-reliability { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .02em; color: var(--bs-text-faint); }
+.eo-reliability b { font-family: var(--bs-font-num); font-size: 12px; color: var(--bs-text); }
+.eo-meter { width: 84px; height: 4px; border-radius: 99px; background: var(--bs-hairline-soft); overflow: hidden; }
+.eo-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--eo-grade, var(--bs-accent)), var(--bs-accent)); }
 .radar-grid { display: grid; gap: 14px; margin-top: 14px; }
 .radar-grid.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .radar-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -3128,7 +3143,9 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .rank-feature { padding: 0; border-right: 0; }
   .evaluation-panel { padding: 17px 16px 14px; }
   .eval-head { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .eval-overall { align-self: stretch; justify-content: space-between; }
+  .eval-overall { align-self: stretch; justify-content: space-between; gap: 14px; padding: 14px 16px 13px 18px; }
+  .eo-score b { font-size: 44px; }
+  .eo-meter { width: 64px; }
   .eval-meta { align-self: flex-end; }
   .milestone-panel { padding: 17px 16px 14px; }
   .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
