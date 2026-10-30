@@ -36,7 +36,6 @@
           <el-option label="生涯" :value="SCOPE_ALL" />
           <el-option v-for="event in scopeEvents" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
         </el-select>
-        <span class="scope-hint">{{ scopeHint }}</span>
         <span class="scope-right">代表 <b>{{ availableTeams.length }}</b> 支球队</span>
       </div>
 
@@ -143,11 +142,7 @@
         <div class="rank-band-head">
           <div>
             <span class="kicker">TEAM RANKING</span>
-            <h2>队内坐标 <small>{{ rankScopeLabel }}</small>
-              <el-tooltip content="排名按当前代表球队的同队同赛事或球队跨赛事生涯口径统计；无最低打席门槛；全垒打不进入排名。" placement="bottom-start" trigger="click">
-                <button type="button" class="metric-info" aria-label="排名口径">i</button>
-              </el-tooltip>
-            </h2>
+            <h2>队内坐标 <small>{{ rankScopeLabel }}</small></h2>
           </div>
           <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '生涯' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
         </div>
@@ -181,7 +176,7 @@
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
-            <h3>总体评价 <small>职业指标 · {{ evaluationComparison }}百分位</small></h3>
+            <h3>总体评价</h3>
           </div>
           <div v-if="evaluationOverall.score != null" class="eval-overall" :style="{ '--eo-grade': overallGradeAccent }">
             <div class="eo-score">
@@ -189,21 +184,7 @@
               <span class="eo-scale">/ 100</span>
               <em>{{ evaluationOverall.grade }}</em>
             </div>
-            <div class="eo-side">
-              <span class="eo-tags">
-                <b class="eo-role">{{ overallRoleLabel }}</b>
-                <i class="eo-confidence" :class="confidenceTone(evaluationOverall.confidenceLabel)">{{ evaluationOverall.confidenceLabel }}</i>
-              </span>
-              <span class="eo-sample">{{ overallSampleText }}</span>
-              <span class="eo-reliability">
-                <span>总体可靠性 <b>{{ formatReliability(evaluationOverall.reliability) }}</b></span>
-                <i class="eo-meter"><i :style="{ width: overallReliabilityPct }"></i></i>
-              </span>
-            </div>
-          </div>
-          <div class="eval-meta">
-            <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
-            <span>{{ evaluationComparison }} · 不随筛选变化</span>
+            <b class="eo-role">{{ overallRoleLabel }}</b>
           </div>
         </div>
         <div class="radar-grid" :class="evaluationCards.length > 2 ? 'three-up' : 'two-up'">
@@ -217,7 +198,6 @@
               <div>
                 <span class="radar-kicker">{{ radarKicker(card.domain) }}</span>
                 <h4>{{ card.title }}</h4>
-                <p class="radar-card-sub">{{ card.subtitle }}</p>
               </div>
               <div v-if="card.available" class="radar-score">
                 <b>{{ card.score }}</b><em>{{ card.grade }}</em><span>综合评分</span>
@@ -269,16 +249,6 @@
                 <span>强项<b>{{ card.strongest.label }}</b><em>{{ card.strongest.percentile }}</em></span>
                 <span>提升<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
               </div>
-              <div class="radar-foot">
-                <span><b>样本池</b> {{ card.sampleSize }} 人</span>
-                <span><b>本人</b> {{ ownSampleText(card) }}</span>
-                <span>{{ radarFoot(card) }}</span>
-              </div>
-              <div class="radar-tags">
-                <i class="radar-confidence" :class="confidenceTone(card.confidenceLabel)">{{ card.confidenceLabel }}</i>
-                <span class="radar-reliability">可靠性 {{ formatReliability(card.reliability) }}</span>
-                <span v-if="radarNote(card)" class="radar-note">{{ radarNote(card) }}</span>
-              </div>
             </template>
             <div v-else class="radar-empty">
               <b>—</b>
@@ -301,7 +271,7 @@
         <div class="panel-head milestone-head">
           <div>
             <span class="kicker">CAREER MILESTONES</span>
-            <h3>生涯里程碑 <small>全租户生涯 · 跨赛事与球队</small></h3>
+            <h3>生涯里程碑</h3>
           </div>
           <div class="milestone-summary">
             <span>已达成 <b>{{ milestoneData.reachedCount || 0 }}</b> 项</span>
@@ -383,9 +353,6 @@
                 <div class="chart-summary">
                   <div><b>{{ performanceSummary }}</b><span>{{ performanceLabel }}</span></div>
                 </div>
-                <el-tooltip content="按比赛日排序的最近 12 场；指标与图表可在数据设置切换。" placement="bottom-end" trigger="click">
-                  <button type="button" class="metric-info" aria-label="表现图口径">i</button>
-                </el-tooltip>
                 <el-button link :icon="Setting" aria-label="数据设置" @click="openSettings" />
               </div>
             </div>
@@ -1033,9 +1000,6 @@ onBeforeUnmount(() => {
   clearTimeout(zoomCloseTimer);
   if (cardZoomOpen.value) document.body.style.overflow = '';
 });
-const scopeHint = computed(() => (teamId.value
-  ? '队内排名按所选球队与赛事/生涯口径计算；雷达为全租户生涯，不随筛选变化'
-  : '生涯合计跨全部球队与赛事；队内排名需选择球队；雷达不随筛选变化'));
 const scopeLabel = computed(() => {
   const scope = data.value?.scope || {};
   if (scope.teamAll && scope.career) return '生涯';
@@ -1077,30 +1041,13 @@ const hasStatsData = computed(() => (
   || hasPitchingData.value
   || Number(data.value?.stats?.fielding?.gp) > 0
 ));
-const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
 const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
 const overallGradeAccent = computed(() => cardGradeMaterial(evaluationOverall.value.grade).color);
-const overallReliabilityPct = computed(() => {
-  const value = Number(evaluationOverall.value.reliability);
-  if (!Number.isFinite(value)) {
-    return '0%';
-  }
-  return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
-});
 const overallRoleLabel = computed(() => ({
   POSITION_PLAYER: '野手',
   PITCHER: '投手',
   TWO_WAY: '二刀流'
 }[evaluationOverall.value.role] || '球员'));
-const overallSampleText = computed(() => {
-  const sizes = evaluationOverall.value.sampleSize || {};
-  const parts = [
-    formatOwnSample(sizes.batting, 'PA'),
-    formatOwnSample(sizes.pitching, 'IP'),
-    formatOwnSample(sizes.fielding, 'INN')
-  ].filter(Boolean);
-  return parts.length ? parts.join(' · ') : '暂无有效样本';
-});
 /** 旧数据兜底：野手（POSITION_PLAYER）不渲染投球卡，即使接口仍返回了投球卡。 */
 const evaluationCards = computed(() => {
   const role = evaluationOverall.value.role;
@@ -2105,44 +2052,6 @@ function radarKicker(domain) {
   return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
 }
 
-function radarFoot(card) {
-  return `${(card.axes || []).length} 轴 · ${evaluationComparison.value}`;
-}
-
-function ownSampleText(card) {
-  return formatOwnSample(card.ownSample, card.sampleUnit) || '暂无';
-}
-
-function formatOwnSample(value, unit) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) return '';
-  if (unit === 'IP') return `${amount.toFixed(1)} IP`;
-  if (unit === 'INN') return `${Number.isInteger(amount) ? amount : amount.toFixed(1)} 局`;
-  return `${Math.round(amount)} PA`;
-}
-
-function formatReliability(value) {
-  const amount = Number(value);
-  return Number.isFinite(amount) ? amount.toFixed(2) : '—';
-}
-
-function confidenceTone(label) {
-  if (label === '样本不足') return 'is-insufficient';
-  if (label === '参考值') return 'is-reference';
-  return 'is-sufficient';
-}
-
-function radarNote(card) {
-  const note = String(card.note || '').trim();
-  const meta = card.meta || {};
-  if (meta.woba != null) return `${note || '参考 wOBA'} ${meta.woba}`;
-  if (meta.fip != null) {
-    const constant = meta.fipConstant != null ? `（C ${meta.fipConstant}）` : '';
-    return `${note || '参考 FIP'} ${meta.fip}${constant}`;
-  }
-  return note;
-}
-
 function radarAria(card) {
   const axes = (card.axes || []).map((axis) => `${axis.label}${axis.value}，百分位${axis.percentile}`).join('；');
   return `${card.title}雷达图，${axes}`;
@@ -2690,7 +2599,6 @@ onBeforeUnmount(() => {
 .scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; max-width: 100%; }
 .scope-select :deep(.el-select__wrapper) { min-height: 30px; border-radius: 7px; box-shadow: 0 0 0 1px var(--bs-hairline) inset; background: var(--bs-surface-soft); }
-.scope-hint { font-size: 10px; color: var(--bs-text-faint); margin-left: 4px; }
 .scope-right { margin-left: auto; font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
 .scope-right b { color: var(--bs-ink); }
 .event-context { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: -2px 0 12px; padding: 8px 10px; border: 1px solid var(--bs-hairline-soft); border-radius: 8px; background: var(--bs-surface-soft); color: var(--bs-text-muted); font-size: 10px; }
@@ -2764,9 +2672,6 @@ onBeforeUnmount(() => {
 .rank-scope a { color: var(--bs-accent-ink); font-weight: 700; margin-left: 5px; }
 .rank-note { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 10px; line-height: 1.5; color: var(--bs-text-muted); }
 .rank-note b { color: var(--bs-accent-ink); font-weight: 700; }
-.metric-info { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 6px; padding: 0; border: 1px solid var(--bs-hairline); border-radius: 50%; background: var(--bs-surface); color: var(--bs-text-muted); font: inherit; font-size: 10px; font-weight: 800; vertical-align: middle; cursor: help; }
-.metric-info:hover { border-color: var(--bs-accent); color: var(--bs-accent-ink); }
-.metric-info:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .rank-band-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 15px; }
 .rank-feature { padding: 0 24px; border-right: 1px solid var(--bs-hairline-soft); }
 .rank-feature:first-child { padding-left: 0; }
@@ -2787,26 +2692,13 @@ onBeforeUnmount(() => {
 .eval-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .eval-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 22px; line-height: 1.2; color: var(--bs-ink); }
 .eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
-.eval-meta { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 11px; color: var(--bs-text-muted); }
-.eval-meta b { color: var(--bs-ink); font-family: var(--bs-font-num); font-size: 14px; margin-right: 3px; }
 .eval-overall { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 16px 22px 15px 24px; border: 1px solid var(--bs-hairline-soft); border-radius: 16px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
 .eval-overall::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, var(--eo-grade, var(--bs-accent)), transparent); opacity: .9; }
 .eo-score { display: flex; align-items: baseline; gap: 7px; }
 .eo-score b { font-family: var(--bs-font-num); font-size: 54px; line-height: .85; font-weight: 700; letter-spacing: -.05em; color: var(--bs-ink); }
 .eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 12px; color: var(--bs-text-faint); }
 .eo-score em { align-self: center; margin-left: 2px; padding: 5px 9px; font-style: normal; font-family: var(--bs-font-num); font-size: 15px; font-weight: 800; color: var(--bs-ink); border: 1px solid color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 45%, var(--bs-hairline)); border-radius: 7px; background: color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 12%, var(--bs-surface)); }
-.eo-side { display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.35; color: var(--bs-text-muted); }
-.eo-tags { display: flex; align-items: center; gap: 8px; }
-.eo-role { font-size: 12px; font-weight: 700; color: var(--bs-text); }
-.eo-confidence, .radar-confidence { padding: 1px 6px; font-style: normal; font-size: 10px; font-weight: 600; line-height: 1.5; color: var(--bs-text-muted); border: 1px solid var(--bs-hairline); border-radius: 99px; background: var(--bs-surface-soft); }
-.eo-confidence.is-reference, .radar-confidence.is-reference { color: var(--bs-accent-ink); border-color: var(--bs-accent-soft); background: var(--bs-accent-soft); }
-.eo-confidence.is-insufficient, .radar-confidence.is-insufficient { color: var(--bs-text-faint); }
-.eo-confidence.is-sufficient, .radar-confidence.is-sufficient { color: var(--bs-text); border-color: var(--bs-hairline); }
-.eo-sample { font-family: var(--bs-font-num); font-size: 12px; letter-spacing: .02em; color: var(--bs-text); }
-.eo-reliability { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .02em; color: var(--bs-text-faint); }
-.eo-reliability b { font-family: var(--bs-font-num); font-size: 12px; color: var(--bs-text); }
-.eo-meter { width: 84px; height: 4px; border-radius: 99px; background: var(--bs-hairline-soft); overflow: hidden; }
-.eo-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--eo-grade, var(--bs-accent)), var(--bs-accent)); }
+.eo-role { align-self: center; font-size: 13px; font-weight: 700; color: var(--bs-text); }
 .radar-grid { display: grid; gap: 14px; margin-top: 14px; }
 .radar-grid.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .radar-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2818,7 +2710,6 @@ onBeforeUnmount(() => {
 .radar-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .radar-kicker { display: block; font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--bs-text-muted); }
 .radar-card h4 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 19px; line-height: 1.15; color: var(--bs-ink); }
-.radar-card-sub { margin: 5px 0 0; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .06em; color: var(--bs-text-muted); }
 .radar-score { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 7px; text-align: right; }
 .radar-score b { font-family: var(--bs-font-num); font-size: 35px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
 .radar-score em { align-self: start; padding: 3px 5px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 4px; background: var(--bs-surface-soft); }
@@ -2845,13 +2736,6 @@ onBeforeUnmount(() => {
 .radar-highlights span { font-size: 10px; color: var(--bs-text-muted); }
 .radar-highlights b { margin-left: 3px; font-size: 10px; color: var(--bs-text); }
 .radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot span:last-child { margin-left: auto; }
-.radar-foot b { color: var(--bs-text-faint); font-weight: 500; }
-.radar-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 9px; line-height: 1.5; color: var(--bs-text-faint); }
-.radar-reliability { letter-spacing: .03em; }
-.radar-note { flex-basis: 100%; color: var(--bs-text-muted); }
-.radar-note::before { content: "· "; color: var(--bs-text-faint); }
 .radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
 .radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
 .radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
@@ -2966,7 +2850,6 @@ onBeforeUnmount(() => {
   .donut-wrap { flex-wrap: wrap; gap: 16px; }
   .chart-wrap { overflow-x: auto; }
   .trend-chart { min-width: 480px; }
-  .eval-meta { align-self: flex-start; }
 }
 .content-grid, .main-col, .side-col { display: contents; }
 .dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
@@ -2978,7 +2861,6 @@ onBeforeUnmount(() => {
 .panel-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 20px; line-height: 1.2; font-weight: 700; color: var(--bs-ink); }
 .panel-head h3 small { font-family: var(--bs-font-sans); font-size: 10px; color: var(--bs-text-faint); font-weight: 400; margin-left: 5px; }
 .panel-head-actions { display: flex; align-items: center; gap: 14px; }
-.eval-meta .metric-info { margin-left: 0; }
 .chart-summary { text-align: right; }
 .chart-summary b { display: block; font-family: var(--bs-font-num); font-size: 18px; color: var(--bs-ink); }
 .chart-summary span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
@@ -3145,8 +3027,6 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .eval-head { align-items: flex-start; flex-direction: column; gap: 10px; }
   .eval-overall { align-self: stretch; justify-content: space-between; gap: 14px; padding: 14px 16px 13px 18px; }
   .eo-score b { font-size: 44px; }
-  .eo-meter { width: 64px; }
-  .eval-meta { align-self: flex-end; }
   .milestone-panel { padding: 17px 16px 14px; }
   .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
   .milestone-summary { align-self: flex-end; flex-wrap: wrap; justify-content: flex-end; }
@@ -3164,7 +3044,6 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .recent-cards { grid-template-columns: 1fr; }
   .chart-summary { display: none; }
   .scope-bar { flex-wrap: wrap; }
-  .scope-hint { width: 100%; order: 5; }
   .scope-right { margin-left: 0; }
   .panel-head { align-items: flex-start; }
   .hero-kicker { color: var(--bs-accent-hover); }
@@ -3190,8 +3069,6 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .radar-metric { padding: 7px 0; }
   .radar-metric em { font-size: 13px; }
   .eval-overall { flex-wrap: wrap; gap: 8px 12px; }
-  .eo-side { flex-basis: 100%; }
-  .eo-tags, .eo-sample { overflow-wrap: anywhere; }
 }
 </style>
 
