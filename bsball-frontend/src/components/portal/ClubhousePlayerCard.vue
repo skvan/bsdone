@@ -22,8 +22,8 @@
         </div>
         <span v-for="spot in sparks" :key="spot.id" class="pcard-spark" :style="spot.style"></span>
         <div class="pcard-logo" :title="teamName">
-          <img v-if="teamLogo" :src="teamLogo" :alt="teamName" />
-          <span v-else class="pcard-logo-crest">{{ teamCrest }}</span>
+          <img v-if="teamLogo && logoSrc" :src="logoSrc" :alt="teamName" />
+          <span v-else-if="!teamLogo" class="pcard-logo-crest">{{ teamCrest }}</span>
         </div>
       </div>
     </div>
@@ -31,8 +31,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { resolveAssetUrl } from '../../api/request';
+import { whiteKeyedLogo } from './logoWhiteKey.js';
 import {
   CARD_BASE_WIDTH,
   CARD_BASE_HEIGHT,
@@ -58,6 +59,20 @@ const material = computed(() => cardGradeMaterial(props.grade));
 const gradeLabel = computed(() => props.grade || material.value.key);
 const avatarUrl = computed(() => resolveAssetUrl(props.player.avatar));
 const sparks = computed(() => gradeSparkSpots(material.value));
+
+const logoSrc = ref('');
+let logoRequest = 0;
+watch(() => props.teamLogo, async (url) => {
+  const request = ++logoRequest;
+  logoSrc.value = '';
+  if (!url) {
+    return;
+  }
+  const keyed = await whiteKeyedLogo(url);
+  if (request === logoRequest) {
+    logoSrc.value = keyed;
+  }
+}, { immediate: true });
 
 const slotStyle = computed(() => ({
   width: `${Math.round(CARD_BASE_WIDTH * props.scale)}px`,
