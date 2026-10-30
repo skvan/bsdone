@@ -679,6 +679,41 @@ class GameServiceSaveResultTest {
     }
 
     @Test
+    @DisplayName("saveResult：先发守备位只写新建的先发行；替补/已有行不写")
+    void saveResult_startingPosition_onlyNewStarterRows() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO.StatPart existingPart = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        existingPart.setPosition("lf");
+
+        SaveGameResultDTO.StatPart starter = part(null, Long.valueOf(5001L), 0, Integer.valueOf(0), null);
+        starter.setBattingOrder(Integer.valueOf(2));
+        starter.setPosition("lf");
+        SaveGameResultDTO.StatPart substitute = part(null, Long.valueOf(5002L), 0, Integer.valueOf(0), null);
+        substitute.setPosition("rf");
+        SaveGameResultDTO.StatPart pitcher = part(null, Long.valueOf(5003L), 1, Integer.valueOf(0), Double.valueOf(1.0D));
+        pitcher.setPitcherOrder(Integer.valueOf(1));
+        pitcher.setPosition("P");
+
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(existingPart, starter, substitute, pitcher)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(batter.getStartingPosition(), "已有行不得被结果页回填先发守备位");
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
+        verify(gamePlayerStatRepository, atLeastOnce()).save(captor.capture());
+        GamePlayerStat createdStarter = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5001L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdSub = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5002L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdPitcher = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5003L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        assertEquals("LF", createdStarter.getStartingPosition(), "先发打者按守位写先发守备位");
+        assertNull(createdSub.getStartingPosition(), "替补不写先发守备位");
+        assertEquals("P", createdPitcher.getStartingPosition(), "先发投手写 P");
+    }
+
+    @Test
     @DisplayName("saveResult：纸质表单新增字段全部落库")
     void saveResult_paperFormFields_written() {
         GamePlayerStat pitcher = pitcherRow();
