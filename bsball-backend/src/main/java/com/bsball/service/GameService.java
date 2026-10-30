@@ -863,6 +863,16 @@ public class GameService {
         if (stat.getId() == null && (stat.getFirstPosition() == null || stat.getFirstPosition().isBlank())) {
             stat.setFirstPosition(normalizeFirstPosition(part.getPosition()));
         }
+        // 先发守备位：结果页新建行中，先发打者/先发投手按当前守位写入；替补不写
+        if (stat.getId() == null && stat.getStartingPosition() == null) {
+            boolean startingPitcher = Integer.valueOf(1).equals(part.getIsPitcher())
+                    && Integer.valueOf(1).equals(part.getPitcherOrder());
+            boolean starter = part.getBattingOrder() != null || startingPitcher;
+            if (starter) {
+                stat.setStartingPosition(startingPitcher && part.getBattingOrder() == null
+                        ? "P" : normalizeFirstPosition(part.getPosition()));
+            }
+        }
         stat.setNumber(part.getNumber());
         stat.setBatHand(part.getBatHand());
         stat.setThrowHand(part.getThrowHand());
@@ -1130,6 +1140,10 @@ public class GameService {
         // 首个守位只由实时录入首次上场时写入；旧客户端不带该字段时保留库中已有值
         if (part.getFirstPosition() != null) {
             stat.setFirstPosition(normalizeFirstPosition(part.getFirstPosition()));
+        }
+        // 先发守备位只由实时录入在开赛前阵容写入；旧客户端/替补不带该字段时保留空值
+        if (part.getStartingPosition() != null) {
+            stat.setStartingPosition(normalizeFirstPosition(part.getStartingPosition()));
         }
         stat.setPa(part.getPa());
         stat.setAb(part.getAb());
