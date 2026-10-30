@@ -19,7 +19,7 @@ test('拖拽进垒选择「捕逸 (PB)」时给捕手记 PB', () => {
   const body = slice(src, 'function Sp(e){', 'function kp(e){');
   assert.match(body, /e\.id==="safe_wp"/, '缺少暴投入账（对照路径）');
   assert.match(body, /e\.id==="safe_sb"/, '缺少盗垒/捕手 SB 入账（对照路径）');
-  assert.match(body, /e\.id==="safe_pb"\)l\.playPbCredited=!0,l\.playWpCredited=!1,paceCatcherStat\("pb"\)/, '捕逸进垒未给捕手记 PB（每次捕逸均计数）');
+  assert.match(body, /e\.id==="safe_pb"&&!l\.playPbCredited\)l\.playPbCredited=!0,l\.playWpCredited=!1,paceCatcherStat\("pb"\)/, '捕逸进垒未给捕手记 PB（同一球只记一次）');
 });
 
 test('同一 play 承接暴投/捕逸走普通进垒，不再要求失误守备员', () => {

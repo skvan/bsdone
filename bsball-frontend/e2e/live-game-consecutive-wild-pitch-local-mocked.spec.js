@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// #523：0-0 连续两次拖拽暴投/捕逸，应按事件各计一次并各留一条投球行；
-// 同一 WP/PB 的多跑者承接仍用「同一play内失误推进」。
+// #523：暴投/捕逸按真实投球顺序出现：没投球无选项；好球后仅捕逸；
+// 坏球后暴投+捕逸；同一球只记一次，下一球 Ea() 重置后再出现。
 const zeroBatting = () => ({
   ab: 0, r: 0, h: 0, rbi: 0, bb: 0, hbp: 0, so: 0, so_swing: 0, so_looking: 0,
   sf: 0, sh: 0, sb: 0, cs: 0, doubles: 0, triples: 0, hr: 0, insideParkHr: 0, gdp: 0, ibb: 0, io: 0,
@@ -18,7 +18,7 @@ function player(id, name, number, position, teamId) {
     stats: { batting: zeroBatting(), pitching: zeroPitching(), fielding: zeroFielding() }
   };
 }
-function buildSnapshot() {
+function buildSnapshot(options = {}) {
   const away = [
     player(1, '客一', '1', 'LF', 2), player(2, '客二', '2', 'CF', 2),
     player(4, '刘大路', '22', 'C', 2), player(5, '客四', '4', '1B', 2),
@@ -46,16 +46,16 @@ function buildSnapshot() {
     teamsData: { away: { score: 0, innings: [0, 0, 0, 0] }, home: { score: 0, innings: [0, 0, 0, 0] } },
     eventLog: [], atBatSummaries: [], playEvents: [], playerStatsById: {},
     gameState: {
-      inning: 4, isTop: true, outs: 0, halfInningOuts: [], balls: 0, strikes: 0,
+      inning: 4, isTop: true, outs: 0, halfInningOuts: [], balls: options.balls ?? 0, strikes: 0,
       batterIndex: { away: 4, home: 0 },
       runners: { 1: 4 },
-      flow: null, isGameEnd: false, hasPitchThisAB: false, needNextBatter: false,
+      flow: null, isGameEnd: false, hasPitchThisAB: options.hasPitchThisAB ?? false, needNextBatter: false,
     },
   };
 }
 
-async function setup(page) {
-  const snapshot = buildSnapshot();
+async function setup(page, options = {}) {
+  const snapshot = buildSnapshot(options);
   const snapshots = [];
   const errors = [];
   page.on('pageerror', (err) => errors.push(err.message));
@@ -91,9 +91,8 @@ async function setup(page) {
   await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
   return { snapshots, errors };
 }
-
-async function dragRunner(page, mode, reason){
-  await page.waitForTimeout(1200);
+async function openAdvanceMenu(page, mode){
+  await page.waitForTimeout(600);
   const runner = page.locator('.runners-group > .runner-draggable-group')
     .filter({ hasText: '#22' }).first().locator('circle.runner-token-circle');
   const box = await runner.boundingBox();
@@ -113,47 +112,132 @@ async function dragRunner(page, mode, reason){
   await page.mouse.move(target.x + target.width / 2, target.y + target.height * 0.25, { steps: 12 });
   await page.waitForTimeout(120);
   await page.mouse.up();
-  const item = page.locator('.rdm__item').filter({ hasText: reason }).first();
-  await expect(item).toBeVisible();
-  await item.click();
-  await page.waitForTimeout(400);
+  await expect(page.locator('.rdm__item').first()).toBeVisible();
+  return page.locator('.rdm__cn');
 }
 
-async function saveSnapshot(page, snapshots) {
+async function cancelReason(page){
+  await page.locator('.rdm__cancel:visible').click();
+  await page.waitForTimeout(200);
+}
+
+async function saveSnapshot(page, snapshots){
   const before = snapshots.length;
   await page.getByRole('button', { name: '保存比赛' }).click();
   await expect.poll(() => snapshots.length).toBeGreaterThan(before);
   return JSON.parse(snapshots.at(-1));
 }
 
-function logLines(snap) {
+function logLines(snap){
   return snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join(String.fromCharCode(10));
 }
 
-test('0-0 连续两次暴投：两次拖动都计入 WP，且各有一条暴投行', async ({ page }) => {
+test('没投球时拖动跑者：菜单没有暴投/捕逸', async ({ page }) => {
+  const { snapshots } = await setup(page);
+  const items = await openAdvanceMenu(page, 'second');
+  const texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('暴投'))).toBe(false);
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(false);
+  await cancelReason(page);
+});
+
+test('好球后拖动跑者：只有捕逸，没有暴投', async ({ page }) => {
+  const { snapshots } = await setup(page);
+  await page.locator('button[title="好球 Called Strike"]').click();
+  const items = await openAdvanceMenu(page, 'second');
+  const texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(true);
+  expect(texts.some((t) => t.includes('暴投'))).toBe(false);
+  await cancelReason(page);
+});
+
+test('坏球后连续两次暴投：每次各计一次并各留一条投球行', async ({ page }) => {
   const { snapshots, errors } = await setup(page);
-  await dragRunner(page, 'second', '暴投');
-  await dragRunner(page, 'third', '暴投');
+  await page.locator('button[title="坏球 Ball"]').click();
+  let items = await openAdvanceMenu(page, 'second');
+  let texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('暴投'))).toBe(true);
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(true);
+  await page.locator('.rdm__item').filter({ hasText: '暴投' }).first().click();
+  await page.waitForTimeout(300);
+
+  // 同一球（未再投球）：WP/PB 隐藏，承接用同一play内失误推进
+  items = await openAdvanceMenu(page, 'third');
+  texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('暴投'))).toBe(false);
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(false);
+  await cancelReason(page);
+
+  // 再投一坏球 -> 第二暴投
+  await page.locator('button[title="坏球 Ball"]').click();
+  items = await openAdvanceMenu(page, 'third');
+  await page.locator('.rdm__item').filter({ hasText: '暴投' }).first().click();
+  await page.waitForTimeout(300);
+
   const snap = await saveSnapshot(page, snapshots);
   const logText = logLines(snap);
   expect(errors).toEqual([]);
   expect(snap.gameState.runners).toMatchObject({ 1: null, 2: null, 3: 4 });
   expect(snap.playerStatsById['101'].pitching.wp).toBe(2);
   expect(logText.split(String.fromCharCode(10)).filter((line) => line.includes('主P: 暴投')).length).toBe(2);
-  expect(logText).toContain('暴投 (WP)：一垒跑者 刘大路 (#22) 进二垒 — 安全');
-  expect(logText).toContain('暴投 (WP)：二垒跑者 刘大路 (#22) 进三垒 — 安全');
 });
 
-test('0-0 连续两次捕逸：两次拖动都计入捕手 PB，且各有一条捕逸行', async ({ page }) => {
+test('好球后连续两次捕逸：每次各计一次并各留一条投球行', async ({ page }) => {
   const { snapshots, errors } = await setup(page);
-  await dragRunner(page, 'second', '捕逸');
-  await dragRunner(page, 'third', '捕逸');
+  await page.locator('button[title="好球 Called Strike"]').click();
+  let items = await openAdvanceMenu(page, 'second');
+  await page.locator('.rdm__item').filter({ hasText: '捕逸' }).first().click();
+  await page.waitForTimeout(300);
+  await page.locator('button[title="好球 Called Strike"]').click();
+  items = await openAdvanceMenu(page, 'third');
+  await page.locator('.rdm__item').filter({ hasText: '捕逸' }).first().click();
+  await page.waitForTimeout(300);
+
   const snap = await saveSnapshot(page, snapshots);
   const logText = logLines(snap);
   expect(errors).toEqual([]);
   expect(snap.gameState.runners).toMatchObject({ 1: null, 2: null, 3: 4 });
   expect(snap.playerStatsById['102'].fielding.pb).toBe(2);
   expect(logText.split(String.fromCharCode(10)).filter((line) => line.includes('主C: 捕逸')).length).toBe(2);
-  expect(logText).toContain('捕逸 (PB)：一垒跑者 刘大路 (#22) 进二垒 — 安全');
-  expect(logText).toContain('捕逸 (PB)：二垒跑者 刘大路 (#22) 进三垒 — 安全');
+});
+
+
+test('只有坏球计数但未投球：仍没有暴投/捕逸', async ({ page }) => {
+  await setup(page, { balls: 1 });
+  const items = await openAdvanceMenu(page, 'second');
+  const texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('暴投'))).toBe(false);
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(false);
+  await cancelReason(page);
+});
+
+test('先坏球再投好球：只有捕逸，没有暴投', async ({ page }) => {
+  await setup(page);
+  await page.locator('button[title="坏球 Ball"]').click();
+  await page.locator('button[title="好球 Called Strike"]').click();
+  const items = await openAdvanceMenu(page, 'second');
+  const texts = await items.allTextContents();
+  expect(texts.some((t) => t.includes('捕逸'))).toBe(true);
+  expect(texts.some((t) => t.includes('暴投'))).toBe(false);
+  await cancelReason(page);
+});
+
+test('同一球承接：选同一play内失误推进不加计 WP', async ({ page }) => {
+  const { snapshots, errors } = await setup(page);
+  await page.locator('button[title="坏球 Ball"]').click();
+  await openAdvanceMenu(page, 'second');
+  await page.locator('.rdm__item').filter({ hasText: '暴投' }).first().click();
+  await page.waitForTimeout(300);
+
+  await openAdvanceMenu(page, 'third');
+  await page.locator('.rdm__item').filter({ hasText: '同一play内失误推进' }).first().click();
+  await page.waitForTimeout(300);
+
+  const snap = await saveSnapshot(page, snapshots);
+  const logText = logLines(snap);
+  expect(errors).toEqual([]);
+  expect(snap.gameState.runners).toMatchObject({ 1: null, 2: null, 3: 4 });
+  expect(snap.playerStatsById['101'].pitching.wp).toBe(1);
+  expect(logText.split(String.fromCharCode(10)).filter((line) => line.includes('主P: 暴投')).length).toBe(1);
+  expect(logText).toContain('同一play内暴投推进');
 });
