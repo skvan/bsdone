@@ -56,7 +56,8 @@ test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/
   assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
   assert.match(src, /function Wt\(e\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Wt（投球）开头清除');
   assert.match(src, /function Hf\(\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Hf（故意四坏）开头清除');
-  assert.match(src, /e\.id==="out_last"&&l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning/, 'kp out_last 分支（含半局校验）');
+  assert.match(src, /function isCatchBackAvailable\(\)\{\r?\n\s*return !!\(l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning&&l\.abCatchRecorded\.half===l\.isTop\)/, 'isCatchBackAvailable 半局校验');
+  assert.match(src, /e\.id==="out_last"&&isCatchBackAvailable\(\)/, 'kp out_last 分支（含半局校验）');
   assert.match(src, /if\(a\?\.type==="CATCH_BACK_DP"\)\{/, 'Ro 完成分支');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP"].includes'), 'mf 集合含新类型');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP","G"'), 'bf 集合含新类型');
