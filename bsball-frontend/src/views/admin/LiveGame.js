@@ -6284,10 +6284,10 @@ var sg={
       }
       =t,p=a.id??a.name??"?";
       de(`拖拽进垒-安全[${s}>${r}]`),ge.value=null,e.id==="safe_sb"&&(a.stats.batting.sb=(a.stats.batting.sb??0)+1,paceCatcherStat("catcherSb"));
-      if(e.id==="safe_pb"&&!l.playPbCredited)l.playPbCredited=!0,paceCatcherStat("pb");
+      if(e.id==="safe_pb")l.playPbCredited=!0,l.playWpCredited=!1,paceCatcherStat("pb"),D(LgPitch({who:Vt("C")?.name??"捕手",kind:"passed_ball"}));
       const g=Se.value;
-      if(e.id==="safe_wp"&&!l.playWpCredited){
-        l.playWpCredited=!0,g?.stats?.pitching&&(g.stats.pitching.wp=(g.stats.pitching.wp??0)+1),D(LgPitch({who:g?.name??"投手",kind:"wild_pitch"}))
+      if(e.id==="safe_wp"){
+        l.playPbCredited=!1,l.playWpCredited=!0,g?.stats?.pitching&&(g.stats.pitching.wp=(g.stats.pitching.wp??0)+1),D(LgPitch({who:g?.name??"投手",kind:"wild_pitch"}))
       }
       // 同一 play 内先有暴投/捕逸时，承接推进走普通进垒并沿用 WP/PB 来源；
       // 只有前一次事件是失误时才需要选失误责任守备员（否则会产生幽灵失误日志与非自责分归因）。
@@ -8578,10 +8578,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       substitutionMode.value?J("换人模式进行中，请先结束或取消换人模式","warning"):l.isGameEnd||(de("教练暂停"),D(LgCoach((l.isTop?At:xt).value?.name)),gt())
     }
     function Xt(e){
-      if(e==="WP"&&l.playWpCredited){
-        J("本 play 已记暴投 (WP)，同一 play 内请用跑者进垒的「同一play内失误推进」","warning");
-        return
-      }
       if(["OBST","SB","CS","PK","ADVANCE_FE"].includes(e)&&Ut()===0){
         J("垒上无跑垒员","warning");
         return
@@ -8638,7 +8634,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       else if(e==="WP"){
         const s=ca();
-        D(LgPitch({who:a,kind:"wild_pitch"}),s??void 0),ai({resultCode:"WP",resultText:`${a}: 暴投 (WP)`,origin:"WILD_PITCH"}),t?.stats?.pitching&&(t.stats.pitching.wp=(t.stats.pitching.wp??0)+1),l.playWpCredited=!0,l.flow=null
+        D(LgPitch({who:a,kind:"wild_pitch"}),s??void 0),ai({resultCode:"WP",resultText:`${a}: 暴投 (WP)`,origin:"WILD_PITCH"}),t?.stats?.pitching&&(t.stats.pitching.wp=(t.stats.pitching.wp??0)+1),l.playPbCredited=!1,l.playWpCredited=!0,l.flow=null
       }
     }
     function ti(e){
@@ -8763,12 +8759,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const s=be.value,r=Se.value;
       if(!s)return;
       if(ue(s),ue(r??void 0),s.stats.batting.so=(s.stats.batting.so??0)+1,s.stats.batting.ab=(s.stats.batting.ab??0)+1,t?s.stats.batting.so_looking=(s.stats.batting.so_looking??0)+1:s.stats.batting.so_swing=(s.stats.batting.so_swing??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchSo=(r.stats.pitching.pitchSo??0)+1),e){
-        l.playWpCredited=!0,r?.stats?.pitching&&(r.stats.pitching.wp=(r.stats.pitching.wp??0)+1);
+        l.playPbCredited=!1,l.playWpCredited=!0,r?.stats?.pitching&&(r.stats.pitching.wp=(r.stats.pitching.wp??0)+1);
         const w=ca();
         D(LgPitch({who:r?.name??"投手",kind:"wild_pitch"}),w??void 0)
       }
       else{
-        l.playPbCredited=!0;
+        l.playWpCredited=!1,l.playPbCredited=!0;
         const w=Vt("C"),P=ca();
         D(LgPitch({who:w?.name??"捕手",kind:"passed_ball"}),P??void 0),paceCatcherStat("pb")
       }
