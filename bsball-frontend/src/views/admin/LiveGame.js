@@ -767,12 +767,15 @@ function Wd(u,f,l){
   }
   return o
 }
-function Xd(u,f){
+function Xd(u,f,hasCatchBack){
   return f===u?[{
     id:"out_pk",en:"Picked Off",cn:"牵制出局"
   }
-  ,{
+  ,...(hasCatchBack?[{
     id:"out_last",en:"Out on Last Play",cn:"离垒过远出局"
+  }]:[])
+  ,{
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -963,7 +966,7 @@ var Bu=Yc("liveGame",()=>{
     ,batterIndex:{
       away:0,home:0
     }
-    ,flow:null,isGameEnd:!1,hasPitchThisAB:!1,needNextBatter:!1,mvp:null,svp:null,runnerDragCiRunnerId:null,playErrorCredited:!1,playWpCredited:!1,playPbCredited:!1,lastPitchWasBall:!1,hitSprayQueue:[]
+    ,flow:null,isGameEnd:!1,hasPitchThisAB:!1,needNextBatter:!1,mvp:null,svp:null,runnerDragCiRunnerId:null,playErrorCredited:!1,playWpCredited:!1,playPbCredited:!1,lastPitchWasBall:!1,abCatchRecorded:null,hitSprayQueue:[]
   }
   ),te=ha({
     away:{
@@ -5812,6 +5815,18 @@ var sg={
     ,{
       id:"out_other",en:"Other",cn:"其他"
     }
+    ],homeStealOutReasonOptions=[{
+      id:"out_tag",en:"Tagged Out",cn:"触杀出局"
+    }
+    ,{
+      id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
+    }
+    ,{
+      id:"out_appeal",en:"Out on Appeal",cn:"申诉出局"
+    }
+    ,{
+      id:"out_other",en:"Other",cn:"其他"
+    }
     ],tp=$(()=>{
       const e=ge.value;
       return e?e.toBase>e.fromBase&&Ut()>0&&l.hasPitchThisAB:!1
@@ -5832,13 +5847,13 @@ var sg={
     ),ap=$(()=>{
       const e=ge.value;
       if(!e)return[];
-      if(tp.value)return ep;
+      if(tp.value)return e.fromBase===3&&e.toBase===4?homeStealOutReasonOptions:ep;
       const t=l.runnerDragCiRunnerId,a=e.runner.id??e.runner.name??null;
       if(t!=null&&a===t&&e.fromBase===1&&e.toBase>1){
         const s=Kd(e.fromBase,e.toBase);
         if(s)return s
       }
-      return Xd(e.fromBase,e.toBase)
+      return Xd(e.fromBase,e.toBase,isCatchBackAvailable())
     }
     ),qe=x(!1),Cl=x(!1),at=x([]),St=x(0),Aa=x(null);
     let Oa=null;
@@ -6345,6 +6360,9 @@ var sg={
       }
       ])
     }
+    function isCatchBackAvailable(){
+      return !!(l.abCatchRecorded&&l.abCatchRecorded.inning===l.inning&&l.abCatchRecorded.half===l.isTop)
+    }
     function kp(e){
       const t=ge.value;
       if(!t)return;
@@ -6379,7 +6397,7 @@ var sg={
         D(m),l.outs>=3&&(Je("THIRD_OUT",m),Qe());
         return
       }
-      if(e.id==="out_last"&&l.abCatchRecorded&&l.abCatchRecorded.inning===l.inning&&l.abCatchRecorded.half===l.isTop){
+      if(e.id==="out_last"&&isCatchBackAvailable()){
         de(`拖拽-出局[${s}>${r}]`),l.flow={
           type:"CATCH_BACK_DP",runner:a,runnerBase:s,outAtBase:r,catchPos:l.abCatchRecorded.pos??"P"
         }
@@ -7762,6 +7780,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           )
         }
         else l.runnerDragCiRunnerId=null;
+        l.abCatchRecorded=null;
         const A=e.teamsData;
         if(A){
           const E=A.away,U=A.home;
@@ -7904,7 +7923,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s&&typeof s.score=="number"&&Number.isFinite(s.score)&&(o.home.score=s.score),s&&Array.isArray(s.innings)&&(o.home.innings=s.innings.map(r=>Number(r)||0))
     }
     function ns(e){
-      Object.assign(l,e.game),l.flow=normalizeErrorFlow(l.flow),Array.isArray(l.halfInningOuts)||(l.halfInningOuts=[]),Object.prototype.hasOwnProperty.call(e.game,"runnerDragCiRunnerId")||(l.runnerDragCiRunnerId=null),Object.prototype.hasOwnProperty.call(e.game,"playErrorCredited")||(l.playErrorCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playWpCredited")||(l.playWpCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playPbCredited")||(l.playPbCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"lastPitchWasBall")||(l.lastPitchWasBall=(e.game?.balls??0)>0),Cf(e.lineup),Bf(e),o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,(()=>{
+      Object.assign(l,e.game),l.flow=normalizeErrorFlow(l.flow),Array.isArray(l.halfInningOuts)||(l.halfInningOuts=[]),Object.prototype.hasOwnProperty.call(e.game,"runnerDragCiRunnerId")||(l.runnerDragCiRunnerId=null),Object.prototype.hasOwnProperty.call(e.game,"playErrorCredited")||(l.playErrorCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playWpCredited")||(l.playWpCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playPbCredited")||(l.playPbCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"lastPitchWasBall")||(l.lastPitchWasBall=(e.game?.balls??0)>0),Object.prototype.hasOwnProperty.call(e.game,"abCatchRecorded")||(l.abCatchRecorded=null),Cf(e.lineup),Bf(e),o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,(()=>{
         const t=a=>{
           if(!a)return a;
           const s=Number(a.id);
