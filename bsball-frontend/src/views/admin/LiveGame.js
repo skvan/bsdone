@@ -73,6 +73,7 @@ import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as Lg
 import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
 import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField';
 import { shouldCreditError, filterErrorReasons, selectErrorFielder, normalizeErrorFlow } from '../../utils/liveGameErrorCredit';
+import { resolveDoublePlay as LgResolveDoublePlay, canStartDoublePlay as LgCanStartDoublePlay, canStartTriplePlay as LgCanStartTriplePlay, BASE_NAME as LgDpBaseName } from '../../utils/liveGameDoublePlay';
 import '../../styles/legacy/live-game.css';
 function gd(u){
   const f=qc();
@@ -7122,6 +7123,46 @@ var sg={
     function ff(e){
       return e.bipCode||e.bipSpray?"界内击出：失误上垒；":"失误上垒："
     }
+    function buildDoublePlayPreview(flow, runner3Decision = null) {
+      if (!flow || (flow.type !== "DP" && flow.type !== "TP")) return null;
+      return LgResolveDoublePlay({
+        type: flow.type,
+        steps: flow.steps ?? [],
+        stepActions: flow.stepActions,
+        runners: l.runners,
+        batter: be.value,
+        overrides: flow.dpOverrides,
+        runner3Decision
+      });
+    }
+    const dpPreview=$(()=>{
+      const flow=l.flow;
+      if(!flow||(flow.type!=="DP"&&flow.type!=="TP"))return null;
+      if(flow.type==="DP"&&!LgCanStartDoublePlay(l.runners))return null;
+      if(flow.type==="TP"&&!LgCanStartTriplePlay(l.runners))return null;
+      return buildDoublePlayPreview(flow)
+    }
+    );
+    function describeDoublePlayIssue(preview){
+      if(!preview)return"双杀/三杀记录尚未完成";
+      const label=preview.outCount===3?"三杀":"双杀";
+      if(preview.reason==="missing_batter")return"缺少打者，无法记录"+label;
+      const recorded=(preview.outs??[]).filter(out=>out.base).map(out=>`${LgDpBaseName[out.base]}${out.runner?` ${logPlayerName(out.runner)}`:" 跑者待定"}${out.action?` ${out.action==="tag"?"触杀":"封杀"}`:""}${out.fielder?`（${vi[out.fielder]??out.fielder}）`:""}`).join("、");
+      if(preview.reason==="outs_incomplete"){
+        const chain=(preview.actions??[]).filter(action=>action.pos).map(action=>vi[action.pos]??action.pos).join("→");
+        const prefix=chain?`${chain}；`:"",done=recorded?`已记录出局点 ${recorded}（完成记录后生效）；`:"";
+        return`${prefix}${done}${label}还需拖拽记录 ${preview.needsOuts} 个出局：继续点选下一传，或把当前持球守备员拖到垒包（封杀/触杀）`
+      }
+      if(preview.reason==="too_many_outs")return`出局点超过${label}上限：请撤销多余的拖拽，或取消重记`;
+      const item=preview.unresolved?.[0];
+      if(item){
+        const fielder=It[item.fielder]??item.fielder;
+        if(!item.base)return`${fielder} 的接球垒包不明确：请点「修改出局」指定`;
+        return`${fielder} 在${LgDpBaseName[item.base]}没有找到被迫出局跑者：请点「修改出局」指定跑者/垒包`
+      }
+      if(preview.reason==="advance_conflict")return"剩余跑者进垒冲突：请点「修改出局」或撤销后重记";
+      return`${label}出局归属不完整：请检查传球链`
+    }
     const cf=$(()=>{
       const e=l.flow;
       if(!e){
@@ -7167,6 +7208,23 @@ var sg={
       if(e.type==="BIP_HIT_PENDING"){
         const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后可点「完成记录」":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
         return s?`界内击出：${s} → ${r}；${p}`:`界内击出 → ${r}；${p}`
+      }
+      if(e.type==="DP"&&!LgCanStartDoublePlay(l.runners))return"双杀：一垒无人，无法形成双杀（仅二垒/三垒有人按单独出局记录）";
+      if(e.type==="TP"&&!LgCanStartTriplePlay(l.runners))return"三杀：一、二垒都需有人";
+      if((e.type==="DP"||e.type==="TP")&&dpPreview.value){
+        const p=dpPreview.value;
+        if(p.valid&&p.outs.length){
+          const chainText=p.actions.map(a=>{
+            const pos=vi[a.pos]??a.pos;
+            if(!a.out||!a.base)return pos;
+            return`${pos}（${LgDpBaseName[a.base]}${a.action==="tag"?"触杀":""}）`
+          }
+          ).join("→");
+          const outText=p.outs.filter(o=>o.runner).map(o=>`${LgDpBaseName[o.base]} ${logPlayerName(o.runner)} ${o.action==="tag"?"触杀":"封杀"}（${vi[o.fielder]??o.fielder}）`).join(" · ");
+          const batterText=p.batterSafe?`打者 ${logPlayerName(be.value)} 上一垒${e.type==="DP"?"（不记 GDP）":""}`:`打者 ${logPlayerName(be.value)} 出局${e.type==="DP"?"（GDP）":""}`;
+          return`${e.type==="TP"?"三杀":"双杀"}：${chainText}；出局：${outText}；${batterText}${p.needsRunner3Decision?"；三垒跑者得分待确认":""}`
+        }
+        if(!p.valid)return`${e.type==="TP"?"三杀":"双杀"}：${describeDoublePlayIssue(p)}`
       }
       const S0=["G","F","L","TAG","SF","SH","DP","FC"].includes(e.type)?{
         G:e.steps?.length===0?`滚地球：${a}（接球；独力接杀可再点同一守位）`:`滚地球：${a}（封杀传杀；再点同一守位记接杀）`,F:`飞球：${a}（接杀；左飞/中飞由守位决定）`,L:`平飞球：${a}（接杀）`,TAG:`${a}（接杀触杀）`,SF:`高飞牺牲：${a}（接杀）`,SH:e.steps?.length===0?`牺牲触击：${a}（接球；独力接杀可再点同一守位）`:`牺牲触击：${a}（封杀传杀；再点同一守位记接杀）`,FC:e.steps?.length===0?`野手选择：1.${a}`:`野手选择：2.${a}`,DP:e.steps?.length===0?`双杀：1.${a}(第一传)`:e.steps?.length===1?`双杀：2.${a}(第二传)`:`双杀：3.${a}(封杀)`
@@ -8703,8 +8761,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Yt("",e)
     }
     function Yt(e,t){
-      if((t==="DP"||t==="TP")&&Ut()===0){
-        J(t==="TP"?"垒上无人，无法三杀":"垒上无人，无法双杀","warning");
+      if(t==="DP"&&!LgCanStartDoublePlay(l.runners)){
+        J("一垒无人，无法形成双杀（仅二垒/三垒有人按单独出局记录）","warning");
+        return
+      }
+      if(t==="TP"&&!LgCanStartTriplePlay(l.runners)){
+        J("一、二垒都需有人，无法形成三杀","warning");
         return
       }
       ko(e,t)
@@ -8736,7 +8798,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function Wf(e){
       const a=l.flow;
-      a&&isChainFlow(a)&&LgChainReady(a.type,a.steps??[],a.required??us(a.type))&&(settleChainIfReady(),nextPitchCleanup());
+      if(a&&isChainFlow(a)&&LgChainReady(a.type,a.steps??[],a.required??us(a.type))){
+        if(!settleChainIfReady()){
+          warnFlowBusy(a);
+          return
+        }
+        nextPitchCleanup()
+      }
       if(l.flow){
         Ro("P",e);
         return
@@ -9029,14 +9097,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         hh.value=null,Mn(hh),J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
         return
       }
+      const isDp=r.type==="DP"||r.type==="TP",dpOutCount=isDp?(r.type==="TP"?3:2):0,dpPreviewNow=isDp?buildDoublePlayPreview(r):null,dpRecorded=dpPreviewNow?.outs?.length??0;
+      if(isDp&&dpRecorded>=dpOutCount){
+        hh.value=null,Mn(hh),J(`${r.type==="TP"?"三杀":"双杀"}已有 ${dpOutCount} 个出局点：请点「完成记录」，或撤销多余拖拽后再记`,"warning");
+        return
+      }
       hh.value=null,Mn(hh);
+      const dpBaseLabel=LgDpBaseName[s]??"";
       LgPick([{
         key:"force",label:"封杀出局"
       }
       ,{
         key:"tag",label:"触杀出局"
       }
-      ],"自踩动作","该动作记录为：").then(p=>{
+      ],isDp?`记录第${dpRecorded+1}个出局`:"自踩动作",isDp?`拖拽到${dpBaseLabel}：该动作记录为？记录后链可继续延长，或点「完成记录」收尾。`:"该动作记录为：").then(p=>{
         if(p!=="force"&&p!=="tag")return;
         const g=l.flow;
         if(g!==r||!ho.has(g.type))return;
@@ -9171,7 +9245,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const p=ballTargetOf(a[a.length-1]);
       Xn.value=p.x,Yn.value=p.y,ka.value=!0,markChainHl(p.x,p.y,!1)
     }
-    function settleChainIfReady(){
+    function settleChainIfReady(force=!1){
       const e=l.flow;
       if(!e)return!1;
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
@@ -9180,9 +9254,184 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       if(!CHAIN_TYPES.has(e.type))return!1;
       if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
-      const a=e.type==="DP"||e.type==="TP"?e.steps:_i(e.steps),s=a[a.length-1],lastStepAction=e.steps?.length?e.stepActions?.[e.steps.length-1]??null:null;
+      if(e.type==="DP"||e.type==="TP"){
+        // 双杀/三杀不自动收尾：预览可见后再点「完成记录」，避免两传先结算、第三传补不进去
+        if(!force)return!1;
+        return settleDoublePlayFlow(e)
+      }
+      const a=_i(e.steps),s=a[a.length-1],lastStepAction=e.steps?.length?e.stepActions?.[e.steps.length-1]??null:null;
       l.flow=null;
       return bt(e.type,a,Sr(e),void 0,{lastStepAction}),pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+    }
+    function completeChainFlow(){
+      return settleChainIfReady(!0)
+    }
+    let dpSettlementPending=!1;
+    function settleDoublePlayFlow(flow){
+      if(dpSettlementPending)return!0;
+      if(flow.type==="DP"&&!LgCanStartDoublePlay(l.runners)){
+        J("一垒无人，无法形成双杀","warning");
+        return!1
+      }
+      if(flow.type==="TP"&&!LgCanStartTriplePlay(l.runners)){
+        J("一、二垒都需有人，无法形成三杀","warning");
+        return!1
+      }
+      const preview=buildDoublePlayPreview(flow);
+      if(!preview?.valid){
+        J(describeDoublePlayIssue(preview),"warning");
+        return!1
+      }
+      if(preview.needsRunner3Decision){
+        dpSettlementPending=!0;
+        const runner=l.runners[3];
+        LgPick([{
+          key:"safe",label:`回本垒得分：${logPlayerName(runner)}`
+        }
+        ,{
+          key:"noscore",label:"不进垒 · 退回三垒"
+        }
+        ],"三垒跑者是否得分","双杀完成前确认三垒跑者的结果；若他在本垒出局，请把本垒出局点记进传球链。").then(choice=>{
+          dpSettlementPending=!1;
+          if(choice==null)return;
+          if(l.flow!==flow)return;
+          const finalPreview=buildDoublePlayPreview(flow,choice);
+          if(!finalPreview?.valid){
+            J(describeDoublePlayIssue(finalPreview),"warning");
+            return
+          }
+          applyDoublePlay(flow,finalPreview),finishDoublePlayChain(flow)
+        }
+        ).catch(()=>{}
+        ).finally(()=>{
+          dpSettlementPending=!1
+        }
+        );
+        return!0
+      }
+      applyDoublePlay(flow,preview),finishDoublePlayChain(flow);
+      return!0
+    }
+    function applyDoublePlay(flow,preview){
+      const type=flow.type,chain=Array.isArray(flow.steps)?[...flow.steps]:[],rawStatsChain=preview.lastOutStepIndex!=null?chain.slice(0,preview.lastOutStepIndex+1):chain;
+      // 独力双杀：同一守备员两次拖拽得到 [pos,pos,pos]，按 [pos,pos] 统计为 PO×2、A=0
+      const statsChain=type==="DP"&&rawStatsChain.length>2&&rawStatsChain.every(pos=>pos===rawStatsChain[0])?rawStatsChain.slice(0,2):rawStatsChain,chainText=chainDisp(type,statsChain).map(pos=>vi[pos]??pos).join("-"),batter=be.value,pitcher=Se.value,pre={
+        1:l.runners[1],2:l.runners[2],3:l.runners[3]
+      };
+      de("击球结果"),beginPlayLedger(),l.flow=null,ue(batter),ue(pitcher??void 0),pushHitSpray(type,0,Sr(flow));
+      const outLogs=[];
+      for(const out of preview.outs){
+        const runner=out.runner;
+        if(!runner)continue;
+        if(l.outs>=3)break;
+        const baseText=LgDpBaseName[out.base]??"",actionText=out.action==="tag"?"触杀":"封杀";
+        Bt(Gt(runner,`${baseText}${actionText}出局`),{
+          pbp:!1
+        }
+        );
+        const fielder=Vt(out.fielder),fielderName=fielder?`${logPlayerName(fielder)} `:`${It[out.fielder]??out.fielder} `;
+        outLogs.push(`${runner.name??"跑者"}${runner.number!=null?` (#${runner.number})`:""} 于${baseText}被${fielderName}${actionText}出局（${chainText}）`),out.runnerKey!=="batter"&&out.fromBase&&(l.runners[out.fromBase]=null),yl(runner.id??runner.name??"?",out.fromBase,out.base??out.fromBase)
+      }
+      l.outs>3&&(l.outs=3),l.runners[1]=preview.finalBases[1]??null,l.runners[2]=preview.finalBases[2]??null,l.runners[3]=preview.finalBases[3]??null,preview.batterSafe&&l.runners[1]===batter&&(batter.origin="NORMAL",batter.responsiblePitcherId=Number(pitcher?.id)>0?Number(pitcher.id):null);
+      const moves=[];
+      for(const base of[1,2,3]){
+        const runner=pre[base];
+        if(!runner)continue;
+        if(preview.outs.some(out=>out.runnerKey===String(base)))continue;
+        const target=[1,2,3].find(b=>l.runners[b]===runner);
+        target&&target!==base&&moves.push({
+          playerId:runner.id??runner.name??"?",from:base,to:target
+        }
+        )
+      }
+      preview.batterSafe&&moves.push({
+        playerId:batter.id??batter.name??"?",from:0,to:1
+      }
+      ),moves.length&&Ge(moves);
+      if(preview.runner3Run){
+        const runner=pre[3];
+        if(runner){
+          ue(runner),runner.stats.batting.r=(runner.stats.batting.r??0)+1;
+          const rbi=!preview.batterOut;
+          ls(1,{
+            runner,batter:rbi?batter:void 0,rbiDelta:rbi?1:0,pitcher:pitcher??void 0,origin:"NORMAL",runCause:"BATTER_ACTION",rbiCredit:rbi,rbiReason:rbi?"BATTER_ACTION":"NO_RBI_RULE"
+          }
+          ),rbi&&(batter.stats.batting.rbi=(batter.stats.batting.rbi??0)+1),D(LgAdvance({
+            reasonCn:"双杀推进得分",runner,from:3,to:4,rbiNote:rbi?`${batter.name??"打者"}：1打点`:void 0
+          }))
+        }
+      }
+      batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain),outLogs.forEach(line=>D(line));
+      const mainText=`${batter.name??"打者"}: ${Un(type,statsChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${preview.batterSafe?"（打者上一垒）":""}`,main=Rt(mainText);
+      l.balls=0,l.strikes=0,is(type),Je(preview.batterSafe?"FC":type,main),Qe()
+    }
+    function finishDoublePlayChain(flow){
+      pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1;
+      const steps=Array.isArray(flow.steps)?flow.steps:[],last=steps[steps.length-1];
+      if(last){
+        const target=ballTargetOf(last);
+        chainDone.value=target,Xn.value=target.x,Yn.value=target.y,markChainHl(target.x,target.y,!0)
+      }
+    }
+    async function editDoublePlayOuts(){
+      const flow=l.flow;
+      if(!flow||(flow.type!=="DP"&&flow.type!=="TP"))return;
+      const preview=buildDoublePlayPreview(flow),rows=(preview?.outs??[]).map((out,index)=>({
+        key:String(index),
+        label:`出局${index+1}：${out.base?LgDpBaseName[out.base]:"垒包待定"} ${out.runner?logPlayerName(out.runner):"跑者待定"}${out.action?`（${out.action==="tag"?"触杀":"封杀"} ${It[out.fielder]??out.fielder}）`:""}`
+      }
+      ));
+      if(!rows.length){
+        J("还没有可修改的出局点","warning");
+        return
+      }
+      const which=await LgPick(rows,"修改出局","选择要修改的出局点：");
+      if(which==null||l.flow!==flow)return;
+      const index=Number(which),current=preview.outs[index],baseChoice=await LgPick([{
+        key:"1",label:"一垒"
+      }
+      ,{
+        key:"2",label:"二垒"
+      }
+      ,{
+        key:"3",label:"三垒"
+      }
+      ,{
+        key:"4",label:"本垒"
+      }
+      ],"修改出局",`第${index+1}个出局点：选择接球垒包（当前 ${current?.base?LgDpBaseName[current.base]:"待定"}）`);
+      if(baseChoice==null||l.flow!==flow)return;
+      const base=Number(baseChoice),otherUsed=new Set((preview.outs??[]).filter((_,i)=>i!==index).map(out=>out.runnerKey).filter(Boolean)),runnerOptions=[{
+        key:"batter",label:`打者 ${logPlayerName(be.value)}`
+      }
+      ,{
+        key:"1",label:`一垒跑者 ${l.runners[1]?logPlayerName(l.runners[1]):"无"}`
+      }
+      ,{
+        key:"2",label:`二垒跑者 ${l.runners[2]?logPlayerName(l.runners[2]):"无"}`
+      }
+      ,{
+        key:"3",label:`三垒跑者 ${l.runners[3]?logPlayerName(l.runners[3]):"无"}`
+      }
+      ].filter(option=>!otherUsed.has(option.key)&&(option.key==="batter"?!!be.value:!!l.runners[Number(option.key)]));
+      if(!runnerOptions.length){
+        J("没有可选跑者","warning");
+        return
+      }
+      const runnerChoice=await LgPick(runnerOptions,"修改出局",`第${index+1}个出局点：选择出局跑者`);
+      if(runnerChoice==null||l.flow!==flow)return;
+      const actionChoice=await LgPick([{
+        key:"force",label:"封杀出局"
+      }
+      ,{
+        key:"tag",label:"触杀出局"
+      }
+      ],"修改出局",`第${index+1}个出局点：选择出局方式`);
+      if(actionChoice==null||l.flow!==flow)return;
+      Array.isArray(flow.dpOverrides)||(flow.dpOverrides=[]),flow.dpOverrides[index]={
+        base,runnerKey:runnerChoice,action:actionChoice
+      }
+      ,pt()
     }
     let chainClearTimer=null;
     function nextPitchCleanup(){
@@ -9195,6 +9444,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,520)):clearChainVisual()
     }
     function warnFlowBusy(e){
+      if(e&&(e.type==="DP"||e.type==="TP")){
+        J(`${e.type==="TP"?"三杀":"双杀"}记录待完成：拖拽持球守备员到垒包记录出局，或点「完成记录」/「取消」`,"warning");
+        return
+      }
       e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${chainDisp(e.type,e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
     }
     function Bo(e,t,a,s){
@@ -9347,7 +9600,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return;
         case"bip:b:sac:fc":rt("FC");
         return;
-        case"bip:g:dp":case"bip:hg:dp":case"bip:fly:dp":case"bip:ld:dp":case"bip:b:dp":case"bip:pop:dp":rt("DP");
+        case"bip:g:dp":case"bip:hg:dp":case"bip:b:dp":rt("DP");
+        return;
+        case"bip:fly:dp":case"bip:ld:dp":case"bip:pop:dp":J("飞球/平飞/小飞的双杀请分别记录接杀与跑者出局；当前双杀流程只支持被迫进垒","warning");
         return;
         case"bip:g:tp":case"bip:hg:tp":case"bip:fly:tp":case"bip:ld:tp":case"bip:b:tp":case"bip:pop:tp":rt("TP");
         return;
@@ -11858,8 +12113,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )],64)):c(l).flow?.type&&isChainFlow(c(l).flow)?(h(),C(me,{
           key:"chain"
         }
-        ,[LgChainReady(c(l).flow.type,c(l).flow.steps??[],c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
-          key:0,size:"small",type:"primary",onClick:settleChainIfReady
+        ,[(c(l).flow.type==="DP"||c(l).flow.type==="TP")&&(c(dpPreview)?.outs?.length??0)>0?(h(),Oe(s,{
+          key:"dp-edit",size:"small",plain:"",onClick:editDoublePlayOuts
+        }
+        ,{
+          default:L(()=>[Q("修改出局")]),_:1
+        }
+        )):W("",!0),LgChainReady(c(l).flow.type,c(l).flow.steps??[],c(l).flow.required??us(c(l).flow.type))?(h(),Oe(s,{
+          key:0,size:"small",type:"primary",onClick:completeChainFlow
         }
         ,{
           default:L(()=>[Q(" 完成记录 ")]),_:1

@@ -123,7 +123,8 @@ test('LiveGame.js 接入点（静态断言，防回退）', () => {
   assert.match(src, /function chainDisp\(u,f\)\{\r?\n\s+return u==="DP"\|\|u==="TP"\?LgChainDisplay\(u,f\):_i\(f\)/, 'chainDisp 类型化显示');
   assert.match(src, /D0=chainDisp\(e\.type,e\.steps\?\?\[\]\)/, '已完成提示去压缩接入');
   assert.match(src, /const l=u==="DP"\|\|u==="TP"\?LgChainDisplay\(u,f\):_i\(f\)/, 'Un 对 DP/TP 走显示规整');
-  assert.match(src, /const a=e\.type==="DP"\|\|e\.type==="TP"\?e\.steps:_i\(e\.steps\),s=a\[a\.length-1\]/, 'settle 对 DP/TP 保持原始链');
+  assert.match(src, /if\(e\.type==="DP"\|\|e\.type==="TP"\)\{[\s\S]*?return settleDoublePlayFlow\(e\)/, 'DP/TP 走拖拽出局解析与显式完成');
+  assert.match(src, /const a=_i\(e\.steps\),s=a\[a\.length-1\]/, '非 DP/TP 链按原逻辑压缩');
   assert.match(src, /includes\(e\)&&e!=="DP"&&e!=="TP"&&\(t=_i\(t\)\)/, 'bt 对 DP/TP 跳过压缩');
 });
 
