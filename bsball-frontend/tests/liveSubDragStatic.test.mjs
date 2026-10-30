@@ -88,10 +88,14 @@ test('#535：换人模式内日志静音，提交后只保留换人前日志 + �
   const src = read(LIVE);
   assert.ok(src.includes('if(substitutionLogMuted)return;'), 'addLog 未接入换人模式日志静音');
   assert.ok(src.includes('setSubstitutionLogMuted'), '缺少日志静音开关导出');
-  assert.ok(src.includes('subLogMuted(!0)') && src.includes('subLogMuted(!1)'), '进入/退出换人模式未切换日志静音');
-  // 必须先退出模式（解除静音）再回滚日志并写入净变化，且追加顺序与确认弹窗一致（reverse 抵消 unshift）
-  assert.ok(src.includes('exitSubstitutionMode(),logBase&&(ke.value=logBase),lines.slice().reverse().forEach(_line=>D(_line))'), '提交成功后未回滚中间日志并写入净变化结果');
-  assert.ok(src.includes('await Pf().catch(()=>{})'), '提交后未等待补推最终日志快照');
+  // 静音开关必须分别落在进入/退出函数体内（整文件断言会被别处调用掩盖）
+  assert.ok(sliceBetween(src, 'function enterSubstitutionMode(){', 'function toggleSubstitutionMode(){').includes('subLogMuted(!0)'), '进入换人模式未开启日志静音');
+  assert.ok(sliceBetween(src, 'function exitSubstitutionMode(){', 'function cancelSubstitutionMode(){').includes('subLogMuted(!1)'), '退出换人模式未解除日志静音');
+  // 提交：先回滚日志并在静音窗口内写入净变化（reverse 抵消 unshift，与确认弹窗同序），再由 hs 内部唯一一次 Pf 推送
+  const finishBody = sliceBetween(src, 'async function finishSubstitutionMode(){', 'function substitutionModePlayers(');
+  assert.ok(finishBody.includes('logBase&&(ke.value=logBase),subLogMuted(!1),lines.slice().reverse().forEach(_line=>D(_line)),subLogMuted(!0),await hs({'), '提交成功后未回滚中间日志并写入净变化结果');
+  assert.ok(!finishBody.includes('await Pf('), '提交路径不应额外补推快照（统一由 hs 内 Pf 携带最终日志）');
+  assert.ok(finishBody.includes('logBase&&(ke.value=logBase),subLogMuted(!0)'), '提交失败未回滚日志/恢复静音');
 });
 
 test('换人模式外禁止一切换人执行路径（含换守备位置）', () => {
@@ -100,10 +104,17 @@ test('换人模式外禁止一切换人执行路径（含换守备位置）', ()
   assert.ok(applyBody.includes('if(!substitutionMode.value){'), '拖拽执行未做模式外硬拦截');
   const ccBody = sliceBetween(src, 'function cc(e){', '/* ---------------- 换人事务模式');
   assert.ok(ccBody.includes('if(!substitutionMode.value&&mt.value!=="setRunner")'), '换人执行器 cc() 未做模式外硬拦截');
+  assert.ok(ccBody.includes('if(substitutionModeBusy.value)return;'), 'cc() 提交进行中未拒绝执行');
   assert.ok(ccBody.includes('换人模式进行中，请先结束或取消换人模式后再设置跑者'), '模式内 setRunner 纠偏未拦截（会被净变化 diff 忽略）');
   const zaBody = sliceBetween(src, 'function Za(e,t,a,s){', 'async function oc(');
   assert.ok(zaBody.includes('if(!substitutionMode.value&&e!=="setRunner")'), '换人浮层入口未做模式外拦截');
-  assert.ok(src.includes('if(!substitutionMode.value||l.flow||liveBenchDragSession'), '守备员拖拽未加模式门禁');
+  assert.ok(zaBody.includes('if(substitutionModeBusy.value)return;'), 'Za() 提交进行中未拒绝打开浮层');
+  // 空垒不是换人目标：模式内不画落点环/不参与落点命中/点选空垒保留已选卡（纠偏走模式外空垒点击）
+  const layoutBody = sliceBetween(src, 'function liveBenchCollectFieldLayout', 'function liveBenchInvalidateDragLayout');
+  assert.ok(layoutBody.includes('.filter(item=>!!l.runners[item.base])'), '模式内涵盖空垒的落点矩形未过滤');
+  assert.ok(src.includes('if(kinds.includes("base"))for(const b of[1,2,3])l.runners[b]&&out.push({'), '空垒仍显示替补落点环');
+  const consumeBody = sliceBetween(src, 'function liveBenchConsumePendingClicks', 'function liveBenchCollectFieldLayout');
+  assert.ok(consumeBody.includes('if(hit.kind==="base"&&!l.runners[hit.base])return!1'), '点选空垒未保留已选卡（会触发无效 setRunner）');
 });
 
 test('进攻方选中特效：替补→打者/跑者也走红绿反馈', () => {

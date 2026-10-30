@@ -9764,6 +9764,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Ma.value=!1,rc()
     }
     function Za(e,t,a,s){
+      if(substitutionModeBusy.value)return;   // 提交换人过程中不再打开任何换人浮层
       // 换人入口一律收口到换人模式（setRunner 属补跑者纠偏，不算换人）
       if(!substitutionMode.value&&e!=="setRunner"){
         J("换人需先进入「换人模式」：请点顶部「换人模式」后再操作","warning");
@@ -9890,6 +9891,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       assignPitcherOrder(substitutionModePlayers(Ee(e)),P.id),g.value=Number(P.id),ft(e),Ka(),D((T!=null&&Number(P.id)!==Number(T)?pc(Y,logPlayerName(P)):`投手 ${logPlayerName(P)} 登板`)+(ipNote??""))
     }
     function cc(e){
+      if(substitutionModeBusy.value)return;   // 提交进行中拒绝执行，避免净变化之外的本地改动
       // 兜底：任何换人执行路径在模式外都必须拒绝（含换守备位置）
       if(!substitutionMode.value&&mt.value!=="setRunner"){
         J("换人需先进入「换人模式」：请点顶部「换人模式」后再操作","warning");
@@ -10215,13 +10217,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           );
           applySubstitutionNet(side,net),ensureSubstitutedOutBench(side,before[side],diffs[index])
         }
-        Array.isArray(substitutionModeHistoryBase.value)&&($e.value=substitutionModeUndoEntry.value?[...substitutionModeHistoryBase.value,substitutionModeUndoEntry.value]:[...substitutionModeHistoryBase.value]),Ne?.value&&(Ne.value=[]),await hs({
+        Array.isArray(substitutionModeHistoryBase.value)&&($e.value=substitutionModeUndoEntry.value?[...substitutionModeHistoryBase.value,substitutionModeUndoEntry.value]:[...substitutionModeHistoryBase.value]),Ne?.value&&(Ne.value=[]),logBase&&(ke.value=logBase),subLogMuted(!1),lines.slice().reverse().forEach(_line=>D(_line)),subLogMuted(!0),await hs({
           throwOnError:!0,fromSubstitutionMode:!0,substitutions:events
         }
-        ),exitSubstitutionMode(),logBase&&(ke.value=logBase),lines.slice().reverse().forEach(_line=>D(_line)),Fe.success("换人已提交（按两次点击间的净变化记录）"),await Pf().catch(()=>{})
+        ),exitSubstitutionMode(),Fe.success("换人已提交（按两次点击间的净变化记录）")
       }
       catch(e){
-        Fe.error(e?.message??"换人提交失败，请重试或取消换人模式"),substitutionModeCommitFailed.value=!0,substitutionModeBusy.value=!1
+        logBase&&(ke.value=logBase),subLogMuted(!0),Fe.error(e?.message??"换人提交失败，请重试或取消换人模式"),substitutionModeCommitFailed.value=!0,substitutionModeBusy.value=!1
       }
       
     }
@@ -10424,6 +10426,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!card)return!1;
       if(l.flow||ge.value!=null||kt.value!=null||qe.value||lt.value)return!1;
       const src=card.side==="offense"?"offenseBench":"defenseBench";
+      // 空垒不是换人目标（setRunner 属纠偏，模式内不可用）：交回场上点击处理，保留已选卡
+      if(hit.kind==="base"&&!l.runners[hit.base])return!1;
       if(!liveSubTargetKinds(src).includes(hit.kind))return!0;
       if(card.teamKey!==liveBenchTeamKey(card.side)){
         liveBenchClearPending();
@@ -10454,7 +10458,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const runnerRects=runEls.length===bases.length?runEls.map((el,i)=>({
         base:bases[i],rect:toRect(el)
       }
-      )):[];
+      )).filter(item=>!!l.runners[item.base]):[];
       const batterEl=svg.querySelector(".batter-at-plate-group");
       const benchRects=Array.from(document.querySelectorAll(".live-bench-card[data-player-id]:not([disabled])")).map(el=>{
         const rect=toRect(el);
@@ -10598,7 +10602,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         key:"f-"+code,cx:za(code).x,cy:za(code).y,hot:!!hv&&hv.kind==="fielder"&&hv.code===code
       }
       );
-      if(kinds.includes("base"))for(const b of[1,2,3])out.push({
+      if(kinds.includes("base"))for(const b of[1,2,3])l.runners[b]&&out.push({
         key:"b-"+b,cx:Ke[b].x,cy:Ke[b].y,hot:!!hv&&hv.kind==="base"&&hv.base===b
       }
       );
