@@ -99,7 +99,7 @@ function gd(u){
         
       };
       al({
-        title:_,message:da("div",{
+        title:_,draggable:!0,message:da("div",{
           class:"leave-confirm-tri"
         }
         ,[da("p",{
@@ -170,7 +170,7 @@ function gd(u){
     u.onBeforeConfirm&&await u.onBeforeConfirm();
     try{
       return await al.confirm(S,_,{
-        confirmButtonText:R,cancelButtonText:F,type:"warning"
+        confirmButtonText:R,cancelButtonText:F,type:"warning",draggable:!0
       }
       ),!0
     }
@@ -1148,7 +1148,7 @@ function LgPick(options,title,message){
       resolve(v)
     };
     al({
-      title:title??"请选择",
+      title:title??"请选择",draggable:!0,
       message:da("div",null,[da("p",{
         style:{margin:"0 0 10px",lineHeight:"1.5",color:"var(--el-text-color-regular)"}
       },message??"请选择："),da("div",{
@@ -8268,7 +8268,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       try{
         await al.confirm("将直接结束本半局并攻守交换：清空垒上与出局数，当前打者的打席不计入统计，下一半局再进攻时仍由此打者开始（特殊换局规则）。是否继续？","强制换局",{
-          confirmButtonText:"确定换局",cancelButtonText:"取消",type:"warning"
+          confirmButtonText:"确定换局",cancelButtonText:"取消",type:"warning",draggable:!0
         }
         )
       }
@@ -10171,7 +10171,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       diffs.forEach((diff,index)=>lines.push(...summarizeTeamDiff(diff,substitutionModeTeamName(sides[index]))));
       try{
         await al.confirm(substitutionModeHtml(lines),"确认换人",{
-          dangerouslyUseHTMLString:!0,confirmButtonText:"提交换人",cancelButtonText:"继续调整",type:"warning"
+          dangerouslyUseHTMLString:!0,confirmButtonText:"提交换人",cancelButtonText:"继续调整",type:"warning",draggable:!0
         }
         )
       }
@@ -10267,7 +10267,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const rule=dhRuleForSide(side);
       if(!rule.ok)try{
         await al.confirm(substitutionModeHtml([rule.warning]),"取消DH规则提醒",{
-          dangerouslyUseHTMLString:!0,confirmButtonText:"仍然取消",cancelButtonText:"返回",type:"warning"
+          dangerouslyUseHTMLString:!0,confirmButtonText:"仍然取消",cancelButtonText:"返回",type:"warning",draggable:!0
         }
         )
       }
@@ -10289,7 +10289,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       rule.ok||lines.push("",`规则提醒：${rule.warning}`);
       try{
         await al.confirm(substitutionModeHtml(lines),"取消DH并换位",{
-          dangerouslyUseHTMLString:!0,confirmButtonText:"确认取消DH并换位",cancelButtonText:"返回",type:"warning"
+          dangerouslyUseHTMLString:!0,confirmButtonText:"确认取消DH并换位",cancelButtonText:"返回",type:"warning",draggable:!0
         }
         )
       }
@@ -11158,7 +11158,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       await al.confirm("确定结束比赛？","结束比赛",{
-        confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"
+        confirmButtonText:"确定",cancelButtonText:"取消",type:"warning",draggable:!0
       }
       ),l.isGameEnd=!0,D(LgSys({kind:"game_end"}));
       try{
@@ -11289,7 +11289,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!R.value||Be.value)return;
       try{
         await al.confirm("将用云端数据覆盖当前录入页面（本地未保存的修改会丢失）。是否继续？","从云端恢复录入现场",{
-          confirmButtonText:"继续",cancelButtonText:"取消",type:"warning"
+          confirmButtonText:"继续",cancelButtonText:"取消",type:"warning",draggable:!0
         }
         )
       }
