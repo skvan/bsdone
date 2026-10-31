@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // #530：双杀按球路建链，出局由「拖拽持球守备员到垒包」逐个记录。
 // 6-5-4：SS 接球 → 点 3B（6→5）→ 拖 3B 到三垒记第 1 个出局 → 点 2B（5→4）→ 拖 2B 到二垒记第 2 个出局 →
-// 打者安全上一垒；完成后 6 助杀、5 刺杀+助杀、4 刺杀，三人各 DP+1，打者 GDP 不增加。
+// 打者安全上一垒；完成后 6 助杀、5 刺杀+助杀、4 刺杀，三人各 DP+1，打者仍记 GDP +1。
 const zeroBatting = () => ({
   ab: 0, r: 0, h: 0, rbi: 0, bb: 0, hbp: 0, so: 0, so_swing: 0, so_looking: 0,
   sf: 0, sh: 0, sb: 0, cs: 0, doubles: 0, triples: 0, hr: 0, insideParkHr: 0, gdp: 0, ibb: 0, io: 0,
@@ -191,7 +191,7 @@ function assert654Result(snap, { extended = false } = {}) {
   expect(ss).toMatchObject({ a: 1, dp: 1 });
   expect(third).toMatchObject({ po: 1, a: 1, dp: 1 });
   expect(second).toMatchObject({ po: 1, dp: 1 });
-  expect(batter).toMatchObject({ ab: 1, gdp: 0 });
+  expect(batter).toMatchObject({ ab: 1, gdp: 1 });
   if (extended) {
     // 第二出局后的延长传球只显示在链上，不参与双杀守备统计
     expect(third.a).toBe(1);
@@ -199,7 +199,7 @@ function assert654Result(snap, { extended = false } = {}) {
   }
 }
 
-test('6-5-4：拖 5 到三垒、4 到二垒，打者上一垒且不记 GDP', async ({ page }) => {
+test('6-5-4：拖 5 到三垒、4 到二垒，打者上一垒仍记 GDP', async ({ page }) => {
   const { snapshots, savedLive } = await setup(page);
   const flowBar = page.locator('.les-flow-card');
   await openDoublePlayGroundBall(page);

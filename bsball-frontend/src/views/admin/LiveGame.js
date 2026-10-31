@@ -7221,7 +7221,7 @@ var sg={
           }
           ).join("→");
           const outText=p.outs.filter(o=>o.runner).map(o=>`${LgDpBaseName[o.base]} ${logPlayerName(o.runner)} ${o.action==="tag"?"触杀":"封杀"}（${vi[o.fielder]??o.fielder}）`).join(" · ");
-          const batterText=p.batterSafe?`打者 ${logPlayerName(be.value)} 上一垒${e.type==="DP"?"（不记 GDP）":""}`:`打者 ${logPlayerName(be.value)} 出局${e.type==="DP"?"（GDP）":""}`;
+          const batterText=p.batterSafe?`打者 ${logPlayerName(be.value)} 上一垒${e.type==="DP"?"（记 GDP）":""}`:`打者 ${logPlayerName(be.value)} 出局${e.type==="DP"?"（GDP）":""}`;
           return`${e.type==="TP"?"三杀":"双杀"}：${chainText}；出局：${outText}；${batterText}${p.needsRunner3Decision?"；三垒跑者得分待确认":""}`
         }
         if(!p.valid)return`${e.type==="TP"?"三杀":"双杀"}：${describeDoublePlayIssue(p)}`
@@ -9369,7 +9369,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain),outLogs.forEach(line=>D(line));
       const mainText=`${batter.name??"打者"}: ${Un(type,statsChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${preview.batterSafe?"（打者上一垒）":""}`,main=Rt(mainText);
-      l.balls=0,l.strikes=0,is(type),Je(preview.batterSafe?"FC":type,main),Qe()
+      l.balls=0,l.strikes=0,is(type),Je(type,main),Qe()
     }
     function finishDoublePlayChain(flow){
       pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1;

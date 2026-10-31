@@ -30,7 +30,7 @@ test('双杀入口要求一垒有人；仅二垒/三垒有人不算双杀', () =
   assert.equal(canStartTriplePlay(runners(null, r2, r3)), false);
 });
 
-test('6-5-4：6 接球点不算出局，拖 5 到三垒、4 到二垒，打者上一垒', () => {
+test('6-5-4：6 接球点不算出局，拖 5 到三垒、4 到二垒，打者上一垒仍记 GDP', () => {
   const result = resolveDoublePlay({
     type: 'DP',
     steps: ['6', '5', '5', '4', '4'],
@@ -46,7 +46,7 @@ test('6-5-4：6 接球点不算出局，拖 5 到三垒、4 到二垒，打者�
   ]);
   assert.equal(result.batterOut, false);
   assert.equal(result.batterSafe, true);
-  assert.equal(result.gdp, false);
+  assert.equal(result.gdp, true);
   assert.deepEqual(result.finalBases, { 1: batter, 2: null, 3: null });
   assert.deepEqual(result.actions.map((action) => [action.pos, action.out, action.base]), [
     ['6', false, null],
@@ -113,7 +113,7 @@ test('满垒 6-5-4：拖 5 到三垒、4 到二垒，打者上一垒，三垒跑
     batter
   });
   assert.equal(result.batterSafe, true);
-  assert.equal(result.gdp, false);
+  assert.equal(result.gdp, true);
   assert.deepEqual(result.finalBases, { 1: batter, 2: null, 3: r3 });
 });
 

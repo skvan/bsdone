@@ -2,7 +2,7 @@
 // 传球链只记录球从谁到谁；出局由「拖拽持球守备员到垒包」的 stepAction 逐个记录：
 // 每次拖拽产生一个被迫进垒的封杀出局点，链上的顺序即出局顺序。
 // 出局跑者取该垒的被迫进垒者；该垒没有被迫跑者时未决，不再退到触杀。
-// 打者只有在一垒出局点被记录时出局，否则安全上一垒。
+// 打者只有在一垒出局点被记录时出局，否则安全上一垒；按本系统口径，双杀打者上一垒也记 GDP。
 // 纯函数，不依赖 LiveGame 状态；返回的跑者是入参对象引用，便于调用方直接落位。
 
 const OUT_COUNT = { DP: 2, TP: 3 };
@@ -188,7 +188,7 @@ export function resolveDoublePlay({
     unresolved,
     batterOut,
     batterSafe,
-    gdp: type === 'DP' && batterOut,
+    gdp: type === 'DP',
     finalBases: placement.bases,
     needsRunner3Decision,
     runner3Run
