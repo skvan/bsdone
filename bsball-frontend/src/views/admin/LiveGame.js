@@ -7228,8 +7228,8 @@ var sg={
           }
           ).join("→");
           const outText=p.outs.filter(o=>o.runner).map(o=>`${LgDpBaseName[o.base]} ${logPlayerName(o.runner)} ${o.action==="tag"?"触杀":"封杀"}（${vi[o.fielder]??o.fielder}）`).join(" · ");
-          const batterText=p.batterSafe?`打者 ${logPlayerName(be.value)} 上一垒${e.type==="DP"?"（记 GDP）":""}`:`打者 ${logPlayerName(be.value)} 出局${e.type==="DP"?"（GDP）":""}`;
-          return`${e.type==="TP"?"三杀":"双杀"}：${chainText}；出局：${outText}；${batterText}${p.needsRunner3Decision?"；三垒跑者得分待确认":""}`
+          const batterText=p.batterSafe?`打者 ${logPlayerName(be.value)} 上一垒${e.type==="DP"?"（记 GDP）":""}`:`打者 ${logPlayerName(be.value)} 出局${e.type==="DP"?"（GDP）":""}`,advanceText=(p.advances??[]).filter(advance=>!advance.batter&&!advance.run).map(advance=>`${logPlayerName(advance.runner)} 进${LgDpBaseName[advance.to]}`).join("、"),runAdvance=(p.advances??[]).find(advance=>advance.run);
+          return`${e.type==="TP"?"三杀":"双杀"}：${chainText}；出局：${outText}；${batterText}${advanceText?`；${advanceText}`:""}${runAdvance?`；${logPlayerName(runAdvance.runner)} 回本垒得分`:""}${p.needsRunner3Decision?"；三垒跑者得分待确认":""}`
         }
         if(!p.valid)return`${e.type==="TP"?"三杀":"双杀"}：${describeDoublePlayIssue(p)}`
       }
@@ -9379,6 +9379,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const fielder=Vt(out.fielder),fielderName=fielder?`${logPlayerName(fielder)} `:`${It[out.fielder]??out.fielder} `;
         outLogs.push(`${runner.name??"跑者"}${runner.number!=null?` (#${runner.number})`:""} 于${baseText}被${fielderName}${actionText}出局（${chainText}）`),out.runnerKey!=="batter"&&out.fromBase&&(l.runners[out.fromBase]=null),yl(runner.id??runner.name??"?",out.fromBase,out.base??out.fromBase)
       }
+      const advanceLogs=(preview.advances??[]).filter(advance=>!advance.batter&&!advance.run&&advance.to!==advance.from).map(advance=>LgAdvance({
+        reasonCn:"双杀推进",runner:advance.runner,from:advance.from,to:advance.to
+      }));
+      preview.runner3Decision==="noscore"&&pre[3]&&preview.finalBases[3]===pre[3]&&advanceLogs.push(`不进垒 · ${logPlayerName(pre[3])} 退回三垒`);
       l.outs>3&&(l.outs=3),l.runners[1]=preview.finalBases[1]??null,l.runners[2]=preview.finalBases[2]??null,l.runners[3]=preview.finalBases[3]??null,preview.batterSafe&&l.runners[1]===batter&&(batter.origin="NORMAL",batter.responsiblePitcherId=Number(pitcher?.id)>0?Number(pitcher.id):null);
       const moves=[];
       for(const base of[1,2,3]){
@@ -9403,13 +9407,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ls(1,{
             runner,batter:rbi?batter:void 0,rbiDelta:rbi?1:0,pitcher:pitcher??void 0,origin:"NORMAL",runCause:"BATTER_ACTION",rbiCredit:rbi,rbiReason:rbi?"BATTER_ACTION":"NO_RBI_RULE"
           }
-          ),rbi&&(batter.stats.batting.rbi=(batter.stats.batting.rbi??0)+1),D(LgAdvance({
+          ),rbi&&(batter.stats.batting.rbi=(batter.stats.batting.rbi??0)+1),advanceLogs.push(LgAdvance({
             reasonCn:"双杀推进得分",runner,from:3,to:4,rbiNote:rbi?`${batter.name??"打者"}：1打点`:void 0
           }))
         }
       }
-      batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain),outLogs.forEach(line=>D(line));
-      const mainText=`${batter.name??"打者"}: ${Un(type,displayChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${preview.batterSafe?"（打者上一垒）":""}`,main=Rt(mainText);
+      batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain),[...advanceLogs].reverse().forEach(line=>D(line)),[...outLogs].reverse().forEach(line=>D(line));
+      const gdpNote=type==="DP"?(preview.batterSafe?"（打者上一垒，记 GDP）":"（打者出局，GDP +1）"):(preview.batterSafe?"（打者上一垒）":""),mainText=`${batter.name??"打者"}: ${Un(type,displayChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${gdpNote}`,main=Rt(mainText);
       l.balls=0,l.strikes=0,is(type),Je(type,main),Qe()
     }
     function finishDoublePlayChain(flow){

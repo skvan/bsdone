@@ -181,8 +181,15 @@ function assert654Result(snap, { extended = false } = {}) {
   expect(snap.gameState.runners[3]).toBeNull();
   const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
   expect(logText).toContain('6-5-4');
+  expect(logText).toContain('打者上一垒，记 GDP');
   expect(logText).toContain('一垒跑者');
   expect(logText).toContain('二垒跑者');
+  const mainIndex = logText.indexOf('6-5-4 传杀 双杀');
+  const thirdOutIndex = logText.indexOf('二垒跑者 (#26) 于三垒');
+  const secondOutIndex = logText.indexOf('一垒跑者 (#45) 于二垒');
+  expect(mainIndex).toBeGreaterThanOrEqual(0);
+  expect(thirdOutIndex).toBeGreaterThan(mainIndex);
+  expect(secondOutIndex).toBeGreaterThan(thirdOutIndex);
 
   const ss = snap.playerStatsById['106'].fielding;
   const third = snap.playerStatsById['105'].fielding;
@@ -192,6 +199,10 @@ function assert654Result(snap, { extended = false } = {}) {
   expect(third).toMatchObject({ po: 1, a: 1, dp: 1 });
   expect(second).toMatchObject({ po: 1, dp: 1 });
   expect(batter).toMatchObject({ ab: 1, gdp: 1 });
+  // 6-5-4 打者上一垒：一垒手、投手、捕手没有 PO/A/E/DP
+  for (const id of ['103', '101', '102']) {
+    expect(snap.playerStatsById[id].fielding).toMatchObject({ po: 0, a: 0, e: 0, dp: 0 });
+  }
   if (extended) {
     // 第二出局后的延长传球只显示在链上，不参与双杀守备统计
     expect(third.a).toBe(1);
@@ -225,8 +236,22 @@ function assert643Result(snap) {
   expect(snap.playerStatsById['106'].fielding).toMatchObject({ a: 1, dp: 1 });
   expect(snap.playerStatsById['104'].fielding).toMatchObject({ po: 1, a: 1, dp: 1 });
   expect(snap.playerStatsById['103'].fielding).toMatchObject({ po: 1, dp: 1 });
+  for (const id of ['105', '101', '102']) {
+    expect(snap.playerStatsById[id].fielding).toMatchObject({ po: 0, a: 0, e: 0, dp: 0 });
+  }
   const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
   expect(logText).toContain('6-4-3');
+  expect(logText).toContain('打者出局，GDP +1');
+  expect(logText).toContain('双杀推进');
+  expect(logText).toContain('二垒跑者 (#26) 进三垒');
+  const mainIndex = logText.indexOf('6-4-3 传杀 双杀');
+  const firstOutIndex = logText.indexOf('一垒跑者 (#45) 于二垒');
+  const batterOutIndex = logText.indexOf('打者 (#32) 于一垒');
+  const advanceIndex = logText.indexOf('二垒跑者 (#26) 进三垒');
+  expect(mainIndex).toBeGreaterThanOrEqual(0);
+  expect(firstOutIndex).toBeGreaterThan(mainIndex);
+  expect(batterOutIndex).toBeGreaterThan(firstOutIndex);
+  expect(advanceIndex).toBeGreaterThan(batterOutIndex);
 }
 
 test('6-4-3：拖 4 到二垒、3 到一垒，打者出局并记 GDP，二垒跑者进三垒', async ({ page }) => {
