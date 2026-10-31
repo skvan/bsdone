@@ -56,7 +56,9 @@ function buildSnapshot(options = {}) {
       batterIndex: { away: 0, home: 0 },
       runners: options.runners === 'secondOnly'
         ? { 1: null, 2: awayLineup[2].id, 3: null }
-        : { 1: awayLineup[1].id, 2: awayLineup[2].id, 3: null },
+        : options.runners === 'loaded'
+          ? { 1: awayLineup[1].id, 2: awayLineup[2].id, 3: awayLineup[3].id }
+          : { 1: awayLineup[1].id, 2: awayLineup[2].id, 3: null },
       flow: null, isGameEnd: false, hasPitchThisAB: false, needNextBatter: false,
     },
   };
@@ -291,6 +293,32 @@ test('先点完整条 6-4-3 链，再拖 4 到二垒、3 到一垒', async ({ pa
 
   const snap = await saveSnapshot(page, snapshots);
   assert643Result(snap);
+});
+
+test('满垒 6-4-3：三垒跑者选不进垒，日志写明退回三垒', async ({ page }) => {
+  const { snapshots } = await setup(page, { runners: 'loaded' });
+  const flowBar = page.locator('.les-flow-card');
+  await openDoublePlayGroundBall(page);
+  await page.locator('g.defender-hit[data-pos="SS"]').click();
+  await page.locator('g.defender-hit[data-pos="2B"]').click();
+  await dragFielderToBase(page, '2B', 2);
+  await page.locator('g.defender-hit[data-pos="1B"]').click();
+  await dragFielderToBase(page, '1B', 1);
+  await expect(flowBar).toContainText('三垒跑者得分待确认');
+
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await expect(page.getByRole('button', { name: /不进垒/ })).toBeVisible();
+  await page.getByRole('button', { name: /不进垒/ }).click();
+  await expect(flowBar).toHaveCount(0);
+
+  const snap = await saveSnapshot(page, snapshots);
+  expect(snap.gameState.runners[1]).toBeNull();
+  expect(snap.gameState.runners[2]).toBe(26);
+  expect(snap.gameState.runners[3]).toBe(204);
+  expect(snap.playerStatsById['32'].batting).toMatchObject({ ab: 1, gdp: 1 });
+  const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
+  expect(logText).toContain('不进垒');
+  expect(logText).toContain('退回三垒');
 });
 
 test('第二个出局后可继续延长传球链，完成记录仍只结算两个出局', async ({ page }) => {

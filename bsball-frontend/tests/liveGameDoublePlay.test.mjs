@@ -283,6 +283,7 @@ test('满垒 6-4-3 的三垒跑者需要确认得分/留垒', () => {
   const safe = resolveDoublePlay({ ...base, runner3Decision: 'safe' });
   assert.equal(safe.needsRunner3Decision, false);
   assert.equal(safe.runner3Run, true);
+  assert.equal(safe.runner3Decision, 'safe');
   assert.deepEqual(safe.advances.map((advance) => [advance.runner.id, advance.from, advance.to, !!advance.run]), [
     [26, 2, 3, false],
     [88, 3, 4, true]
@@ -291,6 +292,7 @@ test('满垒 6-4-3 的三垒跑者需要确认得分/留垒', () => {
 
   const noscore = resolveDoublePlay({ ...base, runner3Decision: 'noscore' });
   assert.equal(noscore.runner3Run, false);
+  assert.equal(noscore.runner3Decision, 'noscore');
   assert.deepEqual(noscore.finalBases, { 1: null, 2: r2, 3: r3 });
 });
 

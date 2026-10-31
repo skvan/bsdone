@@ -9380,7 +9380,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         outLogs.push(`${runner.name??"跑者"}${runner.number!=null?` (#${runner.number})`:""} 于${baseText}被${fielderName}${actionText}出局（${chainText}）`),out.runnerKey!=="batter"&&out.fromBase&&(l.runners[out.fromBase]=null),yl(runner.id??runner.name??"?",out.fromBase,out.base??out.fromBase)
       }
       const advanceLogs=(preview.advances??[]).filter(advance=>!advance.batter&&!advance.run&&advance.to!==advance.from).map(advance=>LgAdvance({
-        reasonCn:"双杀推进",runner:advance.runner,from:advance.from,to:advance.to
+        reasonCn:type==="TP"?"三杀推进":"双杀推进",runner:advance.runner,from:advance.from,to:advance.to
       }));
       preview.runner3Decision==="noscore"&&pre[3]&&preview.finalBases[3]===pre[3]&&advanceLogs.push(`不进垒 · ${logPlayerName(pre[3])} 退回三垒`);
       l.outs>3&&(l.outs=3),l.runners[1]=preview.finalBases[1]??null,l.runners[2]=preview.finalBases[2]??null,l.runners[3]=preview.finalBases[3]??null,preview.batterSafe&&l.runners[1]===batter&&(batter.origin="NORMAL",batter.responsiblePitcherId=Number(pitcher?.id)>0?Number(pitcher.id):null);
@@ -9408,7 +9408,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             runner,batter:rbi?batter:void 0,rbiDelta:rbi?1:0,pitcher:pitcher??void 0,origin:"NORMAL",runCause:"BATTER_ACTION",rbiCredit:rbi,rbiReason:rbi?"BATTER_ACTION":"NO_RBI_RULE"
           }
           ),rbi&&(batter.stats.batting.rbi=(batter.stats.batting.rbi??0)+1),advanceLogs.push(LgAdvance({
-            reasonCn:"双杀推进得分",runner,from:3,to:4,rbiNote:rbi?`${batter.name??"打者"}：1打点`:void 0
+            reasonCn:type==="TP"?"三杀推进得分":"双杀推进得分",runner,from:3,to:4,rbiNote:rbi?`${batter.name??"打者"}：1打点`:void 0
           }))
         }
       }

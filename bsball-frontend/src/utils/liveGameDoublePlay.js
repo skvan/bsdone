@@ -264,6 +264,7 @@ export function resolveDoublePlay({
     finalBases: placement.bases,
     advances,
     needsRunner3Decision,
-    runner3Run
+    runner3Run,
+    runner3Decision
   };
 }
