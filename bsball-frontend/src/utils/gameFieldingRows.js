@@ -1,5 +1,6 @@
-// 比赛详情守备表行构建：按本场首次上场守位归组（含投手），同组替补缩进，缺失数据补 0
+// 比赛详情守备表行构建：按本场首次上场守位归组（含投手），组按先发打线顺序排序，同组替补缩进，缺失数据补 0
 import { normalizeFieldingPosition, resolveFirstFieldPosition } from './gamePlayerStat.js';
+import { formatInningsPitched } from './inningsFormat.js';
 
 const POSITION_ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF'];
 const BATTING_ONLY_POSITIONS = new Set(['DH', 'PH', 'EP']);
@@ -31,7 +32,9 @@ function toDisplayRow(row) {
     ...row,
     position: String(row?.position ?? '').trim().toUpperCase(),
     // 只认「首次上场守位」事实；旧数据为空时由 isDisplayable 的守备证据决定是否回退
-    firstPosition: normalizeFieldingPosition(row?.firstPosition)
+    firstPosition: normalizeFieldingPosition(row?.firstPosition),
+    // 先发守备位（新数据）；DH/替补为空，旧数据为空时用回退规则
+    startingPosition: normalizeFieldingPosition(row?.startingPosition)
   };
   next.fieldPosition = next.firstPosition;
   for (const key of FIELD_KEYS) next[key] = Number(next[key]) || 0;
@@ -68,13 +71,9 @@ function positionRank(position) {
   return index >= 0 ? index : 90;
 }
 
-function compareRows(a, b) {
-  const pa = positionRank(a.fieldPosition);
-  const pb = positionRank(b.fieldPosition);
-  if (pa !== pb) return pa - pb;
-  if (a.fieldPosition !== b.fieldPosition) {
-    return String(a.fieldPosition).localeCompare(String(b.fieldPosition));
-  }
+function compareWithinGroup(a, b) {
+  const ar = starterRank(a), br = starterRank(b);
+  if (ar !== br) return ar - br;
   const al = listOrderOf(a), bl = listOrderOf(b);
   if (al !== bl) return al - bl;
   const ab = battingOrderOf(a), bb = battingOrderOf(b);
@@ -82,6 +81,38 @@ function compareRows(a, b) {
   const ap = playerIdOf(a), bp = playerIdOf(b);
   if (ap !== bp) return ap - bp;
   return String(a.playerId ?? '').localeCompare(String(b.playerId ?? ''));
+}
+
+/** 旧数据回退：有棒次的先发优先于替补；新数据由 startingPosition 直接决定组首 */
+function starterRank(row) {
+  return battingOrderOf(row) !== Number.POSITIVE_INFINITY ? 0 : 1;
+}
+
+/** 组首：优先取本守位的先发守备者（startingPosition=该守位）；无该字段时按旧回退规则 */
+function chooseGroupHead(members) {
+  const starters = members.filter((row) => row.startingPosition && row.startingPosition === row.fieldPosition);
+  const pool = starters.length ? starters : members;
+  return pool.slice().sort(compareWithinGroup)[0];
+}
+
+function groupSortKey(head) {
+  const bo = Number(head?.battingOrder);
+  const hasBattingOrder = Number.isFinite(bo) && bo > 0;
+  return {
+    hasBattingOrder: hasBattingOrder ? 0 : 1,
+    battingOrder: hasBattingOrder ? bo : Number.POSITIVE_INFINITY,
+    listOrder: listOrderOf(head),
+    positionRank: positionRank(head?.fieldPosition),
+    fieldPosition: String(head?.fieldPosition ?? '')
+  };
+}
+
+function compareGroups(a, b) {
+  if (a.hasBattingOrder !== b.hasBattingOrder) return a.hasBattingOrder - b.hasBattingOrder;
+  if (a.battingOrder !== b.battingOrder) return a.battingOrder - b.battingOrder;
+  if (a.listOrder !== b.listOrder) return a.listOrder - b.listOrder;
+  if (a.positionRank !== b.positionRank) return a.positionRank - b.positionRank;
+  return a.fieldPosition.localeCompare(b.fieldPosition);
 }
 
 /** 同一球员可能同时有打者行与投手行（二刀流）：保留守备动作更完整的一行 */
@@ -106,12 +137,57 @@ export function buildFieldingDisplayRows(stats, teamId) {
     const prev = byPlayer.get(key);
     if (!prev || preferRow(display, prev)) byPlayer.set(key, display);
   }
-  const rows = [...byPlayer.values()].sort(compareRows);
-  let previousPosition = '';
-  for (const row of rows) {
-    // 每个守位组首行为先发/首个上场者，其余（替补）缩进
-    row.subRow = !!row.fieldPosition && row.fieldPosition === previousPosition;
-    if (row.fieldPosition) previousPosition = row.fieldPosition;
+  // 每个首次守位一组；组按先发打线顺序（先发守备者的棒次）排序，无棒次的纯投手组排最后
+  const groups = new Map();
+  for (const row of byPlayer.values()) {
+    const key = row.fieldPosition || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
   }
-  return rows;
+  const ordered = [];
+  for (const members of groups.values()) {
+    const head = chooseGroupHead(members);
+    const orderedMembers = [head, ...members.filter((row) => row !== head).sort(compareWithinGroup)];
+    // 组首为该守位先发/首个上场者，其后（替补，含后上场的先发打者）缩进
+    orderedMembers.forEach((row, index) => { row.subRow = index > 0; });
+    ordered.push({ members: orderedMembers, sortKey: groupSortKey(head) });
+  }
+  ordered.sort((a, b) => compareGroups(a.sortKey, b.sortKey));
+  return ordered.flatMap((group) => group.members);
+}
+
+/**
+ * 守备表 Totals 汇总：计数项求和；INN 取全队最大守备局数（各球员守备局不叠加）。
+ * DP 按现有球队守备口径汇总球员 DP 记分（与球队守备榜一致；双杀会按参与人数重复计入）。
+ * INN 取 max 在全员轮换/末局换替补时可能低于全队实际守备局数，属于展示口径。
+ */
+export function buildFieldingTotals(rows, fields = []) {
+  const list = Array.isArray(rows) ? rows : [];
+  const totals = {};
+  for (const field of fields) {
+    const key = field?.key;
+    if (!key) continue;
+    if (key === 'defInn') {
+      totals[key] = list.reduce((max, row) => Math.max(max, Number(row?.defInn) || 0), 0);
+      continue;
+    }
+    totals[key] = list.reduce((sum, row) => sum + (Number(row?.[key]) || 0), 0);
+  }
+  return totals;
+}
+
+/**
+ * 守备表 Totals 行：按 el-table 列的 prop 映射合计值，首列 playerName→Totals，POS 等非合计列留空。
+ * 不依赖列下标，字段显隐/排序后仍与对应列对齐。
+ */
+export function buildFieldingSummaryCells(columns, totals) {
+  const list = Array.isArray(columns) ? columns : [];
+  const values = totals || {};
+  return list.map((column) => {
+    const key = column?.property;
+    if (key === 'playerName') return 'Totals';
+    if (!key || !(key in values)) return '';
+    const value = values[key] ?? 0;
+    return key === 'defInn' ? formatInningsPitched(value) : String(value);
+  });
 }

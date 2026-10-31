@@ -277,6 +277,33 @@ class GameServiceSaveLiveTest {
     }
 
     @Test
+    @DisplayName("saveLive：先发守备位统一大写落库，DH 不写；缺栏保留")
+    void saveLive_startingPosition_normalizedAndPreserved() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setStartingPosition("lf");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("LF", pitcher.getStartingPosition());
+
+        part.setStartingPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getStartingPosition(), "DH 不是守备位，先发守备位应清空");
+
+        pitcher.setStartingPosition("RF");
+        part.setStartingPosition(null);
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("RF", pitcher.getStartingPosition(), "旧客户端缺栏不得清空先发守备位");
+    }
+
+    @Test
     @DisplayName("saveLive：载荷缺首个守位时保留既有值（旧客户端不回退历史）")
     void saveLive_missingFirstPosition_preservesExisting() {
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))

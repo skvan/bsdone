@@ -274,6 +274,7 @@ EventService --> EventRepository
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
   - 盒子比分守备表（关联 #446）：`stats` 新增 `firstPosition`（本场首次上场防守的守位，后续换位不覆盖；DH/PH/EP 为空；旧客户端缺栏保留库中原值）。仅在实际守备/换守备落位时写入，代打/代跑未防守前不继承被换下者守位
   - 逐位置守备（2026-10-29，P1/P3）：可选 `fieldingPositions` 数组，元素 `teamId/playerId/position/outs/po/a/e/dp/pb/catcherCs/catcherSb/fieldingGs`（`outs` 为守备出局数，3 outs=1 局；`po/a/e` 为该位置接杀/助杀/失误数；`dp/pb/catcherCs/catcherSb` 为该位置双杀/捕逸/盗垒阻杀/被盗垒数；缺省 0，范围 0..999）。出现该键即视为该场全量替换 `bs_game_fielding_pos_stat`，并按球员 `sum(outs)` 回写 `def_inn`（10 outs→3.1）；`DH/PH/EP` 不接受；缺省不触碰
+  - 守备表先发排序（V20261031100000）：`stats` 新增 `startingPosition`（本场先发守备位；先发野手/先发投手有值，DH/替补为空）；旧客户端缺栏保留库中原值
   - 换人事务（2026-10-27）：可选 `substitutions` 数组，与 `stats` 同一事务落 `bs_game_substitution_event`；同一 `transactionId` 重试幂等。元素字段：`transactionId/teamId/inning/topBottom/changeType/slot/outPlayerId/inPlayerId/outPosition/inPosition`；`changeType` 为 `SUBSTITUTION/POSITION_CHANGE/PITCHING_CHANGE/DH_CANCEL`。事件只记录净变化，统计事实仍以 `stats` 为准
   - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
   - 参考：`GameApi.java:107-111`
@@ -289,7 +290,8 @@ EventService --> EventRepository
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）
   - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
-  - 引擎场次投手行的去留：payload 漏带且仍有数据时保留（不得物理删除）；全零且没有自责分判定时物理删除（用于换人错记后的转记/清理）
+  - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
+  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定不含 `pitchPa`
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
@@ -298,7 +300,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:119-123`
 - GET /game/{gameId}/stats
   - 作用：查询某场比赛的球员统计
-  - 响应：`PageResult<GamePlayerStat>`；V20261028100000 起含 `firstPosition`（首次上场守位，旧数据为空时前端回退 `position` 展示）
+  - 响应：`PageResult<GamePlayerStat>`；V20261028160000 起含 `firstPosition`（首次上场守位，旧数据为空时前端回退 `position` 展示），V20261031100000 起含 `startingPosition`（先发守备位，旧数据为空时前端回退棒次/列表序）
   - 参考：`GameApi.java:89-93`
 - GET /game/{gameId}/fielding-positions
   - 作用：查询某场逐位置守备统计（`bs_game_fielding_pos_stat`），供箱线图/详情与位置维度使用
