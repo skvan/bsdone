@@ -247,10 +247,10 @@ class GameServiceFieldingPositionsTest {
     }
 
     @Test
-    @DisplayName("读取：无权比赛 403；有权返回仓库顺序结果")
+    @DisplayName("读取：按球队/球员/记录 id 顺序返回，保留逐位置首次触达顺序")
     void listFieldingPositions_scoped() {
         GameFieldingPosStat row = new GameFieldingPosStat();
-        when(gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscPositionAsc(Long.valueOf(GAME_ID)))
+        when(gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
                 .thenReturn(List.of(row));
         when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(Boolean.FALSE);
         when(accountScopeService.resolveCurrent()).thenReturn(null);

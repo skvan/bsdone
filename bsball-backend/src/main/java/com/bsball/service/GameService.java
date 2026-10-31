@@ -458,7 +458,7 @@ public class GameService {
         if (this.get(gameId) == null) {
             throw new BusinessException(403, "无权查看该比赛");
         }
-        return this.gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscPositionAsc(gameId);
+        return this.gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId);
     }
 
     /** 换人事务事件：与统计同一事务落库；同一 transactionId 重试幂等。 */

@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GameFieldingPosStatRepository extends JpaRepository<GameFieldingPosStat, Long> {
-    List<GameFieldingPosStat> findByGameIdOrderByTeamIdAscPlayerIdAscPositionAsc(Long gameId);
+    List<GameFieldingPosStat> findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long gameId);
 
     void deleteByGameId(Long gameId);
 }

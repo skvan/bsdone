@@ -303,8 +303,9 @@ EventService --> EventRepository
   - 响应：`PageResult<GamePlayerStat>`；V20261028160000 起含 `firstPosition`（首次上场守位，旧数据为空时前端回退 `position` 展示），V20261031100000 起含 `startingPosition`（先发守备位，旧数据为空时前端回退棒次/列表序）
   - 参考：`GameApi.java:89-93`
 - GET /game/{gameId}/fielding-positions
-  - 作用：查询某场逐位置守备统计（`bs_game_fielding_pos_stat`），供箱线图/详情与位置维度使用
+  - 作用：查询某场逐位置守备统计（`bs_game_fielding_pos_stat`），供箱线图/详情与位置维度使用；比赛详情守备表据此展示同一球员的逐位置明细（#524）
   - 响应：`PageResult<GameFieldingPosStat>`（`list/total`）；字段见数据模型「逐位置守备统计（GameFieldingPosStat）」
+  - 顺序：按 `team_id, player_id, id` 升序；`id` 保留 `save-live` 全量替换时的首次触达顺序。详情端仅在明细与球员级汇总一致时展示展开行
 - GET /game/{gameId}/substitutions
   - 作用：按全场 `sequence` 查询换人事务事件（`bs_game_substitution_event`），用于审计、箱线图换人顺序与现场重建
   - 响应：`PageResult<GameSubstitutionEvent>`（`list/total`）；字段见数据模型「换人事务事件（GameSubstitutionEvent）」

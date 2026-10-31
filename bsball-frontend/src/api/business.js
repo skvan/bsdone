@@ -1,5 +1,5 @@
 // 业务域 API —— 行为与端点移植自编译产物 business chunk（B0 契约）
-import { get, getData, post, put, del, fetchList, fetchResult, fetchAllPages } from './request';
+import { get, getData, post, put, del, fetchList, fetchListResult, fetchResult, fetchAllPages } from './request';
 
 export const leagueApi = {
   list: (params) => fetchList('/api/league/list', params),
@@ -259,6 +259,10 @@ export const gameApi = {
   delete: (id) => del(`/api/game/delete/${id}`),
   saveLive: (id, data) => post(`/api/game/${id}/save-live`, data),
   substitutions: (id) => fetchList(`/api/game/${id}/substitutions`),
+  listFieldingPositions: async (id) => {
+    const { list } = await fetchListResult(`/api/game/${id}/fielding-positions`);
+    return list;
+  },
   reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
