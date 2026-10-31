@@ -142,9 +142,8 @@ async function dragFielderToBase(page, pos, base) {
   await page.mouse.move(target.x, target.y, { steps: 14 });
   await page.waitForTimeout(160);
   await page.mouse.up();
-  await expect(page.getByRole('button', { name: '封杀出局' })).toBeVisible();
-  await page.getByRole('button', { name: '封杀出局' }).click();
-  await page.waitForTimeout(220);
+  // 链拖拽结束后有 300ms 的点击抑制，等它过去再点下一传/再拖
+  await page.waitForTimeout(420);
 }
 
 async function saveSnapshot(page, snapshots) {

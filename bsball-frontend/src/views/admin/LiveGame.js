@@ -9103,28 +9103,34 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       hh.value=null,Mn(hh);
-      const dpBaseLabel=LgDpBaseName[s]??"";
+      if(isDp){
+        // 双杀/三杀只记被迫进垒的封杀，拖到垒包直接记录，不再弹触杀/封杀选择
+        appendChainSelfStep(r,e,s,"force");
+        return
+      }
       LgPick([{
         key:"force",label:"封杀出局"
       }
       ,{
         key:"tag",label:"触杀出局"
       }
-      ],isDp?`记录第${dpRecorded+1}个出局`:"自踩动作",isDp?`拖拽到${dpBaseLabel}：该动作记录为？记录后链可继续延长，或点「完成记录」收尾。`:"该动作记录为：").then(p=>{
+      ],"自踩动作","该动作记录为：").then(p=>{
         if(p!=="force"&&p!=="tag")return;
-        const g=l.flow;
-        if(g!==r||!ho.has(g.type))return;
-        const m=ballTargetOf(e),y=s===4?{
-          x:Qo?.x??240,y:Qo?.y??555
-        }:{x:Ke[s]?.x??m.x,y:Ke[s]?.y??m.y
-        }
-        ,b={
-          x:Xn.value,y:Yn.value
-        };
-        (y.x!==b.x||y.y!==b.y)&&pushChainTrail(b,y),ballFlyTo(y.x,y.y,450),markChainHl(y.x,y.y,!1),Xn.value=y.x,Yn.value=y.y;
-        g.steps.push(e),Array.isArray(g.stepActions)||(g.stepActions=new Array(g.steps.length-1).fill(null)),g.stepActions.push({action:p,base:s}),pt()
+        appendChainSelfStep(r,e,s,p)
       }
       )
+    }
+    function appendChainSelfStep(flow,pos,base,action){
+      if(l.flow!==flow||!ho.has(flow.type))return;
+      const target=ballTargetOf(pos),baseTarget=base===4?{
+        x:Qo?.x??240,y:Qo?.y??555
+      }:{x:Ke[base]?.x??target.x,y:Ke[base]?.y??target.y
+      }
+      ,current={
+        x:Xn.value,y:Yn.value
+      };
+      (baseTarget.x!==current.x||baseTarget.y!==current.y)&&pushChainTrail(current,baseTarget),ballFlyTo(baseTarget.x,baseTarget.y,450),markChainHl(baseTarget.x,baseTarget.y,!1),Xn.value=baseTarget.x,Yn.value=baseTarget.y;
+      flow.steps.push(pos),Array.isArray(flow.stepActions)||(flow.stepActions=new Array(flow.steps.length-1).fill(null)),flow.stepActions.push({action,base}),pt()
     }
     const battedTrail=x(null),hrDragPreview=x(null);
     const isHrPendingFlow=e=>e?.type==="BIP_HIT_PENDING"&&e.resolveType==="HR";
@@ -9420,16 +9426,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const runnerChoice=await LgPick(runnerOptions,"修改出局",`第${index+1}个出局点：选择出局跑者`);
       if(runnerChoice==null||l.flow!==flow)return;
-      const actionChoice=await LgPick([{
-        key:"force",label:"封杀出局"
-      }
-      ,{
-        key:"tag",label:"触杀出局"
-      }
-      ],"修改出局",`第${index+1}个出局点：选择出局方式`);
-      if(actionChoice==null||l.flow!==flow)return;
       Array.isArray(flow.dpOverrides)||(flow.dpOverrides=[]),flow.dpOverrides[index]={
-        base,runnerKey:runnerChoice,action:actionChoice
+        base,runnerKey:runnerChoice,action:"force"
       }
       ,pt()
     }

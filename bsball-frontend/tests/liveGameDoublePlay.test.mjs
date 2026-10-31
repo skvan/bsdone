@@ -147,7 +147,7 @@ test('4-6-3：4 只是助杀，拖 6 到二垒、3 到一垒', () => {
   assert.equal(result.actions[0].out, false);
 });
 
-test('3-3 独力双杀：同一守备员两次拖到一垒，两个出局', () => {
+test('3-3 独力：第二次拖到一垒没有第二个被迫跑者，提示未决', () => {
   const result = resolveDoublePlay({
     type: 'DP',
     steps: ['3', '3', '3'],
@@ -155,13 +155,24 @@ test('3-3 独力双杀：同一守备员两次拖到一垒，两个出局', () =
     runners: runners(r1),
     batter
   });
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.outs.map((out) => [out.base, out.runner.id, out.action]), [
-    [1, batter.id, 'force'],
-    [1, r1.id, 'tag']
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, 'unresolved');
+  assert.equal(result.unresolved[0].base, 1);
+  assert.deepEqual(result.outs.map((out) => out.action), ['force', null]);
+});
+
+test('双杀出局一律按封杀：旧触杀 stepAction 归一为封杀', () => {
+  const result = resolveDoublePlay({
+    type: 'DP',
+    steps: ['6', '5', '5', '3', '3'],
+    stepActions: [null, null, { action: 'tag', base: 3 }, null, { action: 'tag', base: 1 }],
+    runners: runners(r1, r2),
+    batter
+  });
+  assert.deepEqual(outRows(result), [
+    { fielder: '5', base: 3, runner: 26, action: 'force' },
+    { fielder: '3', base: 1, runner: 32, action: 'force' }
   ]);
-  assert.equal(result.gdp, true);
-  assert.deepEqual(result.finalBases, { 1: null, 2: null, 3: null });
 });
 
 test('只拖第一个出局时提示还需一个，不提前结算', () => {
@@ -299,7 +310,9 @@ test('LiveGame 接线：入口门槛、拖拽记录、完成记录与落点入�
     'function editDoublePlayOuts(){',
     'pushHitSpray(type,0,Sr(flow))',
     'completeChainFlow',
-    '记录第${dpRecorded+1}个出局',
+    'function appendChainSelfStep(flow,pos,base,action){',
+    'appendChainSelfStep(r,e,s,"force")',
+    'base,runnerKey:runnerChoice,action:"force"',
     'LgCanStartDoublePlay(l.runners)',
     'LgCanStartTriplePlay(l.runners)',
     'preview.lastOutStepIndex',

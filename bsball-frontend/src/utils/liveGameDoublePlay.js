@@ -1,7 +1,8 @@
 // 双杀/三杀出局归属（#530）
 // 传球链只记录球从谁到谁；出局由「拖拽持球守备员到垒包」的 stepAction 逐个记录：
-// 每次拖拽产生一个出局点（垒包 + 封杀/触杀），链上的顺序即出局顺序。
-// 出局跑者优先取该垒的被迫进垒者；打者只有在一垒出局点被记录时出局，否则安全上一垒。
+// 每次拖拽产生一个被迫进垒的封杀出局点，链上的顺序即出局顺序。
+// 出局跑者取该垒的被迫进垒者；该垒没有被迫跑者时未决，不再退到触杀。
+// 打者只有在一垒出局点被记录时出局，否则安全上一垒。
 // 纯函数，不依赖 LiveGame 状态；返回的跑者是入参对象引用，便于调用方直接落位。
 
 const OUT_COUNT = { DP: 2, TP: 3 };
@@ -16,8 +17,8 @@ export function canStartTriplePlay(runners) {
   return Boolean(runners?.[1] && runners?.[2]);
 }
 
-// 每个垒包优先取被迫进垒者；被迫者已被占用或不在垒上时，退到该垒原跑者（触杀场景）。
-const RUNNER_CANDIDATES = { 1: ['batter', '1'], 2: ['1', '2'], 3: ['2', '3'], 4: ['3'] };
+// 双杀出局只记被迫进垒的封杀：一垒=打者、二垒=一垒跑者、三垒=二垒跑者、本垒=三垒跑者。
+const FORCED_RUNNER = { 1: 'batter', 2: '1', 3: '2', 4: '3' };
 export const BASE_NAME = { 1: '一垒', 2: '二垒', 3: '三垒', 4: '本垒' };
 
 function normalizePos(value) {
@@ -121,16 +122,15 @@ export function resolveDoublePlay({
     let runnerKey = override?.runnerKey ?? null;
     if (runnerKey != null && (used.has(runnerKey) || !pre[runnerKey])) runnerKey = null;
     if (runnerKey == null) {
-      runnerKey = (RUNNER_CANDIDATES[base] ?? []).find((key) => !used.has(key) && pre[key]) ?? null;
+      const forcedKey = FORCED_RUNNER[base];
+      if (forcedKey && !used.has(forcedKey) && pre[forcedKey]) runnerKey = forcedKey;
     }
     if (!runnerKey) {
       unresolved.push({ index, fielder: action.pos, base, reason: 'runner' });
       outs.push({ index, fielder: action.pos, base, runner: null, runnerKey: null, fromBase: null, action: null });
       continue;
     }
-    const chosenAction = override?.action === 'force' || override?.action === 'tag'
-      ? override.action
-      : action.action;
+    const chosenAction = 'force';
     used.add(runnerKey);
     outs.push({
       index,
