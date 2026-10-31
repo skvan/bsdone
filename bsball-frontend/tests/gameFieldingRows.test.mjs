@@ -253,7 +253,8 @@ test('比赛详情守备表接线：首个守位、替补缩进与 Totals 汇总
   const detail = fs.readFileSync(new URL('../src/components/admin/GameDetailFieldingTable.vue', import.meta.url), 'utf8');
   assert.match(detail, /buildFieldingDisplayRows/, '详情守备表复用行构建');
   assert.match(detail, /prop="playerName"/, '首列缺少 playerName prop，Totals 标签会丢失');
-  assert.match(detail, /row\.fieldPosition/, 'POS 列显示首次上场守位');
+  assert.match(detail, /posLabel\(row\)/, 'POS 列通过 posLabel 显示首守位/多守位留空');
+  assert.match(detail, /row\??\.fieldPosition/, 'POS 列显示首次上场守位');
   assert.match(detail, /row\.subRow/, '替补行缩进标记');
   assert.match(detail, /visibleFields/, '列由字段设置控制');
   assert.match(detail, /DEFAULT_FIELDING_FIELDS/, '缺省字段包含守备/捕手列');
