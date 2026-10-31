@@ -143,7 +143,7 @@ async function saveGame(page, bucket) {
   return JSON.parse(bucket.snapshots.at(-1));
 }
 
-test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒用触杀替代盗垒被刺杀', async ({ page }) => {
+test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒盗垒失败记 CS', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
@@ -179,19 +179,23 @@ test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒用触杀�
   await throwBalls(page, 1);
 
   const homeMenu = await dragRunner(page, 3, 4, 'out');
+  await expect(homeMenu.getByText('盗垒失败')).toBeVisible();
   await expect(homeMenu.getByText('触杀出局')).toBeVisible();
   await expect(homeMenu.getByText('盗垒被刺杀 (CS)')).toHaveCount(0);
-  await pickMenuItem(page, '触杀出局');
-  await clickFielder(page, '3B');
+  await pickMenuItem(page, '盗垒失败');
+  await expect(page.getByText('盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）').first()).toBeVisible();
+  await clickFielder(page, 'P');
+  await expect(page.getByText('盗垒失败请先点捕手（C）发起传球链').first()).toBeVisible();
   await clickFielder(page, 'C');
+  await clickFielder(page, 'P');
   await page.getByRole('button', { name: /完成记录/ }).click();
   const homeSnapshot = await saveGame(page, bucket);
   const homeLog = JSON.stringify(homeSnapshot.eventLog);
-  expect(homeLog).toContain('触杀出局：三垒跑者 T2P2 (#2) 于本垒出局（5-2）');
+  expect(homeLog).toContain('盗垒死 (CS)：三垒跑者 T2P2 (#2) 于本垒出局（2-1）');
   expect(homeSnapshot.gameState.outs).toBe(2);
-  expect(homeSnapshot.playerStatsById['105'].fielding).toMatchObject({ a: 1, po: 0 });
-  expect(homeSnapshot.playerStatsById['102'].fielding).toMatchObject({ a: 0, po: 1 });
-  expect(homeSnapshot.playerStatsById['202'].batting.cs).toBe(0);
+  expect(homeSnapshot.playerStatsById['102'].fielding).toMatchObject({ a: 1, po: 0, catcherCs: 1 });
+  expect(homeSnapshot.playerStatsById['101'].fielding).toMatchObject({ a: 0, po: 1 });
+  expect(homeSnapshot.playerStatsById['202'].batting.cs).toBe(1);
 });
 
 test('Issue #527：飞球接杀后同垒出局仍保留离垒过远并走接杀回传', async ({ page }) => {
@@ -216,6 +220,7 @@ test('Issue #527：飞球接杀后同垒出局仍保留离垒过远并走接杀�
 
   const sameBaseMenu = await dragRunner(page, 2, 2, 'out');
   await expect(sameBaseMenu.getByText('触杀出局')).toBeVisible();
+  await expect(sameBaseMenu.getByText('盗垒失败')).toHaveCount(0);
   await expect(sameBaseMenu.getByText('离垒过远出局')).toBeVisible();
   await pickMenuItem(page, '离垒过远出局');
   await expect(page.getByText('请点击回传踩垒的守备员（接杀回传）').first()).toBeVisible();
@@ -263,12 +268,70 @@ test('Issue #527：撤销接杀后同垒菜单不再残留离垒过远', async (
   await page.locator('.rdm__cancel').first().click();
 });
 
-test('Issue #527 回归：一垒跑者盗垒出局仍提供盗垒被刺杀 (CS)', async ({ page }) => {
+test('Issue #527：无投球一垒盗垒失败，C 首发单传记 CS', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const stealOutMenu = await dragRunner(page, 1, 2, 'out');
+  await expect(stealOutMenu.getByText('盗垒失败')).toBeVisible();
+  await expect(stealOutMenu.getByText('触杀出局')).toBeVisible();
+  await expect(stealOutMenu.getByText('盗垒被刺杀 (CS)')).toHaveCount(0);
+  await pickMenuItem(page, '盗垒失败');
+  await expect(page.getByText('盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）').first()).toBeVisible();
+  await clickFielder(page, 'SS');
+  await expect(page.getByText('盗垒失败请先点捕手（C）发起传球链').first()).toBeVisible();
+  await clickFielder(page, 'C');
+  await clickFielder(page, 'C');
+  await clickFielder(page, 'SS');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('盗垒死 (CS)：一垒跑者 T2P1 (#1) 于二垒出局（2-6）');
+  expect(snapshot.gameState.outs).toBe(1);
+  expect(snapshot.playerStatsById['102'].fielding).toMatchObject({ a: 1, po: 0, catcherCs: 1 });
+  expect(snapshot.playerStatsById['106'].fielding).toMatchObject({ a: 0, po: 1 });
+  expect(snapshot.playerStatsById['201'].batting.cs).toBe(1);
+});
+
+test('Issue #527：盗垒失败仅捕手触杀不记 CS', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const stealOutMenu = await dragRunner(page, 1, 2, 'out');
+  await expect(stealOutMenu.getByText('盗垒失败')).toBeVisible();
+  await pickMenuItem(page, '盗垒失败');
+  await clickFielder(page, 'C');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('触杀出局：一垒跑者 T2P1 (#1) 于二垒出局（捕手 T1P2 (#2)）');
+  expect(log).not.toContain('盗垒死 (CS)');
+  expect(snapshot.gameState.outs).toBe(1);
+  expect(snapshot.playerStatsById['102'].fielding).toMatchObject({ a: 0, po: 1, catcherCs: 0 });
+  expect(snapshot.playerStatsById['201'].batting.cs).toBe(0);
+});
+
+test('Issue #527：盗垒失败多传夹杀不记 CS', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
   await throwBalls(page, 1);
   const stealOutMenu = await dragRunner(page, 1, 2, 'out');
-  await expect(stealOutMenu.getByText('盗垒被刺杀 (CS)')).toBeVisible();
-  await expect(stealOutMenu.getByText('触杀出局')).toHaveCount(0);
+  await expect(stealOutMenu.getByText('盗垒失败')).toBeVisible();
+  await expect(stealOutMenu.getByText('触杀出局')).toBeVisible();
+  await expect(stealOutMenu.getByText('盗垒被刺杀 (CS)')).toHaveCount(0);
+  await pickMenuItem(page, '盗垒失败');
+  await clickFielder(page, 'C');
+  await clickFielder(page, '3B');
+  await clickFielder(page, '2B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('触杀出局：一垒跑者 T2P1 (#1) 于二垒出局（2-5-4）');
+  expect(log).not.toContain('盗垒死 (CS)');
+  expect(snapshot.gameState.outs).toBe(1);
+  expect(snapshot.playerStatsById['102'].fielding).toMatchObject({ a: 1, po: 0, catcherCs: 0 });
+  expect(snapshot.playerStatsById['105'].fielding).toMatchObject({ a: 1, po: 0 });
+  expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
+  expect(snapshot.playerStatsById['201'].batting.cs).toBe(0);
 });
