@@ -9434,8 +9434,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
       }
       batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain);
-      const batterOut=preview.outs.find(out=>out.runnerKey==="batter"&&out.runner),batterOutFielder=batterOut?Vt(batterOut.fielder):null,batterOutName=batterOut?(batterOutFielder?logPlayerName(batterOutFielder):It[batterOut.fielder]??batterOut.fielder):"",batterNote=type==="DP"?(batterOut?`（于${LgDpBaseName[batterOut.base]}被${batterOutName} 封杀出局，GDP +1）`:"（打者上一垒，记 GDP）"):(batterOut?`（于${LgDpBaseName[batterOut.base]}被${batterOutName} 封杀出局）`:"（打者上一垒）"),mainText=`${batter.name??"打者"}: ${Un(type,displayChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${batterNote}`,main=Rt(mainText);
-      [...runnerLogs].sort((a,b)=>a.base-b.base).forEach(item=>D(item.line));
+      const batterOut=preview.outs.find(out=>out.runnerKey==="batter"&&out.runner),batterOutFielder=batterOut?Vt(batterOut.fielder):null,batterOutName=batterOut?(batterOutFielder?logPlayerName(batterOutFielder):It[batterOut.fielder]??batterOut.fielder):"",batterNote=type==="DP"?(batterOut?`（于${LgDpBaseName[batterOut.base]}被${batterOutName} 封杀出局，GDP +1）`:"（打者上一垒，记 GDP）"):(batterOut?`（于${LgDpBaseName[batterOut.base]}被${batterOutName} 封杀出局）`:"（打者上一垒）"),mainText=`${batter.name??"打者"}: ${Un(type,displayChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${batterNote}`;
+      // 底层按时间顺序写：高垒位跑者 → 低垒位跑者 → 打者；日志最新在上，所以打者主行会显示在最上面
+      [...runnerLogs].sort((a,b)=>b.base-a.base).forEach(item=>D(item.line));
+      const main=Rt(mainText);
       l.balls=0,l.strikes=0,is(type),Je(type,main),Qe()
     }
     function finishDoublePlayChain(flow){

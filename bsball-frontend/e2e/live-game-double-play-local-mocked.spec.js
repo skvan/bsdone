@@ -189,9 +189,9 @@ function assert654Result(snap, { extended = false } = {}) {
   const mainIndex = logText.indexOf('6-5-4 传杀 双杀');
   const thirdOutIndex = logText.indexOf('二垒跑者 (#26) 于三垒');
   const secondOutIndex = logText.indexOf('一垒跑者 (#45) 于二垒');
-  expect(thirdOutIndex).toBeGreaterThanOrEqual(0);
-  expect(secondOutIndex).toBeGreaterThan(thirdOutIndex);
-  expect(mainIndex).toBeGreaterThan(secondOutIndex);
+  expect(mainIndex).toBeGreaterThanOrEqual(0);
+  expect(secondOutIndex).toBeGreaterThan(mainIndex);
+  expect(thirdOutIndex).toBeGreaterThan(secondOutIndex);
 
   const ss = snap.playerStatsById['106'].fielding;
   const third = snap.playerStatsById['105'].fielding;
@@ -249,9 +249,9 @@ function assert643Result(snap) {
   const mainIndex = logText.indexOf('6-4-3 传杀 双杀');
   const firstOutIndex = logText.indexOf('一垒跑者 (#45) 于二垒');
   const advanceIndex = logText.indexOf('二垒跑者 (#26) 进三垒');
-  expect(advanceIndex).toBeGreaterThanOrEqual(0);
-  expect(firstOutIndex).toBeGreaterThan(advanceIndex);
-  expect(mainIndex).toBeGreaterThan(firstOutIndex);
+  expect(mainIndex).toBeGreaterThanOrEqual(0);
+  expect(firstOutIndex).toBeGreaterThan(mainIndex);
+  expect(advanceIndex).toBeGreaterThan(firstOutIndex);
   // 打者只在主行出现一次，不再单独重复出局行
   expect(logText).not.toContain('打者 (#32) 于一垒');
 }
