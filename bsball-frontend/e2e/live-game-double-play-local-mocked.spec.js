@@ -251,9 +251,9 @@ function assert643Result(snap) {
   const batterOutIndex = logText.indexOf('打者 (#32) 于一垒');
   const advanceIndex = logText.indexOf('二垒跑者 (#26) 进三垒');
   expect(mainIndex).toBeGreaterThanOrEqual(0);
-  expect(firstOutIndex).toBeGreaterThan(mainIndex);
+  expect(advanceIndex).toBeGreaterThan(mainIndex);
+  expect(firstOutIndex).toBeGreaterThan(advanceIndex);
   expect(batterOutIndex).toBeGreaterThan(firstOutIndex);
-  expect(advanceIndex).toBeGreaterThan(batterOutIndex);
 }
 
 test('6-4-3：拖 4 到二垒、3 到一垒，打者出局并记 GDP，二垒跑者进三垒', async ({ page }) => {

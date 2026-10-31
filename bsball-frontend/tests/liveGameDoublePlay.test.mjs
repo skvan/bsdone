@@ -382,7 +382,9 @@ test('LiveGame 接线：入口门槛、拖拽记录、完成记录与落点入�
     'preview.advances',
     '双杀推进',
     '打者上一垒，记 GDP',
-    'advanceLogs',
+    'runnerLogs',
+    'runnerLogs.push',
+    'sort((a,b)=>b.base-a.base)',
     'dpOverrides',
     'applyChainFieldingStats(type,statsChain)'
   ]) {
