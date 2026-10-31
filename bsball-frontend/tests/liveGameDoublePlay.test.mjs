@@ -47,6 +47,9 @@ test('6-5-4：6 接球点不算出局，拖 5 到三垒、4 到二垒，打者�
   assert.equal(result.batterOut, false);
   assert.equal(result.batterSafe, true);
   assert.equal(result.gdp, true);
+  assert.deepEqual(result.advances.map((advance) => [advance.runner.id, advance.from, advance.to, !!advance.batter]), [
+    [batter.id, 0, 1, true]
+  ]);
   assert.deepEqual(result.finalBases, { 1: batter, 2: null, 3: null });
   assert.deepEqual(result.actions.map((action) => [action.pos, action.out, action.base]), [
     ['6', false, null],
@@ -73,6 +76,7 @@ test('链与出局点分开：先点完 6-4-3，再拖 4 到二垒、3 到一垒
   ]);
   assert.equal(result.batterOut, true);
   assert.equal(result.gdp, true);
+  assert.deepEqual(result.advances.map((advance) => [advance.runner.id, advance.from, advance.to]), [[26, 2, 3]]);
   assert.deepEqual(result.finalBases, { 1: null, 2: null, 3: r2 });
   assert.deepEqual(result.displayChain, ['6', '4', '3']);
   assert.deepEqual(result.statsChain, ['6', '4', '4', '3', '3']);
@@ -147,6 +151,7 @@ test('满垒 6-2-3：拖 2 到本垒、3 到一垒，其余跑者各进一垒', 
     { fielder: '3', base: 1, runner: 32, action: 'force' }
   ]);
   assert.equal(result.gdp, true);
+  assert.deepEqual(result.advances.map((advance) => [advance.runner.id, advance.from, advance.to]), [[45, 1, 2], [26, 2, 3]]);
   assert.deepEqual(result.finalBases, { 1: null, 2: r1, 3: r2 });
 });
 
@@ -278,10 +283,16 @@ test('满垒 6-4-3 的三垒跑者需要确认得分/留垒', () => {
   const safe = resolveDoublePlay({ ...base, runner3Decision: 'safe' });
   assert.equal(safe.needsRunner3Decision, false);
   assert.equal(safe.runner3Run, true);
+  assert.equal(safe.runner3Decision, 'safe');
+  assert.deepEqual(safe.advances.map((advance) => [advance.runner.id, advance.from, advance.to, !!advance.run]), [
+    [26, 2, 3, false],
+    [88, 3, 4, true]
+  ]);
   assert.deepEqual(safe.finalBases, { 1: null, 2: null, 3: r2 });
 
   const noscore = resolveDoublePlay({ ...base, runner3Decision: 'noscore' });
   assert.equal(noscore.runner3Run, false);
+  assert.equal(noscore.runner3Decision, 'noscore');
   assert.deepEqual(noscore.finalBases, { 1: null, 2: r2, 3: r3 });
 });
 
@@ -368,6 +379,12 @@ test('LiveGame 接线：入口门槛、拖拽记录、完成记录与落点入�
     'LgCanStartTriplePlay(l.runners)',
     'preview.statsChain',
     'preview.displayChain',
+    'preview.advances',
+    '双杀推进',
+    '打者上一垒，记 GDP',
+    'runnerLogs',
+    'runnerLogs.push',
+    'sort((a,b)=>b.base-a.base)',
     'dpOverrides',
     'applyChainFieldingStats(type,statsChain)'
   ]) {

@@ -172,6 +172,15 @@ export function resolveDoublePlay({
   const placement = placeRemainingRunners(pre, used, batterSafe, pre.batter, runner3Decision);
   const runner3Run = Boolean(runner3Pending && runner3Decision === 'safe');
   const valid = complete && !missingBatter && unresolved.length === 0 && !placement.conflict;
+  const advances = [];
+  if (batterSafe && pre.batter) advances.push({ runner: pre.batter, from: 0, to: 1, batter: true });
+  for (const key of ['1', '2', '3']) {
+    const runner = pre[key];
+    if (!runner || used.has(key)) continue;
+    const target = [1, 2, 3].find((base) => placement.bases[base] === runner);
+    if (target && target !== Number(key)) advances.push({ runner, from: Number(key), to: target });
+  }
+  if (runner3Run) advances.push({ runner: pre[3], from: 3, to: 4, run: true });
 
   const validStepIndices = selected
     .map((action) => (useSeparateOuts ? action.stepIndex : action.actionIndex))
@@ -253,7 +262,9 @@ export function resolveDoublePlay({
     batterSafe,
     gdp: type === 'DP',
     finalBases: placement.bases,
+    advances,
     needsRunner3Decision,
-    runner3Run
+    runner3Run,
+    runner3Decision
   };
 }
