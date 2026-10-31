@@ -17,6 +17,7 @@ import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -49,6 +50,8 @@ class GameServiceSaveLiveTest {
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
     @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -72,7 +75,7 @@ class GameServiceSaveLiveTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
@@ -271,6 +274,33 @@ class GameServiceSaveLiveTest {
         part.setFirstPosition("dh");
         gameService.saveLive(Long.valueOf(GAME_ID), dto);
         assertNull(pitcher.getFirstPosition(), "DH 不是守备位，首个守位应清空");
+    }
+
+    @Test
+    @DisplayName("saveLive：先发守备位统一大写落库，DH 不写；缺栏保留")
+    void saveLive_startingPosition_normalizedAndPreserved() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setStartingPosition("lf");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("LF", pitcher.getStartingPosition());
+
+        part.setStartingPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getStartingPosition(), "DH 不是守备位，先发守备位应清空");
+
+        pitcher.setStartingPosition("RF");
+        part.setStartingPosition(null);
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("RF", pitcher.getStartingPosition(), "旧客户端缺栏不得清空先发守备位");
     }
 
     @Test

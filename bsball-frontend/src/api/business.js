@@ -1,5 +1,5 @@
 // 业务域 API —— 行为与端点移植自编译产物 business chunk（B0 契约）
-import { get, getData, post, put, del, fetchList, fetchResult, fetchAllPages } from './request';
+import { get, getData, post, put, del, fetchList, fetchListResult, fetchResult, fetchAllPages } from './request';
 
 export const leagueApi = {
   list: (params) => fetchList('/api/league/list', params),
@@ -259,6 +259,10 @@ export const gameApi = {
   delete: (id) => del(`/api/game/delete/${id}`),
   saveLive: (id, data) => post(`/api/game/${id}/save-live`, data),
   substitutions: (id) => fetchList(`/api/game/${id}/substitutions`),
+  listFieldingPositions: async (id) => {
+    const { list } = await fetchListResult(`/api/game/${id}/fielding-positions`);
+    return list;
+  },
   reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
@@ -294,6 +298,7 @@ function statsQuery(params) {
   if (params?.batterHand) parts.push(`batterHand=${encodeURIComponent(params.batterHand)}`);
   if (params?.pitcherHand) parts.push(`pitcherHand=${encodeURIComponent(params.pitcherHand)}`);
   if (params?.gameMode) parts.push(`gameMode=${encodeURIComponent(params.gameMode)}`);
+  if (params?.minOuts != null) parts.push(`minOuts=${params.minOuts}`);
   if (params?.page != null) parts.push(`page=${params.page}`);
   if (params?.pageSize != null) parts.push(`pageSize=${params.pageSize}`);
   if (params?.sortProp) parts.push(`sortProp=${encodeURIComponent(params.sortProp)}`);
@@ -315,6 +320,7 @@ export const statsApi = {
   getBatting: (params) => getData(`/api/stats/leaders/batting${statsQuery(params)}`),
   getPitching: (params) => getData(`/api/stats/leaders/pitching${statsQuery(params)}`),
   getFielding: (params) => getData(`/api/stats/leaders/fielding${statsQuery(params)}`),
+  getFieldingPositions: (params) => getData(`/api/stats/leaders/fielding-positions${statsQuery(params)}`),
   getStandings: (params) => getData(`/api/stats/standings${standingsQuery(params)}`),
   getTeamBatting: (params) => getData(`/api/stats/leaders/team-batting${statsQuery(params)}`),
   getTeamPitching: (params) => getData(`/api/stats/leaders/team-pitching${statsQuery(params)}`),

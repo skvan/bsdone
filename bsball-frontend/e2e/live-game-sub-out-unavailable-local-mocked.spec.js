@@ -223,12 +223,14 @@ test('DH 队换投：旧投手回到板凳灰显，不能再拖拽/点选上场'
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(outCard).not.toHaveClass(/live-bench-card--pending/);
 
-  // 「追加新球员」入口已移除
+  // 「追加新球员」入口已移除（换人浮层仅在换人模式内可用）
+  await page.getByRole('button', { name: '换人模式' }).click();
   await page.locator('g.defender-hit[data-pos="CF"]').click();
   const picker = page.locator('.lgsfm__panel');
   await expect(picker).toBeVisible();
   await expect(picker.getByRole('button', { name: '追加新球员' })).toHaveCount(0);
   await picker.getByRole('button', { name: '关闭' }).click();
+  await page.getByRole('button', { name: '取消换人模式' }).click();
 
   // 再进换人模式，拖向 CF 也无效
   await page.getByRole('button', { name: '换人模式' }).click();

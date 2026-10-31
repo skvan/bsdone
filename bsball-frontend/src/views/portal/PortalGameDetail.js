@@ -16,7 +16,9 @@ import { exportSfc as nt } from '../../utils/exportSfc';
 import { playerApi as rt } from '../../api/business';
 import { teamApi as fe } from '../../api/business';
 import { fetchPlayersByTeam } from '../../api/business';
+import { gameApi as portalGameApi } from '../../api/business';
 import { buildTeamPlayersMap, addTeamEntryPlayers } from '../../utils/teamPlayersMap';
+import { attachFieldingPositions } from '../../utils/gameFieldingRows';
 import { useTenantRouter as ot } from '../../composables/useTenantRouter';
 import ut from '../../components/admin/GameDetailContent.js';
 import HitReplay from '../../components/common/GameDetailHitReplay.vue';
@@ -203,11 +205,11 @@ var _t={
       if(s.error)throw new Error(s.error);
       const t=s.data??null;
       if(b.value=t,!t)return null;
-      const[C,H,z,Y]=await Promise.all([$(`/api/game/${e}/stats`,{
+      const[C,H,z,Y,fp]=await Promise.all([$(`/api/game/${e}/stats`,{
         
       }
-      ),de(`/api/event/${t.eventId}`),t.homeTeamId?fetchPlayersByTeam(t.homeTeamId):Promise.resolve([]),t.awayTeamId?fetchPlayersByTeam(t.awayTeamId):Promise.resolve([])]);
-      B.value=C.list;
+      ),de(`/api/event/${t.eventId}`),t.homeTeamId?fetchPlayersByTeam(t.homeTeamId):Promise.resolve([]),t.awayTeamId?fetchPlayersByTeam(t.awayTeamId):Promise.resolve([]),portalGameApi.listFieldingPositions(e).catch(()=>[])]);
+      B.value=attachFieldingPositions(C.list,fp??[]);
       const G=t.homeTeamId,R=t.awayTeamId,[Oe,Ue]=await Promise.all([G?fe.get(G):Promise.resolve(null),R?fe.get(R):Promise.resolve(null)]);
       K.value=[Oe,Ue].filter(Boolean),j.value=H.data?.name??"";
       // H33：playersMap 复合键（teamId:playerId）+ 单键兼容；补集按注册段生成按队副本

@@ -900,6 +900,56 @@ public class StatsService {
         return PageResult.of(rows.stream().map(arg_0 -> this.toPitchingLeaderMap(arg_0)).collect(Collectors.toList()), (long)total, meta);
     }
 
+    /** 按位置守备榜（#478 P2）：player × position 聚合 GP/GS/INN；outs 换算棒球局数。 */
+    public PageResult<Map<String, Object>> getFieldingPositionLeaders(Long eventId, List<Long> eventIds, List<String> years, List<Long> teamIds,
+            String playerKeyword, String position, String homeAway, String gameMode, Integer minOuts, int page, int pageSize, String sortProp, String sortOrder) {
+        long tid = this.resolveTenantId();
+        int p = StatsService.normalizePage((int)page);
+        int ps = StatsService.normalizePageSize((int)pageSize);
+        long offset = (long)(p - 1) * (long)ps;
+        String kw = StatsService.normalizeLeaderKeyword((String)playerKeyword);
+        String pos = StatsService.normalizeLeaderKeyword((String)position);
+        String ha = StatsService.normalizeHomeAway((String)homeAway);
+        String gm = StatsService.normalizeGameMode((String)gameMode);
+        int min = minOuts == null ? 9 : Math.max(0, Math.min(999, (int)minOuts));
+        String orderBy = StatsLeadersOrderBy.fieldingPositions((String)sortProp, (String)sortOrder);
+        long total = this.statsLeadersMapper.countFieldingPositionLeaders(Long.valueOf(tid), eventId, eventIds, years, teamIds, kw, pos, ha, gm, Integer.valueOf(min));
+        List<Map<String, Object>> rows = this.statsLeadersMapper.selectFieldingPositionLeadersPage(Long.valueOf(tid), eventId, eventIds, years, teamIds, kw, pos, ha, gm, Integer.valueOf(min), orderBy, ps, offset);
+        List<Map<String, Object>> out = rows.stream().map(this::toFieldingPositionLeaderMap).collect(Collectors.toList());
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("minOuts", Integer.valueOf(min));
+        return PageResult.of(out, (long)total, meta);
+    }
+
+    private Map<String, Object> toFieldingPositionLeaderMap(Map<String, Object> d) {
+        HashMap<String, Object> m = new HashMap<String, Object>();
+        long playerId = Optional.ofNullable(StatsService.getLong(d, "playerId")).orElse(0L);
+        long teamId = Optional.ofNullable(StatsService.getLong(d, "teamId")).orElse(0L);
+        m.put("playerId", Long.valueOf(playerId));
+        m.put("playerName", Optional.ofNullable(StatsService.strVal(d, "playerName")).orElse("#" + playerId));
+        m.put("teamId", Long.valueOf(teamId));
+        m.put("teamName", Optional.ofNullable(StatsService.strVal(d, "teamName")).orElse("球队#" + teamId));
+        m.put("position", StatsService.strVal(d, "position"));
+        m.put("gp", Integer.valueOf(StatsService.getInt(d, "gp")));
+        m.put("gs", Integer.valueOf(StatsService.getInt(d, "gs")));
+        int outs = StatsService.getInt(d, "outs");
+        m.put("inn", StatsFormatUtil.baseballOutsToIp(outs));
+        int po = StatsService.getInt(d, "po");
+        int a = StatsService.getInt(d, "a");
+        int e = StatsService.getInt(d, "e");
+        int tc = po + a + e;
+        m.put("po", Integer.valueOf(po));
+        m.put("a", Integer.valueOf(a));
+        m.put("e", Integer.valueOf(e));
+        m.put("dp", Integer.valueOf(StatsService.getInt(d, "dp")));
+        m.put("pb", Integer.valueOf(StatsService.getInt(d, "pb")));
+        m.put("catcherCs", Integer.valueOf(StatsService.getInt(d, "catcherCs")));
+        m.put("catcherSb", Integer.valueOf(StatsService.getInt(d, "catcherSb")));
+        m.put("tc", Integer.valueOf(tc));
+        m.put("tcPct", tc > 0 ? StatsFormatUtil.fmtPct((Double)(100.0 * (double)(po + a) / (double)tc)) : "0");
+        return m;
+    }
+
     public PageResult<Map<String, Object>> getFieldingLeaders(Long eventId, List<Long> eventIds, List<String> years, List<Long> teamIds, String playerKeyword, String position, String homeAway, String batterHand, String pitcherHand, String gameMode, int page, int pageSize, String sortProp, String sortOrder) {
         long tid = this.resolveTenantId();
         int p = StatsService.normalizePage((int)page);
