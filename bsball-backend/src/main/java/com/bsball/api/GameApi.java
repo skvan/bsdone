@@ -39,6 +39,7 @@ import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.GameSubstitutionEvent;
+import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.service.GamePlayerStatService;
 import com.bsball.service.GameService;
@@ -106,6 +107,12 @@ public class GameApi {
     @GetMapping(value={"/{gameId}/stats"})
     public Result<PageResult<GamePlayerStat>> listByGame(@PathVariable Long gameId) {
         List<GamePlayerStat> data = this.gamePlayerStatService.listByGame(gameId);
+        return Result.ok(PageResult.of(data, (long)data.size()));
+    }
+
+    @GetMapping(value={"/{gameId}/fielding-positions"})
+    public Result<PageResult<GameFieldingPosStat>> listFieldingPositions(@PathVariable Long gameId) {
+        List<GameFieldingPosStat> data = this.gameService.listFieldingPositions(gameId);
         return Result.ok(PageResult.of(data, (long)data.size()));
     }
 

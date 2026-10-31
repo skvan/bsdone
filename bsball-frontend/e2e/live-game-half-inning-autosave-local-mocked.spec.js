@@ -121,6 +121,19 @@ test('半局结束自动保存统计：确认攻守交换后自动提交 save-li
   });
   expect(body.stats.find((row) => row.playerId === 203 && row.isPitcher === 0)?.so).toBe(1);
   expect(body.stats.find((row) => row.playerId === 101 && row.isPitcher === 0)?.pitchSo).toBe(3);
+  // 守备方（主队）9 名在场球员各记 3 个守备出局；投手按 P 计
+  const fieldingPositions = body.fieldingPositions || [];
+  expect(fieldingPositions).toHaveLength(9);
+  expect(fieldingPositions.every((row) => row.teamId === 1)).toBe(true);
+  expect(fieldingPositions.find((row) => row.playerId === 101 && row.position === 'P')).toMatchObject({
+    outs: 3, fieldingGs: true
+  });
+  expect(fieldingPositions.find((row) => row.playerId === 108 && row.position === 'CF')).toMatchObject({ outs: 3 });
+  // P3：三次挥空三振的 PO 记捕手 C（3 次），逐位置 PO 总数与球员级一致
+  expect(fieldingPositions.find((row) => row.playerId === 102 && row.position === 'C')).toMatchObject({
+    outs: 3, po: 3, a: 0, e: 0
+  });
+  expect(fieldingPositions.reduce((sum, row) => sum + (row.po || 0), 0)).toBe(3);
   await expect.poll(() => savedSnapshots.length).toBeGreaterThan(0);
 
   // 自动保存静默：不弹「保存成功」

@@ -65,6 +65,7 @@ import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
+import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats } from '../../utils/liveGameChainStats';
@@ -6624,7 +6625,8 @@ var sg={
       Tr.value=!!Da?.matches||"ontouchstart"in window
     }
     const lt=x(!1),Ma=x(!1),Xi=x("away"),Ua=x(""),la=x(!1),On=x(!1),mt=x("fielder"),ia=x("away"),Ga=x(null),Qt=x(null),Va=x(null),sa=x(null),Tp=$(()=>mt.value==="pinchHit"?"代打":"换人");
-    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense");
+    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense"),awayStarterFpId=x(null),homeStarterFpId=x(null);
+    let fieldingPositionsTrusted=!1;
     function $p(e){
       return Ee(e).unavail.value
     }
@@ -7096,7 +7098,7 @@ var sg={
     const vn=$(()=>({
       1:xn(Qi(1)),2:xn(Qi(2)),3:xn(Qi(3))
     }
-    )),Xr=$(()=>[...new Map([...X.value,...ae.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Yr=$(()=>[...new Map([...q.value,...ye.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Kr=$(()=>[...new Map([...X.value,...ae.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),zr=$(()=>[...new Map([...q.value,...ye.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),Ja=$(()=>{
+    )),Xr=$(()=>[...new Map([...X.value,...ae.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Yr=$(()=>[...new Map([...q.value,...ye.value].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.batting.h??0),0)),Kr=$(()=>[...new Map([...X.value,...ae.value,...(De.value?[De.value]:[])].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),zr=$(()=>[...new Map([...q.value,...ye.value,...(xe.value?[xe.value]:[])].map(p=>[p.id,p])).values()].reduce((e,t)=>e+(t.stats.fielding.e??0),0)),Ja=$(()=>{
       if(!lt.value)return null;
       const e=l.inning-1;
       return l.isTop?{
@@ -7555,7 +7557,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           v:1,savedAt:Date.now(),gameMode:N.value,...snapshotAtBatContext(),setupForm:{
             ..._
           }
-          ,gameId:R.value,gameStarted:F.value,homeLineup:JSON.parse(JSON.stringify(q.value)),awayLineup:JSON.parse(JSON.stringify(X.value)),homeBench:JSON.parse(JSON.stringify(ye.value)),awayBench:JSON.parse(JSON.stringify(ae.value)),awayFieldingPitcherId:O.value,homeFieldingPitcherId:te.value,awayFieldingPitcherRow:De.value?JSON.parse(JSON.stringify(De.value)):null,homeFieldingPitcherRow:xe.value?JSON.parse(JSON.stringify(xe.value)):null,awayLastDhAddedFromPoolId:Xe.value,homeLastDhAddedFromPoolId:Te.value,awayUnavailablePlayerIds:[...Ie.value],homeUnavailablePlayerIds:[...I.value],awayLineupStarterIds:[...le.value],homeLineupStarterIds:[...fe.value],awaySlotSubHistory:Ae.value.map(s=>[...s]),homeSlotSubHistory:ie.value.map(s=>[...s]),teamsData:{
+          ,gameId:R.value,gameStarted:F.value,homeLineup:JSON.parse(JSON.stringify(q.value)),awayLineup:JSON.parse(JSON.stringify(X.value)),homeBench:JSON.parse(JSON.stringify(ye.value)),awayBench:JSON.parse(JSON.stringify(ae.value)),awayFieldingPitcherId:O.value,homeFieldingPitcherId:te.value,awayStarterFpId:awayStarterFpId.value,homeStarterFpId:homeStarterFpId.value,fieldingPositionsBaseline:fieldingPositionsTrusted,awayFieldingPitcherRow:De.value?JSON.parse(JSON.stringify(De.value)):null,homeFieldingPitcherRow:xe.value?JSON.parse(JSON.stringify(xe.value)):null,awayLastDhAddedFromPoolId:Xe.value,homeLastDhAddedFromPoolId:Te.value,awayUnavailablePlayerIds:[...Ie.value],homeUnavailablePlayerIds:[...I.value],awayLineupStarterIds:[...le.value],homeLineupStarterIds:[...fe.value],awaySlotSubHistory:Ae.value.map(s=>[...s]),homeSlotSubHistory:ie.value.map(s=>[...s]),teamsData:{
             away:{
               score:o.away.score,innings:[...o.away.innings]
             }
@@ -7739,7 +7741,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           
         }
         ,b=y(s,g,t?.homeList),w=y(r,m,t?.awayList);
-        q.value=b.lineup,X.value=w.lineup,ye.value=b.bench,ae.value=w.bench,o.home.roster=b.lineup,o.away.roster=w.lineup,o.home.bench=b.bench,o.away.bench=w.bench,O.value=st(e.awayFieldingPitcherId),te.value=st(e.homeFieldingPitcherId),De.value=e.awayFieldingPitcherRow?JSON.parse(JSON.stringify(e.awayFieldingPitcherRow)):null,xe.value=e.homeFieldingPitcherRow?JSON.parse(JSON.stringify(e.homeFieldingPitcherRow)):null,Xe.value=st(e.awayLastDhAddedFromPoolId),Te.value=st(e.homeLastDhAddedFromPoolId),Ie.value=Array.isArray(e.awayUnavailablePlayerIds)?e.awayUnavailablePlayerIds.map(E=>Number(E)).filter(E=>Number.isFinite(E)&&E>0):[],I.value=Array.isArray(e.homeUnavailablePlayerIds)?e.homeUnavailablePlayerIds.map(E=>Number(E)).filter(E=>Number.isFinite(E)&&E>0):[],le.value=hr(e.awayLineupStarterIds),fe.value=hr(e.homeLineupStarterIds),Ae.value=yr(e.awaySlotSubHistory),ie.value=yr(e.homeSlotSubHistory),br(),Cp(e);
+        q.value=b.lineup,X.value=w.lineup,ye.value=b.bench,ae.value=w.bench,o.home.roster=b.lineup,o.away.roster=w.lineup,o.home.bench=b.bench,o.away.bench=w.bench,fieldingPositionsTrusted=e.fieldingPositionsBaseline===true?true:e.fieldingPositionsBaseline===false?false:(hasFieldingByPosBaseline([...b.lineup,...b.bench,...w.lineup,...w.bench])||!(e.atBatSummaries?.length>0)),O.value=st(e.awayFieldingPitcherId),te.value=st(e.homeFieldingPitcherId),awayStarterFpId.value=e.awayStarterFpId!=null?st(e.awayStarterFpId):(!oa(X.value)&&e.fieldingPositionsBaseline!==false&&!(e.atBatSummaries?.length>0)?O.value:null),homeStarterFpId.value=e.homeStarterFpId!=null?st(e.homeStarterFpId):(!oa(q.value)&&e.fieldingPositionsBaseline!==false&&!(e.atBatSummaries?.length>0)?te.value:null),De.value=e.awayFieldingPitcherRow?JSON.parse(JSON.stringify(e.awayFieldingPitcherRow)):null,xe.value=e.homeFieldingPitcherRow?JSON.parse(JSON.stringify(e.homeFieldingPitcherRow)):null,Xe.value=st(e.awayLastDhAddedFromPoolId),Te.value=st(e.homeLastDhAddedFromPoolId),Ie.value=Array.isArray(e.awayUnavailablePlayerIds)?e.awayUnavailablePlayerIds.map(E=>Number(E)).filter(E=>Number.isFinite(E)&&E>0):[],I.value=Array.isArray(e.homeUnavailablePlayerIds)?e.homeUnavailablePlayerIds.map(E=>Number(E)).filter(E=>Number.isFinite(E)&&E>0):[],le.value=hr(e.awayLineupStarterIds),fe.value=hr(e.homeLineupStarterIds),Ae.value=yr(e.awaySlotSubHistory),ie.value=yr(e.homeSlotSubHistory),br(),Cp(e);
         const P=e.gameState;
         if(P){
           l.inning=P.inning??1,l.isTop=P.isTop??!0,l.outs=P.outs??0,l.halfInningOuts=Array.isArray(P.halfInningOuts)?P.halfInningOuts.map(ct=>String(ct)):[],l.balls=P.balls??0,l.strikes=P.strikes??0,l.batterIndex=P.batterIndex??{
@@ -7886,7 +7888,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function Yl(){
       const e={
-        homeLineup:q.value,awayLineup:X.value,homeBench:ye.value,awayBench:ae.value,awayFieldingPitcherId:O.value,homeFieldingPitcherId:te.value,awayFieldingPitcherRow:De.value,homeFieldingPitcherRow:xe.value,awayLastDhAddedFromPoolId:Xe.value,homeLastDhAddedFromPoolId:Te.value,awayUnavailablePlayerIds:Ie.value,homeUnavailablePlayerIds:I.value,awayLineupStarterIds:le.value,homeLineupStarterIds:fe.value,awaySlotSubHistory:Ae.value,homeSlotSubHistory:ie.value
+        homeLineup:q.value,awayLineup:X.value,homeBench:ye.value,awayBench:ae.value,awayFieldingPitcherId:O.value,homeFieldingPitcherId:te.value,awayStarterFpId:awayStarterFpId.value,homeStarterFpId:homeStarterFpId.value,fieldingPositionsBaseline:fieldingPositionsTrusted,awayFieldingPitcherRow:De.value,homeFieldingPitcherRow:xe.value,awayLastDhAddedFromPoolId:Xe.value,homeLastDhAddedFromPoolId:Te.value,awayUnavailablePlayerIds:Ie.value,homeUnavailablePlayerIds:I.value,awayLineupStarterIds:le.value,homeLineupStarterIds:fe.value,awaySlotSubHistory:Ae.value,homeSlotSubHistory:ie.value
       };
       return JSON.parse(JSON.stringify(e))
     }
@@ -7897,7 +7899,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!e)return;
       q.value=e.homeLineup,X.value=e.awayLineup;
       const t=xl(e.homeBench??[]),a=xl(e.awayBench??[]);
-      ye.value=t,ae.value=a,o.home.roster=e.homeLineup,o.away.roster=e.awayLineup,o.home.bench=t,o.away.bench=a,O.value=st(e.awayFieldingPitcherId),te.value=st(e.homeFieldingPitcherId),De.value=e.awayFieldingPitcherRow?JSON.parse(JSON.stringify(e.awayFieldingPitcherRow)):null,xe.value=e.homeFieldingPitcherRow?JSON.parse(JSON.stringify(e.homeFieldingPitcherRow)):null,Xe.value=st(e.awayLastDhAddedFromPoolId),Te.value=st(e.homeLastDhAddedFromPoolId),Ie.value=Array.isArray(e.awayUnavailablePlayerIds)?e.awayUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],I.value=Array.isArray(e.homeUnavailablePlayerIds)?e.homeUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],le.value=Array.isArray(e.awayLineupStarterIds)?e.awayLineupStarterIds.map(s=>Number(s)||null):le.value,fe.value=Array.isArray(e.homeLineupStarterIds)?e.homeLineupStarterIds.map(s=>Number(s)||null):fe.value,Ae.value=Array.isArray(e.awaySlotSubHistory)?e.awaySlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):Ae.value,ie.value=Array.isArray(e.homeSlotSubHistory)?e.homeSlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):ie.value
+      ye.value=t,ae.value=a,o.home.roster=e.homeLineup,o.away.roster=e.awayLineup,o.home.bench=t,o.away.bench=a,O.value=st(e.awayFieldingPitcherId),te.value=st(e.homeFieldingPitcherId),e.awayStarterFpId!=null&&(awayStarterFpId.value=st(e.awayStarterFpId)),e.homeStarterFpId!=null&&(homeStarterFpId.value=st(e.homeStarterFpId)),De.value=e.awayFieldingPitcherRow?JSON.parse(JSON.stringify(e.awayFieldingPitcherRow)):null,xe.value=e.homeFieldingPitcherRow?JSON.parse(JSON.stringify(e.homeFieldingPitcherRow)):null,Xe.value=st(e.awayLastDhAddedFromPoolId),Te.value=st(e.homeLastDhAddedFromPoolId),Ie.value=Array.isArray(e.awayUnavailablePlayerIds)?e.awayUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],I.value=Array.isArray(e.homeUnavailablePlayerIds)?e.homeUnavailablePlayerIds.map(s=>Number(s)).filter(s=>Number.isFinite(s)&&s>0):[],le.value=Array.isArray(e.awayLineupStarterIds)?e.awayLineupStarterIds.map(s=>Number(s)||null):le.value,fe.value=Array.isArray(e.homeLineupStarterIds)?e.homeLineupStarterIds.map(s=>Number(s)||null):fe.value,Ae.value=Array.isArray(e.awaySlotSubHistory)?e.awaySlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):Ae.value,ie.value=Array.isArray(e.homeSlotSubHistory)?e.homeSlotSubHistory.map(s=>Array.isArray(s)?s.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]):ie.value
       ensureFirstFieldPositions()
       ensureStartingPositions()
     }
@@ -8368,9 +8370,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // P3 · #226：每出局累进——投手 pitching.ip（原口径）+ 守备全员 fielding.ip；DH 制下 Hn 内投手为展示副本，故对活体显式补记并按 stats 引用去重
     function Ipy(){
       const addIp=(o,key)=>{if(!o?.stats?.[key])return;o.stats[key].ip=LgAddOutToInnings(o.stats[key].ip)};
-      const fieldingPositions=new Set(dd(N.value));
+      const fieldingPositions=new Set(dd(N.value)),activeFielders=LgActiveFielders(Hn.value,fieldingPositions,Nn);
       addIp(Se.value,"pitching");
       addIp(Se.value,"fielding");
+      accrueActiveFieldingOuts(Se.value,activeFielders);
       for(const m of LgActiveFielders(Hn.value,fieldingPositions,Nn))if(m.stats!==Se.value?.stats)addIp(m,"fielding")
     }
     // 守备局数对账（#388）：野手 IP 不可能超过该队已完成守备出局数。
@@ -8408,11 +8411,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function paceCatcherStat(e){
       const t=Vt("C");
       if(!t?.stats?.fielding)return;
-      t.stats.fielding[e]=(t.stats.fielding[e]??0)+1
+      t.stats.fielding[e]=(t.stats.fielding[e]??0)+1,accrueFieldingPlay(t.stats.fielding,"C",{[e]:1})
     }
     function creditFieldingError(player){
       if(!player?.stats?.fielding)return!1;
-      return player.stats.fielding.e=(player.stats.fielding.e??0)+1,l.playErrorCredited=!0,!0
+      const target=resolveFieldingCreditTarget(player.position,player,Se.value);
+      if(!target?.stats?.fielding)return!1;
+      return target.stats.fielding.e=(target.stats.fielding.e??0)+1,accrueFieldingPlay(target.stats.fielding,player.position,{e:1}),l.playErrorCredited=!0,!0
     }
     function errorCreditNames(fielders){
       const list=Array.isArray(fielders)?fielders:[];
@@ -8443,10 +8448,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function Dn(e){
       for(const r of LgSingleOutStats(e)){
-        const p=Hn.value.find(a=>a.position===r.pos);
+        const p=resolveFieldingCreditTarget(r.pos,Hn.value.find(a=>a.position===r.pos),Se.value);
         if(!p?.stats?.fielding)continue;
         p.stats.fielding.po=(p.stats.fielding.po??0)+r.po;
-        p.stats.fielding.a=(p.stats.fielding.a??0)+r.a
+        p.stats.fielding.a=(p.stats.fielding.a??0)+r.a,accrueFieldingPlay(p.stats.fielding,r.pos,{po:r.po,a:r.a})
       }
     }
     function applyChainFieldingStats(type,fielders){
@@ -8457,24 +8462,24 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const seen=new Set();
       for(const r of s){
-        const p=Hn.value.find(a=>a.position===r.pos);
+        const p=resolveFieldingCreditTarget(r.pos,Hn.value.find(a=>a.position===r.pos),Se.value);
         if(!p?.stats?.fielding)continue;
         p.stats.fielding.po=(p.stats.fielding.po??0)+r.po;
-        p.stats.fielding.a=(p.stats.fielding.a??0)+r.a;
+        p.stats.fielding.a=(p.stats.fielding.a??0)+r.a;accrueFieldingPlay(p.stats.fielding,r.pos,{po:r.po,a:r.a});
         if(type==="DP"&&!seen.has(r.pos)){
           seen.add(r.pos);
-          p.stats.fielding.dp=(p.stats.fielding.dp??0)+1
+          p.stats.fielding.dp=(p.stats.fielding.dp??0)+1,accrueFieldingPlay(p.stats.fielding,r.pos,{dp:1})
         }
       }
     }
     // #483：三振守备记账。caught=普通/擦棒被捕三振（捕手 PO）；dropped=漏接三振（C 自己触杀=捕手 PO，其他守备员=捕手 A + 该守备员 PO）。
     function creditStrikeoutFielding(kind,fielderCode){
-      const credit=strikeoutFieldingCredit(kind,fielderCode),catcher=Vt("C");
-      if(credit.catcherPo&&catcher?.stats?.fielding)catcher.stats.fielding.po=(catcher.stats.fielding.po??0)+credit.catcherPo;
-      if(credit.catcherA&&catcher?.stats?.fielding)catcher.stats.fielding.a=(catcher.stats.fielding.a??0)+credit.catcherA;
+      const credit=strikeoutFieldingCredit(kind,fielderCode),catcher=resolveFieldingCreditTarget("C",Vt("C"),Se.value);
+      if(credit.catcherPo&&catcher?.stats?.fielding)catcher.stats.fielding.po=(catcher.stats.fielding.po??0)+credit.catcherPo,accrueFieldingPlay(catcher.stats.fielding,"C",{po:credit.catcherPo});
+      if(credit.catcherA&&catcher?.stats?.fielding)catcher.stats.fielding.a=(catcher.stats.fielding.a??0)+credit.catcherA,accrueFieldingPlay(catcher.stats.fielding,"C",{a:credit.catcherA});
       if(credit.fielderPo&&fielderCode){
-        const f=Vt(String(fielderCode).trim().toUpperCase());
-        f?.stats?.fielding&&(f.stats.fielding.po=(f.stats.fielding.po??0)+credit.fielderPo)
+        const f=resolveFieldingCreditTarget(fielderCode,Vt(String(fielderCode).trim().toUpperCase()),Se.value);
+        f?.stats?.fielding&&(f.stats.fielding.po=(f.stats.fielding.po??0)+credit.fielderPo,accrueFieldingPlay(f.stats.fielding,fielderCode,{po:credit.fielderPo}))
       }
     }
     function Vt(e){
@@ -9611,14 +9616,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(a?.type==="PICKOFF_OUT"){
-        const P0=Vt(e);
+        const P0=resolveFieldingCreditTarget(e,Vt(e),Se.value);
         if(!P0){
           J("无效的守备位置","warning");
           return
         }
         const P1=a.runner,P2=a.runnerBase;
         l.flow=null,beginPlayLedger(),pt(),l.runners[P2]=null,yl(P1.id??P1.name??"?",P2,P2+1),l.halfInningOuts.push(Gt(P1,"牵制出局").trim()),l.outs++,Ipy();
-        P0.stats?.fielding&&(P0.stats.fielding.po=(P0.stats.fielding.po??0)+1);
+        P0.stats?.fielding&&(P0.stats.fielding.po=(P0.stats.fielding.po??0)+1,accrueFieldingPlay(P0.stats.fielding,e,{po:1}));
         const P3=LgPickoff({
           pitcher:Se.value,runner:P1,from:P2,fielderCode:e,fielder:P0,chain:["P",e],outsCum:1,total:l.outs
         }).lines;
@@ -9641,10 +9646,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         de("接杀回传"),l.flow=null,beginPlayLedger(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
         const cbChain=[a.catchPos??"P",e];
         for(const fielding of LgCatchBackStats(cbChain[0],e)){
-          const player=Vt(fielding.pos);
+          const player=resolveFieldingCreditTarget(fielding.pos,Vt(fielding.pos),Se.value);
           if(player?.stats?.fielding){
             player.stats.fielding.po=(player.stats.fielding.po??0)+fielding.po;
-            player.stats.fielding.a=(player.stats.fielding.a??0)+fielding.a
+            player.stats.fielding.a=(player.stats.fielding.a??0)+fielding.a;
+            accrueFieldingPlay(player.stats.fielding,fielding.pos,{po:fielding.po,a:fielding.a})
           }
         }
         const cbLines=LgCatchBackDp({catchCode:cbChain[0],catcher:Vt(cbChain[0]),tagCode:e,tagger:Q0,runner:Q1,from:Q2,to:a.outAtBase??Q2,outsCum:1,total:l.outs}).lines;
@@ -9665,8 +9671,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return
         }
         l.runners[a.runnerBase]=null,yl(a.runner.id??a.runner.name??"?",a.runnerBase,s),l.halfInningOuts.push(Gt(a.runner,"盗垒死").trim()),l.outs++,Ipy(),a.runner.stats.batting.cs=(a.runner.stats.batting.cs??0)+1,paceCatcherStat("catcherCs");
-        const p=Vt(e);
-        p?.stats?.fielding&&(p.stats.fielding.po=(p.stats.fielding.po??0)+1);
+        const p=resolveFieldingCreditTarget(e,Vt(e),Se.value);
+        p?.stats?.fielding&&(p.stats.fielding.po=(p.stats.fielding.po??0)+1,accrueFieldingPlay(p.stats.fielding,e,{po:1}));
         const g=LgCs({fielderPos:It[e]??e,runner:a.runner,from:a.runnerBase??1,to:s,outsCum:1,total:l.outs});
         D(g),l.flow=null,pt(),l.outs>=3&&(Je("THIRD_OUT",g),Qe());
         return
@@ -11175,6 +11181,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const e=[];
       return _.awayTeamId&&e.push(...No("away",_.awayTeamId)),_.homeTeamId&&e.push(...No("home",_.homeTeamId)),e
     }
+    function buildFieldingPositions(){
+      if(!fieldingPositionsTrusted)return null;
+      const rows=[];
+      for(const side of["away","home"]){
+        const ctx=Ee(side),teamId=Number(side==="away"?_.awayTeamId:_.homeTeamId);
+        if(!teamId)continue;
+        const starterFpId=side==="away"?awayStarterFpId.value:homeStarterFpId.value;
+        rows.push(...buildFieldingPositionRows(teamId,[...ctx.lineup.value,...ctx.bench.value,...(ctx.fpRow.value?[ctx.fpRow.value]:[])],[...(ctx.lineupStarterIds.value||[]),starterFpId]))
+      }
+      return rows
+    }
     // #478-5：半局结束自动保存统计，避免「直接离开」只留快照丢失统计
     async function autoSaveHalfInning(){
       if(!R.value||substitutionMode.value||l.isGameEnd)return;
@@ -11211,13 +11228,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           )m--;
           return g.slice(0,m+1)
         }
-        ,s=a(o.home.innings),r=a(o.away.innings),p=vc(),payload={
+        ,s=a(o.home.innings),r=a(o.away.innings),p=vc(),fieldingPositions=buildFieldingPositions(),payload={
           game:{
             homeScore:o.home.score,awayScore:o.away.score,homeScoreByInning:s.length?s:void 0,awayScoreByInning:r.length?r:void 0,homeH:Yr.value,awayH:Xr.value,homeE:zr.value,awayE:Kr.value,status:l.isGameEnd?"final":"live",gameEndTime:l.isGameEnd?new Date().toISOString().slice(0,19).replace("T"," "):void 0,inning:l.inning,topBottom:l.isTop?"top":"bottom"
           }
           ,stats:p
         };
-        Array.isArray(e?.substitutions)&&e.substitutions.length&&(payload.substitutions=e.substitutions),await ma.saveLive(R.value,payload),e?.fromSubstitutionMode||e?.silent||Fe.success("保存成功"),Gl(),await Pf()
+        fieldingPositions&&(payload.fieldingPositions=fieldingPositions),Array.isArray(e?.substitutions)&&e.substitutions.length&&(payload.substitutions=e.substitutions),await ma.saveLive(R.value,payload),e?.fromSubstitutionMode||e?.silent||Fe.success("保存成功"),Gl(),await Pf()
       }
       catch(a){
         if(Fe.error(a?.message??"保存失败"),t)throw a
@@ -11264,6 +11281,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       )
     }
     async function Do(e,t,a,s,r,p){
+      fieldingPositionsTrusted=!hasHistoricalFieldingStats(r?.list);
       f.playEvents=[],clearRunLedger();
       const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
         const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";

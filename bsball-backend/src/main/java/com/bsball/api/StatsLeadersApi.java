@@ -58,6 +58,15 @@ public class StatsLeadersApi {
         return pr.getTotal() == 0L ? Result.okEmpty(pr) : Result.ok(pr);
     }
 
+    @GetMapping(value={"/leaders/fielding-positions"})
+    public Result<PageResult<Map<String, Object>>> leadersFieldingPositions(@RequestParam(required=false) Long eventId, @RequestParam(required=false) String eventIds, @RequestParam(required=false) String years, @RequestParam(required=false) String teamIds, @RequestParam(required=false) Long teamId, @RequestParam(required=false) String playerName, @RequestParam(required=false) String position, @RequestParam(required=false) String homeAway, @RequestParam(required=false) String gameMode, @RequestParam(defaultValue="9") Integer minOuts, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize, @RequestParam(required=false) String sortProp, @RequestParam(required=false) String sortOrder) {
+        List<Long> eids = this.parseLongList(eventIds);
+        List<String> yrs = this.parseStringList(years);
+        List<Long> tids = this.resolveTeamIds(teamIds, teamId);
+        PageResult pr = this.statsService.getFieldingPositionLeaders(eventId, eids, yrs, tids, playerName, position, homeAway, gameMode, minOuts, page, pageSize, sortProp, sortOrder);
+        return pr.getTotal() == 0L ? Result.okEmpty(pr) : Result.ok(pr);
+    }
+
     @GetMapping(value={"/leaders/team-batting"})
     public Result<PageResult<Map<String, Object>>> leadersTeamBatting(@RequestParam(required=false) Long eventId, @RequestParam(required=false) String eventIds, @RequestParam(required=false) String years, @RequestParam(required=false) String teamIds, @RequestParam(required=false) Long teamId, @RequestParam(required=false) String homeAway, @RequestParam(required=false) String gameMode, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize, @RequestParam(required=false) String sortProp, @RequestParam(required=false) String sortOrder) {
         List tids;

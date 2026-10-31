@@ -201,7 +201,7 @@ test('LiveGame 静态接线：现场快照保存并恢复 playEvents 与未落�
   assert.match(liveGame, /earnedRunPlayEventsTrusted=e\.playEventsComplete===true/,
     '撤销/重做恢复完整性标记');
   assert.match(liveGame, /earnedRunPlayEventsTrusted=a\.engineManaged!==true/, '按比赛引擎托管标记可信度');
-  assert.match(liveGame, /function Do\(e,t,a,s,r,p\)\{\s*f\.playEvents=\[\],clearRunLedger\(\)/,
+  assert.match(liveGame, /function Do\(e,t,a,s,r,p\)\{[\s\S]*?f\.playEvents=\[\],clearRunLedger\(\)/,
     'Do 仅按统计重建时必须清空不完整的 playEvents 与台账');
   assert.match(liveGame, /runnerId:Number\(t\.runner\?\.id\?\?t\.runnerId\)/,
     '台账快照保留未绑定跑者的 runnerId');
