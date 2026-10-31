@@ -123,7 +123,8 @@ test('LiveGame.js 接入点（静态断言，防回退）', () => {
   assert.match(src, /function chainDisp\(u,f\)\{\r?\n\s+return u==="DP"\|\|u==="TP"\?LgChainDisplay\(u,f\):_i\(f\)/, 'chainDisp 类型化显示');
   assert.match(src, /D0=chainDisp\(e\.type,e\.steps\?\?\[\]\)/, '已完成提示去压缩接入');
   assert.match(src, /const l=u==="DP"\|\|u==="TP"\?LgChainDisplay\(u,f\):_i\(f\)/, 'Un 对 DP/TP 走显示规整');
-  assert.match(src, /const a=e\.type==="DP"\|\|e\.type==="TP"\?e\.steps:_i\(e\.steps\),s=a\[a\.length-1\]/, 'settle 对 DP/TP 保持原始链');
+  assert.match(src, /if\(e\.type==="DP"\|\|e\.type==="TP"\)\{[\s\S]*?return settleDoublePlayFlow\(e\)/, 'DP/TP 走拖拽出局解析与显式完成');
+  assert.match(src, /const a=_i\(e\.steps\),s=a\[a\.length-1\]/, '非 DP/TP 链按原逻辑压缩');
   assert.match(src, /includes\(e\)&&e!=="DP"&&e!=="TP"&&\(t=_i\(t\)\)/, 'bt 对 DP/TP 跳过压缩');
 });
 
@@ -133,8 +134,9 @@ test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
   assert.match(src, /function chainSelfStep\(e\)\{/, 'chainSelfStep 存在');
   assert.match(src, /function hlBaseNear\(e,t\)\{/, 'hlBaseNear 垒包邻近判定');
   assert.match(src, /key:"force",label:"封杀出局"/, '封杀/触杀弹层选项');
-  assert.match(src, /Array\.isArray\(g\.stepActions\)\|\|\(g\.stepActions=new Array\(g\.steps\.length-1\)\.fill\(null\)\)/, 'stepActions 对齐补 null');
-  assert.match(src, /g\.stepActions\.push\(\{action:p,base:s\}\)/, 'stepActions 写入动作与自踩垒包');
+  assert.match(src, /function appendChainSelfStep\(flow,pos,base,action\)\{/, '自踩动作统一写入函数');
+  assert.match(src, /Array\.isArray\(flow\.stepActions\)\|\|\(flow\.stepActions=new Array\(flow\.steps\.length-1\)\.fill\(null\)\)/, 'stepActions 对齐补 null');
+  assert.match(src, /flow\.stepActions\.push\(\{action,base\}\)/, 'stepActions 写入动作与自踩垒包');
   assert.match(src, /key:`ssb-\$\{c\(hh\)\}`/, '垒包高亮渲染');
   assert.match(src, /class:"selfstep-base-hl"/, '垒包高亮 class');
   assert.match(src, /a\.steps=selectErrorFielder\(a\.steps,e,!!a\.multiError\);[\s\S]{0,120}?if\(!a\.steps\.length\)a\.multiError=!1;[\s\S]{0,120}?Array\.isArray\(a\.stepActions\)&&\(a\.stepActions=a\.steps\.map\(\(\)=>null\)\);/, 'E 点选走单选/多选并同步 stepActions');
@@ -142,8 +144,8 @@ test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
   assert.match(src, /a\.multiError&&a\.steps\.length>=hu&&!a\.steps\.includes\(e\)/, '多选模式达上限仍可取消已选守备员');
   assert.match(src, /a\.steps\.push\(e\),Array\.isArray\(a\.stepActions\)&&a\.stepActions\.push\(null\),ru\.has/, '点选 push 成对补位（主链）');
   assert.match(src, /t\.steps\.push\(e\),Array\.isArray\(t\.stepActions\)&&t\.stepActions\.push\(null\),t\.steps\.length===1\?/, '点选 push 成对补位（跑者出局链）');
-  assert.match(src, /if\(\(r\.steps\?\.length\?\?0\)>=hu\)\{/, '拖拽自踩 hu 上限守卫');
-  assert.match(src, /if\(g!==r\|\|!ho\.has\(g\.type\)\)return;/, '弹层回调同实例校验');
+  assert.match(src, /if\(!isDp&&\(r\.steps\?\.length\?\?0\)>=hu\)\{/, '拖拽自踩 hu 上限守卫（DP 出局拖拽不计步数）');
+  assert.match(src, /if\(l\.flow!==flow\|\|!ho\.has\(flow\.type\)\)return;/, '弹层/拖拽回调同实例校验');
   assert.match(src, /window\.addEventListener\("blur",Yh,\{/, '链模式拖拽 blur 兑底挂载');
   assert.match(src, /function Yh\(\)\{/, 'blur 清理函数');
   assert.match(src, /b>\(t\.mode==="chain"\?10:5\)/, '链模式拖动阈值 10px');
