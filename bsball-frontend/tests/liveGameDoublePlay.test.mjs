@@ -55,6 +55,52 @@ test('6-5-4：6 接球点不算出局，拖 5 到三垒、4 到二垒，打者�
   ]);
 });
 
+test('链与出局点分开：先点完 6-4-3，再拖 4 到二垒、3 到一垒', () => {
+  const result = resolveDoublePlay({
+    type: 'DP',
+    steps: ['6', '4', '3'],
+    dpOuts: [
+      { pos: '4', base: 2, stepIndex: 1 },
+      { pos: '3', base: 1, stepIndex: 2 }
+    ],
+    runners: runners(r1, r2),
+    batter
+  });
+  assert.equal(result.valid, true);
+  assert.deepEqual(outRows(result), [
+    { fielder: '4', base: 2, runner: 45, action: 'force' },
+    { fielder: '3', base: 1, runner: 32, action: 'force' }
+  ]);
+  assert.equal(result.batterOut, true);
+  assert.equal(result.gdp, true);
+  assert.deepEqual(result.finalBases, { 1: null, 2: null, 3: r2 });
+  assert.deepEqual(result.displayChain, ['6', '4', '3']);
+  assert.deepEqual(result.statsChain, ['6', '4', '4', '3', '3']);
+  assert.deepEqual(result.actions.map((action) => [action.pos, action.out, action.base]), [
+    ['6', false, null],
+    ['4', true, 2],
+    ['3', true, 1]
+  ]);
+});
+
+test('链先点完后延长：出局点位置决定统计前缀', () => {
+  const result = resolveDoublePlay({
+    type: 'DP',
+    steps: ['6', '4', '3', '1'],
+    dpOuts: [
+      { pos: '4', base: 2, stepIndex: 1 },
+      { pos: '3', base: 1, stepIndex: 2 }
+    ],
+    runners: runners(r1, r2),
+    batter
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.lastOutStepIndex, 2);
+  assert.deepEqual(result.displayChain, ['6', '4', '3']);
+  assert.deepEqual(result.statsChain, ['6', '4', '4', '3', '3']);
+  assert.equal(result.actions.find((action) => action.pos === '1').out, false);
+});
+
 test('6-4-3：拖 4 到二垒、3 到一垒，打者出局且记 GDP', () => {
   const result = resolveDoublePlay({
     type: 'DP',
@@ -312,10 +358,16 @@ test('LiveGame 接线：入口门槛、拖拽记录、完成记录与落点入�
     'completeChainFlow',
     'function appendChainSelfStep(flow,pos,base,action){',
     'appendChainSelfStep(r,e,s,"force")',
-    'base,runnerKey:runnerChoice,action:"force"',
+    'function recordDoublePlayOut(flow,pos,base){',
+    'recordDoublePlayOut(r,e,s)',
+    'dpOuts: flow.dpOuts',
+    'dpOuts:[]',
+    'base,runnerKey:runnerChoice',
+    '_isDpNew?_st.includes(e)',
     'LgCanStartDoublePlay(l.runners)',
     'LgCanStartTriplePlay(l.runners)',
-    'preview.lastOutStepIndex',
+    'preview.statsChain',
+    'preview.displayChain',
     'dpOverrides',
     'applyChainFieldingStats(type,statsChain)'
   ]) {

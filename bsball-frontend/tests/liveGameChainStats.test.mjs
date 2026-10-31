@@ -144,7 +144,7 @@ test('批B 拖拽自踩接入点（静态断言，防回退）', () => {
   assert.match(src, /a\.multiError&&a\.steps\.length>=hu&&!a\.steps\.includes\(e\)/, '多选模式达上限仍可取消已选守备员');
   assert.match(src, /a\.steps\.push\(e\),Array\.isArray\(a\.stepActions\)&&a\.stepActions\.push\(null\),ru\.has/, '点选 push 成对补位（主链）');
   assert.match(src, /t\.steps\.push\(e\),Array\.isArray\(t\.stepActions\)&&t\.stepActions\.push\(null\),t\.steps\.length===1\?/, '点选 push 成对补位（跑者出局链）');
-  assert.match(src, /if\(\(r\.steps\?\.length\?\?0\)>=hu\)\{/, '拖拽自踩 hu 上限守卫');
+  assert.match(src, /if\(!isDp&&\(r\.steps\?\.length\?\?0\)>=hu\)\{/, '拖拽自踩 hu 上限守卫（DP 出局拖拽不计步数）');
   assert.match(src, /if\(l\.flow!==flow\|\|!ho\.has\(flow\.type\)\)return;/, '弹层/拖拽回调同实例校验');
   assert.match(src, /window\.addEventListener\("blur",Yh,\{/, '链模式拖拽 blur 兑底挂载');
   assert.match(src, /function Yh\(\)\{/, 'blur 清理函数');

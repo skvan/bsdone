@@ -216,6 +216,19 @@ test('6-5-4：拖 5 到三垒、4 到二垒，打者上一垒仍记 GDP', async 
   await expect.poll(() => savedLive.length).toBeGreaterThan(0);
 });
 
+function assert643Result(snap) {
+  expect(snap.gameState.outs).toBe(2);
+  expect(snap.gameState.runners[1]).toBeNull();
+  expect(snap.gameState.runners[2]).toBeNull();
+  expect(snap.gameState.runners[3]).toBe(26);
+  expect(snap.playerStatsById['32'].batting).toMatchObject({ ab: 1, gdp: 1 });
+  expect(snap.playerStatsById['106'].fielding).toMatchObject({ a: 1, dp: 1 });
+  expect(snap.playerStatsById['104'].fielding).toMatchObject({ po: 1, a: 1, dp: 1 });
+  expect(snap.playerStatsById['103'].fielding).toMatchObject({ po: 1, dp: 1 });
+  const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
+  expect(logText).toContain('6-4-3');
+}
+
 test('6-4-3：拖 4 到二垒、3 到一垒，打者出局并记 GDP，二垒跑者进三垒', async ({ page }) => {
   const { snapshots } = await setup(page);
   const flowBar = page.locator('.les-flow-card');
@@ -231,16 +244,28 @@ test('6-4-3：拖 4 到二垒、3 到一垒，打者出局并记 GDP，二垒跑
   await expect(flowBar).toHaveCount(0);
 
   const snap = await saveSnapshot(page, snapshots);
-  expect(snap.gameState.outs).toBe(2);
-  expect(snap.gameState.runners[1]).toBeNull();
-  expect(snap.gameState.runners[2]).toBeNull();
-  expect(snap.gameState.runners[3]).toBe(26);
-  expect(snap.playerStatsById['32'].batting).toMatchObject({ ab: 1, gdp: 1 });
-  expect(snap.playerStatsById['106'].fielding).toMatchObject({ a: 1, dp: 1 });
-  expect(snap.playerStatsById['104'].fielding).toMatchObject({ po: 1, a: 1, dp: 1 });
-  expect(snap.playerStatsById['103'].fielding).toMatchObject({ po: 1, dp: 1 });
-  const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
-  expect(logText).toContain('6-4-3');
+  assert643Result(snap);
+});
+
+test('先点完整条 6-4-3 链，再拖 4 到二垒、3 到一垒', async ({ page }) => {
+  const { snapshots } = await setup(page);
+  const flowBar = page.locator('.les-flow-card');
+  await openDoublePlayGroundBall(page);
+  await page.locator('g.defender-hit[data-pos="SS"]').click();
+  await page.locator('g.defender-hit[data-pos="2B"]').click();
+  await page.locator('g.defender-hit[data-pos="1B"]').click();
+  await expect(flowBar).toContainText('还需拖拽记录 2 个出局');
+
+  // 链已点完，球在 1B；仍可回头把链上的 4 拖到二垒、3 拖到一垒
+  await dragFielderToBase(page, '2B', 2);
+  await dragFielderToBase(page, '1B', 1);
+  await expect(flowBar).toContainText('出局');
+
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await expect(flowBar).toHaveCount(0);
+
+  const snap = await saveSnapshot(page, snapshots);
+  assert643Result(snap);
 });
 
 test('第二个出局后可继续延长传球链，完成记录仍只结算两个出局', async ({ page }) => {

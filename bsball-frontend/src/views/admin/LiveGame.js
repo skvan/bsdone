@@ -7129,6 +7129,7 @@ var sg={
         type: flow.type,
         steps: flow.steps ?? [],
         stepActions: flow.stepActions,
+        dpOuts: flow.dpOuts,
         runners: l.runners,
         batter: be.value,
         overrides: flow.dpOverrides,
@@ -8932,7 +8933,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       e==="E"&&(r=0);
       const p=s?.trim().toUpperCase();
       l.flow={
-        type:e,steps:p?[p]:[],selectRunner:!1,required:r,multiError:!1,bipCode:t||void 0,bipSpray:a
+        type:e,steps:p?[p]:[],selectRunner:!1,required:r,multiError:!1,bipCode:t||void 0,bipSpray:a,...(e==="DP"||e==="TP"?{
+          dpOuts:[]
+        }:{})
       };
       const g=ou(e);
       if(p&&Cs.has(e)){
@@ -8956,9 +8959,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         pos:e,flowType:a?.type,button:t.button,pointerType:t.pointerType
       }
       ),a?.type!=="BIP_HIT_PENDING"){
-        const _st=a?.steps??[];
-        if(!(a&&ho.has(a.type)&&_st[_st.length-1]===e)){
-          console.log("[FielderDrag] Aborted: not BIP and not ball-carrier in chain");
+        const _st=a?.steps??[],_isDpNew=!!a&&(a.type==="DP"||a.type==="TP")&&Array.isArray(a.dpOuts);
+        if(!(a&&ho.has(a.type)&&(_isDpNew?_st.includes(e):_st[_st.length-1]===e))){
+          console.log("[FielderDrag] Aborted: not BIP, DP chain fielder or ball-carrier in chain");
           return
         }
       }
@@ -9093,18 +9096,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(s==null)return;
       const r=l.flow;
       if(!r||!ho.has(r.type))return;
-      if((r.steps?.length??0)>=hu){
+      const isDp=r.type==="DP"||r.type==="TP",isDpNew=isDp&&Array.isArray(r.dpOuts);
+      if(!isDp&&(r.steps?.length??0)>=hu){
         hh.value=null,Mn(hh),J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
         return
       }
-      const isDp=r.type==="DP"||r.type==="TP",dpOutCount=isDp?(r.type==="TP"?3:2):0,dpPreviewNow=isDp?buildDoublePlayPreview(r):null,dpRecorded=dpPreviewNow?.outs?.length??0;
-      if(isDp&&dpRecorded>=dpOutCount){
-        hh.value=null,Mn(hh),J(`${r.type==="TP"?"三杀":"双杀"}已有 ${dpOutCount} 个出局点：请点「完成记录」，或撤销多余拖拽后再记`,"warning");
+      hh.value=null,Mn(hh);
+      if(isDpNew){
+        // 双杀/三杀：链与出局点分开；拖链上任一守备员到垒包直接记一个封杀出局
+        recordDoublePlayOut(r,e,s);
         return
       }
-      hh.value=null,Mn(hh);
       if(isDp){
-        // 双杀/三杀只记被迫进垒的封杀，拖到垒包直接记录，不再弹触杀/封杀选择
+        // 旧快照的 DP 流程没有 dpOuts，继续按自踩动作追加，保证可完成
         appendChainSelfStep(r,e,s,"force");
         return
       }
@@ -9119,6 +9123,31 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         appendChainSelfStep(r,e,s,p)
       }
       )
+    }
+    function recordDoublePlayOut(flow,pos,base){
+      if(l.flow!==flow||!ho.has(flow.type))return;
+      const isTp=flow.type==="TP",outCount=isTp?3:2,stepIndex=Array.isArray(flow.steps)?flow.steps.lastIndexOf(pos):-1;
+      if(stepIndex<0)return;
+      const outs=Array.isArray(flow.dpOuts)?[...flow.dpOuts]:[],existing=outs.findIndex(out=>Number(out?.base)===Number(base));
+      if(existing>=0){
+        outs[existing]={
+          pos,base,stepIndex
+        }
+      }else{
+        if(outs.length>=outCount){
+          J(`${isTp?"三杀":"双杀"}已有 ${outCount} 个出局点：请点「完成记录」，或撤销多余拖拽后再记`,"warning");
+          return
+        }
+        outs.push({
+          pos,base,stepIndex
+        })
+      }
+      flow.dpOuts=outs,Array.isArray(flow.dpOverrides)&&existing>=0&&(flow.dpOverrides[existing]=null);
+      const target=base===4?{
+        x:Qo?.x??240,y:Qo?.y??555
+      }:{x:Ke[base]?.x??240,y:Ke[base]?.y??555
+      };
+      markChainHl(target.x,target.y,!1),pt()
     }
     function appendChainSelfStep(flow,pos,base,action){
       if(l.flow!==flow||!ho.has(flow.type))return;
@@ -9319,9 +9348,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return!0
     }
     function applyDoublePlay(flow,preview){
-      const type=flow.type,chain=Array.isArray(flow.steps)?[...flow.steps]:[],rawStatsChain=preview.lastOutStepIndex!=null?chain.slice(0,preview.lastOutStepIndex+1):chain;
-      // 独力双杀：同一守备员两次拖拽得到 [pos,pos,pos]，按 [pos,pos] 统计为 PO×2、A=0
-      const statsChain=type==="DP"&&rawStatsChain.length>2&&rawStatsChain.every(pos=>pos===rawStatsChain[0])?rawStatsChain.slice(0,2):rawStatsChain,chainText=chainDisp(type,statsChain).map(pos=>vi[pos]??pos).join("-"),batter=be.value,pitcher=Se.value,pre={
+      const type=flow.type,chain=Array.isArray(flow.steps)?[...flow.steps]:[],statsChain=Array.isArray(preview.statsChain)&&preview.statsChain.length?preview.statsChain:chain,displayChain=Array.isArray(preview.displayChain)&&preview.displayChain.length?preview.displayChain:statsChain,chainText=chainDisp(type,displayChain).map(pos=>vi[pos]??pos).join("-"),batter=be.value,pitcher=Se.value,pre={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
       de("击球结果"),beginPlayLedger(),l.flow=null,ue(batter),ue(pitcher??void 0),pushHitSpray(type,0,Sr(flow));
@@ -9368,7 +9395,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
       }
       batter.stats.batting.ab=(batter.stats.batting.ab??0)+1,preview.gdp&&(batter.stats.batting.gdp=(batter.stats.batting.gdp??0)+1),applyChainFieldingStats(type,statsChain),outLogs.forEach(line=>D(line));
-      const mainText=`${batter.name??"打者"}: ${Un(type,statsChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${preview.batterSafe?"（打者上一垒）":""}`,main=Rt(mainText);
+      const mainText=`${batter.name??"打者"}: ${Un(type,displayChain)||(type==="DP"?"双杀 (DP)":"三杀 (TP)")}${preview.batterSafe?"（打者上一垒）":""}`,main=Rt(mainText);
       l.balls=0,l.strikes=0,is(type),Je(type,main),Qe()
     }
     function finishDoublePlayChain(flow){
@@ -9938,7 +9965,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,r=ballTargetOf(e)
         ,C0=a.steps.length;
-        a.steps.push(e),Array.isArray(a.stepActions)&&a.stepActions.push(null),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1))
+        a.steps.push(e),Array.isArray(a.stepActions)&&a.stepActions.push(null),ru.has(a.type)&&C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),(a.type==="DP"||a.type==="TP")&&pt()
       }
       else if(!a){
         if(nn.value)return;
