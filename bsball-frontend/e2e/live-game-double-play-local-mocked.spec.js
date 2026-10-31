@@ -243,17 +243,17 @@ function assert643Result(snap) {
   }
   const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
   expect(logText).toContain('6-4-3');
-  expect(logText).toContain('打者出局，GDP +1');
+  expect(logText).toContain('于一垒被主1B (#3) 封杀出局，GDP +1');
   expect(logText).toContain('双杀推进');
   expect(logText).toContain('二垒跑者 (#26) 进三垒');
   const mainIndex = logText.indexOf('6-4-3 传杀 双杀');
   const firstOutIndex = logText.indexOf('一垒跑者 (#45) 于二垒');
-  const batterOutIndex = logText.indexOf('打者 (#32) 于一垒');
   const advanceIndex = logText.indexOf('二垒跑者 (#26) 进三垒');
   expect(mainIndex).toBeGreaterThanOrEqual(0);
   expect(advanceIndex).toBeGreaterThan(mainIndex);
   expect(firstOutIndex).toBeGreaterThan(advanceIndex);
-  expect(batterOutIndex).toBeGreaterThan(firstOutIndex);
+  // 打者只在主行出现一次，不再单独重复出局行
+  expect(logText).not.toContain('打者 (#32) 于一垒');
 }
 
 test('6-4-3：拖 4 到二垒、3 到一垒，打者出局并记 GDP，二垒跑者进三垒', async ({ page }) => {
