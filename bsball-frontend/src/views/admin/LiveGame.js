@@ -5835,6 +5835,17 @@ var sg={
       const e=Aa.value;
       return e==null?null:at.value[e]??null
     }
+    ),homeForceOutVisible=$(()=>{
+      const e=Di.value?.runner;
+      if(!e||l.forceHomeRunnerId==null)return!1;
+      const t=e.id??e.name??null;
+      return t!=null&&String(t)===String(l.forceHomeRunnerId)
+    }
+    ),homeOutReasonItems=$(()=>[
+      {key:"int",cn:"进攻方妨碍",en:"Offensive Interference"},
+      ...(homeForceOutVisible.value?[{key:"force",cn:"封杀出局",en:"Force Out"}]:[]),
+      {key:"tag",cn:"触杀出局",en:"Tagged Out"}
+    ]
     ),Bl=$(()=>{
       if(!qe.value)return null;
       const e=St.value;
@@ -5876,7 +5887,7 @@ var sg={
       up()
     }
     function na(){
-      Il(),qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null
+      Il(),qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,l.forceHomeRunnerId=null
     }
     function rp(e){
       const t=at.value[e];
@@ -5909,6 +5920,8 @@ var sg={
     function $l(e,t,a,s){
       const r=$s(t,l.runners);
       if(r.length===0)return!1;
+      const forceHome=r.find(b=>b.hasBehindOccupied);
+      l.forceHomeRunnerId=forceHome?(forceHome.runner.id??forceHome.runner.name??null):null;
       const p=be.value;
       if(!p)return!1;
       gt();
@@ -5917,7 +5930,7 @@ var sg={
         kind:"hit",playType:e,bases:t,fielders:a,opts:s
       }
       ,at.value=r.map(b=>({
-        runner:b.runner,outcome:"safe",allowViolation:g?!1:b.hasBehindOccupied,allowDidntScore:g?!1:!b.hasBehindOccupied
+        runner:b.runner,outcome:"safe",allowViolation:g?!1:b.hasBehindOccupied,allowDidntScore:g?!1:!b.hasBehindOccupied,hasBehindOccupied:b.hasBehindOccupied
       }
       )),St.value=0;
       const m=r.map(()=>"safe");
@@ -5928,6 +5941,7 @@ var sg={
     function rr(e,t,a){
       const s=Qv(l.runners);
       if(s.length===0)return!1;
+      l.forceHomeRunnerId=null;
       const r=be.value;
       if(!r)return!1;
       gt(),kt.value={
@@ -5943,12 +5957,14 @@ var sg={
     function Mi(e,t,a,s){
       const r=$s(1,l.runners);
       if(r.length===0)return!1;
+      const forceHome=r.find(g=>g.hasBehindOccupied);
+      l.forceHomeRunnerId=forceHome?(forceHome.runner.id??forceHome.runner.name??null):null;
       const p=be.value;
       return p?(gt(),kt.value={
         kind:"fchoice",playType:e,outsToAdd:t,fielders:a,opts:s
       }
       ,at.value=r.map(g=>({
-        runner:g.runner,outcome:"safe",allowViolation:!1,allowDidntScore:!1
+        runner:g.runner,outcome:"safe",allowViolation:!1,allowDidntScore:!1,hasBehindOccupied:g.hasBehindOccupied
       }
       )),St.value=0,cn.value=fu(1,l.runners,p,["safe"]),fn.value=!1,qe.value=!0,!0):!1
     }
@@ -12439,34 +12455,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,[Di.value?(h(),C("p",{
         key:0,class:"rdm__label"
       }
-      ," 请选择跑垒员 #"+H(Di.value.runner.number??"-")+" "+H(Di.value.runner.name)+" 在本垒出局的原因： ",1)):W("",!0),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("int")
+      ," 请选择跑垒员 #"+H(Di.value.runner.number??"-")+" "+H(Di.value.runner.name)+" 在本垒出局的原因： ",1)):W("",!0),(h(!0),C(me,{key:1},et(homeOutReasonItems.value,d=>n("button",{
+        key:d.key,type:"button",class:"rdm__item",onClick:()=>op(d.key)
       }
       ,[n("span",{
         class:"rdm__cn"
       }
-      ,"进攻方妨碍",-1),n("span",{
+      ,H(d.cn),1),n("span",{
         class:"rdm__en"
       }
-      ,"Offensive Interference",-1)]),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("force")
-      }
-      ,[n("span",{
-        class:"rdm__cn"
-      }
-      ,"封杀出局",-1),n("span",{
-        class:"rdm__en"
-      }
-      ,"Force Out",-1)]),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("tag")
-      }
-      ,[n("span",{
-        class:"rdm__cn"
-      }
-      ,"触杀出局",-1),n("span",{
-        class:"rdm__en"
-      }
-      ,"Tagged Out",-1)])])]),n("footer",{
+      ,H(d.en),1)])),128))])]),n("footer",{
         class:"rdm__foot"
       }
       ,[n("button",{

@@ -47,6 +47,16 @@ test('向前拖拽出局菜单：新增盗垒失败、移除独立 CS 与离垒�
   assert.ok(!source.includes('abCatchRecorded'), '接杀标记与接杀回传菜单入口已移除');
 });
 
+test('本垒出局原因封杀仅在被迫进垒时出现', () => {
+  assert.ok(source.includes('hasBehindOccupied:b.hasBehindOccupied'), '安打/推进队列保存被迫进垒标记');
+  assert.ok(source.includes('hasBehindOccupied:g.hasBehindOccupied'), '野选队列保存被迫进垒标记');
+  assert.match(source, /l\.forceHomeRunnerId=forceHome\?\(forceHome\.runner\.id\?\?forceHome\.runner\.name\?\?null\):null/, '安打/野选队列记录被迫进垒跑者');
+  assert.match(source, /homeForceOutVisible=\$\(\(\)=>\{[\s\S]*?String\(t\)===String\(l\.forceHomeRunnerId\)/, '封杀门禁按被迫进垒跑者计算');
+  assert.ok(source.includes('l.forceHomeRunnerId=null'), '走路/取消队列清空被迫进垒标记');
+  assert.match(source, /homeOutReasonItems=\$\(\(\)=>\[[\s\S]*?homeForceOutVisible\.value\?\[\{key:"force",cn:"封杀出局",en:"Force Out"\}\]:\[\][\s\S]*?\{key:"tag"/, '本垒出局原因项按被迫进垒动态生成');
+  assert.match(source, /et\(homeOutReasonItems\.value,d=>n\("button"/, '原因面板按动态项渲染');
+});
+
 test('出局菜单不再受投球门禁，CI 跑者菜单同样提供盗垒失败', () => {
   assert.ok(!source.includes('if(tp.value)return'));
   assert.match(source, /return Xd\(e\.fromBase,e\.toBase\)/);

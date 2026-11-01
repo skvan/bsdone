@@ -117,6 +117,17 @@ async function dragRunner(page, fromBase, toBase, half) {
   return dropRunnerOnBase(page, toBase, half);
 }
 
+async function recordSingle(page) {
+  await page.getByRole('button', { name: '界内球' }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^滚地球$/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^一垒安打$/ }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: '跳过' }).first().click();
+  await page.waitForTimeout(500);
+}
+
 async function pickMenuItem(page, text) {
   await page.locator('.rdm__item').filter({ hasText: text }).first().click();
   await page.waitForTimeout(200);
@@ -225,6 +236,42 @@ test('Issue #527：飞球接杀后同垒出局改走触杀传球链，无离垒�
   expect(snapshot.gameState.outs).toBe(2);
   expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1 });
   expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
+});
+
+test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await dragRunner(page, 1, 2, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await dragRunner(page, 2, 3, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await recordSingle(page);
+  await page.locator('.hsc-inline__btn--out').click();
+  const panel = page.locator('.rdm__panel:visible', { hasText: '在本垒出局的原因' }).first();
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText('封杀出局')).toHaveCount(0);
+  await expect(panel.getByText('触杀出局')).toBeVisible();
+  await panel.locator('.rdm__cancel').click();
+});
+
+test('Issue #527：本垒出局原因，满垒被迫进垒显示封杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 1);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 2);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 3);
+  await recordSingle(page);
+  await page.locator('.hsc-inline__btn--out').click();
+  const panel = page.locator('.rdm__panel:visible', { hasText: '在本垒出局的原因' }).first();
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText('封杀出局')).toBeVisible();
+  await expect(panel.getByText('触杀出局')).toBeVisible();
+  await panel.getByText('封杀出局').click();
+  await expect(panel).toBeHidden();
 });
 
 test('Issue #527：无投球一垒盗垒失败，C 首发单传记 CS', async ({ page }) => {
