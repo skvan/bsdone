@@ -774,7 +774,7 @@ function Xd(u,f){
     id:"out_pk",en:"Picked Off",cn:"牵制出局"
   }
   ,{
-    id:"out_last",en:"Out on Last Play",cn:"离垒过远出局"
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -795,10 +795,10 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:u===1&&f===2?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
   }
   ,{
-    id:"out_last",en:"Out on Last Play",cn:"离垒过远出局"
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -810,10 +810,10 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:u===1&&f===3?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
   }
   ,{
-    id:"out_last",en:"Out On Last Play",cn:"离垒过远出局"
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -825,10 +825,10 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:u===1&&f===4?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
   }
   ,{
-    id:"out_last",en:"Out On Last Play",cn:"离垒过远出局"
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -840,7 +840,10 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:u===2&&f===3?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
+  }
+  ,{
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -852,7 +855,10 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:u===2&&f===4?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
+  }
+  ,{
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -864,19 +870,16 @@ function Xd(u,f){
     id:"out_other",en:"Other",cn:"其他"
   }
   ]:[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
+  }
+  ,{
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
   }
   ,{
     id:"out_appeal",en:"Out on Appeal",cn:"申诉出局"
-  }
-  ,{
-    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
-  }
-  ,{
-    id:"out_force",en:"Force Out",cn:"封杀出局"
   }
   ,{
     id:"out_other",en:"Other",cn:"其他"
@@ -927,7 +930,10 @@ function Yd(u,f){
 }
 function Kd(u,f){
   return u!==1||f<=u?null:f===2||f===3||f===4?[{
-    id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
+    id:"out_steal_fail",en:"Steal Failed",cn:"盗垒失败"
+  }
+  ,{
+    id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
@@ -5806,22 +5812,6 @@ var sg={
       const e=ge.value;
       return e?`${e.runner.name} #${e.runner.number??"-"} · ${Hd(e.fromBase,e.toBase)}`:""
     }
-    ),ep=[{
-      id:"out_cs",en:"Caught Stealing",cn:"盗垒被刺杀 (CS)"
-    }
-    ,{
-      id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
-    }
-    ,{
-      id:"out_appeal",en:"Out on Appeal",cn:"申诉出局"
-    }
-    ,{
-      id:"out_other",en:"Other",cn:"其他"
-    }
-    ],tp=$(()=>{
-      const e=ge.value;
-      return e?e.toBase>e.fromBase&&Ut()>0&&l.hasPitchThisAB:!1
-    }
     ),np=$(()=>{
       const e=ge.value;
       if(!e)return[];
@@ -5838,7 +5828,6 @@ var sg={
     ),ap=$(()=>{
       const e=ge.value;
       if(!e)return[];
-      if(tp.value)return ep;
       const t=l.runnerDragCiRunnerId,a=e.runner.id??e.runner.name??null;
       if(t!=null&&a===t&&e.fromBase===1&&e.toBase>1){
         const s=Kd(e.fromBase,e.toBase);
@@ -5852,6 +5841,17 @@ var sg={
       const e=Aa.value;
       return e==null?null:at.value[e]??null
     }
+    ),homeForceOutVisible=$(()=>{
+      const e=Di.value?.runner;
+      if(!e||l.forceHomeRunnerId==null)return!1;
+      const t=e.id??e.name??null;
+      return t!=null&&String(t)===String(l.forceHomeRunnerId)
+    }
+    ),homeOutReasonItems=$(()=>[
+      {key:"int",cn:"进攻方妨碍",en:"Offensive Interference"},
+      ...(homeForceOutVisible.value?[{key:"force",cn:"封杀出局",en:"Force Out"}]:[]),
+      {key:"tag",cn:"触杀出局",en:"Tagged Out"}
+    ]
     ),Bl=$(()=>{
       if(!qe.value)return null;
       const e=St.value;
@@ -5893,7 +5893,7 @@ var sg={
       up()
     }
     function na(){
-      Il(),qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null
+      Il(),qe.value=!1,kt.value=null,at.value=[],St.value=0,fn.value=!1,cn.value=null,l.forceHomeRunnerId=null
     }
     function rp(e){
       const t=at.value[e];
@@ -5926,6 +5926,8 @@ var sg={
     function $l(e,t,a,s){
       const r=$s(t,l.runners);
       if(r.length===0)return!1;
+      const forceHome=r.find(b=>b.hasBehindOccupied);
+      l.forceHomeRunnerId=forceHome?(forceHome.runner.id??forceHome.runner.name??null):null;
       const p=be.value;
       if(!p)return!1;
       gt();
@@ -5934,7 +5936,7 @@ var sg={
         kind:"hit",playType:e,bases:t,fielders:a,opts:s
       }
       ,at.value=r.map(b=>({
-        runner:b.runner,outcome:"safe",allowViolation:g?!1:b.hasBehindOccupied,allowDidntScore:g?!1:!b.hasBehindOccupied
+        runner:b.runner,outcome:"safe",allowViolation:g?!1:b.hasBehindOccupied,allowDidntScore:g?!1:!b.hasBehindOccupied,hasBehindOccupied:b.hasBehindOccupied
       }
       )),St.value=0;
       const m=r.map(()=>"safe");
@@ -5945,6 +5947,7 @@ var sg={
     function rr(e,t,a){
       const s=Qv(l.runners);
       if(s.length===0)return!1;
+      l.forceHomeRunnerId=null;
       const r=be.value;
       if(!r)return!1;
       gt(),kt.value={
@@ -5960,12 +5963,14 @@ var sg={
     function Mi(e,t,a,s){
       const r=$s(1,l.runners);
       if(r.length===0)return!1;
+      const forceHome=r.find(g=>g.hasBehindOccupied);
+      l.forceHomeRunnerId=forceHome?(forceHome.runner.id??forceHome.runner.name??null):null;
       const p=be.value;
       return p?(gt(),kt.value={
         kind:"fchoice",playType:e,outsToAdd:t,fielders:a,opts:s
       }
       ,at.value=r.map(g=>({
-        runner:g.runner,outcome:"safe",allowViolation:!1,allowDidntScore:!1
+        runner:g.runner,outcome:"safe",allowViolation:!1,allowDidntScore:!1,hasBehindOccupied:g.hasBehindOccupied
       }
       )),St.value=0,cn.value=fu(1,l.runners,p,["safe"]),fn.value=!1,qe.value=!0,!0):!1
     }
@@ -6358,16 +6363,16 @@ var sg={
         runner:a,fromBase:s,toBase:r
       }
       =t,p=a.id??a.name??"?";
-      if(ge.value=null,e.id==="out_cs"){
-        de(`拖拽-盗垒死[${s}>${r}]`),l.flow={
-          type:"CS",runner:a,runnerBase:s,outAtBase:r,selectRunner:!1
+      if(ge.value=null,e.id==="out_steal_fail"){
+        de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
+          type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",stealFail:!0,steps:[]
         }
-        ,J("盗垒死 (CS)：请点击场上刺杀守备员");
+        ,J("盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）");
         return
       }
-      if(e.id==="out_tag"||e.id==="out_force"){
-        de(`拖拽-触杀或封杀[${s}>${r}]`),clearChainVisual(),l.flow={
-          type:e.id==="out_tag"?"RUNNER_OUT_TAG":"RUNNER_OUT_FORCE",runner:a,runnerBase:s,outAtBase:r,outType:e.id==="out_tag"?"tag":"force",steps:[]
+      if(e.id==="out_tag"){
+        de(`拖拽-触杀出局[${s}>${r}]`),clearChainVisual(),l.flow={
+          type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",steps:[]
         }
         ,J("请点击完成该出局的守备员（夹杀可继续点选记录多传）");
         return
@@ -6383,13 +6388,6 @@ var sg={
         de(`拖拽-妨碍[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"妨碍出局").trim()),l.outs++,Ipy();
         const m=LgOut({reasonCn:e.cn,runner:a,from:s,to:r,outsCum:1,total:l.outs});
         D(m),l.outs>=3&&(Je("THIRD_OUT",m),Qe());
-        return
-      }
-      if(e.id==="out_last"&&l.abCatchRecorded&&l.abCatchRecorded.inning===l.inning&&l.abCatchRecorded.half===l.isTop){
-        de(`拖拽-出局[${s}>${r}]`),l.flow={
-          type:"CATCH_BACK_DP",runner:a,runnerBase:s,outAtBase:r,catchPos:l.abCatchRecorded.pos??"P"
-        }
-        ,J("请点击回传踩垒的守备员（接杀回传）");
         return
       }
       de(`拖拽-出局[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"出局").trim()),l.outs++,Ipy();
@@ -7201,6 +7199,12 @@ var sg={
       if(e.type==="DK3_FIELDER_PICK")return e.dk3Code?.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请选择完成处理的守备员";
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
         const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
+        if(e.stealFail){
+          if(C2.length===0)return"盗垒失败：点击捕手（C）发起传球链";
+          if(C2.length===1)return`盗垒失败：${nu(C2)} — 再点接球触杀者（恰好一传记 CS），或直接「完成记录」按捕手触杀记（不记 CS）`;
+          if(C2.length===2)return`盗垒失败：${nu(C2)}（将记 CS）— 点「完成记录」收尾，或继续点选记录夹杀`;
+          return`盗垒失败：${nu(C2)}（多传夹杀，不记 CS）— 点「完成记录」收尾`
+        }
         if(C2.length>=hu)return`${Y2}出局：${nu(C2)}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
         return C2.length===0?`点击${Y2}者`:`${Y2}出局：${nu(C2)}（已可完成）— 可继续点选记录夹杀多传（如 5-6-2），或点「完成记录」；开始下一动作也会自动收尾`
       }
@@ -8569,7 +8573,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return Hn.value.find(t=>!String(t.position??"").trim())??null
     }
     function Wt(e){
-      l.abCatchRecorded=null;
       if(l.flow?.type==="K_CHOOSE"||l.needNextBatter){
         J("请先完成当前打席（选择三振类型；若为三出局，请先确认半局结束/攻守交换）","warning");
         return
@@ -8621,7 +8624,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       else if(e==="HBP")return D(LgPitch({who:a,kind:"hit_by_pitch"})),bt("HBP",[])
     }
     function Hf(){
-      l.abCatchRecorded=null;
       if(l.flow?.type==="K_CHOOSE"||l.needNextBatter){
         J("请先完成当前打席（选择三振类型；若为三出局，请先确认半局结束/攻守交换）","warning");
         return
@@ -9787,9 +9789,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       setTimeout(()=>gt(),0)
     }
     function settleRunnerOut(e){
-      const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]);
-      de(p==="tag"?"触杀出局":"封杀出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,y+"出局").trim()),l.outs++,Ipy(),Dn(C1);
-      const b=C1.length>1?LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn:`${y}出局`,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
+      const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]),isCs=!!e.stealFail&&C1[0]==="C"&&C1.length===2,reasonCn=isCs?"盗垒死 (CS)":`${y}出局`;
+      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1,paceCatcherStat("catcherCs"));
+      const b=C1.length>1?LgOut({reasonCn,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
       D(b),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(C1[C1.length-1]),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"
       }
@@ -9799,6 +9801,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=l.flow;
       if(!t||!["RUNNER_OUT_TAG","RUNNER_OUT_FORCE"].includes(t.type)||!t.runner)return;
       Array.isArray(t.steps)||(t.steps=[]);
+      if(t.stealFail&&t.steps.length===0&&e!=="C"){
+        J("盗垒失败请先点捕手（C）发起传球链","warning");
+        return
+      }
+      if(t.stealFail&&t.steps.length>0&&t.steps[t.steps.length-1]===e)return;
       if(t.steps.length>=hu){
         J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
         return
@@ -9962,7 +9969,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
         }
         const cbLines=LgCatchBackDp({catchCode:cbChain[0],catcher:Vt(cbChain[0]),tagCode:e,tagger:Q0,runner:Q1,from:Q2,to:a.outAtBase??Q2,outsCum:1,total:l.outs}).lines;
-        D(cbLines[0],void 0,{lines:cbLines.slice(1)}),l.abCatchRecorded=null,l.outs>=3&&(Je("THIRD_OUT",cbLines[2]),Qe());
+        D(cbLines[0],void 0,{lines:cbLines.slice(1)}),l.outs>=3&&(Je("THIRD_OUT",cbLines[2]),Qe());
         return
       }
       if(a?.type==="DK3_FIELDER_PICK"){
@@ -11071,7 +11078,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       record&&l.hitSprayQueue.push(record)
     }
     function bt(e,t,a,rbiOverride,meta){
-      l.abCatchRecorded=null;
       if(!["BB","HBP"].includes(e)&&!_o())return;
       if(l.needNextBatter&&!["BB","HBP"].includes(e)){
         J("请先确认半局结束（三出局后的攻守交换）后再记新的击球结果","warning");
@@ -11158,10 +11164,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ss(),r.stats.batting.hbp=(r.stats.batting.hbp??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchBbHp=(p.stats.pitching.pitchBbHp??0)+1,p.stats.pitching.pitchHbp=(p.stats.pitching.pitchHbp??0)+1),g="HBP",m=`${r.name}: 死球 (HBP)`,D(m,b??void 0),b&&(m=`${m} · ${b}`)
       }
       else if(e==="K")l.outs++,Ipy(),r.stats.batting.so=(r.stats.batting.so??0)+1,r.stats.batting.ab=(r.stats.batting.ab??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchSo=(p.stats.pitching.pitchSo??0)+1),g="K",m=`${r.name}: 三振`,m=Rt(m);
-      else if(e==="G"||e==="F"||e==="L"||e==="TAG")Ad(a?.bipCode)&&bo(r),l.outs++,Ipy(),r.stats.batting.ab=(r.stats.batting.ab??0)+1,paceGoFo(e,p),Dn(t),e!=="G"&&(l.abCatchRecorded={
-          pos:t[0]??null,chain:[...t],inning:l.inning,half:l.isTop
-        }
-        ),e==="G"&&l.runners[1]&&(!l.runners[2]?(l.runners[2]=l.runners[1],l.runners[1]=null):!l.runners[3]&&(l.runners[3]=l.runners[2],l.runners[2]=l.runners[1],l.runners[1]=null)),g=e==="G"?"OUT_G":e==="F"?"OUT_F":e==="L"?"OUT_L":"OUT_TAG",m=y(`${r.name}: ${Un2(e,t)||(e==="G"?"滚地出局":e==="F"||e==="L"?"飞球出局":"触杀出局")}`),m=Rt(m),s(g,0);
+      else if(e==="G"||e==="F"||e==="L"||e==="TAG")Ad(a?.bipCode)&&bo(r),l.outs++,Ipy(),r.stats.batting.ab=(r.stats.batting.ab??0)+1,paceGoFo(e,p),Dn(t),e==="G"&&l.runners[1]&&(!l.runners[2]?(l.runners[2]=l.runners[1],l.runners[1]=null):!l.runners[3]&&(l.runners[3]=l.runners[2],l.runners[2]=l.runners[1],l.runners[1]=null)),g=e==="G"?"OUT_G":e==="F"?"OUT_F":e==="L"?"OUT_L":"OUT_TAG",m=y(`${r.name}: ${Un2(e,t)||(e==="G"?"滚地出局":e==="F"||e==="L"?"飞球出局":"触杀出局")}`),m=Rt(m),s(g,0);
       else if(e==="SF"){
         const b=ig(l.runners);
         let sfRbi=!1;
@@ -11172,10 +11175,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ),sacrificeRunDecision.creditRbi&&(r.stats.batting.rbi=(r.stats.batting.rbi??0)+1),l.runners[3]=null,sfRbi=sacrificeRunDecision.creditRbi
         }
-        Ge(b),l.outs++,Ipy(),r.stats.batting.sf=(r.stats.batting.sf??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchSf=(p.stats.pitching.pitchSf??0)+1),Dn(t),l.abCatchRecorded={
-          pos:t[0]??null,chain:[...t],inning:l.inning,half:l.isTop
-        }
-        ,g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}${sfRbi?`（${r.name}：1打点）`:""}`,m=Rt(m),s("SF",sfRbi?1:0)
+        Ge(b),l.outs++,Ipy(),r.stats.batting.sf=(r.stats.batting.sf??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchSf=(p.stats.pitching.pitchSf??0)+1),Dn(t),g="SF",m=`${r.name}: ${Un("SF",t)||"高飞牺牲 (SF)"}${sfRbi?`（${r.name}：1打点）`:""}`,m=Rt(m),s("SF",sfRbi?1:0)
       }
       else if(e==="SH")bo(r,sacrificeRunDecision),l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchSh=(p.stats.pitching.pitchSh??0)+1),Dn(t),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m),s("SH",sacrificeRunDecision.creditRbi?1:0);
       else if(e==="E"){
@@ -12851,34 +12851,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,[Di.value?(h(),C("p",{
         key:0,class:"rdm__label"
       }
-      ," 请选择跑垒员 #"+H(Di.value.runner.number??"-")+" "+H(Di.value.runner.name)+" 在本垒出局的原因： ",1)):W("",!0),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("int")
+      ," 请选择跑垒员 #"+H(Di.value.runner.number??"-")+" "+H(Di.value.runner.name)+" 在本垒出局的原因： ",1)):W("",!0),(h(!0),C(me,{key:1},et(homeOutReasonItems.value,d=>n("button",{
+        key:d.key,type:"button",class:"rdm__item",onClick:()=>op(d.key)
       }
       ,[n("span",{
         class:"rdm__cn"
       }
-      ,"进攻方妨碍",-1),n("span",{
+      ,H(d.cn),1),n("span",{
         class:"rdm__en"
       }
-      ,"Offensive Interference",-1)]),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("force")
-      }
-      ,[n("span",{
-        class:"rdm__cn"
-      }
-      ,"封杀出局",-1),n("span",{
-        class:"rdm__en"
-      }
-      ,"Force Out",-1)]),n("button",{
-        type:"button",class:"rdm__item",onClick:d=>op("tag")
-      }
-      ,[n("span",{
-        class:"rdm__cn"
-      }
-      ,"触杀出局",-1),n("span",{
-        class:"rdm__en"
-      }
-      ,"Tagged Out",-1)])])]),n("footer",{
+      ,H(d.en),1)])),128))])]),n("footer",{
         class:"rdm__foot"
       }
       ,[n("button",{

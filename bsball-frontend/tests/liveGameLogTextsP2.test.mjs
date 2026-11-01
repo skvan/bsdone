@@ -50,13 +50,7 @@ test('catchBackDoublePlayGroup：逐名呈现接杀 PO、回传 A、踩垒 PO �
   ]);
 });
 
-test('LiveGame.js：#223 CATCH_BACK_DP 接入点齐备（置位/清除/kp/Ro/mf/bf/提示）', () => {
-  assert.match(src, /e!=="G"&&\(l\.abCatchRecorded=\{/, 'bt G/F/L/TAG 接杀置位（非 G）');
-  assert.match(src, /Dn\(t\),l\.abCatchRecorded=\{\r?\n\s+pos:t\[0\]\?\?null/, 'bt SF 接杀置位');
-  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'bt 开头清除');
-  assert.match(src, /function Wt\(e\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Wt（投球）开头清除');
-  assert.match(src, /function Hf\(\)\{\r?\n\s+l\.abCatchRecorded=null;/, 'Hf（故意四坏）开头清除');
-  assert.match(src, /e\.id==="out_last"&&l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning/, 'kp out_last 分支（含半局校验）');
+test('LiveGame.js：#223 CATCH_BACK_DP 遗留 flow 兼容（Ro/mf/bf/提示/生成器）', () => {
   assert.match(src, /if\(a\?\.type==="CATCH_BACK_DP"\)\{/, 'Ro 完成分支');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP"].includes'), 'mf 集合含新类型');
   assert.ok(src.includes('"PICKOFF_OUT","CATCH_BACK_DP","G"'), 'bf 集合含新类型');
@@ -93,7 +87,7 @@ test('LiveGame.js：双杀/三杀显示条件按强迫进垒口径 + 接杀回�
   assert.ok(src.includes('"current-outs","first-base-occupied","second-base-occupied"'), 'patchFlag 动态数组同步');
   assert.ok(!src.includes('接杀回传如造成跑者出局'), '防漏账旧提示已删除');
   assert.ok(!src.includes('接杀回传双杀'), '源码不再含「接杀回传双杀」字样');
-  assert.ok(src.includes('J("请点击回传踩垒的守备员（接杀回传）")'), '回传提示文案去双杀');
+  assert.ok(src.includes('CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员"'), '遗留接杀回传流程提示保留且去双杀');
 });
 
 test('LiveGame.js：双杀/三杀/野选落点计步修复 + 链球容器不拦截指针（2026-10-08）', () => {
