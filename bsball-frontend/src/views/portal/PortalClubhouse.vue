@@ -945,7 +945,7 @@ const fanLegendCards = computed(() => {
 });
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
 // 手持扇形：桌面端主卡歪斜，放大飞入时顺势转正
-const heroTiltDeg = computed(() => (isNarrowCard.value ? 0 : -14));
+const heroTiltDeg = computed(() => -14);
 
 function calcZoomScale() {
   const scale = Math.min((window.innerHeight - 140) / CARD_BASE_HEIGHT, (window.innerWidth - 56) / CARD_BASE_WIDTH, 1.8);
@@ -3115,8 +3115,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .hero { grid-template-columns: 1fr; min-height: 0; padding: 22px 18px; }
   .hero h1 { font-size: 44px; }
   .hero-27 { font-size: 260px; right: -20px; }
-  .card-stage { min-height: 0; margin-top: 20px; justify-content: flex-start; }
-  .card-stack { display: none; }
+  .card-stage { min-height: 0; margin-top: 20px; padding-bottom: 38px; justify-content: center; }
   .identity-band { grid-template-columns: 1fr 1fr; padding: 6px 2px; }
   .id-item { padding: 14px 16px; border-right: 1px solid var(--bs-hairline); border-bottom: 1px solid var(--bs-hairline); }
   .id-item:nth-child(even) { border-right: 0; }
