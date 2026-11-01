@@ -874,9 +874,6 @@ function Xd(u,f){
     id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
-    id:"out_force",en:"Force Out",cn:"封杀出局"
-  }
-  ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
   }
   ,{
@@ -6345,15 +6342,15 @@ var sg={
       }
       =t,p=a.id??a.name??"?";
       if(ge.value=null,e.id==="out_steal_fail"){
-        de(`拖拽-触杀或封杀(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
+        de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
           type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",stealFail:!0,steps:[]
         }
         ,J("盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）");
         return
       }
-      if(e.id==="out_tag"||e.id==="out_force"){
-        de(`拖拽-触杀或封杀[${s}>${r}]`),clearChainVisual(),l.flow={
-          type:e.id==="out_tag"?"RUNNER_OUT_TAG":"RUNNER_OUT_FORCE",runner:a,runnerBase:s,outAtBase:r,outType:e.id==="out_tag"?"tag":"force",steps:[]
+      if(e.id==="out_tag"){
+        de(`拖拽-触杀出局[${s}>${r}]`),clearChainVisual(),l.flow={
+          type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",steps:[]
         }
         ,J("请点击完成该出局的守备员（夹杀可继续点选记录多传）");
         return

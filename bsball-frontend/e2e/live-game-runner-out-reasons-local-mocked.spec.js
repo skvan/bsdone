@@ -172,6 +172,7 @@ test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒盗垒失�
   const homeMenu = await dragRunner(page, 3, 4, 'out');
   await expect(homeMenu.getByText('盗垒失败')).toBeVisible();
   await expect(homeMenu.getByText('触杀出局')).toBeVisible();
+  await expect(homeMenu.getByText('封杀出局')).toHaveCount(0);
   await expect(homeMenu.getByText('盗垒被刺杀 (CS)')).toHaveCount(0);
   await pickMenuItem(page, '盗垒失败');
   await expect(page.getByText('盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）').first()).toBeVisible();
