@@ -17,9 +17,9 @@ const runnerOutReasonList = (() => {
   return new Function(`${code}; return Xd;`)();
 })();
 
-test('同垒拖拽出局菜单：未记录接杀时去掉离垒过远，加入触杀并接入传球链', () => {
+test('同垒拖拽出局菜单：去掉离垒过远，加入触杀并接入传球链', () => {
   for (const base of [1, 2, 3]) {
-    const reasons = runnerOutReasonList(base, base, false);
+    const reasons = runnerOutReasonList(base, base);
     assert.deepEqual(reasons.map((item) => item.id), ['out_pk', 'out_tag', 'out_oi', 'out_appeal', 'out_other']);
     const tagged = reasons.find((item) => item.id === 'out_tag');
     assert.equal(tagged.cn, '触杀出局');
@@ -27,47 +27,31 @@ test('同垒拖拽出局菜单：未记录接杀时去掉离垒过远，加入�
   }
 });
 
-test('同垒拖拽出局菜单：接杀回传可用时保留离垒过远，且仍可选触杀', () => {
-  for (const base of [1, 2, 3]) {
-    const reasons = runnerOutReasonList(base, base, true);
-    assert.deepEqual(reasons.map((item) => item.id), ['out_pk', 'out_last', 'out_tag', 'out_oi', 'out_appeal', 'out_other']);
-  }
-});
-
-test('接杀回传门禁：菜单与出局路由共用同半局 abCatchRecorded 判定', () => {
-  assert.match(
-    source,
-    /function isCatchBackAvailable\(\)\{\s*return !!\(l\.abCatchRecorded&&l\.abCatchRecorded\.inning===l\.inning&&l\.abCatchRecorded\.half===l\.isTop\)/
-  );
-  assert.match(source, /return Xd\(e\.fromBase,e\.toBase,isCatchBackAvailable\(\)\)/);
-  assert.match(source, /if\(e\.id==="out_last"&&isCatchBackAvailable\(\)\)\{/);
-});
-
-test('向前拖拽出局菜单：新增盗垒失败、移除独立 CS，触杀保留', () => {
+test('向前拖拽出局菜单：新增盗垒失败、移除独立 CS 与离垒过远，触杀保留', () => {
   for (const [from, to] of [[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]]) {
-    const ids = runnerOutReasonList(from, to, false).map((item) => item.id);
+    const ids = runnerOutReasonList(from, to).map((item) => item.id);
     assert.ok(ids.includes('out_steal_fail'), `${from}→${to} 提供盗垒失败`);
     assert.ok(ids.includes('out_tag'), `${from}→${to} 保留触杀出局`);
     assert.ok(!ids.includes('out_cs'), `${from}→${to} 不再提供独立 CS`);
+    assert.ok(!ids.includes('out_last'), `${from}→${to} 不再提供离垒过远`);
   }
-  const stealFail = runnerOutReasonList(3, 4, false).find((item) => item.id === 'out_steal_fail');
+  const stealFail = runnerOutReasonList(3, 4).find((item) => item.id === 'out_steal_fail');
   assert.equal(stealFail.cn, '盗垒失败');
   assert.equal(stealFail.en, 'Steal Failed');
-  assert.ok(!runnerOutReasonList(2, 1, false).some((item) => item.id === 'out_steal_fail'), '回退进垒不提供盗垒失败');
-  assert.ok(!runnerOutReasonList(2, 2, false).some((item) => item.id === 'out_steal_fail'), '同垒不提供盗垒失败');
-  for (const to of [2, 3, 4]) {
-    assert.ok(!runnerOutReasonList(1, to, false).some((item) => item.id === 'out_last'), `1→${to} 无接杀不提供离垒过远`);
-    assert.ok(runnerOutReasonList(1, to, true).some((item) => item.id === 'out_last'), `1→${to} 接杀回传可用时保留离垒过远`);
-  }
+  assert.ok(!runnerOutReasonList(2, 1).some((item) => item.id === 'out_steal_fail'), '回退进垒不提供盗垒失败');
+  assert.ok(!runnerOutReasonList(2, 2).some((item) => item.id === 'out_steal_fail'), '同垒不提供盗垒失败');
+  assert.ok(!source.includes('id:"out_last"'), '源码不再提供离垒过远选项');
   assert.ok(!source.includes('id:"out_cs"'), '拖拽菜单不再提供独立 CS 选项');
+  assert.ok(!source.includes('abCatchRecorded'), '接杀标记与接杀回传菜单入口已移除');
 });
 
 test('出局菜单不再受投球门禁，CI 跑者菜单同样提供盗垒失败', () => {
   assert.ok(!source.includes('if(tp.value)return'));
-  assert.match(source, /return Xd\(e\.fromBase,e\.toBase,isCatchBackAvailable\(\)\)/);
+  assert.match(source, /return Xd\(e\.fromBase,e\.toBase\)/);
   const kdCode = sliceBetween('function Kd(', 'var zd=');
   assert.ok(kdCode.includes('id:"out_steal_fail"'), 'Kd 提供盗垒失败');
   assert.ok(!kdCode.includes('out_cs'), 'Kd 不再提供独立 CS');
+  assert.ok(!kdCode.includes('out_last'), 'Kd 不再提供离垒过远');
 });
 
 test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', () => {
@@ -81,16 +65,6 @@ test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', ()
   assert.match(settleBlock, /isCs=!!e\.stealFail&&C1\[0\]==="C"&&C1\.length===2/);
   assert.match(settleBlock, /isCs&&\(a\.stats\.batting\.cs=\(a\.stats\.batting\.cs\?\?0\)\+1,paceCatcherStat\("catcherCs"\)\)/);
   assert.match(settleBlock, /reasonCn=isCs\?"盗垒死 \(CS\)"/);
-});
-
-test('撤销/重做/载入携带接杀标记，菜单门禁不因撤销失效', () => {
-  assert.match(source, /lastPitchWasBall:!1,abCatchRecorded:null,hitSprayQueue:\[\]/, '初始 state 带 abCatchRecorded 键，历史帧不因缺键残留');
-  assert.match(
-    source,
-    /Object\.prototype\.hasOwnProperty\.call\(e\.game,"abCatchRecorded"\)\|\|\(l\.abCatchRecorded=null\)/,
-    '撤销/重做恢复时缺键归一化为 null'
-  );
-  assert.match(source, /l\.abCatchRecorded=null;\r?\n\s*const A=e\.teamsData;/, '载入现场时清空接杀标记');
 });
 
 test('触杀选项进入传球链：out_tag 路由 RUNNER_OUT_TAG 而非单行出局', () => {

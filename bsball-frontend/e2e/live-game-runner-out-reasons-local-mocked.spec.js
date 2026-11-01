@@ -83,15 +83,6 @@ async function throwBalls(page, count) {
   }
 }
 
-async function setRunnerOnBase(page, base, playerName) {
-  await page.locator('.runners-group > .runner-draggable-group:visible').nth(base - 1).click();
-  await expect(page.getByText(/谁在.垒上/).first()).toBeVisible();
-  await page.waitForTimeout(600);
-  await page.locator('.lgsfm__item').filter({ hasText: playerName }).first().click();
-  await page.waitForTimeout(400);
-  await waitForRunnerToken(page, base);
-}
-
 async function waitForRunnerToken(page, base) {
   const group = page.locator('.runners-group > .runner-draggable-group').nth(base - 1);
   await expect(group.locator('.runner-token-g')).toBeVisible({ timeout: 20000 });
@@ -198,7 +189,7 @@ test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒盗垒失�
   expect(homeSnapshot.playerStatsById['202'].batting.cs).toBe(1);
 });
 
-test('Issue #527：飞球接杀后同垒出局仍保留离垒过远并走接杀回传', async ({ page }) => {
+test('Issue #527：飞球接杀后同垒出局改走触杀传球链，无离垒过远', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
@@ -221,51 +212,18 @@ test('Issue #527：飞球接杀后同垒出局仍保留离垒过远并走接杀�
   const sameBaseMenu = await dragRunner(page, 2, 2, 'out');
   await expect(sameBaseMenu.getByText('触杀出局')).toBeVisible();
   await expect(sameBaseMenu.getByText('盗垒失败')).toHaveCount(0);
-  await expect(sameBaseMenu.getByText('离垒过远出局')).toBeVisible();
-  await pickMenuItem(page, '离垒过远出局');
-  await expect(page.getByText('请点击回传踩垒的守备员（接杀回传）').first()).toBeVisible();
-  await clickFielder(page, 'SS');
-  const catchBackSnapshot = await saveGame(page, bucket);
-  const catchBackLog = JSON.stringify(catchBackSnapshot.eventLog);
-  expect(catchBackLog).toContain('离垒过远出局：二垒跑者 T2P1 (#1) 于二垒出局（8-6，接杀回传）');
-  expect(catchBackSnapshot.gameState.outs).toBe(2);
-  expect(catchBackSnapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1 });
-  expect(catchBackSnapshot.playerStatsById['106'].fielding).toMatchObject({ a: 0, po: 1 });
-
-  await page.getByRole('button', { name: /撤销/ }).click();
-  const cancelRestoredFlow = page.getByRole('button', { name: '取消' }).first();
-  if (await cancelRestoredFlow.isVisible().catch(() => false)) await cancelRestoredFlow.click();
-  await waitForRunnerToken(page, 2);
-  const afterUndoMenu = await dragRunner(page, 2, 2, 'out');
-  await expect(afterUndoMenu.getByText('离垒过远出局')).toBeVisible();
-  await page.locator('.rdm__cancel').first().click();
-});
-
-test('Issue #527：撤销接杀后同垒菜单不再残留离垒过远', async ({ page }) => {
-  const bucket = { snapshots: [] };
-  await openLiveGame(page, bucket);
-  await setRunnerOnBase(page, 1, 'T2P2');
-
-  await page.getByRole('button', { name: '界内球' }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^飞球$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
-  await page.waitForTimeout(500);
+  await expect(sameBaseMenu.getByText('离垒过远出局')).toHaveCount(0);
+  await pickMenuItem(page, '触杀出局');
   await clickFielder(page, 'CF');
+  await clickFielder(page, '2B');
   await page.getByRole('button', { name: /完成记录/ }).click();
-  await page.waitForTimeout(400);
-
-  await page.getByRole('button', { name: /撤销/ }).click();
-  await expect(page.locator('.lg-scoreboard')).toContainText('打者#1T2P1');
-  await page.waitForTimeout(500);
-  await waitForRunnerToken(page, 1);
-  const afterUndoMenu = await dragRunner(page, 1, 1, 'out');
-  await expect(afterUndoMenu.getByText('触杀出局')).toBeVisible();
-  await expect(afterUndoMenu.getByText('离垒过远出局')).toHaveCount(0);
-  await page.locator('.rdm__cancel').first().click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('触杀出局：二垒跑者 T2P1 (#1) 于二垒出局（8-4）');
+  expect(log).not.toContain('接杀回传');
+  expect(snapshot.gameState.outs).toBe(2);
+  expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1 });
+  expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
 });
 
 test('Issue #527：无投球一垒盗垒失败，C 首发单传记 CS', async ({ page }) => {
