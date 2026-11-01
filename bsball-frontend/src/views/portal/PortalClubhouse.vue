@@ -850,6 +850,7 @@ import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue
 import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT, cardGradeMaterial } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
 import { battedGeo, battedShapeOf, battedShapeColor } from '../../utils/battedBallFlight';
+import { SPRAY_HOME, sprayPolar, sprayWedgePath, sprayPiePath, sprayZoneViews } from '../../utils/sprayZones';
 import { useTenantRouter } from '../../composables/useTenantRouter';
 import {
   BOARD_WIDTH,
@@ -2206,39 +2207,8 @@ function radarKicker(domain) {
   return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
 }
 
-/** 打击落点热力：与录入页同一场地坐标系（viewBox -300 -150 1080 780，本垒约 240,555）。 */
-const SPRAY_GEOMETRY = { homeX: 240, homeY: 555, infieldRadius: 150, fenceRadius: 575 };
-const SPRAY_LANES = [
-  { code: 'LL', label: '左边线', from: -47, to: -38 },
-  { code: 'LS', label: '左路穿越', from: -38, to: -27 },
-  { code: 'LC', label: '左中路', from: -27, to: -15 },
-  { code: 'MI', label: '中路', from: -15, to: 15 },
-  { code: 'RC', label: '右中路', from: 15, to: 27 },
-  { code: 'RS', label: '右路穿越', from: 27, to: 38 },
-  { code: 'RL', label: '右边线', from: 38, to: 47 }
-];
-function sprayPolar(angle, radius) {
-  const rad = (angle * Math.PI) / 180;
-  return {
-    x: Number((SPRAY_GEOMETRY.homeX + Math.sin(rad) * radius).toFixed(1)),
-    y: Number((SPRAY_GEOMETRY.homeY - Math.cos(rad) * radius).toFixed(1))
-  };
-}
-function sprayWedge(from, to, inner, outer) {
-  const innerFrom = sprayPolar(from, inner);
-  const outerFrom = sprayPolar(from, outer);
-  const outerTo = sprayPolar(to, outer);
-  const innerTo = sprayPolar(to, inner);
-  return `M ${innerFrom.x} ${innerFrom.y} L ${outerFrom.x} ${outerFrom.y} `
-    + `A ${outer} ${outer} 0 0 1 ${outerTo.x} ${outerTo.y} `
-    + `L ${innerTo.x} ${innerTo.y} A ${inner} ${inner} 0 0 0 ${innerFrom.x} ${innerFrom.y} Z`;
-}
-function sprayPie(from, to, radius) {
-  const start = sprayPolar(from, radius);
-  const end = sprayPolar(to, radius);
-  return `M ${SPRAY_GEOMETRY.homeX} ${SPRAY_GEOMETRY.homeY} L ${start.x} ${start.y} `
-    + `A ${radius} ${radius} 0 0 1 ${end.x} ${end.y} Z`;
-}
+/** 打击落点热力：场地坐标系与录入页一致（见 utils/sprayZones.js）。 */
+
 function sprayCross(point) {
   const size = 5.5;
   return `M ${point.x - size} ${point.y - size} L ${point.x + size} ${point.y + size} `
@@ -2250,33 +2220,7 @@ const sprayPoints = computed(() => (sprayPayload.value?.points || []).map((point
   ...point,
   hr: point.resultCode === 'HR' || point.resultCode === 'IPHR'
 })));
-const sprayZones = computed(() => {
-  const rows = sprayPayload.value?.zones || [];
-  const maxHits = Math.max(1, ...rows.map((zone) => Number(zone.hits) || 0));
-  return rows.map((zone) => {
-    const hits = Number(zone.hits) || 0;
-    const balls = Number(zone.balls) || 0;
-    const lane = SPRAY_LANES.find((item) => item.code === zone.code);
-    const isInfield = zone.code === 'IF';
-    const from = isInfield ? -47 : lane?.from ?? -47;
-    const to = isInfield ? 47 : lane?.to ?? 47;
-    const path = isInfield
-      ? sprayPie(from, to, SPRAY_GEOMETRY.infieldRadius)
-      : sprayWedge(from, to, SPRAY_GEOMETRY.infieldRadius, SPRAY_GEOMETRY.fenceRadius);
-    const label = isInfield
-      ? sprayPolar(0, 96)
-      : sprayPolar((from + to) / 2, SPRAY_GEOMETRY.fenceRadius * 0.74);
-    return {
-      ...zone,
-      hits,
-      balls,
-      path,
-      labelX: label.x,
-      labelY: label.y,
-      opacity: Number((0.1 + 0.45 * (hits / maxHits)).toFixed(2))
-    };
-  });
-});
+const sprayZones = computed(() => sprayZoneViews(sprayPayload.value?.zones));
 const sprayTypes = computed(() => sprayPayload.value?.types || []);
 const sprayReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const SPRAY_ANIM_STAGGER = 220;
@@ -2291,15 +2235,15 @@ function sprayFlightOf(point, t) {
   const shape = battedShapeOf(point.bipCode);
   const geo = battedGeo(point.x, point.y, shape.k);
   const head = {
-    x: Number(((1 - t) * (1 - t) * SPRAY_GEOMETRY.homeX + 2 * (1 - t) * t * geo.cx + t * t * point.x).toFixed(1)),
-    y: Number(((1 - t) * (1 - t) * SPRAY_GEOMETRY.homeY + 2 * (1 - t) * t * geo.cy + t * t * point.y).toFixed(1))
+    x: Number(((1 - t) * (1 - t) * SPRAY_HOME.x + 2 * (1 - t) * t * geo.cx + t * t * point.x).toFixed(1)),
+    y: Number(((1 - t) * (1 - t) * SPRAY_HOME.y + 2 * (1 - t) * t * geo.cy + t * t * point.y).toFixed(1))
   };
-  const control = { x: sprayLerp(SPRAY_GEOMETRY.homeX, geo.cx, t), y: sprayLerp(SPRAY_GEOMETRY.homeY, geo.cy, t) };
+  const control = { x: sprayLerp(SPRAY_HOME.x, geo.cx, t), y: sprayLerp(SPRAY_HOME.y, geo.cy, t) };
   return {
     ms: shape.ms,
     head,
     path: t > 0
-      ? `M ${SPRAY_GEOMETRY.homeX} ${SPRAY_GEOMETRY.homeY} Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${head.x} ${head.y}`
+      ? `M ${SPRAY_HOME.x} ${SPRAY_HOME.y} Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${head.x} ${head.y}`
       : null,
     color: battedShapeColor(point.bipCode)
   };
