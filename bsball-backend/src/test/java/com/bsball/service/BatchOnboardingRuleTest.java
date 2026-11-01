@@ -39,6 +39,7 @@ import com.bsball.model.entity.TeamManager;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.LeagueRepository;
 import com.bsball.repository.PlayerClaimRepository;
@@ -108,6 +109,8 @@ class BatchOnboardingRuleTest {
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
 
     // ---- GameService 依赖 ----
     @Mock
@@ -138,7 +141,7 @@ class BatchOnboardingRuleTest {
                 tenantQueryPolicyService, sysConfigService, playerClaimRepository, gamePlayerStatRepository);
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
-                eventRegistrationService);
+                eventRegistrationService, gameFieldingPosStatRepository);
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
                 org.mockito.Mockito.mock(EventSpecialRuleService.class));

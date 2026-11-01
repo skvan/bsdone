@@ -25,10 +25,54 @@ const stats = [
   { teamId: 2, playerId: 8, name: '他队游击', position: 'SS', battingOrder: 1, firstPosition: 'SS' }
 ];
 
-test('守备行：按首个守位归组（P→C→1B→3B→LF），投手与改投者都在表内', () => {
+test('守备行：组按先发打线顺序排序，投手与改投者都在表内', () => {
   const rows = buildFieldingDisplayRows(stats, 1);
-  assert.deepEqual(rows.map((r) => r.playerId), [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(rows.map((r) => r.fieldPosition), ['P', 'C', '1B', '3B', 'LF', 'LF']);
+  // 3B=第1棒、LF=第2棒（含替补）、1B=第3棒、C=第4棒、P=第9棒
+  assert.deepEqual(rows.map((r) => r.playerId), [4, 5, 6, 3, 2, 1]);
+  assert.deepEqual(rows.map((r) => r.fieldPosition), ['3B', 'LF', 'LF', '1B', 'C', 'P']);
+});
+
+test('守备行：无棒次的纯投手组排在所有打线组之后', () => {
+  const rows = buildFieldingDisplayRows([
+    { teamId: 3, playerId: 30, position: 'CF', firstPosition: 'CF', battingOrder: 1, listOrder: 0, defInn: 3, po: 1 },
+    { teamId: 3, playerId: 31, position: 'P', firstPosition: 'P', isPitcher: 1, listOrder: 10, defInn: 3, np: 30 },
+    { teamId: 3, playerId: 32, position: 'C', firstPosition: 'C', battingOrder: 2, listOrder: 1, defInn: 3, po: 6 }
+  ], 3);
+  assert.deepEqual(rows.map((r) => r.playerId), [30, 32, 31]);
+  assert.equal(rows[2].subRow, false);
+});
+
+test('守备行：先发 DH 后上场不抢先发守位者当组首', () => {
+  const rows = buildFieldingDisplayRows([
+    // LF 先发（先发守位 LF，棒次 6）与一名棒次更靠前的先发 DH 后来守 LF（棒次 3）
+    { teamId: 5, playerId: 70, position: 'LF', firstPosition: 'LF', startingPosition: 'LF', battingOrder: 6, listOrder: 5, defInn: 3, po: 2 },
+    { teamId: 5, playerId: 71, position: 'LF', firstPosition: 'LF', startingPosition: '', battingOrder: 3, listOrder: 2, defInn: 1, po: 1 }
+  ], 5);
+  assert.deepEqual(rows.map((r) => r.playerId), [70, 71]);
+  assert.equal(rows[0].subRow, false, 'LF 先发守位者是组首');
+  assert.equal(rows[1].subRow, true, '先发 DH 后上场守 LF 缩进');
+});
+
+test('守备行：先发三垒手改投后仍是 3B 组首，DH 补位缩进', () => {
+  const rows = buildFieldingDisplayRows([
+    { teamId: 4, playerId: 40, position: 'P', firstPosition: '3B', startingPosition: '3B', battingOrder: 5, listOrder: 4, defInn: 4, po: 1 },
+    { teamId: 4, playerId: 41, position: '3B', firstPosition: '3B', startingPosition: '', battingOrder: 3, listOrder: 2, defInn: 2, po: 0 }
+  ], 4);
+  assert.deepEqual(rows.map((r) => r.playerId), [40, 41]);
+  assert.equal(rows[0].subRow, false);
+  assert.equal(rows[1].subRow, true);
+});
+
+test('守备行：先发投手组首、救援缩进，P 组无棒次排最后', () => {
+  const rows = buildFieldingDisplayRows([
+    { teamId: 6, playerId: 60, position: 'CF', firstPosition: 'CF', startingPosition: 'CF', battingOrder: 1, listOrder: 0, defInn: 3, po: 1 },
+    { teamId: 6, playerId: 61, position: 'P', firstPosition: 'P', startingPosition: 'P', isPitcher: 1, pitcherOrder: 1, listOrder: 20, defInn: 3 },
+    { teamId: 6, playerId: 62, position: 'P', firstPosition: 'P', isPitcher: 1, pitcherOrder: 2, listOrder: 21, defInn: 1 },
+    { teamId: 6, playerId: 63, position: 'C', firstPosition: 'C', startingPosition: 'C', battingOrder: 2, listOrder: 1, defInn: 3, po: 6 }
+  ], 6);
+  assert.deepEqual(rows.map((r) => r.playerId), [60, 63, 61, 62]);
+  assert.equal(rows[2].subRow, false);
+  assert.equal(rows[3].subRow, true);
 });
 
 test('守备行：首个守位优先于当前守位，后续换位不改显示', () => {
@@ -209,7 +253,8 @@ test('比赛详情守备表接线：首个守位、替补缩进与 Totals 汇总
   const detail = fs.readFileSync(new URL('../src/components/admin/GameDetailFieldingTable.vue', import.meta.url), 'utf8');
   assert.match(detail, /buildFieldingDisplayRows/, '详情守备表复用行构建');
   assert.match(detail, /prop="playerName"/, '首列缺少 playerName prop，Totals 标签会丢失');
-  assert.match(detail, /row\.fieldPosition/, 'POS 列显示首次上场守位');
+  assert.match(detail, /posLabel\(row\)/, 'POS 列通过 posLabel 显示首守位/多守位留空');
+  assert.match(detail, /row\??\.fieldPosition/, 'POS 列显示首次上场守位');
   assert.match(detail, /row\.subRow/, '替补行缩进标记');
   assert.match(detail, /visibleFields/, '列由字段设置控制');
   assert.match(detail, /DEFAULT_FIELDING_FIELDS/, '缺省字段包含守备/捕手列');

@@ -3,19 +3,47 @@
     <h4 class="gd-fielding-table__title">{{ title }}</h4>
     <el-table
       :data="rows"
+      row-key="_rowKey"
       size="small"
       border
       :show-summary="rows.length > 0"
       :summary-method="summaryMethod"
+      :row-class-name="rowClassName"
       :class="['box-table', 'box-table-fielding', sideClass]"
+      @row-click="toggle"
     >
       <el-table-column prop="playerName" label="球员" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
-          <span :class="['gd-fielding-table__player', { 'is-sub': row.subRow }]">{{ nameOf(row) }}</span>
+          <span
+            class="gd-fielding-table__player"
+            :class="{ 'is-sub': row.subRow, 'is-bd': row.kind === 'breakdown' }"
+          >
+            <template v-if="row.kind === 'breakdown'">
+              <span class="gd-fielding-table__bd-mark">└</span>
+              <span class="gd-fielding-table__bd-pos">{{ row.position }}</span>
+            </template>
+            <template v-else>
+              <button
+                v-if="row.multiPosition"
+                type="button"
+                class="gd-fielding-table__expander"
+                :class="{ 'is-open': row.open }"
+                :aria-expanded="row.open ? 'true' : 'false'"
+                :aria-label="`${row.open ? '收起' : '展开'} ${nameOf(row)} 的逐位置守备数据`"
+                @click.stop="toggle(row)"
+              >
+                <span class="gd-fielding-table__expander-h"></span>
+                <span class="gd-fielding-table__expander-v"></span>
+              </button>
+              <span v-else class="gd-fielding-table__expander-spacer"></span>
+              <span v-if="row.subRow" class="gd-fielding-table__sub-mark">└</span>
+              <span class="gd-fielding-table__name" :class="{ 'is-open': row.open }">{{ nameOf(row) }}</span>
+            </template>
+          </span>
         </template>
       </el-table-column>
       <el-table-column prop="fieldPosition" label="POS" width="70" align="center">
-        <template #default="{ row }">{{ row.fieldPosition || '-' }}</template>
+        <template #default="{ row }">{{ posLabel(row) }}</template>
       </el-table-column>
       <el-table-column
         v-for="col in visibleFields"
@@ -25,18 +53,21 @@
         :width="columnWidth(col)"
         align="center"
       >
-        <template #default="{ row }">{{ cellValue(col, row) }}</template>
+        <template #default="{ row }">
+          <span :class="{ 'gd-fielding-table__stat--dim': isDimStat(col, row) }">{{ cellValue(col, row) }}</span>
+        </template>
       </el-table-column>
     </el-table>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
   buildFieldingDisplayRows,
   buildFieldingSummaryCells,
-  buildFieldingTotals
+  buildFieldingTotals,
+  expandFieldingRows
 } from '../../utils/gameFieldingRows.js';
 import { formatInningsPitched } from '../../utils/inningsFormat.js';
 import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage.js';
@@ -53,14 +84,42 @@ const props = defineProps({
 const sideClass = computed(() =>
   props.side === 'away' || props.side === 'home' ? `box-table-${props.side}` : ''
 );
-const rows = computed(() => buildFieldingDisplayRows(props.stats, props.teamId));
+const expandedPlayerIds = ref(new Set());
+const baseRows = computed(() => buildFieldingDisplayRows(props.stats, props.teamId));
+const rows = computed(() => expandFieldingRows(baseRows.value, expandedPlayerIds.value));
 const visibleFields = computed(() => {
   const fields = props.fields?.length ? props.fields : DEFAULT_FIELDING_FIELDS;
   return fields.filter((field) => field.visible !== false);
 });
 
-const totals = computed(() => buildFieldingTotals(rows.value, visibleFields.value));
+const totals = computed(() => buildFieldingTotals(baseRows.value, visibleFields.value));
 const title = computed(() => `${props.teamName || ''} 守备`.trim());
+
+function toggle(row) {
+  if (!row?.multiPosition) return;
+  const id = String(row.playerId);
+  const next = new Set(expandedPlayerIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  expandedPlayerIds.value = next;
+}
+
+function rowClassName({ row }) {
+  if (row?.kind === 'breakdown') return 'gd-fielding-table__row--bd';
+  return row?.multiPosition ? 'gd-fielding-table__row--multi' : '';
+}
+
+function posLabel(row) {
+  if (row?.kind === 'breakdown') return row.position;
+  if (row?.multiPosition) return '';
+  return row?.fieldPosition || '-';
+}
+
+function isDimStat(col, row) {
+  return row?.kind === 'breakdown'
+    && ['pb', 'catcherSb', 'catcherCs'].includes(col.key)
+    && row.position !== 'C';
+}
 
 function columnWidth(col) {
   return col.key === 'defInn' ? 76 : 64;
@@ -85,21 +144,149 @@ function nameOf(row) {
 <style scoped>
 .gd-fielding-table {
   margin: 16px 0;
+  --gd-expander-bar: #737c8b;
+  --gd-expander-hover: rgba(7, 26, 51, 0.06);
+  --gd-bd-accent: #8a6d1f;
+  --gd-bd-accent-soft: rgba(201, 164, 91, 0.12);
+  --gd-bd-accent-border: rgba(201, 164, 91, 0.28);
+  --gd-bd-line: rgba(201, 164, 91, 0.55);
+  --gd-bd-row-bg: #fbf7ea;
+  --gd-bd-row-hover: #f8f2e2;
+  --gd-bd-row-border: #f1ead9;
+  --gd-multi-row-bg: #fffdf7;
+  --gd-multi-row-hover: #faf7ee;
+}
+html.dark .gd-fielding-table,
+[data-admin-theme='dark'] .gd-fielding-table {
+  --gd-expander-bar: #8b95a5;
+  --gd-expander-hover: rgba(255, 255, 255, 0.08);
+  --gd-bd-accent: #d9b45a;
+  --gd-bd-accent-soft: rgba(255, 192, 0, 0.08);
+  --gd-bd-accent-border: rgba(217, 180, 90, 0.24);
+  --gd-bd-line: rgba(217, 180, 90, 0.5);
+  --gd-bd-row-bg: #141a24;
+  --gd-bd-row-hover: #161e2a;
+  --gd-bd-row-border: #222b39;
+  --gd-multi-row-bg: #121a26;
+  --gd-multi-row-hover: #16202e;
 }
 .gd-fielding-table__title {
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
 }
+.gd-fielding-table__player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 19.9px;
+  min-width: 0;
+}
 /* 同守位组的替补缩进在首个上场者下一行 */
 .gd-fielding-table__player.is-sub {
   padding-left: 18px;
   color: var(--el-text-color-regular);
 }
-.gd-fielding-table__player.is-sub::before {
-  content: '└';
-  margin-right: 4px;
+.gd-fielding-table__player.is-bd {
+  padding-left: 28px;
+  gap: 4px;
+}
+.gd-fielding-table__sub-mark {
   color: var(--el-text-color-placeholder);
+  font-size: 12px;
+}
+.gd-fielding-table__name {
+  color: var(--el-text-color-primary);
+}
+.gd-fielding-table__name.is-open {
+  font-weight: 600;
+}
+.gd-fielding-table__expander-spacer {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.gd-fielding-table__expander {
+  position: relative;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.gd-fielding-table__expander-h,
+.gd-fielding-table__expander-v {
+  position: absolute;
+  background: var(--gd-expander-bar);
+  border-radius: 1px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.gd-fielding-table__expander-h {
+  width: 8px;
+  height: 1.5px;
+}
+.gd-fielding-table__expander-v {
+  width: 1.5px;
+  height: 8px;
+}
+.gd-fielding-table__expander:hover {
+  background: var(--gd-expander-hover);
+}
+.gd-fielding-table__expander:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 1px;
+}
+.gd-fielding-table__expander.is-open .gd-fielding-table__expander-h,
+.gd-fielding-table__expander.is-open .gd-fielding-table__expander-v {
+  background: var(--gd-bd-accent);
+}
+.gd-fielding-table__expander.is-open .gd-fielding-table__expander-v {
+  opacity: 0;
+}
+.gd-fielding-table__bd-mark {
+  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+}
+.gd-fielding-table__bd-pos {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gd-bd-accent);
+  background: var(--gd-bd-accent-soft);
+  border: 1px solid var(--gd-bd-accent-border);
+}
+.gd-fielding-table__stat--dim {
+  color: var(--el-text-color-placeholder);
+}
+/* 多守位主行（合计行）与展开明细行的差异样式 */
+.gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--multi > td.el-table__cell) {
+  background: var(--gd-multi-row-bg);
+}
+.gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--multi:hover > td.el-table__cell) {
+  background: var(--gd-multi-row-hover);
+}
+.gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--bd > td.el-table__cell) {
+  background: var(--gd-bd-row-bg) !important;
+  border-bottom-color: var(--gd-bd-row-border);
+  font-size: 12px;
+}
+.gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--bd:hover > td.el-table__cell) {
+  background: var(--gd-bd-row-hover) !important;
+}
+.gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--bd > td.el-table__cell:first-child) {
+  box-shadow: inset 3px 0 0 var(--gd-bd-line);
 }
 /* Totals 汇总行：与打击/投手表合计行一致的灰底、加粗、上边框 */
 .gd-fielding-table :deep(.el-table__footer-wrapper td.el-table__cell) {
@@ -201,7 +388,12 @@ html.dark .gd-fielding-table :deep(.el-table),
 html.dark .gd-fielding-table :deep(.el-table__header th),
 [data-admin-theme='dark'] .gd-fielding-table :deep(.el-table__header th) {
   color: var(--el-text-color-regular) !important;
+  background: var(--el-fill-color-light, #262727) !important;
   font-weight: 600;
+}
+html.dark .gd-fielding-table :deep(.el-table thead),
+[data-admin-theme='dark'] .gd-fielding-table :deep(.el-table thead) {
+  background: var(--el-fill-color-light, #262727) !important;
 }
 html.dark .gd-fielding-table :deep(.el-table__body .el-table__cell .cell),
 [data-admin-theme='dark'] .gd-fielding-table :deep(.el-table__body .el-table__cell .cell) {
@@ -220,6 +412,34 @@ html.dark .gd-fielding-table :deep(.el-table__body .el-table__cell .cell),
     padding: 5px 3px;
   }
   .gd-fielding-table :deep(.el-table__header th) {
+    font-size: 11px;
+  }
+  .gd-fielding-table__player {
+    gap: 5px;
+  }
+  .gd-fielding-table__player.is-sub {
+    padding-left: 14px;
+  }
+  .gd-fielding-table__player.is-bd {
+    padding-left: 20px;
+  }
+  .gd-fielding-table__expander-spacer,
+  .gd-fielding-table__expander {
+    width: 14px;
+    height: 14px;
+  }
+  .gd-fielding-table__expander-h {
+    width: 7px;
+  }
+  .gd-fielding-table__expander-v {
+    height: 7px;
+  }
+  .gd-fielding-table__bd-pos {
+    height: 15px;
+    padding: 0 3px;
+    font-size: 10px;
+  }
+  .gd-fielding-table :deep(.el-table__body tr.gd-fielding-table__row--bd > td.el-table__cell) {
     font-size: 11px;
   }
 }

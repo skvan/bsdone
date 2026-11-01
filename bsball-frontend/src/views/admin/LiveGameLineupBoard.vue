@@ -147,6 +147,7 @@ import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { visibleLineupError } from '../../utils/lineupValidationMessage';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
+import { buildStartingBenchRows, buildStartingLineupRows, buildStartingPitcherRow } from '../../utils/lineupStartingPosition';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
@@ -710,10 +711,18 @@ async function startEntry() {
         gameTime: cu.gameTime,
         gameday: cu.gameday,
       },
-      homeLineup: homeBoard.rows.value,
-      awayLineup: awayBoard.rows.value,
-      homeBench: homeBoard.bench.value,
-      awayBench: awayBoard.bench.value,
+      homeLineup: buildStartingLineupRows(homeBoard.rows.value),
+      awayLineup: buildStartingLineupRows(awayBoard.rows.value),
+      homeBench: buildStartingBenchRows(homeBoard.bench.value, homeBoard.fieldingPitcherId.value),
+      awayBench: buildStartingBenchRows(awayBoard.bench.value, awayBoard.fieldingPitcherId.value),
+      homeFieldingPitcherRow: buildStartingPitcherRow(
+        homeBoard.rows.value, homeBoard.bench.value, homeBoard.roster.value,
+        homeBoard.fieldingPitcherId.value, setupForm.value.homeTeamId
+      ),
+      awayFieldingPitcherRow: buildStartingPitcherRow(
+        awayBoard.rows.value, awayBoard.bench.value, awayBoard.roster.value,
+        awayBoard.fieldingPitcherId.value, setupForm.value.awayTeamId
+      ),
       awayFieldingPitcherId: awayBoard.fieldingPitcherId.value,
       homeFieldingPitcherId: homeBoard.fieldingPitcherId.value,
       awayLastDhAddedFromPoolId: awayBoard.lastDhAddedFromPoolId.value,
