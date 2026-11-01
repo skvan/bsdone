@@ -77,6 +77,24 @@ export function sprayPiePath(from, to, radius) {
     + `A ${radius} ${radius} 0 0 1 ${end.x} ${end.y} Z`;
 }
 
+// 热区配色（叠在真实球场底色上）：低→浅黄，中→橙，高→红橙；alpha 随强度递增
+const HEAT_STOPS = Object.freeze([
+  { at: 0, rgb: [255, 226, 120] },
+  { at: 0.55, rgb: [255, 176, 40] },
+  { at: 1, rgb: [255, 108, 0] }
+]);
+
+export function sprayHeatFill(ratio) {
+  const t = Math.max(0, Math.min(1, Number(ratio) || 0));
+  const upper = HEAT_STOPS.find((stop) => t <= stop.at) ?? HEAT_STOPS[HEAT_STOPS.length - 1];
+  const lower = [...HEAT_STOPS].reverse().find((stop) => stop.at <= t) ?? HEAT_STOPS[0];
+  const span = upper.at - lower.at || 1;
+  const k = (t - lower.at) / span;
+  const rgb = lower.rgb.map((channel, index) => Math.round(channel + (upper.rgb[index] - channel) * k));
+  const alpha = (0.22 + 0.5 * t).toFixed(2);
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+}
+
 /** 分区视角几何：把服务端 rows（code/hits/balls）补上扇带路径、角标位置与热力透明度。 */
 export function sprayZoneViews(rows) {
   const list = Array.isArray(rows) ? rows : [];
@@ -101,7 +119,7 @@ export function sprayZoneViews(rows) {
       path,
       labelX: label.x,
       labelY: label.y,
-      opacity: Number((0.1 + 0.45 * (hits / maxHits)).toFixed(2))
+      heat: sprayHeatFill(hits / maxHits)
     };
   });
 }

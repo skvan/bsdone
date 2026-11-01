@@ -291,16 +291,26 @@
         <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">当前范围还没有记录击球落点。</div>
         <div v-else class="spray-body">
           <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点分区">
-            <path class="spray-grass" d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" />
-            <path class="spray-dirt" d="M 240 575 L 415 410 C 445 410 355 270 240 270 C 120 270 40 410 65 410 Z" />
-            <polygon class="spray-diamond" points="240,555 352.5,445.5 240,333 127.5,445.5" />
+            <defs>
+              <linearGradient :id="sprayGrassId" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#2d7a32" />
+                <stop offset="100%" stop-color="#248528" />
+              </linearGradient>
+              <linearGradient :id="sprayDirtId" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#d98a4a" />
+                <stop offset="100%" stop-color="#c06830" />
+              </linearGradient>
+            </defs>
+            <path d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" :fill="`url(#${sprayGrassId})`" />
+            <path d="M 240 575 L 415 410 C 445 410 355 270 240 270 C 120 270 40 410 65 410 Z" :fill="`url(#${sprayDirtId})`" />
+            <polygon points="240,555 352.5,445.5 240,333 127.5,445.5" :fill="`url(#${sprayGrassId})`" />
             <g v-if="sprayMode === 'heat'" aria-hidden="true">
               <path
                 v-for="zone in sprayZones"
                 :key="zone.code"
                 class="spray-zone"
                 :d="zone.path"
-                :style="{ opacity: zone.opacity }"
+                :style="{ fill: zone.heat }"
               />
             </g>
             <g class="spray-field-lines" aria-hidden="true">
@@ -355,7 +365,7 @@
               <div class="spray-group-title">区域统计</div>
               <div class="spray-legend">
                 <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
-                  <i :style="{ opacity: zone.opacity }"></i>
+                  <i :style="{ background: zone.heat }"></i>
                   <b>{{ zone.code }}</b>
                   <span>{{ zone.label }}</span>
                   <em>{{ zone.hits }}</em>
@@ -941,6 +951,8 @@ let requestSeq = 0;
 let autoGameModeAdjusted = false;
 let eventScopeResetApplied = false;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
+const sprayGrassId = `clubhouse-spray-grass-${Math.random().toString(36).slice(2)}`;
+const sprayDirtId = `clubhouse-spray-dirt-${Math.random().toString(36).slice(2)}`;
 
 const draft = reactive({
   performance: { metricKey: 'batting.avg', viz: 'line' },
@@ -3048,13 +3060,11 @@ onBeforeUnmount(() => {
 .spray-type-chip small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
 .spray-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr); align-items: center; gap: 18px; }
 .spray-field { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; }
-.spray-grass { fill: var(--bs-surface-soft); }
-.spray-dirt { fill: none; stroke: var(--bs-hairline); stroke-width: 1.4; }
-.spray-diamond { fill: none; stroke: var(--bs-hairline); stroke-width: 1.2; }
-.spray-field-lines line, .spray-field-lines path { stroke: var(--bs-hairline); stroke-width: 1.2; }
-.spray-home-circle { fill: none; stroke: var(--bs-hairline-soft); stroke-width: 1.2; }
-.spray-base { fill: var(--bs-hairline); }
-.spray-zone { fill: var(--bs-accent); stroke: var(--bs-surface); stroke-width: 1.4; }
+.spray-field-lines line, .spray-field-lines path { stroke: #ffffff; stroke-width: 1.4; opacity: .92; }
+.spray-home-circle { fill: none; stroke: #ffffff; stroke-width: 1.2; opacity: .55; }
+.spray-diamond-line { fill: none; stroke: #ffffff; stroke-width: 1.2; opacity: .7; }
+.spray-base { fill: #ffffff; }
+.spray-zone { mix-blend-mode: screen; stroke: rgba(255, 255, 255, .35); stroke-width: 1; }
 .spray-dot-hit { fill: var(--bs-accent); stroke: var(--bs-ink); stroke-width: .9; }
 .spray-dot-hit.is-hr { stroke: var(--bs-accent-ink); stroke-width: 2.2; }
 .spray-dot-out { fill: none; stroke: var(--bs-text-muted); stroke-width: 1.7; stroke-linecap: round; }

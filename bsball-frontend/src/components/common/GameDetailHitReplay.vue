@@ -73,7 +73,7 @@
                 :key="'zone-' + zone.code"
                 class="ghr-zone"
                 :d="zone.path"
-                :style="{ opacity: zone.opacity }"
+                :style="{ fill: zone.heat }"
               />
             </g>
             <template v-if="showTrails">
@@ -148,7 +148,7 @@
             <div class="ghr-stat-row">
               <span class="ghr-stat-title">区域统计</span>
               <span v-for="zone in zoneRows" :key="'sz-' + zone.code" class="ghr-stat-chip">
-                <i class="is-zone" :style="{ opacity: zone.opacity }"></i>
+                <i class="is-zone" :style="{ background: zone.heat }"></i>
                 <b>{{ zone.code }}</b>{{ zone.label }}
                 <em>{{ zone.hits }}</em><small>/ {{ zone.balls }}</small>
               </span>
@@ -743,7 +743,7 @@ function zoneText(r) {
 .ghr-mode-toggle { display: inline-flex; padding: 2px; margin-left: auto; border: 1px solid var(--el-border-color); border-radius: 999px; }
 .ghr-mode-toggle button { padding: 3px 10px; border: 0; border-radius: 999px; background: none; font-size: 12px; color: var(--el-text-color-secondary); cursor: pointer; }
 .ghr-mode-toggle button.is-active { background: var(--el-fill-color); color: var(--el-text-color-primary); font-weight: 600; }
-.ghr-zone { fill: #c9a45b; stroke: #ffffff; stroke-width: 1.4; }
+.ghr-zone { mix-blend-mode: screen; stroke: rgba(255, 255, 255, .35); stroke-width: 1; }
 .ghr-zone-code { font-size: 18px; font-weight: 700; fill: #1f2d3d; paint-order: stroke; stroke: #ffffff; stroke-width: 3; }
 .ghr-zone-hit { font-size: 20px; font-weight: 700; fill: #7a5a1f; paint-order: stroke; stroke: #ffffff; stroke-width: 3; }
 .ghr-stats { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
@@ -751,7 +751,7 @@ function zoneText(r) {
 .ghr-stat-title { font-size: 11px; font-weight: 700; color: var(--el-text-color-secondary); }
 .ghr-stat-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .ghr-stat-chip i { width: 8px; height: 8px; border-radius: 50%; }
-.ghr-stat-chip i.is-zone { background: #c9a45b; }
+.ghr-stat-chip i.is-zone { background: #ff9933; }
 .ghr-stat-chip b { font-weight: 600; color: var(--el-text-color-primary); }
 .ghr-stat-chip em { font-style: normal; font-weight: 700; color: var(--el-text-color-primary); }
 .ghr-stat-chip small { color: var(--el-text-color-placeholder); }
