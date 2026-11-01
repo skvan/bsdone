@@ -2,6 +2,7 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bsball.model.entity.HitSpray;
@@ -54,9 +55,9 @@ class ClubhouseSprayReportTest {
     @DisplayName("汇总分区安打/击球、场次与落点")
     void buildsZoneTallyAndPoints() {
         List<HitSpray> rows = List.of(
-                spray(240d, 300d, "H1", "CF", 1L),
-                spray(120d, 400d, "OUT_F", "LF", 1L),
-                spray(334d, 404d, "H2", "RF", 2L));
+                spray(240d, 300d, "H1", "CF", 1L, "bip:fly:cf"),
+                spray(120d, 400d, "OUT_F", "LF", 1L, "bip:g:lf"),
+                spray(334d, 404d, "H2", "RF", 2L, "bip:ld:rf"));
 
         Map<String, Object> report = ClubhouseSprayReport.build(rows);
 
@@ -84,7 +85,31 @@ class ClubhouseSprayReportTest {
         assertEquals("MI", points.get(0).get("zone"));
         assertEquals(true, points.get(0).get("hit"));
         assertEquals(240d, points.get(0).get("x"));
+        assertEquals("bip:fly:cf", points.get(0).get("bipCode"));
         assertEquals(false, points.get(1).get("hit"));
+
+        List<Map<String, Object>> types = castZones(report.get("types"));
+        assertEquals(7, types.size());
+        assertEquals("ld", types.get(0).get("code"));
+        assertEquals(1, types.get(0).get("hits"));
+        assertEquals("fly", types.get(1).get("code"));
+        assertEquals(1, types.get(1).get("hits"));
+        assertEquals("g", types.get(2).get("code"));
+        assertEquals(0, types.get(2).get("hits"));
+        assertEquals(1, types.get(2).get("balls"));
+        assertEquals("other", types.get(6).get("code"));
+        assertEquals(0, types.get(6).get("balls"));
+    }
+
+    @Test
+    @DisplayName("球种解析：bip 第二段，大小写与非法值")
+    void parsesBipShape() {
+        assertEquals("fly", ClubhouseSprayReport.bipShape("bip:fly:cf"));
+        assertEquals("ld", ClubhouseSprayReport.bipShape(" BIP:LD:RF "));
+        assertEquals("pop", ClubhouseSprayReport.bipShape("bip:pop:1b"));
+        assertNull(ClubhouseSprayReport.bipShape(null));
+        assertNull(ClubhouseSprayReport.bipShape("bip:"));
+        assertNull(ClubhouseSprayReport.bipShape("H1"));
     }
 
     @Test
@@ -92,7 +117,7 @@ class ClubhouseSprayReportTest {
     void capsPointsButKeepsFullTally() {
         List<HitSpray> rows = new ArrayList<>();
         for (int i = 0; i < 601; i++) {
-            rows.add(spray(240d, 300d, i == 0 ? "OUT_F" : "H1", "CF", 1L));
+            rows.add(spray(240d, 300d, i == 0 ? "OUT_F" : "H1", "CF", 1L, "bip:fly:cf"));
         }
         Map<String, Object> report = ClubhouseSprayReport.build(rows);
         assertEquals(600, castZones(report.get("points")).size());
@@ -101,13 +126,14 @@ class ClubhouseSprayReportTest {
         assertEquals(600, summary.get("hits"));
     }
 
-    private static HitSpray spray(Double x, Double y, String resultCode, String zone, Long gameId) {
+    private static HitSpray spray(Double x, Double y, String resultCode, String zone, Long gameId, String bipCode) {
         HitSpray row = new HitSpray();
         row.setSprayX(BigDecimal.valueOf(x));
         row.setSprayY(BigDecimal.valueOf(y));
         row.setResultCode(resultCode);
         row.setSprayZone(zone);
         row.setGameId(gameId);
+        row.setBipCode(bipCode);
         return row;
     }
 

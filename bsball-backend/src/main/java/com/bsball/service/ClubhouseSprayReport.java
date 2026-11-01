@@ -34,10 +34,19 @@ public final class ClubhouseSprayReport {
             new Lane("RS", "右路穿越", 27.0, 38.0),
             new Lane("RL", "右边线", 38.0, 47.0));
 
+    /** 球种（bipCode 第二段）与展示名，顺序即统计清单顺序。 */
+    private static final List<String[]> SHAPES = List.of(
+            new String[]{"ld", "平飞球"},
+            new String[]{"fly", "飞球"},
+            new String[]{"g", "滚地球"},
+            new String[]{"hg", "强袭滚地"},
+            new String[]{"b", "短打"},
+            new String[]{"pop", "内野高飞"});
+
     private ClubhouseSprayReport() {
     }
 
-    /** 汇总为 { summary, zones[], points[] }；points 按记录顺序保留最近 600 个落点。 */
+    /** 汇总为 { summary, zones[], types[], points[] }；points 按记录顺序保留最近 600 个落点。 */
     public static Map<String, Object> build(List<HitSpray> sprays) {
         List<HitSpray> rows = sprays == null ? List.of() : sprays;
         Map<String, int[]> tally = new LinkedHashMap<>();
@@ -45,6 +54,11 @@ public final class ClubhouseSprayReport {
         for (Lane lane : LANES) {
             tally.put(lane.code(), new int[2]);
         }
+        Map<String, int[]> typeTally = new LinkedHashMap<>();
+        for (String[] shape : SHAPES) {
+            typeTally.put(shape[0], new int[2]);
+        }
+        typeTally.put("other", new int[2]);
         Set<Long> games = new LinkedHashSet<>();
         List<Map<String, Object>> points = new ArrayList<>();
         int hits = 0;
@@ -63,6 +77,12 @@ public final class ClubhouseSprayReport {
                 counts[0] += 1;
                 hits += 1;
             }
+            String shape = bipShape(row.getBipCode());
+            int[] typeCounts = typeTally.get(shape == null ? "other" : shape);
+            typeCounts[1] += 1;
+            if (hit) {
+                typeCounts[0] += 1;
+            }
             String resultCode = normalize(row.getResultCode());
             if (resultCode != null && resultCode.contains("GR")) {
                 groundRule += 1;
@@ -76,6 +96,7 @@ public final class ClubhouseSprayReport {
             point.put("resultCode", row.getResultCode());
             point.put("zone", zone);
             point.put("depth", row.getSprayDepth());
+            point.put("bipCode", row.getBipCode());
             point.put("hit", hit);
             points.add(point);
         }
@@ -91,9 +112,16 @@ public final class ClubhouseSprayReport {
             zones.add(zoneRow(lane.code(), lane.label(), tally.get(lane.code())));
         }
 
+        List<Map<String, Object>> types = new ArrayList<>();
+        for (String[] shape : SHAPES) {
+            types.add(typeRow(shape[0], shape[1], typeTally.get(shape[0])));
+        }
+        types.add(typeRow("other", "未知", typeTally.get("other")));
+
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("summary", summary);
         out.put("zones", zones);
+        out.put("types", types);
         out.put("points", points.size() > MAX_POINTS
                 ? points.subList(points.size() - MAX_POINTS, points.size())
                 : points);
@@ -119,6 +147,31 @@ public final class ClubhouseSprayReport {
     static boolean isHit(String resultCode) {
         String code = normalize(resultCode);
         return code != null && HIT_CODES.contains(code);
+    }
+
+    /** 球种取自 bip:xxx:yyy 的第二段（小写），未知或缺失返回 null（归入 other）。 */
+    static String bipShape(String bipCode) {
+        if (bipCode == null) {
+            return null;
+        }
+        String value = bipCode.trim();
+        if (!value.toLowerCase().startsWith("bip:")) {
+            return null;
+        }
+        String[] parts = value.split(":");
+        if (parts.length < 3 || parts[1].isBlank()) {
+            return null;
+        }
+        return parts[1].trim().toLowerCase();
+    }
+
+    private static Map<String, Object> typeRow(String code, String label, int[] counts) {
+        LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+        row.put("code", code);
+        row.put("label", label);
+        row.put("hits", counts[0]);
+        row.put("balls", counts[1]);
+        return row;
     }
 
     private static Map<String, Object> zoneRow(String code, String label, int[] counts) {

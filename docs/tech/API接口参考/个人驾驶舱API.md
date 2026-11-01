@@ -130,7 +130,8 @@
 - `scope`：本次口径，字段同驾驶舱 `scope`。
 - `summary`：`{ balls, hits, games, groundRule }`——记录球数、安打数、涉及场次；`groundRule` 预留给场地规则安打结果码。
 - `zones[]`：固定 8 项（`IF` + 7 条外野扇带），每项 `{ code, label, hits, balls }`。
-- `points[]`：最多最近 600 个落点，`{ x, y, resultCode, zone, depth, hit }`，坐标沿用录入页场地 viewBox `-300 -150 1080 780`（本垒约 `240,555`）。
+- `types[]`：球种统计，固定 7 项（`ld` 平飞 / `fly` 飞球 / `g` 滚地 / `hg` 强袭滚地 / `b` 短打 / `pop` 内野高飞 / `other` 未知），取自 `bip_code` 的第二段，每项 `{ code, label, hits, balls }`。
+- `points[]`：最多最近 600 个落点，`{ x, y, resultCode, zone, depth, bipCode, hit }`，坐标沿用录入页场地 viewBox `-300 -150 1080 780`（本垒约 `240,555`）。前端可在「热力图 / 落点动画」两种模式间切换，动画按 `bipCode` 球种弧线与时长播放，颜色与实时录入/回放同一套 `battedBallFlight` 参数。
 
 外野扇带（本垒为原点，正中外野 0°，左负右正）：
 

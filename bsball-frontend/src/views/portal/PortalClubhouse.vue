@@ -273,21 +273,28 @@
             <span class="kicker">SPRAY CHART</span>
             <h3>打击落点</h3>
           </div>
-          <div class="spray-summary">
-            <span>安打 <b>{{ spraySummary.hits || 0 }}</b></span>
-            <span>记录 <b>{{ spraySummary.balls || 0 }}</b> 球</span>
-            <span><b>{{ spraySummary.games || 0 }}</b> 场</span>
+          <div class="spray-head-actions">
+            <div class="spray-modes" role="group" aria-label="落点显示模式">
+              <button type="button" :class="{ 'is-active': sprayMode === 'heat' }" @click="setSprayMode('heat')">热力图</button>
+              <button type="button" :class="{ 'is-active': sprayMode === 'animate' }" @click="setSprayMode('animate')">落点动画</button>
+            </div>
+            <div class="spray-summary">
+              <span>安打 <b>{{ spraySummary.hits || 0 }}</b></span>
+              <span>记录 <b>{{ spraySummary.balls || 0 }}</b> 球</span>
+              <span><b>{{ spraySummary.games || 0 }}</b> 场</span>
+            </div>
+            <button v-if="sprayMode === 'animate'" type="button" class="spray-replay" @click="replaySprayAnimation">重播</button>
           </div>
         </div>
         <div v-if="spraysLoading" class="data-empty">正在加载打击落点…</div>
         <div v-else-if="spraysError" class="data-empty">{{ spraysError }}</div>
         <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">当前范围还没有记录击球落点。</div>
         <div v-else class="spray-body">
-          <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点热力图">
+          <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点分区">
             <path class="spray-grass" d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" />
             <path class="spray-dirt" d="M 240 575 L 415 410 C 445 410 355 270 240 270 C 120 270 40 410 65 410 Z" />
             <polygon class="spray-diamond" points="240,555 352.5,445.5 240,333 127.5,445.5" />
-            <g aria-hidden="true">
+            <g v-if="sprayMode === 'heat'" aria-hidden="true">
               <path
                 v-for="zone in sprayZones"
                 :key="zone.code"
@@ -306,7 +313,7 @@
               <rect x="122.5" y="440.5" width="10" height="10" transform="rotate(45, 127.5, 445.5)" class="spray-base" />
               <polygon points="233,548 247,548 247,555 240,562 233,555" class="spray-base" />
             </g>
-            <g aria-hidden="true">
+            <g v-if="sprayMode === 'heat'" aria-hidden="true">
               <template v-for="(point, index) in sprayPoints" :key="`dot-${index}`">
                 <circle
                   v-if="point.hit"
@@ -319,25 +326,58 @@
                 <path v-else :d="sprayCross(point)" class="spray-dot-out" />
               </template>
             </g>
-            <g class="spray-zone-labels" aria-hidden="true">
+            <g v-else aria-hidden="true">
+              <template v-for="(flight, index) in sprayFlights" :key="`flight-${index}`">
+                <path v-if="flight.path" :d="flight.path" class="spray-flight" :style="{ stroke: flight.color }" />
+                <circle v-if="!flight.done" :cx="flight.head.x" :cy="flight.head.y" r="4.2" class="spray-flight-ball" />
+                <template v-else>
+                  <circle
+                    v-if="flight.point.hit"
+                    :cx="flight.point.x"
+                    :cy="flight.point.y"
+                    r="6"
+                    class="spray-flight-land"
+                    :style="{ fill: flight.color }"
+                  />
+                  <path v-else :d="sprayCross(flight.point)" class="spray-dot-out" />
+                </template>
+              </template>
+            </g>
+            <g v-if="sprayMode === 'heat'" class="spray-zone-labels" aria-hidden="true">
               <g v-for="zone in sprayZones" :key="`zone-label-${zone.code}`">
                 <text :x="zone.labelX" :y="zone.labelY" text-anchor="middle" class="spray-zone-code">{{ zone.code }}</text>
                 <text :x="zone.labelX" :y="zone.labelY + 36" text-anchor="middle" class="spray-zone-hit">{{ zone.hits }}</text>
               </g>
             </g>
           </svg>
-          <div class="spray-legend">
-            <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
-              <i :style="{ opacity: zone.opacity }"></i>
-              <b>{{ zone.code }}</b>
-              <span>{{ zone.label }}</span>
-              <em>{{ zone.hits }}</em>
-              <small>/ {{ zone.balls }}</small>
+          <div class="spray-side">
+            <div class="spray-group">
+              <div class="spray-group-title">区域统计</div>
+              <div class="spray-legend">
+                <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
+                  <i :style="{ opacity: zone.opacity }"></i>
+                  <b>{{ zone.code }}</b>
+                  <span>{{ zone.label }}</span>
+                  <em>{{ zone.hits }}</em>
+                  <small>/ {{ zone.balls }}</small>
+                </div>
+              </div>
             </div>
-            <div class="spray-legend-keys">
-              <span><i class="is-hit"></i>安打</span>
-              <span><i class="is-hr"></i>全垒打</span>
-              <span><i class="is-out"></i>出局</span>
+            <div class="spray-group">
+              <div class="spray-group-title">球种统计</div>
+              <div class="spray-types">
+                <span v-for="type in sprayTypes" :key="`type-${type.code}`" class="spray-type-chip">
+                  <i :style="{ background: sprayTypeColor(type.code) }"></i>
+                  {{ type.label }}
+                  <em>{{ type.hits }}</em>
+                  <small>/ {{ type.balls }}</small>
+                </span>
+              </div>
+              <div v-if="sprayMode === 'heat'" class="spray-legend-keys">
+                <span><i class="is-hit"></i>安打</span>
+                <span><i class="is-hr"></i>全垒打</span>
+                <span><i class="is-out"></i>出局</span>
+              </div>
             </div>
           </div>
         </div>
@@ -809,6 +849,7 @@ import { clubhouseApi } from '../../api/clubhouse';
 import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
 import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT, cardGradeMaterial } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
+import { battedGeo, battedShapeOf, battedShapeColor } from '../../utils/battedBallFlight';
 import { useTenantRouter } from '../../composables/useTenantRouter';
 import {
   BOARD_WIDTH,
@@ -879,6 +920,9 @@ const milestonesError = ref('');
 const sprayPayload = ref(null);
 const spraysLoading = ref(false);
 const spraysError = ref('');
+const sprayMode = ref('heat');
+const sprayAnim = reactive({ running: false, now: 0, startedAt: 0 });
+let sprayAnimFrame = 0;
 const milestoneListEl = ref(null);
 const milestoneScroll = reactive({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
 const moduleListEl = ref(null);
@@ -2233,6 +2277,97 @@ const sprayZones = computed(() => {
     };
   });
 });
+const sprayTypes = computed(() => sprayPayload.value?.types || []);
+const sprayReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const SPRAY_ANIM_STAGGER = 220;
+const SPRAY_ANIM_LIMIT = 40;
+function sprayTypeColor(code) {
+  return code === 'other' ? 'var(--bs-text-faint)' : battedShapeColor(`bip:${code}:x`);
+}
+function sprayLerp(from, to, t) {
+  return from + (to - from) * t;
+}
+function sprayFlightOf(point, t) {
+  const shape = battedShapeOf(point.bipCode);
+  const geo = battedGeo(point.x, point.y, shape.k);
+  const head = {
+    x: Number(((1 - t) * (1 - t) * SPRAY_GEOMETRY.homeX + 2 * (1 - t) * t * geo.cx + t * t * point.x).toFixed(1)),
+    y: Number(((1 - t) * (1 - t) * SPRAY_GEOMETRY.homeY + 2 * (1 - t) * t * geo.cy + t * t * point.y).toFixed(1))
+  };
+  const control = { x: sprayLerp(SPRAY_GEOMETRY.homeX, geo.cx, t), y: sprayLerp(SPRAY_GEOMETRY.homeY, geo.cy, t) };
+  return {
+    ms: shape.ms,
+    head,
+    path: t > 0
+      ? `M ${SPRAY_GEOMETRY.homeX} ${SPRAY_GEOMETRY.homeY} Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${head.x} ${head.y}`
+      : null,
+    color: battedShapeColor(point.bipCode)
+  };
+}
+const sprayFlights = computed(() => {
+  if (sprayMode.value !== 'animate') return [];
+  const points = sprayPoints.value;
+  if (!points.length) return [];
+  const start = Math.max(0, points.length - SPRAY_ANIM_LIMIT);
+  return points.map((point, index) => {
+    const base = sprayFlightOf(point, 1);
+    if (index < start) return { point, t: 1, done: true, ...base };
+    const delay = (index - start) * SPRAY_ANIM_STAGGER;
+    const t = sprayReduceMotion.matches
+      ? 1
+      : Math.min(1, Math.max(0, (sprayAnim.now - sprayAnim.startedAt - delay) / base.ms));
+    return { point, t, done: t >= 1, ...sprayFlightOf(point, t) };
+  });
+});
+function sprayAnimationEnd() {
+  const points = sprayPoints.value;
+  if (!points.length) return sprayAnim.startedAt;
+  const start = Math.max(0, points.length - SPRAY_ANIM_LIMIT);
+  let end = sprayAnim.startedAt;
+  for (let index = start; index < points.length; index += 1) {
+    end = Math.max(end, sprayAnim.startedAt
+      + (index - start) * SPRAY_ANIM_STAGGER + battedShapeOf(points[index].bipCode).ms);
+  }
+  return end + 260;
+}
+function stopSprayAnimation() {
+  if (sprayAnimFrame) cancelAnimationFrame(sprayAnimFrame);
+  sprayAnimFrame = 0;
+  sprayAnim.running = false;
+}
+function startSprayAnimation() {
+  stopSprayAnimation();
+  if (sprayMode.value !== 'animate' || !sprayPoints.value.length) return;
+  if (sprayReduceMotion.matches) {
+    sprayAnim.now = window.performance.now() + 1e9;
+    return;
+  }
+  sprayAnim.startedAt = window.performance.now();
+  sprayAnim.now = sprayAnim.startedAt;
+  sprayAnim.running = true;
+  const tick = (timestamp) => {
+    sprayAnim.now = timestamp;
+    if (timestamp >= sprayAnimationEnd()) {
+      sprayAnim.running = false;
+      sprayAnim.now = sprayAnimationEnd();
+      sprayAnimFrame = 0;
+      return;
+    }
+    sprayAnimFrame = requestAnimationFrame(tick);
+  };
+  sprayAnimFrame = requestAnimationFrame(tick);
+}
+function setSprayMode(mode) {
+  sprayMode.value = mode;
+  if (mode === 'animate') {
+    startSprayAnimation();
+  } else {
+    stopSprayAnimation();
+  }
+}
+function replaySprayAnimation() {
+  startSprayAnimation();
+}
 
 function radarAria(card) {
   const axes = (card.axes || []).map((axis) => `${axis.label}${axis.value}，百分位${axis.percentile}`).join('；');
@@ -2696,6 +2831,7 @@ async function loadSprays(seq) {
   if (!renderableModules.value.some((module) => module.key === 'spray')) {
     sprayPayload.value = null;
     spraysLoading.value = false;
+    stopSprayAnimation();
     return;
   }
   spraysLoading.value = true;
@@ -2708,6 +2844,7 @@ async function loadSprays(seq) {
     });
     if (seq !== requestSeq) return;
     sprayPayload.value = result || {};
+    if (sprayMode.value === 'animate') startSprayAnimation();
   } catch (error) {
     if (seq !== requestSeq) return;
     if (isAuthSessionError(error)) {
@@ -2771,6 +2908,7 @@ onBeforeUnmount(() => {
   if (milestoneScrollDrag) stopMilestoneScrollDrag();
   if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
   if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
+  stopSprayAnimation();
   freeBoardQuery.removeEventListener('change', syncBoardMode);
   compactBoardQuery.removeEventListener('change', syncBoardMode);
   window.removeEventListener('resize', onViewportResize);
@@ -2951,6 +3089,19 @@ onBeforeUnmount(() => {
 .radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
 .spray-summary { display: flex; align-items: baseline; gap: 14px; font-size: 11px; color: var(--bs-text-muted); }
 .spray-summary b { margin-right: 3px; font-family: var(--bs-font-num); font-size: 16px; color: var(--bs-ink); }
+.spray-head-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.spray-modes { display: inline-flex; padding: 2px; border: 1px solid var(--bs-hairline); border-radius: 999px; background: var(--bs-surface-soft); }
+.spray-modes button { padding: 4px 12px; border: 0; border-radius: 999px; background: none; font-size: 11px; color: var(--bs-text-muted); cursor: pointer; }
+.spray-modes button.is-active { background: var(--bs-surface); color: var(--bs-ink); font-weight: 600; box-shadow: var(--bs-shadow-sm); }
+.spray-replay { padding: 4px 10px; border: 1px solid var(--bs-hairline); border-radius: 999px; background: none; font-size: 11px; color: var(--bs-text-muted); cursor: pointer; }
+.spray-replay:hover { border-color: var(--bs-accent); color: var(--bs-accent-ink); }
+.spray-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.spray-group-title { margin-bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--bs-text-faint); }
+.spray-types { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.spray-type-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--bs-text-muted); white-space: nowrap; }
+.spray-type-chip i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.spray-type-chip em { margin-left: auto; font-family: var(--bs-font-num); font-style: normal; font-size: 12px; font-weight: 700; color: var(--bs-ink); }
+.spray-type-chip small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
 .spray-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr); align-items: center; gap: 18px; }
 .spray-field { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; }
 .spray-grass { fill: var(--bs-surface-soft); }
@@ -2966,8 +3117,11 @@ onBeforeUnmount(() => {
 .spray-zone-code { font-family: var(--bs-font-sans); font-size: 18px; font-weight: 700; fill: var(--bs-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
 .spray-zone-hit { font-family: var(--bs-font-num); font-size: 20px; font-weight: 700; fill: var(--bs-accent-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
 .spray-legend { display: grid; gap: 2px; }
-.spray-legend-row { display: grid; grid-template-columns: 8px 32px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--bs-hairline-soft); font-size: 11px; color: var(--bs-text-muted); }
+.spray-legend-row { display: grid; grid-template-columns: 8px 32px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--bs-hairline-soft); font-size: 11px; color: var(--bs-text-muted); }
 .spray-legend-row i { width: 8px; height: 8px; border-radius: 2px; background: var(--bs-accent); }
+.spray-flight { fill: none; stroke-width: 3.4; stroke-linecap: round; opacity: .85; }
+.spray-flight-ball { fill: var(--bs-surface); stroke: var(--bs-ink); stroke-width: 2; }
+.spray-flight-land { stroke: var(--bs-ink); stroke-width: .9; }
 .spray-legend-row b { font-family: var(--bs-font-num); font-size: 11px; color: var(--bs-text); }
 .spray-legend-row em { font-family: var(--bs-font-num); font-style: normal; font-size: 13px; font-weight: 700; color: var(--bs-ink); }
 .spray-legend-row small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
@@ -3313,7 +3467,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .spray-body { grid-template-columns: 1fr; gap: 12px; }
   .spray-field { max-width: 100%; }
   .spray-zone-labels { display: none; }
-  .spray-legend { grid-template-columns: 1fr; }
+  .spray-side { gap: 8px; }
 }
 </style>
 
