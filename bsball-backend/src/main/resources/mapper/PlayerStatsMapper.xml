@@ -507,6 +507,24 @@
         ORDER BY MAX(ts.last_gameday) DESC NULLS LAST, e.name ASC
     </select>
 
+    <!-- 驾驶舱打击落点：球员在范围（球队/赛事/运动类型、计入排行的比赛）内的落点记录，按比赛日正序 -->
+    <select id="selectPlayerHitSprays" resultType="com.bsball.model.entity.HitSpray">
+        SELECT s.*
+        FROM bs_hit_spray s
+        INNER JOIN bs_game g ON g.id = s.game_id
+        INNER JOIN bs_event e ON e.id = g.event_id
+        WHERE s.player_id = #{playerId}
+          AND s.deleted_at IS NULL
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND e.tenant_id = #{tenantId}
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="gameModeFilter"/>
+        ORDER BY g.gameday ASC NULLS FIRST, s.created_at ASC
+    </select>
+
     <!-- 比赛日志公共列与基础过滤：每场一行，含 game 与 stat 列 -->
     <sql id="gameLogSelectBody">
         SELECT

@@ -50,6 +50,7 @@ import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.model.dto.StandingGameRowDTO;
+import com.bsball.model.entity.HitSpray;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.StatsService;
@@ -234,6 +235,25 @@ public class StatsService {
         }
         catch (Exception e) {
             LoggerFactory.getLogger(StatsService.class).error("getPlayerEventSummaries failed for playerId={}", (Object)playerId, (Object)e);
+            return List.of();
+        }
+    }
+
+    /**
+     * 驾驶舱打击落点：球员在指定范围（可选球队/赛事、运动类型）内计入排行的比赛落点，
+     * 按比赛日正序返回；失败时返回空列表，不阻塞驾驶舱。
+     */
+    public List<HitSpray> getPlayerHitSprays(Long playerId, Long tenantId, Long teamId, Long eventId, String gameMode) {
+        if (playerId == null || tenantId == null) {
+            return List.of();
+        }
+        try {
+            List<HitSpray> rows = this.playerStatsMapper.selectPlayerHitSprays(playerId, tenantId, teamId, eventId,
+                    StatsService.normalizeGameMode(gameMode));
+            return rows == null ? List.of() : rows;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerHitSprays failed for playerId={}", (Object)playerId, (Object)e);
             return List.of();
         }
     }

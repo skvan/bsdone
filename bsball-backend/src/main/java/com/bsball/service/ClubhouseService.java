@@ -9,6 +9,7 @@ import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Game;
+import com.bsball.model.entity.HitSpray;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
@@ -128,6 +129,24 @@ public class ClubhouseService {
         Player player = findPlayer(userId);
         Map<String, Object> config = configService.getOrCreate(userId, player.getTenantId());
         return milestoneService.build(player.getId(), null, config);
+    }
+
+    /** 打击落点按需加载：跟随顶部球队/赛事/运动类型范围，模块隐藏时零请求。 */
+    public Map<String, Object> getSprays(Long userId, Long teamId, Long eventId, String requestedGameMode) {
+        Player player = findPlayer(userId);
+        Long tenantId = player.getTenantId();
+        List<PlayerTeam> entries = currentEntries(player.getId());
+        List<Map<String, Object>> teams = buildTeams(entries, tenantId);
+        Map<String, Object> requestedTeam = findTeam(teams, teamId);
+        List<PlayerEventSummaryDTO> playedSummaries =
+                statsService.getPlayerEventSummaries(player.getId(), teamIdOf(requestedTeam), null);
+        Scope scope = resolveScope(requestedTeam, playedSummaries, eventId, requestedGameMode);
+        List<HitSpray> sprays = statsService.getPlayerHitSprays(
+                player.getId(), tenantId, scope.teamId(), scope.eventId(), scope.gameMode());
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        out.put("scope", scopeView(scope));
+        out.putAll(ClubhouseSprayReport.build(sprays));
+        return out;
     }
 
     private Player findPlayer(Long userId) {

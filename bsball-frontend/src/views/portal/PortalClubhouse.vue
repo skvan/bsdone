@@ -259,6 +259,91 @@
       </section>
 
       <section
+        v-if="isModuleVisible('spray')"
+        class="panel spray-panel dashboard-module"
+        data-module-key="spray"
+        :tabindex="layoutEditing ? 0 : undefined"
+        :style="moduleLayoutStyle('spray')"
+        @click="selectModule('spray')"
+        @pointerdown="startModulePointer('spray', $event)"
+        @keydown="onModuleKeydown('spray', $event)"
+      >
+        <div class="panel-head spray-head">
+          <div>
+            <span class="kicker">SPRAY CHART</span>
+            <h3>打击落点</h3>
+          </div>
+          <div class="spray-summary">
+            <span>安打 <b>{{ spraySummary.hits || 0 }}</b></span>
+            <span>记录 <b>{{ spraySummary.balls || 0 }}</b> 球</span>
+            <span><b>{{ spraySummary.games || 0 }}</b> 场</span>
+          </div>
+        </div>
+        <div v-if="spraysLoading" class="data-empty">正在加载打击落点…</div>
+        <div v-else-if="spraysError" class="data-empty">{{ spraysError }}</div>
+        <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">当前范围还没有记录击球落点。</div>
+        <div v-else class="spray-body">
+          <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点热力图">
+            <path class="spray-grass" d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" />
+            <path class="spray-dirt" d="M 240 575 L 415 410 C 445 410 355 270 240 270 C 120 270 40 410 65 410 Z" />
+            <polygon class="spray-diamond" points="240,555 352.5,445.5 240,333 127.5,445.5" />
+            <g aria-hidden="true">
+              <path
+                v-for="zone in sprayZones"
+                :key="zone.code"
+                class="spray-zone"
+                :d="zone.path"
+                :style="{ opacity: zone.opacity }"
+              />
+            </g>
+            <g class="spray-field-lines" aria-hidden="true">
+              <line x1="218" y1="545" x2="-179.5" y2="165.8" />
+              <line x1="261" y1="545" x2="659.5" y2="165.8" />
+              <path d="M -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8" fill="none" />
+              <circle cx="240" cy="559" r="38.9" class="spray-home-circle" />
+              <rect x="347.5" y="440.5" width="10" height="10" transform="rotate(45, 352.5, 445.5)" class="spray-base" />
+              <rect x="235" y="328" width="10" height="10" transform="rotate(45, 240, 333)" class="spray-base" />
+              <rect x="122.5" y="440.5" width="10" height="10" transform="rotate(45, 127.5, 445.5)" class="spray-base" />
+              <polygon points="233,548 247,548 247,555 240,562 233,555" class="spray-base" />
+            </g>
+            <g aria-hidden="true">
+              <template v-for="(point, index) in sprayPoints" :key="`dot-${index}`">
+                <circle
+                  v-if="point.hit"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="7.5"
+                  class="spray-dot-hit"
+                  :class="{ 'is-hr': point.hr }"
+                />
+                <path v-else :d="sprayCross(point)" class="spray-dot-out" />
+              </template>
+            </g>
+            <g class="spray-zone-labels" aria-hidden="true">
+              <g v-for="zone in sprayZones" :key="`zone-label-${zone.code}`">
+                <text :x="zone.labelX" :y="zone.labelY" text-anchor="middle" class="spray-zone-code">{{ zone.code }}</text>
+                <text :x="zone.labelX" :y="zone.labelY + 36" text-anchor="middle" class="spray-zone-hit">{{ zone.hits }}</text>
+              </g>
+            </g>
+          </svg>
+          <div class="spray-legend">
+            <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
+              <i :style="{ opacity: zone.opacity }"></i>
+              <b>{{ zone.code }}</b>
+              <span>{{ zone.label }}</span>
+              <em>{{ zone.hits }}</em>
+              <small>/ {{ zone.balls }}</small>
+            </div>
+            <div class="spray-legend-keys">
+              <span><i class="is-hit"></i>安打</span>
+              <span><i class="is-hr"></i>全垒打</span>
+              <span><i class="is-out"></i>出局</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
         v-if="isModuleVisible('milestones')"
         class="panel milestone-panel dashboard-module"
         data-module-key="milestones"
@@ -748,7 +833,7 @@ const { tenantCode } = useTenantRouter();
 
 const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
-const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
+const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'spray', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
 const CONFIG_VERSION = 4;
 const CONFIG_LAYOUT = 'v4-board';
 const MILESTONE_TRACK_INSET = 4;
@@ -791,6 +876,9 @@ const swapTargetRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
+const sprayPayload = ref(null);
+const spraysLoading = ref(false);
+const spraysError = ref('');
 const milestoneListEl = ref(null);
 const milestoneScroll = reactive({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
 const moduleListEl = ref(null);
@@ -1124,11 +1212,34 @@ function defaultModules() {
     });
   }));
 }
-const activeModules = computed(() => {
+const activeModules = computed(() => configuredModulesWithCatalog()
+  .filter((module) => module.enabled !== false)
+  .map(resolveModule));
+/** 已保存布局缺少模块目录里的新模块时，追加到画布底部，保证升级后新模块可见。 */
+function configuredModulesWithCatalog() {
   const configured = data.value?.config?.modules;
-  const source = configured?.length ? configured : defaultModules();
-  return source.filter((module) => module.enabled !== false).map(resolveModule);
-});
+  if (!Array.isArray(configured) || !configured.length) return defaultModules();
+  const known = new Set(configured.map((row) => row.key));
+  const missing = moduleCatalog.value.filter((item) => !known.has(item.key));
+  if (!missing.length) return configured;
+  let nextY = configured.reduce(
+    (bottom, row) => Math.max(bottom, finiteNumber(row.y, 0) + finiteNumber(row.height, 0)),
+    0
+  ) + BOARD_GAP;
+  const appended = missing.map((meta) => {
+    const row = {
+      key: meta.key,
+      enabled: true,
+      x: 0,
+      y: nextY,
+      width: meta.defaultWidth,
+      height: meta.defaultHeight
+    };
+    nextY += finiteNumber(meta.defaultHeight, 240) + BOARD_GAP;
+    return row;
+  });
+  return [...configured, ...appended];
+}
 /**
  * 查看态全部球队时收起隐藏的队内坐标占位，避免页面顶部出现大块空白；
  * 编辑态保留占位以便调整位置。任何潜在重叠都退回原始布局。
@@ -1696,8 +1807,7 @@ function onLayoutKeydown(event) {
 }
 
 function currentModuleConfig() {
-  const source = data.value?.config?.modules?.length ? data.value.config.modules : defaultModules();
-  return toConfigRows(source.map(resolveModule));
+  return toConfigRows(configuredModulesWithCatalog().map(resolveModule));
 }
 
 function ensureModuleRows() {
@@ -2052,6 +2162,78 @@ function radarKicker(domain) {
   return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
 }
 
+/** 打击落点热力：与录入页同一场地坐标系（viewBox -300 -150 1080 780，本垒约 240,555）。 */
+const SPRAY_GEOMETRY = { homeX: 240, homeY: 555, infieldRadius: 150, fenceRadius: 575 };
+const SPRAY_LANES = [
+  { code: 'LL', label: '左边线', from: -47, to: -38 },
+  { code: 'LS', label: '左路穿越', from: -38, to: -27 },
+  { code: 'LC', label: '左中路', from: -27, to: -15 },
+  { code: 'MI', label: '中路', from: -15, to: 15 },
+  { code: 'RC', label: '右中路', from: 15, to: 27 },
+  { code: 'RS', label: '右路穿越', from: 27, to: 38 },
+  { code: 'RL', label: '右边线', from: 38, to: 47 }
+];
+function sprayPolar(angle, radius) {
+  const rad = (angle * Math.PI) / 180;
+  return {
+    x: Number((SPRAY_GEOMETRY.homeX + Math.sin(rad) * radius).toFixed(1)),
+    y: Number((SPRAY_GEOMETRY.homeY - Math.cos(rad) * radius).toFixed(1))
+  };
+}
+function sprayWedge(from, to, inner, outer) {
+  const innerFrom = sprayPolar(from, inner);
+  const outerFrom = sprayPolar(from, outer);
+  const outerTo = sprayPolar(to, outer);
+  const innerTo = sprayPolar(to, inner);
+  return `M ${innerFrom.x} ${innerFrom.y} L ${outerFrom.x} ${outerFrom.y} `
+    + `A ${outer} ${outer} 0 0 1 ${outerTo.x} ${outerTo.y} `
+    + `L ${innerTo.x} ${innerTo.y} A ${inner} ${inner} 0 0 0 ${innerFrom.x} ${innerFrom.y} Z`;
+}
+function sprayPie(from, to, radius) {
+  const start = sprayPolar(from, radius);
+  const end = sprayPolar(to, radius);
+  return `M ${SPRAY_GEOMETRY.homeX} ${SPRAY_GEOMETRY.homeY} L ${start.x} ${start.y} `
+    + `A ${radius} ${radius} 0 0 1 ${end.x} ${end.y} Z`;
+}
+function sprayCross(point) {
+  const size = 5.5;
+  return `M ${point.x - size} ${point.y - size} L ${point.x + size} ${point.y + size} `
+    + `M ${point.x + size} ${point.y - size} L ${point.x - size} ${point.y + size}`;
+}
+const spraySummary = computed(() => sprayPayload.value?.summary || {});
+const sprayViewBox = computed(() => (isNarrowCard.value ? '-220 -90 920 730' : '-300 -150 1080 780'));
+const sprayPoints = computed(() => (sprayPayload.value?.points || []).map((point) => ({
+  ...point,
+  hr: point.resultCode === 'HR' || point.resultCode === 'IPHR'
+})));
+const sprayZones = computed(() => {
+  const rows = sprayPayload.value?.zones || [];
+  const maxHits = Math.max(1, ...rows.map((zone) => Number(zone.hits) || 0));
+  return rows.map((zone) => {
+    const hits = Number(zone.hits) || 0;
+    const balls = Number(zone.balls) || 0;
+    const lane = SPRAY_LANES.find((item) => item.code === zone.code);
+    const isInfield = zone.code === 'IF';
+    const from = isInfield ? -47 : lane?.from ?? -47;
+    const to = isInfield ? 47 : lane?.to ?? 47;
+    const path = isInfield
+      ? sprayPie(from, to, SPRAY_GEOMETRY.infieldRadius)
+      : sprayWedge(from, to, SPRAY_GEOMETRY.infieldRadius, SPRAY_GEOMETRY.fenceRadius);
+    const label = isInfield
+      ? sprayPolar(0, 96)
+      : sprayPolar((from + to) / 2, SPRAY_GEOMETRY.fenceRadius * 0.74);
+    return {
+      ...zone,
+      hits,
+      balls,
+      path,
+      labelX: label.x,
+      labelY: label.y,
+      opacity: Number((0.1 + 0.45 * (hits / maxHits)).toFixed(2))
+    };
+  });
+});
+
 function radarAria(card) {
   const axes = (card.axes || []).map((axis) => `${axis.label}${axis.value}，百分位${axis.percentile}`).join('；');
   return `${card.title}雷达图，${axes}`;
@@ -2254,7 +2436,7 @@ function resetDraft() {
   draft.ranks = DEFAULT_RANK_KEYS.map((metricKey, index) => ({
     metricKey: ranks[index]?.metricKey || metricKey
   }));
-  const modules = config.modules?.length ? config.modules : defaultModules();
+  const modules = configuredModulesWithCatalog();
   draft.modules = modules.map(resolveModule);
   const selectedMilestones = config.milestones?.metricKeys;
   draft.milestones.metricKeys = selectedMilestones?.length
@@ -2427,6 +2609,9 @@ async function load() {
   milestonePayload.value = null;
   milestonesError.value = '';
   milestonesLoading.value = false;
+  sprayPayload.value = null;
+  spraysError.value = '';
+  spraysLoading.value = false;
   try {
     const result = await clubhouseApi.dashboard({
       teamId: teamId.value || null,
@@ -2466,6 +2651,7 @@ async function load() {
     }
     resetDraft();
     void loadMilestones(seq);
+    void loadSprays(seq);
   } catch (error) {
     if (seq !== requestSeq) return;
     if (isAuthSessionError(error)) {
@@ -2506,8 +2692,35 @@ async function loadMilestones(seq) {
   }
 }
 
-async function redirectToLogin() {
-  await router.replace({
+async function loadSprays(seq) {
+  if (!renderableModules.value.some((module) => module.key === 'spray')) {
+    sprayPayload.value = null;
+    spraysLoading.value = false;
+    return;
+  }
+  spraysLoading.value = true;
+  spraysError.value = '';
+  try {
+    const result = await clubhouseApi.sprays({
+      teamId: teamId.value || null,
+      eventId: eventId.value || null,
+      gameMode: gameMode.value
+    });
+    if (seq !== requestSeq) return;
+    sprayPayload.value = result || {};
+  } catch (error) {
+    if (seq !== requestSeq) return;
+    if (isAuthSessionError(error)) {
+      await redirectToLogin();
+      return;
+    }
+    spraysError.value = error?.message || '打击落点加载失败';
+  } finally {
+    if (seq === requestSeq) spraysLoading.value = false;
+  }
+}
+
+async function redirectToLogin() {  await router.replace({
     name: 'PortalAccountLogin',
     params: { tenantCode: tenantCode.value },
     query: { redirect: router.currentRoute.value.fullPath }
@@ -2736,6 +2949,35 @@ onBeforeUnmount(() => {
 .radar-highlights span { font-size: 10px; color: var(--bs-text-muted); }
 .radar-highlights b { margin-left: 3px; font-size: 10px; color: var(--bs-text); }
 .radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
+.spray-summary { display: flex; align-items: baseline; gap: 14px; font-size: 11px; color: var(--bs-text-muted); }
+.spray-summary b { margin-right: 3px; font-family: var(--bs-font-num); font-size: 16px; color: var(--bs-ink); }
+.spray-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr); align-items: center; gap: 18px; }
+.spray-field { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; }
+.spray-grass { fill: var(--bs-surface-soft); }
+.spray-dirt { fill: none; stroke: var(--bs-hairline); stroke-width: 1.4; }
+.spray-diamond { fill: none; stroke: var(--bs-hairline); stroke-width: 1.2; }
+.spray-field-lines line, .spray-field-lines path { stroke: var(--bs-hairline); stroke-width: 1.2; }
+.spray-home-circle { fill: none; stroke: var(--bs-hairline-soft); stroke-width: 1.2; }
+.spray-base { fill: var(--bs-hairline); }
+.spray-zone { fill: var(--bs-accent); stroke: var(--bs-surface); stroke-width: 1.4; }
+.spray-dot-hit { fill: var(--bs-accent); stroke: var(--bs-ink); stroke-width: .9; }
+.spray-dot-hit.is-hr { stroke: var(--bs-accent-ink); stroke-width: 2.2; }
+.spray-dot-out { fill: none; stroke: var(--bs-text-muted); stroke-width: 1.7; stroke-linecap: round; }
+.spray-zone-code { font-family: var(--bs-font-sans); font-size: 18px; font-weight: 700; fill: var(--bs-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
+.spray-zone-hit { font-family: var(--bs-font-num); font-size: 20px; font-weight: 700; fill: var(--bs-accent-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
+.spray-legend { display: grid; gap: 2px; }
+.spray-legend-row { display: grid; grid-template-columns: 8px 32px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--bs-hairline-soft); font-size: 11px; color: var(--bs-text-muted); }
+.spray-legend-row i { width: 8px; height: 8px; border-radius: 2px; background: var(--bs-accent); }
+.spray-legend-row b { font-family: var(--bs-font-num); font-size: 11px; color: var(--bs-text); }
+.spray-legend-row em { font-family: var(--bs-font-num); font-style: normal; font-size: 13px; font-weight: 700; color: var(--bs-ink); }
+.spray-legend-row small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
+.spray-legend-keys { display: flex; gap: 14px; padding: 8px 8px 0; font-size: 10px; color: var(--bs-text-muted); }
+.spray-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.spray-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--bs-accent); }
+.spray-legend-keys i.is-hr { border: 2px solid var(--bs-accent-ink); }
+.spray-legend-keys i.is-out { position: relative; border-radius: 0; background: none; }
+.spray-legend-keys i.is-out::before, .spray-legend-keys i.is-out::after { content: ""; position: absolute; left: 0; right: 0; top: 3px; height: 1.5px; background: var(--bs-text-muted); transform: rotate(45deg); }
+.spray-legend-keys i.is-out::after { transform: rotate(-45deg); }
 .radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
 .radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
 .radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
@@ -3068,6 +3310,10 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .radar-metric { padding: 7px 0; }
   .radar-metric em { font-size: 13px; }
   .eval-overall { flex-wrap: wrap; gap: 8px 12px; }
+  .spray-body { grid-template-columns: 1fr; gap: 12px; }
+  .spray-field { max-width: 100%; }
+  .spray-zone-labels { display: none; }
+  .spray-legend { grid-template-columns: 1fr; }
 }
 </style>
 

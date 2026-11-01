@@ -1,6 +1,6 @@
 # 个人驾驶舱 API
 
-个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持九个业务模块的显示/隐藏、排序与桌面端宽高调整，以及「表现图」与「队内排名」的指标/图表选择。宽高在服务端白名单范围内校验；手机端忽略宽高，按单列展示。
+个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持十个业务模块的显示/隐藏、排序与桌面端宽高调整，以及「表现图」与「队内排名」的指标/图表选择。宽高在服务端白名单范围内校验；手机端忽略宽高，按单列展示。
 
 数据范围默认是**全部球队 + 生涯**（当前运动类型下跨全部代表球队、全部赛事），可通过 `gameMode` / `teamId` / `eventId` 切换到具体运动类型、球队或赛事。球队与赛事相互独立，不自动互锁。
 
@@ -45,7 +45,7 @@
   - 球队维度只统计球员在该队出场的比赛；四种范围均只计入排行的比赛（`include_stats_in_ranking`）。
   - 零数据契约：球队维度查询返回完整字段（计数为 `0`、比率类为 `"0"`、投手 `goFo` 为 `"-"`）；全部球队 + 赛事无个人统计时返回三个空 Map，某领域无数据时该领域为空 Map。前端按 `gp` / `ab` / `pa` / `ip` 判断空态，不把 `0` / `0.000` 当成真实表现展示。
 - `config`：当前用户配置（version 4；`modules[]` 含 `x`/`y`/`width`/`height` 像素几何，默认见 PUT 示例）。
-- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 9 个模块。
+- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 10 个模块。
 - `milestoneCatalog[]`：生涯里程碑指标白名单；含 `key`、`label`、`shortLabel`、`domain`、`unit`、`defaultSelected`、`thresholds[]`。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
 - `performance`：`{ metricKey, label, viz, domain, points[], summaryValue, items[], available }`。
@@ -84,6 +84,7 @@
     - `weights`：实际参与评分的分项权重（已归一化，保留 3 位小数）。野手 0.55 / 0.45（打击/守备）；投手 0.70 / 0.15 / 0.15 或 0.80 / 0.20（无打击时）；二刀流 0.40 / 0.40 / 0.20（打击/投球/守备）。
     - `sampleSize`：对象 `{ batting, pitching, fielding }`，为各分项**本人样本量**（PA / IP / 守备局），用于前端展示「本人 PA · IP · 局」；投球、守备为未四舍五入的原始十进制局数，可能与卡片 `ownSample`（保留 1 位小数）不同。某分项不可用（未达展示门槛或无数据）时该字段固定为 `0`，不代表真实样本量。
 - 生涯里程碑数据不在驾驶舱首屏返回；前端仅在里程碑模块启用时调用 `GET /api/account/clubhouse/milestones` 按需加载，字段见下文独立接口。
+- 打击落点同样不在首屏返回；前端仅在 `spray` 模块启用时调用 `GET /api/account/clubhouse/sprays`（带当前 `teamId`/`eventId`/`gameMode`）按需加载，模块隐藏时零请求。
 - `nextGame` / `schedule[]`：当前球队/赛事范围内的未开赛或进行中比赛，按日期/时间升序，最多 6 场。
   - 选了球队只查该队；全部球队时查全部代表球队。
   - 选了赛事只保留该赛事；全部球队 + 赛事时包含该球员在该赛事代表的所有球队，逐场返回实际代表球队。
@@ -101,6 +102,7 @@
 7. 赛程：取当前范围球队在已确认赛事中的 `scheduled` / `live` 比赛，比赛日不早于今天，且赛事类型与 `gameMode` 一致；按日期/时间升序取前 6 场。
 8. 投球指标仅在有投球局数时标记可用；打击指标仅在有打席/打数时可用。
 9. 总体评价：固定为全租户生涯口径，取当前租户、同一运动类型的排行榜前 500 名作为对比池（打击按 PA、投球按 IP、守备按守备局降序），不随球队/赛事筛选变化。打击展示门槛 10 PA、守备 6 局、投球 3 IP；稳定门槛分别为 50 PA、30 局、15 IP，未达稳定门槛时评分向 50 收缩并标注「参考值」。投球卡只在本人具备投手资格（主要守位 `P` 或生涯投球局数 ≥ 5.0；4.2 = 4⅔ 不足 5.0）时返回，否则不返回投球卡、不查投球池、总体不含投球权重。各轴百分位按池内名次计算，ERA/WHIP/BB/9/HR/9 等反向指标先取反；守备优先同守位组，组内不足 5 人回退全体（`P` / `DH` 必然回退）。最终按角色权重合成总体评分（0–100 + 等级）。
+11. 打击落点：按当前范围（球队/赛事/运动类型、仅计入排行的比赛）取 `bs_hit_spray` 记录；外野按落点相对本垒的极角分 7 条扇带，内野单列一区，详见独立接口。
 10. 生涯里程碑：前端仅在 `milestones` 模块启用时按需请求独立接口；全租户生涯，跨全部赛事与代表球队；只汇总计入排行的比赛日志，且不按棒球/垒球模式过滤。累计与时间线使用同一份日志；时间线从系统记录的最早比赛开始，不能补齐系统外历史。
 
 ## GET /api/account/clubhouse/milestones
@@ -118,6 +120,33 @@
 - `pitching.ip` 的 `value`/`remaining` 使用棒球记法；进度按出局数计算。
 - 该接口不接收 `teamId`/`eventId`，不受驾驶舱范围栏影响；查询全部比赛模式。
 
+
+## GET /api/account/clubhouse/sprays
+
+按需加载打击落点分区统计。仅当前账号已认领球员档案、且前端启用 `spray` 模块时调用；范围参数与驾驶舱一致（`teamId`、`eventId`、`gameMode`）。
+
+返回 `Result<Map>`：
+
+- `scope`：本次口径，字段同驾驶舱 `scope`。
+- `summary`：`{ balls, hits, games, groundRule }`——记录球数、安打数、涉及场次；`groundRule` 预留给场地规则安打结果码。
+- `zones[]`：固定 8 项（`IF` + 7 条外野扇带），每项 `{ code, label, hits, balls }`。
+- `points[]`：最多最近 600 个落点，`{ x, y, resultCode, zone, depth, hit }`，坐标沿用录入页场地 viewBox `-300 -150 1080 780`（本垒约 `240,555`）。
+
+外野扇带（本垒为原点，正中外野 0°，左负右正）：
+
+| 代码 | 含义 | 角度区间 |
+|---|---|---|
+| `LL` | 左边线 | -47° ~ -38° |
+| `LS` | 左路穿越 | -38° ~ -27° |
+| `LC` | 左中路 | -27° ~ -15° |
+| `MI` | 中路 | -15° ~ +15° |
+| `RC` | 右中路 | +15° ~ +27° |
+| `RS` | 右路穿越 | +27° ~ +38° |
+| `RL` | 右边线 | +38° ~ +47° |
+
+- 内野优先按 `bs_hit_spray.spray_zone` 判定（`P/C/1B/2B/3B/SS/IF` → `IF`），不参与外野扇带；越界角度贴边归入 `LL`/`RL`。
+- 安打结果码：`H1`、`H2`、`H3`、`HR`、`IPHR`。
+- 只统计比赛未删除、`include_stats_in_ranking = true`、赛事未删除且运动类型一致的记录。
 ## PUT /api/account/clubhouse/config
 
 保存模块顺序/开关、桌面像素坐标与尺寸、表现图与队内排名选择。
@@ -131,13 +160,14 @@
   "modules": [
     { "key": "ranks", "enabled": true, "x": 0, "y": 0, "width": 1216, "height": 220 },
     { "key": "evaluation", "enabled": true, "x": 0, "y": 236, "width": 1216, "height": 700 },
-    { "key": "milestones", "enabled": true, "x": 0, "y": 952, "width": 1216, "height": 500 },
-    { "key": "performance", "enabled": true, "x": 0, "y": 1468, "width": 800, "height": 500 },
-    { "key": "teams", "enabled": true, "x": 816, "y": 1468, "width": 400, "height": 300 },
-    { "key": "schedule", "enabled": true, "x": 0, "y": 1984, "width": 800, "height": 560 },
-    { "key": "about", "enabled": true, "x": 816, "y": 1984, "width": 400, "height": 280 },
-    { "key": "recentGames", "enabled": true, "x": 0, "y": 2560, "width": 800, "height": 320 },
-    { "key": "quickLinks", "enabled": true, "x": 816, "y": 2560, "width": 400, "height": 220 }
+    { "key": "spray", "enabled": true, "x": 0, "y": 952, "width": 1216, "height": 520 },
+    { "key": "milestones", "enabled": true, "x": 0, "y": 1488, "width": 1216, "height": 500 },
+    { "key": "performance", "enabled": true, "x": 0, "y": 2004, "width": 800, "height": 500 },
+    { "key": "teams", "enabled": true, "x": 816, "y": 2004, "width": 400, "height": 300 },
+    { "key": "schedule", "enabled": true, "x": 0, "y": 2520, "width": 800, "height": 560 },
+    { "key": "about", "enabled": true, "x": 816, "y": 2520, "width": 400, "height": 280 },
+    { "key": "recentGames", "enabled": true, "x": 0, "y": 3096, "width": 800, "height": 320 },
+    { "key": "quickLinks", "enabled": true, "x": 816, "y": 3096, "width": 400, "height": 220 }
   ],
   "milestones": {
     "metricKeys": ["batting.h", "batting.rbi", "batting.sb", "batting.gp", "pitching.ip", "pitching.so"]
@@ -154,12 +184,12 @@
 
 - 画布逻辑宽度 1216px，任意两个启用模块至少间隔 16px；坐标/尺寸均为整数像素。前端拖动吸附 8px。
 - `modules` 数组顺序 = 手机/紧凑端顺序与设置抽屉顺序；桌面自由布局只看 `x/y/width/height`。
-- 只接受白名单 key，且不能重复，否则返回 400。`enabled` 必须是布尔值；缺省视为 `true`。允许九个模块全部关闭。
+- 只接受白名单 key，且不能重复，否则返回 400。`enabled` 必须是布尔值；缺省视为 `true`。允许十个模块全部关闭。
 - `x` / `y`：整数，`x >= 0`、`y >= 0`、`x + width <= 1216`、`y <= 12000`；越界、负数、小数或字符串返回 400。
 - `width`：整数，范围为该模块 `minWidth`–1216；`height`：整数，范围为该模块 `minHeight`–1600。默认/最小值见 `moduleCatalog` 的 `defaultWidth/defaultHeight/minWidth/minHeight`。
 - 桌面高度是固定外框高度，内容超出时模块内部滚动；手机/紧凑端忽略几何按内容自适应。内容不自动撑高，避免与邻居重叠。
 - 启用模块之间重叠（含不足 16px 间距）时，服务端按数组顺序把后出现模块下移到已占用区域底部（x=0），返回规范化后的配置；禁用模块保留几何但不参与检测。
-- 缺失的模块会按默认顺序追加到所有模块底部，保证始终保存完整九项。
+- 缺失的模块会按默认顺序追加到所有模块底部，保证始终保存完整十项。
 - `milestones.metricKeys`：1–6 项、不可重复、只能使用里程碑白名单指标；缺失或空数组回退默认 6 项。
 - `modules` 缺省时按默认模块保存，兼容旧客户端。
 - 服务端统一输出 `version=4` / `layout=v4-board`；客户端传入的 `layout`/`version` 不作为可信输入。

@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,7 @@ import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Game;
+import com.bsball.model.entity.HitSpray;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
@@ -32,6 +34,7 @@ import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.ClubhouseService.Scope;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -146,12 +149,13 @@ class ClubhouseServiceTest {
         assertNotNull(result.get("catalog"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> moduleCatalog = (List<Map<String, Object>>) result.get("moduleCatalog");
-        assertEquals(9, moduleCatalog.size());
+        assertEquals(10, moduleCatalog.size());
         assertEquals("ranks", moduleCatalog.get(0).get("key"));
         assertEquals("evaluation", moduleCatalog.get(1).get("key"));
-        assertEquals("milestones", moduleCatalog.get(2).get("key"));
-        assertEquals(1216, moduleCatalog.get(2).get("defaultWidth"));
-        assertEquals(500, moduleCatalog.get(2).get("defaultHeight"));
+        assertEquals("spray", moduleCatalog.get(2).get("key"));
+        assertEquals("milestones", moduleCatalog.get(3).get("key"));
+        assertEquals(1216, moduleCatalog.get(3).get("defaultWidth"));
+        assertEquals(500, moduleCatalog.get(3).get("defaultHeight"));
         assertEquals(11, ((List<?>) result.get("milestoneCatalog")).size());
         assertTrue(result.containsKey("evaluation"));
         assertTrue(!result.containsKey("milestones"));
@@ -191,8 +195,29 @@ class ClubhouseServiceTest {
     }
 
     @Test
-    @DisplayName("非法球队与赛事回落到全部球队与生涯")
-    void invalidTeamAndEventFallBackToDefaults() {
+    @DisplayName("打击落点接口按当前范围返回分区计数与落点")
+    void spraysFollowScope() {
+        stubSingleTeam("BASEBALL");
+        when(statsService.getPlayerEventSummaries(10L, 1L, null))
+                .thenReturn(List.of(eventSummary(11L, "花城联赛", "BASEBALL")));
+        when(statsService.getPlayerHitSprays(10L, 1L, 1L, 11L, "BASEBALL"))
+                .thenReturn(List.of(hitSpray(240d, 300d, "H1", "CF"), hitSpray(180d, 480d, "OUT_G", "SS")));
+
+        Map<String, Object> result = service.getSprays(7L, 1L, 11L, "BASEBALL");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) result.get("scope");
+        assertEquals(1L, scope.get("teamId"));
+        assertEquals(11L, scope.get("eventId"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary = (Map<String, Object>) result.get("summary");
+        assertEquals(2, summary.get("balls"));
+        assertEquals(1, summary.get("hits"));
+        verify(statsService).getPlayerHitSprays(10L, 1L, 1L, 11L, "BASEBALL");
+    }
+
+    @Test
+    @DisplayName("非法球队与赛事回落到全部球队与生涯")    void invalidTeamAndEventFallBackToDefaults() {
         stubSingleTeam("BASEBALL");
         when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats());
 
@@ -880,6 +905,15 @@ class ClubhouseServiceTest {
         return eventSummary(eventId, eventName, "BASEBALL");
     }
 
+    private HitSpray hitSpray(Double x, Double y, String resultCode, String zone) {
+        HitSpray row = new HitSpray();
+        row.setSprayX(BigDecimal.valueOf(x));
+        row.setSprayY(BigDecimal.valueOf(y));
+        row.setResultCode(resultCode);
+        row.setSprayZone(zone);
+        row.setGameId(1L);
+        return row;
+    }
     private PlayerEventSummaryDTO eventSummary(Long eventId, String eventName, String gameMode) {
         PlayerEventSummaryDTO summary = new PlayerEventSummaryDTO();
         summary.setEventId(eventId);
@@ -926,7 +960,7 @@ class ClubhouseServiceTest {
         when(eventRepository.findAllById(any())).thenReturn(List.of(event));
         when(statsService.getStandings(11L, null, null, eventGameMode, 1, 100))
                 .thenReturn(PageResult.of(List.of(), 0L));
-        when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
+        lenient().when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
     }
 
     private Map<String, Object> emptyStats() {
