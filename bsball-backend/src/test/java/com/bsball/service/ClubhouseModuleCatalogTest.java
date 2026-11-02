@@ -16,19 +16,20 @@ class ClubhouseModuleCatalogTest {
     void defaultModulesArePackedOnBoard() {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
 
-        assertEquals(9, modules.size());
-        assertEquals(List.of("ranks", "evaluation", "milestones", "performance",
+        assertEquals(10, modules.size());
+        assertEquals(List.of("ranks", "evaluation", "spray", "milestones", "performance",
                 "teams", "schedule", "about", "recentGames", "quickLinks"),
                 modules.stream().map(row -> row.get("key")).toList());
         assertGeometry(modules, 0, "ranks", 0, 0, 1216, 220);
         assertGeometry(modules, 1, "evaluation", 0, 236, 1216, 700);
-        assertGeometry(modules, 2, "milestones", 0, 952, 1216, 500);
-        assertGeometry(modules, 3, "performance", 0, 1468, 800, 500);
-        assertGeometry(modules, 4, "teams", 816, 1468, 400, 300);
-        assertGeometry(modules, 5, "schedule", 0, 1984, 800, 560);
-        assertGeometry(modules, 6, "about", 816, 1984, 400, 280);
-        assertGeometry(modules, 7, "recentGames", 0, 2560, 800, 320);
-        assertGeometry(modules, 8, "quickLinks", 816, 2560, 400, 220);
+        assertGeometry(modules, 2, "spray", 0, 952, 1216, 520);
+        assertGeometry(modules, 3, "milestones", 0, 1488, 1216, 500);
+        assertGeometry(modules, 4, "performance", 0, 2004, 800, 500);
+        assertGeometry(modules, 5, "teams", 816, 2004, 400, 300);
+        assertGeometry(modules, 6, "schedule", 0, 2520, 800, 560);
+        assertGeometry(modules, 7, "about", 816, 2520, 400, 280);
+        assertGeometry(modules, 8, "recentGames", 0, 3096, 800, 320);
+        assertGeometry(modules, 9, "quickLinks", 816, 3096, 400, 220);
         modules.forEach(row -> assertEquals(true, row.get("enabled")));
     }
 
@@ -49,9 +50,10 @@ class ClubhouseModuleCatalogTest {
     void catalogReturnsPixelMetadata() {
         List<Map<String, Object>> catalog = ClubhouseModuleCatalog.catalog();
 
-        assertEquals(9, catalog.size());
+        assertEquals(10, catalog.size());
         assertEquals("队内坐标", catalog.get(0).get("label"));
-        assertEquals("生涯里程碑", catalog.get(2).get("label"));
+        assertEquals("打击落点", catalog.get(2).get("label"));
+        assertEquals("生涯里程碑", catalog.get(3).get("label"));
         assertEquals(List.of("key", "label", "defaultWidth", "defaultHeight",
                 "minWidth", "minHeight", "maxWidth", "maxHeight"),
                 List.copyOf(catalog.get(0).keySet()));
@@ -61,14 +63,14 @@ class ClubhouseModuleCatalogTest {
         assertEquals(160, catalog.get(0).get("minHeight"));
         assertEquals(1216, catalog.get(0).get("maxWidth"));
         assertEquals(1600, catalog.get(0).get("maxHeight"));
-        assertEquals(800, catalog.get(3).get("defaultWidth"));
-        assertEquals(500, catalog.get(3).get("defaultHeight"));
-        assertEquals(360, catalog.get(3).get("minWidth"));
-        assertEquals(320, catalog.get(3).get("minHeight"));
-        assertEquals(400, catalog.get(4).get("defaultWidth"));
-        assertEquals(300, catalog.get(4).get("defaultHeight"));
-        assertEquals(280, catalog.get(4).get("minWidth"));
-        assertEquals(220, catalog.get(4).get("minHeight"));
+        assertEquals(800, catalog.get(4).get("defaultWidth"));
+        assertEquals(500, catalog.get(4).get("defaultHeight"));
+        assertEquals(360, catalog.get(4).get("minWidth"));
+        assertEquals(320, catalog.get(4).get("minHeight"));
+        assertEquals(400, catalog.get(5).get("defaultWidth"));
+        assertEquals(300, catalog.get(5).get("defaultHeight"));
+        assertEquals(280, catalog.get(5).get("minWidth"));
+        assertEquals(220, catalog.get(5).get("minHeight"));
         assertFalse(catalog.get(0).containsKey("span"));
         assertFalse(catalog.get(0).containsKey("minSpan"));
     }

@@ -49,6 +49,16 @@ public class ClubhouseApi {
         return Result.ok(clubhouseService.getMilestones(requireUserId(auth)));
     }
 
+    /** 打击落点热力：按需加载，范围与驾驶舱顶部筛选一致。 */
+    @GetMapping(value = {"/sprays"})
+    public Result<Map<String, Object>> sprays(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) String gameMode) {
+        return Result.ok(clubhouseService.getSprays(requireUserId(auth), teamId, eventId, gameMode));
+    }
+
     @PutMapping(value = {"/config"})
     public Result<Map<String, Object>> saveConfig(
             @RequestHeader(value = "Authorization", required = false) String auth,
