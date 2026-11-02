@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.bsball.model.entity.HitSpray;
+import com.bsball.model.dto.HitSprayPointRow;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +54,7 @@ class ClubhouseSprayReportTest {
     @Test
     @DisplayName("汇总分区安打/击球、场次与落点")
     void buildsZoneTallyAndPoints() {
-        List<HitSpray> rows = List.of(
+        List<HitSprayPointRow> rows = List.of(
                 spray(240d, 300d, "H1", "CF", 1L, "bip:fly:cf"),
                 spray(120d, 400d, "OUT_F", "LF", 1L, "bip:g:lf"),
                 spray(334d, 404d, "H2", "RF", 2L, "bip:ld:rf"));
@@ -115,7 +115,7 @@ class ClubhouseSprayReportTest {
     @Test
     @DisplayName("落点最多保留最近 600 个，分区计数仍按全量")
     void capsPointsButKeepsFullTally() {
-        List<HitSpray> rows = new ArrayList<>();
+        List<HitSprayPointRow> rows = new ArrayList<>();
         for (int i = 0; i < 601; i++) {
             rows.add(spray(240d, 300d, i == 0 ? "OUT_F" : "H1", "CF", 1L, "bip:fly:cf"));
         }
@@ -126,8 +126,8 @@ class ClubhouseSprayReportTest {
         assertEquals(600, summary.get("hits"));
     }
 
-    private static HitSpray spray(Double x, Double y, String resultCode, String zone, Long gameId, String bipCode) {
-        HitSpray row = new HitSpray();
+    private static HitSprayPointRow spray(Double x, Double y, String resultCode, String zone, Long gameId, String bipCode) {
+        HitSprayPointRow row = new HitSprayPointRow();
         row.setSprayX(BigDecimal.valueOf(x));
         row.setSprayY(BigDecimal.valueOf(y));
         row.setResultCode(resultCode);

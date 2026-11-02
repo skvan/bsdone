@@ -1,6 +1,6 @@
 package com.bsball.service;
 
-import com.bsball.model.entity.HitSpray;
+import com.bsball.model.dto.HitSprayPointRow;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -47,8 +47,8 @@ public final class ClubhouseSprayReport {
     }
 
     /** 汇总为 { summary, zones[], types[], points[] }；points 按记录顺序保留最近 600 个落点。 */
-    public static Map<String, Object> build(List<HitSpray> sprays) {
-        List<HitSpray> rows = sprays == null ? List.of() : sprays;
+    public static Map<String, Object> build(List<HitSprayPointRow> sprays) {
+        List<HitSprayPointRow> rows = sprays == null ? List.of() : sprays;
         Map<String, int[]> tally = new LinkedHashMap<>();
         tally.put("IF", new int[2]);
         for (Lane lane : LANES) {
@@ -63,7 +63,7 @@ public final class ClubhouseSprayReport {
         List<Map<String, Object>> points = new ArrayList<>();
         int hits = 0;
         int groundRule = 0;
-        for (HitSpray row : rows) {
+        for (HitSprayPointRow row : rows) {
             if (row == null || row.getSprayX() == null || row.getSprayY() == null) {
                 continue;
             }
