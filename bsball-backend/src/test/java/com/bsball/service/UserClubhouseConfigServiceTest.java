@@ -51,19 +51,19 @@ class UserClubhouseConfigServiceTest {
         assertEquals("v4-board", config.get("layout"));
         assertNotNull(config.get("performance"));
         assertEquals(4, ((List<?>) config.get("ranks")).size());
-        assertEquals(9, ((List<?>) config.get("modules")).size());
+        assertEquals(10, ((List<?>) config.get("modules")).size());
         Map<String, Object> ranks = moduleRow(config, "ranks");
         assertEquals(0, ranks.get("x"));
         assertEquals(0, ranks.get("y"));
         assertEquals(1216, ranks.get("width"));
         assertEquals(220, ranks.get("height"));
         Map<String, Object> performance = moduleRow(config, "performance");
-        assertEquals(1468, performance.get("y"));
+        assertEquals(2004, performance.get("y"));
         assertEquals(800, performance.get("width"));
         assertEquals(500, performance.get("height"));
         Map<String, Object> teams = moduleRow(config, "teams");
         assertEquals(816, teams.get("x"));
-        assertEquals(1468, teams.get("y"));
+        assertEquals(2004, teams.get("y"));
         assertEquals(400, teams.get("width"));
         assertEquals(300, teams.get("height"));
         @SuppressWarnings("unchecked")
@@ -154,18 +154,19 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> modules = (List<Map<String, Object>>) saved.get("modules");
 
-        assertEquals(9, modules.size());
+        assertEquals(10, modules.size());
         assertEquals("evaluation", modules.get(0).get("key"));
         assertEquals(false, modules.get(0).get("enabled"));
         assertEquals("ranks", modules.get(1).get("key"));
-        assertEquals("milestones", modules.get(2).get("key"));
-        assertEquals("performance", modules.get(3).get("key"));
+        assertEquals("spray", modules.get(2).get("key"));
+        assertEquals("milestones", modules.get(3).get("key"));
+        assertEquals("performance", modules.get(4).get("key"));
         assertTrue(modules.stream().skip(2)
                 .allMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
     @Test
-    @DisplayName("允许九个模块全部关闭")
+    @DisplayName("允许十个模块全部关闭")
     void allowsAllModulesDisabled() {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.all().stream()
                 .map(def -> Map.<String, Object>of("key", def.key(), "enabled", false))
@@ -179,7 +180,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) saved.get("modules");
 
-        assertEquals(9, rows.size());
+        assertEquals(10, rows.size());
         assertTrue(rows.stream().noneMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
@@ -194,7 +195,7 @@ class UserClubhouseConfigServiceTest {
         Map<String, Object> saved = service.save(7L, 1L, body);
 
         assertEquals("v4-board", saved.get("layout"));
-        assertEquals(9, ((List<?>) saved.get("modules")).size());
+        assertEquals(10, ((List<?>) saved.get("modules")).size());
     }
 
     @Test
@@ -214,7 +215,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) loaded.get("modules");
 
-        assertEquals(9, rows.size());
+        assertEquals(10, rows.size());
         assertTrue(rows.stream().noneMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
 
@@ -323,7 +324,7 @@ class UserClubhouseConfigServiceTest {
         assertEquals(0, performance.get("y"));
         assertEquals(800, performance.get("width"));
         assertEquals(500, performance.get("height"));
-        assertEquals(9, ((List<?>) saved.get("modules")).size());
+        assertEquals(10, ((List<?>) saved.get("modules")).size());
     }
 
     @Test
@@ -395,12 +396,13 @@ class UserClubhouseConfigServiceTest {
         Map<String, Object> saved = service.save(7L, 1L, boardBody(List.of(
                 module("ranks", true, 0, 0, 1216, 220))));
 
-        assertEquals(9, ((List<?>) saved.get("modules")).size());
+        assertEquals(10, ((List<?>) saved.get("modules")).size());
         assertEquals(0, moduleRow(saved, "ranks").get("y"));
         assertEquals(236, moduleRow(saved, "evaluation").get("y"));
-        assertEquals(952, moduleRow(saved, "milestones").get("y"));
-        assertEquals(1468, moduleRow(saved, "performance").get("y"));
-        assertEquals(1984, moduleRow(saved, "teams").get("y"));
+        assertEquals(952, moduleRow(saved, "spray").get("y"));
+        assertEquals(1488, moduleRow(saved, "milestones").get("y"));
+        assertEquals(2004, moduleRow(saved, "performance").get("y"));
+        assertEquals(2520, moduleRow(saved, "teams").get("y"));
         assertNoOverlap(saved);
     }
 
@@ -433,7 +435,7 @@ class UserClubhouseConfigServiceTest {
         assertEquals(300, teams.get("height"));
         assertEquals(821, teams.get("x"));
         assertEquals(0, teams.get("y"));
-        assertEquals(9, ((List<?>) config.get("modules")).size());
+        assertEquals(10, ((List<?>) config.get("modules")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
 
@@ -486,7 +488,7 @@ class UserClubhouseConfigServiceTest {
 
         assertEquals(4, saved.get("version"));
         assertEquals("v4-board", saved.get("layout"));
-        assertEquals(9, ((List<?>) saved.get("modules")).size());
+        assertEquals(10, ((List<?>) saved.get("modules")).size());
         @SuppressWarnings("unchecked")
         Map<String, Object> savedPerformance = (Map<String, Object>) saved.get("performance");
         assertEquals("batting.h", savedPerformance.get("metricKey"));
@@ -515,7 +517,7 @@ class UserClubhouseConfigServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> performance = (Map<String, Object>) config.get("performance");
         assertEquals("batting.h", performance.get("metricKey"));
-        assertEquals(9, ((List<?>) config.get("modules")).size());
+        assertEquals(10, ((List<?>) config.get("modules")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
 
@@ -530,7 +532,7 @@ class UserClubhouseConfigServiceTest {
         Map<String, Object> config = service.getOrCreate(7L, 1L);
 
         assertEquals("v4-board", config.get("layout"));
-        assertEquals(9, ((List<?>) config.get("modules")).size());
+        assertEquals(10, ((List<?>) config.get("modules")).size());
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
     }
