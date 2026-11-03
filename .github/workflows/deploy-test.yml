@@ -88,6 +88,7 @@ jobs:
         run: |
           set -e
           export VITE_APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+          export VITE_CLUBHOUSE_LAYOUT_EDITING=true
           cd bsball-frontend
           npm ci --no-audit --no-fund
           if [ -n "$RELEASE_VERSION" ]; then
