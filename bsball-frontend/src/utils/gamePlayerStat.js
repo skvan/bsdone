@@ -36,6 +36,16 @@ function p(t){
   return!!r
 }
 
+// 首个守位（#446）：DH/PH/EP 不守备，视为未上场防守；大小写归一
+var FIELDING_ONLY_EXCLUDED=new Set(["DH","PH","EP"]);
+function normalizeFieldingPosition(t){
+  const r=String(t??"").trim().toUpperCase();
+  return r&&!FIELDING_ONLY_EXCLUDED.has(r)?r:""
+}
+function resolveFirstFieldPosition(t){
+  return normalizeFieldingPosition(t?.firstPosition)||normalizeFieldingPosition(t?.position)||""
+}
+
 export {
   o as makeStatKey,
   b as resolveAtBats,
@@ -43,5 +53,7 @@ export {
   h as makeStatRowKey,
   u as createPitcherStatDefaults,
   c as isLegacyPositionLabel,
-  p as isPitcherFlag
+  p as isPitcherFlag,
+  normalizeFieldingPosition,
+  resolveFirstFieldPosition
 };

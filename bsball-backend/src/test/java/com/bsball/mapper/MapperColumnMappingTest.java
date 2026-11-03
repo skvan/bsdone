@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.ibatis.builder.xml.XMLMapperBuilder;
+import org.apache.ibatis.session.Configuration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +30,10 @@ class MapperColumnMappingTest {
             assertFragment(xml, name, "pitchRCol", "s.pitchr", "s.pitch_r");
             assertFragment(xml, name, "unearnedRCol", "s.unearnedr", "s.unearned_r");
             assertFragment(xml, name, "pendingRCol", "s.pendingr", "s.pending_r");
+            assertFalse(xml.contains("COALESCE(SUM(<include refid=\"ipToOutsFromIpCol\"/>), 0)"),
+                    name + " 投手聚合仍直接按 ip 求和，应统一走 outsRecordedPerRow");
+            assertTrue(xml.contains("<sql id=\"outsRecordedPerRow\">"),
+                    name + " 缺少 outs_recorded 聚合片段");
 
             String body = xml
                     .replaceAll("(?s)<sql\\s+id=\"pitchRCol\">.*?</sql>", "")
@@ -37,6 +43,23 @@ class MapperColumnMappingTest {
             assertFalse(body.contains("s.unearned_r"), name + " SQL 主体仍直接引用 s.unearned_r");
             assertFalse(body.contains("s.pending_r"), name + " SQL 主体仍直接引用 s.pending_r");
         }
+    }
+
+    @Test
+    @DisplayName("Mapper XML 可被 MyBatis 解析，outs_recorded 聚合片段已注册")
+    void mappersParseWithMyBatis() throws IOException {
+        Configuration configuration = new Configuration();
+        for (String name : MAPPERS) {
+            try (InputStream in = MapperColumnMappingTest.class.getResourceAsStream("/mapper/" + name)) {
+                assertNotNull(in, "缺少资源 /mapper/" + name);
+                new XMLMapperBuilder(in, configuration, "mapper/" + name, configuration.getSqlFragments())
+                        .parse();
+            }
+        }
+        assertTrue(configuration.getSqlFragments()
+                        .containsKey("com.bsball.mapper.PlayerStatsMapper.outsRecordedPerRow"));
+        assertTrue(configuration.getSqlFragments()
+                .containsKey("com.bsball.mapper.StatsLeadersMapper.outsRecordedPerRow"));
     }
 
     private static void assertFragment(String xml, String name, String id, String legacy, String modern) {

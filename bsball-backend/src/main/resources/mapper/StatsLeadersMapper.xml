@@ -141,10 +141,10 @@
 
     <sql id="pitchingLeaderHaving">
         <if test="positionCode == null or positionCode == ''">
-            HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+            HAVING COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
         </if>
         <if test="applyQualification != null and applyQualification and (positionCode == null or positionCode == '')">
-            AND COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt;= <include refid="pitchingMinIpOutsThresholdExpr"/>
+            AND COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt;= <include refid="pitchingMinIpOutsThresholdExpr"/>
         </if>
     </sql>
 
@@ -301,6 +301,13 @@
             ELSE 0
         END)
     )</sql>
+    <!-- 优先读权威 outs_recorded；旧行缺值(0)且 ip>0 时回退按 ip 换算 -->
+    <sql id="outsRecordedPerRow">(
+        CASE WHEN COALESCE(s.outs_recorded, 0) &gt; 0 OR COALESCE(s.ip, 0) &lt;= 0
+             THEN COALESCE(s.outs_recorded, 0)
+             ELSE <include refid="ipToOutsFromIpCol"/>
+        END
+    )</sql>
     <!-- 与 PlayerStatsMapper.defInnToOutsFromCol 一致 -->
     <sql id="defInnToOutsFromCol">(
         FLOOR(COALESCE(s.def_inn, 0)) * 3 + (CASE
@@ -339,17 +346,17 @@
             COALESCE(SUM(s.l), 0) AS l,
             COALESCE(SUM(s.sv), 0) AS sv,
             COALESCE(SUM(s.hld), 0) AS hld,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
                 THEN ROUND(CAST(
                     (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
-                    / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+                    / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
-                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
+                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS era,
             COALESCE(SUM(s.pitch_pa), 0) AS pitchPa,
@@ -422,6 +429,40 @@
     </select>
 
     <!-- 防守榜：按球员合并多位置（与门户前端 merge 逻辑一致） -->
+    <!-- 守备统计按「球员行」计一次：投手另有 is_pitcher=1 的并行记账行（守备数值相同），
+         不能按 position 排除 P，否则野手改投后整行守备数据丢失；投手行仅在该球员没有
+         带守备数据的可计入球员行时补计（兼容旧数据把守备值只写在投手行的情况）。 -->
+        <sql id="fieldingCountedPlayerRow">
+        s.position IS NOT NULL
+        AND s.position NOT IN ('DH', 'PH', 'EP')
+        AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR COALESCE(s.e,0) > 0
+            OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0
+            OR COALESCE(s.def_inn,0) > 0 OR COALESCE(s.fielding_gs,0) > 0
+        )
+        AND (
+            COALESCE(s.is_pitcher, 0) = 0
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM bs_game_player_stat b
+                    WHERE b.game_id = s.game_id
+                      AND b.player_id = s.player_id
+                      AND b.team_id = s.team_id
+                      AND COALESCE(b.is_pitcher, 0) = 0
+                      AND b.position IS NOT NULL
+                      AND b.position NOT IN ('DH', 'PH', 'EP')
+                      AND (
+                        COALESCE(b.tc,0) > 0 OR COALESCE(b.po,0) > 0 OR COALESCE(b.a,0) > 0
+                        OR COALESCE(b.dp,0) > 0 OR COALESCE(b.e,0) > 0
+                        OR COALESCE(b.pb,0) > 0 OR COALESCE(b.catcher_cs,0) > 0 OR COALESCE(b.catcher_sb,0) > 0
+                        OR COALESCE(b.def_inn,0) > 0 OR COALESCE(b.fielding_gs,0) > 0
+                      )
+                )
+            )
+        )
+    </sql>
+
     <sql id="fieldingLeaderSelect">
         SELECT
             s.player_id AS playerId,
@@ -448,9 +489,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0
@@ -461,16 +502,40 @@
         JOIN bs_player p ON s.player_id = p.id AND p.deleted_at IS NULL
         LEFT JOIN bs_team t ON p.team_id = t.id
         WHERE (
-            (s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
-             AND (COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-                  OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-                  OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
+            <include refid="fieldingCountedPlayerRow"/>
             <if test="positionCode != null and positionCode != ''">
-                OR s.position = #{positionCode}
+                <!-- 位置筛选是显式查看该守位：同位置没有带守备数据的球员行时，
+                     投手行即使没有守备动作也补入，避免 P 榜漏掉零守备动作的投手；同位置已有球员行则不重复。 -->
+                OR (
+                    s.position = #{positionCode}
+                    AND s.position NOT IN ('DH', 'PH', 'EP')
+                    AND COALESCE(s.is_pitcher, 0) &lt;&gt; 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM bs_game_player_stat b
+                        WHERE b.game_id = s.game_id
+                          AND b.player_id = s.player_id
+                          AND b.team_id = s.team_id
+                          AND b.position = #{positionCode}
+                          AND COALESCE(b.is_pitcher, 0) = 0
+                          AND (
+                            COALESCE(b.tc,0) > 0 OR COALESCE(b.po,0) > 0 OR COALESCE(b.a,0) > 0
+                            OR COALESCE(b.dp,0) > 0 OR COALESCE(b.e,0) > 0
+                            OR COALESCE(b.pb,0) > 0 OR COALESCE(b.catcher_cs,0) > 0 OR COALESCE(b.catcher_sb,0) > 0
+                            OR COALESCE(b.def_inn,0) > 0 OR COALESCE(b.fielding_gs,0) > 0
+                          )
+                    )
+                )
             </if>
         )
         <if test="positionCode != null and positionCode != ''">
-            AND s.position = #{positionCode}
+            AND (
+                s.position = #{positionCode}
+                <if test='positionCode == "C"'>
+                    <!-- 捕手后改投：最终守位不是 C，但 PB/CS/SB 或首次守位仍是捕手口径 -->
+                    OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0
+                    OR s.first_position = 'C'
+                </if>
+            )
         </if>
         <include refid="gameFilter"/>
         <include refid="playerLeaderFilter"/>
@@ -586,17 +651,17 @@
             COALESCE(SUM(s.l), 0) AS l,
             COALESCE(SUM(s.sv), 0) AS sv,
             COALESCE(SUM(s.hld), 0) AS hld,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) > 0
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) > 0
                 THEN ROUND(CAST(
                     (COALESCE(SUM(<include refid="pitchHCol"/>), 0) + <include refid="pitchingWalksExpr"/>) * 3.0
-                    / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+                    / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS whip,
-            CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) > 0
-                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0), 0) AS numeric), 2)
+            CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) > 0
+                THEN ROUND(CAST(27.0 * COALESCE(SUM(s.er), 0) / NULLIF(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0), 0) AS numeric), 2)
                 ELSE NULL
             END AS era,
             COALESCE(SUM(s.pitch_bf), 0) AS pitchBf,
@@ -626,7 +691,7 @@
         <include refid="teamLeaderFilter"/>
         
         GROUP BY s.team_id, t.name
-        HAVING COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &gt; 0
+        HAVING COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &gt; 0
     </sql>
 
     <select id="countTeamPitchingLeaders" resultType="long">
@@ -657,9 +722,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(COALESCE(s.dp, 0)), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.pb, 0) ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_cs, 0) ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN COALESCE(s.catcher_sb, 0) ELSE 0 END), 0) AS catcherSb,
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb,
             CASE WHEN COALESCE(SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))), 0) > 0
                 THEN ROUND(CAST(100.0 * (SUM(s.po) + SUM(s.a)) / SUM(COALESCE(s.tc, COALESCE(s.po,0)+COALESCE(s.a,0)+COALESCE(s.e,0))) AS numeric), 3)
                 ELSE 0
@@ -668,7 +733,7 @@
         JOIN bs_game g ON s.game_id = g.id
         JOIN bs_event e ON g.event_id = e.id
         JOIN bs_team t ON s.team_id = t.id
-        WHERE s.position IS NOT NULL AND s.position NOT IN ('P', 'DH', 'PH')
+        WHERE <include refid="fieldingCountedPlayerRow"/>
         <include refid="gameFilter"/>
         <include refid="teamLeaderFilter"/>
         
@@ -693,5 +758,75 @@
         SELECT COALESCE(MAX(scheduled_games), 0) FROM (
             <include refid="teamScheduledGamesSubquery"/>
         ) x
+    </select>
+
+    <!-- 按位置守备榜（#478 P2）：来源 bs_game_fielding_pos_stat，按 player×position 聚合；outs 转局数 -->
+    <sql id="fieldingPositionLeaderSelect">
+        SELECT
+            f.player_id AS playerId,
+            COALESCE(NULLIF(TRIM(p.name), ''), p.short_name) AS playerName,
+            f.team_id AS teamId,
+            t.name AS teamName,
+            f.position AS position,
+            COUNT(DISTINCT f.game_id) AS gp,
+            COALESCE(SUM(CASE WHEN f.fielding_gs THEN 1 ELSE 0 END), 0) AS gs,
+            COALESCE(SUM(f.outs), 0) AS outs,
+            COALESCE(SUM(f.po), 0) AS po,
+            COALESCE(SUM(f.a), 0) AS a,
+            COALESCE(SUM(f.e), 0) AS e,
+            COALESCE(SUM(f.dp), 0) AS dp,
+            COALESCE(SUM(f.pb), 0) AS pb,
+            COALESCE(SUM(f.catcher_cs), 0) AS catcherCs,
+            COALESCE(SUM(f.catcher_sb), 0) AS catcherSb,
+            COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) AS tc,
+            CASE
+                WHEN COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0) = 0 THEN 0
+                ELSE 100.0 * (COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0))
+                    / (COALESCE(SUM(f.po), 0) + COALESCE(SUM(f.a), 0) + COALESCE(SUM(f.e), 0))
+            END AS tcPct
+        FROM bs_game_fielding_pos_stat f
+        JOIN bs_game g ON f.game_id = g.id
+        JOIN bs_event e ON g.event_id = e.id
+        JOIN bs_player p ON f.player_id = p.id AND p.deleted_at IS NULL
+        LEFT JOIN bs_team t ON f.team_id = t.id
+        WHERE f.deleted_at IS NULL
+        <include refid="gameFilter"/>
+        <if test="teamIds != null and teamIds.size() > 0">
+            AND f.team_id IN
+            <foreach collection="teamIds" item="tid" open="(" separator="," close=")">
+                #{tid}
+            </foreach>
+        </if>
+        <if test="playerKeyword != null and playerKeyword != ''">
+            AND (
+                LOWER(COALESCE(NULLIF(TRIM(p.name), ''), '')) LIKE CONCAT('%', LOWER(#{playerKeyword}), '%')
+                OR LOWER(COALESCE(p.short_name, '')) LIKE CONCAT('%', LOWER(#{playerKeyword}), '%')
+            )
+        </if>
+        <if test="positionCode != null and positionCode != ''">
+            AND f.position = #{positionCode}
+        </if>
+        <if test="homeAway == 'home'">
+            AND f.team_id = g.home_team_id
+        </if>
+        <if test="homeAway == 'away'">
+            AND f.team_id = g.away_team_id
+        </if>
+        GROUP BY f.player_id, p.name, p.short_name, f.team_id, t.name, f.position
+        HAVING COALESCE(SUM(f.outs), 0) &gt;= #{minOuts}
+    </sql>
+
+    <select id="countFieldingPositionLeaders" resultType="long">
+        SELECT COUNT(*) FROM (
+            <include refid="fieldingPositionLeaderSelect"/>
+        ) cnt
+    </select>
+
+    <select id="selectFieldingPositionLeadersPage" resultType="map">
+        SELECT * FROM (
+            <include refid="fieldingPositionLeaderSelect"/>
+        ) q
+        ORDER BY ${orderBySql}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 </mapper>

@@ -2,6 +2,7 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -11,6 +12,7 @@ import com.bsball.config.TenantProperties;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.mapper.PlayerStatsMapper;
 import com.bsball.mapper.StatsLeadersMapper;
+import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.repository.TeamRepository;
 import java.util.List;
@@ -115,6 +117,58 @@ class StatsServiceFormulaTest {
         Map<String, Object> result = service.getPlayerStats(Long.valueOf(1L), "BASEBALL");
         // BB+HBP 分项存在则 HBP 不计入：(3+0)/3 = 1
         assertEquals("1", pitchingMap(result).get("whip"));
+    }
+
+    @Test
+    @DisplayName("ERA/WHIP 优先使用 outs_recorded 权威出局数")
+    void eraAndWhipPreferOutsRecorded() {
+        PlayerStatsDTO.Pitching pitching = new PlayerStatsDTO.Pitching();
+        pitching.setIp(1.0);
+        pitching.setOutsRecorded(9);
+        pitching.setEr(3);
+        pitching.setPitchH(2);
+
+        givenPlayerStats(new PlayerStatsDTO.Batting(), pitching, new PlayerStatsDTO.Fielding());
+
+        Map<String, Object> result = service.getPlayerStats(Long.valueOf(1L), "BASEBALL");
+        assertEquals(3.0, pitchingMap(result).get("ip"), "IP 展示与 ERA/WHIP 同源，按 9 出局显示 3.0 局");
+        assertEquals("9", pitchingMap(result).get("era"), "27*3/9=9，而不是按 ip 1.0 的 27");
+        assertEquals("0.67", pitchingMap(result).get("whip"), "2/(9/3)=0.67，而不是按 ip 1.0 的 2");
+    }
+
+    @Test
+    @DisplayName("outs_recorded 缺省时回退按 ip 换算（旧数据兼容）")
+    void eraFallsBackToIpWhenOutsMissing() {
+        PlayerStatsDTO.Pitching pitching = new PlayerStatsDTO.Pitching();
+        pitching.setIp(6.1);
+        pitching.setEr(5);
+
+        givenPlayerStats(new PlayerStatsDTO.Batting(), pitching, new PlayerStatsDTO.Fielding());
+
+        Map<String, Object> result = service.getPlayerStats(Long.valueOf(1L), "BASEBALL");
+        // 6.1 局=19 出局，ERA=27*5/19=7.105→7.11
+        assertEquals("7.11", pitchingMap(result).get("era"));
+    }
+
+    @Test
+    @DisplayName("比赛日志：IP 按 outsRecorded 反推，与 ERA/WHIP 同源")
+    void gameLogIpUsesOutsRecorded() {
+        when(playerStatsMapper.selectGameLog(anyLong(), anyLong(), any(), anyString(), anyBoolean()))
+                .thenReturn(List.of(Map.of(
+                        "gameId", 1L,
+                        "ip", 1.0,
+                        "outsRecorded", 9,
+                        "er", 3,
+                        "pitchH", 2,
+                        "isPitcher", 1)));
+
+        List<PlayerGameLogEntryDTO> log = service.getPlayerGameLog(1L, 10, "BASEBALL");
+
+        assertEquals(1, log.size());
+        Map<String, Object> pitching = log.get(0).getPitching();
+        assertEquals(3.0, pitching.get("ip"));
+        assertEquals("9", pitching.get("era"));
+        assertEquals("0.67", pitching.get("whip"));
     }
 
     @Test

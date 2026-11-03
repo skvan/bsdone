@@ -30,6 +30,13 @@
             ELSE 0
         END)
     )</sql>
+    <!-- 优先读权威 outs_recorded；旧行缺值(0)且 ip>0 时回退按 ip 换算 -->
+    <sql id="outsRecordedPerRow">(
+        CASE WHEN COALESCE(s.outs_recorded, 0) &gt; 0 OR COALESCE(s.ip, 0) &lt;= 0
+             THEN COALESCE(s.outs_recorded, 0)
+             ELSE <include refid="ipToOutsFromIpCol"/>
+        END
+    )</sql>
     <!-- 单场守备局转出局数再聚合，与投球 IP 同理，避免 SUM(def_inn) 小数误加 -->
     <sql id="defInnToOutsFromCol">(
         FLOOR(COALESCE(s.def_inn, 0)) * 3 + (CASE
@@ -83,9 +90,10 @@
     <select id="selectPitchingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -132,6 +140,40 @@
           AND s.ip IS NOT NULL AND s.ip > 0
     </select>
 
+    <!-- 守备统计按「球员行」计一次：投手另有 is_pitcher=1 的并行记账行（守备数值相同），
+         不能按 position 排除 P，否则野手改投后整行守备数据丢失；投手行仅在该球员没有
+         带守备数据的可计入球员行时补计（兼容旧数据把守备值只写在投手行的情况）。 -->
+        <sql id="fieldingCountedPlayerRow">
+        s.position IS NOT NULL
+        AND s.position NOT IN ('DH', 'PH', 'EP')
+        AND (
+            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
+            OR COALESCE(s.dp,0) > 0 OR COALESCE(s.e,0) > 0
+            OR COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0
+            OR COALESCE(s.def_inn,0) > 0 OR COALESCE(s.fielding_gs,0) > 0
+        )
+        AND (
+            COALESCE(s.is_pitcher, 0) = 0
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM bs_game_player_stat b
+                    WHERE b.game_id = s.game_id
+                      AND b.player_id = s.player_id
+                      AND b.team_id = s.team_id
+                      AND COALESCE(b.is_pitcher, 0) = 0
+                      AND b.position IS NOT NULL
+                      AND b.position NOT IN ('DH', 'PH', 'EP')
+                      AND (
+                        COALESCE(b.tc,0) > 0 OR COALESCE(b.po,0) > 0 OR COALESCE(b.a,0) > 0
+                        OR COALESCE(b.dp,0) > 0 OR COALESCE(b.e,0) > 0
+                        OR COALESCE(b.pb,0) > 0 OR COALESCE(b.catcher_cs,0) > 0 OR COALESCE(b.catcher_sb,0) > 0
+                        OR COALESCE(b.def_inn,0) > 0 OR COALESCE(b.fielding_gs,0) > 0
+                      )
+                )
+            )
+        )
+    </sql>
+
     <select id="selectFieldingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
@@ -143,9 +185,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -155,14 +197,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
     <!-- 球队维度统计：固定按代表球队过滤；eventId 为空表示该队生涯，非空表示该队在该赛事（不能拿赛事合计代替） -->
@@ -207,9 +242,10 @@
     <select id="selectPitchingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -269,9 +305,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -283,14 +319,7 @@
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
         <if test="eventId != null">AND g.event_id = #{eventId}</if>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
     <!-- 按赛事分组：JOIN game + event -->
@@ -341,9 +370,10 @@
             e.name AS eventName,
             COALESCE(e.season, '') AS season,
             COUNT(DISTINCT s.game_id) AS gp,
-            (CASE WHEN COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) &lt;= 0 THEN 0
-                ELSE FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="ipToOutsFromIpCol"/>), 0) / 3.0)) / 10.0
+            (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
+                ELSE FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0) + (COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) - 3 * FLOOR(COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) / 3.0)) / 10.0
             END) AS ip,
+            COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) AS outsRecorded,
             COALESCE(SUM(s.er), 0) AS er,
             COALESCE(SUM(<include refid="unearnedRCol"/>), 0) AS unearnedR,
             COALESCE(SUM(<include refid="pendingRCol"/>), 0) AS pendingR,
@@ -406,9 +436,9 @@
             COALESCE(SUM(s.a), 0) AS a,
             COALESCE(SUM(s.e), 0) AS e,
             COALESCE(SUM(s.dp), 0) AS dp,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.pb ELSE 0 END), 0) AS pb,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_cs ELSE 0 END), 0) AS catcherCs,
-            COALESCE(SUM(CASE WHEN s.position = 'C' THEN s.catcher_sb ELSE 0 END), 0) AS catcherSb
+            COALESCE(SUM(COALESCE(s.pb, 0)), 0) AS pb,
+            COALESCE(SUM(COALESCE(s.catcher_cs, 0)), 0) AS catcherCs,
+            COALESCE(SUM(COALESCE(s.catcher_sb, 0)), 0) AS catcherSb
         FROM bs_game_player_stat s
         INNER JOIN bs_game g ON s.game_id = g.id
         INNER JOIN bs_event e ON g.event_id = e.id
@@ -418,14 +448,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) > 0 OR COALESCE(s.po,0) > 0 OR COALESCE(s.a,0) > 0
-            OR COALESCE(s.dp,0) > 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) > 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) > 0 OR COALESCE(s.catcher_cs,0) > 0 OR COALESCE(s.catcher_sb,0) > 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
         GROUP BY e.id, e.name, e.season
         ORDER BY e.season DESC, e.id DESC
     </select>
@@ -484,6 +507,25 @@
         ORDER BY MAX(ts.last_gameday) DESC NULLS LAST, e.name ASC
     </select>
 
+    <!-- 驾驶舱打击落点：球员在范围（球队/赛事/运动类型、计入排行的比赛）内的落点记录，按比赛日正序 -->
+    <select id="selectPlayerHitSprays" resultType="com.bsball.model.dto.HitSprayPointRow">
+        SELECT s.game_id AS gameId, s.result_code AS resultCode, s.bip_code AS bipCode,
+               s.sprayx AS sprayX, s.sprayy AS sprayY, s.spray_zone AS sprayZone, s.spray_depth AS sprayDepth
+        FROM bs_hit_spray s
+        INNER JOIN bs_game g ON g.id = s.game_id
+        INNER JOIN bs_event e ON e.id = g.event_id
+        WHERE s.player_id = #{playerId}
+          AND s.deleted_at IS NULL
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND e.tenant_id = #{tenantId}
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="gameModeFilter"/>
+        ORDER BY g.gameday ASC NULLS FIRST, s.created_at ASC
+    </select>
+
     <!-- 比赛日志公共列与基础过滤：每场一行，含 game 与 stat 列 -->
     <sql id="gameLogSelectBody">
         SELECT
@@ -501,7 +543,7 @@
             s.pa AS pa, s.ab AS ab, s.r AS r, s.h AS h, s.rbi AS rbi, s.hr AS hr, s.inside_park_hr AS insideParkHr, s.sb AS sb,
             s.bb_hp AS bbHp, s.so AS so, s.doubles AS doubles, s.triples AS triples, s.e AS e,
             s.gdp AS gdp, s.sh AS sh, s.sf AS sf, s.bb AS bb, s.ibb AS ibb, s.hbp AS hbp, s.io AS io, s.cs AS cs,
-            s.ip AS ip, s.er AS er, <include refid="unearnedRCol"/> AS unearnedR, <include refid="pendingRCol"/> AS pendingR,
+            s.ip AS ip, <include refid="outsRecordedPerRow"/> AS outsRecorded, s.er AS er, <include refid="unearnedRCol"/> AS unearnedR, <include refid="pendingRCol"/> AS pendingR,
             <include refid="pitchHCol"/> AS pitchH, s.pitch_doubles AS pitchDoubles, s.pitch_triples AS pitchTriples, s.pitch_bb_hp AS pitchBbHp, s.pitch_so AS pitchSo,
             s.pitch_hr AS pitchHr, s.pitch_inside_park_hr AS pitchInsideParkHr, s.pitch_sh AS pitchSh, s.pitch_sf AS pitchSf, s.gs AS gs, s.svo AS svo, s.cg AS cg, s.pg AS pg,
             s.w AS w, s.l AS l, s.sv AS sv, s.hld AS hld, s.pitch_pa AS pitchPa, s.pitch_bf AS pitchBf,
@@ -635,14 +677,7 @@
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-          AND s.position IS NOT NULL
-          AND s.position NOT IN ('P', 'DH', 'PH')
-          AND (
-            COALESCE(s.tc,0) &gt; 0 OR COALESCE(s.po,0) &gt; 0 OR COALESCE(s.a,0) &gt; 0
-            OR COALESCE(s.dp,0) &gt; 0 OR s.e IS NOT NULL
-            OR COALESCE(s.def_inn,0) &gt; 0
-            OR (s.position = 'C' AND (COALESCE(s.pb,0) &gt; 0 OR COALESCE(s.catcher_cs,0) &gt; 0 OR COALESCE(s.catcher_sb,0) &gt; 0))
-          )
+          AND <include refid="fieldingCountedPlayerRow"/>
         <if test="eventId != null">AND g.event_id = #{eventId}</if>
         <if test="season != null and season != ''">AND e.season = #{season}</if>
     </sql>

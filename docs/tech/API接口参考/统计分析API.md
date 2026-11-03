@@ -115,6 +115,8 @@ MapRows --> Return["返回PageResult"]
 - 路径与方法：GET /stats/leaders/fielding
 - 支持防守基本项（PO/A/E/DP）与捕手专项（PB、CS、SB允许）
 - 防守成功率TC_PCT由 (PO+A)/TC 计算
+- 守备行口径：仅统计 `position` 非空且非 DH/PH/EP 的行；`is_pitcher=0` 的球员行计入（`position=P` 不再排除，野手改投后整行守备数据保留）；投手并行行仅在该球员本场没有带守备数据（TC/PO/A/E/DP/PB/CS/SB/INN/GS）的可计入球员行时补计，避免二刀流重复累计；补计要求该行上述任一项有值。显式按 P 筛选时，零动作投手行也会补入，但同位置已有带数据球员行时不重复
+- 捕手专项 PB/CS/SB 为捕手动作，按行无条件累计（不因最终守位变成 P 而丢失）；显式按 C 筛选时，除 `position=C` 外也纳入 `first_position='C'` 或 PB/CS/SB 有值的球员
 - 默认排序按 TC 降序，使用守备榜专用排序器；支持 tcPct/dp/pb/catcherCs/catcherSb 等排序
 
 ### 团队统计接口
@@ -124,6 +126,18 @@ MapRows --> Return["返回PageResult"]
   - GET /stats/leaders/team-fielding
 - 支持按OPS/ERA/TC_PCT等默认指标排序，允许在白名单内自定义排序字段
 - 返回结构与个人排行榜一致
+
+### 按位置守备统计接口
+- 路径与方法：GET /stats/leaders/fielding-positions
+- 数据来源：`bs_game_fielding_pos_stat`（save-live 全量替换写入的逐位置守备片段），按 球员×球队×位置 聚合（球队取该场守备球队 `f.team_id`，赛季中转队不合并）
+- 关键参数
+  - position（可选）：守备位置码（P/C/1B…LF/RF，区分大小写，与 save-live 写入的大写位置码一致；OF/IF/DH 无对应逐位置行），不传为全部位置
+  - homeAway（可选）：home/away，按 `f.team_id` 与比赛主客队比较
+  - minOuts（可选，默认 9）：资格线，按 `SUM(outs) >= minOuts` 过滤；传 0 关闭资格线
+  - 其余筛选（年份/赛事/球队/比赛模式/关键字）与个人排行榜一致
+- 返回行字段：playerId、playerName、teamId、teamName、position、gp（该位置出场场次）、gs（该位置先发场次）、inn（局数，3 出局=1.0 口径）、po/a/e（该位置接杀/助杀/失误）、dp/pb/catcherCs/catcherSb（该位置双杀/捕逸/盗垒阻杀/被盗垒）、tc（守备机会=po+a+e）、tcPct（守备率，tc=0 时为 0）；不返回原始 outs
+- 排序白名单：gp/gs/inn/tc/po/a/e/dp/pb/catcherCs/catcherSb/tcPct（默认 `SUM(outs) DESC`，即局数降序；`inn` 排序按 outs、`tcPct` 排序按派生守备率）；非法字段回落默认
+- 返回 meta 含 `minOuts`，便于前端展示资格线
 
 ### 积分榜接口
 - 路径与方法：GET /stats/standings
@@ -233,6 +247,8 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - GET /stats/leaders/team-batting?years=2024&gameMode=BASEBALL
   - GET /stats/leaders/team-pitching?years=2024&gameMode=BASEBALL
   - GET /stats/leaders/team-fielding?years=2024&gameMode=BASEBALL
+- 按位置守备榜
+  - GET /stats/leaders/fielding-positions?years=2024&position=C&minOuts=9&page=1&pageSize=20&sortProp=inn&sortOrder=desc
 - 积分榜
   - GET /stats/standings?eventId=123&years=2024&gameMode=BASEBALL
 - 明星榜单
@@ -250,7 +266,7 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - PageResult包含：data（List<Map>）、total（Long）、meta（Map，可能包含qualification等）
 - 击球/投球/防守行字段
   - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、io、cs、singles、tb、avg、obp、slg、ops、sbPct
-  - 投球：gp、ip、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
+  - 投球：gp、ip、outsRecorded、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
   - 防守：gp、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 - 团队统计行字段
   - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、ibb、hbp、io、tb、avg、obp、slg、ops
@@ -266,6 +282,7 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - OPS = OBP + SLG（AB>0且OBP分母>0）
   - SB% = SB / (SB + CS) * 100（SB+CS>0）
 - 投球
+  - 出局数以 `bs_game_player_stat.outs_recorded` 为准（旧数据缺值/为 0 且 IP>0 时回退按 ip 换算）；个人/赛事/榜单的 IP、ERA、WHIP 与投手榜资格线统一按出局数聚合
   - PitchBbHp = PitchBb + PitchHbp（PitchBb 含 IBB）
   - ERA = ER * 27 / IP_outs（IP_outs>0）
   - WHIP = (H + BB) / IP_outs（IP_outs>0；HBP 不计入，旧数据缺 BB/HBP 分项时用 BBHP 合计减 HBP 回退）

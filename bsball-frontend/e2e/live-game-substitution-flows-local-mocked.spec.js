@@ -241,3 +241,33 @@ test('换人模式离场：离开确认后取消模式并保存轻量现场', as
   expect(snapshot.homeLineup[7].id).toBe(108);
   expect(snapshot.homeBench.some((player) => player.id === 111)).toBe(true);
 });
+
+test('拖拽场员到替补席：拖拽卡片全程可见并保留红绿放大反馈', async ({ page }) => {
+  const { savedLive } = await setup(page);
+  await page.getByRole('button', { name: '换人模式' }).click();
+  const field = await page.locator('g.defender-hit[data-pos="CF"]').boundingBox();
+  const bench = await page.locator('.live-bench-card[data-player-id="111"][data-team-side="defense"]').boundingBox();
+  expect(field && bench).toBeTruthy();
+
+  await page.mouse.move(field.x + field.width / 2, field.y + field.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(320);
+  await page.mouse.move(bench.x + bench.width / 2, bench.y + bench.height / 2, { steps: 16 });
+  await page.waitForTimeout(120);
+
+  // 场上卡片移出 SVG 会被裁切：改用 fixed 浮层保持可见，且原卡片暂时隐藏避免重影
+  const ghost = page.locator('.live-bench-ghost.live-bench-ghost--fielder');
+  await expect(ghost).toBeVisible();
+  await expect(ghost).toContainText('CF · 主中外 #8');
+  await expect(page.locator('g.defender-hit[data-pos="CF"]')).toHaveClass(/field-player-hit--ghost/);
+  // 替补席目标绿色放大
+  await expect(page.locator('.live-bench-card[data-player-id="111"][data-team-side="defense"]')).toHaveClass(/live-bench-card--swap-in/);
+
+  await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
+  await submitSubstitution(page);
+  await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+  expect((savedLive.at(-1).substitutions || [])[0]).toMatchObject({
+    changeType: 'SUBSTITUTION', slot: 8, inPlayerId: 111, inPosition: 'CF',
+  });
+});

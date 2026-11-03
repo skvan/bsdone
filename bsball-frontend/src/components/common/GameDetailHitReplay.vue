@@ -22,6 +22,10 @@
           <el-option v-for="b in batterOptions" :key="b.key" :label="b.label" :value="b.key" />
         </el-select>
         <el-checkbox v-model="showTrails" size="small" class="ghr-trail-toggle">显示飞行轨迹</el-checkbox>
+        <span class="ghr-mode-toggle">
+          <button type="button" :class="{ 'is-active': viewMode === 'heat' }" @click="viewMode = 'heat'">热力图</button>
+          <button type="button" :class="{ 'is-active': viewMode === 'animate' }" @click="viewMode = 'animate'">落点动画</button>
+        </span>
       </div>
       <div class="ghr-body">
         <div class="ghr-field">
@@ -62,6 +66,15 @@
               <g transform="rotate(45, 127.5, 445.5)">
                 <rect x="122.5" y="440.5" width="10" height="10" fill="#ffffff" />
               </g>
+            </g>
+            <g v-if="viewMode === 'heat'" aria-hidden="true">
+              <path
+                v-for="zone in zoneRows"
+                :key="'zone-' + zone.code"
+                class="ghr-zone"
+                :d="zone.path"
+                :style="{ fill: zone.heat }"
+              />
             </g>
             <template v-if="showTrails">
               <path
@@ -105,6 +118,12 @@
             <template v-for="(b, i) in animBalls" :key="'b' + i">
               <circle v-if="b" :cx="b.x" :cy="b.y" r="5" class="ghr-ball" />
             </template>
+            <g v-if="viewMode === 'heat'" aria-hidden="true">
+              <g v-for="zone in zoneRows" :key="'zl-' + zone.code">
+                <text :x="zone.labelX" :y="zone.labelY" text-anchor="middle" class="ghr-zone-code">{{ zone.code }}</text>
+                <text :x="zone.labelX" :y="zone.labelY + 30" text-anchor="middle" class="ghr-zone-hit">{{ zone.hits }}</text>
+              </g>
+            </g>
             <g ref="fxLayer" class="ghr-fireworks-layer" aria-hidden="true" />
           </svg>
           <div class="ghr-legend">
@@ -124,6 +143,24 @@
               <span class="ghr-legend-swatch" :style="{ background: s.color }"></span>
               {{ s.label }}
             </span>
+          </div>
+          <div class="ghr-stats">
+            <div class="ghr-stat-row">
+              <span class="ghr-stat-title">区域统计</span>
+              <span v-for="zone in zoneRows" :key="'sz-' + zone.code" class="ghr-stat-chip">
+                <i class="is-zone" :style="{ background: zone.heat }"></i>
+                <b>{{ zone.code }}</b>{{ zone.label }}
+                <em>{{ zone.hits }}</em><small>/ {{ zone.balls }}</small>
+              </span>
+            </div>
+            <div class="ghr-stat-row">
+              <span class="ghr-stat-title">球种统计</span>
+              <span v-for="type in typeRows" :key="'st-' + type.code" class="ghr-stat-chip">
+                <i :style="{ background: typeColor(type.code) }"></i>
+                <b>{{ type.label }}</b>
+                <em>{{ type.hits }}</em><small>/ {{ type.balls }}</small>
+              </span>
+            </div>
           </div>
         </div>
         <ul class="ghr-list">
@@ -171,6 +208,7 @@ import {
   projectHomeRunLanding,
   spawnHomeRunSideSparks,
 } from '../../utils/homeRunEffect';
+import { buildSprayTypeRows, buildSprayZoneRows, sprayZoneViews } from '../../utils/sprayZones';
 
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
@@ -330,6 +368,21 @@ const visibleRecords = computed(() => {
   const [teamId, playerId] = String(batterKey.value).split(':').map(Number);
   return teamFiltered.value.filter((r) => teamIdOf(r) === teamId && Number(r.playerId) === playerId);
 });
+
+const viewMode = ref('heat');
+const zoneRows = computed(() => sprayZoneViews(buildSprayZoneRows(visibleRecords.value.map((r) => ({
+  x: Number(r.sprayX),
+  y: Number(r.sprayY),
+  zone: r.sprayZone ?? r.sprayFieldPos,
+  resultCode: r.resultCode
+})))));
+const typeRows = computed(() => buildSprayTypeRows(visibleRecords.value.map((r) => ({
+  bipCode: r.bipCode,
+  resultCode: r.resultCode
+}))));
+function typeColor(code) {
+  return code === 'other' ? 'var(--el-text-color-placeholder)' : battedShapeColor(`bip:${code}:x`);
+}
 
 function onFilterChange() {
   cancelAnim();
@@ -686,6 +739,22 @@ function zoneText(r) {
   color: var(--el-text-color-secondary);
   font-size: 12px;
 }
+
+.ghr-mode-toggle { display: inline-flex; padding: 2px; margin-left: auto; border: 1px solid var(--el-border-color); border-radius: 999px; }
+.ghr-mode-toggle button { padding: 3px 10px; border: 0; border-radius: 999px; background: none; font-size: 12px; color: var(--el-text-color-secondary); cursor: pointer; }
+.ghr-mode-toggle button.is-active { background: var(--el-fill-color); color: var(--el-text-color-primary); font-weight: 600; }
+.ghr-zone { mix-blend-mode: screen; stroke: rgba(255, 255, 255, .35); stroke-width: 1; }
+.ghr-zone-code { font-size: 18px; font-weight: 700; fill: #1f2d3d; paint-order: stroke; stroke: #ffffff; stroke-width: 3; }
+.ghr-zone-hit { font-size: 20px; font-weight: 700; fill: #7a5a1f; paint-order: stroke; stroke: #ffffff; stroke-width: 3; }
+.ghr-stats { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ghr-stat-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--el-text-color-secondary); }
+.ghr-stat-title { font-size: 11px; font-weight: 700; color: var(--el-text-color-secondary); }
+.ghr-stat-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.ghr-stat-chip i { width: 8px; height: 8px; border-radius: 50%; }
+.ghr-stat-chip i.is-zone { background: #ff9933; }
+.ghr-stat-chip b { font-weight: 600; color: var(--el-text-color-primary); }
+.ghr-stat-chip em { font-style: normal; font-weight: 700; color: var(--el-text-color-primary); }
+.ghr-stat-chip small { color: var(--el-text-color-placeholder); }
 
 @media (max-width: 768px) {
   .ghr-body {

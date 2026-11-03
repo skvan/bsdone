@@ -207,3 +207,32 @@ test('打席数/活跃投手统计口径', () => {
     { id: 2, stats: { pitching: { np: 0 } } },
   ]), 1);
 });
+
+test('净状态：仅换投（无打序投手）把旧投手列入不可再上并记录 P 位', () => {
+  const before = team([player(1, '甲', 'DH')], [player(9, '乙', '')], { fpId: 8, fpRow: player(8, '旧投', 'P') });
+  const after = team([player(1, '甲', 'DH')], [player(10, '丙', '')], { fpId: 10, fpRow: player(10, '新投', 'P') });
+  const diff = diffTeamState(before, after);
+  assert.deepEqual(diff.substitutions, []);
+  assert.ok(diff.pitchingChange);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(net.unavailable.includes(8), '旧投手要进不可再上');
+  assert.ok(!net.unavailable.includes(10), '新投手不能留在不可再上');
+  assert.equal(net.outPositions.get(8), 'P');
+});
+
+test('净状态：垒球仅换投不把旧投手列入不可再上', () => {
+  const before = team([player(1, '甲', 'DH')], [], { fpId: 8 });
+  const after = team([player(1, '甲', 'DH')], [], { fpId: 10 });
+  const net = applyNetTeamState(before, after, diffTeamState(before, after), { sport: 'SOFTBALL' });
+  assert.ok(!net.unavailable.includes(8));
+});
+
+test('净状态：P↔野手互换（旧投手仍在打序）不把旧投手列入不可再上', () => {
+  const before = team([player(1, '投', 'P'), player(2, '野', 'SS')], [], { fpId: 1 });
+  const after = team([player(1, '投', 'SS'), player(2, '野', 'P')], [], { fpId: 2 });
+  const diff = diffTeamState(before, after);
+  assert.ok(diff.pitchingChange);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(!net.unavailable.includes(1), '仍在打序的旧投手不能进不可再上');
+  assert.ok(!net.outPositions.has(1));
+});

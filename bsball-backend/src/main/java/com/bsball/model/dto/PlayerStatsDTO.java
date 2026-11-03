@@ -790,6 +790,7 @@ public class PlayerStatsDTO {
     public static class Pitching {
         private int gp;
         private double ip;
+        private int outsRecorded;
         private int er;
         private int unearnedR;
         private int pendingR;
@@ -839,6 +840,11 @@ public class PlayerStatsDTO {
         @Generated
         public double getIp() {
             return this.ip;
+        }
+
+        @Generated
+        public int getOutsRecorded() {
+            return this.outsRecorded;
         }
 
         @Generated
@@ -1004,6 +1010,11 @@ public class PlayerStatsDTO {
         @Generated
         public void setIp(double ip) {
             this.ip = ip;
+        }
+
+        @Generated
+        public void setOutsRecorded(int outsRecorded) {
+            this.outsRecorded = outsRecorded;
         }
 
         @Generated

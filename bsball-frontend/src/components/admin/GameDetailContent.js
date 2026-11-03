@@ -350,9 +350,6 @@ var Sl={
 ,xs=["onClick"],Es={
   key:1
 }
-,Ls={
-  class:"td4"
-}
 ,Hs={
   class:"th-with-tip"
 }
@@ -391,9 +388,6 @@ var Sl={
 }
 ,zs=["onClick"],Us={
   key:1
-}
-,Ks={
-  class:"td4"
 }
 ,js={
   class:"th-with-tip"
@@ -1328,7 +1322,7 @@ var Sl={
     }
     ){
       const l=[];
-      return t._totals&&l.push("row-totals"),de.value[e]===ma(t)&&l.push("row-selected"),l.filter(Boolean).join(" ")
+      return t._totals&&l.push("row-totals"),(e==="awayBatters"||e==="homeBatters")&&!t._totals&&t.battingOrder==null&&l.push("row-sub"),de.value[e]===ma(t)&&l.push("row-selected"),l.filter(Boolean).join(" ")
     }
     return(e,t)=>{
       const l=dl,d=vl,v=hl("router-link"),y=cl,f=ml;
@@ -1628,7 +1622,7 @@ var Sl={
           ,1032,["content","visible"]))),128))]),s("span",Rs,[j(a)?(r(),i("span",{
             key:0,class:"td3-number td3-number--clickable",onClick:Fe(o=>Se("awayBatters",a),["stop"])
           }
-          ,"#"+n(j(a)),9,xs)):(r(),i("span",Es,"-"))]),s("span",Ls,n(E(a,"position")||"-"),1)]))]),_:1
+          ,"#"+n(j(a)),9,xs)):(r(),i("span",Es,"-"))])]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(Re.value,a=>(r(),B(y,{
           key:a.key,label:a.label,"min-width":fe(a),align:"center"
@@ -1736,7 +1730,7 @@ var Sl={
           ,1032,["content","visible"]))),128))]),s("span",Vs,[j(a)?(r(),i("span",{
             key:0,class:"td3-number td3-number--clickable",onClick:Fe(o=>Se("homeBatters",a),["stop"])
           }
-          ,"#"+n(j(a)),9,zs)):(r(),i("span",Us,"-"))]),s("span",Ks,n(E(a,"position")||"-"),1)]))]),_:1
+          ,"#"+n(j(a)),9,zs)):(r(),i("span",Us,"-"))])]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(Re.value,a=>(r(),B(y,{
           key:a.key,label:a.label,"min-width":fe(a),align:"center"

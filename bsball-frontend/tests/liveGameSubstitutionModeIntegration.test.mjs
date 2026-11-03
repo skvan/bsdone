@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeFieldingPosition } from '../src/utils/gamePlayerStat.js';
 
 import { orderPitcherRows } from '../src/utils/liveGamePitcherOrder.js';
 
@@ -39,7 +40,7 @@ function sliceFn(header) {
 const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'dc', 'mr', 'vr', 'gr', 'br', '_s', 'Eo'];
 const code = DEPS.map((n) => sliceFn('function ' + n + '(')).join('\n')
   + '\n' + sliceFn('function No(e,t){');
-const make = new Function('Ee', '_', 'ft', 'Nn', 'le', 'fe', 'orderPitcherRows',
+const make = new Function('Ee', '_', 'ft', 'Nn', 'le', 'fe', 'normalizeFieldPos', 'orderPitcherRows',
   'return (function(){' + code + '\nreturn {No,Eo};})()');
 
 const ref = (v) => ({ value: v });
@@ -96,7 +97,8 @@ test('取消 DH / 投手进打序：No() 仍给投手一条打击行（不是只
     { homeTeamId: 7, awayTeamId: 8 },
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
+    away.lineupStarterIds, home.lineupStarterIds,
+    normalizeFieldingPosition, orderPitcherRows,
   );
   const rows = No('home', 7);
   const pitcherBatting = rows.find((r) => Number(r.playerId) === 200 && r.isPitcher === 0);
@@ -119,7 +121,8 @@ test('被换下者最后守位：starter 的 bench 副本靠 lastPosition 回填
     { homeTeamId: 7, awayTeamId: 8 },
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
+    away.lineupStarterIds, home.lineupStarterIds,
+    normalizeFieldingPosition, orderPitcherRows,
   );
   const rows = No('home', 7);
   const dh = rows.find((r) => Number(r.playerId) === 100 && r.isPitcher === 0);
@@ -204,7 +207,7 @@ test('#478 投手登板序：换投后仍按首次登板顺序编号，不按当
     { homeTeamId: 7, awayTeamId: 8 },
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
-    away.lineupStarterIds, home.lineupStarterIds, orderPitcherRows,
+    away.lineupStarterIds, home.lineupStarterIds, normalizeFieldingPosition, orderPitcherRows,
   );
   const rows = No('home', 7);
   const pitchers = rows.filter((row) => row.isPitcher === 1);

@@ -1,8 +1,12 @@
 package com.bsball.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
@@ -13,6 +17,7 @@ import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -45,6 +50,8 @@ class GameServiceSaveLiveTest {
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
     @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -68,7 +75,7 @@ class GameServiceSaveLiveTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
@@ -111,6 +118,59 @@ class GameServiceSaveLiveTest {
         gameService.saveLive(Long.valueOf(GAME_ID), dtoWithEr(99));
 
         assertEquals(Integer.valueOf(3), pitcher.getEr());
+    }
+
+    @Test
+    @DisplayName("saveLive：status=final 时触发 §11 结算验证")
+    void saveLive_final_triggersSettlementValidation() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService)
+                .validateSettlement(Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID));
+    }
+
+    @Test
+    @DisplayName("saveLive：非 final 场次不触发 §11 结算验证")
+    void saveLive_liveStatus_skipsSettlementValidation() {
+        lenient().when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("live");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService, never())
+                .validateSettlement(TENANT_ID, GAME_ID);
+    }
+
+    @Test
+    @DisplayName("saveLive：结算验证异常不影响保存")
+    void saveLive_settlementValidationFailure_doesNotBlockSave() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        when(earnedRunReconstructionService.validateSettlement(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID)))
+                .thenThrow(new IllegalStateException("validation boom"));
+
+        GameSaveLiveDTO.GameUpdatePart gamePart = new GameSaveLiveDTO.GameUpdatePart();
+        gamePart.setStatus("final");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setGame(gamePart);
+
+        assertDoesNotThrow(() -> gameService.saveLive(Long.valueOf(GAME_ID), dto));
+        verify(gameRepository).save(any(Game.class));
     }
 
     @Test
@@ -192,6 +252,74 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(2), pitcher.getCatcherSb());
         assertEquals(Integer.valueOf(1), pitcher.getCatcherCs());
         assertEquals(Integer.valueOf(8), pitcher.getOutsRecorded(), "2.2 局 = 8 个出局");
+    }
+
+    @Test
+    @DisplayName("saveLive：首个守位统一大写落库，DH/PH/EP 不视为守备位")
+    void saveLive_firstPosition_normalizedAndIgnoredForBattingOnlyPositions() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setFirstPosition("3b");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("3B", pitcher.getFirstPosition());
+
+        part.setFirstPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getFirstPosition(), "DH 不是守备位，首个守位应清空");
+    }
+
+    @Test
+    @DisplayName("saveLive：先发守备位统一大写落库，DH 不写；缺栏保留")
+    void saveLive_startingPosition_normalizedAndPreserved() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setStartingPosition("lf");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("LF", pitcher.getStartingPosition());
+
+        part.setStartingPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getStartingPosition(), "DH 不是守备位，先发守备位应清空");
+
+        pitcher.setStartingPosition("RF");
+        part.setStartingPosition(null);
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("RF", pitcher.getStartingPosition(), "旧客户端缺栏不得清空先发守备位");
+    }
+
+    @Test
+    @DisplayName("saveLive：载荷缺首个守位时保留既有值（旧客户端不回退历史）")
+    void saveLive_missingFirstPosition_preservesExisting() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        pitcher.setFirstPosition("3B");
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals("3B", pitcher.getFirstPosition());
     }
 
     @Test

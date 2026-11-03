@@ -34,6 +34,7 @@ import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -72,6 +73,8 @@ class GameServiceSaveResultTest {
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
 
     @Mock
     private EventRepository eventRepository;
@@ -105,7 +108,7 @@ class GameServiceSaveResultTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
@@ -175,20 +178,76 @@ class GameServiceSaveResultTest {
     }
 
     @Test
-    @DisplayName("球員整位從 payload 消失：他的列仍會被刪除（保留原語義）")
-    void saveResult_playerGone_stillDeletes() {
+    @DisplayName("payload 漏带但未显式删除：真实打者/投手行一律保留")
+    void saveResult_playerGoneWithoutRemovedIds_keepsRows() {
         givenExistingRows(batterRow(), pitcherRow());
         SaveGameResultDTO dto = new SaveGameResultDTO();
-        // 另一位球員，與既有兩列無關
+        // 另一位球員，與既有兩列無關；未在 removedStatIds 中列出既有行
         dto.setStats(new ArrayList<>(List.of(
                 part(null, Long.valueOf(777L), 0, Integer.valueOf(1), null))));
 
         gameService.saveResult(Long.valueOf(GAME_ID), dto);
 
+        assertEquals(0, deletedRows().size(), "payload 漏带不再自动删除既有统计行");
+    }
+
+    @Test
+    @DisplayName("removedStatIds 显式列出的行才删除")
+    void saveResult_removedStatIds_deleteRows() {
+        givenExistingRows(batterRow(), pitcherRow());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(List.of(BATTER_ROW_ID, PITCHER_ROW_ID)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
         List<GamePlayerStat> deleted = deletedRows();
-        assertEquals(2, deleted.size(), "該球員的兩列都應被刪除");
+        assertEquals(2, deleted.size(), "显式列出的两列应被删除");
         assertEquals(BATTER_ROW_ID, deleted.get(0).getId().longValue());
         assertEquals(PITCHER_ROW_ID, deleted.get(1).getId().longValue());
+    }
+
+    @Test
+    @DisplayName("removedStatIds 与 payload 同一行：拒绝保存")
+    void saveResult_removedIdAlsoSaved_rejected() {
+        givenExistingRows(batterRow(), pitcherRow());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(1), null))));
+        dto.setRemovedStatIds(new ArrayList<>(List.of(BATTER_ROW_ID)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(400, ex.getCode());
+        assertEquals(0, deletedRows().size());
+    }
+
+    @Test
+    @DisplayName("removedStatIds 含空值与重复 id：忽略空值且只删除一次")
+    void saveResult_removedIdsNullOrDuplicate_deletedOnce() {
+        givenExistingRows(batterRow());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(Arrays.asList(null, BATTER_ROW_ID, BATTER_ROW_ID)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        List<GamePlayerStat> deleted = deletedRows();
+        assertEquals(1, deleted.size(), "重复 id 不得重复删除，空值忽略");
+        assertEquals(BATTER_ROW_ID, deleted.get(0).getId().longValue());
+    }
+
+    @Test
+    @DisplayName("removedStatIds 含本场不存在的行：忽略")
+    void saveResult_removedIdNotInGame_ignored() {
+        givenExistingRows(batterRow());
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(List.of(999999L)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(0, deletedRows().size());
     }
 
     @Test
@@ -456,14 +515,30 @@ class GameServiceSaveResultTest {
     }
 
     @Test
-    @DisplayName("引擎场次保存结果：payload 漏带的全零投手行允许清理")
-    void saveResult_engineManaged_deletesMissingZeroPitcherRow() {
+    @DisplayName("引擎场次保存结果：payload 漏带的全零投手行未显式删除时保留")
+    void saveResult_engineManaged_keepsOmittedZeroPitcherRow() {
         GamePlayerStat pitcher = zeroPitcherRow();
         givenExistingRows(pitcher);
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
                 .thenReturn(Boolean.TRUE);
         SaveGameResultDTO dto = new SaveGameResultDTO();
         dto.setStats(new ArrayList<>());
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(0, deletedRows().size(), "未在 removedStatIds 列出的行不得自动删除");
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：removedStatIds 显式删除全零投手行")
+    void saveResult_engineManaged_deletesRemovedZeroPitcherRow() {
+        GamePlayerStat pitcher = zeroPitcherRow();
+        givenExistingRows(pitcher);
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(List.of(PITCHER_ROW_ID)));
 
         gameService.saveResult(Long.valueOf(GAME_ID), dto);
 
@@ -489,20 +564,35 @@ class GameServiceSaveResultTest {
     }
 
     @Test
-    @DisplayName("引擎场次保存结果：全零但仍有自责分判定的投手行不得删除")
-    void saveResult_engineManaged_keepsMissingZeroPitcherRowWithDecisions() {
-        GamePlayerStat pitcher = zeroPitcherRow();
-        givenExistingRows(pitcher);
+    @DisplayName("引擎场次保存结果：removedStatIds 删除仍有数据的投手行被拒绝")
+    void saveResult_engineManaged_removedPitcherWithData_rejected() {
+        givenExistingRows(pitcherRow());
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(List.of(PITCHER_ROW_ID)));
+
+        assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(0, deletedRows().size());
+    }
+
+    @Test
+    @DisplayName("引擎场次保存结果：removedStatIds 删除有自责分判定的全零投手行被拒绝")
+    void saveResult_engineManaged_removedZeroPitcherWithDecisions_rejected() {
+        givenExistingRows(zeroPitcherRow());
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
                 .thenReturn(Boolean.TRUE);
         when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(
                 Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(Boolean.TRUE);
         SaveGameResultDTO dto = new SaveGameResultDTO();
         dto.setStats(new ArrayList<>());
+        dto.setRemovedStatIds(new ArrayList<>(List.of(PITCHER_ROW_ID)));
 
-        gameService.saveResult(Long.valueOf(GAME_ID), dto);
-
-        assertEquals(0, deletedRows().size(), "仍有自责分判定的投手行不得删除");
+        assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        assertEquals(0, deletedRows().size());
     }
 
     @Test
@@ -547,6 +637,83 @@ class GameServiceSaveResultTest {
 
         assertEquals(Integer.valueOf(4), pitcher.getEr());
         assertEquals(Integer.valueOf(6), pitcher.getPitchR());
+    }
+
+    @Test
+    @DisplayName("saveResult：仅新建行按 position 兜底首个守位；已有行不被最后守位回填")
+    void saveResult_firstPosition_onlyNewRowsFallback() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO.StatPart existingPart = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        existingPart.setPosition("lf");
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(existingPart)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(batter.getFirstPosition(), "已有行不得用最后守位回填，避免代打代跑复活进守备表");
+
+        batter.setFirstPosition("3B");
+        SaveGameResultDTO.StatPart next = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        next.setPosition("P");
+        SaveGameResultDTO dto2 = new SaveGameResultDTO();
+        dto2.setStats(new ArrayList<>(List.of(next)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto2);
+        assertEquals("3B", batter.getFirstPosition(), "已有首个守位必须保留，后续换位不改写");
+
+        SaveGameResultDTO.StatPart fresh = new SaveGameResultDTO.StatPart();
+        fresh.setTeamId(Long.valueOf(TEAM_ID));
+        fresh.setPlayerId(Long.valueOf(4321L));
+        fresh.setIsPitcher(Integer.valueOf(0));
+        fresh.setBattingOrder(Integer.valueOf(1));
+        fresh.setPosition("cf");
+        SaveGameResultDTO dto3 = new SaveGameResultDTO();
+        dto3.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null),
+                fresh)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto3);
+
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
+        verify(gamePlayerStatRepository, atLeastOnce()).save(captor.capture());
+        GamePlayerStat created = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(4321L).equals(row.getPlayerId()))
+                .findFirst().orElseThrow();
+        assertEquals("CF", created.getFirstPosition(), "结果页新建行按当前守位兜底");
+    }
+
+    @Test
+    @DisplayName("saveResult：先发守备位只写新建的先发行；替补/已有行不写")
+    void saveResult_startingPosition_onlyNewStarterRows() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO.StatPart existingPart = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        existingPart.setPosition("lf");
+
+        SaveGameResultDTO.StatPart starter = part(null, Long.valueOf(5001L), 0, Integer.valueOf(0), null);
+        starter.setBattingOrder(Integer.valueOf(2));
+        starter.setPosition("lf");
+        SaveGameResultDTO.StatPart substitute = part(null, Long.valueOf(5002L), 0, Integer.valueOf(0), null);
+        substitute.setPosition("rf");
+        SaveGameResultDTO.StatPart pitcher = part(null, Long.valueOf(5003L), 1, Integer.valueOf(0), Double.valueOf(1.0D));
+        pitcher.setPitcherOrder(Integer.valueOf(1));
+        pitcher.setPosition("P");
+
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(existingPart, starter, substitute, pitcher)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(batter.getStartingPosition(), "已有行不得被结果页回填先发守备位");
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
+        verify(gamePlayerStatRepository, atLeastOnce()).save(captor.capture());
+        GamePlayerStat createdStarter = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5001L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdSub = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5002L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdPitcher = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5003L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        assertEquals("LF", createdStarter.getStartingPosition(), "先发打者按守位写先发守备位");
+        assertNull(createdSub.getStartingPosition(), "替补不写先发守备位");
+        assertEquals("P", createdPitcher.getStartingPosition(), "先发投手写 P");
     }
 
     @Test
