@@ -8539,7 +8539,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function canSecondPlayOut(firstKind,kind){
       if(firstKind==="strikeout")return kind==="tag"||kind==="pickoff"||kind==="steal";
       if(firstKind==="batterContact")return kind==="tag"||kind==="force";
-      if(firstKind==="pickoff"||firstKind==="steal")return kind==="tag"||kind==="force";
+      if(firstKind==="pickoff"||firstKind==="steal")return kind==="tag";
       return!1
     }
     function recordPlayOut(positions,kind="other"){

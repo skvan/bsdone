@@ -87,10 +87,10 @@ test('同一 play 第二出局类型门禁：三振后禁止封杀补 DP', () =>
     assert.equal(canSecondPlayOut('batterContact', kind), true, `打者先出局 + ${kind} 记 DP`);
   }
   assert.equal(canSecondPlayOut('batterContact', 'pickoff'), false, '打者先出局 + 牵制仍不记 DP');
-  for (const kind of ['tag', 'force']) {
-    assert.equal(canSecondPlayOut('pickoff', kind), true, `牵制 + ${kind} 记 DP`);
-    assert.equal(canSecondPlayOut('steal', kind), true, `盗垒死 + ${kind} 记 DP`);
-  }
+  assert.equal(canSecondPlayOut('pickoff', 'tag'), true, '牵制 + 触杀记 DP');
+  assert.equal(canSecondPlayOut('pickoff', 'force'), false, '牵制后无强迫进垒，封杀不记 DP');
+  assert.equal(canSecondPlayOut('steal', 'tag'), true, '盗垒死 + 触杀记 DP');
+  assert.equal(canSecondPlayOut('steal', 'force'), false, '盗垒死后无强迫进垒，封杀不记 DP');
   for (const firstKind of ['tag', 'force', 'other']) {
     assert.equal(canSecondPlayOut(firstKind, 'tag'), false, `${firstKind} 首出局暂不补记 DP`);
   }
