@@ -31,7 +31,6 @@ public final class ClubhouseModuleCatalog {
             new ModuleDef("performance", "数据表现", 800, 500, 360, 320, true),
             new ModuleDef("teams", "代表球队", 400, 300, 280, 220, true),
             new ModuleDef("schedule", "接下来的比赛", 800, 560, 420, 300, true),
-            new ModuleDef("about", "关于我", 400, 280, 300, 220, true),
             new ModuleDef("recentGames", "最近战报", 800, 320, 360, 260, true),
             new ModuleDef("quickLinks", "快捷入口", 400, 220, 240, 180, true));
 

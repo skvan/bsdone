@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -626,26 +626,6 @@
           </section>
 
           <section
-            v-if="isModuleVisible('about')"
-            class="panel about-panel dashboard-module"
-            data-module-key="about"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('about')"
-            @click="selectModule('about')"
-            @pointerdown="startModulePointer('about', $event)"
-            @keydown="onModuleKeydown('about', $event)"
-          >
-            <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
-            <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
-            <div class="about-meta">
-              <div><span>守备位置</span><b>{{ (player.positions || []).join(' / ') || '未填写' }}</b></div>
-              <div><span>投打</span><b>{{ throwBatLabel }}</b></div>
-              <div><span>身高 / 体重</span><b>{{ player.height || '-' }} / {{ player.weight || '-' }}</b></div>
-              <div><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
-            </div>
-          </section>
-
-          <section
             v-if="isModuleVisible('quickLinks')"
             class="panel dashboard-module"
             data-module-key="quickLinks"
@@ -885,7 +865,7 @@ const { tenantCode } = useTenantRouter();
 
 const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
-const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'spray', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
+const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'spray', 'milestones', 'performance', 'teams', 'schedule', 'recentGames', 'quickLinks'];
 const CONFIG_VERSION = 4;
 const CONFIG_LAYOUT = 'v4-board';
 const MILESTONE_TRACK_INSET = 4;
@@ -901,6 +881,8 @@ const HANDLE_LABELS = {
   se: '右下缩放'
 };
 const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
+// 生产构建通过 VITE_CLUBHOUSE_LAYOUT_EDITING=false 关闭布局编辑（测试/本地默认开启）
+const layoutEditingEnabled = import.meta.env.VITE_CLUBHOUSE_LAYOUT_EDITING !== 'false';
 const compactBoardQuery = window.matchMedia('(min-width: 981px) and (max-width: 1339px)');
 const data = ref(null);
 const loading = ref(false);
@@ -1833,7 +1815,7 @@ function autoScrollLayoutPointer() {
 }
 
 function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
+  if (!layoutEditingEnabled || !data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
@@ -3303,10 +3285,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .rep-stat b { display: block; font-family: var(--bs-font-num); font-size: 14px; color: var(--bs-ink); }
 .rep-stat span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-faint); }
 .rep-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; color: var(--bs-text-muted); }
-.about-intro { margin: 0; font-size: 10px; line-height: 1.85; color: var(--bs-text-muted); }
-.about-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--bs-hairline-soft); }
-.about-meta span { display: block; font-size: 10px; color: var(--bs-text-faint); }
-.about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
+
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
 @media (prefers-reduced-motion: reduce) {
