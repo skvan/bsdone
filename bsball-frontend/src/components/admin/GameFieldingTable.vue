@@ -9,7 +9,7 @@
         <template #default="{ row }">{{ row.number ?? '-' }}</template>
       </el-table-column>
       <el-table-column label="POS" width="90" align="center">
-        <template #default="{ row }">{{ row.position || '-' }}</template>
+        <template #default="{ row }">{{ row._fieldPosition || row.position || '-' }}</template>
       </el-table-column>
       <el-table-column
         v-for="col in columns"
