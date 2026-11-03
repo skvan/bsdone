@@ -113,7 +113,7 @@ test('批C 三杀门槛接入点（静态断言，防回退）', () => {
 
 test('LiveGame.js 接入点（静态断言，防回退）', () => {
   const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
-  assert.match(src, /import \{ computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats \} from '\.\.\/\.\.\/utils\/liveGameChainStats';/, '导入链统计、接杀回传与显示模块');
+  assert.match(src, /import \{ computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants \} from '\.\.\/\.\.\/utils\/liveGameChainStats';/, '导入链统计、接杀回传、双杀参与与显示模块');
   assert.match(src, /function applyChainFieldingStats\(type,fielders\)\{/, 'fp 统计分流函数存在');
   assert.match(src, /a\.stats\.batting\.ab=\(a\.stats\.batting\.ab\?\?0\)\+1,.*applyChainFieldingStats\(e\.playType,e\.fielders\)/, 'fp 通道已接入分流（不再直接 Dn(e.fielders)）');
   assert.match(src, /applyChainFieldingStats\("DP",t\)/, 'bt DP 回退通道已接入分流');

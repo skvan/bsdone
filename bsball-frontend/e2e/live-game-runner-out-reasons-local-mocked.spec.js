@@ -167,8 +167,8 @@ test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒盗垒失�
   const tagLog = JSON.stringify(tagSnapshot.eventLog);
   expect(tagLog).toContain('触杀出局：二垒跑者 T2P1 (#1) 于二垒出局（6-4）');
   expect(tagSnapshot.gameState.outs).toBe(1);
-  expect(tagSnapshot.playerStatsById['106'].fielding).toMatchObject({ a: 1, po: 0 });
-  expect(tagSnapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
+  expect(tagSnapshot.playerStatsById['106'].fielding).toMatchObject({ a: 1, po: 0, dp: 0 });
+  expect(tagSnapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1, dp: 0 });
   expect(tagSnapshot.playerStatsById['201'].batting.cs).toBe(0);
 
   await throwBalls(page, 4);
@@ -235,8 +235,8 @@ test('Issue #527：飞球接杀后同垒出局改走封杀传球链，无离垒�
   expect(log).toContain('封杀出局：二垒跑者 T2P1 (#1) 于二垒出局（8-4）');
   expect(log).not.toContain('接杀回传');
   expect(snapshot.gameState.outs).toBe(2);
-  expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1 });
-  expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
+  expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1, dp: 1 });
+  expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1, dp: 1 });
 });
 
 test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {

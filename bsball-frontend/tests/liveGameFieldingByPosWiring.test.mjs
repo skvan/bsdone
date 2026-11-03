@@ -17,13 +17,17 @@ test('LiveGame 引入 accrueFieldingPlay 与投手记账目标解析', () => {
 test('DH 制仅守备投手：所有 PO/A/E 记账目标先解析到活体投手', () => {
   assert.equal(
     live.split('resolveFieldingCreditTarget(').length - 1,
-    8,
-    '应为 Dn/chain/失误/三振捕手/三振野手/牵制/接杀回传/盗垒死 共 8 处解析'
+    9,
+    '应为 Dn/chain/双杀参与/失误/三振捕手/三振野手/牵制/接杀回传/盗垒死 共 9 处解析'
   );
   assert.equal(
     live.split('resolveFieldingCreditTarget(r.pos,Hn.value.find(a=>a.position===r.pos),Se.value)').length - 1,
     2,
     'Dn/applyChainFieldingStats 应各解析一次 P 位记账目标'
+  );
+  assert.ok(
+    live.includes('resolveFieldingCreditTarget(r,Hn.value.find(a=>a.position===r),Se.value)'),
+    '双杀参与守备员未解析投手目标'
   );
   assert.ok(live.includes('resolveFieldingCreditTarget(player.position,player,Se.value)'), '失误未解析投手目标');
   assert.ok(live.includes('resolveFieldingCreditTarget("C",Vt("C"),Se.value)'), '三振捕手未解析目标');
@@ -52,8 +56,8 @@ test('失误记账：E 写入失误责任人的当前守位', () => {
 
 test('双杀守备：DP 写入参与双杀的当前守位', () => {
   assert.ok(
-    live.includes('accrueFieldingPlay(p.stats.fielding,r.pos,{dp:1})'),
-    'applyChainFieldingStats 的 DP 未同步逐位置'
+    live.includes('accrueFieldingPlay(p.stats.fielding,r,{dp:1})'),
+    'creditDoublePlayFielders 的 DP 未同步逐位置'
   );
 });
 

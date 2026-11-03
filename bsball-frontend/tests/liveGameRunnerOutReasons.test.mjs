@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { computeDoublePlayParticipants } from '../src/utils/liveGameChainStats.js';
 
 const source = readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
 
@@ -46,6 +47,21 @@ test('向前拖拽出局菜单：新增盗垒失败、移除独立 CS 与离垒�
   assert.ok(!source.includes('id:"out_last"'), '源码不再提供离垒过远选项');
   assert.ok(!source.includes('id:"out_cs"'), '拖拽菜单不再提供独立 CS 选项');
   assert.ok(!source.includes('abCatchRecorded'), '接杀标记与接杀回传菜单入口已移除');
+});
+
+test('双杀参与守备员：1-3-4 逆双杀、接杀回传去重', () => {
+  assert.deepEqual(computeDoublePlayParticipants(['P', '1B', '2B']), ['P', '1B', '2B']);
+  assert.deepEqual(computeDoublePlayParticipants(['CF', '2B']), ['CF', '2B']);
+  assert.deepEqual(computeDoublePlayParticipants(['CF', 'CF', '2B']), ['CF', '2B']);
+});
+
+test('双杀守备统计：DP 链与接杀回传均给参与守备员记 dp', () => {
+  assert.match(source, /function creditDoublePlayFielders\(positions\)\{/);
+  assert.ok(source.includes('type==="DP"&&creditDoublePlayFielders(s.map(r=>r.pos))'), 'DP 链参与守备员记 dp');
+  assert.ok(source.includes('creditDoublePlayFielders([...(lastCatchPlay.chain??[]),...C1])'), '接杀后同垒出局给接杀链+回传链记 dp');
+  assert.ok(source.includes('creditDoublePlayFielders(cbChain)'), '遗留接杀回传 flow 记 dp');
+  assert.ok(source.includes('chain:[...t],inning:l.inning,half:l.isTop'), '接杀分支记录接杀链');
+  assert.ok(source.includes('lastCatchPlay=null'), '新打席/投球/撤销/载入清空接杀上下文');
 });
 
 test('本垒出局原因封杀仅在被迫进垒时出现', () => {
