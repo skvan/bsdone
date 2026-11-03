@@ -270,6 +270,16 @@ test('Issue #527：飞球接杀后同垒出局改走封杀传球链，无离垒�
   expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1, dp: 1 });
 });
 
+test('Issue #527：没有接杀时同垒菜单不提供封杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const menu = await dragRunner(page, 1, 1, 'out');
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await expect(menu.getByText('牵制出局')).toBeVisible();
+});
+
 test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
@@ -326,6 +336,7 @@ test('Issue #527：打者先出局后的牵制是独立 play，不记 DP', async
   await recordGroundOut(page, 'SS');
   const menu = await dragRunner(page, 2, 2, 'out');
   await expect(menu.getByText('牵制出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
   await pickMenuItem(page, '牵制出局');
   await clickFielder(page, '2B');
   const snapshot = await saveGame(page, bucket);
