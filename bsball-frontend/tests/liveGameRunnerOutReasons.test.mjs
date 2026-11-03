@@ -75,7 +75,7 @@ test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp',
   assert.ok(source.includes('l.playOut=P?.playOut??null'), '载入现场恢复 playOut');
   assert.ok(source.includes('l.playOut=null'), '新投球/新打者/撤销/半局/重置清空 play 上下文');
   assert.ok(source.includes('O.playOut=null'), '整场重置清空 playOut');
-  assert.ok(!source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局不再自动推进一垒跑者');
+  assert.ok(source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局自动推进被迫进垒跑者');
 });
 
 test('同一 play 第二出局类型门禁：三振后禁止封杀补 DP', () => {
