@@ -769,16 +769,16 @@ function Wd(u,f,l){
   }
   return o
 }
-function Xd(u,f){
+function Xd(u,f,allowForce=true){
   return f===u?[{
     id:"out_pk",en:"Picked Off",cn:"牵制出局"
   }
   ,{
     id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
-  ,{
+  ,...(allowForce?[{
     id:"out_force",en:"Force Out",cn:"封杀出局"
-  }
+  }]:[])
   ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
   }
@@ -5836,7 +5836,8 @@ var sg={
         const s=Kd(e.fromBase,e.toBase);
         if(s)return s
       }
-      return Xd(e.fromBase,e.toBase)
+      // 封杀只在打者出局上下文提供；三振/牵制/盗垒后无强迫进垒
+      return Xd(e.fromBase,e.toBase,!l.playOut||l.playOut.firstKind==="batterContact")
     }
     ),qe=x(!1),Cl=x(!1),at=x([]),St=x(0),Aa=x(null);
     let Oa=null;
@@ -8536,9 +8537,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
     }
     function canSecondPlayOut(firstKind,kind){
-      if(firstKind==="strikeout")return kind==="tagForce"||kind==="pickoff"||kind==="steal";
-      if(firstKind==="batterContact")return kind==="tagForce";
-      if(firstKind==="pickoff"||firstKind==="steal")return kind==="tagForce";
+      if(firstKind==="strikeout")return kind==="tag"||kind==="pickoff"||kind==="steal";
+      if(firstKind==="batterContact")return kind==="tag"||kind==="force";
+      if(firstKind==="pickoff"||firstKind==="steal")return kind==="tag"||kind==="force";
       return!1
     }
     function recordPlayOut(positions,kind="other"){
@@ -9817,7 +9818,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function settleRunnerOut(e){
       const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]),isCs=!!e.stealFail&&C1[0]==="C"&&C1.length===2,reasonCn=isCs?"盗垒死 (CS)":`${y}出局`;
-      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1,paceCatcherStat("catcherCs")),recordPlayOut(C1,e.stealFail?"steal":"tagForce");
+      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1,paceCatcherStat("catcherCs")),recordPlayOut(C1,e.stealFail?"steal":(p??"tag"));
       const b=C1.length>1?LgOut({reasonCn,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
       D(b),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(C1[C1.length-1]),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"

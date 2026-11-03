@@ -374,6 +374,22 @@ test('Issue #527：三振 + 同一球盗垒死记 DP', async ({ page }) => {
   expect(snapshot.playerStatsById['106'].fielding).toMatchObject({ po: 1, dp: 1 });
 });
 
+test('Issue #527：三振后同垒出局不提供封杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  for (let i = 0; i < 3; i++) {
+    await page.locator('button[title="好球 Called Strike"]').click();
+    await page.waitForTimeout(200);
+  }
+  await page.getByRole('button', { name: '挥空三振' }).click();
+  await page.waitForTimeout(400);
+  const menu = await dragRunner(page, 1, 1, 'out');
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await expect(menu.getByText('牵制出局')).toBeVisible();
+});
+
 test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);

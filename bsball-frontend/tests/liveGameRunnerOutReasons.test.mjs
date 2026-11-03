@@ -18,6 +18,11 @@ const runnerOutReasonList = (() => {
   return new Function(`${code}; return Xd;`)();
 })();
 
+const canSecondPlayOut = (() => {
+  const code = sliceBetween('function canSecondPlayOut(firstKind,kind){', 'function recordPlayOut(positions,kind="other"){');
+  return new Function(`${code}; return canSecondPlayOut;`)();
+})();
+
 test('同垒拖拽出局菜单：去掉离垒过远，加入触杀/封杀并接入传球链', () => {
   for (const base of [1, 2, 3]) {
     const reasons = runnerOutReasonList(base, base);
@@ -58,10 +63,9 @@ test('双杀参与守备员：1-3-4 逆双杀、接杀回传去重', () => {
 test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp', () => {
   assert.match(source, /function recordPlayOut\(positions,kind="other"\)\{/);
   assert.match(source, /ctx\.outs>=2&&!ctx\.credited&&\(creditDoublePlayFielders\(ctx\.fielders\),ctx\.credited=!0\)/, '第二个出局合并两次出局的参与员记 dp');
-  assert.match(source, /function canSecondPlayOut\(firstKind,kind\)\{[\s\S]*?firstKind==="batterContact"\)return kind==="tagForce"/, '打者先出局只允许触杀/封杀补第二出局');
   assert.ok(source.includes('type==="DP"&&creditDoublePlayFielders(s.map(r=>r.pos))'), 'DP 链参与守备员记 dp');
   assert.ok(source.includes('Dn(t),recordPlayOut(t,"batterContact")'), '打者出局记录守备链');
-  assert.ok(source.includes('recordPlayOut(C1,e.stealFail?"steal":"tagForce")'), '跑者第二出局记录守备链');
+  assert.ok(source.includes('recordPlayOut(C1,e.stealFail?"steal":(p??"tag"))'), '跑者第二出局按实际触杀/封杀记录守备链');
   assert.ok(source.includes('creditStrikeoutFielding("caught"),recordPlayOut([],"strikeout")'), '三振出局记录 play 出局');
   assert.ok(source.includes('recordPlayOut(["P",e],"pickoff")'), '牵制出局记录参与员');
   assert.ok(source.includes('recordPlayOut(["C",e],"steal")'), '盗垒死记录参与员');
@@ -74,6 +78,24 @@ test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp',
   assert.ok(!source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局不再自动推进一垒跑者');
 });
 
+test('同一 play 第二出局类型门禁：三振后禁止封杀补 DP', () => {
+  assert.equal(canSecondPlayOut('strikeout', 'force'), false, '三振后无强迫进垒，封杀不能补第二出局');
+  for (const kind of ['tag', 'pickoff', 'steal']) {
+    assert.equal(canSecondPlayOut('strikeout', kind), true, `三振 + ${kind} 保留`);
+  }
+  for (const kind of ['tag', 'force']) {
+    assert.equal(canSecondPlayOut('batterContact', kind), true, `打者先出局 + ${kind} 记 DP`);
+  }
+  assert.equal(canSecondPlayOut('batterContact', 'pickoff'), false, '打者先出局 + 牵制仍不记 DP');
+  for (const kind of ['tag', 'force']) {
+    assert.equal(canSecondPlayOut('pickoff', kind), true, `牵制 + ${kind} 记 DP`);
+    assert.equal(canSecondPlayOut('steal', kind), true, `盗垒死 + ${kind} 记 DP`);
+  }
+  for (const firstKind of ['tag', 'force', 'other']) {
+    assert.equal(canSecondPlayOut(firstKind, 'tag'), false, `${firstKind} 首出局暂不补记 DP`);
+  }
+});
+
 test('本垒出局原因封杀仅在被迫进垒时出现', () => {
   assert.ok(source.includes('hasBehindOccupied:b.hasBehindOccupied'), '安打/推进队列保存被迫进垒标记');
   assert.ok(source.includes('hasBehindOccupied:g.hasBehindOccupied'), '野选队列保存被迫进垒标记');
@@ -84,9 +106,19 @@ test('本垒出局原因封杀仅在被迫进垒时出现', () => {
   assert.match(source, /et\(homeOutReasonItems\.value,d=>n\("button"/, '原因面板按动态项渲染');
 });
 
+test('三振后同垒出局菜单不再提供封杀', () => {
+  for (const base of [1, 2, 3]) {
+    const reasons = runnerOutReasonList(base, base, false);
+    assert.ok(!reasons.some((item) => item.id === 'out_force'), `${base}→${base} 三振后不提供封杀`);
+    assert.ok(reasons.some((item) => item.id === 'out_tag'), `${base}→${base} 仍提供触杀`);
+    assert.ok(runnerOutReasonList(base, base, true).some((item) => item.id === 'out_force'), `${base}→${base} 接杀上下文保留封杀`);
+  }
+  assert.match(source, /return Xd\(e\.fromBase,e\.toBase,!l\.playOut\|\|l\.playOut\.firstKind==="batterContact"\)/);
+});
+
 test('出局菜单不再受投球门禁，CI 跑者菜单同样提供盗垒失败', () => {
   assert.ok(!source.includes('if(tp.value)return'));
-  assert.match(source, /return Xd\(e\.fromBase,e\.toBase\)/);
+  assert.match(source, /return Xd\(e\.fromBase,e\.toBase,!l\.playOut\|\|l\.playOut\.firstKind==="batterContact"\)/);
   const kdCode = sliceBetween('function Kd(', 'var zd=');
   assert.ok(kdCode.includes('id:"out_steal_fail"'), 'Kd 提供盗垒失败');
   assert.ok(!kdCode.includes('out_cs'), 'Kd 不再提供独立 CS');
