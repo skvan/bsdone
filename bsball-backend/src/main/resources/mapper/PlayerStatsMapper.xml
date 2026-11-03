@@ -508,8 +508,9 @@
     </select>
 
     <!-- 驾驶舱打击落点：球员在范围（球队/赛事/运动类型、计入排行的比赛）内的落点记录，按比赛日正序 -->
-    <select id="selectPlayerHitSprays" resultType="com.bsball.model.entity.HitSpray">
-        SELECT s.*
+    <select id="selectPlayerHitSprays" resultType="com.bsball.model.dto.HitSprayPointRow">
+        SELECT s.game_id AS gameId, s.result_code AS resultCode, s.bip_code AS bipCode,
+               s.sprayx AS sprayX, s.sprayy AS sprayY, s.spray_zone AS sprayZone, s.spray_depth AS sprayDepth
         FROM bs_hit_spray s
         INNER JOIN bs_game g ON g.id = s.game_id
         INNER JOIN bs_event e ON e.id = g.event_id

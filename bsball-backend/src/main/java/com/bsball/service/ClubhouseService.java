@@ -9,7 +9,7 @@ import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Game;
-import com.bsball.model.entity.HitSpray;
+import com.bsball.model.dto.HitSprayPointRow;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
@@ -141,7 +141,7 @@ public class ClubhouseService {
         List<PlayerEventSummaryDTO> playedSummaries =
                 statsService.getPlayerEventSummaries(player.getId(), teamIdOf(requestedTeam), null);
         Scope scope = resolveScope(requestedTeam, playedSummaries, eventId, requestedGameMode);
-        List<HitSpray> sprays = statsService.getPlayerHitSprays(
+        List<HitSprayPointRow> sprays = statsService.getPlayerHitSprays(
                 player.getId(), tenantId, scope.teamId(), scope.eventId(), scope.gameMode());
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("scope", scopeView(scope));

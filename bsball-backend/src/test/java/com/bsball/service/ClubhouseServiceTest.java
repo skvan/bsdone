@@ -23,7 +23,7 @@ import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Game;
-import com.bsball.model.entity.HitSpray;
+import com.bsball.model.dto.HitSprayPointRow;
 import com.bsball.model.entity.Player;
 import com.bsball.model.entity.PlayerTeam;
 import com.bsball.model.entity.Team;
@@ -905,8 +905,8 @@ class ClubhouseServiceTest {
         return eventSummary(eventId, eventName, "BASEBALL");
     }
 
-    private HitSpray hitSpray(Double x, Double y, String resultCode, String zone) {
-        HitSpray row = new HitSpray();
+    private HitSprayPointRow hitSpray(Double x, Double y, String resultCode, String zone) {
+        HitSprayPointRow row = new HitSprayPointRow();
         row.setSprayX(BigDecimal.valueOf(x));
         row.setSprayY(BigDecimal.valueOf(y));
         row.setResultCode(resultCode);
