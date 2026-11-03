@@ -201,7 +201,7 @@ test('Issue #527：二垒同垒出局改为触杀链，三垒回本垒盗垒失�
   expect(homeSnapshot.playerStatsById['202'].batting.cs).toBe(1);
 });
 
-test('Issue #527：飞球接杀后同垒出局改走触杀传球链，无离垒过远', async ({ page }) => {
+test('Issue #527：飞球接杀后同垒出局改走封杀传球链，无离垒过远', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
@@ -223,15 +223,16 @@ test('Issue #527：飞球接杀后同垒出局改走触杀传球链，无离垒�
 
   const sameBaseMenu = await dragRunner(page, 2, 2, 'out');
   await expect(sameBaseMenu.getByText('触杀出局')).toBeVisible();
+  await expect(sameBaseMenu.getByText('封杀出局')).toBeVisible();
   await expect(sameBaseMenu.getByText('盗垒失败')).toHaveCount(0);
   await expect(sameBaseMenu.getByText('离垒过远出局')).toHaveCount(0);
-  await pickMenuItem(page, '触杀出局');
+  await pickMenuItem(page, '封杀出局');
   await clickFielder(page, 'CF');
   await clickFielder(page, '2B');
   await page.getByRole('button', { name: /完成记录/ }).click();
   const snapshot = await saveGame(page, bucket);
   const log = JSON.stringify(snapshot.eventLog);
-  expect(log).toContain('触杀出局：二垒跑者 T2P1 (#1) 于二垒出局（8-4）');
+  expect(log).toContain('封杀出局：二垒跑者 T2P1 (#1) 于二垒出局（8-4）');
   expect(log).not.toContain('接杀回传');
   expect(snapshot.gameState.outs).toBe(2);
   expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1 });

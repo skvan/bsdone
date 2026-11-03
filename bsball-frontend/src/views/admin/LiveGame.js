@@ -777,6 +777,9 @@ function Xd(u,f){
     id:"out_tag",en:"Tagged Out",cn:"触杀出局"
   }
   ,{
+    id:"out_force",en:"Force Out",cn:"封杀出局"
+  }
+  ,{
     id:"out_oi",en:"Offensive Interference",cn:"进攻方妨碍"
   }
   ,{
@@ -6370,9 +6373,10 @@ var sg={
         ,J("盗垒失败：请从捕手（C）开始点选传球链（夹杀可继续点选记录多传）");
         return
       }
-      if(e.id==="out_tag"){
-        de(`拖拽-触杀出局[${s}>${r}]`),clearChainVisual(),l.flow={
-          type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",steps:[]
+      if(e.id==="out_tag"||e.id==="out_force"){
+        const isForce=e.id==="out_force";
+        de(`拖拽-${isForce?"封杀":"触杀"}出局[${s}>${r}]`),clearChainVisual(),l.flow={
+          type:isForce?"RUNNER_OUT_FORCE":"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:isForce?"force":"tag",steps:[]
         }
         ,J("请点击完成该出局的守备员（夹杀可继续点选记录多传）");
         return

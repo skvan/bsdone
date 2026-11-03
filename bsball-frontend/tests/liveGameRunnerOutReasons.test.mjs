@@ -17,13 +17,14 @@ const runnerOutReasonList = (() => {
   return new Function(`${code}; return Xd;`)();
 })();
 
-test('同垒拖拽出局菜单：去掉离垒过远，加入触杀并接入传球链', () => {
+test('同垒拖拽出局菜单：去掉离垒过远，加入触杀/封杀并接入传球链', () => {
   for (const base of [1, 2, 3]) {
     const reasons = runnerOutReasonList(base, base);
-    assert.deepEqual(reasons.map((item) => item.id), ['out_pk', 'out_tag', 'out_oi', 'out_appeal', 'out_other']);
-    const tagged = reasons.find((item) => item.id === 'out_tag');
-    assert.equal(tagged.cn, '触杀出局');
-    assert.equal(tagged.en, 'Tagged Out');
+    assert.deepEqual(reasons.map((item) => item.id), ['out_pk', 'out_tag', 'out_force', 'out_oi', 'out_appeal', 'out_other']);
+    assert.equal(reasons.find((item) => item.id === 'out_tag').cn, '触杀出局');
+    const forced = reasons.find((item) => item.id === 'out_force');
+    assert.equal(forced.cn, '封杀出局');
+    assert.equal(forced.en, 'Force Out');
   }
 });
 
@@ -40,9 +41,9 @@ test('向前拖拽出局菜单：新增盗垒失败、移除独立 CS 与离垒�
   assert.equal(stealFail.cn, '盗垒失败');
   assert.equal(stealFail.en, 'Steal Failed');
   assert.ok(!runnerOutReasonList(2, 1).some((item) => item.id === 'out_steal_fail'), '回退进垒不提供盗垒失败');
+  assert.ok(!runnerOutReasonList(2, 1).some((item) => item.id === 'out_force'), '回退进垒不提供封杀');
   assert.ok(!runnerOutReasonList(2, 2).some((item) => item.id === 'out_steal_fail'), '同垒不提供盗垒失败');
   assert.ok(!source.includes('id:"out_last"'), '源码不再提供离垒过远选项');
-  assert.ok(!source.includes('id:"out_force"'), '拖拽菜单不再提供封杀出局选项');
   assert.ok(!source.includes('id:"out_cs"'), '拖拽菜单不再提供独立 CS 选项');
   assert.ok(!source.includes('abCatchRecorded'), '接杀标记与接杀回传菜单入口已移除');
 });
@@ -80,9 +81,10 @@ test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', ()
   assert.match(settleBlock, /reasonCn=isCs\?"盗垒死 \(CS\)"/);
 });
 
-test('触杀选项进入传球链：out_tag 路由 RUNNER_OUT_TAG 而非单行出局', () => {
+test('触杀/封杀选项进入传球链：分别路由 RUNNER_OUT_TAG / RUNNER_OUT_FORCE', () => {
   const kpBlock = sliceBetween('function kp(e){', 'function Pt(){');
-  assert.match(kpBlock, /if\(e\.id==="out_tag"\)\{/);
-  assert.ok(kpBlock.includes('de(`拖拽-触杀出局[${s}>${r}]`)'), '触杀历史动作名含出局，撤销动画可识别');
-  assert.match(kpBlock, /type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",steps:\[\]/);
+  assert.match(kpBlock, /if\(e\.id==="out_tag"\|\|e\.id==="out_force"\)\{/);
+  assert.ok(kpBlock.includes('const isForce=e.id==="out_force"'));
+  assert.match(kpBlock, /type:isForce\?"RUNNER_OUT_FORCE":"RUNNER_OUT_TAG"/);
+  assert.match(kpBlock, /outType:isForce\?"force":"tag"/);
 });
