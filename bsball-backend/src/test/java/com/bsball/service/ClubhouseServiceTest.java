@@ -149,7 +149,7 @@ class ClubhouseServiceTest {
         assertNotNull(result.get("catalog"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> moduleCatalog = (List<Map<String, Object>>) result.get("moduleCatalog");
-        assertEquals(10, moduleCatalog.size());
+        assertEquals(9, moduleCatalog.size());
         assertEquals("ranks", moduleCatalog.get(0).get("key"));
         assertEquals("evaluation", moduleCatalog.get(1).get("key"));
         assertEquals("spray", moduleCatalog.get(2).get("key"));

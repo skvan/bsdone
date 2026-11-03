@@ -16,9 +16,9 @@ class ClubhouseModuleCatalogTest {
     void defaultModulesArePackedOnBoard() {
         List<Map<String, Object>> modules = ClubhouseModuleCatalog.defaultModules();
 
-        assertEquals(10, modules.size());
+        assertEquals(9, modules.size());
         assertEquals(List.of("ranks", "evaluation", "spray", "milestones", "performance",
-                "teams", "schedule", "about", "recentGames", "quickLinks"),
+                "teams", "schedule", "recentGames", "quickLinks"),
                 modules.stream().map(row -> row.get("key")).toList());
         assertGeometry(modules, 0, "ranks", 0, 0, 1216, 220);
         assertGeometry(modules, 1, "evaluation", 0, 236, 1216, 700);
@@ -27,9 +27,8 @@ class ClubhouseModuleCatalogTest {
         assertGeometry(modules, 4, "performance", 0, 2004, 800, 500);
         assertGeometry(modules, 5, "teams", 816, 2004, 400, 300);
         assertGeometry(modules, 6, "schedule", 0, 2520, 800, 560);
-        assertGeometry(modules, 7, "about", 816, 2520, 400, 280);
-        assertGeometry(modules, 8, "recentGames", 0, 3096, 800, 320);
-        assertGeometry(modules, 9, "quickLinks", 816, 3096, 400, 220);
+        assertGeometry(modules, 7, "recentGames", 0, 3096, 800, 320);
+        assertGeometry(modules, 8, "quickLinks", 816, 3096, 400, 220);
         modules.forEach(row -> assertEquals(true, row.get("enabled")));
     }
 
@@ -50,7 +49,7 @@ class ClubhouseModuleCatalogTest {
     void catalogReturnsPixelMetadata() {
         List<Map<String, Object>> catalog = ClubhouseModuleCatalog.catalog();
 
-        assertEquals(10, catalog.size());
+        assertEquals(9, catalog.size());
         assertEquals("队内坐标", catalog.get(0).get("label"));
         assertEquals("打击落点", catalog.get(2).get("label"));
         assertEquals("生涯里程碑", catalog.get(3).get("label"));

@@ -1,6 +1,6 @@
 # 个人驾驶舱 API
 
-个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持十个业务模块的显示/隐藏、排序与桌面端宽高调整，以及「表现图」与「队内排名」的指标/图表选择。宽高在服务端白名单范围内校验；手机端忽略宽高，按单列展示。
+个人驾驶舱（V3 球星年鉴）的模块化数据接口。支持九个业务模块的显示/隐藏、排序与桌面端宽高调整，以及「表现图」与「队内排名」的指标/图表选择。宽高在服务端白名单范围内校验；手机端忽略宽高，按单列展示。
 
 数据范围默认是**全部球队 + 生涯**（当前运动类型下跨全部代表球队、全部赛事），可通过 `gameMode` / `teamId` / `eventId` 切换到具体运动类型、球队或赛事。球队与赛事相互独立，不自动互锁。
 
@@ -45,7 +45,7 @@
   - 球队维度只统计球员在该队出场的比赛；四种范围均只计入排行的比赛（`include_stats_in_ranking`）。
   - 零数据契约：球队维度查询返回完整字段（计数为 `0`、比率类为 `"0"`、投手 `goFo` 为 `"-"`）；全部球队 + 赛事无个人统计时返回三个空 Map，某领域无数据时该领域为空 Map。前端按 `gp` / `ab` / `pa` / `ip` 判断空态，不把 `0` / `0.000` 当成真实表现展示。
 - `config`：当前用户配置（version 4；`modules[]` 含 `x`/`y`/`width`/`height` 像素几何，默认见 PUT 示例）。
-- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 10 个模块。
+- `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 9 个模块。
 - `milestoneCatalog[]`：生涯里程碑指标白名单；含 `key`、`label`、`shortLabel`、`domain`、`unit`、`defaultSelected`、`thresholds[]`。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
 - `performance`：`{ metricKey, label, viz, domain, points[], summaryValue, items[], available }`。
@@ -166,7 +166,6 @@
     { "key": "performance", "enabled": true, "x": 0, "y": 2004, "width": 800, "height": 500 },
     { "key": "teams", "enabled": true, "x": 816, "y": 2004, "width": 400, "height": 300 },
     { "key": "schedule", "enabled": true, "x": 0, "y": 2520, "width": 800, "height": 560 },
-    { "key": "about", "enabled": true, "x": 816, "y": 2520, "width": 400, "height": 280 },
     { "key": "recentGames", "enabled": true, "x": 0, "y": 3096, "width": 800, "height": 320 },
     { "key": "quickLinks", "enabled": true, "x": 816, "y": 3096, "width": 400, "height": 220 }
   ],
@@ -185,12 +184,12 @@
 
 - 画布逻辑宽度 1216px，任意两个启用模块至少间隔 16px；坐标/尺寸均为整数像素。前端拖动吸附 8px。
 - `modules` 数组顺序 = 手机/紧凑端顺序与设置抽屉顺序；桌面自由布局只看 `x/y/width/height`。
-- 只接受白名单 key，且不能重复，否则返回 400。`enabled` 必须是布尔值；缺省视为 `true`。允许十个模块全部关闭。
+- 只接受白名单 key，且不能重复，否则返回 400。`enabled` 必须是布尔值；缺省视为 `true`。允许九个模块全部关闭。
 - `x` / `y`：整数，`x >= 0`、`y >= 0`、`x + width <= 1216`、`y <= 12000`；越界、负数、小数或字符串返回 400。
 - `width`：整数，范围为该模块 `minWidth`–1216；`height`：整数，范围为该模块 `minHeight`–1600。默认/最小值见 `moduleCatalog` 的 `defaultWidth/defaultHeight/minWidth/minHeight`。
 - 桌面高度是固定外框高度，内容超出时模块内部滚动；手机/紧凑端忽略几何按内容自适应。内容不自动撑高，避免与邻居重叠。
 - 启用模块之间重叠（含不足 16px 间距）时，服务端按数组顺序把后出现模块下移到已占用区域底部（x=0），返回规范化后的配置；禁用模块保留几何但不参与检测。
-- 缺失的模块会按默认顺序追加到所有模块底部，保证始终保存完整十项。
+- 缺失的模块会按默认顺序追加到所有模块底部，保证始终保存完整九项。
 - `milestones.metricKeys`：1–6 项、不可重复、只能使用里程碑白名单指标；缺失或空数组回退默认 6 项。
 - `modules` 缺省时按默认模块保存，兼容旧客户端。
 - 服务端统一输出 `version=4` / `layout=v4-board`；客户端传入的 `layout`/`version` 不作为可信输入。

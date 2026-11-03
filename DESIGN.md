@@ -456,7 +456,7 @@ The signature object: dark navy card, gold hairline, inner hairline frame, monog
 - The team line follows the same rule as the hero strip: all selected-sport teams joined with ` / ` when `全部球队`, only the chosen team otherwise. Allow up to two lines with a `title`/tooltip fallback; do not truncate to a single ambiguous team. The footer keeps “代表 N 队 · N 项赛事”.
 
 ### Dashboard modules
-The ten configurable modules use a **free pixel canvas** on wide desktop screens: modules are absolutely positioned by `x / y / width / height`, can be dragged anywhere, and can be resized from any of eight handles. The logical canvas is `1216px` wide with a `16px` minimum gap between modules. The array order remains the logical/mobile order; desktop ignores it.
+The nine configurable modules use a **free pixel canvas** on wide desktop screens: modules are absolutely positioned by `x / y / width / height`, can be dragged anywhere, and can be resized from any of eight handles. The logical canvas is `1216px` wide with a `16px` minimum gap between modules. The array order remains the logical/mobile order; desktop ignores it.
 
 Default geometry (pixels):
 
@@ -469,11 +469,10 @@ Default geometry (pixels):
 | 数据表现 | 800 × 500 | 360 × 320 |
 | 代表球队 | 400 × 300 | 280 × 220 |
 | 接下来的比赛 | 800 × 560 | 420 × 300 |
-| 关于我 | 400 × 280 | 300 × 220 |
 | 最近战报 | 800 × 320 | 360 × 260 |
 | 快捷入口 | 400 × 220 | 240 × 180 |
 
-The default layout is packed in array order: `ranks` y0, `evaluation` y236, `spray` y952, `milestones` y1488, `performance` y2004 at x0 / `teams` y2004 at x816, `schedule` y2520 at x0 / `about` y2520 at x816, `recentGames` y3096 at x0 / `quickLinks` y3096 at x816.
+The default layout is packed in array order: `ranks` y0, `evaluation` y236, `spray` y952, `milestones` y1488, `performance` y2004 at x0 / `teams` y2004 at x816, `schedule` y2520 at x0, `recentGames` y3096 at x0 / `quickLinks` y3096 at x816.
 
 - **Free layout is desktop-only and only at `>=1340px` viewport width.** The page max width (1280px) includes 32px side padding; the portal shell adds 20px each side, and the browser scrollbar needs room. At `>=1340px` the content box reaches 1280px and the canvas is exactly 1216px; at 1320px it would be 10–20px short and 1216-wide modules would overhang. At `981–1339px` show a compact two-column flow; at `<=980px` show a single column. Both fallbacks follow the saved array order and ignore x/y/width/height. Hide the “编辑布局” entry, sticky edit bar, selection frame and handles there.
 - **Fixed height with content floor:** desktop modules use the saved pixel height. The height cannot be reduced below the module's natural content height at its current width (measured live; the edit bar shows a `内容下限 Npx` chip). This prevents clipping while editing. If live data later makes content taller than the saved height, the module body scrolls vertically with a thin scrollbar; editing temporarily disables inner scrolling. Do not auto-grow a module and overlap neighbours. Width/height resize is clamped to the catalog minimums, the content floor, a maximum width of 1216px / height of 1600px.
