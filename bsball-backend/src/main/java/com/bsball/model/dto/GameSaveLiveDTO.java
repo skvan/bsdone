@@ -20,6 +20,8 @@ public class GameSaveLiveDTO {
     private List<GamePlayerStatPart> stats;
     private List<SubstitutionPart> substitutions;
     private List<FieldingPositionPart> fieldingPositions;
+    /** 统计载荷是否已包含赛后守备补记；true 时服务端不再回放，避免 +1 重复。 */
+    private Boolean statsIncludeFieldingAdjustments;
 
     @Generated
     public GameSaveLiveDTO() {
@@ -61,6 +63,14 @@ public class GameSaveLiveDTO {
 
     public void setFieldingPositions(List<FieldingPositionPart> fieldingPositions) {
         this.fieldingPositions = fieldingPositions;
+    }
+
+    public Boolean getStatsIncludeFieldingAdjustments() {
+        return this.statsIncludeFieldingAdjustments;
+    }
+
+    public void setStatsIncludeFieldingAdjustments(Boolean statsIncludeFieldingAdjustments) {
+        this.statsIncludeFieldingAdjustments = statsIncludeFieldingAdjustments;
     }
 
     @Generated

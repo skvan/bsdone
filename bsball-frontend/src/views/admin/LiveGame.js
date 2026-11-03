@@ -5121,6 +5121,10 @@ var sg={
       eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
     =Kc(f),xt=$(()=>f.homeTeam),At=$(()=>f.awayTeam);
+    const reviewDrawerVisible=x(!1),reviewDrawerSession=x(0);
+    function openReviewDrawer(){
+      reviewDrawerSession.value+=1,reviewDrawerVisible.value=!0
+    }
     function hasRecordedPlayerActivity(player){
       const st=player?.stats;
       if(!st)return!1;
@@ -7642,7 +7646,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             }
             
           }
-          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(f.playEvents)),playEventsComplete:earnedRunPlayEventsTrusted,runLedger:snapshotRunLedger(),playerStatsById:kf(),...t?{
+          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(f.playEvents)),playEventsComplete:earnedRunPlayEventsTrusted,playerStatsIncludeFieldingAdjustments,runLedger:snapshotRunLedger(),playerStatsById:kf(),...t?{
             undoHistory:An($e.value),redoHistory:An(Ne.value)
           }
           :{
@@ -7854,7 +7858,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ke.value=vd(e.eventLog);
         const T=e.atBatSummaries;
-        Me.value=Array.isArray(T)?T:[],ve.value=null,i.value=null,typeof e.playEventsComplete==="boolean"&&(earnedRunPlayEventsTrusted=e.playEventsComplete),f.playEvents=Array.isArray(e.playEvents)?JSON.parse(JSON.stringify(e.playEvents)):[],restoreRunLedger(e.runLedger),await ao([...s,...g],[...r,...m],t?.homeList,t?.awayList);
+        Me.value=Array.isArray(T)?T:[],ve.value=null,i.value=null,typeof e.playEventsComplete==="boolean"&&(earnedRunPlayEventsTrusted=e.playEventsComplete),playerStatsIncludeFieldingAdjustments=e.playerStatsIncludeFieldingAdjustments===true,f.playEvents=Array.isArray(e.playEvents)?JSON.parse(JSON.stringify(e.playEvents)):[],restoreRunLedger(e.runLedger),await ao([...s,...g],[...r,...m],t?.homeList,t?.awayList);
         const Y=e.playerStatsById,j=E=>{
           let U=0;
           const d=[q.value,X.value,ye.value,ae.value,...xe.value?[xe.value]:[],...De.value?[De.value]:[]];
@@ -8193,6 +8197,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // playEvents 是否完整可信：现场快照/撤销快照恢复，或本场没有引擎数据时成立。
     // 只有可信时才允许保存前按本地半局清空后端判定；Do() 仅按统计重建时不得误删引擎判定。
     let earnedRunPlayEventsTrusted=!1;
+    // Do() 无快照重建时 playerStatsById 来自 /stats，已经包含赛后守备补记；保存时跳过服务端回放。
+    let playerStatsIncludeFieldingAdjustments=!1;
     function beginPlayLedger(){beginPlay(runLedger)}
     function clearRunLedger(){clearRuns(runLedger)}
     // 撤销/重做快照只存 id 与判定字段，恢复时按当前名单重新绑定球员引用，
@@ -11540,7 +11546,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           game:{
             homeScore:o.home.score,awayScore:o.away.score,homeScoreByInning:s.length?s:void 0,awayScoreByInning:r.length?r:void 0,homeH:Yr.value,awayH:Xr.value,homeE:zr.value,awayE:Kr.value,status:l.isGameEnd?"final":"live",gameEndTime:l.isGameEnd?new Date().toISOString().slice(0,19).replace("T"," "):void 0,inning:l.inning,topBottom:l.isTop?"top":"bottom"
           }
-          ,stats:p
+          ,stats:p,statsIncludeFieldingAdjustments:playerStatsIncludeFieldingAdjustments
         };
         fieldingPositions&&(payload.fieldingPositions=fieldingPositions),Array.isArray(e?.substitutions)&&e.substitutions.length&&(payload.substitutions=e.substitutions),await ma.saveLive(R.value,payload),e?.fromSubstitutionMode||e?.silent||Fe.success("保存成功"),Gl(),await Pf()
       }
@@ -11590,6 +11596,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function Do(e,t,a,s,r,p){
       fieldingPositionsTrusted=!hasHistoricalFieldingStats(r?.list);
+      // /stats 行带 fieldingAdjustmentA 时才说明统计已含补记；否则 Do 重建的仍是基础统计。
+      playerStatsIncludeFieldingAdjustments=(r?.list??[]).some(row=>Number(row.fieldingAdjustmentA)>0);
       f.playEvents=[],clearRunLedger();
       const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
         const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
@@ -12051,7 +12059,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[263]||(t[263]=[Q("击球落点分布",-1)])]),_:1
         }
-        ),v(s,{size:"small",onClick:()=>f.erDrawerVisible=!0},{default:L(()=>[Q("ER 复核",-1)]),_:1})],64)):W("",!0),c(F)&&c(R)?(h(),Oe(g,{
+        ),v(s,{size:"small",onClick:openReviewDrawer},{default:L(()=>[Q("ER 复核",-1)]),_:1})],64)):W("",!0),c(F)&&c(R)?(h(),Oe(g,{
           key:0,trigger:"click",teleported:!1,onCommand:Mu
         }
         ,{
@@ -12368,7 +12376,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,{
           default:L(()=>[...t[95]||(t[95]=[Q("击球落点分布",-1)])]),_:1
         }
-        ),v(s,{size:"small",onClick:()=>f.erDrawerVisible=!0},{default:L(()=>[Q("ER 复核",-1)]),_:1})])])])):W("",!0),n("div",{
+        ),v(s,{size:"small",onClick:openReviewDrawer},{default:L(()=>[Q("ER 复核",-1)]),_:1})])])])):W("",!0),n("div",{
           class:re(["field-svg-wrap",{
             "field-svg-wrap--drag-mode":!0,"field-svg-wrap--runner-drag":!!ne.value
           }
@@ -13067,7 +13075,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc
       }
-      ,null,8,["visible","title","prompt","groups","center-offset-x"]),v(LiveGameEarnedRunDrawer,{visible:f.erDrawerVisible,"onUpdate:visible":(v2)=>{f.erDrawerVisible=v2},gameId:c(R)})])
+      ,null,8,["visible","title","prompt","groups","center-offset-x"]),v(LiveGameEarnedRunDrawer,{key:reviewDrawerSession.value,visible:reviewDrawerVisible.value,"onUpdate:visible":(v2)=>{reviewDrawerVisible.value=v2},gameId:c(R),playEvents:c(f.playEvents),homeLineup:c(f.homeLineup),awayLineup:c(f.awayLineup),homeBench:c(f.homeBench),awayBench:c(f.awayBench),homeFieldingPitcherRow:c(f.homeFieldingPitcherRow),awayFieldingPitcherRow:c(f.awayFieldingPitcherRow),homeRoster:c(f.homeRoster),awayRoster:c(f.awayRoster)})])
     }
     
   }
