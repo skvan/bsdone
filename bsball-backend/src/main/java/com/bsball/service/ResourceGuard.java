@@ -98,7 +98,8 @@ public class ResourceGuard {
     }
 
     /**
-     * 球员档案编辑写保护：SELF 通道认本人 userId；ROSTER 通道认球员当前经历所在球队 ∈ teamIds。
+     * 球员档案编辑写保护：SELF 通道认本人 userId；ROSTER 通道认球员当前经历所在球队 ∈ teamIds，
+     * 已认领档案仅本人账号可通过 ROSTER 编辑（球队/联盟对他人已认领档案仍只读）。
      */
     public void assertCanEditPlayerProfile(Long playerId, PlayerEditChannel channel) {
         EffectiveScope s = accountScopeService.resolveCurrent();
@@ -111,8 +112,12 @@ public class ResourceGuard {
             if (uid != null && uid.equals(p.getUserId())) return;
             throw new BusinessException(403, "只能编辑本人档案");
         }
-        // ROSTER 通道（Issue #318 起）：已认领 → 球队不可直接改档案；未认领 → 仅"本人球队集合"可写。
+        // ROSTER 通道（Issue #318 起）：已认领 → 球队不可直接改档案，本人账号除外；未认领 → 仅"本人球队集合"可写。
         if (p.getUserId() != null) {
+            Long uid = CurrentUserHolder.get();
+            if (uid != null && uid.equals(p.getUserId())) {
+                return;
+            }
             throw new BusinessException(403, "球队/联盟不可直接修改已认领球员信息");
         }
         for (Long teamId : playerTeamService.currentTeamIds(playerId)) {
