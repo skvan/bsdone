@@ -438,6 +438,11 @@ public class PlayerService {
         this.validateTeamId(entity.getTeamId());
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
+        // 认领关系、租户与当前经历指针由服务端维护：编辑表单不提交这些字段，整体保存时须继承原值
+        entity.setUserId(existing.getUserId());
+        entity.setTenantId(existing.getTenantId());
+        entity.setCreatedBy(existing.getCreatedBy());
+        entity.setCurrentJoinRecordId(existing.getCurrentJoinRecordId());
         if (entity.getName() != null) {
             String n = entity.getName().trim();
             entity.setName(n.isEmpty() ? null : n);
