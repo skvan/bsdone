@@ -55,13 +55,20 @@ test('双杀参与守备员：1-3-4 逆双杀、接杀回传去重', () => {
   assert.deepEqual(computeDoublePlayParticipants(['CF', 'CF', '2B']), ['CF', '2B']);
 });
 
-test('双杀守备统计：DP 链与接杀回传均给参与守备员记 dp', () => {
-  assert.match(source, /function creditDoublePlayFielders\(positions\)\{/);
+test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp', () => {
+  assert.match(source, /function recordPlayOut\(positions,kind="other"\)\{/);
+  assert.match(source, /ctx\.outs>=2&&!ctx\.credited&&\(creditDoublePlayFielders\(ctx\.fielders\),ctx\.credited=!0\)/, '第二个出局合并两次出局的参与员记 dp');
+  assert.match(source, /function canSecondPlayOut\(firstKind,kind\)\{[\s\S]*?firstKind==="batterContact"\)return kind==="tagForce"/, '打者先出局只允许触杀/封杀补第二出局');
   assert.ok(source.includes('type==="DP"&&creditDoublePlayFielders(s.map(r=>r.pos))'), 'DP 链参与守备员记 dp');
-  assert.ok(source.includes('creditDoublePlayFielders([...(lastCatchPlay.chain??[]),...C1])'), '接杀后同垒出局给接杀链+回传链记 dp');
+  assert.ok(source.includes('Dn(t),recordPlayOut(t,"batterContact")'), '打者出局记录守备链');
+  assert.ok(source.includes('recordPlayOut(C1,e.stealFail?"steal":"tagForce")'), '跑者第二出局记录守备链');
+  assert.ok(source.includes('creditStrikeoutFielding("caught"),recordPlayOut([],"strikeout")'), '三振出局记录 play 出局');
+  assert.ok(source.includes('recordPlayOut(["P",e],"pickoff")'), '牵制出局记录参与员');
+  assert.ok(source.includes('recordPlayOut(["C",e],"steal")'), '盗垒死记录参与员');
   assert.ok(source.includes('creditDoublePlayFielders(cbChain)'), '遗留接杀回传 flow 记 dp');
-  assert.ok(source.includes('chain:[...t],inning:l.inning,half:l.isTop'), '接杀分支记录接杀链');
-  assert.ok(source.includes('lastCatchPlay=null'), '新打席/投球/撤销/载入清空接杀上下文');
+  assert.ok(source.includes('playOut:null'), '初始 state 带 playOut');
+  assert.ok(source.includes('l.playOut=null'), '新投球/新打者/撤销/载入清空 play 上下文');
+  assert.ok(!source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局不再自动推进一垒跑者');
 });
 
 test('本垒出局原因封杀仅在被迫进垒时出现', () => {

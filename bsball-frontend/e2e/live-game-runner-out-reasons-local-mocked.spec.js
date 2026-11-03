@@ -128,6 +128,35 @@ async function recordSingle(page) {
   await page.waitForTimeout(500);
 }
 
+async function recordGroundOut(page, fielder = 'SS') {
+  await page.getByRole('button', { name: '界内球' }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^滚地球$/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
+  await page.waitForTimeout(500);
+  await clickFielder(page, fielder);
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  await page.waitForTimeout(500);
+}
+
+async function recordFlyCatch(page, fielder = 'CF') {
+  await page.getByRole('button', { name: '界内球' }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^飞球$/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
+  await page.waitForTimeout(500);
+  await clickFielder(page, fielder);
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  await page.waitForTimeout(500);
+}
+
 async function pickMenuItem(page, text) {
   await page.locator('.rdm__item').filter({ hasText: text }).first().click();
   await page.waitForTimeout(200);
@@ -237,6 +266,87 @@ test('Issue #527：飞球接杀后同垒出局改走封杀传球链，无离垒�
   expect(snapshot.gameState.outs).toBe(2);
   expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1, dp: 1 });
   expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1, dp: 1 });
+});
+
+test('Issue #527：地滚出局后不自动推进一垒跑者，1→2 触杀记 DP', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await recordGroundOut(page, 'SS');
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒有人');
+  const menu = await dragRunner(page, 1, 2, 'out');
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await pickMenuItem(page, '触杀出局');
+  await clickFielder(page, '1B');
+  await clickFielder(page, '2B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('触杀出局：一垒跑者 T2P1 (#1) 于二垒出局（3-4）');
+  expect(snapshot.playerStatsById['106'].fielding).toMatchObject({ a: 1, dp: 1 });
+  expect(snapshot.playerStatsById['103'].fielding).toMatchObject({ a: 1, po: 1, dp: 1 });
+  expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ po: 1, dp: 1 });
+});
+
+test('Issue #527：打者先出局后的牵制是独立 play，不记 DP', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await recordGroundOut(page, 'SS');
+  const menu = await dragRunner(page, 1, 1, 'out');
+  await expect(menu.getByText('牵制出局')).toBeVisible();
+  await pickMenuItem(page, '牵制出局');
+  await clickFielder(page, '1B');
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['106'].fielding.dp).toBe(0);
+  expect(snapshot.playerStatsById['103'].fielding.dp).toBe(0);
+  expect(snapshot.playerStatsById['101'].fielding.dp).toBe(0);
+});
+
+test('Issue #527：飞球接杀后 2→3 触杀记 DP', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const toSecond = await dragRunner(page, 1, 2, 'safe');
+  await expect(toSecond.getByText('盗垒成功 (SB)')).toBeVisible();
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await recordFlyCatch(page, 'CF');
+  const menu = await dragRunner(page, 2, 3, 'out');
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await pickMenuItem(page, '触杀出局');
+  await clickFielder(page, 'CF');
+  await clickFielder(page, '3B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('触杀出局：二垒跑者 T2P1 (#1) 于三垒出局（8-5）');
+  expect(snapshot.playerStatsById['108'].fielding).toMatchObject({ a: 1, po: 1, dp: 1 });
+  expect(snapshot.playerStatsById['105'].fielding).toMatchObject({ a: 0, po: 1, dp: 1 });
+});
+
+test('Issue #527：三振 + 同一球盗垒死记 DP', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  for (let i = 0; i < 3; i++) {
+    await page.locator('button[title="好球 Called Strike"]').click();
+    await page.waitForTimeout(200);
+  }
+  await page.getByRole('button', { name: '挥空三振' }).click();
+  await page.waitForTimeout(400);
+  const menu = await dragRunner(page, 1, 2, 'out');
+  await expect(menu.getByText('盗垒失败')).toBeVisible();
+  await pickMenuItem(page, '盗垒失败');
+  await clickFielder(page, 'C');
+  await clickFielder(page, 'SS');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('盗垒死 (CS)：一垒跑者 T2P1 (#1) 于二垒出局（2-6）');
+  expect(snapshot.playerStatsById['102'].fielding).toMatchObject({ a: 1, catcherCs: 1, dp: 1 });
+  expect(snapshot.playerStatsById['106'].fielding).toMatchObject({ po: 1, dp: 1 });
 });
 
 test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {
