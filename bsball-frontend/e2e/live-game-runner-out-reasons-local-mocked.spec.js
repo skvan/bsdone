@@ -36,6 +36,7 @@ async function openLiveGame(page, bucket) {
       id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e'
     }));
   });
+  let savedSnapshot = '';
   await page.route('**/bsball-server/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -50,10 +51,11 @@ async function openLiveGame(page, bucket) {
       gameMode: 'BASEBALL', inning: 1, topBottom: 'top', homeScore: 0, awayScore: 0
     };
     else if (path === '/game/10/stats') data = { list: stats, total: stats.length };
-    else if (path === '/game/10/live-snapshot' && request.method() === 'GET') data = { snapshotJson: '' };
+    else if (path === '/game/10/live-snapshot' && request.method() === 'GET') data = { snapshotJson: savedSnapshot };
     else if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
-      bucket.snapshots.push(request.postDataJSON().snapshotJson);
-      data = { snapshotJson: '' };
+      savedSnapshot = request.postDataJSON().snapshotJson;
+      bucket.snapshots.push(savedSnapshot);
+      data = { snapshotJson: savedSnapshot };
     }
     else if (path === '/game/10/save-live') data = { success: true };
     else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) data = { restricted: false, players: [] };
@@ -302,6 +304,29 @@ test('Issue #527：打者先出局后的牵制是独立 play，不记 DP', async
   expect(snapshot.playerStatsById['106'].fielding.dp).toBe(0);
   expect(snapshot.playerStatsById['103'].fielding.dp).toBe(0);
   expect(snapshot.playerStatsById['101'].fielding.dp).toBe(0);
+});
+
+test('Issue #527：保存重载后 play 上下文恢复，第二出局仍记 DP', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await recordGroundOut(page, 'SS');
+  await saveGame(page, bucket);
+  await page.reload();
+  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await page.waitForTimeout(1200);
+  await waitForRunnerToken(page, 1);
+  const menu = await dragRunner(page, 1, 2, 'out');
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await pickMenuItem(page, '触杀出局');
+  await clickFielder(page, '1B');
+  await clickFielder(page, '2B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['106'].fielding.dp).toBe(1);
+  expect(snapshot.playerStatsById['103'].fielding.dp).toBe(1);
+  expect(snapshot.playerStatsById['104'].fielding.dp).toBe(1);
 });
 
 test('Issue #527：飞球接杀后 2→3 触杀记 DP', async ({ page }) => {
