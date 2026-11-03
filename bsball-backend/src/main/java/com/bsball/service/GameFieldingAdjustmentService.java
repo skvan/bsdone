@@ -174,6 +174,15 @@ public class GameFieldingAdjustmentService {
         }
     }
 
+    /** 保存前复核仍有效的补记：完整快照中源 Play 丢失时先失效并扣回，避免重放已失效补记。 */
+    @Transactional
+    public void refreshApprovedValidity(Game game) {
+        if (approvedRows(game).isEmpty()) {
+            return;
+        }
+        invalidateMissingSourcePlays(game, readSnapshot(game));
+    }
+
     /** 删除统计行前的守卫：该球员是否仍有已生效的守备补记。 */
     public boolean hasApprovedPlayerAdjustment(long tenantId, long gameId, long playerId) {
         return tenantId > 0 && gameId > 0 && playerId > 0

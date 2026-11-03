@@ -276,8 +276,7 @@ public class GameService {
         }
         this.assertGameWritable(game);
         if (dto.getGame() != null) {
-            GameSaveLiveDTO.GameUpdatePart g = dto.getGame();
-            if (g.getHomeScore() != null) {
+            GameSaveLiveDTO.GameUpdatePart g = dto.getGame();            if (g.getHomeScore() != null) {
                 game.setHomeScore(g.getHomeScore());
             }
             if (g.getAwayScore() != null) {
@@ -314,6 +313,10 @@ public class GameService {
                 game.setTopBottom(g.getTopBottom());
             }
             this.gameRepository.save(game);
+        }
+        // 已完赛保存前先复核源 Play；失效补记在统计覆盖前扣回，避免 save-live 重放已失效记录。
+        if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.fieldingAdjustmentService.refreshApprovedValidity(game);
         }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
             this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), gameId,

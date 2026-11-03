@@ -271,6 +271,31 @@ class GameFieldingAdjustmentServiceTest {
     }
 
     @Test
+    @DisplayName("save-live 前复核：源 Play 丢失时先失效并扣回，避免重放失效补记")
+    void refreshApprovedValidityInvalidatesBeforeReplay() {
+        GameFieldingAdjustment row = adjustment("APPROVED");
+        row.setId(77L);
+        fielderStat.setA(3);
+        fielderStat.setTc(5);
+        positionRow.setA(3);
+        game.setLiveSnapshotJson("""
+                {"playEventsComplete":true,"playEvents":[]}
+                """);
+        when(adjustmentRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(row));
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(fielderStat));
+        when(gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L))
+                .thenReturn(List.of(positionRow));
+
+        service.refreshApprovedValidity(game);
+
+        assertEquals("INVALIDATED", row.getStatus());
+        assertEquals(2, fielderStat.getA());
+        assertEquals(4, fielderStat.getTc());
+        assertEquals(2, positionRow.getA());
+    }
+
+    @Test
     @DisplayName("完整快照中源 Play 丢失时，列表复核自动失效并扣回统计")
     void listInvalidatesAdjustmentWhenSourcePlayDisappears() {
         GameFieldingAdjustment row = adjustment("APPROVED");
