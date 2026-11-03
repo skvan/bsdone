@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -881,6 +881,8 @@ const HANDLE_LABELS = {
   se: '右下缩放'
 };
 const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
+// 生产构建通过 VITE_CLUBHOUSE_LAYOUT_EDITING=false 关闭布局编辑（测试/本地默认开启）
+const layoutEditingEnabled = import.meta.env.VITE_CLUBHOUSE_LAYOUT_EDITING !== 'false';
 const compactBoardQuery = window.matchMedia('(min-width: 981px) and (max-width: 1339px)');
 const data = ref(null);
 const loading = ref(false);
@@ -1813,7 +1815,7 @@ function autoScrollLayoutPointer() {
 }
 
 function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
+  if (!layoutEditingEnabled || !data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
