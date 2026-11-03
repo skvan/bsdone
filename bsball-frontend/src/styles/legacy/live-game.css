@@ -97,6 +97,12 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 
 /* ===== 换人事务模式（#444 后续） ===== */
 .live-sub-mode-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #e6a23c;background:#fdf6ec;color:#8a5a00;border-radius:6px;font-size:13px;line-height:1.4;position:relative;z-index:6}
+/* #478 扩展：守备轮转速记栏 */
+.live-sub-rotation{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto}
+.live-sub-rotation__input{box-sizing:border-box;width:132px;height:28px;padding:0 8px;border:1px solid var(--el-border-color);border-radius:6px;background:var(--el-bg-color);color:var(--el-text-color-primary);font-size:13px;line-height:26px;outline:none}
+.live-sub-rotation__input:focus{border-color:var(--el-color-primary);box-shadow:0 0 0 1px color-mix(in srgb, var(--el-color-primary) 30%, transparent)}
+.live-sub-rotation__input::placeholder{color:var(--el-text-color-placeholder)}
+@media (width<=1279px){.live-sub-rotation__input{width:116px;height:32px;font-size:14px;line-height:30px}}
 .live-sub-mode-banner>span{flex:1 1 260px;min-width:220px}
 .live-sub-dh-card{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px dashed #d48806;background:#fff;color:#8a5a00;border-radius:6px;font-size:12px;line-height:1.3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 .live-sub-dh-card:active{cursor:grabbing}
