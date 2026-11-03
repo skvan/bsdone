@@ -274,6 +274,7 @@ EventService --> EventRepository
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
   - 盒子比分守备表（关联 #446）：`stats` 新增 `firstPosition`（本场首次上场防守的守位，后续换位不覆盖；DH/PH/EP 为空；旧客户端缺栏保留库中原值）。仅在实际守备/换守备落位时写入，代打/代跑未防守前不继承被换下者守位
   - 逐位置守备（2026-10-29，P1/P3）：可选 `fieldingPositions` 数组，元素 `teamId/playerId/position/outs/po/a/e/dp/pb/catcherCs/catcherSb/fieldingGs`（`outs` 为守备出局数，3 outs=1 局；`po/a/e` 为该位置接杀/助杀/失误数；`dp/pb/catcherCs/catcherSb` 为该位置双杀/捕逸/盗垒阻杀/被盗垒数；缺省 0，范围 0..999）。出现该键即视为该场全量替换 `bs_game_fielding_pos_stat`，并按球员 `sum(outs)` 回写 `def_inn`（10 outs→3.1）；`DH/PH/EP` 不接受；缺省不触碰
+  - 赛后守备补记（Issue #554）：统计行与/或逐位置行被本请求覆盖后，会按该场仍 `APPROVED` 的 `bs_game_fielding_adjustment` 重新 +1，避免保存把补记的 A/TC 冲掉；仅重放本次 `stats` 实际写入的统计行，部分载荷遗漏的行保留原值。实时录入正常快照路径提交基础统计，故不会重复累计；无快照 `Do()` 重建路径的统计来自 `/stats`（已含补记），前端会带 `statsIncludeFieldingAdjustments=true`，服务端跳过回放
   - 守备表先发排序（V20261031100000）：`stats` 新增 `startingPosition`（本场先发守备位；先发野手/先发投手有值，DH/替补为空）；旧客户端缺栏保留库中原值
   - 换人事务（2026-10-27）：可选 `substitutions` 数组，与 `stats` 同一事务落 `bs_game_substitution_event`；同一 `transactionId` 重试幂等。元素字段：`transactionId/teamId/inning/topBottom/changeType/slot/outPlayerId/inPlayerId/outPosition/inPosition`；`changeType` 为 `SUBSTITUTION/POSITION_CHANGE/PITCHING_CHANGE/DH_CANCEL`。事件只记录净变化，统计事实仍以 `stats` 为准
   - 实时自动写：LiveGame 已自动累加 IBB/BB/HBP 分项、GDP、DP、INN、PB、SB允许、CS、GO/FO、投手 2B/3B/SH/SF/IO 与捕手妨碍 IO；首名投手自动标记 GS。W/L/SV/HLD 仍由管理端补录
@@ -286,10 +287,25 @@ EventService --> EventRepository
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
+- GET /game/{id}/fielding-adjustments
+  - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供「比赛复核 → 守备补记」页签使用
+  - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能进行守备补记」
+  - 响应：`List<FieldingAdjustmentListDTO>`；字段含 `sourceEventId/sourceSequence/inning/half/teamId/playerId/playerName/position/assistCount/status/sourceText/note/revokedBy/revokedAt/invalidReason/sourceValid`
+  - 失效：完整快照（`playEventsComplete=true`）中找不到源 Play 的有效补记会先置为 `INVALIDATED` 并扣回统计
+- POST /game/{id}/fielding-adjustments
+  - 作用：在指定失误 Play 上补记 1 次助杀 A
+  - 请求：`sourceEventId`（必填，源 Play 的 `id`）、`playerId`、`position`（P/C/1B/2B/3B/SS/LF/CF/RF；缺省取球员当前守位）、`note`（≤200 字）
+  - 校验：源 Play 必须存在于当前快照且为失误 Play（`E/ADVANCE_FE/DK3_REACH_E` 或文本含「失误」）；守备方由半局推导（上半局主队、下半局客队）；补记球员必须在本场该队统计行中；同一 `gameId+sourceEventId+playerId`（不区分守位）重复补记返回 409；已撤销/失效的同键记录复用并重新生效
+  - 生效：球员行 `a/tc` 与对应位置行 `a` 立即 +1；不改变 R/ER
+  - 权限：比赛写入权限 + 租户隔离 + final 门禁
+- POST /game/{id}/fielding-adjustments/{adjustmentId}/revoke
+  - 作用：撤销一条已生效补记，保留审计行并把球员行 `a/tc` 与位置 `a` 扣回
+  - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同新增
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）
   - ER 单一写方：引擎场次忽略请求里的 `er`/`pitchR`；legacy 无引擎数据场次仍允许手工修正
+  - 赛后守备补记（Issue #554）：结果页统计来自 `GET /game/{id}/stats`（已含补记后的 A/TC），本接口不再回放补记；若后续客户端改为提交基础统计，需显式约定回放标记，避免重复 +1
   - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
   - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定不含 `pitchPa`
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
@@ -300,7 +316,7 @@ EventService --> EventRepository
   - 参考：`GameApi.java:119-123`
 - GET /game/{gameId}/stats
   - 作用：查询某场比赛的球员统计
-  - 响应：`PageResult<GamePlayerStat>`；V20261028160000 起含 `firstPosition`（首次上场守位，旧数据为空时前端回退 `position` 展示），V20261031100000 起含 `startingPosition`（先发守备位，旧数据为空时前端回退棒次/列表序）
+  - 响应：`PageResult<GamePlayerStat>`；V20261028160000 起含 `firstPosition`（首次上场守位，旧数据为空时前端回退 `position` 展示），V20261031100000 起含 `startingPosition`（先发守备位，旧数据为空时前端回退棒次/列表序）；新增瞬态字段 `fieldingAdjustmentA`（只填在可计入的野手行/仅守备投手行，表示该球员本场已计入的守备补记 A；不落库，供无快照 `Do()` 路径判断统计是否已含补记）
   - 参考：`GameApi.java:89-93`
 - GET /game/{gameId}/fielding-positions
   - 作用：查询某场逐位置守备统计（`bs_game_fielding_pos_stat`），供箱线图/详情与位置维度使用；比赛详情守备表据此展示同一球员的逐位置明细（#524）

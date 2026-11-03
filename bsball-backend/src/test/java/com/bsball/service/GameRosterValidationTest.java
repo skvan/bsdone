@@ -82,9 +82,11 @@ class GameRosterValidationTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
         statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
-                eventRegistrationService, earnedRunReconstructionService);
+                eventRegistrationService, earnedRunReconstructionService,
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
     }
 
     private static Event event() {
