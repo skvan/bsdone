@@ -637,12 +637,6 @@
           >
             <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
             <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
-            <div class="about-meta">
-              <div><span>守备位置</span><b>{{ (player.positions || []).join(' / ') || '未填写' }}</b></div>
-              <div><span>投打</span><b>{{ throwBatLabel }}</b></div>
-              <div><span>身高 / 体重</span><b>{{ player.height || '-' }} / {{ player.weight || '-' }}</b></div>
-              <div><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
-            </div>
           </section>
 
           <section
@@ -3304,9 +3298,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .rep-stat span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-faint); }
 .rep-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; color: var(--bs-text-muted); }
 .about-intro { margin: 0; font-size: 10px; line-height: 1.85; color: var(--bs-text-muted); }
-.about-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--bs-hairline-soft); }
-.about-meta span { display: block; font-size: 10px; color: var(--bs-text-faint); }
-.about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
+
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
 @media (prefers-reduced-motion: reduce) {
