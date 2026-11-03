@@ -10,3 +10,9 @@
 .game-entry-page .compact-table .el-table__body tr.current-row .cell {
   font-weight: 600;
 }
+
+/* 补录数据：守备/捕手表 Totals 汇总行 */
+.game-entry-page .compact-table .el-table__footer-wrapper td.el-table__cell {
+  background: var(--el-fill-color-light);
+  font-weight: 600;
+}

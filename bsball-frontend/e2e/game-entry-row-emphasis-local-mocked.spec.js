@@ -13,18 +13,31 @@ const homePlayers = Array.from({ length: 9 }, (_, i) => ({
 }));
 const players = { [AWAY_ID]: awayPlayers, [HOME_ID]: homePlayers };
 
-const stats = [...awayPlayers, ...homePlayers].map((player, index) => ({
-  id: player.id,
-  teamId: player.teamId,
-  playerId: player.id,
-  battingOrder: (index % 9) + 1,
-  listOrder: index % 9,
-  position: LINEUP_POSITIONS[index % 9],
-  number: player.number,
-  pa: 4,
-  ab: 4,
-  h: index % 3
-}));
+const stats = [...awayPlayers, ...homePlayers].map((player, index) => {
+  const position = LINEUP_POSITIONS[index % 9];
+  const catcher = position === 'C';
+  const first = index % 9 === 0;
+  return {
+    id: player.id,
+    teamId: player.teamId,
+    playerId: player.id,
+    battingOrder: (index % 9) + 1,
+    listOrder: index % 9,
+    position,
+    number: player.number,
+    pa: 4,
+    ab: 4,
+    h: index % 3,
+    po: catcher ? 8 : first ? 2 : 0,
+    a: catcher ? 1 : 0,
+    e: 0,
+    dp: 0,
+    defInn: 9,
+    pb: catcher ? (player.teamId === AWAY_ID ? 1 : 2) : 0,
+    catcherSb: catcher ? (player.teamId === AWAY_ID ? 2 : 1) : 0,
+    catcherCs: catcher ? (player.teamId === AWAY_ID ? 1 : 0) : 0
+  };
+});
 
 const game = {
   id: GAME_ID,
@@ -114,3 +127,25 @@ for (const dark of [false, true]) {
     await assertEditingRow(page);
   });
 }
+
+test('后台补录页：守备表与捕手表显示 Totals 汇总行', async ({ page }) => {
+  await mockEntryPage(page);
+  await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/edit');
+  await expect(page.locator('.game-entry-page')).toBeVisible();
+
+  await page.getByRole('tab', { name: '守备数据' }).click();
+  const fieldingTable = page.locator('.game-fielding-table', { hasText: '客队A 守备' });
+  await expect(fieldingTable).toBeVisible();
+  const fieldingFooter = fieldingTable.locator('.el-table__footer-wrapper');
+  await expect(fieldingFooter).toContainText('Totals');
+  await expect(fieldingFooter.locator('td').nth(4)).toHaveText('10');
+
+  await page.getByRole('tab', { name: '捕手数据' }).click();
+  const catcherTable = page.locator('[data-game-result-nav="away-catcher"]');
+  await expect(catcherTable).toBeVisible();
+  const catcherFooter = catcherTable.locator('.el-table__footer-wrapper');
+  await expect(catcherFooter).toContainText('Totals');
+  await expect(catcherFooter.locator('td').nth(2)).toHaveText('1');
+  await expect(catcherFooter.locator('td').nth(3)).toHaveText('2');
+  await expect(catcherFooter.locator('td').nth(4)).toHaveText('1');
+});
