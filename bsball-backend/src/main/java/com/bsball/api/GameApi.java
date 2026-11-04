@@ -33,8 +33,12 @@ import com.bsball.model.dto.GameResponseDTO;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
+import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
+import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
+import com.bsball.model.dto.PitcherRunOverrideRequest;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
@@ -159,6 +163,44 @@ public class GameApi {
             @PathVariable Long decisionId,
             @RequestBody EarnedRunDecisionOverrideRequest body) {
         return Result.ok(this.gameService.overrideEarnedRunDecision(id, decisionId, body));
+    }
+
+    @GetMapping(value={"/{id}/earned-runs/pitchers"})
+    public Result<List<PitcherRunTotalsDTO>> listPitcherRunTotals(@PathVariable Long id) {
+        return Result.ok(this.gameService.listPitcherRunTotals(id));
+    }
+
+    @PutMapping(value={"/{id}/earned-runs/pitchers/{playerId}/override"})
+    public Result<PitcherRunTotalsDTO> overridePitcherRuns(
+            @PathVariable Long id,
+            @PathVariable Long playerId,
+            @RequestBody PitcherRunOverrideRequest body) {
+        return Result.ok(this.gameService.overridePitcherRuns(id, playerId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/overrides/{overrideId}/revoke"})
+    public Result<PitcherRunTotalsDTO> revokePitcherRunOverride(
+            @PathVariable Long id, @PathVariable Long overrideId) {
+        return Result.ok(this.gameService.revokePitcherRunOverride(id, overrideId));
+    }
+
+    @GetMapping(value={"/{id}/fielding-adjustments"})
+    public Result<List<FieldingAdjustmentListDTO>> listFieldingAdjustments(@PathVariable Long id) {
+        return Result.ok(this.gameService.listFieldingAdjustments(id));
+    }
+
+    @PostMapping(value={"/{id}/fielding-adjustments"})
+    public Result<FieldingAdjustmentListDTO> createFieldingAdjustment(
+            @PathVariable Long id,
+            @RequestBody FieldingAdjustmentCreateRequest body) {
+        return Result.ok(this.gameService.createFieldingAdjustment(id, body));
+    }
+
+    @PostMapping(value={"/{id}/fielding-adjustments/{adjustmentId}/revoke"})
+    public Result<FieldingAdjustmentListDTO> revokeFieldingAdjustment(
+            @PathVariable Long id,
+            @PathVariable Long adjustmentId) {
+        return Result.ok(this.gameService.revokeFieldingAdjustment(id, adjustmentId));
     }
 
     @PostMapping(value={"/{id}/save-result"})

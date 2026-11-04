@@ -12,7 +12,11 @@ import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
+import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
+import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
+import com.bsball.model.dto.PitcherRunOverrideRequest;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
@@ -39,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,6 +52,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,6 +81,7 @@ public class GameService {
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
+    private final GameFieldingAdjustmentService fieldingAdjustmentService;
     private final EventRegistrationService eventRegistrationService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
@@ -272,8 +279,7 @@ public class GameService {
         }
         this.assertGameWritable(game);
         if (dto.getGame() != null) {
-            GameSaveLiveDTO.GameUpdatePart g = dto.getGame();
-            if (g.getHomeScore() != null) {
+            GameSaveLiveDTO.GameUpdatePart g = dto.getGame();            if (g.getHomeScore() != null) {
                 game.setHomeScore(g.getHomeScore());
             }
             if (g.getAwayScore() != null) {
@@ -311,6 +317,10 @@ public class GameService {
             }
             this.gameRepository.save(game);
         }
+        // 已完赛保存前先复核源 Play；失效补记在统计覆盖前扣回，避免 save-live 重放已失效记录。
+        if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.fieldingAdjustmentService.refreshApprovedValidity(game);
+        }
         if (dto.getStats() != null && !dto.getStats().isEmpty()) {
             this.eventRegistrationService.assertStatsPartsInRoster(game.getEventId(), gameId,
                     dto.getStats().stream()
@@ -337,6 +347,24 @@ public class GameService {
         }
         this.saveSubstitutionEvents(game, dto.getSubstitutions());
         this.saveFieldingPositions(game, dto.getFieldingPositions());
+        // 实时录入以快照为基础绝对覆盖统计；赛后补记在覆盖后重放，避免保存把 A/TC 冲掉。
+        // 只重放本次请求实际写入的统计行，部分载荷遗漏的行保留原值，避免重复 +1。
+        // Do() 无快照重建时统计取自 /stats（已含补记），前端会标 statsIncludeFieldingAdjustments=true，跳过回放。
+        if (dto.getStats() != null && !dto.getStats().isEmpty()
+                && !Boolean.TRUE.equals(dto.getStatsIncludeFieldingAdjustments())) {
+            Set<String> savedStatKeys = new HashSet<>();
+            for (GameSaveLiveDTO.GamePlayerStatPart part : dto.getStats()) {
+                if (part == null || part.getTeamId() == null || part.getPlayerId() == null) {
+                    continue;
+                }
+                savedStatKeys.add(part.getTeamId() + "_" + part.getPlayerId() + "_"
+                        + (part.getIsPitcher() == null ? 0 : part.getIsPitcher()));
+            }
+            this.fieldingAdjustmentService.reapplyPlayerStats(game, savedStatKeys);
+        }
+        if (dto.getFieldingPositions() != null) {
+            this.fieldingAdjustmentService.reapplyPositionStats(game);
+        }
         if ("final".equalsIgnoreCase(game.getStatus())) {
             this.logSettlementValidation(gameId, game.getTenantId());
         }
@@ -641,6 +669,97 @@ public class GameService {
         return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
     }
 
+    /** 赛后守备补记：列出源 Play 候选与已补记记录，仅已完赛比赛可用。 */
+    public List<FieldingAdjustmentListDTO> listFieldingAdjustments(Long gameId) {
+        Game game = this.requireGameForFieldingReview(gameId);
+        return this.fieldingAdjustmentService.list(game);
+    }
+
+    /** 赛后补记助杀：源 Play 与守备统计同步由服务层校验。 */
+    public FieldingAdjustmentListDTO createFieldingAdjustment(
+            Long gameId, FieldingAdjustmentCreateRequest request) {
+        Game game = this.requireGameForFieldingReview(gameId);
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        return this.fieldingAdjustmentService.create(game, operatorId, request);
+    }
+
+    /** 撤销赛后补记：保留审计行并即时扣回 A/TC。 */
+    public FieldingAdjustmentListDTO revokeFieldingAdjustment(
+            Long gameId, Long adjustmentId) {
+        Game game = this.requireGameForFieldingReview(gameId);
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        return this.fieldingAdjustmentService.revoke(game, adjustmentId, operatorId);
+    }
+
+    private Game requireGameForFieldingReview(Long gameId) {
+        return this.requireFinalGameForReview(gameId, "比赛结束后才能进行守备补记");
+    }
+
+    private Game requireFinalGameForReview(Long gameId, String message) {
+        Game game = this.gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
+            throw new BusinessException(404, "比赛不存在");
+        }
+        this.assertGameWritable(game);
+        if (!"final".equalsIgnoreCase(game.getStatus())) {
+            throw new BusinessException(400, message);
+        }
+        return game;
+    }
+
+    /** 赛后复核：列出本场投手 R/ER 合计与生效中的人工覆写。 */
+    public List<PitcherRunTotalsDTO> listPitcherRunTotals(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能复核投手 R/ER");
+        if (!this.earnedRunReconstructionService.hasEngineData(gameId)) {
+            return List.of();
+        }
+        return this.earnedRunReconstructionService.listPitcherTotals(game.getTenantId(), gameId);
+    }
+
+    /** 赛后复核：保存指定投手的 R/ER 人工覆写。 */
+    public PitcherRunTotalsDTO overridePitcherRuns(
+            Long gameId, Long playerId, PitcherRunOverrideRequest request) {
+        if (request == null) {
+            throw new BusinessException(400, "缺少投手 R/ER 覆写资料");
+        }
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能手工覆写投手 R/ER");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.overridePitcherRuns(
+                    game.getTenantId(), gameId, playerId,
+                    request.getRunsAllowed(), request.getEarnedRuns(),
+                    request.getNote(), operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该投手已有其他复核结果，请刷新后重试");
+        }
+    }
+
+    /** 赛后复核：撤销投手 R/ER 人工覆写，恢复引擎值。 */
+    public PitcherRunTotalsDTO revokePitcherRunOverride(Long gameId, Long overrideId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能撤销投手 R/ER 覆写");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.revokePitcherOverride(
+                    game.getTenantId(), gameId, overrideId, operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
+    }
+
     @Transactional(rollbackFor={Exception.class})
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
@@ -877,10 +996,15 @@ public class GameService {
                 existingByKey.put(key, s);
             }
             LinkedHashSet<Long> keepIds = new LinkedHashSet<>();
+            List<SaveGameResultDTO.StatPart> manualPitcherRunParts = new ArrayList<>();
             for (SaveGameResultDTO.StatPart part : dto.getStats()) {
                 GamePlayerStat stat;
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
                 int isPitcher = part.getIsPitcher() == null ? 0 : part.getIsPitcher().intValue();
+                if (engineManaged && isPitcher == 1
+                        && Boolean.TRUE.equals(part.getManualPitcherRunOverride())) {
+                    manualPitcherRunParts.add(part);
+                }
                 if (part.getId() != null) {
                     GamePlayerStat byId = existingById.get(part.getId());
                     // id 指向的列必須與該筆身分一致才認，否則視為前端 id 錯位（例如投手筆帶了打者列 id），
@@ -907,12 +1031,46 @@ public class GameService {
             // payload 中没出现但未显式删除的行一律保留，避免旧页面/多标签页漏带
             // 把真实打者行一并物理删除。
             if (dto.getRemovedStatIds() != null) {
-                this.deleteRemovedStatRows(gameId, engineManaged, dto.getRemovedStatIds(),
+                this.deleteRemovedStatRows(gameId, statTenantId, engineManaged, dto.getRemovedStatIds(),
                         existingById, keepIds);
             }
+            this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
         }
+        // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
         this.logSettlementValidation(gameId, statTenantId);
+    }
+
+    /** 结果页显式修改的投手 R/ER：保存为人工覆写，并由 ER 引擎全量重算避免后续被冲掉。 */
+    private void applyResultPitcherRunOverrides(
+            Game game, List<SaveGameResultDTO.StatPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return;
+        }
+        if (!"final".equalsIgnoreCase(game.getStatus())) {
+            throw new BusinessException(400, "比赛结束后才能手工覆写投手 R/ER");
+        }
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        Map<Long, int[]> values = new LinkedHashMap<>();
+        for (SaveGameResultDTO.StatPart part : parts) {
+            if (part.getPlayerId() == null) {
+                continue;
+            }
+            if (part.getPitchR() == null || part.getEr() == null) {
+                throw new BusinessException(400, "缺少投手 R/ER");
+            }
+            values.put(part.getPlayerId(),
+                    new int[]{part.getPitchR().intValue(), part.getEr().intValue()});
+        }
+        try {
+            this.earnedRunReconstructionService.applyResultPitcherRunOverrides(
+                    game.getTenantId(), game.getId(), values, operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
@@ -927,8 +1085,9 @@ public class GameService {
      * payload 缺失但未列出的行不再自动删除，避免旧页面/多标签页漏带导致真实球员数据丢失。
      * 重复 id 只删除一次；null 或本场不存在的 id 忽略。</p>
      */
-    private void deleteRemovedStatRows(Long gameId, boolean engineManaged, List<Long> removedStatIds,
-            Map<Long, GamePlayerStat> existingById, LinkedHashSet<Long> keepIds) {
+    private void deleteRemovedStatRows(Long gameId, Long tenantId, boolean engineManaged,
+            List<Long> removedStatIds, Map<Long, GamePlayerStat> existingById,
+            LinkedHashSet<Long> keepIds) {
         for (Long statId : new LinkedHashSet<>(removedStatIds)) {
             if (statId == null) {
                 continue;
@@ -939,6 +1098,11 @@ public class GameService {
             GamePlayerStat row = existingById.get(statId);
             if (row == null) {
                 continue;
+            }
+            if (row.getPlayerId() != null && tenantId != null
+                    && this.fieldingAdjustmentService.hasApprovedPlayerAdjustment(
+                            tenantId, gameId, row.getPlayerId())) {
+                throw new BusinessException(400, "该球员仍有守备补记，请先撤销后再删除");
             }
             if (engineManaged && Integer.valueOf(1).equals(row.getIsPitcher())) {
                 if (!GamePlayerStatZeros.isZero(row)) {
@@ -1389,7 +1553,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository, GameFieldingAdjustmentService fieldingAdjustmentService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameSubstitutionEventRepository = gameSubstitutionEventRepository;
@@ -1402,6 +1566,7 @@ public class GameService {
         this.earnedRunReconstructionService = earnedRunReconstructionService;
         this.eventRegistrationService = eventRegistrationService;
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
+        this.fieldingAdjustmentService = fieldingAdjustmentService;
     }
 }
 

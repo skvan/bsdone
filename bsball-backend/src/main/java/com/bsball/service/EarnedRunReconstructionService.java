@@ -1,13 +1,16 @@
 package com.bsball.service;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.PitcherRunOverrideRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.stats.earnedrun.EarnedRunDecision;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
@@ -17,8 +20,10 @@ import com.bsball.stats.earnedrun.EarnedRunStatus;
 import com.bsball.stats.earnedrun.ScoringRunner;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,9 +34,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EarnedRunReconstructionService {
+    private static final String OVERRIDE_APPROVED = "APPROVED";
+    private static final String OVERRIDE_REVOKED = "REVOKED";
+    private static final String OVERRIDE_INVALIDATED = "INVALIDATED";
+
     private final EarnedRunPlayRepository playRepository;
     private final EarnedRunDecisionRepository decisionRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
+    private final PitcherRunOverrideRepository pitcherRunOverrideRepository;
     private final EarnedRunReconstructionEngine engine;
     private final PlayerRepository playerRepository;
 
@@ -39,10 +49,12 @@ public class EarnedRunReconstructionService {
             EarnedRunPlayRepository playRepository,
             EarnedRunDecisionRepository decisionRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
+            PitcherRunOverrideRepository pitcherRunOverrideRepository,
             PlayerRepository playerRepository) {
         this.playRepository = playRepository;
         this.decisionRepository = decisionRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
+        this.pitcherRunOverrideRepository = pitcherRunOverrideRepository;
         this.playerRepository = playerRepository;
         this.engine = new EarnedRunReconstructionEngine();
     }
@@ -62,12 +74,20 @@ public class EarnedRunReconstructionService {
         List<EarnedRunPlayEntity> existing = playRepository
                 .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                         tenantId, gameId, inning, half);
+        Set<Long> affectedPitcherIds = collectAffectedPitcherIds(tenantId, gameId, existing);
         deleteExistingDecisions(tenantId, gameId, existing);
         playRepository.deleteByTenantIdAndGameIdAndInningAndHalf(
                 tenantId, gameId, inning, half);
         persistReconstruction(tenantId, gameId, inning, half, operatorId, plays, result);
+        for (EarnedRunDecision decision : result.decisions()) {
+            if (decision.responsiblePitcherId() > 0) {
+                affectedPitcherIds.add(decision.responsiblePitcherId());
+            }
+        }
+        Set<Long> invalidatedPitcherIds = invalidateActiveOverrides(tenantId, gameId,
+                affectedPitcherIds, "半局重建后需重新复核投手 R/ER", operatorId);
         Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals =
-                recomputePitcherStats(tenantId, gameId, fieldingTeamId);
+                recomputePitcherStats(tenantId, gameId, fieldingTeamId, invalidatedPitcherIds);
         return result.withPitcherAbsoluteTotals(absoluteTotals);
     }
 
@@ -81,6 +101,110 @@ public class EarnedRunReconstructionService {
         return gameId > 0 && pitcherId > 0
                 && decisionRepository.existsByGameIdAndResponsiblePitcherId(
                         Long.valueOf(gameId), Long.valueOf(pitcherId));
+    }
+
+    /** 赛后复核：列出本场全部投手的 R/ER 合计与生效中的人工覆写。 */
+    public List<PitcherRunTotalsDTO> listPitcherTotals(long tenantId, long gameId) {
+        Map<Long, GamePlayerStat> pitcherStats =
+                pitcherStatsOf(loadTenantStats(tenantId, gameId));
+        Map<Long, int[]> engineTotals = enginePitcherTotals(tenantId, gameId);
+        Map<Long, PitcherRunOverride> overrides = activeOverridesByPlayer(tenantId, gameId);
+        Set<Long> playerIds = new LinkedHashSet<>();
+        playerIds.addAll(pitcherStats.keySet());
+        playerIds.addAll(engineTotals.keySet());
+        playerIds.addAll(overrides.keySet());
+        Map<Long, Player> players = loadPlayerMap(playerIds);
+        return playerIds.stream()
+                .map(playerId -> toPitcherTotals(playerId, pitcherStats.get(playerId),
+                        engineTotals.get(playerId), overrides.get(playerId), players.get(playerId)))
+                .sorted(Comparator
+                        .comparing(PitcherRunTotalsDTO::teamId,
+                                Comparator.nullsLast(Long::compareTo))
+                        .thenComparing(PitcherRunTotalsDTO::playerId))
+                .toList();
+    }
+
+    /**
+     * 赛后复核：为指定投手保存 R/ER 人工覆写，并按该场全量重算绝对覆盖。
+     * 同一投手已有生效覆写时就地更新；撤销/失效后重新覆写新建审计行。
+     */
+    @Transactional
+    public PitcherRunTotalsDTO overridePitcherRuns(long tenantId, long gameId, long playerId,
+            Integer runsAllowed, Integer earnedRuns, String note, long operatorId) {
+        validatePitcherOverrideInput(tenantId, gameId, playerId, runsAllowed, earnedRuns, note, operatorId);
+        ensurePitcherInGame(tenantId, gameId, playerId);
+        upsertApprovedOverride(tenantId, gameId, playerId, runsAllowed, earnedRuns, note, operatorId);
+        recomputePitcherStats(tenantId, gameId, null);
+        return findPitcherTotals(tenantId, gameId, playerId);
+    }
+
+    /**
+     * 结果录入页保存的人工覆写：只更新所选投手的统计，不按引擎全量重算。
+     * 结果页的统计以本次提交为准；引擎只覆盖部分半局时，不能拿不完整判定改写其他投手。
+     */
+    @Transactional
+    public void applyResultPitcherRunOverrides(long tenantId, long gameId,
+            Map<Long, int[]> values, long operatorId) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        List<GamePlayerStat> gameStats = loadTenantStats(tenantId, gameId);
+        Map<Long, GamePlayerStat> pitcherStats = pitcherStatsOf(gameStats);
+        Map<Long, Long> teamByPlayer = teamByPlayerOf(gameStats);
+        for (Map.Entry<Long, int[]> entry : values.entrySet()) {
+            long playerId = entry.getKey();
+            int runs = entry.getValue()[0];
+            int earned = entry.getValue()[1];
+            validatePitcherOverrideInput(tenantId, gameId, playerId, runs, earned, null, operatorId);
+            ensurePitcherInGame(tenantId, gameId, playerId);
+            upsertApprovedOverride(tenantId, gameId, playerId, runs, earned, null, operatorId);
+            GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, playerId,
+                    pitcherStats, teamByPlayer, null);
+            applyPitcherTotals(stat, new int[]{runs, earned, Math.max(0, runs - earned), 0});
+            gamePlayerStatRepository.save(stat);
+        }
+    }
+
+    private PitcherRunOverride upsertApprovedOverride(long tenantId, long gameId, long playerId,
+            Integer runsAllowed, Integer earnedRuns, String note, long operatorId) {
+        PitcherRunOverride row = this.pitcherRunOverrideRepository
+                .findFirstByTenantIdAndGameIdAndPlayerIdAndStatusOrderByIdDesc(
+                        tenantId, gameId, playerId, OVERRIDE_APPROVED)
+                .orElseGet(PitcherRunOverride::new);
+        if (row.getId() == null) {
+            row.setTenantId(tenantId);
+            row.setGameId(gameId);
+            row.setPlayerId(playerId);
+            row.setCreatedBy(operatorId);
+        }
+        row.setRunsAllowed(runsAllowed);
+        row.setEarnedRuns(earnedRuns);
+        row.setNote(normalizeNote(note));
+        row.setStatus(OVERRIDE_APPROVED);
+        row.setUpdatedBy(operatorId);
+        return this.pitcherRunOverrideRepository.save(row);
+    }
+
+    /** 撤销人工覆写：恢复引擎绝对值（无判定的投手归零）。 */
+    @Transactional
+    public PitcherRunTotalsDTO revokePitcherOverride(long tenantId, long gameId,
+            long overrideId, long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || overrideId <= 0 || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, override and operator must be positive");
+        }
+        PitcherRunOverride row = this.pitcherRunOverrideRepository
+                .findByIdAndTenantIdAndGameId(overrideId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("投手 R/ER 覆写不存在"));
+        if (!OVERRIDE_APPROVED.equals(row.getStatus())) {
+            throw new IllegalArgumentException("该覆写已撤销或失效");
+        }
+        row.setStatus(OVERRIDE_REVOKED);
+        row.setRevokedBy(operatorId);
+        row.setRevokedAt(LocalDateTime.now());
+        row.setUpdatedBy(operatorId);
+        this.pitcherRunOverrideRepository.save(row);
+        recomputePitcherStats(tenantId, gameId, null, Set.of(row.getPlayerId()));
+        return findPitcherTotals(tenantId, gameId, row.getPlayerId());
     }
 
     @Transactional
@@ -100,6 +224,11 @@ public class EarnedRunReconstructionService {
         EarnedRunDecisionEntity entity = decisionRepository
                 .findByIdAndTenantIdAndGameId(decisionId, tenantId, gameId)
                 .orElseThrow(() -> new IllegalArgumentException("Earned-run decision not found"));
+        if (entity.getResponsiblePitcherId() != null
+                && this.pitcherRunOverrideRepository.existsByTenantIdAndGameIdAndPlayerIdAndStatus(
+                        tenantId, gameId, entity.getResponsiblePitcherId(), OVERRIDE_APPROVED)) {
+            throw new IllegalArgumentException("该投手已手工覆写 R/ER，请先撤销覆写再修改判定");
+        }
         entity.setEarnedStatus(next.name());
         entity.setUnearnedReason(next == EarnedRunStatus.UNEARNED ? unearnedReason : null);
         entity.setOverriddenBy(operatorId);
@@ -111,24 +240,126 @@ public class EarnedRunReconstructionService {
     }
 
     /**
-     * 以该场全部逐分判定为唯一事实来源，绝对覆盖每名责任投手的 R/ER/UER/PENDING。
-     * 增量维护在漏记、重复重建或人工覆核后无法自愈，因此每次都做全量重算。
+     * 以该场全部逐分判定为唯一事实来源，绝对覆盖每名责任投手的 R/ER/UER/PENDING；
+     * 有生效中人工覆写的投手以人工值为准，不被引擎结果覆盖。
      */
     private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> recomputePitcherStats(
             long tenantId, long gameId, Long fallbackTeamId) {
-        Map<Long, GamePlayerStat> pitcherStats = new HashMap<>();
-        Map<Long, Long> teamByPlayer = new HashMap<>();
-        for (GamePlayerStat stat : gamePlayerStatRepository.findByGameId(gameId)) {
-            if (stat.getTenantId() == null || stat.getTenantId() != tenantId
-                    || stat.getPlayerId() == null) {
+        return recomputePitcherStats(tenantId, gameId, fallbackTeamId, Set.of());
+    }
+
+    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> recomputePitcherStats(
+            long tenantId, long gameId, Long fallbackTeamId, Set<Long> forceResetPlayerIds) {
+        List<GamePlayerStat> gameStats = loadTenantStats(tenantId, gameId);
+        Map<Long, GamePlayerStat> pitcherStats = pitcherStatsOf(gameStats);
+        Map<Long, Long> teamByPlayer = teamByPlayerOf(gameStats);
+        Map<Long, int[]> totals = enginePitcherTotals(tenantId, gameId);
+        Map<Long, PitcherRunOverride> overrides = activeOverridesByPlayer(tenantId, gameId);
+
+        for (Map.Entry<Long, int[]> entry : totals.entrySet()) {
+            if (overrides.containsKey(entry.getKey())) {
                 continue;
             }
-            teamByPlayer.putIfAbsent(stat.getPlayerId(), stat.getTeamId());
+            GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, entry.getKey(),
+                    pitcherStats, teamByPlayer, fallbackTeamId);
+            applyPitcherTotals(stat, entry.getValue());
+            gamePlayerStatRepository.save(stat);
+        }
+        for (PitcherRunOverride override : overrides.values()) {
+            GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, override.getPlayerId(),
+                    pitcherStats, teamByPlayer, fallbackTeamId);
+            applyPitcherTotals(stat, overrideTotals(override));
+            gamePlayerStatRepository.save(stat);
+        }
+        // 覆写刚失效/撤销且该投手已无判定：不能保留旧人工值，四字段归零。
+        for (Long playerId : forceResetPlayerIds) {
+            if (playerId == null || totals.containsKey(playerId)
+                    || overrides.containsKey(playerId)) {
+                continue;
+            }
+            GamePlayerStat stat = pitcherStats.get(playerId);
+            if (stat != null) {
+                applyPitcherTotals(stat, new int[4]);
+                gamePlayerStatRepository.save(stat);
+            }
+        }
+        return absolutePitcherTotals(pitcherStats);
+    }
+
+    private GamePlayerStat ensurePitcherStat(long tenantId, long gameId, Long playerId,
+            Map<Long, GamePlayerStat> pitcherStats, Map<Long, Long> teamByPlayer,
+            Long fallbackTeamId) {
+        GamePlayerStat stat = pitcherStats.get(playerId);
+        if (stat != null) {
+            return stat;
+        }
+        Long teamId = teamByPlayer.get(playerId);
+        if (teamId == null) {
+            teamId = fallbackTeamId;
+        }
+        if (teamId == null) {
+            throw new IllegalStateException(
+                    "Missing pitcher stat row for responsible pitcher " + playerId);
+        }
+        stat = createPitcherStatRow(tenantId, gameId, teamId, playerId);
+        pitcherStats.put(playerId, stat);
+        return stat;
+    }
+
+    private void applyPitcherTotals(GamePlayerStat stat, int[] total) {
+        stat.setPitchR(total[0]);
+        stat.setEr(total[1]);
+        stat.setUnearnedR(total[2]);
+        stat.setPendingR(total[3]);
+    }
+
+    private int[] overrideTotals(PitcherRunOverride override) {
+        int runs = valueOrZero(override.getRunsAllowed());
+        int earned = valueOrZero(override.getEarnedRuns());
+        return new int[]{runs, earned, Math.max(0, runs - earned), 0};
+    }
+
+    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absolutePitcherTotals(
+            Map<Long, GamePlayerStat> pitcherStats) {
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals = new HashMap<>();
+        for (Map.Entry<Long, GamePlayerStat> entry : pitcherStats.entrySet()) {
+            GamePlayerStat stat = entry.getValue();
+            absoluteTotals.put(entry.getKey(), new EarnedRunReconstructionResult.PitcherRunTotals(
+                    valueOrZero(stat.getPitchR()),
+                    valueOrZero(stat.getEr()),
+                    valueOrZero(stat.getUnearnedR()),
+                    valueOrZero(stat.getPendingR())));
+        }
+        return absoluteTotals;
+    }
+
+    private List<GamePlayerStat> loadTenantStats(long tenantId, long gameId) {
+        return gamePlayerStatRepository.findByGameId(gameId).stream()
+                .filter(stat -> stat.getTenantId() != null
+                        && stat.getTenantId() == tenantId
+                        && stat.getPlayerId() != null)
+                .toList();
+    }
+
+    private Map<Long, GamePlayerStat> pitcherStatsOf(List<GamePlayerStat> gameStats) {
+        Map<Long, GamePlayerStat> pitcherStats = new HashMap<>();
+        for (GamePlayerStat stat : gameStats) {
             if (Integer.valueOf(1).equals(stat.getIsPitcher())) {
                 pitcherStats.put(stat.getPlayerId(), stat);
             }
         }
+        return pitcherStats;
+    }
 
+    private Map<Long, Long> teamByPlayerOf(List<GamePlayerStat> gameStats) {
+        Map<Long, Long> teamByPlayer = new HashMap<>();
+        for (GamePlayerStat stat : gameStats) {
+            teamByPlayer.putIfAbsent(stat.getPlayerId(), stat.getTeamId());
+        }
+        return teamByPlayer;
+    }
+
+    private Map<Long, int[]> enginePitcherTotals(long tenantId, long gameId) {
         Map<Long, int[]> totals = new HashMap<>();
         for (EarnedRunDecisionEntity decision : decisionRepository
                 .findByTenantIdAndGameId(tenantId, gameId)) {
@@ -147,40 +378,147 @@ public class EarnedRunReconstructionService {
                 value[3] += 1;
             }
         }
+        return totals;
+    }
 
-        for (Map.Entry<Long, int[]> entry : totals.entrySet()) {
-            GamePlayerStat stat = pitcherStats.get(entry.getKey());
-            if (stat == null) {
-                Long teamId = teamByPlayer.get(entry.getKey());
-                if (teamId == null) {
-                    teamId = fallbackTeamId;
-                }
-                if (teamId == null) {
-                    throw new IllegalStateException(
-                            "Missing pitcher stat row for responsible pitcher " + entry.getKey());
-                }
-                stat = createPitcherStatRow(tenantId, gameId, teamId, entry.getKey());
-                pitcherStats.put(entry.getKey(), stat);
+    private Map<Long, PitcherRunOverride> activeOverridesByPlayer(long tenantId, long gameId) {
+        return this.pitcherRunOverrideRepository
+                .findByTenantIdAndGameIdAndStatus(tenantId, gameId, OVERRIDE_APPROVED).stream()
+                .filter(row -> row.getPlayerId() != null)
+                .collect(Collectors.toMap(PitcherRunOverride::getPlayerId, row -> row,
+                        (first, second) -> second));
+    }
+
+    private PitcherRunTotalsDTO toPitcherTotals(Long playerId, GamePlayerStat stat,
+            int[] engineTotal, PitcherRunOverride override, Player player) {
+        int[] engine = engineTotal == null ? new int[4] : engineTotal;
+        int[] effective = override != null ? overrideTotals(override) : engine;
+        int runs = effective[0];
+        int earned = effective[1];
+        int unearned = effective[2];
+        int pending = effective[3];
+        Long overriddenBy = null;
+        LocalDateTime overriddenAt = null;
+        if (override != null) {
+            overriddenBy = override.getUpdatedBy() != null
+                    ? override.getUpdatedBy() : override.getCreatedBy();
+            overriddenAt = override.getUpdatedAt() != null
+                    ? override.getUpdatedAt() : override.getCreatedAt();
+        }
+        return new PitcherRunTotalsDTO(
+                playerId,
+                player != null ? player.getName() : null,
+                stat != null ? stat.getTeamId() : null,
+                runs,
+                earned,
+                unearned,
+                pending,
+                engine[0],
+                engine[1],
+                override != null ? override.getId() : null,
+                override != null ? override.getNote() : null,
+                overriddenBy,
+                overriddenAt);
+    }
+
+    private Map<Long, Player> loadPlayerMap(Set<Long> playerIds) {
+        if (playerIds == null || playerIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Player> players = new HashMap<>();
+        for (Player player : playerRepository.findAllById(playerIds)) {
+            if (player.getId() != null) {
+                players.put(player.getId(), player);
             }
-            int[] total = entry.getValue();
-            stat.setPitchR(total[0]);
-            stat.setEr(total[1]);
-            stat.setUnearnedR(total[2]);
-            stat.setPendingR(total[3]);
-            gamePlayerStatRepository.save(stat);
         }
+        return players;
+    }
 
-        // 返回全投手绝对值（含本次未触及的投手），供前端幂等覆盖展示。
-        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals = new HashMap<>();
-        for (Map.Entry<Long, GamePlayerStat> entry : pitcherStats.entrySet()) {
-            GamePlayerStat stat = entry.getValue();
-            absoluteTotals.put(entry.getKey(), new EarnedRunReconstructionResult.PitcherRunTotals(
-                    valueOrZero(stat.getPitchR()),
-                    valueOrZero(stat.getEr()),
-                    valueOrZero(stat.getUnearnedR()),
-                    valueOrZero(stat.getPendingR())));
+    private PitcherRunTotalsDTO findPitcherTotals(long tenantId, long gameId, long playerId) {
+        return listPitcherTotals(tenantId, gameId).stream()
+                .filter(row -> Objects.equals(row.playerId(), playerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("投手统计不存在: " + playerId));
+    }
+
+    private void validatePitcherOverrideInput(long tenantId, long gameId, long playerId,
+            Integer runsAllowed, Integer earnedRuns, String note, long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || playerId <= 0 || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, player and operator must be positive");
         }
-        return absoluteTotals;
+        if (runsAllowed == null || earnedRuns == null
+                || runsAllowed < 0 || earnedRuns < 0
+                || runsAllowed > 99 || earnedRuns > 99) {
+            throw new IllegalArgumentException("投手 R/ER 需在 0-99 之间");
+        }
+        if (earnedRuns > runsAllowed) {
+            throw new IllegalArgumentException("ER 不能大于 R");
+        }
+        if (note != null && note.trim().length() > 200) {
+            throw new IllegalArgumentException("备注不能超过 200 字");
+        }
+    }
+
+    private void ensurePitcherInGame(long tenantId, long gameId, long playerId) {
+        if (!hasEngineData(gameId)) {
+            throw new IllegalArgumentException("该场没有 ER 引擎判定，请直接在结果录入中编辑 R/ER");
+        }
+        boolean pitcherRow = loadTenantStats(tenantId, gameId).stream()
+                .anyMatch(stat -> Objects.equals(stat.getPlayerId(), playerId)
+                        && Integer.valueOf(1).equals(stat.getIsPitcher()));
+        if (!pitcherRow && !hasResponsiblePitcherDecisions(gameId, playerId)) {
+            throw new IllegalArgumentException("该球员不是本场投手");
+        }
+    }
+
+    private Set<Long> invalidateActiveOverrides(long tenantId, long gameId, Set<Long> playerIds,
+            String reason, long operatorId) {
+        Set<Long> invalidated = new HashSet<>();
+        if (playerIds == null || playerIds.isEmpty()) {
+            return invalidated;
+        }
+        for (PitcherRunOverride row : this.pitcherRunOverrideRepository
+                .findByTenantIdAndGameIdAndStatus(tenantId, gameId, OVERRIDE_APPROVED)) {
+            if (row.getPlayerId() == null || !playerIds.contains(row.getPlayerId())) {
+                continue;
+            }
+            row.setStatus(OVERRIDE_INVALIDATED);
+            row.setInvalidReason(reason);
+            row.setUpdatedBy(operatorId);
+            this.pitcherRunOverrideRepository.save(row);
+            invalidated.add(row.getPlayerId());
+        }
+        return invalidated;
+    }
+
+    private Set<Long> collectAffectedPitcherIds(long tenantId, long gameId,
+            List<EarnedRunPlayEntity> existing) {
+        Set<Long> playerIds = new HashSet<>();
+        if (existing == null || existing.isEmpty()) {
+            return playerIds;
+        }
+        List<Long> playIds = existing.stream()
+                .map(EarnedRunPlayEntity::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (playIds.isEmpty()) {
+            return playerIds;
+        }
+        for (EarnedRunDecisionEntity decision : decisionRepository
+                .findByTenantIdAndGameIdAndPlayIdIn(tenantId, gameId, playIds)) {
+            if (decision.getResponsiblePitcherId() != null) {
+                playerIds.add(decision.getResponsiblePitcherId());
+            }
+        }
+        return playerIds;
+    }
+
+    private String normalizeNote(String note) {
+        if (note == null) {
+            return null;
+        }
+        String trimmed = note.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**
@@ -205,7 +543,7 @@ public class EarnedRunReconstructionService {
         return stat;
     }
 
-    private int valueOrZero(Integer value) {
+    private static int valueOrZero(Integer value) {
         return value == null ? 0 : value;
     }
 
@@ -392,10 +730,10 @@ public class EarnedRunReconstructionService {
             if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
             if (!Integer.valueOf(1).equals(p.getIsPitcher())) continue;
             long pid = p.getPlayerId() != null ? p.getPlayerId() : 0;
-            int r = nz(p.getPitchR());
-            int er = nz(p.getEr());
-            int uer = nz(p.getUnearnedR());
-            int pr = nz(p.getPendingR());
+            int r = valueOrZero(p.getPitchR());
+            int er = valueOrZero(p.getEr());
+            int uer = valueOrZero(p.getUnearnedR());
+            int pr = valueOrZero(p.getPendingR());
             if (er + uer + pr != r) {
                 violations.add(String.format(
                         "\u00a711.1 投手 %d: R(%d) \u2260 ER+UER+PENDING(%d+%d+%d=%d)",
@@ -433,7 +771,4 @@ public class EarnedRunReconstructionService {
         return violations;
     }
 
-    private static int nz(Integer v) {
-        return v == null ? 0 : v;
-    }
 }
