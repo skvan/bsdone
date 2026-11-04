@@ -8697,7 +8697,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("垒上无跑垒员","warning");
         return
       }
-      if(["BK","WP","INT","OBST"].includes(e)&&!l.hasPitchThisAB){
+      if(["WP","INT","OBST"].includes(e)&&!l.hasPitchThisAB){
         J("请先记录至少一次投球","warning");
         return
       }
@@ -8744,12 +8744,26 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const t=Se.value,a=t?.name??"投手";
       if(e==="BK"){
         t?.stats?.pitching&&(t.stats.pitching.bk=(t.stats.pitching.bk??0)+1);
-        if(Ut()>0){
-          const s=ca();
-        D(LgPitch({who:a,kind:"balk"}),s??void 0),ai({resultCode:"BK",resultText:`${a}: 投手犯规`})
+        const runnerOnThird=l.runners[3];
+        const thirdAtPaStart=!!runnerOnThird&&dt.value?.runnerIdsBefore?.[3]!=null&&Number(dt.value.runnerIdsBefore[3])===Number(runnerOnThird.id);
+        const halfNow=l.isTop?"top":"bottom";
+        const lastAb=thirdAtPaStart?Me.value.reduce((found,s)=>s.inning===l.inning&&s.half===halfNow?s:found,null):null;
+        const lastBatter=lastAb?Ar.value.find(p=>Number(p.id)===Number(lastAb.batterPlayerId))??null:null;
+        const rbiBatter=thirdAtPaStart?lastBatter:be.value;
+        const s=ca();
+        l.balls++,D(LgPitch({who:a,kind:"balk_ball",count:_n(l.balls,l.strikes)}),s??void 0);
+        Ut()>0&&ai({
+          resultCode:"BK",
+          resultText:`${a}: 投手犯规`,
+          creditRbiToBatter:!!(runnerOnThird&&rbiBatter),
+          batter:runnerOnThird&&rbiBatter?rbiBatter:void 0,
+          runCause:"BALK",
+          rbiReason:"BALK"
         }
-        else if(l.balls++,D(LgPitch({who:a,kind:"balk_ball",count:_n(l.balls,l.strikes)})),l.balls>=4)return l.flow=null,bt("BB",[]);
-        l.flow=null
+        );
+        lastAb&&lastBatter&&(lastAb.rbi=(lastAb.rbi??0)+1);
+        l.flow=null;
+        if(l.balls>=4)return bt("BB",[])
       }
       else if(e==="WP"){
         const s=ca();
@@ -8780,7 +8794,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function ai(event){
       const moves=Rs(l.runners);
-      ti({origin:event?.origin}),Ge(moves),event?.resultCode&&Je(event.resultCode,event.resultText)
+      ti(event??{}),Ge(moves),event?.resultCode&&Je(event.resultCode,event.resultText)
     }
     function bo(e,rbiDecision){
       if(!l.runners[1]&&!l.runners[2]&&!l.runners[3])return;
