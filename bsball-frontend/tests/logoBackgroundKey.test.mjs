@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleBorder, solidBackground, brushPatchLogo } from '../src/components/portal/logoBackgroundKey.js';
+import {
+  sampleBorder,
+  solidBackground,
+  keySolidBorder,
+  alphaBounds,
+  keyTeamLogo
+} from '../src/components/portal/logoBackgroundKey.js';
 
 function makePixels(width, height, filler) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -66,7 +72,37 @@ test('边框颜色分散（照片类）覆盖率不足，返回 null', () => {
   assert.equal(solidBackground(data, w, h), null);
 });
 
+test('纯色底从边缘抠成透明，内部字形保持不变', () => {
+  const w = 64;
+  const h = 48;
+  const data = makePixels(w, h, (x, y) => (
+    isBorder(x, y, w, h) || x < 8 || y < 8
+      ? [255, 255, 255, 255]
+      : [10, 20, 30, 255]
+  ));
+  keySolidBorder(data, w, h, { r: 255, g: 255, b: 255 });
+  assert.equal(data[3], 0);
+  assert.equal(data[(24 * w + 32) * 4 + 3], 255);
+});
+
+test('裁切边界按不透明墨迹计算', () => {
+  const w = 64;
+  const h = 48;
+  const data = makePixels(w, h, (x, y) => (
+    x >= 10 && x <= 20 && y >= 8 && y <= 16
+      ? [10, 20, 30, 255]
+      : [10, 20, 30, 0]
+  ));
+  assert.deepEqual(alphaBounds(data, w, h), { minX: 10, minY: 8, maxX: 20, maxY: 16 });
+});
+
+test('空队徽地址不发请求并返回空结果', async () => {
+  const result = await keyTeamLogo('');
+  assert.deepEqual(result, { url: '', keyed: false });
+});
+
 test('卡面队徽入口已导出', () => {
-  assert.equal(typeof brushPatchLogo, 'function');
+  assert.equal(typeof keyTeamLogo, 'function');
+  assert.equal(typeof keySolidBorder, 'function');
   assert.equal(typeof solidBackground, 'function');
 });
