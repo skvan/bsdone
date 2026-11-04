@@ -267,6 +267,11 @@ export const gameApi = {
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
+  listPitcherRunTotals: (id) => fetchResult(`/api/game/${id}/earned-runs/pitchers`),
+  overridePitcherRuns: (id, playerId, data) =>
+    put(`/api/game/${id}/earned-runs/pitchers/${playerId}/override`, data),
+  revokePitcherRunOverride: (id, overrideId) =>
+    post(`/api/game/${id}/earned-runs/overrides/${overrideId}/revoke`, {}),
   listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
   createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
   revokeFieldingAdjustment: (id, adjustmentId) =>

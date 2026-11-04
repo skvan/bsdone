@@ -62,6 +62,33 @@ function buildSnapshot() {
 async function setup(page) {
   const snapshot = buildSnapshot();
   const players = [...snapshot.homeLineup, ...snapshot.awayLineup, snapshot.homeBench[0], snapshot.awayBench[0]];
+  let pitcherOverride = null;
+  const pitcher101 = () => ({
+    playerId: 101,
+    playerName: '主投手',
+    teamId: 1,
+    runsAllowed: pitcherOverride?.runsAllowed ?? 3,
+    earnedRuns: pitcherOverride?.earnedRuns ?? 2,
+    unearnedRuns: Math.max(0, (pitcherOverride?.runsAllowed ?? 3) - (pitcherOverride?.earnedRuns ?? 2)),
+    pendingRuns: 0,
+    engineRunsAllowed: 3,
+    engineEarnedRuns: 2,
+    overrideId: pitcherOverride ? 9 : null,
+    overrideNote: pitcherOverride?.note ?? null,
+  });
+  const pitcher21 = () => ({
+    playerId: 21,
+    playerName: '客投手',
+    teamId: 2,
+    runsAllowed: 4,
+    earnedRuns: 3,
+    unearnedRuns: 1,
+    pendingRuns: 0,
+    engineRunsAllowed: 4,
+    engineEarnedRuns: 3,
+    overrideId: null,
+    overrideNote: null,
+  });
 
   await page.addInitScript(() => {
     Object.keys(localStorage)
@@ -90,7 +117,22 @@ async function setup(page) {
     else if (path === '/game/10/stats') data = { list: [], total: 0 };
     else if (path === '/game/10/live-snapshot') data = { snapshotJson: JSON.stringify(snapshot) };
     else if (path === '/game/10/earned-runs/decisions') data = [];
-    else if (path === '/game/10/fielding-adjustments') data = [];
+    else if (path === '/game/10/earned-runs/pitchers' && request.method() === 'GET') {
+      data = [pitcher101(), pitcher21()];
+    } else if (path === '/game/10/earned-runs/pitchers/101/override'
+        && request.method() === 'PUT') {
+      const body = request.postDataJSON();
+      pitcherOverride = {
+        runsAllowed: body?.runsAllowed ?? 3,
+        earnedRuns: body?.earnedRuns ?? 2,
+        note: body?.note ?? null,
+      };
+      data = pitcher101();
+    } else if (path === '/game/10/earned-runs/overrides/9/revoke'
+        && request.method() === 'POST') {
+      pitcherOverride = null;
+      data = pitcher101();
+    } else if (path === '/game/10/fielding-adjustments') data = [];
     else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) {
       const teamId = Number(path.split('/')[4]);
       data = { restricted: false, players: players.filter((p) => p.teamId === teamId) };
@@ -124,4 +166,41 @@ test('final 比赛有快照：允许进入录入页并打开 ER 复核', async (
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText('比赛已结束 · 赛后复核')).toBeVisible();
   await expect(drawer.getByText('暂无判定记录')).toBeVisible();
+});
+
+test('final 比赛：赛后复核可覆写投手 R/ER 并撤销', async ({ page }) => {
+  await setup(page);
+
+  await expect(page).toHaveURL(/\/games\/10\/live$/);
+  const erButton = page.locator('button:visible').filter({ hasText: 'ER 复核' }).first();
+  await erButton.click();
+  const drawer = page.locator('.el-drawer:visible').filter({ hasText: '比赛复核' });
+  await expect(drawer).toBeVisible();
+
+  await drawer.getByRole('tab', { name: '投手 R/ER' }).click();
+  const row101 = drawer.locator('.el-table__row').filter({ hasText: '主投手' });
+  await expect(row101).toBeVisible();
+  await expect(row101).toContainText('3');
+  await expect(row101).toContainText('2');
+
+  await row101.getByRole('button', { name: '覆写' }).click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '覆写投手 R/ER' });
+  await expect(dialog).toBeVisible();
+  const inputs = dialog.locator('.el-input-number input');
+  await inputs.nth(0).fill('5');
+  await inputs.nth(0).blur();
+  await inputs.nth(1).fill('4');
+  await inputs.nth(1).blur();
+  await expect(dialog.locator('.el-form-item').filter({ hasText: '非自责' })).toContainText('1');
+
+  await dialog.getByRole('button', { name: '保存覆写' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row101.getByText('人工覆写')).toBeVisible();
+
+  await row101.getByRole('button', { name: '撤销' }).click();
+  const confirm = page.locator('.el-message-box:visible');
+  await expect(confirm).toContainText('恢复引擎值 R 3 / ER 2');
+  await confirm.getByRole('button', { name: '确认撤销' }).click();
+  await expect(row101.getByText('引擎')).toBeVisible();
+  await expect(row101).toContainText('3');
 });

@@ -287,6 +287,21 @@ EventService --> EventRepository
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
+- GET /game/{id}/earned-runs/pitchers
+  - 作用：赛后复核列出本场投手的 R/ER/UER/PENDING 合计及生效中的人工覆写，供「比赛复核 → 投手 R/ER」页签使用
+  - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能复核投手 R/ER」
+  - 响应：`List<PitcherRunTotalsDTO>`；字段含 `playerId/playerName/teamId/runsAllowed/earnedRuns/unearnedRuns/pendingRuns/engineRunsAllowed/engineEarnedRuns/overrideId/overrideNote/overriddenBy/overriddenAt`
+  - 口径：引擎值按该场全量判定计算；有生效覆写时 `runsAllowed/earnedRuns` 取人工值，`unearnedRuns=R−ER`、`pendingRuns=0`；`engineRunsAllowed/engineEarnedRuns` 始终保留引擎值，供撤销预览
+- PUT /game/{id}/earned-runs/pitchers/{playerId}/override
+  - 作用：保存指定投手的 R/ER 人工覆写（绝对值）
+  - 请求：`runsAllowed`、`earnedRuns`（0..99，且 `earnedRuns <= runsAllowed`）、`note`（≤200 字，可空）
+  - 校验：仅 final；比赛写入权限 + 租户隔离；该场必须已有 ER 引擎数据（`bs_earned_run_play`），否则 400 提示直接在结果录入编辑；球员必须是本场投手（有投手统计行或责任投手判定）
+  - 生效：立即按全场判定重算；有生效覆写的投手按人工值写入 `pitchR/er/unearnedR/pendingR`，其余投手仍按引擎；同一投手已有生效覆写时就地更新，撤销/失效后重新覆写新建审计行
+  - 并发：同一投手同时保存撞部分唯一索引时返回业务码 409「该投手已有其他复核结果，请刷新后重试」
+- POST /game/{id}/earned-runs/overrides/{overrideId}/revoke
+  - 作用：撤销人工覆写，恢复引擎绝对值；该投手无判定时四字段归零
+  - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同覆写
+  - 失效规则：半局重建时，该半局新旧判定涉及的责任投手，其生效覆写自动置 `INVALIDATED` 并保留原因；已人工覆写的投手拒绝再修改其逐分判定，需先撤销覆写
 - GET /game/{id}/fielding-adjustments
   - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供「比赛复核 → 守备补记」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能进行守备补记」

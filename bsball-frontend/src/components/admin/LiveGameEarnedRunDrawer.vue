@@ -45,10 +45,84 @@
         </el-table-column>
         <el-table-column label="操作" width="80" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openEdit(row)">覆写</el-button>
+            <el-button
+              link
+              type="primary"
+              size="small"
+              :disabled="isPitcherOverridden(row.responsiblePitcherId)"
+              :title="isPitcherOverridden(row.responsiblePitcherId) ? '该投手已人工覆写 R/ER，请先撤销' : ''"
+              @click="openEdit(row)"
+            >覆写</el-button>
           </template>
         </el-table-column>
       </el-table>
+        </div>
+      </el-tab-pane>
+      <el-tab-pane label="投手 R/ER" name="pitchers" lazy>
+        <div v-if="!isFinal" class="er-drawer__empty">
+          比赛结束后才能手工覆写投手 R/ER。
+        </div>
+        <div v-else v-loading="pitcherLoading" class="pitcher-runs">
+          <p class="pitcher-runs__hint">
+            R/ER 以引擎判定为基准；手工覆写后以覆写值为准，可随时撤销恢复引擎值。
+          </p>
+          <p v-if="!pitcherLoading && pitcherRows.length === 0" class="er-drawer__empty">
+            本场暂无可覆写的投手。
+          </p>
+          <el-table
+            v-else
+            :data="pitcherRows"
+            border
+            stripe
+            size="small"
+            max-height="calc(100vh - 300px)"
+          >
+            <el-table-column label="投手" min-width="120" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span>{{ row.playerName || `#${row.playerId}` }}</span>
+                <el-tag
+                  v-if="teamLabel(row.playerId)"
+                  size="small"
+                  effect="plain"
+                  class="pitcher-team"
+                >{{ teamLabel(row.playerId) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="R" width="52" align="center">
+              <template #default="{ row }">{{ row.runsAllowed ?? 0 }}</template>
+            </el-table-column>
+            <el-table-column label="ER" width="52" align="center">
+              <template #default="{ row }">{{ row.earnedRuns ?? 0 }}</template>
+            </el-table-column>
+            <el-table-column label="非自责" width="64" align="center">
+              <template #default="{ row }">{{ row.unearnedRuns ?? 0 }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="86" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.overrideId" size="small" type="warning" effect="plain">
+                  人工覆写
+                </el-tag>
+                <span v-else class="pitcher-status">引擎</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="76" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.overrideId"
+                  link
+                  type="danger"
+                  size="small"
+                  @click="confirmRevokePitcher(row)"
+                >撤销</el-button>
+                <el-button v-else link type="primary" size="small" @click="openPitcherEdit(row)">
+                  覆写
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p class="pitcher-runs__foot">
+            R = 责任失分（含非自责）；ER = 自责分；非自责自动按 R − ER 计算。覆写只影响该投手的 R/ER 合计，不改动逐分判定。
+          </p>
         </div>
       </el-tab-pane>
       <el-tab-pane label="守备补记" name="fielding" lazy>
@@ -101,12 +175,66 @@
         <el-button type="primary" :loading="submitting" @click="submitOverride">确认覆写</el-button>
       </template>
     </el-dialog>
+
+    <!-- 投手 R/ER 覆写弹窗 -->
+    <el-dialog
+      v-model="pitcherEditVisible"
+      title="覆写投手 R/ER"
+      width="380px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-form label-width="86px" size="default">
+        <el-form-item label="投手">
+          {{ pitcherEditRow?.playerName || `#${pitcherEditRow?.playerId}` }}
+        </el-form-item>
+        <el-form-item label="当前值">
+          R {{ pitcherEditRow?.runsAllowed ?? 0 }} / ER {{ pitcherEditRow?.earnedRuns ?? 0 }}
+          <span v-if="pitcherEditRow?.overrideId" class="pitcher-engine">
+            （引擎 R {{ pitcherEditRow?.engineRunsAllowed ?? 0 }} / ER {{ pitcherEditRow?.engineEarnedRuns ?? 0 }}）
+          </span>
+        </el-form-item>
+        <el-form-item label="新的 R">
+          <el-input-number
+            v-model="pitcherEditForm.runsAllowed"
+            :min="0"
+            :max="99"
+            :precision="0"
+            :controls="false"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="新的 ER">
+          <el-input-number
+            v-model="pitcherEditForm.earnedRuns"
+            :min="0"
+            :max="99"
+            :precision="0"
+            :controls="false"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="非自责">{{ pitcherDerivedUnearned }}</el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="pitcherEditForm.note" maxlength="200" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <p class="pitcher-warn">
+        保存后该投手 R/ER 以人工值为准；若之后重建半局或修改判定，该投手覆写会失效并需重新复核。
+      </p>
+      <template #footer>
+        <el-button @click="pitcherEditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pitcherSubmitting" @click="submitPitcherOverride">
+          保存覆写
+        </el-button>
+      </template>
+    </el-dialog>
   </el-drawer>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { gameApi } from '../../api/business';
 import LiveGameFieldingAdjustmentPanel from './LiveGameFieldingAdjustmentPanel.vue';
 
@@ -142,6 +270,72 @@ const UNEARNED_REASONS = [
 const rows = ref([]);
 const loading = ref(false);
 
+const pitcherRows = ref([]);
+const pitcherLoading = ref(false);
+const pitcherLoaded = ref(false);
+const pitcherEditVisible = ref(false);
+const pitcherEditRow = ref(null);
+const pitcherEditForm = ref({ runsAllowed: 0, earnedRuns: 0, note: '' });
+const pitcherSubmitting = ref(false);
+
+const pitcherDerivedUnearned = computed(() => Math.max(
+  0,
+  (Number(pitcherEditForm.value.runsAllowed) || 0) - (Number(pitcherEditForm.value.earnedRuns) || 0)
+));
+
+const teamLabelByPlayer = computed(() => {
+  const labels = new Map();
+  const mark = (list, label) => {
+    for (const player of Array.isArray(list) ? list : []) {
+      const id = player?.playerId ?? player?.id;
+      if (id != null) labels.set(String(id), label);
+    }
+  };
+  mark(props.homeLineup, '主');
+  mark(props.homeBench, '主');
+  mark(props.homeRoster, '主');
+  mark(props.awayLineup, '客');
+  mark(props.awayBench, '客');
+  mark(props.awayRoster, '客');
+  return labels;
+});
+
+const overriddenPitcherIds = computed(() => new Set(
+  pitcherRows.value
+    .filter((row) => row?.overrideId)
+    .map((row) => String(row.playerId))
+));
+
+function teamLabel(playerId) {
+  return teamLabelByPlayer.value.get(String(playerId)) || '';
+}
+
+function isPitcherOverridden(playerId) {
+  return playerId != null && overriddenPitcherIds.value.has(String(playerId));
+}
+
+async function loadPitcherTotals() {
+  if (!props.gameId || !isFinal.value || pitcherLoading.value) return;
+  pitcherLoading.value = true;
+  try {
+    const result = await gameApi.listPitcherRunTotals(props.gameId);
+    if (result?.error) {
+      pitcherRows.value = [];
+      ElMessage.error('加载投手 R/ER 失败');
+      console.error(result.error);
+      return;
+    }
+    pitcherRows.value = Array.isArray(result?.data) ? result.data : [];
+    pitcherLoaded.value = true;
+  } catch (e) {
+    pitcherRows.value = [];
+    ElMessage.error('加载投手 R/ER 失败');
+    console.error(e);
+  } finally {
+    pitcherLoading.value = false;
+  }
+}
+
 async function load() {
   if (!props.gameId) return;
   loading.value = true;
@@ -169,10 +363,21 @@ watch(() => props.visible, (v) => {
   loadGameStatus();
 }, { immediate: true });
 
+watch(activeTab, (tab) => {
+  if (tab === 'pitchers' && isFinal.value && !pitcherLoaded.value) {
+    loadPitcherTotals();
+  }
+});
+
 async function loadGameStatus() {
-  if (!props.gameId || props.gameStatus) return;
-  const game = await gameApi.get(props.gameId);
-  remoteGameStatus.value = game?.status ?? '';
+  if (!props.gameId) return;
+  if (!props.gameStatus) {
+    const game = await gameApi.get(props.gameId);
+    remoteGameStatus.value = game?.status ?? '';
+  }
+  if (isFinal.value && !pitcherLoaded.value) {
+    loadPitcherTotals();
+  }
 }
 
 // ─── 覆写 ────────────────────────────────────────────────
@@ -205,10 +410,72 @@ async function submitOverride() {
     ElMessage.success('覆写成功');
     editVisible.value = false;
     load();
+    loadPitcherTotals();
   } catch (e) {
     ElMessage.error('覆写失败: ' + (e?.message || ''));
   } finally {
     submitting.value = false;
+  }
+}
+
+// ─── 投手 R/ER 覆写 ──────────────────────────────────────
+function openPitcherEdit(row) {
+  pitcherEditRow.value = row;
+  pitcherEditForm.value = {
+    runsAllowed: Number(row?.runsAllowed) || 0,
+    earnedRuns: Number(row?.earnedRuns) || 0,
+    note: row?.overrideNote || '',
+  };
+  pitcherEditVisible.value = true;
+}
+
+async function submitPitcherOverride() {
+  const runsAllowed = Number(pitcherEditForm.value.runsAllowed);
+  const earnedRuns = Number(pitcherEditForm.value.earnedRuns);
+  if (![runsAllowed, earnedRuns].every((value) => Number.isInteger(value) && value >= 0 && value <= 99)) {
+    ElMessage.warning('R/ER 需为 0-99 的整数');
+    return;
+  }
+  if (earnedRuns > runsAllowed) {
+    ElMessage.warning('ER 不能大于 R');
+    return;
+  }
+  pitcherSubmitting.value = true;
+  try {
+    await gameApi.overridePitcherRuns(props.gameId, pitcherEditRow.value.playerId, {
+      runsAllowed,
+      earnedRuns,
+      note: pitcherEditForm.value.note?.trim() || null,
+    });
+    ElMessage.success('覆写已保存');
+    pitcherEditVisible.value = false;
+    await loadPitcherTotals();
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e?.message || ''));
+  } finally {
+    pitcherSubmitting.value = false;
+  }
+}
+
+async function confirmRevokePitcher(row) {
+  const name = row?.playerName || `#${row?.playerId}`;
+  const engineR = row?.engineRunsAllowed ?? 0;
+  const engineEr = row?.engineEarnedRuns ?? 0;
+  try {
+    await ElMessageBox.confirm(
+      `将撤销 ${name} 的人工覆写，恢复引擎值 R ${engineR} / ER ${engineEr}。`,
+      '撤销人工覆写',
+      { type: 'warning', confirmButtonText: '确认撤销', cancelButtonText: '取消' }
+    );
+  } catch (e) {
+    return;
+  }
+  try {
+    await gameApi.revokePitcherRunOverride(props.gameId, row.overrideId);
+    ElMessage.success('已撤销，恢复引擎值');
+    await loadPitcherTotals();
+  } catch (e) {
+    ElMessage.error('撤销失败: ' + (e?.message || ''));
   }
 }
 
@@ -244,5 +511,43 @@ function statusLabel(s) {
   text-align: center;
   color: var(--el-text-color-secondary);
   padding: 40px 0;
+}
+.pitcher-runs__hint {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #d9ecff;
+  border-radius: 6px;
+  background: #f4f8ff;
+  color: #5b6b80;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.pitcher-runs__foot {
+  margin: 10px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.pitcher-team {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.pitcher-status {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.pitcher-engine {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.pitcher-warn {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #faecd8;
+  border-radius: 5px;
+  background: #fdf6ec;
+  color: #966b28;
+  font-size: 11px;
+  line-height: 1.55;
 }
 </style>
