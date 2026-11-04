@@ -1,8 +1,16 @@
 <template>
   <div class="game-fielding-table">
     <h4 class="game-fielding-table__title">{{ title }}</h4>
-    <el-table :data="rows" size="small" max-height="520" class="compact-table" empty-text="暂无球员">
-      <el-table-column label="球员" min-width="120" show-overflow-tooltip>
+    <el-table
+      :data="rows"
+      size="small"
+      max-height="520"
+      class="compact-table"
+      empty-text="暂无球员"
+      :show-summary="rows.length > 0"
+      :summary-method="summaryMethod"
+    >
+      <el-table-column prop="playerName" label="球员" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.name }}</template>
       </el-table-column>
       <el-table-column label="背号" width="70" align="center">
@@ -14,6 +22,7 @@
       <el-table-column
         v-for="col in columns"
         :key="col.key"
+        :prop="col.key"
         :label="col.label"
         :width="col.width"
         align="center"
@@ -37,6 +46,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import {
+  buildFieldingSummaryCells,
+  buildFieldingTotals
+} from '../../utils/gameFieldingRows.js';
+
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   title: { type: String, default: '' },
@@ -54,6 +69,15 @@ const columns = [
   { key: 'catcherSb', label: 'SB', width: 70, max: 99, step: 1, precision: 0 },
   { key: 'catcherCs', label: 'CS', width: 70, max: 99, step: 1, precision: 0 }
 ];
+
+const totals = computed(() => {
+  const rows = props.rows.map((row) => props.statsFor(row) ?? {});
+  return buildFieldingTotals(rows, columns);
+});
+
+function summaryMethod({ columns: tableColumns }) {
+  return buildFieldingSummaryCells(tableColumns, totals.value);
+}
 
 function setValue(row, key, value) {
   const stats = props.statsFor(row);
