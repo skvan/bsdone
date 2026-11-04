@@ -441,6 +441,13 @@ test('Issue #527：三振后同垒出局不提供封杀', async ({ page }) => {
   await expect(menu.getByText('触杀出局')).toBeVisible();
   await expect(menu.getByText('封杀出局')).toHaveCount(0);
   await expect(menu.getByText('牵制出局')).toBeVisible();
+  await pickMenuItem(page, '触杀出局');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['103'].fielding.dp).toBe(0);
+  expect(snapshot.playerStatsById['101'].fielding.dp).toBe(0);
+  expect(snapshot.playerStatsById['106'].fielding.dp).toBe(0);
 });
 
 test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {

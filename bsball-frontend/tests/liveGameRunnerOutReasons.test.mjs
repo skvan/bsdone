@@ -80,11 +80,11 @@ test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp',
   assert.ok(source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局自动推进被迫进垒跑者');
 });
 
-test('同一 play 第二出局类型门禁：三振后禁止封杀补 DP', () => {
-  assert.equal(canSecondPlayOut('strikeout', 'force'), false, '三振后无强迫进垒，封杀不能补第二出局');
-  for (const kind of ['tag', 'pickoff', 'steal']) {
-    assert.equal(canSecondPlayOut('strikeout', kind), true, `三振 + ${kind} 保留`);
+test('同一 play 第二出局类型门禁：三振后只允许盗垒死补 DP', () => {
+  for (const kind of ['tag', 'pickoff', 'force']) {
+    assert.equal(canSecondPlayOut('strikeout', kind), false, `三振 + ${kind} 不记 DP`);
   }
+  assert.equal(canSecondPlayOut('strikeout', 'steal'), true, '三振 + 盗垒死（CS）记 DP');
   assert.equal(canSecondPlayOut('batterContact', 'tag'), true, '一般打者出局 + 触杀记 DP');
   assert.equal(canSecondPlayOut('batterContact', 'force'), false, '一般打者出局 + 同垒封杀不记 DP');
   assert.equal(canSecondPlayOut('batterContact', 'pickoff'), false, '一般打者出局 + 牵制仍不记 DP');
