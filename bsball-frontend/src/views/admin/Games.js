@@ -1949,17 +1949,6 @@ var Li={
       const n=Pe(t);
       return kl.value.invalidRowKeys.has(n)||un(G.value,!1,e)?"row-invalid-fielding":""
     }
-    function Jo(t){
-      switch(t){
-        case"away-batter":return Ol.value;
-        case"home-batter":return El.value;
-        case"away-pitcher":return Nl.value;
-        case"home-pitcher":return zl.value;
-        case"away-catcher":return Ll.value;
-        case"home-catcher":return Al.value
-      }
-      
-    }
     function Ha(t,e){
       switch(t){
         case"away-batter":Ol.value=e;
@@ -1981,26 +1970,16 @@ var Li={
       return e?t==="away-catcher"||t==="home-catcher"?Pe(e):T(e)?`totals-${t}`:Pe(e):""
     }
     function Qt(t,e){
-      if(Ua[t]){
-        Ua[t]=!1;
-        return
-      }
       Ha(t,dn(t,e))
     }
-    const Ua=aa({
-      "away-batter":!1,"home-batter":!1,"away-pitcher":!1,"home-pitcher":!1,"away-catcher":!1,"home-catcher":!1
-    }
-    );
     const EDITABLE_CELL_SELECTOR="input, textarea, select, .stat-input, .el-select, .el-input-number";
-    function Zt(t,e,n){
+    function Zt(t,e){
       const c={
         "away-batter":ft.value,"home-batter":bt.value,"away-pitcher":yt.value,"home-pitcher":gt.value,"away-catcher":kt.value,"home-catcher":Vt.value
       }
-      [t],u=dn(t,e),p=Jo(t),_=!!n?.target?.closest("tr")?.classList.contains("current-row");
-      // 点击输入框/下拉时保持并同步当前行，不能把正在编辑的行切走
-      const editable=!!n?.target?.closest?.(EDITABLE_CELL_SELECTOR);
-      if(!editable&&p===u&&_){Ua[t]=!0,Ha(t,""),c?.setCurrentRow?.()}
-      else{Ha(t,u),c?.setCurrentRow?.(e)}
+      // 行点击/输入聚焦都保持当前行选中，不因再次点击而取消强调
+      const u=dn(t,e);
+      Ha(t,u),c?.setCurrentRow?.(e)
     }
     function Pe(t){
       const e=t;
