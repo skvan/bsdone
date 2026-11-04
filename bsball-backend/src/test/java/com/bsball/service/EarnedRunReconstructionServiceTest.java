@@ -29,6 +29,7 @@ import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.ScoringRunner;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -559,6 +560,38 @@ class EarnedRunReconstructionServiceTest {
         assertNotNull(affected.getInvalidReason());
         assertEquals(0, affectedStat.getPitchR(), "失效且无判定的投手 R 应归零");
         assertEquals(0, affectedStat.getEr(), "失效且无判定的投手 ER 应归零");
+    }
+
+    @Test
+    @DisplayName("结果页覆写：只更新所选投手，不触发全场引擎重算")
+    void applyResultPitcherRunOverrides_updatesOnlySelectedPitcher() {
+        when(playRepository.existsByGameId(20L)).thenReturn(true);
+        GamePlayerStat selected = pitcherStat(1L, 700L, 2, 1);
+        selected.setTeamId(1L);
+        GamePlayerStat other = pitcherStat(1L, 701L, 5, 4);
+        other.setTeamId(1L);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(selected, other));
+        when(pitcherRunOverrideRepository
+                .findFirstByTenantIdAndGameIdAndPlayerIdAndStatusOrderByIdDesc(
+                        1L, 20L, 700L, "APPROVED")).thenReturn(Optional.empty());
+        when(pitcherRunOverrideRepository.save(any(PitcherRunOverride.class)))
+                .thenAnswer(invocation -> {
+                    PitcherRunOverride row = invocation.getArgument(0);
+                    if (row.getId() == null) {
+                        row.setId(1L);
+                    }
+                    return row;
+                });
+
+        service.applyResultPitcherRunOverrides(1L, 20L, Map.of(700L, new int[]{6, 5}), 9L);
+
+        assertEquals(6, selected.getPitchR());
+        assertEquals(5, selected.getEr());
+        assertEquals(1, selected.getUnearnedR());
+        assertEquals(0, selected.getPendingR());
+        assertEquals(5, other.getPitchR(), "未编辑投手不得被引擎重算覆盖");
+        assertEquals(4, other.getEr());
+        verify(decisionRepository, never()).findByTenantIdAndGameId(1L, 20L);
     }
 
     @Test

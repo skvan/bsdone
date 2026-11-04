@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
@@ -176,6 +177,48 @@ class GameServiceSaveResultTest {
         assertEquals(Double.valueOf(6.1D), pitcher.getIp());
         assertEquals(Integer.valueOf(0), batter.getIsPitcher());
         assertEquals(Integer.valueOf(1), pitcher.getIsPitcher());
+    }
+
+    @Test
+    @DisplayName("结果页显式修改投手 R/ER：保存为人工覆写")
+    void saveResult_manualPitcherRuns_savesOverride() {
+        existingGame.setStatus("final");
+        givenExistingRows(pitcherRow());
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(Boolean.TRUE);
+        SaveGameResultDTO.StatPart pitcherPart =
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), null);
+        pitcherPart.setPitchR(Integer.valueOf(5));
+        pitcherPart.setEr(Integer.valueOf(4));
+        pitcherPart.setManualPitcherRunOverride(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(pitcherPart)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService).applyResultPitcherRunOverrides(
+                eq(TENANT_ID), eq(GAME_ID), argThat(values -> values.size() == 1
+                        && values.get(PLAYER_ID)[0] == 5
+                        && values.get(PLAYER_ID)[1] == 4), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("非 final 比赛不允许结果页人工覆写 R/ER")
+    void saveResult_manualPitcherRuns_requiresFinal() {
+        existingGame.setStatus("live");
+        givenExistingRows(pitcherRow());
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(Boolean.TRUE);
+        SaveGameResultDTO.StatPart pitcherPart =
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), null);
+        pitcherPart.setPitchR(Integer.valueOf(5));
+        pitcherPart.setEr(Integer.valueOf(4));
+        pitcherPart.setManualPitcherRunOverride(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(pitcherPart)));
+
+        assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        verify(earnedRunReconstructionService, never()).applyResultPitcherRunOverrides(
+                anyLong(), anyLong(), any(), anyLong());
     }
 
     @Test
