@@ -133,8 +133,17 @@ async function recordSingle(page) {
 async function openBipType(page, typeText) {
   const bipButton = page.locator('button.field-quick-pitch__btn--bip:visible');
   await expect(bipButton).toBeEnabled({ timeout: 15000 });
-  await bipButton.dispatchEvent('pointerdown');
   const typeItem = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${typeText}$`) });
+  await page.bringToFront();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await bipButton.dispatchEvent('pointerdown');
+    try {
+      await expect(typeItem).toBeVisible({ timeout: 2500 });
+      break;
+    } catch {
+      await page.waitForTimeout(300);
+    }
+  }
   await expect(typeItem).toBeVisible({ timeout: 15000 });
   await typeItem.click();
   await page.waitForTimeout(300);
