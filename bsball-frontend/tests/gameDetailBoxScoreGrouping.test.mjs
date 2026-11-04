@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { normalizeFieldingPosition } from '../src/utils/gamePlayerStat.js';
+import { isStartingPlayer } from '../src/utils/liveGameFieldingByPos.js';
 
 const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const detail = read('../src/components/admin/GameDetailContent.js');
@@ -190,13 +191,29 @@ test('Eo payload：首个守位优先取 player.firstPosition，投手行兜底 
     else if (src[i] === '}' && --depth === 0) { end = i + 1; break; }
   }
   assert.ok(end > 0, 'Eo() 括号不闭合');
-  const Eo = new Function('normalizeFieldPos', `return (${src.slice(at, end)})`)(normalizeFieldingPosition);
+  const Eo = new Function('normalizeFieldPos', 'Ee', 'awayStarterFpId', 'homeStarterFpId', 'isStartingPlayer',
+    `return (${src.slice(at, end)})`)(
+    normalizeFieldingPosition,
+    () => ({ lineupStarterIds: { value: [95] } }),
+    { value: null },
+    { value: null },
+    isStartingPlayer,
+  );
+  const EoDhStarter = new Function('normalizeFieldPos', 'Ee', 'awayStarterFpId', 'homeStarterFpId', 'isStartingPlayer',
+    `return (${src.slice(at, end)})`)(
+    normalizeFieldingPosition,
+    () => ({ lineupStarterIds: { value: [] } }),
+    { value: null },
+    { value: 22 },
+    isStartingPlayer,
+  );
 
   const stats = { batting: { ab: 1 }, pitching: { ip: 1 }, fielding: { po: 2 } };
   const twoWay = { id: 95, position: 'P', firstPosition: '3b', startingPosition: '3b', stats };
   assert.equal(Eo(twoWay, 7, { listOrder: 0, isPitcherRow: false }).firstPosition, '3B', '二刀流打者行应带首个守位');
   assert.equal(Eo(twoWay, 7, { listOrder: 20, isPitcherRow: true }).firstPosition, '3B', '二刀流投手行也应带首个守位');
-  assert.equal(Eo(twoWay, 7, { listOrder: 0, isPitcherRow: false }).startingPosition, '3B', '二刀流打者行应带先发守位');
+  assert.equal(Eo(twoWay, 7, { listOrder: 0, isPitcherRow: false, side: 'home' }).startingPosition, '3B', '二刀流打者行应带先发守位');
+  assert.equal(Eo(twoWay, 7, { listOrder: 0, isPitcherRow: false, side: 'home' }).fieldingGs, 1, '先发球员守备 GS 应为 1');
   assert.equal(Eo(twoWay, 7, { listOrder: 20, isPitcherRow: true }).startingPosition, '3B', '二刀流投手行应带先发守位');
 
   const dh = { id: 12, position: 'DH', stats, startingPosition: 'DH' };
@@ -207,10 +224,13 @@ test('Eo payload：首个守位优先取 player.firstPosition，投手行兜底 
   const pinchHitter = { id: 31, position: 'LF', stats };
   assert.equal(Eo(pinchHitter, 7, { listOrder: 8, isPitcherRow: false }).firstPosition, '', '代打未防守前不得继承守位');
   assert.equal(Eo(pinchHitter, 7, { listOrder: 8, isPitcherRow: false }).startingPosition, undefined, '未知先发守位应省略，避免擦除旧值');
+  assert.equal(Eo(pinchHitter, 7, { listOrder: 8, isPitcherRow: false, side: 'home' }).fieldingGs, 0, '替补守备 GS 应为 0');
 
   const starterPitcher = { id: 22, position: 'P', startingPosition: 'P', stats };
   assert.equal(Eo(starterPitcher, 7, { listOrder: 9, isPitcherRow: true }).startingPosition, 'P', '先发投手行带 P');
+  assert.equal(EoDhStarter(starterPitcher, 7, { listOrder: 9, isPitcherRow: true, side: 'home' }).fieldingGs, 1, 'DH 制先发投手守备 GS 应为 1');
   const reliever = { id: 21, position: '', stats };
   assert.equal(Eo(reliever, 7, { listOrder: 30, isPitcherRow: true }).firstPosition, 'P', '纯投手行兜底 P');
   assert.equal(Eo(reliever, 7, { listOrder: 30, isPitcherRow: true }).startingPosition, undefined, '救援投手未知先发守位应省略');
+  assert.equal(EoDhStarter(reliever, 7, { listOrder: 30, isPitcherRow: true, side: 'home' }).fieldingGs, 0, '救援投手守备 GS 应为 0');
 });

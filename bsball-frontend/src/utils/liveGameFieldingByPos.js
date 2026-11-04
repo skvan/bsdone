@@ -75,6 +75,14 @@ export function accrueFieldingPlay(fielding, position, {
   return true;
 }
 
+/** 先发判定：首发名单或 DH 制先发投手；用于守备 GS（Issue #566） */
+export function isStartingPlayer(playerId, starterIds, starterFpId) {
+  const id = Number(playerId);
+  if (!Number.isFinite(id) || id <= 0) return false;
+  if ((Array.isArray(starterIds) ? starterIds : []).some((value) => Number(value) === id)) return true;
+  return Number(starterFpId) === id;
+}
+
 /** 生成 save-live 的 fieldingPositions（球员 × 位置）；先发的首个守位标 GS */
 export function buildFieldingPositionRows(teamId, players, starterIds) {
   const rows = [];
