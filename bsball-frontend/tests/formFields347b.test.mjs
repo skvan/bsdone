@@ -55,7 +55,7 @@ test('LiveGame 事件自动累加', () => {
   ]) {
     assert.ok(live.includes(needle), `事件累加缺少 ${needle}`);
   }
-  assert.ok(live.includes('type==="DP"&&!seen.has(r.pos)'), '守备 DP 累加缺失');
+  assert.ok(live.includes('type==="DP"&&creditDoublePlayFielders(s.map(r=>r.pos))'), '守备 DP 累加缺失');
 });
 
 test('门户比赛详情具备打者/守备切换，投手表常显', () => {
