@@ -120,9 +120,9 @@ async function dragRunner(page, fromBase, toBase, half) {
 async function recordSingle(page) {
   await page.getByRole('button', { name: '界内球' }).click();
   await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^滚地球$/ }).click();
+  await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^滚地球$/ }).click();
   await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^一垒安打$/ }).click();
+  await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^一垒安打$/ }).click();
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: '跳过' }).first().click();
   await page.waitForTimeout(500);
@@ -211,11 +211,11 @@ test('Issue #527：飞球接杀后同垒出局改走触杀传球链，无离垒�
 
   await page.getByRole('button', { name: '界内球' }).click();
   await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^飞球$/ }).click();
+  await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^飞球$/ }).click();
   await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
+  await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^出局/ }).click();
   await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
+  await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^一垒前出局$/ }).click();
   await page.waitForTimeout(500);
   await clickFielder(page, 'CF');
   await page.getByRole('button', { name: /完成记录/ }).click();
