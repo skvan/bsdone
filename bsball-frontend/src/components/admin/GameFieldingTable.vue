@@ -9,6 +9,10 @@
       empty-text="暂无球员"
       :show-summary="rows.length > 0"
       :summary-method="summaryMethod"
+      :row-key="rowKey"
+      highlight-current-row
+      :current-row-key="currentRowKey"
+      @row-click="onRowClick"
     >
       <el-table-column prop="playerName" label="球员" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ row.name }}</template>
@@ -46,7 +50,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
   buildFieldingSummaryCells,
   buildFieldingTotals
@@ -70,10 +74,22 @@ const columns = [
   { key: 'catcherCs', label: 'CS', width: 70, max: 99, step: 1, precision: 0 }
 ];
 
+const currentRowKey = ref('');
+
 const totals = computed(() => {
   const rows = props.rows.map((row) => props.statsFor(row) ?? {});
   return buildFieldingTotals(rows, columns);
 });
+
+function rowKey(row) {
+  if (row?._rowId != null) return `row_${row._rowId}`;
+  if (row?.supplementId) return `p_${row.id}_${row.supplementId}`;
+  return `p_${row?.id ?? ''}`;
+}
+
+function onRowClick(row) {
+  currentRowKey.value = rowKey(row);
+}
 
 function summaryMethod({ columns: tableColumns }) {
   return buildFieldingSummaryCells(tableColumns, totals.value);

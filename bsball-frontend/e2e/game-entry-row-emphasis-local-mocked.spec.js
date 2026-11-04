@@ -11,7 +11,12 @@ const awayPlayers = Array.from({ length: 9 }, (_, i) => ({
 const homePlayers = Array.from({ length: 9 }, (_, i) => ({
   id: 101 + i, teamId: HOME_ID, name: `林${i + 1}`, number: String(i + 1)
 }));
-const players = { [AWAY_ID]: awayPlayers, [HOME_ID]: homePlayers };
+const awayPitcher = { id: 211, teamId: AWAY_ID, name: '客投', number: '11' };
+const homePitcher = { id: 111, teamId: HOME_ID, name: '林投', number: '11' };
+const players = {
+  [AWAY_ID]: [...awayPlayers, awayPitcher],
+  [HOME_ID]: [...homePlayers, homePitcher]
+};
 
 const stats = [...awayPlayers, ...homePlayers].map((player, index) => {
   const position = LINEUP_POSITIONS[index % 9];
@@ -38,6 +43,16 @@ const stats = [...awayPlayers, ...homePlayers].map((player, index) => {
     catcherCs: catcher ? (player.teamId === AWAY_ID ? 1 : 0) : 0
   };
 });
+stats.push(
+  {
+    id: 211, teamId: AWAY_ID, playerId: 211, isPitcher: 1, pitcherOrder: 1, listOrder: 0,
+    position: 'P', number: '11', ip: 9, np: 100, pitchR: 3, er: 2, pitchH: 6, pitchSo: 5, pitchBb: 2, gs: 1
+  },
+  {
+    id: 111, teamId: HOME_ID, playerId: 111, isPitcher: 1, pitcherOrder: 1, listOrder: 0,
+    position: 'P', number: '11', ip: 9, np: 100, pitchR: 5, er: 4, pitchH: 8, pitchSo: 4, pitchBb: 3, gs: 1
+  }
+);
 
 const game = {
   id: GAME_ID,
@@ -118,6 +133,37 @@ async function assertEditingRow(page) {
 
   const accent = await rows.nth(1).locator('td').first().evaluate((el) => getComputedStyle(el).boxShadow);
   expect(accent).toContain('rgb(64, 158, 255)');
+
+  const firstNameCell = rows.first().locator('td').nth(1);
+  await firstNameCell.click();
+  await expect(rows.first()).toHaveClass(/current-row/);
+  await firstNameCell.click();
+  await expect(rows.first()).toHaveClass(/current-row/);
+  await expect(rows.nth(1)).not.toHaveClass(/current-row/);
+
+  await page.getByRole('tab', { name: '投手数据' }).click();
+  const pitcherTable = page.locator('[data-game-result-nav="away-pitcher"]');
+  await expect(pitcherTable).toBeVisible();
+  const pitcherRow = pitcherTable.locator('.el-table__body-wrapper tbody tr').first();
+  await expect(pitcherRow).toBeVisible();
+  await pitcherRow.locator('.stat-input input').first().click();
+  await expect(pitcherRow).toHaveClass(/current-row/);
+  const pitcherAccent = await pitcherRow.locator('td').first().evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(pitcherAccent).toContain('rgb(64, 158, 255)');
+  await pitcherRow.locator('td').nth(1).click();
+  await expect(pitcherRow).toHaveClass(/current-row/);
+
+  await page.getByRole('tab', { name: '守备数据' }).click();
+  const fieldingTable = page.locator('.game-fielding-table', { hasText: '客队A 守备' });
+  await expect(fieldingTable).toBeVisible();
+  const fieldingRow = fieldingTable.locator('.el-table__body-wrapper tbody tr').first();
+  await expect(fieldingRow).toBeVisible();
+  await fieldingRow.locator('.stat-input input').first().click();
+  await expect(fieldingRow).toHaveClass(/current-row/);
+  const fieldingAccent = await fieldingRow.locator('td').first().evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(fieldingAccent).toContain('rgb(64, 158, 255)');
+  await fieldingRow.locator('td').first().click();
+  await expect(fieldingRow).toHaveClass(/current-row/);
 }
 
 for (const dark of [false, true]) {
