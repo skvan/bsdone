@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Generated;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
@@ -270,6 +271,9 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u52a9\u6740")
     private Integer a;
+    @Transient
+    @Comment(value="响应透传：该球员本场已计入的守备补记 A（不落库）")
+    private Integer fieldingAdjustmentA;
     @Column(name="fielding_gs", columnDefinition="integer")
     @Comment(value="\u5b88\u5907\u5148\u53d1\uff08\u8be5\u573a\u8be5\u4f4d\u7f6e\u662f\u5426\u5148\u53d1\uff0c0/1\uff09")
     private Integer fieldingGs;
@@ -644,6 +648,14 @@ extends BaseEntity {
     @Generated
     public Integer getA() {
         return this.a;
+    }
+
+    public Integer getFieldingAdjustmentA() {
+        return this.fieldingAdjustmentA;
+    }
+
+    public void setFieldingAdjustmentA(Integer fieldingAdjustmentA) {
+        this.fieldingAdjustmentA = fieldingAdjustmentA;
     }
 
     @Generated

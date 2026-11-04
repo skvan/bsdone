@@ -20,6 +20,8 @@ import com.bsball.utils.StatsFormatUtil;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
@@ -30,9 +32,26 @@ public class GamePlayerStatService {
     private final GameRepository gameRepository;
     private final EventRegistrationService eventRegistrationService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
+    private final GameFieldingAdjustmentService fieldingAdjustmentService;
 
     public List<GamePlayerStat> listByGame(Long gameId) {
         List<GamePlayerStat> rows = this.gamePlayerStatRepository.findByGameId(gameId);
+        java.util.Map<Long, Integer> adjustments =
+                this.fieldingAdjustmentService.approvedAssistTotalsByGame(gameId);
+        if (adjustments == null) {
+            adjustments = java.util.Map.of();
+        }
+        Set<Long> playersWithNonPitcherRow = rows.stream()
+                .filter(row -> !Integer.valueOf(1).equals(row.getIsPitcher()))
+                .map(GamePlayerStat::getPlayerId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        for (GamePlayerStat row : rows) {
+            boolean countedRow = !Integer.valueOf(1).equals(row.getIsPitcher())
+                    || !playersWithNonPitcherRow.contains(row.getPlayerId());
+            row.setFieldingAdjustmentA(countedRow
+                    ? adjustments.getOrDefault(row.getPlayerId(), 0) : 0);
+        }
         LinkedHashMap<String, GamePlayerStat> dedup = new LinkedHashMap<String, GamePlayerStat>();
         for (GamePlayerStat row : rows) {
             String key = this.buildKey(row);
@@ -128,6 +147,14 @@ public class GamePlayerStatService {
     @Transactional
     public void delete(Long id) {
         GamePlayerStat existing = this.gamePlayerStatRepository.findById(id).orElse(null);
+        if (existing != null && existing.getPlayerId() != null && existing.getGameId() != null) {
+            Game game = this.gameRepository.findById(existing.getGameId()).orElse(null);
+            Long tenantId = game != null ? game.getTenantId() : existing.getTenantId();
+            if (tenantId != null && this.fieldingAdjustmentService.hasApprovedPlayerAdjustment(
+                    tenantId, existing.getGameId(), existing.getPlayerId())) {
+                throw new BusinessException(400, "该球员仍有守备补记，请先撤销后再删除");
+            }
+        }
         if (existing != null && this.isEngineManaged(existing.getGameId())
                 && Integer.valueOf(1).equals(existing.getIsPitcher())) {
             this.assertEnginePitcherRowDeletable(existing);
@@ -203,11 +230,13 @@ public class GamePlayerStatService {
     public GamePlayerStatService(GamePlayerStatRepository gamePlayerStatRepository,
             GameRepository gameRepository,
             EventRegistrationService eventRegistrationService,
-            EarnedRunReconstructionService earnedRunReconstructionService) {
+            EarnedRunReconstructionService earnedRunReconstructionService,
+            GameFieldingAdjustmentService fieldingAdjustmentService) {
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameRepository = gameRepository;
         this.eventRegistrationService = eventRegistrationService;
         this.earnedRunReconstructionService = earnedRunReconstructionService;
+        this.fieldingAdjustmentService = fieldingAdjustmentService;
     }
 }
 

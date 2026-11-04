@@ -37,7 +37,8 @@ class GamePlayerStatServiceOutsRecordedTest {
     @BeforeEach
     void setUp() {
         service = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
-                eventRegistrationService, earnedRunReconstructionService);
+                eventRegistrationService, earnedRunReconstructionService,
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
         lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }

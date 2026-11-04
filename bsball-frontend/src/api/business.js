@@ -267,6 +267,10 @@ export const gameApi = {
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
+  listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
+  createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
+  revokeFieldingAdjustment: (id, adjustmentId) =>
+    post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
   getLiveSnapshot: async (id) => {
     const { data } = await fetchResult(`/api/game/${id}/live-snapshot?_t=${Date.now()}`);
     return data?.snapshotJson ?? '';
