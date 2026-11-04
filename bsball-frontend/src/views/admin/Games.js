@@ -764,7 +764,7 @@ var Li={
             ,1032,["type"])]),_:1
           }
           ),s(re,{
-            label:"操作","min-width":"200",fixed:Y(ve),"class-name":"col-operation"
+            label:"操作","min-width":"240",fixed:Y(ve),"class-name":"col-operation"
           }
           ,{
             default:o(({
@@ -787,6 +787,12 @@ var Li={
             }
             ,{
               default:o(()=>[...q[17]||(q[17]=[R("继续录入",-1)])]),_:1
+            }
+            ,8,["onClick"])):j("",!0),K.status==="final"&&K.hasLiveSnapshot&&Y(ie)("business:game:saveResult")?(a(),V(he,{
+              key:8,link:"",type:"success",onClick:ne=>$.$emit("resumeLive",K)
+            }
+            ,{
+              default:o(()=>[...q[18]||(q[18]=[R("赛后复核",-1)])]),_:1
             }
             ,8,["onClick"])):j("",!0),K.status==="final"&&K.hasLiveSnapshot&&Y(ie)("business:event:games")?(a(),V(he,{
               key:2,link:"",type:"primary",onClick:ne=>$.$emit("viewLiveRecord",K)
