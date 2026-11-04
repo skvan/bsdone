@@ -99,7 +99,7 @@ async function recordDk3ReachOnError(page, fielderPos) {
   await expect(flowBar).toBeVisible();
   await flowBar.getByRole('button', { name: '漏接三振' }).click();
 
-  const menu = page.locator('.lgpfm__panel');
+  const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   // 浮层打开后 240ms 内会拦截点击（blockClickMsAfterOpen）
   await page.waitForTimeout(350);

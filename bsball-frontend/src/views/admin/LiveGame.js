@@ -27,6 +27,7 @@ import { staticIconMap as td } from '../../components/admin/menuIcons';
 import LiveGameScoreboard from '../../components/admin/LiveGameScoreboard.vue';
 import LiveGamePlayByPlay from '../../components/admin/LiveGamePlayByPlay.vue';
 import LiveGameEarnedRunDrawer from '../../components/admin/LiveGameEarnedRunDrawer.vue';
+import LiveGamePitchMenu from '../../components/admin/LiveGamePitchMenu.vue';
 import { useModalClose as nd } from '../../composables/useModalClose';
 import { usePermission as ad } from '../../composables/usePermission';
 import { POSITION_LABELS as It } from '../../utils/playerOptions';
@@ -13091,10 +13092,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,null,8,["records"])]),_:1
       }
-      ,8,["modelValue","style"]),v(zm,{
-        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"runner-on-third":!!l.runners[3],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,onClose:gt,onUndo:Kf,onCommand:$o
+      ,8,["modelValue","style"]),v(LiveGamePitchMenu,{
+        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"runner-on-third":!!l.runners[3],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,"inning":l.inning,"is-top":l.isTop,"balls":l.balls,"strikes":l.strikes,onClose:gt,onUndo:Kf,onCommand:$o
       }
-      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x"]),v(pv,{
+      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x","inning","is-top","balls","strikes"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc
       }
       ,null,8,["visible","title","prompt","groups","center-offset-x"]),v(LiveGameEarnedRunDrawer,{key:reviewDrawerSession.value,visible:reviewDrawerVisible.value,"onUpdate:visible":(v2)=>{reviewDrawerVisible.value=v2},gameId:c(R),playEvents:c(f.playEvents),homeLineup:c(f.homeLineup),awayLineup:c(f.awayLineup),homeBench:c(f.homeBench),awayBench:c(f.awayBench),homeFieldingPitcherRow:c(f.homeFieldingPitcherRow),awayFieldingPitcherRow:c(f.awayFieldingPitcherRow),homeRoster:c(f.homeRoster),awayRoster:c(f.awayRoster)})])

@@ -177,13 +177,13 @@ async function setup(page, options = {}) {
 
 async function recordGroundOut13(page) {
   await page.getByRole('button', { name: '界内球' }).click();
-  const menu = page.locator('.lgpfm__panel');
+  const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   // 浮层打开后短暂拦截点击
   await page.waitForTimeout(350);
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^滚地球$/ }).click();
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^出局$/ }).click();
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^一垒前出局$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^滚地球$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^出局/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^一垒前出局$/ }).click();
 
   // BIP 落点：投手接球 → 传一垒封杀
   const flowBar = page.locator('.les-flow-card');
