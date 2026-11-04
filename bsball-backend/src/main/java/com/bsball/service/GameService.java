@@ -996,10 +996,15 @@ public class GameService {
                 existingByKey.put(key, s);
             }
             LinkedHashSet<Long> keepIds = new LinkedHashSet<>();
+            List<SaveGameResultDTO.StatPart> manualPitcherRunParts = new ArrayList<>();
             for (SaveGameResultDTO.StatPart part : dto.getStats()) {
                 GamePlayerStat stat;
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
                 int isPitcher = part.getIsPitcher() == null ? 0 : part.getIsPitcher().intValue();
+                if (engineManaged && isPitcher == 1
+                        && Boolean.TRUE.equals(part.getManualPitcherRunOverride())) {
+                    manualPitcherRunParts.add(part);
+                }
                 if (part.getId() != null) {
                     GamePlayerStat byId = existingById.get(part.getId());
                     // id 指向的列必須與該筆身分一致才認，否則視為前端 id 錯位（例如投手筆帶了打者列 id），
@@ -1029,10 +1034,43 @@ public class GameService {
                 this.deleteRemovedStatRows(gameId, statTenantId, engineManaged, dto.getRemovedStatIds(),
                         existingById, keepIds);
             }
+            this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
         }
         // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
         this.logSettlementValidation(gameId, statTenantId);
+    }
+
+    /** 结果页显式修改的投手 R/ER：保存为人工覆写，并由 ER 引擎全量重算避免后续被冲掉。 */
+    private void applyResultPitcherRunOverrides(
+            Game game, List<SaveGameResultDTO.StatPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return;
+        }
+        if (!"final".equalsIgnoreCase(game.getStatus())) {
+            throw new BusinessException(400, "比赛结束后才能手工覆写投手 R/ER");
+        }
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        Map<Long, int[]> values = new LinkedHashMap<>();
+        for (SaveGameResultDTO.StatPart part : parts) {
+            if (part.getPlayerId() == null) {
+                continue;
+            }
+            if (part.getPitchR() == null || part.getEr() == null) {
+                throw new BusinessException(400, "缺少投手 R/ER");
+            }
+            values.put(part.getPlayerId(),
+                    new int[]{part.getPitchR().intValue(), part.getEr().intValue()});
+        }
+        try {
+            this.earnedRunReconstructionService.applyResultPitcherRunOverrides(
+                    game.getTenantId(), game.getId(), values, operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */

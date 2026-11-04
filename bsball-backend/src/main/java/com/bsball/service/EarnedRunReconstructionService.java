@@ -133,6 +133,40 @@ public class EarnedRunReconstructionService {
             Integer runsAllowed, Integer earnedRuns, String note, long operatorId) {
         validatePitcherOverrideInput(tenantId, gameId, playerId, runsAllowed, earnedRuns, note, operatorId);
         ensurePitcherInGame(tenantId, gameId, playerId);
+        upsertApprovedOverride(tenantId, gameId, playerId, runsAllowed, earnedRuns, note, operatorId);
+        recomputePitcherStats(tenantId, gameId, null);
+        return findPitcherTotals(tenantId, gameId, playerId);
+    }
+
+    /**
+     * 结果录入页保存的人工覆写：只更新所选投手的统计，不按引擎全量重算。
+     * 结果页的统计以本次提交为准；引擎只覆盖部分半局时，不能拿不完整判定改写其他投手。
+     */
+    @Transactional
+    public void applyResultPitcherRunOverrides(long tenantId, long gameId,
+            Map<Long, int[]> values, long operatorId) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        List<GamePlayerStat> gameStats = loadTenantStats(tenantId, gameId);
+        Map<Long, GamePlayerStat> pitcherStats = pitcherStatsOf(gameStats);
+        Map<Long, Long> teamByPlayer = teamByPlayerOf(gameStats);
+        for (Map.Entry<Long, int[]> entry : values.entrySet()) {
+            long playerId = entry.getKey();
+            int runs = entry.getValue()[0];
+            int earned = entry.getValue()[1];
+            validatePitcherOverrideInput(tenantId, gameId, playerId, runs, earned, null, operatorId);
+            ensurePitcherInGame(tenantId, gameId, playerId);
+            upsertApprovedOverride(tenantId, gameId, playerId, runs, earned, null, operatorId);
+            GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, playerId,
+                    pitcherStats, teamByPlayer, null);
+            applyPitcherTotals(stat, new int[]{runs, earned, Math.max(0, runs - earned), 0});
+            gamePlayerStatRepository.save(stat);
+        }
+    }
+
+    private PitcherRunOverride upsertApprovedOverride(long tenantId, long gameId, long playerId,
+            Integer runsAllowed, Integer earnedRuns, String note, long operatorId) {
         PitcherRunOverride row = this.pitcherRunOverrideRepository
                 .findFirstByTenantIdAndGameIdAndPlayerIdAndStatusOrderByIdDesc(
                         tenantId, gameId, playerId, OVERRIDE_APPROVED)
@@ -148,9 +182,7 @@ public class EarnedRunReconstructionService {
         row.setNote(normalizeNote(note));
         row.setStatus(OVERRIDE_APPROVED);
         row.setUpdatedBy(operatorId);
-        this.pitcherRunOverrideRepository.save(row);
-        recomputePitcherStats(tenantId, gameId, null);
-        return findPitcherTotals(tenantId, gameId, playerId);
+        return this.pitcherRunOverrideRepository.save(row);
     }
 
     /** 撤销人工覆写：恢复引擎绝对值（无判定的投手归零）。 */

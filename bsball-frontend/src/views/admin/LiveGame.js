@@ -64,6 +64,7 @@ import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
+import { buildFieldRotationMoves, formatFieldRotation, parseFieldRotation } from '../../utils/liveSubRotation.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
@@ -6636,7 +6637,7 @@ var sg={
       Tr.value=!!Da?.matches||"ontouchstart"in window
     }
     const lt=x(!1),Ma=x(!1),Xi=x("away"),Ua=x(""),la=x(!1),On=x(!1),mt=x("fielder"),ia=x("away"),Ga=x(null),Qt=x(null),Va=x(null),sa=x(null),Tp=$(()=>mt.value==="pinchHit"?"代打":"换人");
-    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense"),awayStarterFpId=x(null),homeStarterFpId=x(null);
+    const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense"),awayStarterFpId=x(null),homeStarterFpId=x(null),rotationDraft=x("");
     let fieldingPositionsTrusted=!1;
     function $p(e){
       return Ee(e).unavail.value
@@ -10480,7 +10481,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       substitutionModeBefore.value={
         away:captureSubstitutionTeam("away"),home:captureSubstitutionTeam("home"),runners:substitutionModeClone(l.runners)
       }
-      ,substitutionModeHistoryBase.value=$e.value.slice(),substitutionModeLogBase.value=ke.value.slice(),substitutionModeCommitFailed.value=!1,de("换人模式"),substitutionModeUndoEntry.value=$e.value[$e.value.length-1]??null,substitutionMode.value=!0,subLogMuted(!0),subBenchSheetSide.value="defense",subBenchSheetOpen.value=!0,liveBenchClearPending(),Fe.info("换人模式已开启：记球已暂停；调整完成后点「结束换人」提交，或点「取消换人模式」恢复")
+      ,substitutionModeHistoryBase.value=$e.value.slice(),substitutionModeLogBase.value=ke.value.slice(),substitutionModeCommitFailed.value=!1,de("换人模式"),substitutionModeUndoEntry.value=$e.value[$e.value.length-1]??null,substitutionMode.value=!0,subLogMuted(!0),rotationDraft.value="",subBenchSheetSide.value="defense",subBenchSheetOpen.value=!0,liveBenchClearPending(),Fe.info("换人模式已开启：记球已暂停；调整完成后点「结束换人」提交，或点「取消换人模式」恢复")
     }
     function toggleSubstitutionMode(){
       if(substitutionModeBusy.value)return;
@@ -10721,6 +10722,95 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const targetPos=Nn(fielderInLineup.position);
       pitcherInLineup.position=targetPos,fielderInLineup.position="P",D(fc("P",logPlayerName(pitcherInLineup),targetPos,targetPos,logPlayerName(fielderInLineup),"P")),ri(side),syncFieldingPitcher(side,pitcherInLineup,fielderInLineup),Kt()
+    }
+    /* ---------------- 守备轮转速记（#478 扩展）：输入闭环数字串一次完成多位置轮转 ----------------
+       纯规则（闭环解析/占用校验/置换表）在 utils/liveSubRotation.js（含单测）；此处只做页内接线。
+       仅调整守备位置（P 参与时同步守备投手行）；有 DH 且含 1 号位时沿用既有取消 DH 确认。 */
+    function rotationPitcher(side){
+      const ctx=Ee(side),fpId=Number(ctx.fpId.value);
+      if(ctx.fpRow.value)return ctx.fpRow.value;
+      if(fpId>0){
+        const fromBench=ctx.bench.value.find(p=>Number(p.id)===fpId),fromLineup=ctx.lineup.value.find(p=>Number(p.id)===fpId);
+        if(fromBench)return fromBench;
+        if(fromLineup)return fromLineup
+      }
+      return ctx.lineup.value.find(p=>Nn(p.position)==="P")??null
+    }
+    function rotationTeamEntries(side){
+      const ctx=Ee(side),entries=ctx.lineup.value.map(p=>({
+        id:Number(p.id),position:Nn(p.position)
+      }
+      )).filter(entry=>entry.position);
+      if(!entries.some(entry=>entry.position==="P")){
+        const pitcher=rotationPitcher(side),id=Number(pitcher?.id);
+        id>0&&entries.push({
+          id,position:"P"
+        })
+      }
+      return entries
+    }
+    function applyFieldRotationMoves(side,moves){
+      const ctx=Ee(side),byId=new Map(ctx.lineup.value.map(p=>[Number(p.id),p])),oldPitcher=rotationPitcher(side);
+      if(moves.some(move=>!byId.has(Number(move.id))))return!1;
+      de("守备轮转");
+      for(const move of moves)byId.get(Number(move.id)).position=move.to;
+      ri(side);
+      const intoPitcher=moves.find(move=>move.to==="P");
+      intoPitcher&&syncFieldingPitcher(side,oldPitcher,byId.get(Number(intoPitcher.id)));
+      return!0
+    }
+    async function applyFieldRotation(){
+      if(!substitutionMode.value){
+        J("换人需先进入「换人模式」：请点顶部「换人模式」后再操作","warning");
+        return
+      }
+      if(substitutionModeBusy.value){
+        J("正在提交换人，请稍候","warning");
+        return
+      }
+      if(substitutionModeCommitFailed.value){
+        J("上次提交换人失败，请先重试「结束换人」或取消换人模式","warning");
+        return
+      }
+      const parsed=parseFieldRotation(rotationDraft.value);
+      if(!parsed.ok){
+        Fe.warning(parsed.error);
+        return
+      }
+      const side=cr(),ctx=Ee(side),lineup=ctx.lineup.value,hasDh=lineup.some(p=>Nn(p.position)==="DH"),includesPitcher=parsed.codes.includes("P");
+      let check=buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side));
+      if(!check.ok){
+        Fe.warning(check.error);
+        return
+      }
+      if(hasDh&&includesPitcher){
+        if(lineup.some(p=>Nn(p.position)==="P")){
+          Fe.warning("当前打线已有投手（1号位），请先修正阵容后再轮转");
+          return
+        }
+        const rule=dhRuleForSide(side),dh=lineup.find(p=>Nn(p.position)==="DH"),pitcher=rotationPitcher(side),lines=[`本次轮转包含投手（1号位），将取消 DH：`,`· ${logPlayerName(dh)}（DH）退场，不可再上`,`· 投手 ${pitcher?logPlayerName(pitcher):"当前投手"} 进入打线`,`· 轮转：${formatFieldRotation(parsed.codes)}`];
+        rule.ok||lines.push("",`规则提醒：${rule.warning}`);
+        try{
+          await al.confirm(substitutionModeHtml(lines),"守备轮转并取消DH",{
+            dangerouslyUseHTMLString:!0,confirmButtonText:"确认轮转",cancelButtonText:"返回",type:"warning",draggable:!0
+          }
+          )
+        }
+        catch{
+          return
+        }
+        if(!applyCancelDh(side))return;
+        check=buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side));
+        if(!check.ok){
+          Fe.warning(check.error);
+          return
+        }
+      }
+      if(!applyFieldRotationMoves(side,check.moves)){
+        Fe.warning("守备轮转失败：球员不在当前打线中，请取消换人模式后重试");
+        return
+      }
+      liveBenchClearPending(),rotationDraft.value="",Fe.success(`守备轮转已应用：${formatFieldRotation(check.codes)}`)
     }
     /* ---------------- 替补席拖拽换人（#293）：进攻/防守替补席 + 点选点放 + 守备互拖互换 ----------------
        纯规则（替补过滤/落点解析/合法性矩阵）在 utils/liveSubDrag.js（含单测）；此处只做页内接线。
@@ -11551,6 +11641,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function hsRun(e){
       if(!R.value)return;
+      if(finalReviewMode){
+        e?.throwOnError||e?.silent||J("赛后复核模式请使用复核抽屉保存，录入现场不会写回","warning");
+        return
+      }
       if(substitutionMode.value&&!e?.fromSubstitutionMode){
         if(e?.silent)return;
         const message="换人模式进行中，请先点「结束换人」提交或取消换人模式";
@@ -11821,8 +11915,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ),"unavailable"
       }
-      _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true;
-      const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=id(zo(Re.value,e),m);
+      _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true,finalReviewMode=a.status==="final",finalReviewMode&&(l.isGameEnd=!0);
+      const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=a.status==="final"?(m?{source:"server",payload:m}:null):id(zo(Re.value,e),m);
       const loaded=y?(await Vl(y.payload,{
         homeList:s,awayList:r
       }
@@ -11851,7 +11945,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       skipNextRouteLeaveOnce:hc
     }
     =gd({
-      enabled:()=>F.value,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",directLeaveLoadingText:"正在保存现场…",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
+      enabled:()=>F.value&&!finalReviewMode,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",directLeaveLoadingText:"正在保存现场…",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
         substitutionMode.value&&cancelSubstitutionMode(),await ZrLite(),_l()
       }
       ,onSaveAndLeave:async()=>{
@@ -12027,7 +12121,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           default:L(()=>[Q("↪ 重做",-1)]),_:1
         }
         ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
-          key:"lineup-edit",size:"small",disabled:c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor
+          key:"lineup-edit",size:"small",disabled:c(firstPlayStarted)||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持修改阵容":c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor
         }
         ,{
           default:L(()=>[Q("编辑阵容",-1)]),_:1
@@ -12141,18 +12235,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           default:L(()=>[Q(H(c(oe)?"退出全屏":"全屏显示"),1)]),_:1
         }
         )):W("",!0),c(F)?(h(),Oe(s,{
-          key:"substitution-mode",type:substitutionMode.value?"warning":"primary",plain:!substitutionMode.value,disabled:substitutionModeBusy.value,onClick:toggleSubstitutionMode
+          key:"substitution-mode",type:substitutionMode.value?"warning":"primary",plain:!substitutionMode.value,disabled:substitutionModeBusy.value||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持换人":"",onClick:toggleSubstitutionMode
         }
         ,{
           default:L(()=>[Q(H(substitutionMode.value?"结束换人":"换人模式"),1)]),_:1
         }
-        ,8,["type","plain","disabled"])):W("",!0),c(F)?(h(),Oe(s,{
-          key:2,type:"primary",loading:c(he),onClick:hs
+        ,8,["type","plain","disabled","title"])):W("",!0),c(F)?(h(),Oe(s,{
+          key:2,type:"primary",loading:c(he),disabled:finalReviewMode,title:finalReviewMode?"赛后复核模式请使用复核抽屉保存":"保存比赛",onClick:hs
         }
         ,{
           default:L(()=>[...t[60]||(t[60]=[Q("保存比赛",-1)])]),_:1
         }
-        ,8,["loading"])):W("",!0),c(F)&&!Lp.value?(h(),Oe(g,{
+        ,8,["loading","disabled","title"])):W("",!0),c(F)&&!Lp.value?(h(),Oe(g,{
           key:3,trigger:"click",teleported:!1
         }
         ,{
@@ -12194,7 +12288,21 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,[c(F)?(h(),C("div",{key:1,class:re(["live-content",{"live-content--sub-mode":substitutionMode.value,"live-content--sub-bench-open":substitutionMode.value&&subBenchSheetOpen.value,"live-content--sub-bench-offense":substitutionMode.value&&subBenchSheetSide.value==="offense"}])},[c(F)&&substitutionMode.value?(h(),C("div",{
           key:"sub-mode-banner",class:"live-sub-mode-banner"
         }
-        ,[n("span",null,"换人模式进行中：记球已暂停；调整完成后点「结束换人」提交，或取消恢复。DH 卡片拖离槽位可取消 DH。"),(h(!0),C(me,null,et(substitutionModeDhCards.value,(item)=>(h(),C("div",{
+        ,[n("span",null,"换人模式进行中：记球已暂停；调整完成后点「结束换人」提交，或取消恢复。DH 卡片拖离槽位可取消 DH。"),n("div",{class:"live-sub-rotation"},[n("input",{
+          class:"live-sub-rotation__input",type:"text",inputmode:"numeric",autocomplete:"off",maxlength:"12","aria-label":"守备轮转速记",placeholder:"守备轮转 如 1341",value:rotationDraft.value,onInput:event=>{
+            rotationDraft.value=event.target.value
+          }
+          ,onKeydown:event=>{
+            event.key==="Enter"&&(event.preventDefault(),event.stopPropagation(),applyFieldRotation())
+          }
+        }
+        ,null,8,["value"]),v(s,{
+          size:"small",type:"primary",plain:"",onClick:applyFieldRotation
+        }
+        ,{
+          default:L(()=>[Q("轮转",-1)]),_:1
+        }
+        )]),(h(!0),C(me,null,et(substitutionModeDhCards.value,(item)=>(h(),C("div",{
           key:"dh-card-"+item.side,class:"live-sub-dh-card",role:"button",tabindex:"0",title:`${item.teamName} DH ${item.player.name??""}：拖离卡片取消`,onPointerdown:event=>liveBenchStartDhDrag(item.side,item.player,event),onKeydown:event=>{
             (event.key==="Enter"||event.key===" ")&&(event.preventDefault(),requestCancelDh(item.side))
           }
@@ -12412,7 +12520,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,8,["disabled"])):W("",!0)])])]),_:1
         }
-        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:substitutionMode.value||!c(f).canUndo||finalReviewMode,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||!c(f).canRedo||finalReviewMode,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor},{default:L(()=>[Q("编辑阵容",-1)]),_:1},8,["disabled","title"]),v(s,{
+        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:substitutionMode.value||!c(f).canUndo||finalReviewMode,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||!c(f).canRedo||finalReviewMode,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||c(firstPlayStarted)||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持修改阵容":c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor},{default:L(()=>[Q("编辑阵容",-1)]),_:1},8,["disabled","title"]),v(s,{
           size:"small",onClick:ec
         }
         ,{

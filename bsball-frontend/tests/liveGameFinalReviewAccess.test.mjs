@@ -40,3 +40,22 @@ test('赛后复核态禁止撤销/重做，保存仍保持 final', () => {
     '撤销/重做按钮未在复核态禁用'
   );
 });
+
+test('赛后复核不恢复本地旧现场，也不允许写回录入现场', () => {
+  assert.ok(
+    live.includes('a.status==="final"?(m?{source:"server",payload:m}:null):id(zo(Re.value,e),m)'),
+    'final 复核仍可能优先恢复本地旧现场'
+  );
+  assert.ok(
+    live.includes('赛后复核模式请使用复核抽屉保存，录入现场不会写回'),
+    '缺少复核态主保存守卫提示'
+  );
+  assert.ok(
+    live.includes('disabled:finalReviewMode,title:finalReviewMode?'),
+    '“保存比赛”按钮未在复核态禁用'
+  );
+  assert.ok(
+    live.includes('enabled:()=>F.value&&!finalReviewMode'),
+    '复核态离开确认仍会触发保存现场'
+  );
+});

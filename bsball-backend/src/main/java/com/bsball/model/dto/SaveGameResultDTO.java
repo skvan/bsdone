@@ -854,6 +854,8 @@ public class SaveGameResultDTO {
         private Integer pb;
         private Integer catcherSb;
         private Integer catcherCs;
+        /** 结果页显式修改过投手 R/ER：保存为人工覆写，而非被引擎值保留逻辑忽略。 */
+        private Boolean manualPitcherRunOverride;
 
         @Generated
         public StatPart() {
@@ -1547,6 +1549,14 @@ public class SaveGameResultDTO {
         @Generated
         public void setCatcherCs(Integer catcherCs) {
             this.catcherCs = catcherCs;
+        }
+
+        public Boolean getManualPitcherRunOverride() {
+            return manualPitcherRunOverride;
+        }
+
+        public void setManualPitcherRunOverride(Boolean manualPitcherRunOverride) {
+            this.manualPitcherRunOverride = manualPitcherRunOverride;
         }
 
         @Generated

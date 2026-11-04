@@ -59,7 +59,7 @@ function buildSnapshot() {
   };
 }
 
-async function setup(page) {
+async function setup(page, { staleSnapshot = null } = {}) {
   const snapshot = buildSnapshot();
   const players = [...snapshot.homeLineup, ...snapshot.awayLineup, snapshot.homeBench[0], snapshot.awayBench[0]];
   let pitcherOverride = null;
@@ -90,7 +90,7 @@ async function setup(page) {
     overrideNote: null,
   });
 
-  await page.addInitScript(() => {
+  await page.addInitScript((stale) => {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('bs-ball-live-'))
       .forEach((key) => localStorage.removeItem(key));
@@ -98,7 +98,10 @@ async function setup(page) {
     localStorage.setItem('admin_user::bs-ball', JSON.stringify({
       id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e',
     }));
-  });
+    if (stale) {
+      localStorage.setItem(stale.key, JSON.stringify(stale.value));
+    }
+  }, staleSnapshot);
 
   await page.route('**/bsball-server/**', async (route) => {
     const request = route.request();
@@ -158,6 +161,7 @@ test('final 比赛有快照：允许进入录入页并打开 ER 复核', async (
 
   await expect(page).toHaveURL(/\/games\/10\/live$/);
   await expect(page.getByRole('button', { name: '坏球' }).first()).toBeDisabled();
+  await expect(page.locator('button:visible').filter({ hasText: '保存比赛' }).first()).toBeDisabled();
   const erButton = page.locator('button:visible').filter({ hasText: 'ER 复核' }).first();
   await expect(erButton).toBeVisible();
   await erButton.click();
@@ -203,4 +207,21 @@ test('final 比赛：赛后复核可覆写投手 R/ER 并撤销', async ({ page 
   await confirm.getByRole('button', { name: '确认撤销' }).click();
   await expect(row101.getByText('引擎')).toBeVisible();
   await expect(row101).toContainText('3');
+});
+
+test('final 复核忽略本地旧现场，保存比赛按钮禁用', async ({ page }) => {
+  const stale = buildSnapshot();
+  stale.savedAt = 999999;
+  stale.homeLineup[0].name = 'STALE_PLAYER';
+  stale.gameState.inning = 5;
+  stale.teamsData.home.score = 9;
+  stale.teamsData.away.score = 9;
+  await setup(page, {
+    staleSnapshot: { key: 'bs-ball-live-watch-local-1-10', value: stale },
+  });
+
+  await expect(page).toHaveURL(/\/games\/10\/live$/);
+  await expect(page.getByText('主投手').first()).toBeVisible();
+  await expect(page.getByText('STALE_PLAYER')).toHaveCount(0);
+  await expect(page.locator('button:visible').filter({ hasText: '保存比赛' }).first()).toBeDisabled();
 });
