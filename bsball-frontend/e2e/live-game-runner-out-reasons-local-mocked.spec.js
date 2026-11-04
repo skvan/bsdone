@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.use({ viewport: { width: 1366, height: 900 } });
+
 const positions = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const players = [1, 2].flatMap((teamId) => positions.map((position, index) => ({
   id: teamId * 100 + index + 1,
@@ -132,26 +134,18 @@ async function recordSingle(page) {
 }
 
 async function openBipType(page, typeText) {
-  const bipButton = page.locator('button.field-quick-pitch__btn--bip:visible');
-  const typeItem = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${typeText}$`) });
-  await page.bringToFront();
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    await expect(bipButton).toBeEnabled({ timeout: 5000 }).catch(() => {});
-    await bipButton.dispatchEvent('pointerdown');
-    try {
-      await expect(typeItem).toBeVisible({ timeout: 800 });
-      break;
-    } catch {
-      await page.waitForTimeout(400);
-    }
-  }
+  await page.getByRole('button', { name: '界内球' }).click();
+  const bip = page.locator('.lgpm__col--bip');
+  await expect(bip).toBeVisible({ timeout: 15000 });
+  const typeItem = bip.locator('.lgpm__cn, .lgpm__result').filter({ hasText: new RegExp(`^${typeText}`) });
   await expect(typeItem).toBeVisible({ timeout: 15000 });
   await typeItem.click();
   await page.waitForTimeout(300);
 }
 
 async function clickBipItem(page, text) {
-  const item = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${text}$`) });
+  const bip = page.locator('.lgpm__col--bip');
+  const item = bip.locator('.lgpm__cn, .lgpm__result').filter({ hasText: new RegExp(`^${text}`) });
   await expect(item).toBeVisible({ timeout: 10000 });
   await item.click();
   await page.waitForTimeout(300);
