@@ -130,15 +130,25 @@ async function recordSingle(page) {
   await page.waitForTimeout(500);
 }
 
-async function recordGroundOut(page, fielder = 'SS') {
+async function openBipType(page, typeText) {
   await page.getByRole('button', { name: '界内球' }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^滚地球$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
-  await page.waitForTimeout(500);
+  const typeItem = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${typeText}$`) });
+  await expect(typeItem).toBeVisible({ timeout: 15000 });
+  await typeItem.click();
+  await page.waitForTimeout(300);
+}
+
+async function clickBipItem(page, text) {
+  const item = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${text}$`) });
+  await expect(item).toBeVisible({ timeout: 10000 });
+  await item.click();
+  await page.waitForTimeout(300);
+}
+
+async function recordGroundOut(page, fielder = 'SS') {
+  await openBipType(page, '滚地球');
+  await clickBipItem(page, '出局');
+  await clickBipItem(page, '一垒前出局');
   await clickFielder(page, fielder);
   await clickFielder(page, '1B');
   await page.getByRole('button', { name: /完成记录/ }).click();
@@ -146,14 +156,9 @@ async function recordGroundOut(page, fielder = 'SS') {
 }
 
 async function recordFlyCatch(page, fielder = 'CF') {
-  await page.getByRole('button', { name: '界内球' }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^飞球$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^出局$/ }).click();
-  await page.waitForTimeout(500);
-  await page.locator('.lgpfm__cn', { hasText: /^一垒前出局$/ }).click();
-  await page.waitForTimeout(500);
+  await openBipType(page, '飞球');
+  await clickBipItem(page, '出局');
+  await clickBipItem(page, '一垒前出局');
   await clickFielder(page, fielder);
   await page.getByRole('button', { name: /完成记录/ }).click();
   await page.waitForTimeout(500);
@@ -278,6 +283,7 @@ test('Issue #527：没有接杀时同垒菜单不提供封杀', async ({ page })
   await expect(menu.getByText('触杀出局')).toBeVisible();
   await expect(menu.getByText('封杀出局')).toHaveCount(0);
   await expect(menu.getByText('牵制出局')).toBeVisible();
+  await page.locator('.rdm__cancel:visible').click();
 });
 
 test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page }) => {
