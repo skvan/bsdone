@@ -115,6 +115,7 @@ test('final 比赛有快照：允许进入录入页并打开 ER 复核', async (
   await setup(page);
 
   await expect(page).toHaveURL(/\/games\/10\/live$/);
+  await expect(page.getByRole('button', { name: '坏球' }).first()).toBeDisabled();
   const erButton = page.locator('button:visible').filter({ hasText: 'ER 复核' }).first();
   await expect(erButton).toBeVisible();
   await erButton.click();
