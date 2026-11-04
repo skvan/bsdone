@@ -110,12 +110,12 @@ async function setup(page) {
 
 async function recordDouble(page) {
   await page.getByRole('button', { name: '界内球' }).click();
-  const menu = page.locator('.lgpfm__panel');
+  const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   // 浮层打开后 240ms 内会拦截点击
   await page.waitForTimeout(350);
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^平飞球$/ }).click();
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^二垒安打$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^平飞球$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^二垒安打$/ }).click();
   await page.locator('g.defender-hit[data-pos="CF"]').click();
 
   const safe = page.locator('.hsc-inline__btn--safe');
