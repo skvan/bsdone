@@ -33,7 +33,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { resolveAssetUrl } from '../../api/request';
-import { whiteKeyedLogo } from './logoWhiteKey.js';
+import { brushPatchLogo } from './logoBackgroundKey.js';
 import {
   CARD_BASE_WIDTH,
   CARD_BASE_HEIGHT,
@@ -68,9 +68,9 @@ watch(() => props.teamLogo, async (url) => {
   if (!url) {
     return;
   }
-  const keyed = await whiteKeyedLogo(url);
+  const keyed = await brushPatchLogo(url);
   if (request === logoRequest) {
-    logoSrc.value = keyed;
+    logoSrc.value = keyed.url;
   }
 }, { immediate: true });
 
