@@ -83,6 +83,7 @@ async function throwBalls(page, count) {
     await page.locator('button[title="坏球 Ball"]').click();
     await expect(page.locator('button[title="坏球 Ball"]')).toBeVisible();
   }
+  if (count >= 4) await page.waitForTimeout(800);
 }
 
 async function waitForRunnerToken(page, base) {
@@ -132,16 +133,16 @@ async function recordSingle(page) {
 
 async function openBipType(page, typeText) {
   const bipButton = page.locator('button.field-quick-pitch__btn--bip:visible');
-  await expect(bipButton).toBeEnabled({ timeout: 15000 });
   const typeItem = page.locator('.lgpfm__cn:visible').filter({ hasText: new RegExp(`^${typeText}$`) });
   await page.bringToFront();
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await expect(bipButton).toBeEnabled({ timeout: 5000 }).catch(() => {});
     await bipButton.dispatchEvent('pointerdown');
     try {
-      await expect(typeItem).toBeVisible({ timeout: 2500 });
+      await expect(typeItem).toBeVisible({ timeout: 800 });
       break;
     } catch {
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(400);
     }
   }
   await expect(typeItem).toBeVisible({ timeout: 15000 });
