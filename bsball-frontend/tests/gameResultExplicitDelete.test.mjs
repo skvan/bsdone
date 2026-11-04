@@ -27,7 +27,7 @@ test('保存请求显式携带 removedStatIds，成功后清空', () => {
 test('加载统计时不保留上一次页面的删除名单', () => {
   const src = read('views/admin/Games.js');
   assert.ok(
-    /listByGame\(pe\.value\);.*removedStatRows\.clear\(\)/.test(src),
+    /listByGame\(pe\.value\).*removedStatRows\.clear\(\)/.test(src),
     'Na() 加载统计后未清空 removedStatRows'
   );
 });

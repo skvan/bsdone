@@ -8,6 +8,7 @@ import {
   buildFieldingPositionRows,
   hasFieldingByPosBaseline,
   hasHistoricalFieldingStats,
+  isStartingPlayer,
   normalizeFieldingPosition,
 } from '../src/utils/liveGameFieldingByPos.js';
 
@@ -159,4 +160,18 @@ test('历史守备局数：Do 重建路径据此判定基线不可信', () => {
   assert.equal(hasHistoricalFieldingStats([{ defInn: 0 }, {}]), false);
   assert.equal(hasHistoricalFieldingStats([{ defInn: 1.2 }]), true);
   assert.equal(hasHistoricalFieldingStats(null), false);
+});
+
+test('先发判定：首发名单与 DH 制先发投手为 1，替补/无效值为 0', () => {
+  const starters = [11, 12, null, 13];
+  assert.equal(isStartingPlayer(11, starters, null), true);
+  assert.equal(isStartingPlayer('12', starters, null), true);
+  assert.equal(isStartingPlayer(13, starters, null), true);
+  assert.equal(isStartingPlayer(99, starters, 99), true);
+  assert.equal(isStartingPlayer('99', starters, 99), true);
+  assert.equal(isStartingPlayer(98, starters, 99), false);
+  assert.equal(isStartingPlayer(0, starters, null), false);
+  assert.equal(isStartingPlayer(null, starters, null), false);
+  assert.equal(isStartingPlayer(11, null, null), false);
+  assert.equal(isStartingPlayer(11, [], null), false);
 });

@@ -37,6 +37,8 @@ import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
+import com.bsball.model.dto.PitcherRunOverrideRequest;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
@@ -161,6 +163,25 @@ public class GameApi {
             @PathVariable Long decisionId,
             @RequestBody EarnedRunDecisionOverrideRequest body) {
         return Result.ok(this.gameService.overrideEarnedRunDecision(id, decisionId, body));
+    }
+
+    @GetMapping(value={"/{id}/earned-runs/pitchers"})
+    public Result<List<PitcherRunTotalsDTO>> listPitcherRunTotals(@PathVariable Long id) {
+        return Result.ok(this.gameService.listPitcherRunTotals(id));
+    }
+
+    @PutMapping(value={"/{id}/earned-runs/pitchers/{playerId}/override"})
+    public Result<PitcherRunTotalsDTO> overridePitcherRuns(
+            @PathVariable Long id,
+            @PathVariable Long playerId,
+            @RequestBody PitcherRunOverrideRequest body) {
+        return Result.ok(this.gameService.overridePitcherRuns(id, playerId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/overrides/{overrideId}/revoke"})
+    public Result<PitcherRunTotalsDTO> revokePitcherRunOverride(
+            @PathVariable Long id, @PathVariable Long overrideId) {
+        return Result.ok(this.gameService.revokePitcherRunOverride(id, overrideId));
     }
 
     @GetMapping(value={"/{id}/fielding-adjustments"})
