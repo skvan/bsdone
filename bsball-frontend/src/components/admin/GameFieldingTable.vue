@@ -4,7 +4,7 @@
     <el-table
       :data="rows"
       size="small"
-      max-height="520"
+      border
       class="compact-table"
       empty-text="暂无球员"
       :show-summary="rows.length > 0"
@@ -14,13 +14,13 @@
       :current-row-key="currentRowKey"
       @row-click="onRowClick"
     >
-      <el-table-column prop="playerName" label="球员" min-width="120" show-overflow-tooltip>
+      <el-table-column prop="playerName" label="球员" min-width="120" resizable show-overflow-tooltip>
         <template #default="{ row }">{{ row.name }}</template>
       </el-table-column>
-      <el-table-column label="背号" width="70" align="center">
+      <el-table-column label="背号" width="70" align="center" resizable>
         <template #default="{ row }">{{ row.number ?? '-' }}</template>
       </el-table-column>
-      <el-table-column label="POS" width="90" align="center">
+      <el-table-column label="POS" width="90" align="center" resizable>
         <template #default="{ row }">{{ row._fieldPosition || row.position || '-' }}</template>
       </el-table-column>
       <el-table-column
@@ -30,6 +30,7 @@
         :label="col.label"
         :width="col.width"
         align="center"
+        resizable
       >
         <template #default="{ row }">
           <el-input-number
