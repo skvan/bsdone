@@ -174,11 +174,12 @@ for (const dark of [false, true]) {
   });
 }
 
-test('后台补录页：守备表与捕手表显示 Totals 汇总行', async ({ page }) => {
+test('后台补录页：守备表显示 Totals 汇总行，捕手行保留在守备表中', async ({ page }) => {
   await mockEntryPage(page);
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/edit');
   await expect(page.locator('.game-entry-page')).toBeVisible();
 
+  await expect(page.getByRole('tab', { name: '捕手数据' })).toHaveCount(0);
   await page.getByRole('tab', { name: '守备数据' }).click();
   const fieldingTable = page.locator('.game-fielding-table', { hasText: '客队A 守备' });
   await expect(fieldingTable).toBeVisible();
@@ -186,14 +187,9 @@ test('后台补录页：守备表与捕手表显示 Totals 汇总行', async ({ 
   await expect(fieldingFooter).toContainText('Totals');
   await expect(fieldingFooter.locator('td').nth(4)).toHaveText('10');
 
-  await page.getByRole('tab', { name: '捕手数据' }).click();
-  const catcherTable = page.locator('[data-game-result-nav="away-catcher"]');
-  await expect(catcherTable).toBeVisible();
-  const catcherFooter = catcherTable.locator('.el-table__footer-wrapper');
-  await expect(catcherFooter).toContainText('Totals');
-  await expect(catcherFooter.locator('td').nth(2)).toHaveText('1');
-  await expect(catcherFooter.locator('td').nth(3)).toHaveText('2');
-  await expect(catcherFooter.locator('td').nth(4)).toHaveText('1');
+  const catcherRow = fieldingTable.locator('.el-table__body-wrapper tbody tr', { hasText: '客2' });
+  await expect(catcherRow).toBeVisible();
+  await expect(fieldingTable.locator('.el-table__header-wrapper thead')).toContainText('PB');
 });
 
 test('后台补录页：列宽可拖拽调整', async ({ page }) => {
