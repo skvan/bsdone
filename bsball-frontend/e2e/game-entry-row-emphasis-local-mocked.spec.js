@@ -195,3 +195,20 @@ test('后台补录页：守备表与捕手表显示 Totals 汇总行', async ({ 
   await expect(catcherFooter.locator('td').nth(3)).toHaveText('2');
   await expect(catcherFooter.locator('td').nth(4)).toHaveText('1');
 });
+
+test('后台补录页：列宽可拖拽调整', async ({ page }) => {
+  await mockEntryPage(page);
+  await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/edit');
+  const table = page.locator('[data-game-result-nav="away-batter"]');
+  const header = table.locator('.el-table__header-wrapper thead th').filter({ hasText: 'PA' }).first();
+  await expect(header).toBeVisible();
+  await header.scrollIntoViewIfNeeded();
+  const box = await header.boundingBox();
+  const before = box.width;
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width + 40, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const after = await header.evaluate((el) => el.getBoundingClientRect().width);
+  expect(Math.abs(after - before)).toBeGreaterThan(10);
+});
