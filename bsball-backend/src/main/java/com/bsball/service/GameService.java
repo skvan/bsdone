@@ -15,6 +15,8 @@ import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
+import com.bsball.model.dto.PitcherRunOverrideRequest;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
@@ -50,6 +52,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Generated;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -695,15 +698,66 @@ public class GameService {
     }
 
     private Game requireGameForFieldingReview(Long gameId) {
+        return this.requireFinalGameForReview(gameId, "比赛结束后才能进行守备补记");
+    }
+
+    private Game requireFinalGameForReview(Long gameId, String message) {
         Game game = this.gameRepository.findById(gameId).orElse(null);
         if (game == null) {
             throw new BusinessException(404, "比赛不存在");
         }
         this.assertGameWritable(game);
         if (!"final".equalsIgnoreCase(game.getStatus())) {
-            throw new BusinessException(400, "比赛结束后才能进行守备补记");
+            throw new BusinessException(400, message);
         }
         return game;
+    }
+
+    /** 赛后复核：列出本场投手 R/ER 合计与生效中的人工覆写。 */
+    public List<PitcherRunTotalsDTO> listPitcherRunTotals(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能复核投手 R/ER");
+        if (!this.earnedRunReconstructionService.hasEngineData(gameId)) {
+            return List.of();
+        }
+        return this.earnedRunReconstructionService.listPitcherTotals(game.getTenantId(), gameId);
+    }
+
+    /** 赛后复核：保存指定投手的 R/ER 人工覆写。 */
+    public PitcherRunTotalsDTO overridePitcherRuns(
+            Long gameId, Long playerId, PitcherRunOverrideRequest request) {
+        if (request == null) {
+            throw new BusinessException(400, "缺少投手 R/ER 覆写资料");
+        }
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能手工覆写投手 R/ER");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.overridePitcherRuns(
+                    game.getTenantId(), gameId, playerId,
+                    request.getRunsAllowed(), request.getEarnedRuns(),
+                    request.getNote(), operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该投手已有其他复核结果，请刷新后重试");
+        }
+    }
+
+    /** 赛后复核：撤销投手 R/ER 人工覆写，恢复引擎值。 */
+    public PitcherRunTotalsDTO revokePitcherRunOverride(Long gameId, Long overrideId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能撤销投手 R/ER 覆写");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.revokePitcherOverride(
+                    game.getTenantId(), gameId, overrideId, operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
     }
 
     @Transactional(rollbackFor={Exception.class})
