@@ -11551,6 +11551,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function hsRun(e){
       if(!R.value)return;
+      if(finalReviewMode){
+        e?.throwOnError||e?.silent||J("赛后复核模式请使用复核抽屉保存，录入现场不会写回","warning");
+        return
+      }
       if(substitutionMode.value&&!e?.fromSubstitutionMode){
         if(e?.silent)return;
         const message="换人模式进行中，请先点「结束换人」提交或取消换人模式";
@@ -11821,8 +11825,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ),"unavailable"
       }
-      _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true;
-      const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=id(zo(Re.value,e),m);
+      _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true,finalReviewMode=a.status==="final",finalReviewMode&&(l.isGameEnd=!0);
+      const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=a.status==="final"?(m?{source:"server",payload:m}:null):id(zo(Re.value,e),m);
       const loaded=y?(await Vl(y.payload,{
         homeList:s,awayList:r
       }
@@ -11851,7 +11855,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       skipNextRouteLeaveOnce:hc
     }
     =gd({
-      enabled:()=>F.value,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",directLeaveLoadingText:"正在保存现场…",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
+      enabled:()=>F.value&&!finalReviewMode,title:"离开确认",message:"当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",triButton:!0,stayButtonText:"留下",directLeaveButtonText:"直接离开",directLeaveLoadingText:"正在保存现场…",saveLeaveButtonText:"保存离开",onDirectLeave:async()=>{
         substitutionMode.value&&cancelSubstitutionMode(),await ZrLite(),_l()
       }
       ,onSaveAndLeave:async()=>{
@@ -12027,7 +12031,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           default:L(()=>[Q("↪ 重做",-1)]),_:1
         }
         ,8,["disabled"])):W("",!0),c(F)?(h(),Oe(s,{
-          key:"lineup-edit",size:"small",disabled:c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor
+          key:"lineup-edit",size:"small",disabled:c(firstPlayStarted)||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持修改阵容":c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor
         }
         ,{
           default:L(()=>[Q("编辑阵容",-1)]),_:1
@@ -12141,18 +12145,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           default:L(()=>[Q(H(c(oe)?"退出全屏":"全屏显示"),1)]),_:1
         }
         )):W("",!0),c(F)?(h(),Oe(s,{
-          key:"substitution-mode",type:substitutionMode.value?"warning":"primary",plain:!substitutionMode.value,disabled:substitutionModeBusy.value,onClick:toggleSubstitutionMode
+          key:"substitution-mode",type:substitutionMode.value?"warning":"primary",plain:!substitutionMode.value,disabled:substitutionModeBusy.value||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持换人":"",onClick:toggleSubstitutionMode
         }
         ,{
           default:L(()=>[Q(H(substitutionMode.value?"结束换人":"换人模式"),1)]),_:1
         }
-        ,8,["type","plain","disabled"])):W("",!0),c(F)?(h(),Oe(s,{
-          key:2,type:"primary",loading:c(he),onClick:hs
+        ,8,["type","plain","disabled","title"])):W("",!0),c(F)?(h(),Oe(s,{
+          key:2,type:"primary",loading:c(he),disabled:finalReviewMode,title:finalReviewMode?"赛后复核模式请使用复核抽屉保存":"保存比赛",onClick:hs
         }
         ,{
           default:L(()=>[...t[60]||(t[60]=[Q("保存比赛",-1)])]),_:1
         }
-        ,8,["loading"])):W("",!0),c(F)&&!Lp.value?(h(),Oe(g,{
+        ,8,["loading","disabled","title"])):W("",!0),c(F)&&!Lp.value?(h(),Oe(g,{
           key:3,trigger:"click",teleported:!1
         }
         ,{
@@ -12412,7 +12416,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,8,["disabled"])):W("",!0)])])]),_:1
         }
-        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:substitutionMode.value||!c(f).canUndo||finalReviewMode,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||!c(f).canRedo||finalReviewMode,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||c(firstPlayStarted),title:c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor},{default:L(()=>[Q("编辑阵容",-1)]),_:1},8,["disabled","title"]),v(s,{
+        ,8,["visible","width"])]),n("div",Ug,[v(s,{size:"small",disabled:substitutionMode.value||!c(f).canUndo||finalReviewMode,onClick:as},{default:L(()=>[Q("↩ 撤销",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||!c(f).canRedo||finalReviewMode,onClick:Ff},{default:L(()=>[Q("↪ 重做",-1)]),_:1},8,["disabled"]),v(s,{size:"small",disabled:substitutionMode.value||c(firstPlayStarted)||finalReviewMode,title:finalReviewMode?"比赛已结束，复核模式不支持修改阵容":c(firstPlayStarted)?"第一个 Play 已开始，不能再修改阵容":"返回先发阵容页面修改阵容",onClick:openLineupEditor},{default:L(()=>[Q("编辑阵容",-1)]),_:1},8,["disabled","title"]),v(s,{
           size:"small",onClick:ec
         }
         ,{
