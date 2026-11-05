@@ -349,6 +349,12 @@ EventService --> EventRepository
 - POST /game/{id}/pitcher-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源行（与转记是两个动作）
   - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/revision-audit
+  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameRevisionAuditDTO>`；字段含 `auditType/recordId/action/status/summary/reason/operatorId/operatedAt`
+  - 排序：`operatedAt` 倒序；相同时间按 `recordId` 倒序
+  - 只读：撤销/恢复仍从 ER 复核、守备补记 A、投手 R/ER 各自页签操作
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）

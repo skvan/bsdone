@@ -12,6 +12,8 @@ public interface ErDecisionAdjustmentRepository
 
     List<ErDecisionAdjustment> findByGameIdAndStatus(Long gameId, String status);
 
+    List<ErDecisionAdjustment> findByTenantIdAndGameIdOrderByIdDesc(Long tenantId, Long gameId);
+
     Optional<ErDecisionAdjustment> findByIdAndTenantIdAndGameId(
             Long id, Long tenantId, Long gameId);
 

@@ -185,6 +185,24 @@ async function setup(page) {
         sequence: 5, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
         position: 'P', assistCount: 1, status: 'APPROVED', sourceValid: true
       };
+    } else if (path === `/game/${GAME_ID}/revision-audit` && request.method() === 'GET') {
+      data = [{
+        auditType: 'PITCHER_TRANSFER', recordId: 4, action: 'DELETE_SOURCE',
+        status: 'DELETED', summary: '投手行转记：T1PITCHER → T1PITCHER2',
+        reason: '转记', operatorId: 12, operatedAt: '2026-11-05T13:00:00'
+      }, {
+        auditType: 'FIELDING_ADJUSTMENT', recordId: 3, action: 'REVOKE',
+        status: 'REVOKED', summary: '守备补记：T2P1 · CF A +1（5下 #167）',
+        reason: '补记', operatorId: 11, operatedAt: '2026-11-05T12:00:00'
+      }, {
+        auditType: 'PITCHER_RUN_OVERRIDE', recordId: 2, action: 'OVERRIDE',
+        status: 'APPROVED', summary: '投手 R/ER 覆写：T1PITCHER R 5 / ER 3',
+        reason: '投手合计更正', operatorId: 10, operatedAt: '2026-11-05T11:00:00'
+      }, {
+        auditType: 'ER_DECISION', recordId: 1, action: 'REASSIGN',
+        status: 'ACTIVE', summary: 'ER 判定改派：跑者 T2P1 → T1PITCHER2',
+        reason: '现场更正', operatorId: 9, operatedAt: '2026-11-05T10:00:00'
+      }];
     } else if (path === `/game/${GAME_ID}/pitcher-transfers` && request.method() === 'POST') {
       const body = request.postDataJSON();
       const source = awayStats.find((stat) => Number(stat.id) === Number(body.sourceStatId));
@@ -510,4 +528,18 @@ test('ER 判定可改派、作废并恢复', async ({ page }) => {
   await revokeRequest;
   await expect(row).not.toContainText('人工改派');
   await expect(row).not.toContainText('已作废');
+});
+
+test('修订记录页签展示四类人工修订', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订记录' }).click();
+
+  await expect(page.getByText('实时记录为基座 · 人工修订为最终值')).toBeVisible();
+  const rows = page.locator('.revision-audit .el-table__row');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(0)).toContainText('投手行转记');
+  await expect(rows.nth(1)).toContainText('守备补记');
+  await expect(rows.nth(2)).toContainText('投手 R/ER 覆写');
+  await expect(rows.nth(3)).toContainText('ER 判定改派');
 });
