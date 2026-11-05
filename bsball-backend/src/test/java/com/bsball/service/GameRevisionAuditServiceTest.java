@@ -16,6 +16,7 @@ import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GameFieldingAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
+import com.bsball.model.entity.GameIdentityTransfer;
 import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.GameStatAdjustment;
@@ -25,6 +26,7 @@ import com.bsball.model.entity.Player;
 import com.bsball.repository.ErDecisionAdjustmentRepository;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameStatAdjustmentRepository;
@@ -56,6 +58,8 @@ class GameRevisionAuditServiceTest {
     @Mock
     private GamePitcherTransferRepository pitcherTransferRepository;
     @Mock
+    private GameIdentityTransferRepository identityTransferRepository;
+    @Mock
     private PlayerRepository playerRepository;
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
@@ -77,7 +81,7 @@ class GameRevisionAuditServiceTest {
         service = new GameRevisionAuditService(
                 erDecisionAdjustmentRepository, pitcherRunOverrideRepository,
                 fieldingAdjustmentRepository, pitcherTransferRepository,
-                playerRepository, gamePlayerStatRepository,
+                identityTransferRepository, playerRepository, gamePlayerStatRepository,
                 gameFieldingPosStatRepository, gameStatBaseRepository,
                 gameStatAdjustmentRepository, transactionManager, objectMapper);
         lenient().when(transactionManager.getTransaction(any()))
@@ -132,6 +136,15 @@ class GameRevisionAuditServiceTest {
         transfer.setSourceDeletedBy(12L);
         transfer.setSourceDeletedAt(LocalDateTime.of(2026, 11, 5, 13, 0));
 
+        GameIdentityTransfer identity = new GameIdentityTransfer();
+        identity.setId(5L);
+        identity.setSourcePlayerId(700L);
+        identity.setTargetPlayerId(702L);
+        identity.setStatus("TRANSFERRED");
+        identity.setNote("整名转记");
+        identity.setCreatedBy(13L);
+        identity.setCreatedAt(LocalDateTime.of(2026, 11, 5, 14, 0));
+
         when(erDecisionAdjustmentRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
                 .thenReturn(List.of(er));
         when(pitcherRunOverrideRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
@@ -141,28 +154,35 @@ class GameRevisionAuditServiceTest {
                 .thenReturn(List.of(fielding));
         when(pitcherTransferRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
                 .thenReturn(List.of(transfer));
+        when(identityTransferRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
+                .thenReturn(List.of(identity));
         when(playerRepository.findAllById(any())).thenReturn(List.of(
                 player(55L, "跑者甲"), player(700L, "投手乙"), player(701L, "投手丙"),
-                player(23L, "中外野")));
+                player(702L, "野手丁"), player(23L, "中外野")));
 
         List<GameRevisionAuditDTO> rows = service.list(game);
 
-        assertEquals(4, rows.size());
-        assertEquals("PITCHER_TRANSFER", rows.get(0).auditType());
-        assertEquals("DELETE_SOURCE", rows.get(0).action());
-        assertEquals("DELETED", rows.get(0).status());
+        assertEquals(5, rows.size());
+        assertEquals("IDENTITY_TRANSFER", rows.get(0).auditType());
+        assertEquals("TRANSFER", rows.get(0).action());
         assertTrue(rows.get(0).summary().contains("投手乙"));
-        assertTrue(rows.get(0).summary().contains("投手丙"));
-        assertEquals(12L, rows.get(0).operatorId());
-        assertEquals("FIELDING_ADJUSTMENT", rows.get(1).auditType());
-        assertEquals("REVOKE", rows.get(1).action());
-        assertTrue(rows.get(1).summary().contains("5下 #167"));
-        assertEquals("PITCHER_RUN_OVERRIDE", rows.get(2).auditType());
-        assertTrue(rows.get(2).summary().contains("R 5 / ER 3"));
-        assertEquals("ER_DECISION", rows.get(3).auditType());
-        assertTrue(rows.get(3).summary().contains("跑者甲"));
-        assertTrue(rows.get(3).summary().contains("投手丙"));
-        assertEquals("现场更正", rows.get(3).reason());
+        assertTrue(rows.get(0).summary().contains("野手丁"));
+        assertEquals(13L, rows.get(0).operatorId());
+        assertEquals("PITCHER_TRANSFER", rows.get(1).auditType());
+        assertEquals("DELETE_SOURCE", rows.get(1).action());
+        assertEquals("DELETED", rows.get(1).status());
+        assertTrue(rows.get(1).summary().contains("投手乙"));
+        assertTrue(rows.get(1).summary().contains("投手丙"));
+        assertEquals(12L, rows.get(1).operatorId());
+        assertEquals("FIELDING_ADJUSTMENT", rows.get(2).auditType());
+        assertEquals("REVOKE", rows.get(2).action());
+        assertTrue(rows.get(2).summary().contains("5下 #167"));
+        assertEquals("PITCHER_RUN_OVERRIDE", rows.get(3).auditType());
+        assertTrue(rows.get(3).summary().contains("R 5 / ER 3"));
+        assertEquals("ER_DECISION", rows.get(4).auditType());
+        assertTrue(rows.get(4).summary().contains("跑者甲"));
+        assertTrue(rows.get(4).summary().contains("投手丙"));
+        assertEquals("现场更正", rows.get(4).reason());
     }
 
     @Test
@@ -176,6 +196,8 @@ class GameRevisionAuditServiceTest {
                 .findByTenantIdAndGameIdOrderByInningAscTopBottomAscSourceSequenceAscIdAsc(1L, 20L))
                 .thenReturn(List.of());
         when(pitcherTransferRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
+                .thenReturn(List.of());
+        when(identityTransferRepository.findByTenantIdAndGameIdOrderByIdDesc(1L, 20L))
                 .thenReturn(List.of());
 
         assertTrue(service.list(game).isEmpty());

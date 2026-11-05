@@ -105,7 +105,8 @@ function scopeLabel(scope) {
     ER_DECISION: 'ER 判定',
     PITCHER_RUN_OVERRIDE: 'R/ER 覆写',
     FIELDING_A: '守备补记',
-    PITCHER_TRANSFER: '投手转记'
+    PITCHER_TRANSFER: '投手转记',
+    IDENTITY_TRANSFER: '身份转记'
   };
   return labels[scope] ?? scope ?? '—';
 }
@@ -114,7 +115,7 @@ function scopeTagType(scope) {
   if (scope === 'ER_DECISION') return 'warning';
   if (scope === 'PITCHER_RUN_OVERRIDE') return 'primary';
   if (scope === 'FIELDING_A') return 'success';
-  if (scope === 'PITCHER_TRANSFER') return 'info';
+  if (scope === 'PITCHER_TRANSFER' || scope === 'IDENTITY_TRANSFER') return 'info';
   return 'info';
 }
 

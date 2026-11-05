@@ -281,6 +281,16 @@ export const gameApi = {
   transferPitcher: (id, data) => post(`/api/game/${id}/pitcher-transfers`, data),
   deletePitcherTransferSource: (id, transferId) =>
     post(`/api/game/${id}/pitcher-transfers/${transferId}/delete-source`, {}),
+  previewIdentityTransfer: (id, sourcePlayerId, targetPlayerId) => {
+    const query = new URLSearchParams({
+      sourcePlayerId: String(sourcePlayerId),
+      targetPlayerId: String(targetPlayerId)
+    });
+    return fetchResult(`/api/game/${id}/identity-transfers/preview?${query}`);
+  },
+  transferIdentity: (id, data) => post(`/api/game/${id}/identity-transfers`, data),
+  deleteIdentityTransferSource: (id, transferId) =>
+    post(`/api/game/${id}/identity-transfers/${transferId}/delete-source`, {}),
   listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
   listFieldingAdjustmentCandidates: (id) =>
     fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),

@@ -2,11 +2,14 @@ package com.bsball.service;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.IdentityTransferPreviewDTO;
+import com.bsball.model.dto.IdentityTransferResultDTO;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
+import com.bsball.model.entity.GameIdentityTransfer;
 import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.PitcherRunOverride;
@@ -16,6 +19,7 @@ import com.bsball.repository.EarnedRunPlayRepository;
 import com.bsball.repository.ErDecisionAdjustmentRepository;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
@@ -54,6 +58,11 @@ public class EarnedRunReconstructionService {
     private static final String OVERRIDE_INVALIDATED = "INVALIDATED";
     private static final String TRANSFER_STATUS_TRANSFERRED = "TRANSFERRED";
     private static final String TRANSFER_STATUS_DELETED = "DELETED";
+    private static final String SCOPE_STATS = "STATS";
+    private static final String SCOPE_FIELDING = "FIELDING";
+    private static final String SCOPE_ER_DECISIONS = "ER_DECISIONS";
+    private static final Set<String> DEFAULT_IDENTITY_SCOPES =
+            Set.of(SCOPE_STATS, SCOPE_FIELDING, SCOPE_ER_DECISIONS);
     static final String ADJUSTMENT_ACTIVE = "ACTIVE";
     static final String ADJUSTMENT_SUPERSEDED = "SUPERSEDED";
     static final String ADJUSTMENT_REVOKED = "REVOKED";
@@ -67,6 +76,7 @@ public class EarnedRunReconstructionService {
     private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
     private final GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository;
     private final GamePitcherTransferRepository gamePitcherTransferRepository;
+    private final GameIdentityTransferRepository gameIdentityTransferRepository;
     private final ErDecisionAdjustmentRepository erDecisionAdjustmentRepository;
     private final EarnedRunReconstructionEngine engine;
     private final PlayerRepository playerRepository;
@@ -81,6 +91,7 @@ public class EarnedRunReconstructionService {
             GameFieldingPosStatRepository gameFieldingPosStatRepository,
             GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository,
             GamePitcherTransferRepository gamePitcherTransferRepository,
+            GameIdentityTransferRepository gameIdentityTransferRepository,
             ErDecisionAdjustmentRepository erDecisionAdjustmentRepository,
             PlayerRepository playerRepository,
             ObjectMapper objectMapper) {
@@ -91,6 +102,7 @@ public class EarnedRunReconstructionService {
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
         this.gameFieldingAdjustmentRepository = gameFieldingAdjustmentRepository;
         this.gamePitcherTransferRepository = gamePitcherTransferRepository;
+        this.gameIdentityTransferRepository = gameIdentityTransferRepository;
         this.erDecisionAdjustmentRepository = erDecisionAdjustmentRepository;
         this.playerRepository = playerRepository;
         this.objectMapper = objectMapper;
@@ -160,6 +172,39 @@ public class EarnedRunReconstructionService {
     private static final List<DoubleStatField> PITCHER_TRANSFER_DOUBLE_FIELDS = List.of(
             new DoubleStatField(GamePlayerStat::getIp, GamePlayerStat::setIp),
             new DoubleStatField(GamePlayerStat::getDefInn, GamePlayerStat::setDefInn));
+
+    private static final List<IntStatField> IDENTITY_TRANSFER_INT_FIELDS =
+            buildIdentityTransferIntFields();
+
+    private static List<IntStatField> buildIdentityTransferIntFields() {
+        List<IntStatField> fields = new ArrayList<>();
+        fields.add(new IntStatField(GamePlayerStat::getPa, GamePlayerStat::setPa));
+        fields.add(new IntStatField(GamePlayerStat::getAb, GamePlayerStat::setAb));
+        fields.add(new IntStatField(GamePlayerStat::getR, GamePlayerStat::setR));
+        fields.add(new IntStatField(GamePlayerStat::getH, GamePlayerStat::setH));
+        fields.add(new IntStatField(GamePlayerStat::getE, GamePlayerStat::setE));
+        fields.add(new IntStatField(GamePlayerStat::getBbHp, GamePlayerStat::setBbHp));
+        fields.add(new IntStatField(GamePlayerStat::getSb, GamePlayerStat::setSb));
+        fields.add(new IntStatField(GamePlayerStat::getSo, GamePlayerStat::setSo));
+        fields.add(new IntStatField(GamePlayerStat::getSoSwing, GamePlayerStat::setSoSwing));
+        fields.add(new IntStatField(GamePlayerStat::getSoLooking, GamePlayerStat::setSoLooking));
+        fields.add(new IntStatField(GamePlayerStat::getRbi, GamePlayerStat::setRbi));
+        fields.add(new IntStatField(GamePlayerStat::getDoubles, GamePlayerStat::setDoubles));
+        fields.add(new IntStatField(GamePlayerStat::getTriples, GamePlayerStat::setTriples));
+        fields.add(new IntStatField(GamePlayerStat::getHr, GamePlayerStat::setHr));
+        fields.add(new IntStatField(GamePlayerStat::getInsideParkHr,
+                GamePlayerStat::setInsideParkHr));
+        fields.add(new IntStatField(GamePlayerStat::getGdp, GamePlayerStat::setGdp));
+        fields.add(new IntStatField(GamePlayerStat::getSh, GamePlayerStat::setSh));
+        fields.add(new IntStatField(GamePlayerStat::getSf, GamePlayerStat::setSf));
+        fields.add(new IntStatField(GamePlayerStat::getBb, GamePlayerStat::setBb));
+        fields.add(new IntStatField(GamePlayerStat::getIbb, GamePlayerStat::setIbb));
+        fields.add(new IntStatField(GamePlayerStat::getHbp, GamePlayerStat::setHbp));
+        fields.add(new IntStatField(GamePlayerStat::getIo, GamePlayerStat::setIo));
+        fields.add(new IntStatField(GamePlayerStat::getCs, GamePlayerStat::setCs));
+        fields.addAll(PITCHER_TRANSFER_INT_FIELDS);
+        return List.copyOf(fields);
+    }
 
     /** Replaces and reconstructs all earned-run events for one half-inning. */
     @Transactional
@@ -364,7 +409,8 @@ public class EarnedRunReconstructionService {
         String targetBefore = snapshot(target, targetFielding);
 
         mergeTransferableStats(source, target);
-        mergeFieldingPositions(source, target, sourceFielding, operatorId);
+        mergeFieldingPositions(gameId, target.getTeamId(), target.getPlayerId(),
+                sourceFielding, operatorId);
         if (!GamePlayerStatZeros.isZero(source)) {
             throw new IllegalArgumentException("原投手行仍有不可转记的数据，请先在对应页签清零后再转记");
         }
@@ -450,6 +496,353 @@ public class EarnedRunReconstructionService {
                 transfer.getStatus());
     }
 
+    /** 整名球员身份转记预览。 */
+    @Transactional(readOnly = true)
+    public IdentityTransferPreviewDTO previewIdentityTransfer(
+            long tenantId, long gameId, long sourcePlayerId, long targetPlayerId) {
+        validateIdentityTransferIds(tenantId, gameId, sourcePlayerId, targetPlayerId);
+        List<GamePlayerStat> sourceStats = playerStatsOf(tenantId, gameId, sourcePlayerId);
+        List<GamePlayerStat> targetStats = playerStatsOf(tenantId, gameId, targetPlayerId);
+        List<GameFieldingPosStat> sourceFielding = playerFieldingOf(gameId, sourcePlayerId);
+        List<GameFieldingPosStat> targetFielding = playerFieldingOf(gameId, targetPlayerId);
+        Long sourceTeamId = firstTeamId(sourceStats, sourceFielding);
+        Long targetTeamId = firstTeamId(targetStats, targetFielding);
+        Map<Long, Player> players = loadPlayerMap(
+                Set.of(sourcePlayerId, targetPlayerId));
+        List<String> blockers = new ArrayList<>();
+        if (sourcePlayerId == targetPlayerId) {
+            blockers.add("源球员与目标球员不能相同");
+        }
+        if (sourceTeamId == null) {
+            blockers.add("源球员没有本场统计或守备数据");
+        }
+        if (targetTeamId != null && sourceTeamId != null
+                && !Objects.equals(sourceTeamId, targetTeamId)) {
+            blockers.add("目标球员不在同一球队");
+        }
+        if (targetTeamId == null && sourceTeamId != null) {
+            Player targetPlayer = players.get(targetPlayerId);
+            if (targetPlayer == null
+                    || !Objects.equals(targetPlayer.getTeamId(), sourceTeamId)) {
+                blockers.add("目标球员不在源球队名单中");
+            }
+        }
+        Map<Long, PitcherRunOverride> overrides =
+                activeOverridesByPlayer(tenantId, gameId);
+        boolean sourceOverride = overrides.containsKey(sourcePlayerId);
+        boolean targetOverride = overrides.containsKey(targetPlayerId);
+        if (sourceOverride && targetOverride) {
+            blockers.add("源/目标球员都有 R/ER 人工覆写，请先撤销一端");
+        }
+        List<IdentityTransferPreviewDTO.RowPreview> rows = new ArrayList<>();
+        for (GamePlayerStat source : sourceStats) {
+            GamePlayerStat target = findStatByType(targetStats, source.getIsPitcher());
+            rows.add(new IdentityTransferPreviewDTO.RowPreview(
+                    source.getIsPitcher(), source.getId(),
+                    target != null ? target.getId() : null, target != null));
+        }
+        List<String> positions = sourceFielding.stream()
+                .map(GameFieldingPosStat::getPosition)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        int decisionCount = countResponsiblePitcherDecisions(gameId, sourcePlayerId);
+        if (sourceFielding.isEmpty() && decisionCount == 0
+                && sourceStats.stream().allMatch(GamePlayerStatZeros::isZero)) {
+            blockers.add("源球员没有可转记的数据");
+        }
+        return new IdentityTransferPreviewDTO(
+                sourcePlayerId, playerName(players, sourcePlayerId),
+                targetPlayerId, playerName(players, targetPlayerId),
+                sourceTeamId != null ? sourceTeamId : targetTeamId,
+                blockers.isEmpty(), blockers, rows, positions,
+                decisionCount, sourceOverride, targetOverride);
+    }
+
+    /** 整名球员身份转记：统计、逐位置守备、ER 判定与 R/ER 覆写。 */
+    @Transactional
+    public IdentityTransferResultDTO transferIdentity(
+            long tenantId, long gameId, long sourcePlayerId, long targetPlayerId,
+            List<String> scopes, String note, long operatorId) {
+        validateIdentityTransferIds(tenantId, gameId, sourcePlayerId, targetPlayerId);
+        if (operatorId <= 0) {
+            throw new IllegalArgumentException("操作人必须为正数");
+        }
+        IdentityTransferPreviewDTO preview = previewIdentityTransfer(
+                tenantId, gameId, sourcePlayerId, targetPlayerId);
+        if (!preview.transferable()) {
+            throw new IllegalArgumentException(String.join("；", preview.blockers()));
+        }
+        Set<String> scopeSet = normalizeIdentityScopes(scopes);
+        String sourceBefore = identitySnapshot(tenantId, gameId, sourcePlayerId);
+        String targetBefore = identitySnapshot(tenantId, gameId, targetPlayerId);
+
+        Long teamId = preview.teamId();
+        if (scopeSet.contains(SCOPE_STATS)) {
+            moveIdentityStats(tenantId, gameId, sourcePlayerId, targetPlayerId, operatorId);
+        }
+        if (scopeSet.contains(SCOPE_FIELDING)) {
+            List<GameFieldingPosStat> sourceFielding =
+                    playerFieldingOf(gameId, sourcePlayerId);
+            mergeFieldingPositions(gameId, teamId, targetPlayerId, sourceFielding, operatorId);
+        }
+
+        boolean recompute = false;
+        if (scopeSet.contains(SCOPE_ER_DECISIONS)) {
+            recompute = moveIdentityOverride(
+                    tenantId, gameId, sourcePlayerId, targetPlayerId, operatorId);
+            moveIdentityDecisions(tenantId, gameId, sourcePlayerId, targetPlayerId, operatorId);
+            recompute = true;
+        }
+        if (recompute) {
+            recomputePitcherStats(tenantId, gameId, null, Set.of(sourcePlayerId, targetPlayerId));
+        }
+
+        String targetAfter = identitySnapshot(tenantId, gameId, targetPlayerId);
+        GameIdentityTransfer transfer = new GameIdentityTransfer();
+        transfer.setTenantId(tenantId);
+        transfer.setGameId(gameId);
+        transfer.setSourcePlayerId(sourcePlayerId);
+        transfer.setSourceTeamId(teamId);
+        transfer.setTargetPlayerId(targetPlayerId);
+        transfer.setTargetTeamId(teamId);
+        transfer.setScopes(String.join(",", scopeSet));
+        transfer.setSourceBefore(sourceBefore);
+        transfer.setTargetBefore(targetBefore);
+        transfer.setTargetAfter(targetAfter);
+        transfer.setStatus(TRANSFER_STATUS_TRANSFERRED);
+        transfer.setNote(normalizeNote(note));
+        transfer.setCreatedBy(operatorId);
+        transfer.setUpdatedBy(operatorId);
+        this.gameIdentityTransferRepository.save(transfer);
+        return new IdentityTransferResultDTO(
+                transfer.getId(), sourcePlayerId, targetPlayerId, transfer.getStatus());
+    }
+
+    /** 转记成功后单独删除源球员数据；必须全零且无守备/判定/覆写。 */
+    @Transactional
+    public IdentityTransferResultDTO deleteIdentityTransferSource(long tenantId, long gameId,
+            long transferId, long operatorId) {
+        GameIdentityTransfer transfer = gameIdentityTransferRepository
+                .findByIdAndTenantIdAndGameId(transferId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("身份转记记录不存在"));
+        if (!TRANSFER_STATUS_TRANSFERRED.equals(transfer.getStatus())) {
+            throw new IllegalArgumentException("该转记已删除源数据或不可删除");
+        }
+        Long sourcePlayerId = transfer.getSourcePlayerId();
+        if (sourcePlayerId == null || sourcePlayerId <= 0) {
+            throw new IllegalArgumentException("转记记录缺少源球员");
+        }
+        List<GamePlayerStat> sourceStats = playerStatsOf(tenantId, gameId, sourcePlayerId);
+        for (GamePlayerStat stat : sourceStats) {
+            if (!GamePlayerStatZeros.isZero(stat)) {
+                throw new IllegalArgumentException("源球员仍有统计/失分数据，请先清零");
+            }
+        }
+        if (!playerFieldingOf(gameId, sourcePlayerId).isEmpty()) {
+            throw new IllegalArgumentException("源球员仍有守备位置数据，请先在守备页签处理");
+        }
+        if (countResponsiblePitcherDecisions(gameId, sourcePlayerId) > 0) {
+            throw new IllegalArgumentException("源球员仍有有效 ER 判定，请先处理判定");
+        }
+        if (activeOverridesByPlayer(tenantId, gameId).containsKey(sourcePlayerId)) {
+            throw new IllegalArgumentException("源球员仍有 R/ER 覆写，请先撤销");
+        }
+        for (GamePlayerStat stat : sourceStats) {
+            gamePlayerStatRepository.delete(stat);
+        }
+        transfer.setStatus(TRANSFER_STATUS_DELETED);
+        transfer.setSourceDeletedBy(operatorId);
+        transfer.setSourceDeletedAt(LocalDateTime.now());
+        transfer.setUpdatedBy(operatorId);
+        gameIdentityTransferRepository.save(transfer);
+        return new IdentityTransferResultDTO(
+                transfer.getId(), transfer.getSourcePlayerId(),
+                transfer.getTargetPlayerId(), transfer.getStatus());
+    }
+
+    private void validateIdentityTransferIds(
+            long tenantId, long gameId, long sourcePlayerId, long targetPlayerId) {
+        if (tenantId <= 0 || gameId <= 0 || sourcePlayerId <= 0 || targetPlayerId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, source and target must be positive");
+        }
+    }
+
+    private Set<String> normalizeIdentityScopes(List<String> scopes) {
+        if (scopes == null) {
+            return DEFAULT_IDENTITY_SCOPES;
+        }
+        if (scopes.isEmpty()) {
+            throw new IllegalArgumentException("至少选择一个转记范围");
+        }
+        Set<String> result = new LinkedHashSet<>();
+        for (String scope : scopes) {
+            if (scope == null || scope.isBlank()) {
+                continue;
+            }
+            String normalized = scope.trim().toUpperCase();
+            if (!DEFAULT_IDENTITY_SCOPES.contains(normalized)) {
+                throw new IllegalArgumentException("不支持的转记范围：" + scope);
+            }
+            result.add(normalized);
+        }
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException("至少选择一个转记范围");
+        }
+        return result;
+    }
+
+    private List<GamePlayerStat> playerStatsOf(long tenantId, long gameId, long playerId) {
+        return loadTenantStats(tenantId, gameId).stream()
+                .filter(stat -> Objects.equals(stat.getPlayerId(), playerId))
+                .toList();
+    }
+
+    private List<GameFieldingPosStat> playerFieldingOf(long gameId, long playerId) {
+        return this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId).stream()
+                .filter(row -> Objects.equals(row.getPlayerId(), playerId))
+                .toList();
+    }
+
+    private static Long firstTeamId(
+            List<GamePlayerStat> stats, List<GameFieldingPosStat> fielding) {
+        for (GamePlayerStat stat : stats) {
+            if (stat.getTeamId() != null) {
+                return stat.getTeamId();
+            }
+        }
+        for (GameFieldingPosStat row : fielding) {
+            if (row.getTeamId() != null) {
+                return row.getTeamId();
+            }
+        }
+        return null;
+    }
+
+    private static GamePlayerStat findStatByType(
+            List<GamePlayerStat> stats, Integer isPitcher) {
+        return stats.stream()
+                .filter(stat -> Objects.equals(stat.getIsPitcher(), isPitcher))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void moveIdentityStats(long tenantId, long gameId,
+            long sourcePlayerId, long targetPlayerId, long operatorId) {
+        List<GamePlayerStat> sourceStats = playerStatsOf(tenantId, gameId, sourcePlayerId);
+        List<GamePlayerStat> targetStats = playerStatsOf(tenantId, gameId, targetPlayerId);
+        for (GamePlayerStat source : sourceStats) {
+            GamePlayerStat target = findStatByType(targetStats, source.getIsPitcher());
+            if (target == null) {
+                source.setPlayerId(targetPlayerId);
+                source.setUpdatedBy(operatorId);
+                gamePlayerStatRepository.save(source);
+                continue;
+            }
+            mergeIdentityStats(source, target);
+            source.setUpdatedBy(operatorId);
+            target.setUpdatedBy(operatorId);
+            gamePlayerStatRepository.save(source);
+            gamePlayerStatRepository.save(target);
+        }
+    }
+
+    private boolean moveIdentityOverride(long tenantId, long gameId,
+            long sourcePlayerId, long targetPlayerId, long operatorId) {
+        Map<Long, PitcherRunOverride> overrides =
+                activeOverridesByPlayer(tenantId, gameId);
+        PitcherRunOverride sourceOverride = overrides.get(sourcePlayerId);
+        if (sourceOverride == null || overrides.get(targetPlayerId) != null) {
+            return false;
+        }
+        sourceOverride.setPlayerId(targetPlayerId);
+        sourceOverride.setUpdatedBy(operatorId);
+        pitcherRunOverrideRepository.save(sourceOverride);
+        return true;
+    }
+
+    private void mergeIdentityStats(GamePlayerStat source, GamePlayerStat target) {
+        for (IntStatField field : IDENTITY_TRANSFER_INT_FIELDS) {
+            Integer value = field.getter().apply(source);
+            if (value == null || value == 0) {
+                continue;
+            }
+            Integer current = field.getter().apply(target);
+            if (current == null || current == 0) {
+                field.setter().accept(target, value);
+            }
+            field.setter().accept(source, 0);
+        }
+        for (DoubleStatField field : PITCHER_TRANSFER_DOUBLE_FIELDS) {
+            Double value = field.getter().apply(source);
+            if (value == null || value == 0d) {
+                continue;
+            }
+            Double current = field.getter().apply(target);
+            if (current == null || current == 0d) {
+                field.setter().accept(target, value);
+            }
+            field.setter().accept(source, 0d);
+        }
+    }
+
+    private void moveIdentityDecisions(long tenantId, long gameId,
+            long sourcePlayerId, long targetPlayerId, long operatorId) {
+        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
+        Map<DecisionKey, ErDecisionAdjustment> adjustments =
+                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
+        for (EarnedRunDecisionEntity decision : decisionRepository
+                .findByTenantIdAndGameId(tenantId, gameId)) {
+            Long effective = effectivePitcherId(decision, sourceEventByPlayId, adjustments);
+            if (!Objects.equals(effective, sourcePlayerId)) {
+                continue;
+            }
+            String sourceEventId = sourceEventByPlayId.get(decision.getPlayId());
+            if (sourceEventId == null || sourceEventId.isBlank()) {
+                continue;
+            }
+            for (ErDecisionAdjustment current : erDecisionAdjustmentRepository
+                    .findByTenantIdAndGameIdAndSourceEventIdAndRunnerIdAndStatus(
+                            tenantId, gameId, sourceEventId, decision.getRunnerId(),
+                            ADJUSTMENT_ACTIVE)) {
+                current.setStatus(ADJUSTMENT_SUPERSEDED);
+                current.setUpdatedBy(operatorId);
+                erDecisionAdjustmentRepository.saveAndFlush(current);
+            }
+            ErDecisionAdjustment row = new ErDecisionAdjustment();
+            row.setTenantId(tenantId);
+            row.setGameId(gameId);
+            row.setDecisionId(decision.getId());
+            row.setSourceEventId(sourceEventId);
+            row.setRunnerId(decision.getRunnerId());
+            row.setAction(ADJUSTMENT_REASSIGN);
+            row.setTargetPitcherId(targetPlayerId);
+            row.setStatus(ADJUSTMENT_ACTIVE);
+            row.setReason("身份转记");
+            row.setCreatedBy(operatorId);
+            row.setUpdatedBy(operatorId);
+            erDecisionAdjustmentRepository.save(row);
+        }
+    }
+
+    private String identitySnapshot(long tenantId, long gameId, long playerId) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("stats", playerStatsOf(tenantId, gameId, playerId));
+        snapshot.put("fieldingPositions", playerFieldingOf(gameId, playerId));
+        try {
+            return this.auditMapper.writeValueAsString(snapshot);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("身份转记审计快照序列化失败", ex);
+        }
+    }
+
+    private static String playerName(Map<Long, Player> players, Long playerId) {
+        Player player = players.get(playerId);
+        return player != null && player.getName() != null
+                ? player.getName() : "#" + playerId;
+    }
+
     private void validateTransferIds(long tenantId, long gameId, Long sourceStatId,
             Long targetPlayerId, Long operatorId) {
         if (tenantId <= 0 || gameId <= 0 || sourceStatId == null || sourceStatId <= 0
@@ -532,12 +925,12 @@ public class EarnedRunReconstructionService {
         }
     }
 
-    private void mergeFieldingPositions(GamePlayerStat source, GamePlayerStat target,
+    private void mergeFieldingPositions(long gameId, Long targetTeamId, Long targetPlayerId,
             List<GameFieldingPosStat> sourceFielding, Long operatorId) {
         Map<String, GameFieldingPosStat> targetByPosition = new LinkedHashMap<>();
         for (GameFieldingPosStat row : fieldingRowsOf(this.gameFieldingPosStatRepository
-                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(source.getGameId()),
-                target.getTeamId(), target.getPlayerId())) {
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId),
+                targetTeamId, targetPlayerId)) {
             if (row.getPosition() != null) {
                 targetByPosition.put(row.getPosition().trim().toUpperCase(), row);
             }
@@ -547,7 +940,7 @@ public class EarnedRunReconstructionService {
                     ? "" : sourceRow.getPosition().trim().toUpperCase();
             GameFieldingPosStat targetRow = targetByPosition.get(position);
             if (targetRow == null) {
-                sourceRow.setPlayerId(target.getPlayerId());
+                sourceRow.setPlayerId(targetPlayerId);
                 sourceRow.setUpdatedBy(operatorId);
                 this.gameFieldingPosStatRepository.save(sourceRow);
                 continue;
