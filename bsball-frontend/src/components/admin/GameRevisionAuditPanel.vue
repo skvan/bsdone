@@ -11,15 +11,24 @@
       <div class="revision-audit__head">
         <span>实时记录为基座 · 人工修订为最终值</span>
         <span class="revision-audit__actions">
-          共 {{ rows.length }} 条
+          <el-select v-model="filterType" size="small" style="width: 120px">
+            <el-option label="全部类型" value="" />
+            <el-option
+              v-for="(option, key) in TYPE_OPTIONS"
+              :key="key"
+              :label="option.label"
+              :value="key"
+            />
+          </el-select>
+          共 {{ filteredRows.length }} 条
           <el-button link type="primary" size="small" @click="load">刷新</el-button>
         </span>
       </div>
       <el-alert v-if="loadError" type="error" :closable="false" show-icon :title="loadError" />
-      <el-empty v-if="!loading && rows.length === 0" description="暂无修订记录" />
+      <el-empty v-if="!loading && filteredRows.length === 0" description="暂无修订记录" />
       <el-table
         v-else
-        :data="rows"
+        :data="filteredRows"
         size="small"
         border
         stripe
@@ -68,13 +77,18 @@ const props = defineProps({
 const rows = ref([]);
 const loading = ref(false);
 const loadError = ref('');
+const filterType = ref('');
 const isFinal = computed(() => String(props.gameStatus || '').toLowerCase() === 'final');
+const filteredRows = computed(() => (
+  filterType.value ? rows.value.filter((row) => row.auditType === filterType.value) : rows.value
+));
 
 const TYPE_OPTIONS = {
   ER_DECISION: { label: 'ER 判定', type: 'warning' },
   PITCHER_RUN_OVERRIDE: { label: '投手 R/ER', type: 'primary' },
   FIELDING_ADJUSTMENT: { label: '守备补记', type: 'success' },
-  PITCHER_TRANSFER: { label: '投手转记', type: 'info' }
+  PITCHER_TRANSFER: { label: '投手转记', type: 'info' },
+  IDENTITY_TRANSFER: { label: '身份转记', type: 'info' }
 };
 
 const STATUS_OPTIONS = {
@@ -84,7 +98,7 @@ const STATUS_OPTIONS = {
   INVALIDATED: { label: '已失效', type: 'danger' },
   APPROVED: { label: '已生效', type: 'success' },
   TRANSFERRED: { label: '已转记', type: 'success' },
-  DELETED: { label: '已删源行', type: 'info' }
+  DELETED: { label: '已删源数据', type: 'info' }
 };
 
 async function load() {

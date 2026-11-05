@@ -19,6 +19,8 @@ import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
 import com.bsball.model.entity.ErDecisionAdjustment;
+import com.bsball.model.entity.Game;
+import com.bsball.model.entity.GameFieldingAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.GameIdentityTransfer;
 import com.bsball.model.entity.GamePitcherTransfer;
@@ -33,6 +35,7 @@ import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
@@ -73,6 +76,8 @@ class EarnedRunReconstructionServiceTest {
     @Mock
     private ErDecisionAdjustmentRepository erDecisionAdjustmentRepository;
     @Mock
+    private GameRepository gameRepository;
+    @Mock
     private PlayerRepository playerRepository;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private EarnedRunReconstructionService service;
@@ -84,7 +89,11 @@ class EarnedRunReconstructionServiceTest {
                 pitcherRunOverrideRepository, gameFieldingPosStatRepository,
                 gameFieldingAdjustmentRepository, gamePitcherTransferRepository,
                 gameIdentityTransferRepository, erDecisionAdjustmentRepository,
-                playerRepository, objectMapper);
+                gameRepository, playerRepository, objectMapper);
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        lenient().when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
         GamePlayerStat tenantOnePitcher = pitcherStat(1L, 700L, 0, 0);
         GamePlayerStat tenantOneReliever = pitcherStat(1L, 701L, 0, 0);
         GamePlayerStat tenantTenPitcher = pitcherStat(10L, 901L, 0, 0);
@@ -1096,6 +1105,214 @@ class EarnedRunReconstructionServiceTest {
 
         assertTrue(error.getMessage().contains("源球员仍有统计"));
         verify(gamePlayerStatRepository, never()).delete(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("身份转记：FIELDING 范围移动守备补记并阻断同一 Play 冲突")
+    void transferIdentityMovesFieldingAdjustments() {
+        GamePlayerStat source = batterStat(700L, 3, 2);
+        GamePlayerStat target = batterStat(701L, 0, 0);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(source, target));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(700L, "源球员"), player(701L, "目标球员")));
+        GameFieldingAdjustment adjustment = fieldingAdjustment(700L, "play-1");
+        when(gameFieldingAdjustmentRepository
+                .findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(adjustment));
+
+        var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
+        assertEquals(1, preview.fieldingAdjustmentCount());
+
+        service.transferIdentity(1L, 20L, 700L, 701L, List.of("FIELDING"), null, 9L);
+
+        assertEquals(701L, adjustment.getPlayerId());
+        verify(gameFieldingAdjustmentRepository).save(adjustment);
+    }
+
+    @Test
+    @DisplayName("身份转记：目标同一 Play 已有守备补记时阻断")
+    void previewIdentityTransferBlocksFieldingAdjustmentConflict() {
+        GamePlayerStat source = batterStat(700L, 3, 2);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(source));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(700L, "源球员"), player(701L, "目标球员")));
+        when(gameFieldingAdjustmentRepository
+                .findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(fieldingAdjustment(700L, "play-1")));
+        when(gameFieldingAdjustmentRepository
+                .findFirstByTenantIdAndGameIdAndSourceEventIdAndPlayerIdOrderByIdAsc(
+                        1L, 20L, "play-1", 701L))
+                .thenReturn(Optional.of(fieldingAdjustment(701L, "play-1")));
+
+        var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
+
+        assertFalse(preview.transferable());
+        assertTrue(preview.blockers().contains("目标球员在同一失误 Play 已有守备补记"));
+    }
+
+    @Test
+    @DisplayName("身份转记：LIVE_RECORDS 改写现场记录并保留审计快照")
+    void transferIdentityRewritesLiveSnapshot() {
+        GamePlayerStat source = batterStat(700L, 3, 2);
+        GamePlayerStat target = batterStat(701L, 0, 0);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(source, target));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(700L, "源球员"), player(701L, "目标球员")));
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        game.setLiveSnapshotJson("""
+                {"gameId":20,"homeLineup":[{"id":700}],
+                 "playEvents":[{"batterPlayerId":700,
+                   "scoringRunners":[{"runnerId":700,"responsiblePitcherId":700}]}],
+                 "playerStatsById":{"700":{"batting":{"pa":3}}}}
+                """);
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
+
+        var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
+        assertTrue(preview.liveSnapshotAvailable());
+        assertTrue(preview.liveReferenceCount() >= 4);
+
+        service.transferIdentity(
+                1L, 20L, 700L, 701L, List.of("LIVE_RECORDS"), "现场更正", 9L);
+
+        assertTrue(game.getLiveSnapshotJson().contains("\"id\":701"));
+        assertFalse(game.getLiveSnapshotJson().contains("\"id\":700"));
+        assertFalse(game.getLiveSnapshotJson().contains("\"batterPlayerId\":700"));
+        verify(gameRepository).save(game);
+        ArgumentCaptor<GameIdentityTransfer> captor =
+                ArgumentCaptor.forClass(GameIdentityTransfer.class);
+        verify(gameIdentityTransferRepository).save(captor.capture());
+        assertTrue(captor.getValue().getSourceBefore().contains("liveSnapshot"));
+        assertTrue(captor.getValue().getSourceBefore().contains("\"batterPlayerId\":700"));
+    }
+
+    @Test
+    @DisplayName("身份转记：删除源数据时守备补记仍生效则拒绝")
+    void deleteIdentityTransferSourceRejectsFieldingAdjustment() {
+        GameIdentityTransfer transfer = new GameIdentityTransfer();
+        transfer.setId(77L);
+        transfer.setSourcePlayerId(700L);
+        transfer.setStatus("TRANSFERRED");
+        when(gameIdentityTransferRepository.findByIdAndTenantIdAndGameId(77L, 1L, 20L))
+                .thenReturn(Optional.of(transfer));
+        when(gamePlayerStatRepository.findByGameId(20L))
+                .thenReturn(List.of(batterStat(700L, 0, 0)));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        when(gameFieldingAdjustmentRepository
+                .existsByTenantIdAndGameIdAndPlayerIdAndStatus(1L, 20L, 700L, "APPROVED"))
+                .thenReturn(true);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.deleteIdentityTransferSource(1L, 20L, 77L, 9L));
+
+        assertTrue(error.getMessage().contains("守备补记"));
+        verify(gamePlayerStatRepository, never()).delete(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("身份转记：删除源数据时现场记录仍引用源球员则拒绝")
+    void deleteIdentityTransferSourceRejectsLiveReferences() {
+        GameIdentityTransfer transfer = new GameIdentityTransfer();
+        transfer.setId(77L);
+        transfer.setSourcePlayerId(700L);
+        transfer.setStatus("TRANSFERRED");
+        when(gameIdentityTransferRepository.findByIdAndTenantIdAndGameId(77L, 1L, 20L))
+                .thenReturn(Optional.of(transfer));
+        when(gamePlayerStatRepository.findByGameId(20L))
+                .thenReturn(List.of(batterStat(700L, 0, 0)));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        game.setLiveSnapshotJson("{\"playEvents\":[{\"batterPlayerId\":700}]}");
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.deleteIdentityTransferSource(1L, 20L, 77L, 9L));
+
+        assertTrue(error.getMessage().contains("现场记录仍引用源球员"));
+        verify(gamePlayerStatRepository, never()).delete(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("身份转记：统计行已转走后仍可按现场记录范围补转")
+    void previewIdentityTransferAllowsLiveOnlyFollowUp() {
+        GamePlayerStat target = batterStat(701L, 0, 0);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(target));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(700L, "源球员"), player(701L, "目标球员")));
+        GameIdentityTransfer previous = new GameIdentityTransfer();
+        previous.setSourcePlayerId(700L);
+        previous.setTargetPlayerId(701L);
+        previous.setSourceTeamId(1L);
+        previous.setStatus("TRANSFERRED");
+        when(gameIdentityTransferRepository
+                .findFirstByTenantIdAndGameIdAndSourcePlayerIdAndTargetPlayerIdAndStatusOrderByIdDesc(
+                        1L, 20L, 700L, 701L, "TRANSFERRED"))
+                .thenReturn(Optional.of(previous));
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        game.setLiveSnapshotJson("{\"playEvents\":[{\"batterPlayerId\":700}]}");
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
+
+        var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
+
+        assertTrue(preview.transferable());
+        assertEquals(1L, preview.teamId());
+        assertTrue(preview.liveReferenceCount() > 0);
+    }
+
+    @Test
+    @DisplayName("身份转记：目标已在同一阵容时按现场记录范围拒绝")
+    void transferIdentityRejectsLiveRosterConflict() {
+        GamePlayerStat source = batterStat(700L, 3, 2);
+        GamePlayerStat target = batterStat(701L, 0, 0);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(source, target));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        when(decisionRepository.findByGameId(20L)).thenReturn(List.of());
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(700L, "源球员"), player(701L, "目标球员")));
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        game.setLiveSnapshotJson("{\"homeLineup\":[{\"id\":700},{\"id\":701}]}");
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
+
+        var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
+        assertTrue(preview.transferable());
+        assertTrue(preview.liveRosterConflict());
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.transferIdentity(
+                        1L, 20L, 700L, 701L, List.of("LIVE_RECORDS"), null, 9L));
+        assertTrue(error.getMessage().contains("无法转记现场记录"));
+    }
+
+    private GameFieldingAdjustment fieldingAdjustment(long playerId, String sourceEventId) {
+        GameFieldingAdjustment row = new GameFieldingAdjustment();
+        row.setTenantId(1L);
+        row.setGameId(20L);
+        row.setPlayerId(playerId);
+        row.setSourceEventId(sourceEventId);
+        row.setStatus("APPROVED");
+        return row;
     }
 
     private GamePlayerStat batterStat(long playerId, int pa, int h) {
