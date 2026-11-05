@@ -9,6 +9,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.when;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
@@ -99,6 +101,8 @@ class GameServiceSaveResultTest {
     private EarnedRunReconstructionService earnedRunReconstructionService;
     @Mock
     private EventRegistrationService eventRegistrationService;
+    @Mock
+    private GameFieldingAdjustmentService fieldingAdjustmentService;
 
     private GameService gameService;
 
@@ -110,7 +114,7 @@ class GameServiceSaveResultTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
-                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
+                fieldingAdjustmentService,
                 org.mockito.Mockito.mock(GameRevisionAuditService.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
@@ -500,6 +504,59 @@ class GameServiceSaveResultTest {
     }
 
     /* ---------- fixtures ---------- */
+
+    @Test
+    @DisplayName("删除诊断：全零且无判定/补记时可删除")
+    void checkStatRowDelete_zeroRowWithoutBlockers_isDeletable() {
+        existingGame.setStatus("final");
+        GamePlayerStat stat = zeroPitcherRow();
+        stat.setTenantId(Long.valueOf(TENANT_ID));
+        when(gamePlayerStatRepository.findById(Long.valueOf(PITCHER_ROW_ID)))
+                .thenReturn(Optional.of(stat));
+        when(earnedRunReconstructionService.countResponsiblePitcherDecisions(
+                Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(0);
+        when(fieldingAdjustmentService.countApprovedPlayerAdjustments(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID)))
+                .thenReturn(0L);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        StatRowDeleteCheckDTO result = gameService.checkStatRowDelete(
+                Long.valueOf(GAME_ID), Long.valueOf(PITCHER_ROW_ID));
+
+        assertTrue(result.deletable());
+        assertEquals("NONE", result.recommendedAction());
+        assertTrue(result.blockers().isEmpty());
+    }
+
+    @Test
+    @DisplayName("删除诊断：ER 判定与守备补记阻断并推荐 ER 复核")
+    void checkStatRowDelete_reportsDecisionAndFieldingBlockers() {
+        existingGame.setStatus("final");
+        GamePlayerStat stat = zeroPitcherRow();
+        stat.setTenantId(Long.valueOf(TENANT_ID));
+        when(gamePlayerStatRepository.findById(Long.valueOf(PITCHER_ROW_ID)))
+                .thenReturn(Optional.of(stat));
+        when(earnedRunReconstructionService.countResponsiblePitcherDecisions(
+                Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(2);
+        when(fieldingAdjustmentService.countApprovedPlayerAdjustments(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID)))
+                .thenReturn(1L);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        StatRowDeleteCheckDTO result = gameService.checkStatRowDelete(
+                Long.valueOf(GAME_ID), Long.valueOf(PITCHER_ROW_ID));
+
+        assertFalse(result.deletable());
+        assertEquals("ER_REVIEW", result.recommendedAction());
+        assertTrue(result.blockers().stream().anyMatch(
+                b -> "ER_DECISION".equals(b.type()) && b.value() == 2d));
+        assertTrue(result.blockers().stream().anyMatch(
+                b -> "FIELDING_ADJUSTMENT".equals(b.type()) && b.value() == 1d));
+    }
 
     private GamePlayerStat batterRow() {
         GamePlayerStat row = new GamePlayerStat();

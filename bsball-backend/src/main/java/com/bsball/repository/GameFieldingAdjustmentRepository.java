@@ -23,6 +23,9 @@ public interface GameFieldingAdjustmentRepository extends JpaRepository<GameFiel
     boolean existsByTenantIdAndGameIdAndPlayerIdAndStatus(
             Long tenantId, Long gameId, Long playerId, String status);
 
+    long countByTenantIdAndGameIdAndPlayerIdAndStatus(
+            Long tenantId, Long gameId, Long playerId, String status);
+
     boolean existsByTenantIdAndGameIdAndSourceEventIdAndPlayerIdAndStatus(
             Long tenantId, Long gameId, String sourceEventId, Long playerId, String status);
 }

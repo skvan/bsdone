@@ -2563,6 +2563,19 @@ var Li={
       }
       
     }
+    async function backendDeleteCheck(t,row){
+      const teamId=t?m.awayTeamId:m.homeTeamId;
+      const stats=ee[X(row,teamId)];
+      const statId=stats?.statId??stats?.id;
+      if(statId==null)return null;
+      try{
+        const result=await il.checkStatRowDelete(pe.value,statId);
+        return result?.data??null
+      }
+      catch{
+        return null
+      }
+    }
     async function vs(t){
       const e=t?zt.value:Lt.value;
       if(e.length===0)return;
@@ -2576,10 +2589,23 @@ var Li={
         }
       }
       if(blocker){
+        const check=await backendDeleteCheck(t,blocker.row);
+        if(check?.deletable===false){
+          const action=check.recommendedAction;
+          const dataText=(check.blockers??[]).filter(item=>item.type==="DATA_FIELD").map(item=>`${item.label}=${item.value}`).join("、");
+          if(action==="ER_REVIEW"){
+            J.warning(`该投手行仍有失分/自责分或 ER 判定：${dataText||"请先处理判定"}；请先在 ER 复核处理`);
+            return
+          }
+          if(action==="FIELDING_REVIEW"){
+            J.warning("该投手行仍有守备补记或守备位置数据；请先到「守备补记 A」处理");
+            return
+          }
+        }
         const text=blocker.fields.map(field=>`${field.label}=${field.value}`).join("、");
         const engineFields=blocker.fields.some(field=>["pitchR","er","unearnedR","pendingR","earnedR"].includes(field.key));
         if(engineFields){
-          J(`该投手行仍有失分/自责分：${text}；请先在 ER 复核处理`,"warning");
+          J.warning(`该投手行仍有失分/自责分：${text}；请先在 ER 复核处理`);
           return
         }
         try{
@@ -2595,6 +2621,41 @@ var Li={
           (t?yt:gt).value?.setCurrentRow?.(blocker.row)
         }
         ),openPitcherTransfer(t,blocker.row);
+        return
+      }
+      let backendBlocker=null;
+      for(const row of e){
+        const check=await backendDeleteCheck(t,row);
+        if(check?.deletable===false){
+          backendBlocker={row,check};
+          break
+        }
+      }
+      if(backendBlocker){
+        const check=backendBlocker.check;
+        const action=check.recommendedAction;
+        if(action==="ER_REVIEW"){
+          J.warning("该投手行仍有 ER 判定或失分；请先在 ER 复核处理");
+          return
+        }
+        if(action==="FIELDING_REVIEW"){
+          J.warning("该投手行仍有守备补记或守备位置数据；请先到「守备补记 A」处理");
+          return
+        }
+        const dataText=(check.blockers??[]).filter(item=>item.type==="DATA_FIELD").map(item=>`${item.label}=${item.value}`).join("、");
+        try{
+          await dt.confirm(`该投手行还有数据：${dataText||"其他阻断项"}。可先转记到其他投手，或清零后再删除。`,"无法删除",{
+            confirmButtonText:"去转记",cancelButtonText:"取消",type:"warning"
+          }
+          )
+        }
+        catch{
+          return
+        }
+        Ha(t?"away-pitcher":"home-pitcher",dn(t,backendBlocker.row)),_e(()=>{
+          (t?yt:gt).value?.setCurrentRow?.(backendBlocker.row)
+        }
+        ),openPitcherTransfer(t,backendBlocker.row);
         return
       }
       try{
@@ -2617,14 +2678,14 @@ var Li={
       const teamId=t?m.awayTeamId:m.homeTeamId;
       const sourceIndex=rows.findIndex(row=>!T(row)&&Pe(row)===sourceKey);
       if(sourceIndex<0){
-        J("请先点击要转出的投手行，再点转记","warning");
+        J.warning("请先点击要转出的投手行，再点转记");
         return
       }
       const sourceRow=rows[sourceIndex];
       const sourceStats=ee[X(sourceRow,teamId)];
       const sourceStatId=sourceStats?.statId??sourceStats?.id;
       if(!sourceStats||sourceStatId==null){
-        J("原投手行尚未保存，请先保存后再转记","warning");
+        J.warning("原投手行尚未保存，请先保存后再转记");
         return
       }
       const sourceId=sourceRow?.playerId??sourceRow?.id??sourceStats.playerId;
@@ -2652,7 +2713,7 @@ var Li={
         });
       });
       if(!targets.length){
-        J("同队没有其他可转记的投手","warning");
+        J.warning("同队没有其他可转记的投手");
         return
       }
       pitcherTransferSource.value=source;
