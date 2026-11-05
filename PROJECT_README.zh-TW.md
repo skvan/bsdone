@@ -59,7 +59,7 @@ BsBall 是一套**棒球 / 壘球賽事數據管理平台**，支援：
 | 層級 | 技術 | 說明 |
 |------|------|------|
 | **後端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6 + Vue 3 + Element Plus | 原始碼工程 `bsball-frontend/`；生產與測試均部署於 `/bs-ball/`（2026-11-05 起單軌）；舊編譯產物不再進包 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 原始碼工程 `bsball-frontend/`；生產與測試均部署於 `/bs-ball/`（2026-11-05 起單軌）；舊編譯產物已刪除 |
 | **資料庫** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（優先返回 .gz） |
 | **部署** | 阿里雲 ECS | systemd 管理 Java 服務 |
@@ -105,7 +105,6 @@ Bsdone-project/
 │   ├── src/                  # 原始碼（router/views/...）
 │   ├── scripts/              # 打包腳本（package-webapps.mjs；單軌 /bs-ball/ 打包）
 │   ├── vite.config.js        # 建置配置（base=/bs-ball/）
-│   ├── vite.legacy-preview.config.js  # 舊編譯版對照預覽（npm run preview:legacy，3001）
 │   └── node_modules/         # npm 依賴（可重建）
 │
 ├── bsball-source-full/       # 反編譯完整源碼（JAR 解壓）
@@ -199,7 +198,7 @@ Bsdone-project/
 - 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；`base=/bs-ball/`；建置 `npm run build` / 打包 `npm run package`）
 - 前端依賴：`interactjs`（^1.10.28）—— 編輯先發陣容頁的球員卡拖放與卡槽落點判定（`sortablejs` 等既有依賴保持不變）
 - 批次：B0 工程化 → B1 骨架與契約底座 → B2 認證族 → B3 標準 CRUD 族 → B4 領域族 → B5 LiveGame 家族
-- 路徑收口：根 `webapps/index.html` → `/bs-ball/intro`，`portal.html` → `/bs-ball/`；`/bs-ball-next/` 已移除；舊編譯產物不再進包
+- 路徑收口：根 `webapps/index.html` → `/bs-ball/intro`，`portal.html` → `/bs-ball/`；`/bs-ball-next/` 已移除；舊編譯產物已從倉庫刪除
 
 ### 5.2 開發與打包
 
@@ -499,11 +498,9 @@ systemctl restart java-server
 
 > **排查時 `grep` 要含 `java-server`**，不能只篩 `ball` / `bs` 關鍵字。
 
-### 11.6 basebal-field.svg 改了沒效
+### 11.6 球場 SVG 修改
 
-**原因**：`baseball-field.svg` 是孤立檔案，前端無引用。球場 SVG 在 `LiveGame-Bjdd5Cir.js` 內聯渲染。
-
-**解法**：改 `LiveGame-Bjdd5Cir.js` 中的 SVG 參數，不要動 `baseball-field.svg`。
+球場 SVG 由新前端 `bsball-frontend/src/views/admin/LiveGame.js` 內聯渲染；舊的孤立檔案 `baseball-field.svg` 已隨舊前端退役刪除。改球場圖形請修改新前端原始碼，不要尋找獨立 SVG 檔案。
 
 ---
 

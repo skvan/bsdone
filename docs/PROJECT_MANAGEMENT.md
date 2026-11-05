@@ -130,9 +130,9 @@
 ### 生产环境部署（手动，2026-09-26 起；2026-11-05 起单轨 `/bs-ball/` + 版本号自动刷写）
 
 - **仅手动触发**：合并到 `main` **不会自动上线**；需要发布时打开仓库 **Actions** 页 →「Deploy Production (manual)」→ **Run workflow**（分支选 `main`）→ 输入**必填发布版本号**（替代原 `DEPLOY` 确认词，兼作防误触门槛）；
-- **一次部署同时上线后端与前端（单轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验）；前端用 `apply-release-version.mjs` 刷写根静态页版本号，再实时构建新版前端（`vite build`，基址 `/bs-ball/`）并组装 **单轨包**（新版 `/bs-ball/`，旧编译产物与 `bs-ball-next/` 均不进包）上传至服务器 staging，随部署脚本 STEP 4 一并切换；
+- **一次部署同时上线后端与前端（单轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验），实时构建新版前端（`vite build`，基址 `/bs-ball/`，版本号经 `VITE_APP_VERSION` 注入）并组装 **单轨包**（仅新版 `/bs-ball/`）上传至服务器 staging，随部署脚本 STEP 4 一并切换；
 - **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/`、`/bs-ball/bs-ball`、`/bs-ball/welcome`、`/premier12/`）失败自动回滚；
-- **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，其版本号由部署流程按输入版本自动刷写（旧版产物刷写 + 重建版构建注入），前端随部署切换后生效（仅重启后端不会改变页脚版本号）。
+- **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，版本号由部署流程通过 `VITE_APP_VERSION` 注入构建，并写入打包生成的 `version.json`；仅重启后端不会改变页脚版本号。
 
 ---
 
@@ -181,18 +181,18 @@
 
 ---
 
-## 八、前端重建专项（2026-09 起）
+## 八、前端工程（2026-11-05 起单轨）
 
-前端源码缺失，正在以「编译产物为规格」分批次重建（B0–B5），相关规则：
+前端源码位于 `bsball-frontend/`，已完成重建并以 `/bs-ball/` 单轨运行，相关规则：
 
 | 项 | 说明 |
 |----|------|
 | 目录 | 前端源码位于 `bsball-frontend/`（Vite + Vue 3 + Element Plus） |
-| 分支 | 每批一个功能分支：`feature/frontend-rebuild-b{批次号}`，从 `v2.3/dev` 切出，PR 合并回 `v2.3/dev` |
-| 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
+| 分支 | 功能分支从 `v2.4/dev` 切出，PR 合并回 `v2.4/dev` |
+| 开发 | `npm run dev`（3000，代理本地后端 8080） |
 | 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
-| 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 单轨发布：**生产与测试均部署于 `/bs-ball/`**（域名经 `portal.html` 直通新版）；`/bs-ball-next/` 旧路径已移除；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar 并刷写前端产物）；部署流水线已集成新版构建与单轨打包；冒烟（`/bs-ball/`、`/bs-ball/welcome` 等）失败可秒级回滚；未迁移页面显示占位 |
+| 验收 | 以新工程为唯一源码；改动需通过单测、E2E 与测试环境验收后合并 |
+| 发布 | 单轨发布：**生产与测试均部署于 `/bs-ball/`**（域名经 `portal.html` 直通新版）；`/bs-ball-next/` 旧路径已移除；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar，并经 `VITE_APP_VERSION` 注入前端构建）；部署流水线已集成新版构建与单轨打包；冒烟（`/bs-ball/`、`/bs-ball/welcome` 等）失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
 ### 前端改动规则（单轨，强制）
