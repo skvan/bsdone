@@ -67,7 +67,8 @@ class GameServiceFieldingPositionsTest {
                 eventRepository, stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService,
                 gameFieldingPosStatRepository,
-                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
+                org.mockito.Mockito.mock(GameRevisionAuditService.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
         Game game = new Game();
         game.setId(Long.valueOf(GAME_ID));

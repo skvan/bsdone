@@ -83,7 +83,8 @@ class GameRosterValidationTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
-                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
+                org.mockito.Mockito.mock(GameRevisionAuditService.class));
         statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
                 eventRegistrationService, earnedRunReconstructionService,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));

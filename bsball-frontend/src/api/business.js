@@ -284,6 +284,7 @@ export const gameApi = {
   listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
   listFieldingAdjustmentCandidates: (id) =>
     fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),
+  listRevisionAudit: (id) => fetchResult(`/api/game/${id}/revision-audit`),
   createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
   revokeFieldingAdjustment: (id, adjustmentId) =>
     post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
