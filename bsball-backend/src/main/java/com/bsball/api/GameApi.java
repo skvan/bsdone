@@ -39,6 +39,8 @@ import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
 import com.bsball.model.dto.PitcherRunOverrideRequest;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.PitcherTransferRequest;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
@@ -182,6 +184,19 @@ public class GameApi {
     public Result<PitcherRunTotalsDTO> revokePitcherRunOverride(
             @PathVariable Long id, @PathVariable Long overrideId) {
         return Result.ok(this.gameService.revokePitcherRunOverride(id, overrideId));
+    }
+
+    @PostMapping(value={"/{id}/pitcher-transfers"})
+    public Result<PitcherTransferResultDTO> transferPitcher(
+            @PathVariable Long id, @RequestBody PitcherTransferRequest body) {
+        return Result.ok(this.gameService.transferPitcher(id, body));
+    }
+
+    @PostMapping(value={"/{id}/pitcher-transfers/{transferId}/delete-source"})
+    public Result<Object> deletePitcherTransferSource(
+            @PathVariable Long id, @PathVariable Long transferId) {
+        this.gameService.deletePitcherTransferSource(id, transferId);
+        return Result.ok(Map.of());
     }
 
     @GetMapping(value={"/{id}/fielding-adjustments"})

@@ -2,13 +2,19 @@ package com.bsball.service;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
+import com.bsball.model.entity.GameFieldingPosStat;
+import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
+import com.bsball.repository.GameFieldingAdjustmentRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.bsball.repository.PlayerRepository;
@@ -18,16 +24,23 @@ import com.bsball.stats.earnedrun.EarnedRunReconstructionEngine;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.EarnedRunStatus;
 import com.bsball.stats.earnedrun.ScoringRunner;
+import com.bsball.utils.GamePlayerStatZeros;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,27 +50,97 @@ public class EarnedRunReconstructionService {
     private static final String OVERRIDE_APPROVED = "APPROVED";
     private static final String OVERRIDE_REVOKED = "REVOKED";
     private static final String OVERRIDE_INVALIDATED = "INVALIDATED";
+    private static final String TRANSFER_STATUS_TRANSFERRED = "TRANSFERRED";
+    private static final String TRANSFER_STATUS_DELETED = "DELETED";
 
     private final EarnedRunPlayRepository playRepository;
     private final EarnedRunDecisionRepository decisionRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final PitcherRunOverrideRepository pitcherRunOverrideRepository;
+    private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    private final GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository;
+    private final GamePitcherTransferRepository gamePitcherTransferRepository;
     private final EarnedRunReconstructionEngine engine;
     private final PlayerRepository playerRepository;
+    private final ObjectMapper objectMapper;
+    private final ObjectMapper auditMapper;
 
     public EarnedRunReconstructionService(
             EarnedRunPlayRepository playRepository,
             EarnedRunDecisionRepository decisionRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
             PitcherRunOverrideRepository pitcherRunOverrideRepository,
-            PlayerRepository playerRepository) {
+            GameFieldingPosStatRepository gameFieldingPosStatRepository,
+            GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository,
+            GamePitcherTransferRepository gamePitcherTransferRepository,
+            PlayerRepository playerRepository,
+            ObjectMapper objectMapper) {
         this.playRepository = playRepository;
         this.decisionRepository = decisionRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.pitcherRunOverrideRepository = pitcherRunOverrideRepository;
+        this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
+        this.gameFieldingAdjustmentRepository = gameFieldingAdjustmentRepository;
+        this.gamePitcherTransferRepository = gamePitcherTransferRepository;
         this.playerRepository = playerRepository;
+        this.objectMapper = objectMapper;
+        // 审计快照包含 BaseEntity 的 LocalDateTime；项目 ObjectMapper 未注册 JavaTimeModule，使用副本注册。
+        this.auditMapper = objectMapper.copy().registerModule(new JavaTimeModule());
         this.engine = new EarnedRunReconstructionEngine();
     }
+
+    private record IntStatField(
+            Function<GamePlayerStat, Integer> getter,
+            BiConsumer<GamePlayerStat, Integer> setter) {}
+
+    private record DoubleStatField(
+            Function<GamePlayerStat, Double> getter,
+            BiConsumer<GamePlayerStat, Double> setter) {}
+
+    private static final List<IntStatField> PITCHER_TRANSFER_INT_FIELDS = List.of(
+            new IntStatField(GamePlayerStat::getNp, GamePlayerStat::setNp),
+            new IntStatField(GamePlayerStat::getOutsRecorded, GamePlayerStat::setOutsRecorded),
+            new IntStatField(GamePlayerStat::getPitchH, GamePlayerStat::setPitchH),
+            new IntStatField(GamePlayerStat::getPitchDoubles, GamePlayerStat::setPitchDoubles),
+            new IntStatField(GamePlayerStat::getPitchTriples, GamePlayerStat::setPitchTriples),
+            new IntStatField(GamePlayerStat::getPitchBbHp, GamePlayerStat::setPitchBbHp),
+            new IntStatField(GamePlayerStat::getPitchSo, GamePlayerStat::setPitchSo),
+            new IntStatField(GamePlayerStat::getPitchHr, GamePlayerStat::setPitchHr),
+            new IntStatField(GamePlayerStat::getPitchInsideParkHr, GamePlayerStat::setPitchInsideParkHr),
+            new IntStatField(GamePlayerStat::getPitchSh, GamePlayerStat::setPitchSh),
+            new IntStatField(GamePlayerStat::getPitchSf, GamePlayerStat::setPitchSf),
+            new IntStatField(GamePlayerStat::getPitchBf, GamePlayerStat::setPitchBf),
+            new IntStatField(GamePlayerStat::getPitchPa, GamePlayerStat::setPitchPa),
+            new IntStatField(GamePlayerStat::getPitchAb, GamePlayerStat::setPitchAb),
+            new IntStatField(GamePlayerStat::getPitchBb, GamePlayerStat::setPitchBb),
+            new IntStatField(GamePlayerStat::getPitchIbb, GamePlayerStat::setPitchIbb),
+            new IntStatField(GamePlayerStat::getPitchHbp, GamePlayerStat::setPitchHbp),
+            new IntStatField(GamePlayerStat::getPitchIo, GamePlayerStat::setPitchIo),
+            new IntStatField(GamePlayerStat::getWp, GamePlayerStat::setWp),
+            new IntStatField(GamePlayerStat::getBk, GamePlayerStat::setBk),
+            new IntStatField(GamePlayerStat::getGo, GamePlayerStat::setGo),
+            new IntStatField(GamePlayerStat::getFo, GamePlayerStat::setFo),
+            new IntStatField(GamePlayerStat::getGs, GamePlayerStat::setGs),
+            new IntStatField(GamePlayerStat::getSvo, GamePlayerStat::setSvo),
+            new IntStatField(GamePlayerStat::getCg, GamePlayerStat::setCg),
+            new IntStatField(GamePlayerStat::getPg, GamePlayerStat::setPg),
+            new IntStatField(GamePlayerStat::getW, GamePlayerStat::setW),
+            new IntStatField(GamePlayerStat::getL, GamePlayerStat::setL),
+            new IntStatField(GamePlayerStat::getSv, GamePlayerStat::setSv),
+            new IntStatField(GamePlayerStat::getHld, GamePlayerStat::setHld),
+            new IntStatField(GamePlayerStat::getPo, GamePlayerStat::setPo),
+            new IntStatField(GamePlayerStat::getA, GamePlayerStat::setA),
+            new IntStatField(GamePlayerStat::getE, GamePlayerStat::setE),
+            new IntStatField(GamePlayerStat::getTc, GamePlayerStat::setTc),
+            new IntStatField(GamePlayerStat::getFieldingGs, GamePlayerStat::setFieldingGs),
+            new IntStatField(GamePlayerStat::getDp, GamePlayerStat::setDp),
+            new IntStatField(GamePlayerStat::getPb, GamePlayerStat::setPb),
+            new IntStatField(GamePlayerStat::getCatcherSb, GamePlayerStat::setCatcherSb),
+            new IntStatField(GamePlayerStat::getCatcherCs, GamePlayerStat::setCatcherCs));
+
+    private static final List<DoubleStatField> PITCHER_TRANSFER_DOUBLE_FIELDS = List.of(
+            new DoubleStatField(GamePlayerStat::getIp, GamePlayerStat::setIp),
+            new DoubleStatField(GamePlayerStat::getDefInn, GamePlayerStat::setDefInn));
 
     /** Replaces and reconstructs all earned-run events for one half-inning. */
     @Transactional
@@ -205,6 +288,275 @@ public class EarnedRunReconstructionService {
         this.pitcherRunOverrideRepository.save(row);
         recomputePitcherStats(tenantId, gameId, null, Set.of(row.getPlayerId()));
         return findPitcherTotals(tenantId, gameId, row.getPlayerId());
+    }
+
+    /**
+     * 投手行转记：目标已有值优先，源行可转记字段清零；转记和删除源行是两个独立动作。
+     * R/ER/UER/PENDING 仍归 ER 引擎，不参与转记；源行有失分/判定时要求先处理 ER。
+     */
+    @Transactional
+    public PitcherTransferResultDTO transferPitcher(long tenantId, long gameId,
+            Long sourceStatId, Long targetPlayerId, String note, Long operatorId) {
+        validateTransferIds(tenantId, gameId, sourceStatId, targetPlayerId, operatorId);
+        GamePlayerStat source = this.gamePlayerStatRepository.findByIdForUpdate(sourceStatId)
+                .orElseThrow(() -> new IllegalArgumentException("原投手统计行不存在"));
+        if (!Objects.equals(source.getGameId(), gameId)
+                || !Objects.equals(source.getTenantId(), tenantId)
+                || !Integer.valueOf(1).equals(source.getIsPitcher())
+                || source.getPlayerId() == null) {
+            throw new IllegalArgumentException("原统计行不是本场投手行");
+        }
+        GamePlayerStat target = lockTransferTarget(tenantId, gameId, source, targetPlayerId);
+        assertNoEarnedRunData(gameId, source);
+        assertNoApprovedFieldingAdjustment(tenantId, gameId, source.getPlayerId(),
+                "原投手仍有守备补记，请先撤销补记后再转记");
+        List<GameFieldingPosStat> fieldingRows = this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId);
+        List<GameFieldingPosStat> sourceFielding = fieldingRowsOf(
+                fieldingRows, source.getTeamId(), source.getPlayerId());
+        List<GameFieldingPosStat> targetFielding = fieldingRowsOf(
+                fieldingRows, target.getTeamId(), target.getPlayerId());
+        if (!hasTransferableStats(source) && sourceFielding.isEmpty()) {
+            throw new IllegalArgumentException("原投手行没有可转记的数据");
+        }
+        String sourceBefore = snapshot(source, sourceFielding);
+        String targetBefore = snapshot(target, targetFielding);
+
+        mergeTransferableStats(source, target);
+        mergeFieldingPositions(source, target, sourceFielding, operatorId);
+        if (!GamePlayerStatZeros.isZero(source)) {
+            throw new IllegalArgumentException("原投手行仍有不可转记的数据，请先在对应页签清零后再转记");
+        }
+        syncPitchPaBf(target);
+        source.setUpdatedBy(operatorId);
+        target.setUpdatedBy(operatorId);
+        this.gamePlayerStatRepository.save(source);
+        this.gamePlayerStatRepository.save(target);
+
+        List<GameFieldingPosStat> targetFieldingAfter = fieldingRowsOf(
+                this.gameFieldingPosStatRepository
+                        .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId),
+                target.getTeamId(), target.getPlayerId());
+        GamePitcherTransfer transfer = new GamePitcherTransfer();
+        transfer.setTenantId(tenantId);
+        transfer.setGameId(gameId);
+        transfer.setSourceStatId(source.getId());
+        transfer.setSourceTeamId(source.getTeamId());
+        transfer.setSourcePlayerId(source.getPlayerId());
+        transfer.setTargetStatId(target.getId());
+        transfer.setTargetTeamId(target.getTeamId());
+        transfer.setTargetPlayerId(target.getPlayerId());
+        transfer.setSourceBefore(sourceBefore);
+        transfer.setTargetBefore(targetBefore);
+        transfer.setTargetAfter(snapshot(target, targetFieldingAfter));
+        transfer.setStatus(TRANSFER_STATUS_TRANSFERRED);
+        transfer.setNote(normalizeNote(note));
+        transfer.setCreatedBy(operatorId);
+        transfer.setUpdatedBy(operatorId);
+        this.gamePitcherTransferRepository.save(transfer);
+        return new PitcherTransferResultDTO(
+                transfer.getId(), source.getId(), source.getPlayerId(),
+                target.getId(), target.getPlayerId(), transfer.getStatus());
+    }
+
+    /** 转记成功后单独删除源行；源行必须已全零且无自责分判定。 */
+    @Transactional
+    public void deletePitcherTransferSource(long tenantId, long gameId,
+            Long transferId, Long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || transferId == null || transferId <= 0
+                || operatorId == null || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, transfer and operator must be positive");
+        }
+        GamePitcherTransfer transfer = this.gamePitcherTransferRepository
+                .findByIdAndTenantIdAndGameId(transferId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("转记记录不存在"));
+        if (!TRANSFER_STATUS_TRANSFERRED.equals(transfer.getStatus())) {
+            throw new IllegalArgumentException("该转记已删除源行或不可删除");
+        }
+        GamePlayerStat source = this.gamePlayerStatRepository.findByIdForUpdate(transfer.getSourceStatId())
+                .orElse(null);
+        if (source == null) {
+            markSourceDeleted(transfer, operatorId);
+            return;
+        }
+        if (!GamePlayerStatZeros.isZero(source)) {
+            throw new IllegalArgumentException("原投手行仍有数据，请先清零或转记");
+        }
+        if (source.getPlayerId() != null
+                && hasResponsiblePitcherDecisions(gameId, source.getPlayerId())) {
+            throw new IllegalArgumentException("原投手仍有自责分判定，请先处理判定");
+        }
+        assertNoApprovedFieldingAdjustment(tenantId, gameId, source.getPlayerId(),
+                "原投手仍有守备补记，请先撤销补记后再删除");
+        boolean hasFieldingRows = !fieldingRowsOf(this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId),
+                source.getTeamId(), source.getPlayerId()).isEmpty();
+        if (hasFieldingRows) {
+            throw new IllegalArgumentException("原投手仍有守备位置数据，请先在守备页签处理");
+        }
+        this.gamePlayerStatRepository.delete(source);
+        markSourceDeleted(transfer, operatorId);
+    }
+
+    private void validateTransferIds(long tenantId, long gameId, Long sourceStatId,
+            Long targetPlayerId, Long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || sourceStatId == null || sourceStatId <= 0
+                || targetPlayerId == null || targetPlayerId <= 0
+                || operatorId == null || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, source, target and operator must be positive");
+        }
+    }
+
+    private GamePlayerStat lockTransferTarget(long tenantId, long gameId,
+            GamePlayerStat source, Long targetPlayerId) {
+        GamePlayerStat candidate = loadTenantStats(tenantId, gameId).stream()
+                .filter(stat -> Integer.valueOf(1).equals(stat.getIsPitcher()))
+                .filter(stat -> Objects.equals(stat.getTeamId(), source.getTeamId()))
+                .filter(stat -> Objects.equals(stat.getPlayerId(), targetPlayerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("目标投手行不存在，请先加入该投手"));
+        GamePlayerStat target = this.gamePlayerStatRepository
+                .findByIdForUpdate(candidate.getId()).orElse(candidate);
+        if (Objects.equals(source.getId(), target.getId())) {
+            throw new IllegalArgumentException("原投手与目标投手不能相同");
+        }
+        return target;
+    }
+
+    private boolean hasTransferableStats(GamePlayerStat source) {
+        return PITCHER_TRANSFER_INT_FIELDS.stream()
+                .anyMatch(field -> valueOrZero(field.getter().apply(source)) != 0)
+                || PITCHER_TRANSFER_DOUBLE_FIELDS.stream()
+                        .anyMatch(field -> {
+                            Double value = field.getter().apply(source);
+                            return value != null && value != 0d;
+                        });
+    }
+
+    private void assertNoApprovedFieldingAdjustment(long tenantId, long gameId,
+            Long playerId, String message) {
+        if (playerId != null && this.gameFieldingAdjustmentRepository
+                .existsByTenantIdAndGameIdAndPlayerIdAndStatus(
+                        tenantId, gameId, playerId, "APPROVED")) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private void assertNoEarnedRunData(long gameId, GamePlayerStat source) {
+        int runData = valueOrZero(source.getPitchR()) + valueOrZero(source.getEr())
+                + valueOrZero(source.getUnearnedR()) + valueOrZero(source.getPendingR())
+                + valueOrZero(source.getEarnedR());
+        if (runData != 0) {
+            throw new IllegalArgumentException("原投手仍有失分/自责分，请先在 ER 复核处理后再转记");
+        }
+        if (source.getPlayerId() != null
+                && hasResponsiblePitcherDecisions(gameId, source.getPlayerId())) {
+            throw new IllegalArgumentException("原投手仍有自责分判定，请先在 ER 复核改派/作废");
+        }
+    }
+
+    private void mergeTransferableStats(GamePlayerStat source, GamePlayerStat target) {
+        for (IntStatField field : PITCHER_TRANSFER_INT_FIELDS) {
+            Integer sourceValue = field.getter().apply(source);
+            if (sourceValue == null || sourceValue == 0) {
+                continue;
+            }
+            Integer targetValue = field.getter().apply(target);
+            if (targetValue == null || targetValue == 0) {
+                field.setter().accept(target, sourceValue);
+            }
+            field.setter().accept(source, 0);
+        }
+        for (DoubleStatField field : PITCHER_TRANSFER_DOUBLE_FIELDS) {
+            Double sourceValue = field.getter().apply(source);
+            if (sourceValue == null || sourceValue == 0d) {
+                continue;
+            }
+            Double targetValue = field.getter().apply(target);
+            if (targetValue == null || targetValue == 0d) {
+                field.setter().accept(target, sourceValue);
+            }
+            field.setter().accept(source, 0d);
+        }
+    }
+
+    private void mergeFieldingPositions(GamePlayerStat source, GamePlayerStat target,
+            List<GameFieldingPosStat> sourceFielding, Long operatorId) {
+        Map<String, GameFieldingPosStat> targetByPosition = new LinkedHashMap<>();
+        for (GameFieldingPosStat row : fieldingRowsOf(this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(source.getGameId()),
+                target.getTeamId(), target.getPlayerId())) {
+            if (row.getPosition() != null) {
+                targetByPosition.put(row.getPosition().trim().toUpperCase(), row);
+            }
+        }
+        for (GameFieldingPosStat sourceRow : sourceFielding) {
+            String position = sourceRow.getPosition() == null
+                    ? "" : sourceRow.getPosition().trim().toUpperCase();
+            GameFieldingPosStat targetRow = targetByPosition.get(position);
+            if (targetRow == null) {
+                sourceRow.setPlayerId(target.getPlayerId());
+                sourceRow.setUpdatedBy(operatorId);
+                this.gameFieldingPosStatRepository.save(sourceRow);
+                continue;
+            }
+            mergeFieldingRow(targetRow, sourceRow);
+            targetRow.setUpdatedBy(operatorId);
+            this.gameFieldingPosStatRepository.save(targetRow);
+            this.gameFieldingPosStatRepository.delete(sourceRow);
+        }
+    }
+
+    private void mergeFieldingRow(GameFieldingPosStat target, GameFieldingPosStat source) {
+        target.setOuts(mergeInt(target.getOuts(), source.getOuts()));
+        target.setPo(mergeInt(target.getPo(), source.getPo()));
+        target.setA(mergeInt(target.getA(), source.getA()));
+        target.setE(mergeInt(target.getE(), source.getE()));
+        target.setDp(mergeInt(target.getDp(), source.getDp()));
+        target.setPb(mergeInt(target.getPb(), source.getPb()));
+        target.setCatcherCs(mergeInt(target.getCatcherCs(), source.getCatcherCs()));
+        target.setCatcherSb(mergeInt(target.getCatcherSb(), source.getCatcherSb()));
+        target.setFieldingGs(Boolean.TRUE.equals(target.getFieldingGs())
+                || Boolean.TRUE.equals(source.getFieldingGs()));
+    }
+
+    private Integer mergeInt(Integer target, Integer source) {
+        return (target == null || target == 0) && source != null ? source : target;
+    }
+
+    private String snapshot(GamePlayerStat stat, List<GameFieldingPosStat> fielding) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("stat", stat);
+        snapshot.put("fieldingPositions", fielding);
+        try {
+            return this.auditMapper.writeValueAsString(snapshot);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("转记审计快照序列化失败", ex);
+        }
+    }
+
+    private void syncPitchPaBf(GamePlayerStat stat) {
+        if (stat.getPitchBf() != null) {
+            stat.setPitchPa(stat.getPitchBf());
+        } else if (stat.getPitchPa() != null) {
+            stat.setPitchBf(stat.getPitchPa());
+        }
+    }
+
+    private void markSourceDeleted(GamePitcherTransfer transfer, Long operatorId) {
+        transfer.setStatus(TRANSFER_STATUS_DELETED);
+        transfer.setSourceDeletedBy(operatorId);
+        transfer.setSourceDeletedAt(LocalDateTime.now());
+        transfer.setUpdatedBy(operatorId);
+        this.gamePitcherTransferRepository.save(transfer);
+    }
+
+    private static List<GameFieldingPosStat> fieldingRowsOf(
+            List<GameFieldingPosStat> rows, Long teamId, Long playerId) {
+        return rows.stream()
+                .filter(row -> Objects.equals(row.getTeamId(), teamId))
+                .filter(row -> Objects.equals(row.getPlayerId(), playerId))
+                .toList();
     }
 
     @Transactional

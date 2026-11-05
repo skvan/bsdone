@@ -61,6 +61,7 @@ function makeStats(teamId, players, statIdOffset) {
       rbi: 0, hr: 0, insideParkHr: 0, doubles: 0, triples: 0, gdp: 0, sh: 0, sf: 0,
       fieldingGs: 1, defInn: 0, dp: 0, pb: 0, catcherSb: 0, catcherCs: 0,
       ip: 0, pitchR: 0, er: 0, pitchH: 0, pitchBbHp: 0, pitchSo: 0, pitchHr: 0,
+      pitchAb: 0, po: 0, a: 0, e: 0, tc: 0,
       pitchInsideParkHr: 0, pitchPa: 0, pitchBf: 0, np: 0, pitchBb: 0, pitchIbb: 0,
       pitchHbp: 0, wp: 0, bk: 0, go: 0, fo: 0, gs: 0, svo: 0, cg: 0, pg: 0,
       w: 0, l: 0, sv: 0, hld: 0
@@ -68,10 +69,32 @@ function makeStats(teamId, players, statIdOffset) {
   });
 }
 
-const awayPlayers = makePlayers(AWAY_ID, 1000);
+const awayPlayers = [
+  ...makePlayers(AWAY_ID, 1000),
+  {
+    id: 1114, name: 'T1PITCHER2', number: '16', teamId: AWAY_ID,
+    positions: ['P'], batHand: 'R', throwHand: 'R', status: 'active'
+  }
+];
 const homePlayers = makePlayers(HOME_ID, 2000);
 const awayStats = makeStats(AWAY_ID, awayPlayers, 3000);
 const homeStats = makeStats(HOME_ID, homePlayers, 4000);
+{
+  const source = awayStats.find((stat) => stat.playerId === 1114);
+  const target = awayStats.find((stat) => stat.playerId === 1100);
+  source.pitcherOrder = 2;
+  source.np = 27;
+  source.pitchPa = 11;
+  source.pitchAb = 9;
+  source.fo = 3;
+  target.ip = 1.2;
+  target.pitchR = 3;
+  target.er = 3;
+  target.np = 0;
+  target.pitchPa = 0;
+  target.pitchAb = 0;
+  target.fo = 0;
+}
 
 async function setup(page) {
   await page.addInitScript(() => {
@@ -84,6 +107,7 @@ async function setup(page) {
     }));
   });
 
+  let sourceDeleted = false;
   await page.route('**/bsball-server/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -93,7 +117,37 @@ async function setup(page) {
     if (path === '/event/1') data = { id: 1, name: 'Result Pitcher Run E2E' };
     else if (path === `/game/${GAME_ID}`) data = game;
     else if (path === `/game/${GAME_ID}/stats`) {
-      data = { list: [...awayStats, ...homeStats], total: awayStats.length + homeStats.length };
+      const list = [...awayStats, ...homeStats].filter((stat) => !(
+        sourceDeleted && Number(stat.playerId) === 1114 && Number(stat.isPitcher) === 1
+      ));
+      data = { list, total: list.length };
+    } else if (path === `/game/${GAME_ID}/pitcher-transfers` && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      const source = awayStats.find((stat) => Number(stat.id) === Number(body.sourceStatId));
+      const target = awayStats.find((stat) => Number(stat.playerId) === Number(body.targetPlayerId)
+        && Number(stat.isPitcher) === 1);
+      const fields = ['ip', 'pitchPa', 'pitchBf', 'pitAb', 'np', 'fo'];
+      if (source && target) {
+        for (const key of fields) {
+          const sourceValue = Number(source[key]) || 0;
+          if ((Number(target[key]) || 0) === 0 && sourceValue !== 0) {
+            target[key] = source[key];
+          }
+          source[key] = 0;
+        }
+      }
+      data = {
+        transferId: 55,
+        sourceStatId: source?.id ?? body.sourceStatId,
+        sourcePlayerId: 1114,
+        targetStatId: target?.id ?? null,
+        targetPlayerId: body.targetPlayerId,
+        status: 'TRANSFERRED'
+      };
+    } else if (path === `/game/${GAME_ID}/pitcher-transfers/55/delete-source`
+        && request.method() === 'POST') {
+      sourceDeleted = true;
+      data = {};
     } else if (path === `/game/${GAME_ID}/fielding-positions`) {
       data = { list: [], total: 0 };
     } else if (path === '/team/select-options' || path === '/event/1/game-team-options') {
@@ -168,4 +222,116 @@ test('final 引擎场次：结果录入页可直接改投手 R/ER 并带人工�
   expect(pitcherPart.manualPitcherRunOverride).toBe(true);
   expect(Number(pitcherPart.pitchR)).toBe(5);
   expect(Number(pitcherPart.er)).toBe(4);
+});
+
+test('投手转记：原投手 NP/PA 并入目标并清零，目标已有 IP/R/ER 保持', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+
+  const tab = page.getByRole('tab', { name: '投手数据' });
+  await expect(tab).toBeVisible();
+  await tab.click();
+
+  const awayTable = page.locator('.el-table').filter({ hasText: 'T1PITCHER2' }).first();
+  const sourceRow = awayTable.locator('tbody tr', { hasText: 'T1PITCHER2' }).first();
+  const targetRow = awayTable.locator('tbody tr', { hasText: 'T1PITCHER' }).first();
+  await expect(sourceRow).toBeVisible();
+
+  const headers = awayTable.locator('.el-table__header th');
+  const count = await headers.count();
+  let npIndex = -1;
+  for (let i = 0; i < count; i += 1) {
+    if ((await headers.nth(i).innerText()).trim() === 'NP') npIndex = i;
+  }
+  expect(npIndex).toBeGreaterThan(-1);
+
+  await sourceRow.locator('td').nth(1).click();
+  await page.getByRole('button', { name: '转记' }).first().click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '转记投手数据' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '确认转记' }).click();
+
+  const confirm = page.locator('.el-message-box:visible');
+  await expect(confirm).toContainText('转记完成');
+  await expect(confirm).toContainText('是否删除源行');
+  await confirm.getByRole('button', { name: '删除源行' }).click();
+
+  await expect(page.getByRole('tab', { name: '投手数据' })).toBeVisible();
+  await page.getByRole('tab', { name: '投手数据' }).click();
+  const tableAfter = page.locator('.el-table').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(tableAfter.locator('tbody tr', { hasText: 'T1PITCHER2' })).toHaveCount(0);
+  const targetAfter = tableAfter.locator('tbody tr', { hasText: 'T1PITCHER' }).first();
+  await expect(targetAfter).toBeVisible();
+
+  const headersAfter = tableAfter.locator('.el-table__header th');
+  const countAfter = await headersAfter.count();
+  let npIndexAfter = -1;
+  let paIndexAfter = -1;
+  let foIndexAfter = -1;
+  for (let i = 0; i < countAfter; i += 1) {
+    const text = (await headersAfter.nth(i).innerText()).trim();
+    if (text === 'NP') npIndexAfter = i;
+    if (text === 'PA') paIndexAfter = i;
+    if (text === 'FO') foIndexAfter = i;
+  }
+  expect(npIndexAfter).toBeGreaterThan(-1);
+  expect(paIndexAfter).toBeGreaterThan(-1);
+  expect(foIndexAfter).toBeGreaterThan(-1);
+  await expect(targetAfter.locator('td').nth(npIndexAfter).locator('input')).toHaveValue('27');
+  await expect(targetAfter.locator('td').nth(paIndexAfter).locator('input')).toHaveValue('11');
+  await expect(targetAfter.locator('td').nth(foIndexAfter).locator('input')).toHaveValue('3');
+});
+
+test('PA 与 BF 双向同步', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  const tab = page.getByRole('tab', { name: '投手数据' });
+  await tab.click();
+
+  const table = page.locator('.el-table').filter({ hasText: 'T1PITCHER' }).first();
+  const row = table.locator('tbody tr', { hasText: 'T1PITCHER' }).first();
+  const headers = table.locator('.el-table__header th');
+  const count = await headers.count();
+  let paIndex = -1;
+  let bfIndex = -1;
+  for (let i = 0; i < count; i += 1) {
+    const text = (await headers.nth(i).innerText()).trim();
+    if (text === 'PA') paIndex = i;
+    if (text === 'BF') bfIndex = i;
+  }
+  expect(paIndex).toBeGreaterThan(-1);
+  expect(bfIndex).toBeGreaterThan(-1);
+
+  const paInput = row.locator('td').nth(paIndex).locator('input');
+  const bfInput = row.locator('td').nth(bfIndex).locator('input');
+  await paInput.fill('13');
+  await paInput.blur();
+  await expect(bfInput).toHaveValue('13');
+  await bfInput.fill('17');
+  await bfInput.blur();
+  await expect(paInput).toHaveValue('17');
+});
+
+test('删除投手行前诊断剩余字段并提供去转记', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '投手数据' }).click();
+
+  const table = page.locator('.el-table').filter({ hasText: 'T1PITCHER2' }).first();
+  const sourceRow = table.locator('tbody tr', { hasText: 'T1PITCHER2' }).first();
+  const targetRow = table.locator('tbody tr', { hasText: 'T1PITCHER' })
+    .filter({ hasNotText: 'T1PITCHER2' }).first();
+  await page.getByRole('button', { name: '批量删除' }).first().click();
+  await sourceRow.locator('.el-checkbox__inner').first().click();
+  // 当前高亮行故意切到另一名投手：诊断必须按待删除行打开转记，而不是当前行。
+  await targetRow.locator('td').nth(1).click();
+  await page.getByRole('button', { name: /完成批量移除/ }).first().click();
+
+  const box = page.locator('.el-message-box:visible');
+  await expect(box).toContainText('该投手行还有数据');
+  await expect(box).toContainText('AB=9');
+  await box.getByRole('button', { name: '去转记' }).click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '转记投手数据' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('T1PITCHER2');
 });

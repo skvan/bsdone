@@ -24,9 +24,9 @@ class GamePlayerStatZerosTest {
     }
 
     @Test
-    @DisplayName("仅残留隐藏 pitchPa 仍视为全零（结果页不暴露该字段）")
-    void pitchPaOnly_isZero() {
-        assertTrue(GamePlayerStatZeros.isZero(row(stat -> stat.setPitchPa(Integer.valueOf(1)))));
+    @DisplayName("pitchPa 非零不再视为全零（PA 已开放为可编辑列）")
+    void pitchPaOnly_isNotZero() {
+        assertNotZero(stat -> stat.setPitchPa(Integer.valueOf(1)));
     }
 
     @Test

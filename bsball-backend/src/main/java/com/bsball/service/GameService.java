@@ -17,6 +17,8 @@ import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.PitcherRunOverrideRequest;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.PitcherTransferRequest;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
@@ -760,6 +762,41 @@ public class GameService {
         }
     }
 
+    /** 赛后补录：投手行转记（只转记，不删除源行）。 */
+    public PitcherTransferResultDTO transferPitcher(Long gameId, PitcherTransferRequest request) {
+        if (request == null || request.getSourceStatId() == null
+                || request.getTargetPlayerId() == null) {
+            throw new BusinessException(400, "缺少转记源行或目标投手");
+        }
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能转记投手数据");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.transferPitcher(
+                    game.getTenantId(), gameId, request.getSourceStatId(),
+                    request.getTargetPlayerId(), request.getNote(), operatorId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
+    }
+
+    /** 转记成功后单独删除源行；必须已全零且无自责分判定。 */
+    public void deletePitcherTransferSource(Long gameId, Long transferId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能删除转记源行");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            this.earnedRunReconstructionService.deletePitcherTransferSource(
+                    game.getTenantId(), gameId, transferId, operatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
+    }
+
     @Transactional(rollbackFor={Exception.class})
     public Long importGameResult(Long eventId, SaveGameResultDTO dto) {
         if (dto == null || dto.getGame() == null || dto.getStats() == null) {
@@ -1208,8 +1245,7 @@ public class GameService {
         if (part.getPitchSf() != null) {
             stat.setPitchSf(part.getPitchSf());
         }
-        stat.setPitchPa(part.getPitchPa());
-        stat.setPitchBf(part.getPitchBf());
+        syncPitchPaBf(stat, part.getPitchBf(), part.getPitchPa());
         stat.setPitchAb(part.getPitchAb());
         stat.setNp(part.getNp());
         // 四死球拆分栏（四坏/故意四坏/触身）与 saveLive 同口径：缺栏时保留既有值，
@@ -1361,6 +1397,15 @@ public class GameService {
         stat.setPendingR(0);
     }
 
+    /** PA 与 BF 同口径：任一栏有值时两栏同步，避免结果页/实时录入产生两套面对打席数。 */
+    private static void syncPitchPaBf(GamePlayerStat stat, Integer pitchBf, Integer pitchPa) {
+        Integer value = pitchBf != null ? pitchBf : pitchPa;
+        if (value != null) {
+            stat.setPitchBf(value);
+            stat.setPitchPa(value);
+        }
+    }
+
     /** 統計欄位充實度：同 key 重複筆時優先保留資料較完整的列（與 GamePlayerStatService#statRichness 保持一致） */
     private static int statRichness(GamePlayerStat r) {
         int score = 0;
@@ -1475,8 +1520,7 @@ public class GameService {
         if (part.getPitchSf() != null) {
             stat.setPitchSf(part.getPitchSf());
         }
-        stat.setPitchPa(part.getPitchPa());
-        stat.setPitchBf(part.getPitchBf());
+        syncPitchPaBf(stat, part.getPitchBf(), part.getPitchPa());
         stat.setNp(part.getNp());
         if (part.getPitchBb() != null) {
             stat.setPitchBb(part.getPitchBb());
