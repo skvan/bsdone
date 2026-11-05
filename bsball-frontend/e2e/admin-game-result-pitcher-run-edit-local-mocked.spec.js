@@ -75,6 +75,10 @@ const awayPlayers = [
   {
     id: 1114, name: 'T1PITCHER2', number: '16', teamId: AWAY_ID,
     positions: ['P'], batHand: 'R', throwHand: 'R', status: 'active'
+  },
+  {
+    id: 1115, name: 'T1PITCHER3', number: '15', teamId: AWAY_ID,
+    positions: ['P'], batHand: 'R', throwHand: 'R', status: 'active'
   }
 ];
 const homePlayers = makePlayers(HOME_ID, 2000);
@@ -184,6 +188,39 @@ async function setup(page) {
         adjustmentId: 71, sourceEventId: 'play-err-1', inning: 2, half: 'bottom',
         sequence: 5, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
         position: 'P', assistCount: 1, status: 'APPROVED', sourceValid: true
+      };
+    } else if (/^\/game\/10\/stat-rows\/\d+\/delete-check$/.test(path)
+        && request.method() === 'GET') {
+      const statId = Number(path.split('/').at(-2));
+      data = statId === 3011
+        ? {
+            statId, playerId: 1100, isPitcher: true, deletable: false,
+            recommendedAction: 'FIELDING_REVIEW',
+            blockers: [{
+              type: 'FIELDING_ADJUSTMENT', key: null, label: '守备补记',
+              value: 1, recommendedAction: 'FIELDING_REVIEW'
+            }]
+          }
+        : { statId, playerId: null, isPitcher: true, deletable: true, recommendedAction: 'NONE', blockers: [] };
+    } else if (path === `/game/${GAME_ID}/adjustments` && request.method() === 'GET') {
+      data = [{
+        id: 1, scope: 'PLAYER_STAT', action: 'UPDATE_FIELD', sourceType: 'RESULT_SAVE',
+        sourceId: 3009, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
+        isPitcher: 1, fieldKey: 'np', fieldLabel: 'NP',
+        beforeValue: '27', afterValue: '30', status: 'ACTIVE',
+        reason: null, operatorId: 9, operatedAt: '2026-11-05T10:00:00'
+      }];
+    } else if (path === `/game/${GAME_ID}/stat-base/compare` && request.method() === 'GET') {
+      data = {
+        legacy: false,
+        rows: [{
+          playerId: 1100, playerName: 'T1PITCHER', teamId: AWAY_ID, isPitcher: 1,
+          source: 'RESULT', capturedAt: '2026-11-05T10:00:00',
+          fields: [
+            { key: 'pitchPa', label: 'PA(投手)', baseValue: 11, effectiveValue: 13 },
+            { key: 'np', label: 'NP', baseValue: 27, effectiveValue: 30 }
+          ]
+        }]
       };
     } else if (path === `/game/${GAME_ID}/revision-audit` && request.method() === 'GET') {
       data = [{
@@ -542,4 +579,46 @@ test('修订记录页签展示四类人工修订', async ({ page }) => {
   await expect(rows.nth(1)).toContainText('守备补记');
   await expect(rows.nth(2)).toContainText('投手 R/ER 覆写');
   await expect(rows.nth(3)).toContainText('ER 判定改派');
+});
+
+test('删除前后端诊断：守备补记阻断时提示去守备补记 A', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '投手数据' }).click();
+
+  const table = page.locator('.el-table').filter({ hasText: 'T1PITCHER2' }).first();
+  const targetRow = table.locator('tbody tr', { hasText: 'T1PITCHER3' }).first();
+  await page.getByRole('button', { name: '批量删除' }).first().click();
+  await targetRow.locator('.el-checkbox__inner').first().click();
+  const checkRequest = page.waitForRequest((request) => (
+    request.url().includes('/stat-rows/3011/delete-check')
+  ));
+  await page.getByRole('button', { name: /完成批量移除/ }).first().click();
+  await checkRequest;
+
+  await expect(page.locator('.el-message').filter({ hasText: '守备补记或守备位置数据' })).toBeVisible();
+  await expect(page.locator('.el-dialog:visible').filter({ hasText: '转记投手数据' })).toHaveCount(0);
+});
+
+test('基座对比页签展示基座与当前有效值差异', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '基座对比' }).click();
+
+  await expect(page.getByText('原始基座 · 当前有效值')).toBeVisible();
+  const row = page.locator('.stat-base-diff .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(row).toContainText('PA(投手)：11 → 13');
+  await expect(row).toContainText('NP：27 → 30');
+});
+
+test('修订台账页签展示字段级修改', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订台账' }).click();
+
+  await expect(page.getByText('结果页手工修改 · 字段级留痕')).toBeVisible();
+  const row = page.locator('.adjustment-ledger .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(row).toContainText('NP');
+  await expect(row).toContainText('27 → 30');
+  await expect(row).toContainText('#9');
 });

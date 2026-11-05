@@ -176,8 +176,8 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("删除统计行守卫：有已生效补记的球员返回 true")
     void hasApprovedPlayerAdjustmentDelegates() {
-        when(adjustmentRepository.existsByTenantIdAndGameIdAndPlayerIdAndStatus(
-                1L, 20L, 23L, "APPROVED")).thenReturn(true);
+        when(adjustmentRepository.countByTenantIdAndGameIdAndPlayerIdAndStatus(
+                1L, 20L, 23L, "APPROVED")).thenReturn(1L);
 
         assertTrue(service.hasApprovedPlayerAdjustment(1L, 20L, 23L));
         assertFalse(service.hasApprovedPlayerAdjustment(0L, 20L, 23L));

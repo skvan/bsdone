@@ -23,6 +23,9 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferRequest;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.GameStatAdjustmentDTO;
+import com.bsball.model.dto.StatBaseCompareDTO;
+import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
@@ -39,6 +42,7 @@ import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.utils.GamePlayerStatZeros;
+import com.bsball.utils.GameStatDeleteDiagnostics;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -372,6 +376,7 @@ public class GameService {
             this.fieldingAdjustmentService.reapplyPositionStats(game);
         }
         if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.revisionAuditService.captureBase(game, CurrentUserHolder.get(), "LIVE");
             this.logSettlementValidation(gameId, game.getTenantId());
         }
     }
@@ -752,6 +757,39 @@ public class GameService {
         return this.revisionAuditService.list(game);
     }
 
+    /** 基座与当前有效值对比；历史场次无基座返回 legacy=true。 */
+    public StatBaseCompareDTO compareStatBase(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看基座对比");
+        return this.revisionAuditService.compareBase(game);
+    }
+
+    /** 统一修订台账：结果页字段级人工修改。 */
+    public List<GameStatAdjustmentDTO> listStatAdjustments(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看修订台账");
+        return this.revisionAuditService.listAdjustments(game);
+    }
+
+    /** 删除统计行前诊断：返回剩余字段、有效 ER 判定、守备补记与守备位置。 */
+    public StatRowDeleteCheckDTO checkStatRowDelete(Long gameId, Long statId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能检查删除条件");
+        Long tenantId = game.getTenantId();
+        GamePlayerStat stat = this.gamePlayerStatRepository.findById(statId)
+                .filter(row -> Objects.equals(row.getGameId(), gameId)
+                        && Objects.equals(row.getTenantId(), tenantId))
+                .orElseThrow(() -> new BusinessException(404, "统计行不存在"));
+        long playerId = stat.getPlayerId() == null ? 0L : stat.getPlayerId();
+        int decisions = this.earnedRunReconstructionService
+                .countResponsiblePitcherDecisions(gameId, playerId);
+        long adjustments = this.fieldingAdjustmentService
+                .countApprovedPlayerAdjustments(tenantId, gameId, playerId);
+        long positions = this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId).stream()
+                .filter(row -> Objects.equals(row.getTeamId(), stat.getTeamId())
+                        && Objects.equals(row.getPlayerId(), stat.getPlayerId()))
+                .count();
+        return GameStatDeleteDiagnostics.build(stat, decisions, adjustments, positions);
+    }
+
     /** 赛后补记助杀：源 Play 与守备统计同步由服务层校验。 */
     public FieldingAdjustmentListDTO createFieldingAdjustment(
             Long gameId, FieldingAdjustmentCreateRequest request) {
@@ -1109,6 +1147,7 @@ public class GameService {
             }
             LinkedHashSet<Long> keepIds = new LinkedHashSet<>();
             List<SaveGameResultDTO.StatPart> manualPitcherRunParts = new ArrayList<>();
+            List<GameRevisionAuditService.StatChange> ledgerChanges = new ArrayList<>();
             for (SaveGameResultDTO.StatPart part : dto.getStats()) {
                 GamePlayerStat stat;
                 if (part.getTeamId() == null || part.getPlayerId() == null) continue;
@@ -1123,22 +1162,28 @@ public class GameService {
                     // 改由複合鍵決定落點，避免把既有列的 isPitcher 就地翻轉。
                     if (byId != null && isPitcher == (byId.getIsPitcher() == null ? 0 : byId.getIsPitcher().intValue())) {
                         stat = byId;
+                        Map<String, Double> before = statValueMap(stat);
                         this.applyResultPartToStat(stat, part, gameId, statTenantId, engineManaged);
                         this.gamePlayerStatRepository.save(stat);
+                        addStatChanges(ledgerChanges, stat, before);
                         keepIds.add(stat.getId());
                         continue;
                     }
                 }
                 String key = resultStatKey(part.getTeamId(), part.getPlayerId(), Integer.valueOf(isPitcher));
                 stat = existingByKey.get(key);
+                Map<String, Double> before = stat == null ? Map.of() : statValueMap(stat);
                 if (stat == null) {
                     stat = new GamePlayerStat();
                 }
                 this.applyResultPartToStat(stat, part, gameId, statTenantId, engineManaged);
                 this.gamePlayerStatRepository.save(stat);
+                addStatChanges(ledgerChanges, stat, before);
                 keepIds.add(stat.getId());
                 existingByKey.put(key, stat);
             }
+            this.revisionAuditService.recordStatChanges(
+                    game, ledgerChanges, CurrentUserHolder.get());
             // 删除改为显式名单：只有 removedStatIds 里列出的既有行才删除。
             // payload 中没出现但未显式删除的行一律保留，避免旧页面/多标签页漏带
             // 把真实打者行一并物理删除。
@@ -1149,8 +1194,34 @@ public class GameService {
             this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
         }
         // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
+        // 首次 final 保存写入基座快照；已有基座不覆盖。
+        this.revisionAuditService.captureBase(game, CurrentUserHolder.get(), "RESULT");
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
         this.logSettlementValidation(gameId, statTenantId);
+    }
+
+    private static Map<String, Double> statValueMap(GamePlayerStat stat) {
+        Map<String, Double> values = new HashMap<>();
+        for (GamePlayerStatZeros.FieldValue value : GamePlayerStatZeros.values(stat)) {
+            values.put(value.key(), value.value());
+        }
+        return values;
+    }
+
+    private static void addStatChanges(List<GameRevisionAuditService.StatChange> changes,
+            GamePlayerStat stat, Map<String, Double> before) {
+        if (stat == null || stat.getPlayerId() == null) {
+            return;
+        }
+        for (GamePlayerStatZeros.FieldValue after : GamePlayerStatZeros.values(stat)) {
+            double beforeValue = before.getOrDefault(after.key(), 0d);
+            if (Double.compare(beforeValue, after.value()) == 0) {
+                continue;
+            }
+            changes.add(new GameRevisionAuditService.StatChange(
+                    stat.getTeamId(), stat.getPlayerId(), stat.getIsPitcher(),
+                    stat.getId(), after.key(), after.label(), beforeValue, after.value()));
+        }
     }
 
     /** 结果页显式修改的投手 R/ER：保存为人工覆写，并由 ER 引擎全量重算避免后续被冲掉。 */

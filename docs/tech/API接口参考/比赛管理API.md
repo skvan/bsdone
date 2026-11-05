@@ -349,6 +349,25 @@ EventService --> EventRepository
 - POST /game/{id}/pitcher-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源行（与转记是两个动作）
   - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/stat-rows/{statId}/delete-check
+  - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`StatRowDeleteCheckDTO`，字段含 `statId/playerId/isPitcher/deletable/recommendedAction/blockers`
+  - blocker 类型：`DATA_FIELD`（key/label/value）、`ER_DECISION`（有效责任投手判定数）、`FIELDING_ADJUSTMENT`（生效补记数）、`FIELDING_POSITION`（守备位置行数）
+  - 推荐动作：有 ER 判定/失分 → `ER_REVIEW`；有守备补记 → `FIELDING_REVIEW`；投手的守备位置可随转记搬移 → `TRANSFER`；仅剩余字段 → 投手 `TRANSFER`、非投手 `CLEAR_FIELDS`；无阻断 → `NONE`
+  - 只读：不执行删除；删除仍走原接口并保留原守卫
+- GET /game/{id}/adjustments
+  - 作用：统一修订台账（本期为结果补录页字段级留痕）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameStatAdjustmentDTO>`；字段含 `scope/action/sourceType/sourceId/teamId/playerId/playerName/isPitcher/fieldKey/fieldLabel/beforeValue/afterValue/status/reason/operatorId/operatedAt`
+  - 写入：`save-result` 保存时逐字段 diff，只记录发生变化的统计字段；新行从 0 到有值也记录；写入失败不阻断结果保存
+  - 说明：ER 判定/R/ER 覆写/守备补记/转记仍有独立领域审计，在“修订记录”页签查看
+- GET /game/{id}/stat-base/compare
+  - 作用：对比首次 final 保存的基座快照与当前有效值，返回差异字段
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`StatBaseCompareDTO`，字段含 `legacy`（无基座）、`rows[]`（球员/来源/捕获时间/差异字段）
+  - 差异字段：`key/label/baseValue/effectiveValue`
+  - 口径：基座只在首次 final 保存（`save-result` 或 LiveGame `save-live`）时写入且不覆盖；无基座的历史场次返回 `legacy=true`；无差异的球员不返回
 - GET /game/{id}/revision-audit
   - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离

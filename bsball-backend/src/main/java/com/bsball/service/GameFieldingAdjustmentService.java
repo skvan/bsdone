@@ -226,9 +226,16 @@ public class GameFieldingAdjustmentService {
 
     /** 删除统计行前的守卫：该球员是否仍有已生效的守备补记。 */
     public boolean hasApprovedPlayerAdjustment(long tenantId, long gameId, long playerId) {
-        return tenantId > 0 && gameId > 0 && playerId > 0
-                && adjustmentRepository.existsByTenantIdAndGameIdAndPlayerIdAndStatus(
-                        tenantId, gameId, playerId, STATUS_APPROVED);
+        return countApprovedPlayerAdjustments(tenantId, gameId, playerId) > 0;
+    }
+
+    /** 该球员仍生效的守备补记条数；删除诊断使用。 */
+    public long countApprovedPlayerAdjustments(long tenantId, long gameId, long playerId) {
+        if (tenantId <= 0 || gameId <= 0 || playerId <= 0) {
+            return 0;
+        }
+        return adjustmentRepository.countByTenantIdAndGameIdAndPlayerIdAndStatus(
+                tenantId, gameId, playerId, STATUS_APPROVED);
     }
 
     /** 读取时透传：按球员汇总本场已生效补记 A，供 /stats 前端判断统计是否已含补记。 */

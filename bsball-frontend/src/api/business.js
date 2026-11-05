@@ -285,6 +285,10 @@ export const gameApi = {
   listFieldingAdjustmentCandidates: (id) =>
     fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),
   listRevisionAudit: (id) => fetchResult(`/api/game/${id}/revision-audit`),
+  compareStatBase: (id) => fetchResult(`/api/game/${id}/stat-base/compare`),
+  listStatAdjustments: (id) => fetchResult(`/api/game/${id}/adjustments`),
+  checkStatRowDelete: (id, statId) =>
+    fetchResult(`/api/game/${id}/stat-rows/${statId}/delete-check`),
   createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
   revokeFieldingAdjustment: (id, adjustmentId) =>
     post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
