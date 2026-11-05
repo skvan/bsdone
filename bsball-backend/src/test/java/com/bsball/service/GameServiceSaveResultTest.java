@@ -103,6 +103,8 @@ class GameServiceSaveResultTest {
     private EventRegistrationService eventRegistrationService;
     @Mock
     private GameFieldingAdjustmentService fieldingAdjustmentService;
+    @Mock
+    private GameRevisionAuditService revisionAuditService;
 
     private GameService gameService;
 
@@ -114,8 +116,7 @@ class GameServiceSaveResultTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
-                fieldingAdjustmentService,
-                org.mockito.Mockito.mock(GameRevisionAuditService.class));
+                fieldingAdjustmentService, revisionAuditService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
@@ -556,6 +557,27 @@ class GameServiceSaveResultTest {
                 b -> "ER_DECISION".equals(b.type()) && b.value() == 2d));
         assertTrue(result.blockers().stream().anyMatch(
                 b -> "FIELDING_ADJUSTMENT".equals(b.type()) && b.value() == 1d));
+    }
+
+    @Test
+    @DisplayName("结果保存按字段写入统一修订台账")
+    void saveResultRecordsFieldLevelAdjustments() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(5), null))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameRevisionAuditService.StatChange>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(revisionAuditService).recordStatChanges(any(), captor.capture(), any());
+        assertTrue(captor.getValue().stream().anyMatch(change ->
+                "ab".equals(change.fieldKey())
+                        && change.beforeValue() == 3d
+                        && change.afterValue() == 5d));
     }
 
     private GamePlayerStat batterRow() {

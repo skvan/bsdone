@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.model.dto.GameRevisionAuditDTO;
+import com.bsball.model.dto.GameStatAdjustmentDTO;
 import com.bsball.model.dto.StatBaseCompareDTO;
 import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.Game;
@@ -16,6 +18,7 @@ import com.bsball.model.entity.GameFieldingAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.GameStatAdjustment;
 import com.bsball.model.entity.GameStatBase;
 import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
@@ -24,6 +27,7 @@ import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameStatAdjustmentRepository;
 import com.bsball.repository.GameStatBaseRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.bsball.repository.PlayerRepository;
@@ -35,8 +39,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class GameRevisionAuditServiceTest {
@@ -56,6 +63,10 @@ class GameRevisionAuditServiceTest {
     private GameFieldingPosStatRepository gameFieldingPosStatRepository;
     @Mock
     private GameStatBaseRepository gameStatBaseRepository;
+    @Mock
+    private GameStatAdjustmentRepository gameStatAdjustmentRepository;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private GameRevisionAuditService service;
@@ -67,7 +78,10 @@ class GameRevisionAuditServiceTest {
                 erDecisionAdjustmentRepository, pitcherRunOverrideRepository,
                 fieldingAdjustmentRepository, pitcherTransferRepository,
                 playerRepository, gamePlayerStatRepository,
-                gameFieldingPosStatRepository, gameStatBaseRepository, objectMapper);
+                gameFieldingPosStatRepository, gameStatBaseRepository,
+                gameStatAdjustmentRepository, transactionManager, objectMapper);
+        lenient().when(transactionManager.getTransaction(any()))
+                .thenReturn(new SimpleTransactionStatus());
         game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
@@ -266,6 +280,71 @@ class GameRevisionAuditServiceTest {
         assertEquals("PA(投手)", row.fields().get(0).label());
         assertEquals(11d, row.fields().get(0).baseValue());
         assertEquals(13d, row.fields().get(0).effectiveValue());
+    }
+
+    @Test
+    @DisplayName("统一修订台账写入字段级变更")
+    @SuppressWarnings("unchecked")
+    void recordStatChangesWritesFieldRows() {
+        service.recordStatChanges(game, List.of(
+                new GameRevisionAuditService.StatChange(
+                        1L, 700L, 1, 500L, "np", "NP", 27, 30),
+                new GameRevisionAuditService.StatChange(
+                        1L, 700L, 1, 500L, "pitchPa", "PA(投手)", 11, 13)
+        ), 9L);
+
+        ArgumentCaptor<List<GameStatAdjustment>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(gameStatAdjustmentRepository).saveAll(captor.capture());
+        assertEquals(2, captor.getValue().size());
+        GameStatAdjustment first = captor.getValue().get(0);
+        assertEquals("PLAYER_STAT", first.getScope());
+        assertEquals("UPDATE_FIELD", first.getAction());
+        assertEquals("RESULT_SAVE", first.getSourceType());
+        assertEquals("NP", first.getFieldLabel());
+        assertEquals("27", first.getBeforeValue());
+        assertEquals("30", first.getAfterValue());
+        assertEquals(9L, first.getOperatorId());
+        assertEquals("ACTIVE", first.getStatus());
+    }
+
+    @Test
+    @DisplayName("统一台账写入失败不抛出，不阻断结果保存")
+    void recordStatChangesSwallowsWriteFailure() {
+        when(gameStatAdjustmentRepository.saveAll(any()))
+                .thenThrow(new RuntimeException("ledger unavailable"));
+
+        service.recordStatChanges(game, List.of(
+                new GameRevisionAuditService.StatChange(
+                        1L, 700L, 1, 500L, "np", "NP", 27, 30)
+        ), 9L);
+
+        verify(gameStatAdjustmentRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("统一修订台账按时间倒序返回并带球员名")
+    void listAdjustmentsMapsRows() {
+        GameStatAdjustment row = new GameStatAdjustment();
+        row.setId(1L);
+        row.setPlayerId(700L);
+        row.setFieldKey("np");
+        row.setFieldLabel("NP");
+        row.setBeforeValue("27");
+        row.setAfterValue("30");
+        row.setOperatedAt(LocalDateTime.of(2026, 11, 5, 10, 0));
+        when(gameStatAdjustmentRepository
+                .findByTenantIdAndGameIdOrderByOperatedAtDescIdDesc(1L, 20L))
+                .thenReturn(List.of(row));
+        when(playerRepository.findAllById(any())).thenReturn(List.of(player(700L, "投手甲")));
+
+        List<GameStatAdjustmentDTO> result = service.listAdjustments(game);
+
+        assertEquals(1, result.size());
+        assertEquals("投手甲", result.get(0).playerName());
+        assertEquals("np", result.get(0).fieldKey());
+        assertEquals("27", result.get(0).beforeValue());
+        assertEquals("30", result.get(0).afterValue());
     }
 
     private static Player player(long id, String name) {

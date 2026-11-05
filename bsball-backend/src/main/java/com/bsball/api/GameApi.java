@@ -45,6 +45,7 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferRequest;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.GameStatAdjustmentDTO;
 import com.bsball.model.dto.StatBaseCompareDTO;
 import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Game;
@@ -243,6 +244,11 @@ public class GameApi {
     public Result<StatRowDeleteCheckDTO> checkStatRowDelete(
             @PathVariable Long id, @PathVariable Long statId) {
         return Result.ok(this.gameService.checkStatRowDelete(id, statId));
+    }
+
+    @GetMapping(value={"/{id}/adjustments"})
+    public Result<List<GameStatAdjustmentDTO>> listStatAdjustments(@PathVariable Long id) {
+        return Result.ok(this.gameService.listStatAdjustments(id));
     }
 
     @GetMapping(value={"/{id}/stat-base/compare"})

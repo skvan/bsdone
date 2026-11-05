@@ -356,6 +356,12 @@ EventService --> EventRepository
   - blocker 类型：`DATA_FIELD`（key/label/value）、`ER_DECISION`（有效责任投手判定数）、`FIELDING_ADJUSTMENT`（生效补记数）、`FIELDING_POSITION`（守备位置行数）
   - 推荐动作：有 ER 判定/失分 → `ER_REVIEW`；有守备补记 → `FIELDING_REVIEW`；投手的守备位置可随转记搬移 → `TRANSFER`；仅剩余字段 → 投手 `TRANSFER`、非投手 `CLEAR_FIELDS`；无阻断 → `NONE`
   - 只读：不执行删除；删除仍走原接口并保留原守卫
+- GET /game/{id}/adjustments
+  - 作用：统一修订台账（本期为结果补录页字段级留痕）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameStatAdjustmentDTO>`；字段含 `scope/action/sourceType/sourceId/teamId/playerId/playerName/isPitcher/fieldKey/fieldLabel/beforeValue/afterValue/status/reason/operatorId/operatedAt`
+  - 写入：`save-result` 保存时逐字段 diff，只记录发生变化的统计字段；新行从 0 到有值也记录；写入失败不阻断结果保存
+  - 说明：ER 判定/R/ER 覆写/守备补记/转记仍有独立领域审计，在“修订记录”页签查看
 - GET /game/{id}/stat-base/compare
   - 作用：对比首次 final 保存的基座快照与当前有效值，返回差异字段
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
