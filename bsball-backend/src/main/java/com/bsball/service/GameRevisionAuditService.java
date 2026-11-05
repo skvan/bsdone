@@ -190,6 +190,58 @@ public class GameRevisionAuditService {
             double afterValue) {
     }
 
+    /** 写入一条通用人工修订台账；领域动作与结果页修改共用。 */
+    public void recordAdjustment(
+            long tenantId,
+            long gameId,
+            String scope,
+            String action,
+            String sourceType,
+            Long sourceId,
+            Long teamId,
+            Long playerId,
+            Integer isPitcher,
+            String fieldKey,
+            String fieldLabel,
+            String beforeValue,
+            String afterValue,
+            String status,
+            String reason,
+            Long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || playerId == null) {
+            return;
+        }
+        GameStatAdjustment row = new GameStatAdjustment();
+        row.setTenantId(tenantId);
+        row.setGameId(gameId);
+        row.setScope(scope);
+        row.setAction(action);
+        row.setSourceType(sourceType);
+        row.setSourceId(sourceId);
+        row.setTeamId(teamId);
+        row.setPlayerId(playerId);
+        row.setIsPitcher(isPitcher);
+        row.setFieldKey(fieldKey);
+        row.setFieldLabel(fieldLabel);
+        row.setBeforeValue(beforeValue);
+        row.setAfterValue(afterValue);
+        row.setStatus(status);
+        row.setReason(reason);
+        row.setOperatorId(operatorId);
+        row.setOperatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            row.setCreatedBy(operatorId);
+            row.setUpdatedBy(operatorId);
+        }
+        try {
+            ledgerTransaction.executeWithoutResult(
+                    txStatus -> gameStatAdjustmentRepository.save(row));
+        } catch (RuntimeException error) {
+            log.warn("统一修订台账写入失败 gameId={} scope={} action={}: {}",
+                    gameId, scope, action, error.getMessage());
+        }
+    }
+
     /** 把结果页字段级修改写入统一台账；失败不阻断结果保存。 */
     public void recordStatChanges(Game game, List<StatChange> changes, Long operatorId) {
         if (changes == null || changes.isEmpty()) {

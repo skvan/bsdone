@@ -692,9 +692,18 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.reassignDecision(
+            EarnedRunDecisionListDTO result = this.earnedRunReconstructionService.reassignDecision(
                     game.getTenantId(), gameId, decisionId,
                     request.getTargetPitcherId(), request.getReason(), operatorId);
+            if (result != null) {
+                recordLedger(game, "ER_DECISION", "REASSIGN", "DECISION_ADJUSTMENT",
+                        result.adjustmentId(), null, result.effectivePitcherId(), 1,
+                        "responsiblePitcherId", "责任投手",
+                        String.valueOf(result.responsiblePitcherId()),
+                        String.valueOf(result.effectivePitcherId()),
+                        "ACTIVE", result.adjustmentReason(), operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new BusinessException(400, ex.getMessage());
         } catch (DataIntegrityViolationException ex) {
@@ -711,9 +720,17 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.voidDecision(
+            EarnedRunDecisionListDTO result = this.earnedRunReconstructionService.voidDecision(
                     game.getTenantId(), gameId, decisionId,
                     request == null ? null : request.getReason(), operatorId);
+            if (result != null) {
+                recordLedger(game, "ER_DECISION", "VOID", "DECISION_ADJUSTMENT",
+                        result.adjustmentId(), null, result.responsiblePitcherId(), 1,
+                        "responsiblePitcherId", "责任投手",
+                        String.valueOf(result.responsiblePitcherId()), "—",
+                        "ACTIVE", result.adjustmentReason(), operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new BusinessException(400, ex.getMessage());
         } catch (DataIntegrityViolationException ex) {
@@ -730,13 +747,32 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.revokeDecisionAdjustment(
-                    game.getTenantId(), gameId, adjustmentId, operatorId);
+            EarnedRunDecisionListDTO result = this.earnedRunReconstructionService
+                    .revokeDecisionAdjustment(game.getTenantId(), gameId, adjustmentId, operatorId);
+            if (result != null) {
+                Long effectivePitcherId = result.effectivePitcherId() != null
+                        ? result.effectivePitcherId() : result.responsiblePitcherId();
+                recordLedger(game, "ER_DECISION", "REVOKE", "DECISION_ADJUSTMENT",
+                        adjustmentId, null, effectivePitcherId, 1,
+                        "responsiblePitcherId", "责任投手", "—",
+                        String.valueOf(effectivePitcherId), "REVOKED", null, operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new BusinessException(400, ex.getMessage());
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(409, "该判定已有其他调整，请刷新后重试");
         }
+    }
+
+    private void recordLedger(Game game, String scope, String action, String sourceType,
+            Long sourceId, Long teamId, Long playerId, Integer isPitcher,
+            String fieldKey, String fieldLabel, String beforeValue, String afterValue,
+            String status, String reason, Long operatorId) {
+        this.revisionAuditService.recordAdjustment(
+                game.getTenantId(), game.getId(), scope, action, sourceType, sourceId,
+                teamId, playerId, isPitcher, fieldKey, fieldLabel,
+                beforeValue, afterValue, status, reason, operatorId);
     }
 
     /** 赛后守备补记：列出源 Play 候选与已补记记录，仅已完赛比赛可用。 */
@@ -798,7 +834,15 @@ public class GameService {
         if (operatorId == null) {
             throw new BusinessException(401, "未登录");
         }
-        return this.fieldingAdjustmentService.create(game, operatorId, request);
+        FieldingAdjustmentListDTO result =
+                this.fieldingAdjustmentService.create(game, operatorId, request);
+        if (result != null) {
+            recordLedger(game, "FIELDING_A", "APPROVE", "FIELDING_ADJUSTMENT",
+                    result.adjustmentId(), result.teamId(), result.playerId(), null,
+                    "a", "助杀 A", "0", String.valueOf(result.assistCount()),
+                    "APPROVED", result.note(), operatorId);
+        }
+        return result;
     }
 
     /** 撤销赛后补记：保留审计行并即时扣回 A/TC。 */
@@ -809,7 +853,15 @@ public class GameService {
         if (operatorId == null) {
             throw new BusinessException(401, "未登录");
         }
-        return this.fieldingAdjustmentService.revoke(game, adjustmentId, operatorId);
+        FieldingAdjustmentListDTO result =
+                this.fieldingAdjustmentService.revoke(game, adjustmentId, operatorId);
+        if (result != null) {
+            recordLedger(game, "FIELDING_A", "REVOKE", "FIELDING_ADJUSTMENT",
+                    result.adjustmentId(), result.teamId(), result.playerId(), null,
+                    "a", "助杀 A", String.valueOf(result.assistCount()), "0",
+                    "REVOKED", result.note(), operatorId);
+        }
+        return result;
     }
 
     private Game requireGameForFieldingReview(Long gameId) {
@@ -849,10 +901,19 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.overridePitcherRuns(
+            PitcherRunTotalsDTO result = this.earnedRunReconstructionService.overridePitcherRuns(
                     game.getTenantId(), gameId, playerId,
                     request.getRunsAllowed(), request.getEarnedRuns(),
                     request.getNote(), operatorId);
+            if (result != null) {
+                recordLedger(game, "PITCHER_RUN_OVERRIDE", "OVERRIDE", "PITCHER_RUN_OVERRIDE",
+                        result.overrideId(), result.teamId(), playerId, 1,
+                        "pitchR/er", "R/ER",
+                        result.engineRunsAllowed() + "/" + result.engineEarnedRuns(),
+                        result.runsAllowed() + "/" + result.earnedRuns(),
+                        "APPROVED", request.getNote(), operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         } catch (DataIntegrityViolationException ex) {
@@ -868,8 +929,16 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.revokePitcherOverride(
-                    game.getTenantId(), gameId, overrideId, operatorId);
+            PitcherRunTotalsDTO result = this.earnedRunReconstructionService
+                    .revokePitcherOverride(game.getTenantId(), gameId, overrideId, operatorId);
+            if (result != null) {
+                recordLedger(game, "PITCHER_RUN_OVERRIDE", "REVOKE", "PITCHER_RUN_OVERRIDE",
+                        overrideId, result.teamId(), result.playerId(), 1,
+                        "pitchR/er", "R/ER", "人工覆写",
+                        result.engineRunsAllowed() + "/" + result.engineEarnedRuns(),
+                        "REVOKED", null, operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
@@ -887,9 +956,18 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            return this.earnedRunReconstructionService.transferPitcher(
+            PitcherTransferResultDTO result = this.earnedRunReconstructionService.transferPitcher(
                     game.getTenantId(), gameId, request.getSourceStatId(),
                     request.getTargetPlayerId(), request.getNote(), operatorId);
+            if (result != null) {
+                recordLedger(game, "PITCHER_TRANSFER", "TRANSFER", "PITCHER_TRANSFER",
+                        result.transferId(), null, result.targetPlayerId(), 1,
+                        "pitcherRow", "投手行",
+                        String.valueOf(result.sourcePlayerId()),
+                        String.valueOf(result.targetPlayerId()),
+                        "TRANSFERRED", request.getNote(), operatorId);
+            }
+            return result;
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
@@ -903,8 +981,15 @@ public class GameService {
             throw new BusinessException(401, "未登录");
         }
         try {
-            this.earnedRunReconstructionService.deletePitcherTransferSource(
-                    game.getTenantId(), gameId, transferId, operatorId);
+            PitcherTransferResultDTO result = this.earnedRunReconstructionService
+                    .deletePitcherTransferSource(game.getTenantId(), gameId, transferId, operatorId);
+            if (result != null) {
+                recordLedger(game, "PITCHER_TRANSFER", "DELETE_SOURCE", "PITCHER_TRANSFER",
+                        result.transferId(), null, result.targetPlayerId(), 1,
+                        "pitcherRow", "投手行",
+                        String.valueOf(result.sourcePlayerId()), "—",
+                        "DELETED", null, operatorId);
+            }
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }

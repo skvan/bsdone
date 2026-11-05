@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -29,6 +30,8 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PitcherTransferRequest;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
 import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
@@ -578,6 +581,29 @@ class GameServiceSaveResultTest {
                 "ab".equals(change.fieldKey())
                         && change.beforeValue() == 3d
                         && change.afterValue() == 5d));
+    }
+
+    @Test
+    @DisplayName("投手转记成功后写入统一修订台账")
+    void transferPitcherWritesLedger() {
+        existingGame.setStatus("final");
+        when(earnedRunReconstructionService.transferPitcher(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), 3009L, 1114L, "更正", Long.valueOf(USER_ID)))
+                .thenReturn(new PitcherTransferResultDTO(
+                        55L, 3009L, 1100L, 3011L, 1114L, "TRANSFERRED"));
+        PitcherTransferRequest request = new PitcherTransferRequest();
+        request.setSourceStatId(3009L);
+        request.setTargetPlayerId(1114L);
+        request.setNote("更正");
+
+        gameService.transferPitcher(Long.valueOf(GAME_ID), request);
+
+        verify(revisionAuditService).recordAdjustment(
+                eq(Long.valueOf(TENANT_ID)), eq(Long.valueOf(GAME_ID)),
+                eq("PITCHER_TRANSFER"), eq("TRANSFER"), eq("PITCHER_TRANSFER"), eq(55L),
+                isNull(), eq(1114L), eq(1), eq("pitcherRow"), eq("投手行"),
+                eq("1100"), eq("1114"), eq("TRANSFERRED"), eq("更正"),
+                eq(Long.valueOf(USER_ID)));
     }
 
     private GamePlayerStat batterRow() {
