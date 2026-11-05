@@ -58,3 +58,9 @@ test('DH 拖到投手位后，原投手立即进入 unavailable，替补席灰�
   assert.match(src, /oldPitcherId>0&&!\(ctx\.unavail\.value\?\?\[\]\)\.map\(Number\)\.includes\(oldPitcherId\)/);
   assert.match(src, /ctx\.unavail\.value=\[\.\.\.\(ctx\.unavail\.value\?\?\[\]\),oldPitcherId\]/);
 });
+
+test('大谷规则：DH被代打但继续投球时，旧DH不移入替补、不进不可再上', () => {
+  assert.match(src, /keepAsPitcher=ohtaniRuleOn\.value&&g\.value!=null&&Number\(g\.value\)===Number\(t\.id\)&&Nn\(t\.position\)==="DH"/);
+  assert.match(src, /keepAsPitcher\|\|r\.value\.push/);
+  assert.match(src, /un\.value=\(un\.value\?\?\[\]\)\.filter\(id=>Number\(id\)!==Number\(t\.id\)\),ft\(a\),mergeRowStats\(ctx\.fpRow\.value,t\.stats\)/);
+});

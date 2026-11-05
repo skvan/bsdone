@@ -10462,8 +10462,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!t)return;
         const b=m.findIndex(A=>Number(A.id)===Number(s));
         if(b<0)return;
-        const w=m[b];
-        de("代打"),r.value=m.filter((A,T)=>T!==b),r.value.push({
+        const w=m[b],keepAsPitcher=ohtaniRuleOn.value&&g.value!=null&&Number(g.value)===Number(t.id)&&Nn(t.position)==="DH";
+        de("代打"),r.value=m.filter((A,T)=>T!==b),keepAsPitcher||r.value.push({
           ...t,position:"",lastPosition:t.position??"",stats:t.stats??Pt()
         }
         ),Ki(a,t);
@@ -10471,7 +10471,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         P>=0&&_r(a,P,t.id),P>=0&&(y[P]={
           ...w,position:t.position,stats:w.stats
         }
-        ),ri(a),D(LgSub({kind:"hit",inName:w.name,outName:t.name})+fieldingIpNote(t)),Kt();
+        ),keepAsPitcher&&(()=>{
+          const ctx=Ee(a),un=ctx.unavail;
+          un.value=(un.value??[]).filter(id=>Number(id)!==Number(t.id)),ft(a),mergeRowStats(ctx.fpRow.value,t.stats)
+        }
+        )(),ri(a),D(LgSub({kind:"hit",inName:w.name,outName:t.name})+fieldingIpNote(t)),Kt();
         return
       }
       if(mt.value==="setRunner"){
