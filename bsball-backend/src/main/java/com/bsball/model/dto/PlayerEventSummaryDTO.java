@@ -14,6 +14,8 @@ public class PlayerEventSummaryDTO {
     private String startDate;
     private String endDate;
     private String gameMode;
+    private Long leagueId;
+    private String leagueName;
     private String teamIds;
     private String teamNames;
     private List<Long> teamIdList = List.of();
@@ -67,6 +69,22 @@ public class PlayerEventSummaryDTO {
 
     public void setGameMode(String gameMode) {
         this.gameMode = gameMode;
+    }
+
+    public Long getLeagueId() {
+        return leagueId;
+    }
+
+    public void setLeagueId(Long leagueId) {
+        this.leagueId = leagueId;
+    }
+
+    public String getLeagueName() {
+        return leagueName;
+    }
+
+    public void setLeagueName(String leagueName) {
+        this.leagueName = leagueName;
     }
 
     public String getTeamIds() {

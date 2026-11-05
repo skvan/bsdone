@@ -5,7 +5,6 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.PlayerEventSummaryDTO;
 import com.bsball.model.dto.PlayerGameLogEntryDTO;
-import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EventTeam;
 import com.bsball.model.entity.Game;
@@ -35,8 +34,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * 个人驾驶舱数据聚合（模块化布局 v3-modular）。
- * <p>数据范围：顶部数据按所选赛事（未选则全部赛事）聚合；队内排名必须落到
- * 「代表球队 + 赛事」；表现、战报与赛程按所选球队/赛事过滤，且只取当前运动类型。
+ * <p>数据范围：顶部数据按所选球队/联盟/赛事集合（未选则全部赛事）聚合；队内排名必须落到
+ * 「代表球队 + 赛事集合」；表现、战报与赛程按所选球队/联盟/赛事集合过滤，且只取当前运动类型。
  * 服务端只接受白名单指标与模块。</p>
  */
 @Service
@@ -68,7 +67,11 @@ public class ClubhouseService {
     }
 
     public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId) {
-        return getDashboard(userId, teamId, eventId, null);
+        return getDashboard(userId, teamId, null, eventId, null);
+    }
+
+    public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId, String requestedGameMode) {
+        return getDashboard(userId, teamId, null, eventId, requestedGameMode);
     }
 
     /**
@@ -76,10 +79,12 @@ public class ClubhouseService {
      *
      * @param userId      当前登录用户
      * @param teamId      代表球队；为空表示全部球队
-     * @param eventId     赛事；为空表示生涯
+     * @param leagueId    联盟；为空表示不限联盟，选中后范围是该联盟在当前租户、当前运动类型下的全部赛事
+     * @param eventId     赛事；为空表示当前联盟全部赛事（未选联盟时为生涯）
      * @param requestedGameMode 运动类型；为空时取所选赛事，再回落到棒球
      */
-    public Map<String, Object> getDashboard(Long userId, Long teamId, Long eventId, String requestedGameMode) {
+    public Map<String, Object> getDashboard(Long userId, Long teamId, Long leagueId, Long eventId,
+            String requestedGameMode) {
         Player player = findPlayer(userId);
         Long tenantId = player.getTenantId();
         List<PlayerTeam> entries = currentEntries(player.getId());
@@ -87,16 +92,18 @@ public class ClubhouseService {
         Map<String, Object> requestedTeam = findTeam(teams, teamId);
         List<PlayerEventSummaryDTO> playedSummaries =
                 statsService.getPlayerEventSummaries(player.getId(), teamIdOf(requestedTeam), null);
-        Scope scope = resolveScope(requestedTeam, playedSummaries, eventId, requestedGameMode);
+        Scope scope = resolveScope(tenantId, requestedTeam, playedSummaries, leagueId, eventId,
+                requestedGameMode);
         if (requestedTeam != null && scope.teamId() == null) {
             // 所选球队在当前运动类型下既无已确认赛事也无比赛记录：与球队选项同口径回落到全部球队
             playedSummaries = statsService.getPlayerEventSummaries(player.getId(), null, null);
         }
         Map<String, Object> config = configService.getOrCreate(userId, tenantId);
         String gameMode = scope.gameMode();
-        Map<String, Object> stats = loadStats(player.getId(), scope.teamId(), scope.eventId(), gameMode);
+        Map<String, Object> stats = loadStats(player.getId(), scope.teamId(), scope.eventIds(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
+        List<Long> evaluationTeamIds = scope.teamId() == null ? List.of() : List.of(scope.teamId());
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("player", playerView(player, entries));
@@ -111,16 +118,14 @@ public class ClubhouseService {
         out.put("milestoneCatalog", ClubhouseMilestoneCatalog.catalog());
         out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
         out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
-        Map<String, Object> careerStats = scope.teamId() == null && scope.eventId() == null
-                ? stats
-                : statsService.getPlayerStats(player.getId(), gameMode);
-        out.put("evaluation", evaluationService.buildCareer(
-                player.getId(), gameMode, careerStats, firstPosition(player)));
-        List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventId(),
+        out.put("evaluation", evaluationService.buildScoped(
+                player.getId(), gameMode, stats, firstPosition(player),
+                scope.eventIds(), evaluationTeamIds, comparisonLabel(scope)));
+        List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventIds(),
                 gameMode);
         out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
         out.put("schedule", schedule);
-        out.put("recentGames", recentGames(player, scope.teamId(), scope.eventId(), gameMode));
+        out.put("recentGames", recentGames(player, scope.teamId(), scope.eventIds(), gameMode));
         return out;
     }
 
@@ -131,8 +136,13 @@ public class ClubhouseService {
         return milestoneService.build(player.getId(), null, config);
     }
 
-    /** 打击落点按需加载：跟随顶部球队/赛事/运动类型范围，模块隐藏时零请求。 */
     public Map<String, Object> getSprays(Long userId, Long teamId, Long eventId, String requestedGameMode) {
+        return getSprays(userId, teamId, null, eventId, requestedGameMode);
+    }
+
+    /** 打击落点按需加载：跟随顶部球队/联盟/赛事/运动类型范围，模块隐藏时零请求。 */
+    public Map<String, Object> getSprays(Long userId, Long teamId, Long leagueId, Long eventId,
+            String requestedGameMode) {
         Player player = findPlayer(userId);
         Long tenantId = player.getTenantId();
         List<PlayerTeam> entries = currentEntries(player.getId());
@@ -140,9 +150,10 @@ public class ClubhouseService {
         Map<String, Object> requestedTeam = findTeam(teams, teamId);
         List<PlayerEventSummaryDTO> playedSummaries =
                 statsService.getPlayerEventSummaries(player.getId(), teamIdOf(requestedTeam), null);
-        Scope scope = resolveScope(requestedTeam, playedSummaries, eventId, requestedGameMode);
+        Scope scope = resolveScope(tenantId, requestedTeam, playedSummaries, leagueId, eventId,
+                requestedGameMode);
         List<HitSprayPointRow> sprays = statsService.getPlayerHitSprays(
-                player.getId(), tenantId, scope.teamId(), scope.eventId(), scope.gameMode());
+                player.getId(), tenantId, scope.teamId(), scope.eventIds(), scope.gameMode());
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("scope", scopeView(scope));
         out.putAll(ClubhouseSprayReport.build(sprays));
@@ -247,6 +258,7 @@ public class ClubhouseService {
         row.put("startDate", event.getStartDate());
         row.put("endDate", event.getEndDate());
         row.put("gameMode", gameMode(event));
+        row.put("leagueId", event.getLeagueId());
         return row;
     }
 
@@ -267,6 +279,8 @@ public class ClubhouseService {
             row.put("startDate", summary.getStartDate());
             row.put("endDate", summary.getEndDate());
             row.put("gameMode", blank(summary.getGameMode()) ? DEFAULT_GAME_MODE : summary.getGameMode());
+            row.put("leagueId", summary.getLeagueId());
+            row.put("leagueName", summary.getLeagueName());
             row.put("teamIds", summary.getTeamIdList());
             row.put("teamNames", summary.getTeamNameList());
             row.put("lastGameday", gamedayDate(summary.getLastGameday()));
@@ -326,13 +340,15 @@ public class ClubhouseService {
     }
 
     /**
-     * 解析筛选范围：null 表示全部球队/生涯；非法或不匹配的入参回落到全部/生涯，不自动选中第一项。
-     * 球队与赛事相互独立：只选赛事时球队仍为全部球队。gameMode 优先级为请求参数 → 所选赛事 → 棒球。
+     * 解析筛选范围：null 表示全部球队/全部联盟/生涯；非法或不匹配的入参回落到不限，不自动选中第一项。
+     * 球队、联盟、赛事相互独立但取交集；选中联盟而未选赛事时，范围是该联盟在当前租户、
+     * 当前运动类型下的全部赛事。gameMode 优先级为请求参数 → 所选赛事 → 棒球。
      * 赛事以球员有计入排行的比赛为准；所选球队在该运动类型下既无已确认赛事也无比赛记录时，
-     * 球队与赛事一起回落到全部/生涯（与球队选项同一口径）。
+     * 球队、联盟与赛事一起回落到全部（与球队选项同一口径）。
      */
-    private Scope resolveScope(Map<String, Object> team, List<PlayerEventSummaryDTO> playedSummaries,
-            Long requestedEventId, String requestedGameMode) {
+    private Scope resolveScope(Long tenantId, Map<String, Object> team,
+            List<PlayerEventSummaryDTO> playedSummaries, Long requestedLeagueId, Long requestedEventId,
+            String requestedGameMode) {
         List<PlayerEventSummaryDTO> played = playedSummaries == null ? List.of() : playedSummaries;
         PlayerEventSummaryDTO event = requestedEventId == null ? null : played.stream()
                 .filter(row -> requestedEventId.equals(row.getEventId()))
@@ -340,16 +356,78 @@ public class ClubhouseService {
                 .orElse(null);
         String eventGameMode = normalizeGameMode(event == null ? null : event.getGameMode());
         String gameMode = resolveGameMode(normalizeGameMode(requestedGameMode), eventGameMode);
-        if (team != null && !hasGameModeEvent(team, gameMode) && !playedGameMode(played, gameMode)) {
+        boolean teamUnavailable = team != null && !hasGameModeEvent(team, gameMode)
+                && !playedGameMode(played, gameMode);
+        if (teamUnavailable) {
+            // 所选球队在当前运动类型下既无已确认赛事也无比赛记录：与球队选项同口径回落到全部
             team = null;
             event = null;
+        }
+        Long leagueFilter = teamUnavailable ? null : requestedLeagueId;
+        Long leagueId = null;
+        String leagueName = null;
+        if (leagueFilter != null) {
+            List<PlayerEventSummaryDTO> leagueEvents = played.stream()
+                    .filter(row -> gameMode.equals(eventGameMode(row))
+                            && leagueFilter.equals(row.getLeagueId()))
+                    .toList();
+            if (!leagueEvents.isEmpty()) {
+                leagueId = leagueFilter;
+                leagueName = leagueEvents.stream()
+                        .map(PlayerEventSummaryDTO::getLeagueName)
+                        .filter(name -> !blank(name))
+                        .findFirst()
+                        .orElse(null);
+            }
+        }
+        if (event != null && leagueId != null && !leagueId.equals(event.getLeagueId())) {
+            event = null;
+        }
+        List<Long> eventIds = resolveEventIds(tenantId, event, leagueId, gameMode);
+        String eventName;
+        if (event != null) {
+            eventName = event.getEventName();
+        } else if (eventIds.isEmpty()) {
+            leagueId = null;
+            leagueName = null;
+            eventName = "生涯";
+        } else {
+            eventName = "全部赛事";
         }
         return new Scope(
                 teamIdOf(team),
                 team == null ? null : asString(team.get("name")),
+                leagueId,
+                leagueName,
                 event == null ? null : event.getEventId(),
-                event == null ? null : event.getEventName(),
+                eventName,
+                eventIds,
                 gameMode);
+    }
+
+    /** 当前范围赛事集合：具体赛事只取该场；选中联盟取该联盟全部赛事；未限制时为空。 */
+    private List<Long> resolveEventIds(Long tenantId, PlayerEventSummaryDTO event, Long leagueId,
+            String gameMode) {
+        if (event != null) {
+            return List.of(event.getEventId());
+        }
+        return leagueId == null ? List.of() : leagueEventIds(tenantId, leagueId, gameMode);
+    }
+
+    /** 联盟范围赛事集合：该联盟在当前租户、当前运动类型下的全部赛事，按赛事 ID 升序。 */
+    private List<Long> leagueEventIds(Long tenantId, Long leagueId, String gameMode) {
+        return eventRepository.findByTenantIdAndLeagueIdInAndDeletedAtIsNull(tenantId, List.of(leagueId))
+                .stream()
+                .filter(item -> gameMode.equals(gameMode(item)))
+                .map(Event::getId)
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+    }
+
+    private String eventGameMode(PlayerEventSummaryDTO row) {
+        String mode = normalizeGameMode(row.getGameMode());
+        return mode == null ? DEFAULT_GAME_MODE : mode;
     }
 
     private Map<String, Object> findTeam(List<Map<String, Object>> teams, Long teamId) {
@@ -372,8 +450,7 @@ public class ClubhouseService {
             return false;
         }
         for (PlayerEventSummaryDTO row : played) {
-            String mode = normalizeGameMode(row.getGameMode());
-            if (gameMode.equals(mode == null ? DEFAULT_GAME_MODE : mode)) {
+            if (gameMode.equals(eventGameMode(row))) {
                 return true;
             }
         }
@@ -382,13 +459,12 @@ public class ClubhouseService {
 
     /** 赛事下拉按当前运动类型过滤；摘要已按最后一场倒序，这里只做筛选不打乱顺序。 */
     private List<PlayerEventSummaryDTO> eventSummariesOf(List<PlayerEventSummaryDTO> played, String gameMode) {
-        if (played == null || played.isEmpty()) {
+        if (played == null) {
             return List.of();
         }
         List<PlayerEventSummaryDTO> out = new ArrayList<>();
         for (PlayerEventSummaryDTO row : played) {
-            String mode = normalizeGameMode(row.getGameMode());
-            if (gameMode.equals(mode == null ? DEFAULT_GAME_MODE : mode)) {
+            if (gameMode.equals(eventGameMode(row))) {
                 out.add(row);
             }
         }
@@ -457,42 +533,40 @@ public class ClubhouseService {
         LinkedHashMap<String, Object> row = new LinkedHashMap<>();
         row.put("teamId", scope.teamId());
         row.put("teamName", scope.teamId() == null ? "全部球队" : scope.teamName());
+        row.put("leagueId", scope.leagueId());
+        row.put("leagueName", scope.leagueId() == null ? "全部联盟" : scope.leagueName());
         row.put("eventId", scope.eventId());
-        row.put("eventName", scope.eventId() == null ? "生涯" : scope.eventName());
+        row.put("eventName", scope.eventName());
+        row.put("eventCount", scope.eventIds().size());
         row.put("gameMode", scope.gameMode());
         row.put("teamAll", scope.teamId() == null);
-        row.put("career", scope.eventId() == null);
+        row.put("leagueAll", scope.leagueId() == null);
+        row.put("career", scope.eventId() == null && scope.leagueId() == null);
         return row;
     }
 
-    /**
-     * 顶部统计按范围取数：选了球队走球队维度（eventId 为空即球队生涯），
-     * 未选球队时沿用现有生涯/按赛事合计口径。
-     */
-    private Map<String, Object> loadStats(Long playerId, Long teamId, Long eventId, String gameMode) {
-        if (teamId != null) {
-            return statsService.getPlayerStatsByTeam(playerId, teamId, eventId, gameMode);
+    /** 评分/雷达对比范围说明：无筛选为全租户生涯，其余按当前球队/联盟/赛事拼接。 */
+    private String comparisonLabel(Scope scope) {
+        if (scope.teamId() == null && scope.leagueId() == null && scope.eventId() == null) {
+            return "全租户生涯";
         }
-        if (eventId != null) {
-            List<PlayerStatsByEventDTO> seasons = statsService.getPlayerStatsBySeason(playerId, gameMode);
-            for (PlayerStatsByEventDTO season : seasons) {
-                if (eventId.equals(season.getEventId())) {
-                    return statsMap(season.getBatting(), season.getPitching(), season.getFielding());
-                }
-            }
-            // 所选赛事没有个人统计时返回空，而不是拿全部赛事合计冒充所选赛事
-            return statsMap(Map.of(), Map.of(), Map.of());
+        List<String> parts = new ArrayList<>();
+        if (scope.teamId() != null) {
+            parts.add(scope.teamName());
         }
-        return statsService.getPlayerStats(playerId, gameMode);
+        if (scope.leagueId() != null) {
+            parts.add(scope.leagueName() == null ? "联盟" : scope.leagueName());
+        }
+        parts.add(scope.eventName());
+        return String.join(" · ", parts);
     }
 
-    private Map<String, Object> statsMap(Map<String, Object> batting, Map<String, Object> pitching,
-            Map<String, Object> fielding) {
-        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
-        out.put("batting", batting == null ? Map.of() : batting);
-        out.put("pitching", pitching == null ? Map.of() : pitching);
-        out.put("fielding", fielding == null ? Map.of() : fielding);
-        return out;
+    /** 顶部统计按范围取数；球队或赛事集合至少有一个限制时走范围查询，否则沿用全生涯统计。 */
+    private Map<String, Object> loadStats(Long playerId, Long teamId, List<Long> eventIds, String gameMode) {
+        if (teamId != null || !eventIds.isEmpty()) {
+            return statsService.getPlayerStatsByScope(playerId, teamId, eventIds, gameMode);
+        }
+        return statsService.getPlayerStats(playerId, gameMode);
     }
 
     private boolean hasBatting(Map<String, Object> stats) {
@@ -537,7 +611,7 @@ public class ClubhouseService {
             out.put("available", !items.isEmpty());
             return out;
         }
-        List<Map<String, Object>> points = performancePoints(playerId, scope.teamId(), scope.eventId(),
+        List<Map<String, Object>> points = performancePoints(playerId, scope.teamId(), scope.eventIds(),
                 gameMode, def);
         Object summary = metricValue(stats, def);
         out.put("points", points);
@@ -546,11 +620,11 @@ public class ClubhouseService {
         return out;
     }
 
-    /** 表现走势：先按球队/赛事过滤再取窗口内计入排行的比赛，保留最近 12 场有效出场。 */
-    private List<Map<String, Object>> performancePoints(Long playerId, Long teamId, Long eventId, String gameMode,
-            ClubhouseMetricCatalog.MetricDef def) {
+    /** 表现走势：先按球队/赛事集合过滤再取窗口内计入排行的比赛，保留最近 12 场有效出场。 */
+    private List<Map<String, Object>> performancePoints(Long playerId, Long teamId, List<Long> eventIds,
+            String gameMode, ClubhouseMetricCatalog.MetricDef def) {
         List<PlayerGameLogEntryDTO> logs = statsService.getPlayerGameLogForScope(
-                playerId, teamId, eventId, PERFORMANCE_LOG_WINDOW, gameMode, true);
+                playerId, teamId, eventIds, PERFORMANCE_LOG_WINDOW, gameMode, true);
         if (logs == null || logs.isEmpty()) {
             return List.of();
         }
@@ -695,9 +769,9 @@ public class ClubhouseService {
             String gameMode) {
         List<Long> teamIds = List.of(scope.teamId());
         List<Map<String, Object>> rows = "pitching".equals(def.domain())
-                ? statsService.getPitchingLeaders(scope.eventId(), null, null, teamIds, null, null, null,
+                ? statsService.getPitchingLeaders(null, scope.eventIds(), null, teamIds, null, null, null,
                         null, null, gameMode, 1, RANK_PAGE_SIZE, def.sortProp(), def.sortOrder(), false).getList()
-                : statsService.getBattingLeaders(scope.eventId(), null, null, teamIds, null, null, null,
+                : statsService.getBattingLeaders(null, scope.eventIds(), null, teamIds, null, null, null,
                         null, null, gameMode, 1, RANK_PAGE_SIZE, def.sortProp(), def.sortOrder(), false).getList();
         return rows == null ? List.of() : rows;
     }
@@ -708,13 +782,13 @@ public class ClubhouseService {
      * （多球队赛事逐场展示实际代表球队）；赛事运动类型必须与当前 scope 一致。</p>
      */
     private List<Map<String, Object>> schedule(Long tenantId, List<Map<String, Object>> teams,
-            Long teamId, Long eventId, String gameMode) {
+            Long teamId, List<Long> scopeEventIds, String gameMode) {
         List<Long> allTeamIds = teams.stream()
                 .map(row -> asLong(row.get("id")))
                 .filter(Objects::nonNull)
                 .toList();
         List<Long> teamIds = teamId == null ? allTeamIds : List.of(teamId);
-        Set<Long> eventIds = scheduleEventIds(teams, teamId, eventId, gameMode);
+        Set<Long> eventIds = scheduleEventIds(teams, teamId, scopeEventIds, gameMode);
         if (teamIds.isEmpty() || eventIds.isEmpty()) {
             return List.of();
         }
@@ -735,12 +809,12 @@ public class ClubhouseService {
                 .toList();
     }
 
-    /** 赛程赛事集合：先按球队/所选赛事收窄，再剔除运动类型与 scope 不一致的赛事。 */
-    private Set<Long> scheduleEventIds(List<Map<String, Object>> teams, Long teamId, Long eventId,
-            String gameMode) {
-        Set<Long> candidates = eventId == null
+    /** 赛程赛事集合：先按球队/赛事集合收窄，再剔除运动类型与 scope 不一致的赛事。 */
+    private Set<Long> scheduleEventIds(List<Map<String, Object>> teams, Long teamId,
+            List<Long> scopeEventIds, String gameMode) {
+        Set<Long> candidates = scopeEventIds.isEmpty()
                 ? confirmedEventIds(teams, teamId)
-                : Set.of(eventId);
+                : new LinkedHashSet<>(scopeEventIds);
         Set<Long> out = new LinkedHashSet<>();
         for (Long id : candidates) {
             if (matchesGameMode(teams, id, gameMode)) {
@@ -838,10 +912,11 @@ public class ClubhouseService {
         return row;
     }
 
-    /** 最近战报：先按球队/赛事过滤再取最近 3 场，逐场展示实际代表球队。 */
-    private List<Map<String, Object>> recentGames(Player player, Long teamId, Long eventId, String gameMode) {
+    /** 最近战报：先按球队/赛事集合过滤再取最近 3 场，逐场展示实际代表球队。 */
+    private List<Map<String, Object>> recentGames(Player player, Long teamId, List<Long> eventIds,
+            String gameMode) {
         List<PlayerGameLogEntryDTO> logs = statsService.getPlayerGameLogForScope(
-                player.getId(), teamId, eventId, MAX_RECENT, gameMode, false);
+                player.getId(), teamId, eventIds, MAX_RECENT, gameMode, false);
         if (logs == null || logs.isEmpty()) {
             return List.of();
         }
@@ -985,6 +1060,7 @@ public class ClubhouseService {
         return value == null || value.isBlank();
     }
 
-    record Scope(Long teamId, String teamName, Long eventId, String eventName, String gameMode) {
+    record Scope(Long teamId, String teamName, Long leagueId, String leagueName, Long eventId,
+            String eventName, List<Long> eventIds, String gameMode) {
     }
 }

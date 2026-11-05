@@ -15,10 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 个人驾驶舱「总体评价」：按全租户生涯口径计算打击、守备雷达与总体评分；
+ * 个人驾驶舱「总体评价」：按当前球队/联盟/赛事范围计算打击、守备雷达与总体评分；
  * 投球雷达只在本人具备投手资格时返回。
  *
- * <p>雷达与外层球队/赛事筛选无关：对比池为当前租户、同一运动类型、有有效生涯数据的球员，
+ * <p>对比池为当前租户、同一运动类型、与顶部筛选一致的球员与赛事范围；无筛选时为全租户生涯，
  * 每个分项取排行榜前 500 名（上限 500 人），不跨租户、不混棒球/垒球。分项按百分位加权，
  * 再按角色权重合并，并按样本量向 50 分收缩；
  * 指标原始值与样本量仍返回给前端，避免只看雷达形状、不看数据。</p>
@@ -61,34 +61,49 @@ public class ClubhouseEvaluationService {
     private final StatsService statsService;
 
     /**
-     * 构建全租户生涯评价。打击、守备卡固定返回，样本不足时标记不可用；
-     * 投球卡只在本人具备投手资格（主要守位为 P，或生涯投球局数 ≥ 5.0）时返回。
+     * 构建全租户生涯评价（保持原有调用口径）。
+     */
+    public Map<String, Object> buildCareer(Long playerId, String gameMode,
+            Map<String, Object> careerStats, String primaryPosition) {
+        return buildScoped(playerId, gameMode, careerStats, primaryPosition,
+                List.of(), List.of(), COMPARISON);
+    }
+
+    /**
+     * 构建当前筛选范围评价。打击、守备卡固定返回，样本不足时标记不可用；
+     * 投球卡只在本人具备投手资格（主要守位为 P，或范围投球局数 ≥ 5.0）时返回。
      *
      * <p>仅为可用的分项拉取对比池：无数据、未达展示门槛或不具备投手资格时不再查询该分项排行榜，
      * 避免驾驶舱首屏为不可用分项付出额外查询。</p>
      *
      * @param playerId        当前球员 ID
      * @param gameMode        BASEBALL / SOFTBALL；为空或非法时按棒球处理
-     * @param careerStats     当前运动类型下跨球队、跨赛事的生涯统计
+     * @param scopeStats      当前筛选范围内的打击/投球/守备统计
      * @param primaryPosition 主要守位（球员档案守位列表首项）：判定投手资格，并用于守备同守位组比较；
      *                        为空时尝试取统计行守位
+     * @param eventIds        当前范围赛事集合；空表示不限制赛事
+     * @param teamIds         当前范围球队集合；空表示不限制球队
+     * @param comparison      评分/雷达对比范围说明
      * @return 含 available / comparison / minSample / cards / overall 的评价数据
      */
-    public Map<String, Object> buildCareer(Long playerId, String gameMode,
-            Map<String, Object> careerStats, String primaryPosition) {
-        Map<String, Object> stats = careerStats == null ? Map.of() : careerStats;
+    public Map<String, Object> buildScoped(Long playerId, String gameMode,
+            Map<String, Object> scopeStats, String primaryPosition, List<Long> eventIds,
+            List<Long> teamIds, String comparison) {
+        Map<String, Object> stats = scopeStats == null ? Map.of() : scopeStats;
         String mode = normalizeGameMode(gameMode);
+        List<Long> scopeEventIds = eventIds == null || eventIds.isEmpty() ? null : eventIds;
+        List<Long> scopeTeamIds = teamIds == null || teamIds.isEmpty() ? null : teamIds;
         Map<String, Object> battingStats = asMap(stats.get("batting"));
         Map<String, Object> pitchingStats = asMap(stats.get("pitching"));
         Map<String, Object> fieldingStats = asMap(stats.get("fielding"));
         boolean primaryPitcher = isPrimaryPitcher(primaryPosition);
         boolean pitcherEligible = primaryPitcher || innings(pitchingStats) >= PITCHER_MIN_IP;
         List<Map<String, Object>> battingPool = battingReady(battingStats)
-                ? battingPool(mode) : List.of();
+                ? battingPool(mode, scopeEventIds, scopeTeamIds) : List.of();
         List<Map<String, Object>> pitchingPool = pitcherEligible && pitchingReady(pitchingStats)
-                ? pitchingPool(mode) : List.of();
+                ? pitchingPool(mode, scopeEventIds, scopeTeamIds) : List.of();
         List<Map<String, Object>> fieldingPool = fieldingReady(fieldingStats)
-                ? fieldingPool(mode) : List.of();
+                ? fieldingPool(mode, scopeEventIds, scopeTeamIds) : List.of();
 
         CardResult batting = battingCard(playerId, stats, battingPool);
         CardResult fielding = fieldingCard(playerId, primaryPosition, stats, fieldingPool);
@@ -105,7 +120,7 @@ public class ClubhouseEvaluationService {
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("available", overall.get("score") != null);
-        out.put("comparison", COMPARISON);
+        out.put("comparison", comparison == null || comparison.isBlank() ? COMPARISON : comparison);
         out.put("minSample", minSample());
         out.put("cards", cards);
         out.put("overall", overall);
@@ -485,19 +500,22 @@ public class ClubhouseEvaluationService {
         return (int) Math.max(0, Math.min(100, Math.round(rank * 100.0 / (values.size() - 1))));
     }
 
-    private List<Map<String, Object>> battingPool(String gameMode) {
-        return safeList(statsService.getBattingLeaders(null, null, null, null, null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "pa", "desc", false));
+    private List<Map<String, Object>> battingPool(String gameMode, List<Long> eventIds,
+            List<Long> teamIds) {
+        return safeList(statsService.getBattingLeaders(null, eventIds, null, teamIds, null, null, null,
+                null, null, gameMode, 1, MAX_POOL, "pa", "desc", false));
     }
 
-    private List<Map<String, Object>> pitchingPool(String gameMode) {
-        return safeList(statsService.getPitchingLeaders(null, null, null, null, null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "ip", "desc", false));
+    private List<Map<String, Object>> pitchingPool(String gameMode, List<Long> eventIds,
+            List<Long> teamIds) {
+        return safeList(statsService.getPitchingLeaders(null, eventIds, null, teamIds, null, null, null,
+                null, null, gameMode, 1, MAX_POOL, "ip", "desc", false));
     }
 
-    private List<Map<String, Object>> fieldingPool(String gameMode) {
-        return safeList(statsService.getFieldingLeaders(null, null, null, null, null, null,
-                null, null, null, gameMode, 1, MAX_POOL, "inn", "desc"));
+    private List<Map<String, Object>> fieldingPool(String gameMode, List<Long> eventIds,
+            List<Long> teamIds) {
+        return safeList(statsService.getFieldingLeaders(null, eventIds, null, teamIds, null, null, null,
+                null, null, gameMode, 1, MAX_POOL, "inn", "desc"));
     }
 
     private List<Map<String, Object>> safeList(PageResult<Map<String, Object>> page) {
