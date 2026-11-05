@@ -40,10 +40,16 @@ test('守备投手解析：fpId 在打线中时可从打线行取投手', () => 
 
 test('普通 DH 移防只允许当前守备方，避免把非守备方 DH 拖到球场', () => {
   assert.match(src, /if\(side!==cr\(\)\)\{\s*J\("只能调整当前守备方的守位"/);
-  assert.match(src, /hit\?\.kind==="fielder"&&hit\.code!=="P"&&s\.side===cr\(\)/);
+  assert.match(src, /hit\?\.kind==="fielder"&&s\.side===cr\(\)/);
 });
 
 test('并行行合并：byPos 对象走专用合并，不能被 Number 运算变成 NaN', () => {
   assert.match(src, /mergeFieldingByPos\(current\[field\],incoming\[field\]\)/);
   assert.match(src, /if\(field==="byPos"\)/);
+});
+
+test('普通 DH 拖到投手位：取消 DH 并换投，DH 球员留在原棒次打击', () => {
+  assert.match(src, /取消DH并换投/);
+  assert.match(src, /转为投手 P，继续在第\$\{dhIndex\+1\}棒打击/);
+  assert.match(src, /ctx\.lineup\.value\[dhIndex\]=\{\.\.\.dh,position:"P"/);
 });

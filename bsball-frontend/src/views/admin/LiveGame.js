@@ -10831,13 +10831,40 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       const code=String(targetCode??"").toUpperCase();
-      if(!code||code==="P"){
-        J("请选择投手以外的守备位置","warning");
+      if(!code){
+        J("请选择守备位置","warning");
         return
       }
       const ctx=Ee(side),dhIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)==="DH"),dh=dhIndex>=0?ctx.lineup.value[dhIndex]:null;
       if(!dh||String(dh.id)!==String(dhPlayer?.id)){
         J("DH 状态已变化，请重试","warning");
+        return
+      }
+      if(code==="P"){
+        if(oa(ctx.lineup.value)){
+          J("打线已有投手位，不能直接取消DH；请先调整阵容","warning");
+          return
+        }
+        const fpId=Number(ctx.fpId.value),pitcher=ctx.fpRow.value&&Number(ctx.fpRow.value.id)===fpId?ctx.fpRow.value:ctx.bench.value.find(p=>Number(p.id)===fpId)??ctx.roster.value.find(p=>Number(p.id)===fpId);
+        if(!pitcher){
+          J("找不到当前守备投手，无法取消 DH","warning");
+          return
+        }
+        const rule=dhRuleForSide(side),lines=[`此操作将取消 DH：`,`· ${logPlayerName(dh)}（DH）转为投手 P，继续在第${dhIndex+1}棒打击`,`· 原投手 ${logPlayerName(pitcher)} 退场`,`· 球队失去 DH，后续投手须在该棒次打击`];
+        rule.ok||lines.push("",`规则提醒：${rule.warning}`);
+        try{
+          await al.confirm(substitutionModeHtml(lines),"取消DH并换投",{
+            dangerouslyUseHTMLString:!0,confirmButtonText:"确认取消DH并换投",cancelButtonText:"返回",type:"warning",draggable:!0
+          }
+          )
+        }
+        catch{
+          return
+        }
+        ctx.lineup.value[dhIndex]={...dh,position:"P",firstPosition:firstFieldPositionOf(dh,"P"),stats:dh.stats??Pt()};
+        ctx.fpId.value=Number(dh.id);
+        // 保留旧 fpRow，让 ft() 回收旧投手并重新指向新的 P 行
+        ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 转为 P，原投手 ${logPlayerName(pitcher)} 退场`})),Kt();
         return
       }
       const fielderIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)===code),fielder=fielderIndex>=0?ctx.lineup.value[fielderIndex]:null;
@@ -11173,7 +11200,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return
         }
         s.layout||(s.layout=liveBenchCollectFieldLayout());
-        liveBenchHoverHit.value=resolveLiveSubDropHits(event.clientX,event.clientY,s.layout).find(h=>h.kind==="fielder"&&h.code!=="P")??null;
+        liveBenchHoverHit.value=resolveLiveSubDropHits(event.clientX,event.clientY,s.layout).find(h=>h.kind==="fielder")??null;
         return
       }
       s.layout||(s.layout=liveBenchCollectFieldLayout());
@@ -11199,7 +11226,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const moved=s.moved,hit=moved?liveBenchHoverHit.value:null,el=s.dhEl;
         liveBenchCleanupDrag();
         if(!moved)return;
-        if(hit?.kind==="fielder"&&hit.code!=="P"&&s.side===cr()){
+        if(hit?.kind==="fielder"&&s.side===cr()){
           confirmDhEnterDefense(s.side,s.player,hit.code);
           return
         }
@@ -11238,7 +11265,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const src=ui?.sourceKind??(pd?(pd.side==="offense"?"offenseBench":"defenseBench"):null);
       if(!src)return[];
       const kinds=ui?.sourceKind==="dhCard"&&ohtaniDhInfo(ui.side)?[]:liveSubTargetKinds(src),hv=liveBenchHoverHit.value,out=[];
-      if(kinds.includes("fielder"))for(const code of Wr.value)(src==="dhCard"&&code==="P")||ui?.sourcePos===code||out.push({
+      if(kinds.includes("fielder"))for(const code of Wr.value)ui?.sourcePos===code||out.push({
         key:"f-"+code,cx:za(code).x,cy:za(code).y,hot:!!hv&&hv.kind==="fielder"&&hv.code===code
       }
       );
