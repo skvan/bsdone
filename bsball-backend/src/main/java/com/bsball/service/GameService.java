@@ -9,6 +9,7 @@ import com.bsball.common.PaginationSupport;
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
+import com.bsball.model.dto.EarnedRunDecisionAdjustRequest;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
@@ -670,6 +671,65 @@ public class GameService {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u6bd4\u8d5b");
         }
         return this.earnedRunReconstructionService.listDecisions(game.getTenantId(), gameId);
+    }
+
+    /** 赛后复核：把一条 ER 判定改派给同队另一名投手。 */
+    public EarnedRunDecisionListDTO reassignEarnedRunDecision(
+            Long gameId, Long decisionId, EarnedRunDecisionAdjustRequest request) {
+        if (request == null || request.getTargetPitcherId() == null) {
+            throw new BusinessException(400, "请选择改派目标投手");
+        }
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能改派判定");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.reassignDecision(
+                    game.getTenantId(), gameId, decisionId,
+                    request.getTargetPitcherId(), request.getReason(), operatorId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该判定已有其他调整，请刷新后重试");
+        }
+    }
+
+    /** 赛后复核：作废一条误录 ER 判定，原始判定保留。 */
+    public EarnedRunDecisionListDTO voidEarnedRunDecision(
+            Long gameId, Long decisionId, EarnedRunDecisionAdjustRequest request) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能作废判定");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.voidDecision(
+                    game.getTenantId(), gameId, decisionId,
+                    request == null ? null : request.getReason(), operatorId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该判定已有其他调整，请刷新后重试");
+        }
+    }
+
+    /** 赛后复核：撤销最近一次判定改派/作废。 */
+    public EarnedRunDecisionListDTO revokeEarnedRunDecisionAdjustment(
+            Long gameId, Long adjustmentId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能撤销判定调整");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            return this.earnedRunReconstructionService.revokeDecisionAdjustment(
+                    game.getTenantId(), gameId, adjustmentId, operatorId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该判定已有其他调整，请刷新后重试");
+        }
     }
 
     /** 赛后守备补记：列出源 Play 候选与已补记记录，仅已完赛比赛可用。 */

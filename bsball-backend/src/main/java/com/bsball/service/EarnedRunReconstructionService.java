@@ -5,6 +5,7 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
+import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
@@ -12,6 +13,7 @@ import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
+import com.bsball.repository.ErDecisionAdjustmentRepository;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
@@ -52,6 +54,11 @@ public class EarnedRunReconstructionService {
     private static final String OVERRIDE_INVALIDATED = "INVALIDATED";
     private static final String TRANSFER_STATUS_TRANSFERRED = "TRANSFERRED";
     private static final String TRANSFER_STATUS_DELETED = "DELETED";
+    static final String ADJUSTMENT_ACTIVE = "ACTIVE";
+    static final String ADJUSTMENT_SUPERSEDED = "SUPERSEDED";
+    static final String ADJUSTMENT_REVOKED = "REVOKED";
+    static final String ADJUSTMENT_REASSIGN = "REASSIGN";
+    static final String ADJUSTMENT_VOID = "VOID";
 
     private final EarnedRunPlayRepository playRepository;
     private final EarnedRunDecisionRepository decisionRepository;
@@ -60,6 +67,7 @@ public class EarnedRunReconstructionService {
     private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
     private final GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository;
     private final GamePitcherTransferRepository gamePitcherTransferRepository;
+    private final ErDecisionAdjustmentRepository erDecisionAdjustmentRepository;
     private final EarnedRunReconstructionEngine engine;
     private final PlayerRepository playerRepository;
     private final ObjectMapper objectMapper;
@@ -73,6 +81,7 @@ public class EarnedRunReconstructionService {
             GameFieldingPosStatRepository gameFieldingPosStatRepository,
             GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository,
             GamePitcherTransferRepository gamePitcherTransferRepository,
+            ErDecisionAdjustmentRepository erDecisionAdjustmentRepository,
             PlayerRepository playerRepository,
             ObjectMapper objectMapper) {
         this.playRepository = playRepository;
@@ -82,6 +91,7 @@ public class EarnedRunReconstructionService {
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
         this.gameFieldingAdjustmentRepository = gameFieldingAdjustmentRepository;
         this.gamePitcherTransferRepository = gamePitcherTransferRepository;
+        this.erDecisionAdjustmentRepository = erDecisionAdjustmentRepository;
         this.playerRepository = playerRepository;
         this.objectMapper = objectMapper;
         // 审计快照包含 BaseEntity 的 LocalDateTime；项目 ObjectMapper 未注册 JavaTimeModule，使用副本注册。
@@ -96,6 +106,15 @@ public class EarnedRunReconstructionService {
     private record DoubleStatField(
             Function<GamePlayerStat, Double> getter,
             BiConsumer<GamePlayerStat, Double> setter) {}
+
+    private record DecisionKey(String sourceEventId, Long runnerId) {}
+
+    private record DecisionView(
+            EarnedRunDecisionEntity decision,
+            EarnedRunPlayEntity play,
+            Long effectivePitcherId,
+            boolean voided,
+            ErDecisionAdjustment adjustment) {}
 
     private static final List<IntStatField> PITCHER_TRANSFER_INT_FIELDS = List.of(
             new IntStatField(GamePlayerStat::getNp, GamePlayerStat::setNp),
@@ -179,11 +198,27 @@ public class EarnedRunReconstructionService {
         return gameId > 0 && playRepository.existsByGameId(gameId);
     }
 
-    /** 该场是否仍有以该投手为责任投手的自责分判定；删除投手统计行前的守卫。 */
+    /** 该场是否仍有以该投手为有效责任投手的自责分判定；删除投手统计行前的守卫。 */
     public boolean hasResponsiblePitcherDecisions(long gameId, long pitcherId) {
-        return gameId > 0 && pitcherId > 0
-                && decisionRepository.existsByGameIdAndResponsiblePitcherId(
-                        Long.valueOf(gameId), Long.valueOf(pitcherId));
+        if (gameId <= 0 || pitcherId <= 0) {
+            return false;
+        }
+        List<EarnedRunDecisionEntity> decisions = decisionRepository.findByGameId(gameId);
+        if (decisions.isEmpty()) {
+            return false;
+        }
+        Map<Long, String> sourceEventByPlayId =
+                sourceEventByPlayId(playRepository.findByGameId(gameId));
+        Map<DecisionKey, ErDecisionAdjustment> adjustments = activeAdjustmentsByKey(
+                erDecisionAdjustmentRepository.findByGameIdAndStatus(
+                        gameId, ADJUSTMENT_ACTIVE));
+        for (EarnedRunDecisionEntity decision : decisions) {
+            Long effective = effectivePitcherId(decision, sourceEventByPlayId, adjustments);
+            if (Objects.equals(effective, pitcherId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 赛后复核：列出本场全部投手的 R/ER 合计与生效中的人工覆写。 */
@@ -576,9 +611,14 @@ public class EarnedRunReconstructionService {
         EarnedRunDecisionEntity entity = decisionRepository
                 .findByIdAndTenantIdAndGameId(decisionId, tenantId, gameId)
                 .orElseThrow(() -> new IllegalArgumentException("Earned-run decision not found"));
-        if (entity.getResponsiblePitcherId() != null
+        ErDecisionAdjustment adjustment = findActiveAdjustment(tenantId, gameId, entity);
+        if (adjustment != null && ADJUSTMENT_VOID.equals(adjustment.getAction())) {
+            throw new IllegalArgumentException("该判定已作废，请先恢复再修改判定");
+        }
+        Long effectivePitcher = effectivePitcherId(entity, adjustment);
+        if (effectivePitcher != null
                 && this.pitcherRunOverrideRepository.existsByTenantIdAndGameIdAndPlayerIdAndStatus(
-                        tenantId, gameId, entity.getResponsiblePitcherId(), OVERRIDE_APPROVED)) {
+                        tenantId, gameId, effectivePitcher, OVERRIDE_APPROVED)) {
             throw new IllegalArgumentException("该投手已手工覆写 R/ER，请先撤销覆写再修改判定");
         }
         entity.setEarnedStatus(next.name());
@@ -589,6 +629,126 @@ public class EarnedRunReconstructionService {
         // 覆核只改单条判定，但仍按该场全量判定绝对重算，避免增量误差残留。
         recomputePitcherStats(tenantId, gameId, null);
         return saved;
+    }
+
+    /** 把判定改派给同队另一名投手；原始判定保留，写入人工调整审计。 */
+    @Transactional
+    public EarnedRunDecisionListDTO reassignDecision(long tenantId, long gameId, long decisionId,
+            Long targetPitcherId, String reason, long operatorId) {
+        return adjustDecision(tenantId, gameId, decisionId, ADJUSTMENT_REASSIGN,
+                targetPitcherId, reason, operatorId);
+    }
+
+    /** 作废误录判定：不再计入任何投手 R/ER；原始判定保留。 */
+    @Transactional
+    public EarnedRunDecisionListDTO voidDecision(long tenantId, long gameId, long decisionId,
+            String reason, long operatorId) {
+        return adjustDecision(tenantId, gameId, decisionId, ADJUSTMENT_VOID,
+                null, reason, operatorId);
+    }
+
+    private EarnedRunDecisionListDTO adjustDecision(long tenantId, long gameId, long decisionId,
+            String action, Long targetPitcherId, String reason, long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || decisionId <= 0 || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, decision and operator must be positive");
+        }
+        if (reason != null && reason.trim().length() > 200) {
+            throw new IllegalArgumentException("原因不能超过 200 字");
+        }
+        EarnedRunDecisionEntity decision = decisionRepository
+                .findByIdAndTenantIdAndGameId(decisionId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("ER 判定不存在"));
+        if (decision.getResponsiblePitcherId() == null) {
+            throw new IllegalArgumentException("判定缺少责任投手");
+        }
+        EarnedRunPlayEntity play = playRepository.findById(decision.getPlayId())
+                .orElseThrow(() -> new IllegalArgumentException("判定关联 Play 不存在"));
+        if (play.getSourceEventId() == null || play.getSourceEventId().isBlank()) {
+            throw new IllegalArgumentException("源 Play 缺少业务 ID，无法记录调整");
+        }
+        ErDecisionAdjustment active = findActiveAdjustment(tenantId, gameId, decision);
+        Long currentEffective = effectivePitcherId(decision, active);
+        if (ADJUSTMENT_VOID.equals(action)
+                && active != null && ADJUSTMENT_VOID.equals(active.getAction())) {
+            throw new IllegalArgumentException("该判定已作废");
+        }
+        if (ADJUSTMENT_REASSIGN.equals(action)) {
+            if (targetPitcherId == null || targetPitcherId <= 0) {
+                throw new IllegalArgumentException("请选择改派目标投手");
+            }
+            GamePlayerStat original = requirePitcherStat(
+                    tenantId, gameId, decision.getResponsiblePitcherId());
+            GamePlayerStat target = requirePitcherStat(tenantId, gameId, targetPitcherId);
+            if (!Objects.equals(original.getTeamId(), target.getTeamId())) {
+                throw new IllegalArgumentException("只能改派给同队投手");
+            }
+            if (Objects.equals(currentEffective, targetPitcherId)) {
+                throw new IllegalArgumentException("目标投手已是当前有效责任投手");
+            }
+        }
+        Set<Long> affectedPitcherIds = new HashSet<>();
+        affectedPitcherIds.add(decision.getResponsiblePitcherId());
+        if (active != null && active.getTargetPitcherId() != null) {
+            affectedPitcherIds.add(active.getTargetPitcherId());
+        }
+        if (ADJUSTMENT_REASSIGN.equals(action)) {
+            affectedPitcherIds.add(targetPitcherId);
+        }
+        for (ErDecisionAdjustment current : erDecisionAdjustmentRepository
+                .findByTenantIdAndGameIdAndSourceEventIdAndRunnerIdAndStatus(
+                        tenantId, gameId, play.getSourceEventId(),
+                        decision.getRunnerId(), ADJUSTMENT_ACTIVE)) {
+            current.setStatus(ADJUSTMENT_SUPERSEDED);
+            current.setUpdatedBy(operatorId);
+            // 必须先 flush 旧 ACTIVE 行，避免部分唯一索引在插入新 ACTIVE 时冲突。
+            erDecisionAdjustmentRepository.saveAndFlush(current);
+        }
+        ErDecisionAdjustment row = new ErDecisionAdjustment();
+        row.setTenantId(tenantId);
+        row.setGameId(gameId);
+        row.setDecisionId(decision.getId());
+        row.setSourceEventId(play.getSourceEventId());
+        row.setRunnerId(decision.getRunnerId());
+        row.setAction(action);
+        row.setTargetPitcherId(ADJUSTMENT_REASSIGN.equals(action) ? targetPitcherId : null);
+        row.setStatus(ADJUSTMENT_ACTIVE);
+        row.setReason(normalizeNote(reason));
+        row.setCreatedBy(operatorId);
+        row.setUpdatedBy(operatorId);
+        erDecisionAdjustmentRepository.save(row);
+        recomputePitcherStats(tenantId, gameId, null, affectedPitcherIds);
+        return findDecisionDto(tenantId, gameId, decisionId);
+    }
+
+    /** 撤销最近一次改派/作废，恢复引擎责任投手。 */
+    @Transactional
+    public EarnedRunDecisionListDTO revokeDecisionAdjustment(long tenantId, long gameId,
+            long adjustmentId, long operatorId) {
+        if (tenantId <= 0 || gameId <= 0 || adjustmentId <= 0 || operatorId <= 0) {
+            throw new IllegalArgumentException("Tenant, game, adjustment and operator must be positive");
+        }
+        ErDecisionAdjustment row = erDecisionAdjustmentRepository
+                .findByIdAndTenantIdAndGameId(adjustmentId, tenantId, gameId)
+                .orElseThrow(() -> new IllegalArgumentException("判定调整记录不存在"));
+        if (!ADJUSTMENT_ACTIVE.equals(row.getStatus())) {
+            throw new IllegalArgumentException("该调整已撤销或被替代");
+        }
+        row.setStatus(ADJUSTMENT_REVOKED);
+        row.setRevokedBy(operatorId);
+        row.setRevokedAt(LocalDateTime.now());
+        row.setUpdatedBy(operatorId);
+        erDecisionAdjustmentRepository.save(row);
+        EarnedRunDecisionEntity decision = findDecisionByKey(
+                tenantId, gameId, row.getSourceEventId(), row.getRunnerId());
+        Set<Long> affectedPitcherIds = new HashSet<>();
+        if (decision != null && decision.getResponsiblePitcherId() != null) {
+            affectedPitcherIds.add(decision.getResponsiblePitcherId());
+        }
+        if (row.getTargetPitcherId() != null) {
+            affectedPitcherIds.add(row.getTargetPitcherId());
+        }
+        recomputePitcherStats(tenantId, gameId, null, affectedPitcherIds);
+        return decision == null ? null : findDecisionDto(tenantId, gameId, decision.getId());
     }
 
     /**
@@ -712,10 +872,19 @@ public class EarnedRunReconstructionService {
     }
 
     private Map<Long, int[]> enginePitcherTotals(long tenantId, long gameId) {
+        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
+        Map<DecisionKey, ErDecisionAdjustment> adjustments =
+                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
         Map<Long, int[]> totals = new HashMap<>();
         for (EarnedRunDecisionEntity decision : decisionRepository
                 .findByTenantIdAndGameId(tenantId, gameId)) {
-            Long pitcherId = decision.getResponsiblePitcherId();
+            ErDecisionAdjustment adjustment = adjustmentFor(
+                    sourceEventByPlayId.get(decision.getPlayId()),
+                    decision.getRunnerId(), adjustments);
+            if (adjustment != null && ADJUSTMENT_VOID.equals(adjustment.getAction())) {
+                continue;
+            }
+            Long pitcherId = effectivePitcherId(decision, adjustment);
             if (pitcherId == null) {
                 continue;
             }
@@ -1004,28 +1173,49 @@ public class EarnedRunReconstructionService {
                 .collect(Collectors.toMap(EarnedRunPlayEntity::getId, p -> p, (a, b) -> a));
         List<EarnedRunDecisionEntity> decisions =
                 decisionRepository.findByTenantIdAndGameId(tenantId, gameId);
-        Map<Long, String> playerNames = loadPlayerNames(decisions);
+        Map<DecisionKey, ErDecisionAdjustment> adjustments =
+                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
+        List<DecisionView> views = decisions.stream()
+                .map(decision -> toDecisionView(decision, playById, adjustments))
+                .toList();
+        Set<Long> playerIds = new HashSet<>();
+        for (DecisionView view : views) {
+            EarnedRunDecisionEntity decision = view.decision();
+            addIfPresent(playerIds, decision.getRunnerId());
+            addIfPresent(playerIds, decision.getResponsiblePitcherId());
+            addIfPresent(playerIds, decision.getReachedBasePitcherId());
+            addIfPresent(playerIds, view.effectivePitcherId());
+        }
+        Map<Long, String> playerNames = loadPlayerNames(playerIds);
 
-        return decisions.stream()
-                .map(d -> {
-                    EarnedRunPlayEntity play = playById.get(d.getPlayId());
+        return views.stream()
+                .map(view -> {
+                    EarnedRunDecisionEntity decision = view.decision();
+                    EarnedRunPlayEntity play = view.play();
+                    ErDecisionAdjustment adjustment = view.adjustment();
                     return new EarnedRunDecisionListDTO(
-                            d.getId(),
-                            d.getPlayId(),
+                            decision.getId(),
+                            decision.getPlayId(),
                             play != null ? play.getInning() : null,
                             play != null ? play.getHalf() : null,
                             play != null ? play.getSequence() : null,
-                            d.getRunnerId(),
-                            resolvePlayerName(playerNames, d.getRunnerId()),
-                            d.getResponsiblePitcherId(),
-                            resolvePlayerName(playerNames, d.getResponsiblePitcherId()),
-                            d.getReachedBasePitcherId(),
-                            resolvePlayerName(playerNames, d.getReachedBasePitcherId()),
-                            d.getEarnedStatus(),
-                            d.getUnearnedReason(),
-                            d.getRunnerOrigin(),
-                            d.getOverriddenBy(),
-                            d.getOverriddenAt());
+                            decision.getRunnerId(),
+                            resolvePlayerName(playerNames, decision.getRunnerId()),
+                            decision.getResponsiblePitcherId(),
+                            resolvePlayerName(playerNames, decision.getResponsiblePitcherId()),
+                            decision.getReachedBasePitcherId(),
+                            resolvePlayerName(playerNames, decision.getReachedBasePitcherId()),
+                            decision.getEarnedStatus(),
+                            decision.getUnearnedReason(),
+                            decision.getRunnerOrigin(),
+                            decision.getOverriddenBy(),
+                            decision.getOverriddenAt(),
+                            view.effectivePitcherId(),
+                            resolvePlayerName(playerNames, view.effectivePitcherId()),
+                            adjustment != null ? adjustment.getId() : null,
+                            adjustment != null ? adjustment.getAction() : null,
+                            adjustment != null ? adjustment.getReason() : null,
+                            view.voided());
                 })
                 .sorted((a, b) -> {
                     int ia = a.inning() != null ? a.inning() : Integer.MAX_VALUE;
@@ -1041,19 +1231,136 @@ public class EarnedRunReconstructionService {
                 .toList();
     }
 
-    /** 批次載入判定列涉及的球員名稱，避免逐列查詢。 */
-    private Map<Long, String> loadPlayerNames(List<EarnedRunDecisionEntity> decisions) {
-        Set<Long> playerIds = new HashSet<>();
-        for (EarnedRunDecisionEntity decision : decisions) {
-            addIfPresent(playerIds, decision.getRunnerId());
-            addIfPresent(playerIds, decision.getResponsiblePitcherId());
-            addIfPresent(playerIds, decision.getReachedBasePitcherId());
-        }
-        Map<Long, String> playerNames = new HashMap<>();
-        if (!playerIds.isEmpty()) {
-            for (Player player : playerRepository.findAllById(playerIds)) {
-                playerNames.put(player.getId(), player.getName());
+    private DecisionView toDecisionView(EarnedRunDecisionEntity decision,
+            Map<Long, EarnedRunPlayEntity> playById,
+            Map<DecisionKey, ErDecisionAdjustment> adjustments) {
+        EarnedRunPlayEntity play = playById.get(decision.getPlayId());
+        String sourceEventId = play != null ? play.getSourceEventId() : null;
+        ErDecisionAdjustment adjustment = adjustmentFor(
+                sourceEventId, decision.getRunnerId(), adjustments);
+        boolean voided = adjustment != null
+                && ADJUSTMENT_VOID.equals(adjustment.getAction());
+        Long effectivePitcherId = effectivePitcherId(decision, adjustment);
+        return new DecisionView(decision, play, effectivePitcherId, voided, adjustment);
+    }
+
+    private List<ErDecisionAdjustment> activeAdjustments(long tenantId, long gameId) {
+        return erDecisionAdjustmentRepository.findByTenantIdAndGameIdAndStatus(
+                tenantId, gameId, ADJUSTMENT_ACTIVE);
+    }
+
+    private Map<DecisionKey, ErDecisionAdjustment> activeAdjustmentsByKey(
+            List<ErDecisionAdjustment> rows) {
+        Map<DecisionKey, ErDecisionAdjustment> result = new HashMap<>();
+        for (ErDecisionAdjustment row : rows) {
+            if (row.getSourceEventId() == null || row.getRunnerId() == null) {
+                continue;
             }
+            DecisionKey key = new DecisionKey(row.getSourceEventId(), row.getRunnerId());
+            ErDecisionAdjustment existing = result.get(key);
+            if (existing == null || idOf(row) > idOf(existing)) {
+                result.put(key, row);
+            }
+        }
+        return result;
+    }
+
+    private static long idOf(ErDecisionAdjustment row) {
+        return row.getId() == null ? 0 : row.getId();
+    }
+
+    private ErDecisionAdjustment adjustmentFor(String sourceEventId, Long runnerId,
+            Map<DecisionKey, ErDecisionAdjustment> adjustments) {
+        if (sourceEventId == null || runnerId == null) {
+            return null;
+        }
+        return adjustments.get(new DecisionKey(sourceEventId, runnerId));
+    }
+
+    private Long effectivePitcherId(EarnedRunDecisionEntity decision,
+            ErDecisionAdjustment adjustment) {
+        if (adjustment != null) {
+            if (ADJUSTMENT_VOID.equals(adjustment.getAction())) {
+                return null;
+            }
+            if (ADJUSTMENT_REASSIGN.equals(adjustment.getAction())) {
+                return adjustment.getTargetPitcherId();
+            }
+        }
+        return decision.getResponsiblePitcherId();
+    }
+
+    private Long effectivePitcherId(EarnedRunDecisionEntity decision,
+            Map<Long, String> sourceEventByPlayId,
+            Map<DecisionKey, ErDecisionAdjustment> adjustments) {
+        return effectivePitcherId(decision, adjustmentFor(
+                sourceEventByPlayId.get(decision.getPlayId()),
+                decision.getRunnerId(), adjustments));
+    }
+
+    private Map<Long, String> sourceEventByPlayId(long tenantId, long gameId) {
+        return sourceEventByPlayId(playRepository.findByTenantIdAndGameId(tenantId, gameId));
+    }
+
+    private Map<Long, String> sourceEventByPlayId(List<EarnedRunPlayEntity> plays) {
+        return plays.stream()
+                .filter(play -> play.getId() != null && play.getSourceEventId() != null)
+                .collect(Collectors.toMap(EarnedRunPlayEntity::getId,
+                        EarnedRunPlayEntity::getSourceEventId, (first, second) -> first));
+    }
+
+    private ErDecisionAdjustment findActiveAdjustment(long tenantId, long gameId,
+            EarnedRunDecisionEntity decision) {
+        if (decision.getPlayId() == null || decision.getRunnerId() == null) {
+            return null;
+        }
+        EarnedRunPlayEntity play = playRepository.findById(decision.getPlayId()).orElse(null);
+        if (play == null || play.getSourceEventId() == null) {
+            return null;
+        }
+        return erDecisionAdjustmentRepository
+                .findFirstByTenantIdAndGameIdAndSourceEventIdAndRunnerIdAndStatusOrderByIdDesc(
+                        tenantId, gameId, play.getSourceEventId(),
+                        decision.getRunnerId(), ADJUSTMENT_ACTIVE)
+                .orElse(null);
+    }
+
+    private EarnedRunDecisionEntity findDecisionByKey(long tenantId, long gameId,
+            String sourceEventId, Long runnerId) {
+        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
+        for (EarnedRunDecisionEntity decision : decisionRepository
+                .findByTenantIdAndGameId(tenantId, gameId)) {
+            if (Objects.equals(decision.getRunnerId(), runnerId)
+                    && Objects.equals(sourceEventByPlayId.get(decision.getPlayId()),
+                            sourceEventId)) {
+                return decision;
+            }
+        }
+        return null;
+    }
+
+    private EarnedRunDecisionListDTO findDecisionDto(long tenantId, long gameId, long decisionId) {
+        return listDecisions(tenantId, gameId).stream()
+                .filter(row -> Objects.equals(row.decisionId(), decisionId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private GamePlayerStat requirePitcherStat(long tenantId, long gameId, long playerId) {
+        return loadTenantStats(tenantId, gameId).stream()
+                .filter(stat -> Objects.equals(stat.getPlayerId(), playerId))
+                .filter(stat -> Integer.valueOf(1).equals(stat.getIsPitcher()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("球员不是本场投手: " + playerId));
+    }
+
+    private Map<Long, String> loadPlayerNames(Set<Long> playerIds) {
+        Map<Long, String> playerNames = new HashMap<>();
+        if (playerIds == null || playerIds.isEmpty()) {
+            return playerNames;
+        }
+        for (Player player : playerRepository.findAllById(playerIds)) {
+            playerNames.put(player.getId(), player.getName());
         }
         return playerNames;
     }

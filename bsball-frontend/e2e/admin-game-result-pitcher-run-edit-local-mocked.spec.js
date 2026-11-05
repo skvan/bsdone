@@ -109,6 +109,8 @@ async function setup(page) {
   });
 
   let sourceDeleted = false;
+  let decisionReassigned = false;
+  let decisionVoided = false;
   await page.route('**/bsball-server/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -126,17 +128,44 @@ async function setup(page) {
       data = [{
         decisionId: 901, gameId: GAME_ID, inning: 2, half: 'bottom', sequence: 5,
         runnerName: 'T2P1', responsiblePitcherId: 1100, pitcherName: 'T1PITCHER',
-        earnedStatus: 'EARNED', unearnedReason: null, overriddenBy: null
+        earnedStatus: 'EARNED', unearnedReason: null, overriddenBy: null,
+        effectivePitcherId: decisionVoided ? null : (decisionReassigned ? 1114 : 1100),
+        effectivePitcherName: decisionVoided ? null : (decisionReassigned ? 'T1PITCHER2' : 'T1PITCHER'),
+        adjustmentId: decisionVoided || decisionReassigned ? 88 : null,
+        adjustmentAction: decisionVoided ? 'VOID' : (decisionReassigned ? 'REASSIGN' : null),
+        adjustmentReason: decisionVoided ? '误录' : (decisionReassigned ? '应为 16 号' : null),
+        voided: decisionVoided
       }];
     } else if (path === `/game/${GAME_ID}/earned-runs/pitchers` && request.method() === 'GET') {
       data = [{
         playerId: 1100, playerName: 'T1PITCHER', teamId: AWAY_ID,
-        runsAllowed: 3, earnedRuns: 3, unearnedRuns: 0,
+        runsAllowed: decisionVoided ? 2 : 3, earnedRuns: decisionVoided ? 2 : 3, unearnedRuns: 0,
         engineRunsAllowed: 3, engineEarnedRuns: 3, overrideId: null, overrideNote: null
+      }, {
+        playerId: 1114, playerName: 'T1PITCHER2', teamId: AWAY_ID,
+        runsAllowed: decisionVoided ? 0 : (decisionReassigned ? 1 : 0),
+        earnedRuns: decisionVoided ? 0 : (decisionReassigned ? 1 : 0),
+        unearnedRuns: 0, engineRunsAllowed: 0, engineEarnedRuns: 0,
+        overrideId: null, overrideNote: null
       }];
     } else if (path === `/game/${GAME_ID}/earned-runs/decisions/901`
         && request.method() === 'PUT') {
       data = {};
+    } else if (path === `/game/${GAME_ID}/earned-runs/decisions/901/reassign`
+        && request.method() === 'POST') {
+      decisionReassigned = true;
+      decisionVoided = false;
+      data = { decisionId: 901, effectivePitcherId: 1114, adjustmentId: 88 };
+    } else if (path === `/game/${GAME_ID}/earned-runs/decisions/901/void`
+        && request.method() === 'POST') {
+      decisionVoided = true;
+      decisionReassigned = false;
+      data = { decisionId: 901, voided: true, adjustmentId: 88 };
+    } else if (path === `/game/${GAME_ID}/earned-runs/decision-adjustments/88/revoke`
+        && request.method() === 'POST') {
+      decisionVoided = false;
+      decisionReassigned = false;
+      data = { decisionId: 901, effectivePitcherId: 1100 };
     } else if (path === `/game/${GAME_ID}/fielding-adjustments` && request.method() === 'GET') {
       data = [];
     } else if (path === `/game/${GAME_ID}/fielding-adjustments/candidates`
@@ -434,4 +463,51 @@ test('比赛列表 final 场次不再提供赛后复核入口', async ({ page })
 
   await expect(page.getByRole('button', { name: '数据补录/复核' }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: '赛后复核' })).toHaveCount(0);
+});
+
+test('ER 判定可改派、作废并恢复', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: 'ER 复核' }).click();
+
+  const table = page.locator('.game-earned-run-review .el-table').first();
+  const row = table.locator('.el-table__row').filter({ hasText: 'T2P1' }).first();
+  await expect(row).toContainText('T1PITCHER');
+
+  await row.getByRole('button', { name: '改派' }).click();
+  const reassignDialog = page.locator('.el-dialog:visible').filter({ hasText: '改派判定' });
+  await reassignDialog.locator('.el-select').first().click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: 'T1PITCHER2' }).first().click();
+  const reassignRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes('/earned-runs/decisions/901/reassign')
+  ));
+  await reassignDialog.getByRole('button', { name: '确认改派' }).click();
+  const reassignBody = (await reassignRequest).postDataJSON();
+  expect(reassignBody.targetPitcherId).toBe(1114);
+  await expect(row).toContainText('T1PITCHER2');
+  await expect(row).toContainText('人工改派');
+
+  await row.getByRole('button', { name: '作废' }).click();
+  const voidDialog = page.locator('.el-dialog:visible').filter({ hasText: '作废判定' });
+  const voidRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes('/earned-runs/decisions/901/void')
+  ));
+  await voidDialog.getByRole('button', { name: '确认作废' }).click();
+  await voidRequest;
+  await expect(row).toContainText('已作废');
+
+  await row.getByRole('button', { name: '恢复' }).click();
+  const box = page.locator('.el-message-box:visible');
+  await expect(box).toContainText('恢复');
+  const revokeRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes('/earned-runs/decision-adjustments/88/revoke')
+  ));
+  await box.getByRole('button', { name: '确认恢复' }).click();
+  await revokeRequest;
+  await expect(row).not.toContainText('人工改派');
+  await expect(row).not.toContainText('已作废');
 });
