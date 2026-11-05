@@ -8,9 +8,10 @@ const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8').r
 
 test('ER 抽屉新增守备补记页签并接入独立面板', () => {
   const source = read('../src/components/admin/LiveGameEarnedRunDrawer.vue');
+  const panel = read('../src/components/admin/GameEarnedRunReviewPanel.vue');
   for (const needle of [
     'title="比赛复核"',
-    'label="自责分判定"',
+    'label="ER 复核"',
     'label="守备补记"',
     'LiveGameFieldingAdjustmentPanel',
     'resolvedGameStatus',
@@ -19,6 +20,7 @@ test('ER 抽屉新增守备补记页签并接入独立面板', () => {
   ]) {
     assert.ok(source.includes(needle), `缺少接线：${needle}`);
   }
+  assert.ok(panel.includes('label="自责分判定"'), 'ER 面板缺少自责分判定页签');
 });
 
 test('业务 API 暴露补记列表、新增与撤销端点', () => {

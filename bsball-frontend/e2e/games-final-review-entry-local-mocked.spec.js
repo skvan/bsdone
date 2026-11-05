@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-// 已结束比赛在列表中的“赛后复核”入口：
-// - final + hasLiveSnapshot + 录入权限 -> 显示“赛后复核”
-// - final 无快照 -> 不显示（LiveGame 无法恢复复核态）
+// 已结束比赛在列表中的入口收敛：
+// - final（无论有无快照）-> 显示“数据补录/复核”，不再显示“赛后复核”
 // - live -> 仍显示“继续录入”
+// - 保留 final 的“查看比赛实况记录”
 function gameRow(overrides) {
   return {
     id: 101,
@@ -76,7 +76,7 @@ async function setup(page) {
   await page.goto('/bs-ball/bs-ball/admin/events/1/games');
 }
 
-test('final 有快照显示赛后复核，final 无快照与 live 不误显示', async ({ page }) => {
+test('final 统一显示数据补录/复核，live 仍显示继续录入', async ({ page }) => {
   await setup(page);
 
   await expect(page.getByText('Final Review Entry E2E').first()).toBeVisible();
@@ -84,9 +84,9 @@ test('final 有快照显示赛后复核，final 无快照与 live 不误显示',
   const finalWithoutSnapshot = page.locator('.el-table__row').filter({ hasText: '102' });
   const liveRow = page.locator('.el-table__row').filter({ hasText: '103' });
 
-  await expect(finalWithSnapshot.getByRole('button', { name: '赛后复核' })).toBeVisible();
+  await expect(finalWithSnapshot.getByRole('button', { name: '数据补录/复核' })).toBeVisible();
   await expect(finalWithSnapshot.getByRole('button', { name: '查看比赛实况记录' })).toBeVisible();
-  await expect(finalWithoutSnapshot.getByRole('button', { name: '赛后复核' })).toHaveCount(0);
+  await expect(finalWithoutSnapshot.getByRole('button', { name: '数据补录/复核' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '赛后复核' })).toHaveCount(0);
   await expect(liveRow.getByRole('button', { name: '继续录入' })).toBeVisible();
-  await expect(liveRow.getByRole('button', { name: '赛后复核' })).toHaveCount(0);
 });

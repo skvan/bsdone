@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.entity.Game;
@@ -15,8 +16,11 @@ import com.bsball.repository.PlayerRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -75,6 +79,43 @@ public class GameFieldingAdjustmentService {
                 .toList();
     }
 
+    /** 列出赛后补记候选：快照中的失误 Play + 守备方可补记球员。 */
+    @Transactional
+    public List<FieldingAdjustmentCandidateDTO> listCandidates(Game game) {
+        Snapshot snapshot = readSnapshot(game);
+        if (snapshot == null || snapshot.plays() == null) {
+            return List.of();
+        }
+        Map<Long, List<FieldingAdjustmentCandidateDTO.PlayerOption>> playersByTeam =
+                loadCandidatePlayers(game);
+        List<FieldingAdjustmentCandidateDTO> candidates = new ArrayList<>();
+        for (JsonNode play : snapshot.plays()) {
+            String sourceEventId = text(play, "id");
+            if (sourceEventId.isBlank() || !isErrorPlay(play)) {
+                continue;
+            }
+            String half = playHalf(play);
+            Long teamId = "top".equals(half) ? game.getHomeTeamId() : game.getAwayTeamId();
+            if (teamId == null) {
+                continue;
+            }
+            int inning = integer(play, "inning", 1);
+            int sequence = integer(play, "sequence", 0);
+            candidates.add(new FieldingAdjustmentCandidateDTO(
+                    sourceEventId,
+                    inning,
+                    half,
+                    teamId,
+                    sequence,
+                    inning + ("top".equals(half) ? "上" : "下") + " #" + sequence,
+                    integer(play, "outsBefore", 0),
+                    describeBases(play.get("basesBefore")),
+                    text(play, "resultText"),
+                    playersByTeam.getOrDefault(teamId, List.of())));
+        }
+        return candidates;
+    }
+
     /** 新增或重新激活补记；源 Play、守备方、守位和重复补记全部由后端校验。 */
     @Transactional
     public FieldingAdjustmentListDTO create(
@@ -82,7 +123,7 @@ public class GameFieldingAdjustmentService {
         validateCreateRequest(request);
         String sourceEventId = request.getSourceEventId().trim();
         JsonNode play = requireErrorPlay(readSnapshot(game), sourceEventId);
-        String half = "bottom".equalsIgnoreCase(text(play, "half")) ? "bottom" : "top";
+        String half = playHalf(play);
         Long teamId = "top".equals(half) ? game.getHomeTeamId() : game.getAwayTeamId();
         if (teamId == null) {
             throw new BusinessException(400, "比赛缺少守备方球队");
@@ -315,6 +356,84 @@ public class GameFieldingAdjustmentService {
         }
     }
 
+    private Map<Long, List<FieldingAdjustmentCandidateDTO.PlayerOption>> loadCandidatePlayers(
+            Game game) {
+        List<GamePlayerStat> stats = gamePlayerStatRepository.findByGameId(game.getId()).stream()
+                .filter(stat -> Objects.equals(stat.getTenantId(), game.getTenantId()))
+                .filter(stat -> stat.getTeamId() != null && stat.getPlayerId() != null)
+                .sorted(Comparator
+                        .comparing(GamePlayerStat::getListOrder,
+                                Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(GamePlayerStat::getId,
+                                Comparator.nullsLast(Long::compareTo)))
+                .toList();
+        Set<Long> playerIds = new HashSet<>();
+        for (GamePlayerStat stat : stats) {
+            playerIds.add(stat.getPlayerId());
+        }
+        Map<Long, Player> players = new HashMap<>();
+        for (Player player : playerRepository.findAllById(playerIds)) {
+            players.put(player.getId(), player);
+        }
+        Map<Long, Map<Long, FieldingAdjustmentCandidateDTO.PlayerOption>> byTeam =
+                new HashMap<>();
+        Map<Long, Set<Long>> seenByTeam = new HashMap<>();
+        for (GamePlayerStat stat : stats) {
+            Set<Long> seen = seenByTeam.computeIfAbsent(stat.getTeamId(), key -> new HashSet<>());
+            if (!seen.add(stat.getPlayerId())) {
+                continue;
+            }
+            Player player = players.get(stat.getPlayerId());
+            String position = stat.getPosition() == null
+                    ? null : stat.getPosition().trim().toUpperCase(Locale.ROOT);
+            List<String> positions = new ArrayList<>();
+            if (player != null) {
+                positions.addAll(player.getPositionsList());
+            }
+            if (position != null && !position.isBlank() && !positions.contains(position)) {
+                positions.add(position);
+            }
+            String number = stat.getNumber();
+            if (number == null && player != null) {
+                number = player.getNumber();
+            }
+            String name = player != null ? player.getName() : "#" + stat.getPlayerId();
+            byTeam.computeIfAbsent(stat.getTeamId(), key -> new LinkedHashMap<>())
+                    .put(stat.getPlayerId(), new FieldingAdjustmentCandidateDTO.PlayerOption(
+                            stat.getPlayerId(),
+                            name,
+                            number,
+                            position,
+                            positions));
+        }
+        Map<Long, List<FieldingAdjustmentCandidateDTO.PlayerOption>> result = new HashMap<>();
+        byTeam.forEach((teamId, options) -> result.put(teamId, List.copyOf(options.values())));
+        return result;
+    }
+
+    private static String describeBases(JsonNode bases) {
+        boolean first = bases != null && bases.path("1").asBoolean(false);
+        boolean second = bases != null && bases.path("2").asBoolean(false);
+        boolean third = bases != null && bases.path("3").asBoolean(false);
+        if (!first && !second && !third) {
+            return "垒上无人";
+        }
+        if (first && second && third) {
+            return "满垒";
+        }
+        List<String> occupied = new ArrayList<>();
+        if (first) {
+            occupied.add("一");
+        }
+        if (second) {
+            occupied.add("二");
+        }
+        if (third) {
+            occupied.add("三");
+        }
+        return String.join("、", occupied) + "垒有人";
+    }
+
     private List<GamePlayerStat> playerStats(Game game, Long teamId, Long playerId) {
         return gamePlayerStatRepository.findByGameId(game.getId()).stream()
                 .filter(stat -> Objects.equals(stat.getTenantId(), game.getTenantId()))
@@ -437,6 +556,11 @@ public class GameFieldingAdjustmentService {
             }
         }
         return ids;
+    }
+
+    /** 归一化半局：快照中除明确 bottom 外一律按 top 处理。 */
+    private static String playHalf(JsonNode play) {
+        return "bottom".equalsIgnoreCase(text(play, "half")) ? "bottom" : "top";
     }
 
     private boolean isErrorPlay(JsonNode play) {

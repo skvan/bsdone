@@ -18,7 +18,8 @@ const game = {
   awayScore: 2,
   gameday: '2026-11-04',
   totalInnings: 9,
-  venue: '测试球场'
+  venue: '测试球场',
+  hasLiveSnapshot: true
 };
 
 function makePlayers(teamId, offset) {
@@ -121,6 +122,40 @@ async function setup(page) {
         sourceDeleted && Number(stat.playerId) === 1114 && Number(stat.isPitcher) === 1
       ));
       data = { list, total: list.length };
+    } else if (path === `/game/${GAME_ID}/earned-runs/decisions` && request.method() === 'GET') {
+      data = [{
+        decisionId: 901, gameId: GAME_ID, inning: 2, half: 'bottom', sequence: 5,
+        runnerName: 'T2P1', responsiblePitcherId: 1100, pitcherName: 'T1PITCHER',
+        earnedStatus: 'EARNED', unearnedReason: null, overriddenBy: null
+      }];
+    } else if (path === `/game/${GAME_ID}/earned-runs/pitchers` && request.method() === 'GET') {
+      data = [{
+        playerId: 1100, playerName: 'T1PITCHER', teamId: AWAY_ID,
+        runsAllowed: 3, earnedRuns: 3, unearnedRuns: 0,
+        engineRunsAllowed: 3, engineEarnedRuns: 3, overrideId: null, overrideNote: null
+      }];
+    } else if (path === `/game/${GAME_ID}/earned-runs/decisions/901`
+        && request.method() === 'PUT') {
+      data = {};
+    } else if (path === `/game/${GAME_ID}/fielding-adjustments` && request.method() === 'GET') {
+      data = [];
+    } else if (path === `/game/${GAME_ID}/fielding-adjustments/candidates`
+        && request.method() === 'GET') {
+      data = [{
+        sourceEventId: 'play-err-1', inning: 2, topBottom: 'bottom', teamId: AWAY_ID,
+        sequence: 5, inningLabel: '2下 #5', outsBefore: 1, baseLabel: '一垒有人',
+        resultText: 'SS 接球失误',
+        players: [
+          { id: 1100, name: 'T1PITCHER', number: '99', position: 'P', positions: ['P'] },
+          { id: 1114, name: 'T1PITCHER2', number: '16', position: 'P', positions: ['P'] }
+        ]
+      }];
+    } else if (path === `/game/${GAME_ID}/fielding-adjustments` && request.method() === 'POST') {
+      data = {
+        adjustmentId: 71, sourceEventId: 'play-err-1', inning: 2, half: 'bottom',
+        sequence: 5, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
+        position: 'P', assistCount: 1, status: 'APPROVED', sourceValid: true
+      };
     } else if (path === `/game/${GAME_ID}/pitcher-transfers` && request.method() === 'POST') {
       const body = request.postDataJSON();
       const source = awayStats.find((stat) => Number(stat.id) === Number(body.sourceStatId));
@@ -334,4 +369,69 @@ test('删除投手行前诊断剩余字段并提供去转记', async ({ page }) 
   const dialog = page.locator('.el-dialog:visible').filter({ hasText: '转记投手数据' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('T1PITCHER2');
+});
+
+test('final 结果页整合 ER 复核，覆写后切换页签提示刷新', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+
+  const erTab = page.getByRole('tab', { name: 'ER 复核' });
+  await expect(erTab).toBeVisible();
+  await expect(page.getByRole('tab', { name: '守备补记 A' })).toBeVisible();
+
+  await erTab.click();
+  const erTable = page.locator('.game-earned-run-review .el-table').first();
+  await expect(erTable).toContainText('T1PITCHER');
+
+  await erTable.getByRole('button', { name: '覆写' }).first().click();
+  const overrideRequest = page.waitForRequest((request) => (
+    request.method() === 'PUT'
+    && request.url().includes('/earned-runs/decisions/901')
+  ));
+  await page.locator('.el-dialog:visible').filter({ hasText: '覆写判定' })
+    .getByRole('button', { name: '确认覆写' }).click();
+  await overrideRequest;
+
+  await page.getByRole('tab', { name: '打者数据' }).click();
+  const box = page.locator('.el-message-box:visible');
+  await expect(box).toContainText('复核已修改服务器统计');
+  await box.getByRole('button', { name: '保留当前页' }).click();
+  await expect(page.getByRole('tab', { name: 'ER 复核' })).toHaveAttribute('aria-selected', 'true');
+
+  await page.getByRole('button', { name: '保存比赛数据' }).click();
+  const saveBox = page.locator('.el-message-box:visible');
+  await expect(saveBox).toContainText('保存前需重新加载最新统计');
+  await saveBox.getByRole('button', { name: '取消' }).click();
+});
+
+test('守备补记 A 使用服务端候选并提交补记', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '守备补记 A' }).click();
+
+  await expect(page.getByText('SS 接球失误')).toBeVisible();
+  await page.getByRole('button', { name: '补记助杀' }).click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '补记助杀' });
+  await dialog.locator('.el-select').first().click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: 'T1PITCHER' }).first().click();
+
+  const createRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes(`/game/${GAME_ID}/fielding-adjustments`)
+    && !request.url().includes('/candidates')
+  ));
+  await dialog.getByRole('button', { name: '确认补记' }).click();
+  const body = (await createRequest).postDataJSON();
+  expect(body.sourceEventId).toBe('play-err-1');
+  expect(body.playerId).toBe(1100);
+  expect(body.position).toBe('P');
+});
+
+test('比赛列表 final 场次不再提供赛后复核入口', async ({ page }) => {
+  await setup(page);
+  await page.goto('/bs-ball/bs-ball/admin/events/1/games');
+
+  await expect(page.getByRole('button', { name: '数据补录/复核' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: '赛后复核' })).toHaveCount(0);
 });

@@ -276,6 +276,8 @@ export const gameApi = {
   deletePitcherTransferSource: (id, transferId) =>
     post(`/api/game/${id}/pitcher-transfers/${transferId}/delete-source`, {}),
   listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
+  listFieldingAdjustmentCandidates: (id) =>
+    fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),
   createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
   revokeFieldingAdjustment: (id, adjustmentId) =>
     post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
