@@ -202,6 +202,14 @@ async function setup(page) {
             }]
           }
         : { statId, playerId: null, isPitcher: true, deletable: true, recommendedAction: 'NONE', blockers: [] };
+    } else if (path === `/game/${GAME_ID}/adjustments` && request.method() === 'GET') {
+      data = [{
+        id: 1, scope: 'PLAYER_STAT', action: 'UPDATE_FIELD', sourceType: 'RESULT_SAVE',
+        sourceId: 3009, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
+        isPitcher: 1, fieldKey: 'np', fieldLabel: 'NP',
+        beforeValue: '27', afterValue: '30', status: 'ACTIVE',
+        reason: null, operatorId: 9, operatedAt: '2026-11-05T10:00:00'
+      }];
     } else if (path === `/game/${GAME_ID}/stat-base/compare` && request.method() === 'GET') {
       data = {
         legacy: false,
@@ -601,4 +609,16 @@ test('基座对比页签展示基座与当前有效值差异', async ({ page }) 
   const row = page.locator('.stat-base-diff .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
   await expect(row).toContainText('PA(投手)：11 → 13');
   await expect(row).toContainText('NP：27 → 30');
+});
+
+test('修订台账页签展示字段级修改', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订台账' }).click();
+
+  await expect(page.getByText('结果页手工修改 · 字段级留痕')).toBeVisible();
+  const row = page.locator('.adjustment-ledger .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(row).toContainText('NP');
+  await expect(row).toContainText('27 → 30');
+  await expect(row).toContainText('#9');
 });
