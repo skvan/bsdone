@@ -117,12 +117,28 @@ public class StatsService {
      * 不能用赛事总合计代替。返回结构与 {@link #getPlayerStats(Long, String)} 一致。</p>
      */
     public Map<String, Object> getPlayerStatsByTeam(Long playerId, Long teamId, Long eventId, String gameMode) {
+        return this.getPlayerStatsByScope(playerId, teamId,
+                eventId == null ? List.of() : List.of(eventId), gameMode);
+    }
+
+    /**
+     * 范围统计：按可选球队与赛事集合汇总球员比赛；{@code teamId}/{@code eventIds} 为空表示不限制该维度。
+     * <p>赛事集合用于驾驶舱“联盟=该联盟全部赛事”的统一口径，返回结构与
+     * {@link #getPlayerStats(Long, String)} 一致。</p>
+     */
+    public Map<String, Object> getPlayerStatsByScope(Long playerId, Long teamId, List<Long> eventIds,
+            String gameMode) {
         try {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
-            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
-            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
-            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
+            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
+            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
+            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
             HashMap<String, Object> result = new HashMap<String, Object>();
             result.put("batting", this.formatBatting(bat));
             result.put("pitching", this.formatPitching(pit));
@@ -130,7 +146,9 @@ public class StatsService {
             return result;
         }
         catch (Exception e) {
-            LoggerFactory.getLogger(StatsService.class).error("getPlayerStatsByTeam failed for playerId={}, teamId={}", (Object)playerId, (Object)teamId, (Object)e);
+            LoggerFactory.getLogger(StatsService.class).error(
+                    "getPlayerStatsByScope failed for playerId={}, teamId={}, eventIds={}",
+                    (Object)playerId, (Object)teamId, (Object)eventIds, (Object)e);
             return this.emptyPlayerStats();
         }
     }
@@ -240,16 +258,19 @@ public class StatsService {
     }
 
     /**
-     * 驾驶舱打击落点：球员在指定范围（可选球队/赛事、运动类型）内计入排行的比赛落点，
+     * 驾驶舱打击落点：球员在指定范围（可选球队/赛事集合、运动类型）内计入排行的比赛落点，
      * 按比赛日正序返回；失败时返回空列表，不阻塞驾驶舱。
      */
-    public List<HitSprayPointRow> getPlayerHitSprays(Long playerId, Long tenantId, Long teamId, Long eventId, String gameMode) {
+    public List<HitSprayPointRow> getPlayerHitSprays(Long playerId, Long tenantId, Long teamId,
+            List<Long> eventIds, String gameMode) {
         if (playerId == null || tenantId == null) {
             return List.of();
         }
         try {
-            List<HitSprayPointRow> rows = this.playerStatsMapper.selectPlayerHitSprays(playerId, tenantId, teamId, eventId,
-                    StatsService.normalizeGameMode(gameMode));
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
+            List<HitSprayPointRow> rows = this.playerStatsMapper.selectPlayerHitSprays(
+                    playerId, tenantId, teamId, scopeEventIds, StatsService.normalizeGameMode(gameMode));
             return rows == null ? List.of() : rows;
         }
         catch (Exception e) {
@@ -307,12 +328,12 @@ public class StatsService {
     }
 
     /**
-     * 驾驶舱表现/战报用：先按球队/赛事过滤再取最近 {@code limit} 场。
-     * <p>{@code teamId}/{@code eventId} 为空表示不限制该维度（全部球队/生涯）；
+     * 驾驶舱表现/战报用：先按球队/赛事集合过滤再取最近 {@code limit} 场。
+     * <p>{@code teamId}/{@code eventIds} 为空表示不限制该维度（全部球队/生涯）；
      * {@code rankingOnly=true} 只取计入排行的比赛，与生涯统计口径一致。</p>
      */
-    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId, Long eventId,
-            int limit, String gameMode, boolean rankingOnly) {
+    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId,
+            List<Long> eventIds, int limit, String gameMode, boolean rankingOnly) {
         if (playerId == null || limit <= 0) {
             return List.of();
         }
@@ -320,12 +341,16 @@ public class StatsService {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
             Integer queryLimit = Integer.valueOf(Math.min(limit, 100));
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
             List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLogForScope(
-                    playerId, Long.valueOf(tid), teamId, eventId, queryLimit, gm, rankingOnly);
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, queryLimit, gm, rankingOnly);
             return this.toGameLogEntries(rows);
         }
         catch (Exception e) {
-            LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLogForScope failed for playerId={}, teamId={}, eventId={}", (Object)playerId, (Object)teamId, (Object)eventId, (Object)e);
+            LoggerFactory.getLogger(StatsService.class).error(
+                    "getPlayerGameLogForScope failed for playerId={}, teamId={}, eventIds={}",
+                    (Object)playerId, (Object)teamId, (Object)eventIds, (Object)e);
             return List.of();
         }
     }

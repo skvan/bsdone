@@ -101,6 +101,33 @@ class ClubhouseEvaluationServiceTest {
     }
 
     @Test
+    @DisplayName("评分与雷达对比池使用当前球队和赛事集合")
+    void scopedPoolsUseSelectedRange() {
+        List<Long> eventIds = List.of(11L, 12L);
+        List<Long> teamIds = List.of(1L);
+        when(statsService.getBattingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("pa"), eq("desc"), eq(false)))
+                .thenReturn(PageResult.of(bigBattingPool(), bigBattingPool().size()));
+        when(statsService.getPitchingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("ip"), eq("desc"), eq(false)))
+                .thenReturn(PageResult.of(bigPitchingPool(), bigPitchingPool().size()));
+        when(statsService.getFieldingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("inn"), eq("desc")))
+                .thenReturn(PageResult.of(bigFieldingPool(), bigFieldingPool().size()));
+
+        Map<String, Object> evaluation = service.buildScoped(
+                10L, "BASEBALL", bigCareerStats(), "CF", eventIds, teamIds, "花城联盟 · 全部赛事");
+
+        assertEquals("花城联盟 · 全部赛事", evaluation.get("comparison"));
+        verify(statsService).getBattingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("pa"), eq("desc"), eq(false));
+        verify(statsService).getPitchingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("ip"), eq("desc"), eq(false));
+        verify(statsService).getFieldingLeaders(isNull(), eq(eventIds), isNull(), eq(teamIds), isNull(), isNull(),
+                isNull(), isNull(), isNull(), eq("BASEBALL"), eq(1), eq(500), eq("inn"), eq("desc"));
+    }
+
+    @Test
     @DisplayName("小样本向 50 分收缩并按可靠性标注参考值")
     void shrinksSmallSampleTowardFifty() {
         Map<String, Object> self = battingRow(10L, "CF", 25, 20, 8, 2, 0, 2,

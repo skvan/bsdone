@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 个人驾驶舱接口（模块化布局 v3-modular，桌面端可调模块宽高）。
  * <ul>
- *   <li>GET  /account/clubhouse：聚合数据与 moduleCatalog，可选 teamId/eventId 切换范围，
- *       可选 gameMode（BASEBALL/SOFTBALL，默认棒球）</li>
+ *   <li>GET  /account/clubhouse：聚合数据与 moduleCatalog，可选 teamId/leagueId/eventId 切换范围，
+ *       可选 gameMode（BASEBALL/SOFTBALL，默认棒球）；联盟范围为其下球员参加的全部赛事</li>
  *   <li>GET  /account/clubhouse/milestones：按需加载全租户生涯里程碑</li>
  *   <li>PUT  /account/clubhouse/config：保存模块顺序/开关/宽高、表现图与队内排名指标</li>
  *   <li>POST /account/clubhouse/config/reset：恢复默认配置</li>
@@ -38,9 +38,10 @@ public class ClubhouseApi {
     public Result<Map<String, Object>> dashboard(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) Long leagueId,
             @RequestParam(required = false) Long eventId,
             @RequestParam(required = false) String gameMode) {
-        return Result.ok(clubhouseService.getDashboard(requireUserId(auth), teamId, eventId, gameMode));
+        return Result.ok(clubhouseService.getDashboard(requireUserId(auth), teamId, leagueId, eventId, gameMode));
     }
 
     @GetMapping(value = {"/milestones"})
@@ -54,9 +55,10 @@ public class ClubhouseApi {
     public Result<Map<String, Object>> sprays(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) Long leagueId,
             @RequestParam(required = false) Long eventId,
             @RequestParam(required = false) String gameMode) {
-        return Result.ok(clubhouseService.getSprays(requireUserId(auth), teamId, eventId, gameMode));
+        return Result.ok(clubhouseService.getSprays(requireUserId(auth), teamId, leagueId, eventId, gameMode));
     }
 
     @PutMapping(value = {"/config"})

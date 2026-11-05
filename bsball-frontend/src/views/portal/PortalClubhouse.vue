@@ -32,9 +32,13 @@
           <el-option label="全部球队" :value="SCOPE_ALL" />
           <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
+        <el-select v-model="leagueId" size="small" class="scope-select scope-league" aria-label="联盟" :disabled="layoutEditing" @change="onLeagueChange">
+          <el-option label="全部联盟" :value="SCOPE_ALL" />
+          <el-option v-for="league in availableLeagues" :key="league.id" :label="league.name" :value="league.id" />
+        </el-select>
         <el-select v-model="eventId" size="small" class="scope-select scope-event" aria-label="赛事" :disabled="layoutEditing" @change="onEventChange">
-          <el-option label="生涯" :value="SCOPE_ALL" />
-          <el-option v-for="event in scopeEvents" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
+          <el-option :label="eventAllLabel" :value="SCOPE_ALL" />
+          <el-option v-for="event in eventOptions" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
         </el-select>
         <span class="scope-right">代表 <b>{{ availableTeams.length }}</b> 支球队</span>
       </div>
@@ -176,7 +180,7 @@
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
-            <h3>总体评价</h3>
+            <h3>总体评价 <small class="eval-scope">对比 · {{ evaluationComparison }}</small></h3>
           </div>
           <div v-if="evaluationOverall.score != null" class="eval-overall" :style="{ '--eo-grade': overallGradeAccent }">
             <div class="eo-score">
@@ -558,6 +562,11 @@
               <span v-if="currentEventDateRange" class="ec-dates">{{ currentEventDateRange }}</span>
               <span v-if="featuredGame && !featuredGameIsCurrent" class="ec-note">当前赛事近期暂无未开赛比赛</span>
             </div>
+            <div v-else-if="scopeLeague" class="event-context">
+              <span class="ec-label">当前联盟</span>
+              <b>{{ scopeLeague.name }}</b>
+              <span class="ec-note">共 {{ scopeLeague.count }} 项赛事</span>
+            </div>
             <div v-if="featuredGame" class="next-game">
               <div class="ng-head"><span class="event-pill">{{ featuredGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(featuredGame.gameday) }}</span></div>
               <div class="ng-body">
@@ -888,6 +897,7 @@ const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
 const teamId = ref(SCOPE_ALL);
+const leagueId = ref(SCOPE_ALL);
 const eventId = ref(SCOPE_ALL);
 const gameMode = ref('BASEBALL');
 const settingsOpen = ref(false);
@@ -968,6 +978,24 @@ const availableTeams = computed(() => {
   ));
 });
 const scopeEvents = computed(() => data.value?.events || []);
+const eventLeagueId = (event) => {
+  const id = Number(event?.leagueId);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+const availableLeagues = computed(() => {
+  const leagues = new Map();
+  scopeEvents.value.forEach((event) => {
+    const id = eventLeagueId(event);
+    if (id && !leagues.has(id)) {
+      leagues.set(id, { id, name: event.leagueName || `联盟${id}` });
+    }
+  });
+  return [...leagues.values()];
+});
+const eventOptions = computed(() => scopeEvents.value.filter((event) => (
+  leagueId.value === SCOPE_ALL || eventLeagueId(event) === leagueId.value
+)));
+const eventAllLabel = computed(() => (leagueId.value === SCOPE_ALL ? '生涯' : '本联盟全部赛事'));
 const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
 /** 全部球队时展示当前运动类型下的全部代表球队；选中球队时只展示该队。 */
 const heroTeamNames = computed(() => availableTeams.value
@@ -1130,22 +1158,37 @@ onBeforeUnmount(() => {
 const scopeLabel = computed(() => {
   const scope = data.value?.scope || {};
   if (scope.teamAll && scope.career) return '生涯';
-  return [scope.teamAll ? null : scope.teamName, scope.career ? '生涯' : scope.eventName]
-    .filter(Boolean)
-    .join(' · ');
+  const parts = [];
+  if (!scope.teamAll) parts.push(scope.teamName || '球队');
+  if (!scope.leagueAll) parts.push(scope.leagueName || '联盟');
+  if (scope.career) parts.push('生涯');
+  else if (scope.eventId) parts.push(scope.eventName);
+  else parts.push('全部赛事');
+  return parts.join(' · ');
 });
-const rankScopeLabel = computed(() => (eventId.value ? '同队同赛事' : '球队跨赛事生涯'));
+const scopeLeague = computed(() => {
+  const scope = data.value?.scope;
+  return scope && !scope.leagueAll ? { name: scope.leagueName, count: scope.eventCount || 0 } : null;
+});
+const rankScopeLabel = computed(() => {
+  if (eventId.value) return '同队同赛事';
+  if (leagueId.value) return '同队同联盟';
+  return '球队跨赛事生涯';
+});
 const rankNote = computed(() => `${rankScopeLabel.value} · 无最低打席门槛 · 全垒打不进入排名`);
 const scheduleScopeLabel = computed(() => {
   if (eventId.value) return teamId.value ? '同队同赛事' : '当前赛事';
+  if (leagueId.value) return teamId.value ? '同队同联盟' : '当前联盟';
   return teamId.value ? '球队跨赛事生涯' : '跨球队生涯';
 });
 const recentEmptyText = computed(() => (eventId.value
   ? '该赛事暂无比赛记录。'
-  : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
+  : leagueId.value ? '该联盟暂无比赛记录。'
+    : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
 const scheduleEmptyText = computed(() => (eventId.value
   ? '该赛事暂无未开赛的比赛。'
-  : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
+  : leagueId.value ? '该联盟暂无未开赛的比赛。'
+    : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
 const rankPopulation = computed(() => {
   const totals = (data.value?.ranks || []).map((item) => item.total).filter((total) => total > 0);
   return totals.length && totals.every((total) => total === totals[0]) ? totals[0] : 0;
@@ -1169,6 +1212,7 @@ const hasStatsData = computed(() => (
   || Number(data.value?.stats?.fielding?.gp) > 0
 ));
 const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
+const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
 const overallGradeAccent = computed(() => cardGradeMaterial(evaluationOverall.value.grade).color);
 const overallRoleLabel = computed(() => ({
   POSITION_PLAYER: '野手',
@@ -2657,6 +2701,14 @@ function onTeamChange() {
   load();
 }
 
+function onLeagueChange() {
+  if (!data.value) return;
+  if (layoutEditing.value) finishLayoutEditing();
+  eventScopeResetApplied = false;
+  eventId.value = SCOPE_ALL;
+  load();
+}
+
 function onEventChange() {
   if (!data.value) return;
   if (layoutEditing.value) finishLayoutEditing();
@@ -2688,6 +2740,7 @@ async function load() {
   try {
     const result = await clubhouseApi.dashboard({
       teamId: teamId.value || null,
+      leagueId: leagueId.value || null,
       eventId: eventId.value || null,
       gameMode: gameMode.value
     });
@@ -2698,6 +2751,7 @@ async function load() {
     }
     data.value = result;
     teamId.value = result.scope?.teamId ?? SCOPE_ALL;
+    leagueId.value = result.scope?.leagueId ?? SCOPE_ALL;
     eventId.value = result.scope?.eventId ?? SCOPE_ALL;
     gameMode.value = result.scope?.gameMode || gameMode.value;
     // 仅垒球（或仅棒球）球员：当前类型没有任何赛事且只存在另一种类型时，自动切换一次并重载。
@@ -2707,6 +2761,7 @@ async function load() {
         autoGameModeAdjusted = true;
         gameMode.value = fallbackMode;
         teamId.value = SCOPE_ALL;
+        leagueId.value = SCOPE_ALL;
         eventId.value = SCOPE_ALL;
         await load();
         return;
@@ -2777,6 +2832,7 @@ async function loadSprays(seq) {
   try {
     const result = await clubhouseApi.sprays({
       teamId: teamId.value || null,
+      leagueId: leagueId.value || null,
       eventId: eventId.value || null,
       gameMode: gameMode.value
     });
@@ -2981,6 +3037,7 @@ onBeforeUnmount(() => {
 .eval-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .eval-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 22px; line-height: 1.2; color: var(--bs-ink); }
 .eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
+.eval-head .eval-scope { display: block; margin: 6px 0 0; color: var(--bs-accent-ink); font-size: 10px; letter-spacing: .04em; }
 .eval-overall { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 16px 22px 15px 24px; border: 1px solid var(--bs-hairline-soft); border-radius: 16px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
 .eval-overall::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, var(--eo-grade, var(--bs-accent)), transparent); opacity: .9; }
 .eo-score { display: flex; align-items: baseline; gap: 7px; }
