@@ -23,6 +23,7 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferRequest;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.Game;
@@ -39,6 +40,7 @@ import com.bsball.repository.StadiumRepository;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.utils.GamePlayerStatZeros;
+import com.bsball.utils.GameStatDeleteDiagnostics;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
@@ -750,6 +752,27 @@ public class GameService {
     public List<GameRevisionAuditDTO> listRevisionAudit(Long gameId) {
         Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看修订记录");
         return this.revisionAuditService.list(game);
+    }
+
+    /** 删除统计行前诊断：返回剩余字段、有效 ER 判定、守备补记与守备位置。 */
+    public StatRowDeleteCheckDTO checkStatRowDelete(Long gameId, Long statId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能检查删除条件");
+        Long tenantId = game.getTenantId();
+        GamePlayerStat stat = this.gamePlayerStatRepository.findById(statId)
+                .filter(row -> Objects.equals(row.getGameId(), gameId)
+                        && Objects.equals(row.getTenantId(), tenantId))
+                .orElseThrow(() -> new BusinessException(404, "统计行不存在"));
+        long playerId = stat.getPlayerId() == null ? 0L : stat.getPlayerId();
+        int decisions = this.earnedRunReconstructionService
+                .countResponsiblePitcherDecisions(gameId, playerId);
+        long adjustments = this.fieldingAdjustmentService
+                .countApprovedPlayerAdjustments(tenantId, gameId, playerId);
+        long positions = this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId).stream()
+                .filter(row -> Objects.equals(row.getTeamId(), stat.getTeamId())
+                        && Objects.equals(row.getPlayerId(), stat.getPlayerId()))
+                .count();
+        return GameStatDeleteDiagnostics.build(stat, decisions, adjustments, positions);
     }
 
     /** 赛后补记助杀：源 Play 与守备统计同步由服务层校验。 */

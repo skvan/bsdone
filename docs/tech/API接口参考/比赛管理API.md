@@ -349,6 +349,13 @@ EventService --> EventRepository
 - POST /game/{id}/pitcher-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源行（与转记是两个动作）
   - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/stat-rows/{statId}/delete-check
+  - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`StatRowDeleteCheckDTO`，字段含 `statId/playerId/isPitcher/deletable/recommendedAction/blockers`
+  - blocker 类型：`DATA_FIELD`（key/label/value）、`ER_DECISION`（有效责任投手判定数）、`FIELDING_ADJUSTMENT`（生效补记数）、`FIELDING_POSITION`（守备位置行数）
+  - 推荐动作：有 ER 判定/失分 → `ER_REVIEW`；有守备补记 → `FIELDING_REVIEW`；投手的守备位置可随转记搬移 → `TRANSFER`；仅剩余字段 → 投手 `TRANSFER`、非投手 `CLEAR_FIELDS`；无阻断 → `NONE`
+  - 只读：不执行删除；删除仍走原接口并保留原守卫
 - GET /game/{id}/revision-audit
   - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离

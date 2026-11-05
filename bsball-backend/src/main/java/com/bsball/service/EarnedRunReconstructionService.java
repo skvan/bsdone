@@ -198,27 +198,33 @@ public class EarnedRunReconstructionService {
         return gameId > 0 && playRepository.existsByGameId(gameId);
     }
 
-    /** 该场是否仍有以该投手为有效责任投手的自责分判定；删除投手统计行前的守卫。 */
-    public boolean hasResponsiblePitcherDecisions(long gameId, long pitcherId) {
+    /** 该场仍以该投手为有效责任投手的判定数量；删除守卫与诊断共用。 */
+    public int countResponsiblePitcherDecisions(long gameId, long pitcherId) {
         if (gameId <= 0 || pitcherId <= 0) {
-            return false;
+            return 0;
         }
         List<EarnedRunDecisionEntity> decisions = decisionRepository.findByGameId(gameId);
         if (decisions.isEmpty()) {
-            return false;
+            return 0;
         }
         Map<Long, String> sourceEventByPlayId =
                 sourceEventByPlayId(playRepository.findByGameId(gameId));
         Map<DecisionKey, ErDecisionAdjustment> adjustments = activeAdjustmentsByKey(
                 erDecisionAdjustmentRepository.findByGameIdAndStatus(
                         gameId, ADJUSTMENT_ACTIVE));
+        int count = 0;
         for (EarnedRunDecisionEntity decision : decisions) {
             Long effective = effectivePitcherId(decision, sourceEventByPlayId, adjustments);
             if (Objects.equals(effective, pitcherId)) {
-                return true;
+                count++;
             }
         }
-        return false;
+        return count;
+    }
+
+    /** 该场是否仍有以该投手为有效责任投手的自责分判定；删除投手统计行前的守卫。 */
+    public boolean hasResponsiblePitcherDecisions(long gameId, long pitcherId) {
+        return countResponsiblePitcherDecisions(gameId, pitcherId) > 0;
     }
 
     /** 赛后复核：列出本场全部投手的 R/ER 合计与生效中的人工覆写。 */
