@@ -156,3 +156,35 @@ export function hasHistoricalFieldingStats(statRows) {
     keys.some((key) => (Number(row?.[key]) || 0) > 0)
   );
 }
+
+/**
+ * 合并两份 byPos（并行行/快照合并）：按守位逐项取 max；旧快照数字值视为仅有 outs。
+ * 返回新对象，不修改入参；任一侧缺失时返回另一侧的副本。
+ */
+export function mergeFieldingByPos(a, b) {
+  const normalize = (value) => {
+    if (!value || typeof value !== 'object') return null;
+    const out = {};
+    for (const [rawPos, rawEntry] of Object.entries(value)) {
+      out[rawPos] = rawEntry && typeof rawEntry === 'object'
+        ? { ...rawEntry }
+        : { outs: countOf(rawEntry) };
+    }
+    return out;
+  };
+  const left = normalize(a);
+  const right = normalize(b);
+  if (!left) return right;
+  if (!right) return left;
+  const merged = { ...left };
+  for (const pos of new Set([...Object.keys(left), ...Object.keys(right)])) {
+    const l = left[pos] ?? {};
+    const r = right[pos] ?? {};
+    const next = { ...l };
+    for (const key of new Set([...Object.keys(l), ...Object.keys(r)])) {
+      next[key] = Math.max(countOf(l[key]), countOf(r[key]));
+    }
+    merged[pos] = next;
+  }
+  return merged;
+}

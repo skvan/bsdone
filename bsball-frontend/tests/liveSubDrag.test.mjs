@@ -143,9 +143,10 @@ test('非法组合一律无效：进攻↔守备员、守备↔垒位/打者、�
 
 /* ---------------- liveSubTargetKinds ---------------- */
 
-test('可落目标：进攻席=垒位+打者；守备席=守备员；守备员=守备员+替补席', () => {
+test('可落目标：进攻席=垒位+打者；守备席=守备员；守备员=守备员+替补席；DH卡=守备员', () => {
   assert.deepEqual(liveSubTargetKinds('offenseBench'), ['base', 'batter']);
   assert.deepEqual(liveSubTargetKinds('defenseBench'), ['fielder']);
   assert.deepEqual(liveSubTargetKinds('fielder'), ['fielder', 'bench']);
+  assert.deepEqual(liveSubTargetKinds('dhCard'), ['fielder']);
   assert.deepEqual(liveSubTargetKinds('unknown'), []);
 });

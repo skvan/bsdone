@@ -232,7 +232,7 @@ EventService --> EventRepository
   - 参考：`EventApi.java:51-55`
 - GET /event/{id}
   - 作用：获取单个赛事详情
-  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275，见文末专题）
+  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf, ohtaniRule}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275/#525，见文末专题）
   - 参考：`EventApi.java:57-64`
 - POST /event/create
   - 作用：创建赛事
@@ -453,14 +453,14 @@ EventService --> EventRepository
 
 ### 赛事级规则
 
-- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true。
-- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean}`；已有规则赛事能力关闭时仍返回并生效。
-- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf}`：
+- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true、ohtaniRule=false。
+- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean, ohtaniRule:boolean}`；已有规则赛事能力关闭时仍返回并生效。
+- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf, ohtaniRule}`：
   - 赛事已有规则（hasEventRules）→ 允许写入（能力关闭也保留）；
   - 无既有规则 → 要求赛事挂联赛且 `specialRulesEnabled=true`，否则 400「该联盟未开放特殊规则能力」。
 - `POST /event/create` 携带规则时同样要求联赛能力开启；不携带则按默认。
 - 权限点：复用 `business:event:edit`（赛事编辑入口）。
-- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
+- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮；`ohtaniRule` 开启 → 阵容板允许 DH 与先发投手为同一人（打线仍显示 DH，守备表按 P 显示）；本场仍可选择不用 DH；换投后保留 DH，但该球员不可再移防。已保存数据不回溯。
 
 ---
 

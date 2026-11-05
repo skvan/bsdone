@@ -79,6 +79,19 @@
       <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
     </el-radio-group>
 
+    <div v-if="ohtaniRule" class="ohtani-rule-bar">
+      <el-button
+        size="small"
+        type="primary"
+        plain
+        :disabled="!board.hasDh.value || board.hasP.value"
+        @click="onToggleOhtani"
+      >
+        {{ board.hasDhPitcher.value ? '取消兼投' : '设为兼投' }}
+      </el-button>
+      <span class="ohtani-rule-bar__hint">{{ ohtaniHint }}</span>
+    </div>
+
     <div v-if="pending" class="lineup-pending-hint">
       待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
     </div>
@@ -175,6 +188,7 @@ const saving = ref(false);
 const mode = ref('BASEBALL');
 const eventName = ref('');
 const extraBatter = ref(false);     // 赛事级「额外打击者（EP）」开关；缺省/加载失败保持 false（fail-closed）
+const ohtaniRule = ref(false);      // 赛事级「大谷规则（DH 兼先发投手）」；缺省/加载失败保持 false（fail-closed）
 const game = ref(null);
 const currentGameId = ref(null);
 const gameStatus = ref('');
@@ -196,12 +210,24 @@ const rosterHint = computed(() => {
 
 const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null), {
   extraBatter,
+  ohtaniRule,
 });
 const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null), {
   extraBatter,
+  ohtaniRule,
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
+const ohtaniHint = computed(() => {
+  if (!ohtaniRule.value) return '';
+  if (!board.value.hasDh.value) return '大谷规则：先把球员放到 DH 槽，再点「设为兼投」';
+  if (board.value.hasP.value) return '大谷规则：打线已有投手位，不能设置 DH 兼投';
+  return '大谷规则：DH 可兼先发投手；换投后保留 DH，不可再移防。';
+});
+function onToggleOhtani() {
+  board.value.toggleDhPitcher();
+  showNotice(board.value);
+}
 
 const teamsReady = computed(() =>
   setupForm.value.homeTeamId != null &&
@@ -231,12 +257,17 @@ const fieldSlotViews = computed(() => {
     const row = rowIndex >= 0 ? rows[rowIndex] : null;
     let player = row;
     let badge = '';
-    // P 槽为空但已指定仅守备投手 → 悬停显示
-    if (!player && code === 'P' && b.fieldingPitcherId.value != null) {
+    let orderRow = row;  // 棒次来源行：通常即 row；大谷规则下 P 槽改用 DH 行
+    // P 槽为空但已指定投手 → 悬停显示；大谷规则下该球员可能同时是打线中的 DH（同一球员两处展示）
+    if (!row && code === 'P' && b.fieldingPitcherId.value != null) {
+      const dhPitcherRow = rows.find(
+        (r) => !isPlaceholder(r) && posOf(r) === 'DH' && String(r.id) === String(b.fieldingPitcherId.value)
+      );
       player = b.roster.value.find((p) => String(p.id) === String(b.fieldingPitcherId.value)) ?? null;
-      if (player) badge = '仅守备';
+      if (player) badge = dhPitcherRow ? 'DH兼投' : '仅守备';
+      if (dhPitcherRow) orderRow = dhPitcherRow;
     }
-    const orderIndex = row ? filledRows.findIndex((r) => String(r.id) === String(row.id)) + 1 : 0;
+    const orderIndex = orderRow ? filledRows.findIndex((r) => String(r.id) === String(orderRow.id)) + 1 : 0;
     const error = rowIndex >= 0 && errIdx.includes(rowIndex);
     const selfPending = !!player && String(player.id) === pickedId;
     return { code, player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code), selfPending };
@@ -842,6 +873,7 @@ onMounted(async () => {
     mode.value = e?.gameMode ?? 'BASEBALL';
     // 联赛级特殊规则：缺字段/加载失败保持 false（fail-closed），仅显式 true 才开启
     extraBatter.value = e?.specialRules?.extraBatter === true;
+    ohtaniRule.value = e?.specialRules?.ohtaniRule === true;
     const [teamList, stadiumList] = await Promise.all([
       eventRegistrationApi.gameTeamOptions(eventId.value),
       fetchAllStadiums().catch(() => []),
@@ -877,3 +909,18 @@ onBeforeUnmount(() => {
   unbind();
 });
 </script>
+
+<style scoped>
+.ohtani-rule-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 4px;
+}
+.ohtani-rule-bar__hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+</style>

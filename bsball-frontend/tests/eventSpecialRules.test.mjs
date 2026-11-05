@@ -16,7 +16,9 @@ test('赛事编辑弹窗接入特殊规则组件，并按能力/既有规则决�
     'specialRulesHint',
     'E.get(n.id)',
     'Ke.specialRules(n)',
-    'D.value&&specialRulesAvailable.value'
+    'D.value&&specialRulesAvailable.value',
+    "ohtaniRule:t.ohtaniRule===!0",
+    "ohtaniRule:o.specialRules.ohtaniRule===!0"
   ]) {
     assert.ok(src.includes(need), `缺少接线：${need}`);
   }
@@ -38,9 +40,9 @@ test('联赛编辑弹窗内联收费能力开关，旧二级弹窗/行内入口�
   assert.ok(!src.includes('forceHalf'), '联赛级旧实际规则 UI 应移除');
 });
 
-test('赛事特殊规则组件包含两个开关与未开放提示', () => {
+test('赛事特殊规则组件包含三个开关与未开放提示', () => {
   const src = read('../src/components/admin/EventSpecialRuleFields.vue');
-  for (const need of ['extraBatter', 'forceHalf', 'available', 'hint', 'el-switch']) {
+  for (const need of ['extraBatter', 'forceHalf', 'ohtaniRule', 'available', 'hint', 'el-switch']) {
     assert.ok(src.includes(need), `缺少组件要素：${need}`);
   }
 });

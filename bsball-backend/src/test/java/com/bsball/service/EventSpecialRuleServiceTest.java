@@ -1,7 +1,7 @@
 /*
  * 赛事级特殊规则开关（Issue #275，2026-10-24 口径调整）：EventSpecialRuleService 单元测试。
  *
- * 覆盖：默认值兜底（无记录 / 部分键 / null eventId 早退零查库）、写入并回读生效值
+ * 覆盖：默认值兜底（extraBatter=false、forceHalf=true、ohtaniRule=false；无记录 / 部分键 / null eventId 早退零查库）、写入并回读生效值
  *      （upsert 新增 + 更新既有行、审计字段）、非法键名 / 空映射 / null 值拒绝（零写入）。
  * 写权限由 EventService.create / update（business:event:edit）入口负责；本服务不重复做租户守卫。
  * 纯单元测试：不启动 Spring 容器、不连接数据库。
@@ -60,15 +60,16 @@ class EventSpecialRuleServiceTest {
     }
 
     @Test
-    @DisplayName("无记录时返回默认值：extraBatter=false、forceHalf=true")
+    @DisplayName("无记录时返回默认值：extraBatter=false、forceHalf=true、ohtaniRule=false")
     void getEffective_noRows_returnsDefaults() {
         when(eventSpecialRuleRepository.findByEventId(EVENT_ID)).thenReturn(List.of());
 
         Map<String, Boolean> effective = service.getEffective(EVENT_ID);
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.FALSE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("ohtaniRule"));
     }
 
     @Test
@@ -78,11 +79,12 @@ class EventSpecialRuleServiceTest {
 
         assertEquals(Boolean.FALSE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("ohtaniRule"));
         verifyNoInteractions(eventSpecialRuleRepository);
     }
 
     @Test
-    @DisplayName("仅有 extra_batter 行时 force_half 回默认开启；未知键忽略")
+    @DisplayName("仅有 extra_batter 行时 force_half / ohtaniRule 回默认；未知键忽略")
     void getEffective_partialRows_fallbackToDefaults() {
         when(eventSpecialRuleRepository.findByEventId(EVENT_ID)).thenReturn(List.of(
                 rule(EventSpecialRuleService.RULE_EXTRA_BATTER, true),
@@ -90,9 +92,22 @@ class EventSpecialRuleServiceTest {
 
         Map<String, Boolean> effective = service.getEffective(EVENT_ID);
 
-        assertEquals(2, effective.size());
+        assertEquals(3, effective.size());
         assertEquals(Boolean.TRUE, effective.get("extraBatter"));
         assertEquals(Boolean.TRUE, effective.get("forceHalf"));
+        assertEquals(Boolean.FALSE, effective.get("ohtaniRule"));
+    }
+
+    @Test
+    @DisplayName("ohtani_rule 行可读取为 true")
+    void getEffective_ohtaniRuleRow_readsTrue() {
+        when(eventSpecialRuleRepository.findByEventId(EVENT_ID)).thenReturn(List.of(
+                rule(EventSpecialRuleService.RULE_OHTANI, true)));
+
+        Map<String, Boolean> effective = service.getEffective(EVENT_ID);
+
+        assertEquals(Boolean.TRUE, effective.get("ohtaniRule"));
+        assertEquals(Boolean.FALSE, effective.get("extraBatter"));
     }
 
     @Test
@@ -142,6 +157,27 @@ class EventSpecialRuleServiceTest {
         assertEquals(88L, existing.getCreatedBy());
         assertEquals(USER_ID, existing.getUpdatedBy());
         assertEquals(Boolean.FALSE, existing.getEnabled());
+    }
+
+    @Test
+    @DisplayName("updateRules 写入 ohtani_rule 并回读 true")
+    void updateRules_ohtaniRule_upsertAndReturnEffective() {
+        when(eventSpecialRuleRepository.findByEventIdAndRuleKey(EVENT_ID, EventSpecialRuleService.RULE_OHTANI))
+                .thenReturn(Optional.empty());
+        List<EventSpecialRule> savedRows = new ArrayList<>();
+        when(eventSpecialRuleRepository.save(any(EventSpecialRule.class))).thenAnswer(inv -> {
+            EventSpecialRule row = inv.getArgument(0);
+            savedRows.add(row);
+            return row;
+        });
+        when(eventSpecialRuleRepository.findByEventId(EVENT_ID)).thenReturn(savedRows);
+
+        Map<String, Boolean> effective = service.updateRules(EVENT_ID, TENANT_ID, Map.of("ohtaniRule", true));
+
+        assertEquals(Boolean.TRUE, effective.get("ohtaniRule"));
+        assertEquals(1, savedRows.size());
+        assertEquals(EventSpecialRuleService.RULE_OHTANI, savedRows.get(0).getRuleKey());
+        assertEquals(Boolean.TRUE, savedRows.get(0).getEnabled());
     }
 
     @Test

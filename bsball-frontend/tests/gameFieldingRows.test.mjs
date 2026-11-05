@@ -269,3 +269,16 @@ test('比赛详情守备表接线：首个守位、替补缩进与 Totals 汇总
     assert.ok(entry.includes(`key: '${key}'`), `录入页守备表缺少 ${key} 列`);
   }
 });
+
+test('守备行：DH兼投（二刀流）只显示一次并按 P 归组', () => {
+  const rows = buildFieldingDisplayRows([
+    // 打击行：DH，不参与守备归组
+    { teamId: 7, playerId: 80, name: '二刀流', position: 'DH', battingOrder: 3, listOrder: 2, po: 1, a: 1, defInn: 3 },
+    // 投手行：同一球员，守备表按 P 显示
+    { teamId: 7, playerId: 80, name: '二刀流', position: 'P', firstPosition: 'P', startingPosition: 'P', isPitcher: 1, pitcherOrder: 1, listOrder: 20, po: 1, a: 1, defInn: 3, np: 30 }
+  ], 7);
+  assert.equal(rows.length, 1, '同一球员只显示一行');
+  assert.equal(rows[0].playerId, 80);
+  assert.equal(rows[0].fieldPosition, 'P', '按 P 归组');
+  assert.equal(rows[0].position, 'P');
+});

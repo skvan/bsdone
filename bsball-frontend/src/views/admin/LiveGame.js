@@ -67,7 +67,7 @@ import { buildLiveBenchItems, liveBenchEmptyText, resolveLiveSubDropHits, liveSu
 import { buildFieldRotationMoves, formatFieldRotation, parseFieldRotation } from '../../utils/liveSubRotation.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
-import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
+import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
@@ -6470,7 +6470,10 @@ var sg={
       const p=a.value;
       if(p!=null){
         const q=s.value.find(g=>Number(g.id)===Number(p));
-        if(q)return q
+        if(q)return q;
+        // 大谷规则：DH 兼投时 fpId 在打线中，直接取打线行
+        const lf=e.value.find(g=>Number(g.id)===Number(p));
+        if(lf)return lf
       }
       const r=e.value.find(g=>Nn(g.position)==="P");
       return r??null
@@ -6890,7 +6893,7 @@ var sg={
     function oa(e){
       return e.some(t=>Nn(t.position)==="P")
     }
-    const forceHalfOn=x(!0),extraBatterOn=x(!1);
+    const forceHalfOn=x(!0),extraBatterOn=x(!1),ohtaniRuleOn=x(!1);
     function Er(e){
       const t=sd(e,void 0,{extraBatter:extraBatterOn.value});
       return e.length===9&&e.every(a=>!(a.position??"").toString().trim())&&!t.ok&&(t.msg??"").includes("未指定守备位置")?{
@@ -7561,32 +7564,35 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           if(m==null||oa(y)){
             const benchFp=m!=null&&b.some(E=>Number(E.id)===Number(m)),sameRow=p.value!=null&&Number(p.value.id)===Number(m);
             if(!benchFp){
-              retireFieldingPitcherRow(s,g,p.value),
+              retireFieldingPitcherRow(s,g,p.value,y),
               p.value=null;
               const cp=y.find(E=>Nn(E.position)==="P");
               cp&&(t.value==null||Number(t.value)!==Number(cp.id))&&(t.value=Number(cp.id));
               return
             }
-            sameRow?ue(p.value):(retireFieldingPitcherRow(s,g,p.value),p.value=null);
+            sameRow?ue(p.value):(retireFieldingPitcherRow(s,g,p.value,y),p.value=null);
             return
           }
           const A=b.find(E=>Number(E.id)===Number(m)),T=y.find(E=>Number(E.id)===Number(m)),Y=w.find(E=>Number(E.id)===Number(m)),j=p.value!=null&&Number(p.value.id)===Number(m)?p.value:null,ee=Y??A??T??j;
           if(!ee){
-            retireFieldingPitcherRow(s,g,p.value),
+            retireFieldingPitcherRow(s,g,p.value,y),
             p.value=null;
             return
           }
           if(p.value!=null&&Number(p.value.id)===Number(m)){
+            // 大谷规则：fpRow 与打线行共用同一份 stats，避免快照恢复后打击/投球统计分叉
+            if(T)p.value.stats=mergeRowStats(T,p.value.stats);
             ue(p.value);
             return
           }
           const V=b.filter(E=>Number(E.id)!==Number(m));
           if(V.length!==b.length){s.value=V;g.bench=V}
-          retireFieldingPitcherRow(s,g,p.value);
-          const inheritedSources=[j,A,T,Y,ee].filter(E=>E&&E.startingPosition!=null);
+          retireFieldingPitcherRow(s,g,p.value,y);
+          mergeRowStats(T,A?.stats);
+          const inheritedSources=[A,T,Y,ee].filter(E=>E&&E.startingPosition!=null);
           const inheritedStartingPosition=inheritedSources.length?normalizeFieldPos(inheritedSources[0].startingPosition)||"":void 0;
           p.value={
-            ...ee,teamId:P??ee.teamId,position:"",startingPosition:inheritedStartingPosition,stats:j?.stats??A?.stats??T?.stats??Pt()
+            ...ee,teamId:P??ee.teamId,position:"",startingPosition:inheritedStartingPosition,stats:T?.stats??A?.stats??Pt()
           };
           ue(p.value)
         }
@@ -7598,12 +7604,45 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       
     }
     // 守备投手行下线（换投/被清空）时，把旧投手（含累计统计对象）回落到板凳，避免成为孤儿导致显示 0 / 落库缺行（#203/#204）
-    function retireFieldingPitcherRow(s,g,row){
+    function retireFieldingPitcherRow(s,g,row,lineup){
       if(!row?.id)return;
       const V=Number(row.id);
       if(!Number.isFinite(V)||V<=0||!Oo(row))return;
+      // 旧投手仍在打线（DH 兼投换投后留 DH，或投手已进打序）时不能复制进替补；把投球统计并回该行
+      const lineupRow=Array.isArray(lineup)?lineup.find(E=>Number(E.id)===V):null;
+      if(lineupRow){
+        mergeRowStats(lineupRow,row.stats);
+        return
+      }
       const arr=s.value;
       arr.some(E=>Number(E.id)===V)||(s.value=[...arr,{...row,position:"",lastPosition:row.position??"P"}],g.bench=s.value)
+    }
+    // 并行行（DH 兼投 / 投手已进打序）：打线行与 fpRow 共用同一份 stats，逐项合并避免打击/投球统计分叉
+    function mergeRowStats(row,...sources){
+      if(!row)return null;
+      row.stats||(row.stats=Pt());
+      for(const source of sources)mergeStatsObjects(row.stats,source);
+      return row.stats
+    }
+    function mergeStatsObjects(target,source){
+      for(const section of["batting","pitching","fielding"]){
+        const current=target?.[section]??{},incoming=source?.[section]??{},merged={...current};
+        for(const field of new Set([...Object.keys(current),...Object.keys(incoming)])){
+          if(field==="byPos"){
+            const byPos=mergeFieldingByPos(current[field],incoming[field]);
+            if(byPos)merged[field]=byPos;
+            continue
+          }
+          const a=current[field],b=incoming[field];
+          if((a&&typeof a==="object")||(b&&typeof b==="object")){
+            merged[field]=a&&typeof a==="object"?a:b;
+            continue
+          }
+          merged[field]=Math.max(Number(a??0),Number(b??0))
+        }
+        target[section]=merged
+      }
+      return target
     }
     Ce(te,()=>{
       nt()||ft("home")
@@ -7620,7 +7659,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         for(const r of s){
           if(!r||Et(r))continue;
           const p=Number(r.id);
-          !Number.isFinite(p)||p<=0||r.stats&&(e[String(p)]=JSON.parse(JSON.stringify(r.stats)))
+          if(!Number.isFinite(p)||p<=0||!r.stats)continue;
+          const stats=JSON.parse(JSON.stringify(r.stats));
+          // 大谷规则：同一球员可能同时有打线行与 fpRow，按 id 合并而不是覆盖
+          e[String(p)]=e[String(p)]?mergeStatsObjects(e[String(p)],stats):stats
         }
         
       };
@@ -10334,6 +10376,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           const T=y.find(j=>Number(j.id)===Number(s))??substitutionModePlayers(Ee(a)).find(j=>Number(j.id)===Number(s))??null;
           if(!T||t&&T.id===t.id)return;
           const Y=(T.position??"").toString().toUpperCase();
+          // 大谷规则：投手兼DH仍在投手位时，禁止 P ↔ 野手互换（保留 DH）
+          if(ohtaniRuleOn.value&&(b==="P"||Y==="P")){
+            const dh=y.find(player=>Nn(player.position)==="DH");
+            if(dh&&Number(dh.id)===Number(g.value)){
+              J("大谷规则下，投手兼DH不能与野手互换守位；请先换投，再按取消DH流程处理","warning");
+              return
+            }
+          }
           if(t&&y.some(player=>Nn(player.position)==="DH")&&(b==="P"||Y==="P")){
             if(!substitutionMode.value){
               J("投手与野手互换会取消DH，请先进入「换人模式」后再操作","warning");
@@ -10684,6 +10734,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       J("上次提交换人失败，请先重试「结束换人」或取消换人模式","warning");
       return!0
     }
+    // 大谷规则：识别“DH 就是先发投手/当前投手”的球队；仍任投手时 stillPitching=true
+    function ohtaniDhInfo(side){
+      if(!ohtaniRuleOn.value)return null;
+      const ctx=Ee(side),dh=ctx.lineup.value.find(p=>Nn(p.position)==="DH");
+      if(!dh)return null;
+      const dhId=Number(dh.id),stillPitching=dhId===Number(ctx.fpId.value);
+      const starter=side==="away"?awayStarterFpId.value:homeStarterFpId.value;
+      return stillPitching||dhId===Number(starter)?{stillPitching}:null
+    }
     function applyCancelDh(side){
       if(substitutionModeDhBlocked())return!1;
       const ctx=Ee(side),dhIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)==="DH");
@@ -10712,6 +10771,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function requestCancelDh(side){
       if(substitutionModeDhBlocked())return;
+      const ohtani=ohtaniDhInfo(side);
+      if(ohtani){
+        J(ohtani.stillPitching
+          ?"大谷规则下，投手兼DH不能用 DH 卡取消或移防；请先换投，再按取消DH流程处理"
+          :"大谷规则下，已换投下场的 DH 不能移防或取消","warning");
+        return
+      }
       const rule=dhRuleForSide(side);
       if(!rule.ok)try{
         await al.confirm(substitutionModeHtml([rule.warning]),"取消DH规则提醒",{
@@ -10752,6 +10818,56 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const targetPos=Nn(fielderInLineup.position);
       pitcherInLineup.position=targetPos,fielderInLineup.position="P",D(fc("P",logPlayerName(pitcherInLineup),targetPos,targetPos,logPlayerName(fielderInLineup),"P")),ri(side),syncFieldingPitcher(side,pitcherInLineup,fielderInLineup),Kt()
+    }
+    // 普通 DH：DH 拖到守备位 → DH 上场守备并取消 DH；DH 留原打序，被替换野手退场，投手进其打序位
+    async function confirmDhEnterDefense(side,dhPlayer,targetCode){
+      if(substitutionModeDhBlocked())return;
+      if(side!==cr()){
+        J("只能调整当前守备方的守位","warning");
+        return
+      }
+      if(ohtaniDhInfo(side)){
+        J("大谷规则下，DH兼投不能移防","warning");
+        return
+      }
+      const code=String(targetCode??"").toUpperCase();
+      if(!code||code==="P"){
+        J("请选择投手以外的守备位置","warning");
+        return
+      }
+      const ctx=Ee(side),dhIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)==="DH"),dh=dhIndex>=0?ctx.lineup.value[dhIndex]:null;
+      if(!dh||String(dh.id)!==String(dhPlayer?.id)){
+        J("DH 状态已变化，请重试","warning");
+        return
+      }
+      const fielderIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)===code),fielder=fielderIndex>=0?ctx.lineup.value[fielderIndex]:null;
+      if(!fielder||fielderIndex===dhIndex){
+        J("目标守备位无人","warning");
+        return
+      }
+      const fpId=Number(ctx.fpId.value),pitcher=ctx.fpRow.value&&Number(ctx.fpRow.value.id)===fpId?ctx.fpRow.value:ctx.bench.value.find(p=>Number(p.id)===fpId)??ctx.roster.value.find(p=>Number(p.id)===fpId);
+      if(!pitcher){
+        J("找不到当前守备投手，无法取消 DH","warning");
+        return
+      }
+      const rule=dhRuleForSide(side),lines=[`此操作将取消 DH：`,`· ${logPlayerName(dh)}（DH）转为 ${code}，继续在第${dhIndex+1}棒打击`,`· ${logPlayerName(fielder)} 退场`,`· 投手 ${logPlayerName(pitcher)} 进入第${fielderIndex+1}棒打序`];
+      rule.ok||lines.push("",`规则提醒：${rule.warning}`);
+      try{
+        await al.confirm(substitutionModeHtml(lines),"取消DH并移防",{
+          dangerouslyUseHTMLString:!0,confirmButtonText:"确认取消DH并移防",cancelButtonText:"返回",type:"warning",draggable:!0
+        }
+        )
+      }
+      catch{
+        return
+      }
+      _r(side,fielderIndex,pitcher.id);
+      ctx.lineup.value[dhIndex]={...dh,position:code,firstPosition:firstFieldPositionOf(dh,code),stats:dh.stats??Pt()};
+      ctx.lineup.value[fielderIndex]={...pitcher,position:"P",firstPosition:firstFieldPositionOf(pitcher,"P"),stats:pitcher.stats??Pt()};
+      ctx.bench.value=ctx.bench.value.filter(p=>Number(p.id)!==Number(pitcher.id));
+      ctx.bench.value.some(p=>Number(p.id)===Number(fielder.id))||(ctx.bench.value=[...ctx.bench.value,{...fielder,position:"",lastPosition:code,stats:fielder.stats??Pt()}]);
+      ctx.fpId.value=Number(pitcher.id),ctx.fpRow.value=null;
+      ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 转为 ${code}，投手 ${logPlayerName(pitcher)} 进入第${fielderIndex+1}棒打序`})),Kt()
     }
     /* ---------------- 守备轮转速记（#478 扩展）：输入闭环数字串一次完成多位置轮转 ----------------
        纯规则（闭环解析/占用校验/置换表）在 utils/liveSubRotation.js（含单测）；此处只做页内接线。
@@ -11052,6 +11168,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           mode:"card",sourceKind:"dhCard",side:s.side,playerId:s.player?.id??null,sourcePos:"DH",moved:!0,x:event.clientX,y:event.clientY,label:`${s.player?.name??""} #${s.player?.number??"-"}`
         }
         ;
+        if(s.side!==cr()||ohtaniDhInfo(s.side)){
+          liveBenchHoverHit.value=null;
+          return
+        }
+        s.layout||(s.layout=liveBenchCollectFieldLayout());
+        liveBenchHoverHit.value=resolveLiveSubDropHits(event.clientX,event.clientY,s.layout).find(h=>h.kind==="fielder"&&h.code!=="P")??null;
         return
       }
       s.layout||(s.layout=liveBenchCollectFieldLayout());
@@ -11074,9 +11196,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const s=liveBenchDragSession;
       if(!s||event.pointerId!==s.pointerId)return;
       if(s.sourceKind==="dhCard"){
-        const moved=s.moved,el=s.dhEl;
+        const moved=s.moved,hit=moved?liveBenchHoverHit.value:null,el=s.dhEl;
         liveBenchCleanupDrag();
         if(!moved)return;
+        if(hit?.kind==="fielder"&&hit.code!=="P"&&s.side===cr()){
+          confirmDhEnterDefense(s.side,s.player,hit.code);
+          return
+        }
         const rect=el?.isConnected&&el.getBoundingClientRect?el.getBoundingClientRect():null;
         if(!rect||rect.width<=0||rect.height<=0)return;
         const outside=event.clientX<rect.left-8||event.clientX>rect.right+8||event.clientY<rect.top-8||event.clientY>rect.bottom+8;
@@ -11111,8 +11237,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const ui=liveBenchDragUi.value,pd=liveBenchPendingCard.value;
       const src=ui?.sourceKind??(pd?(pd.side==="offense"?"offenseBench":"defenseBench"):null);
       if(!src)return[];
-      const kinds=liveSubTargetKinds(src),hv=liveBenchHoverHit.value,out=[];
-      if(kinds.includes("fielder"))for(const code of Wr.value)ui?.sourcePos===code||out.push({
+      const kinds=ui?.sourceKind==="dhCard"&&ohtaniDhInfo(ui.side)?[]:liveSubTargetKinds(src),hv=liveBenchHoverHit.value,out=[];
+      if(kinds.includes("fielder"))for(const code of Wr.value)(src==="dhCard"&&code==="P")||ui?.sourcePos===code||out.push({
         key:"f-"+code,cx:za(code).x,cy:za(code).y,hot:!!hv&&hv.kind==="fielder"&&hv.code===code
       }
       );
@@ -12055,7 +12181,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Le.value=!0,Ti=!0;
       try{
         const ev=await jc.get(Re.value);
-        S.value=ev?.name??"当前赛事",forceHalfOn.value=ev?.specialRules?.forceHalf!==!1,extraBatterOn.value=ev?.specialRules?.extraBatter===!0,Pa.value=await Zc.selectOptions()??[];
+        S.value=ev?.name??"当前赛事",forceHalfOn.value=ev?.specialRules?.forceHalf!==!1,extraBatterOn.value=ev?.specialRules?.extraBatter===!0,ohtaniRuleOn.value=ev?.specialRules?.ohtaniRule===!0,Pa.value=await Zc.selectOptions()??[];
         const t=ld(Re.value,e);
         if(t){
           const a=t.setupForm??{
