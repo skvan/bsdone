@@ -72,5 +72,7 @@ export function liveSubTargetKinds(sourceKind) {
   if (sourceKind === 'offenseBench') return ['base', 'batter'];
   if (sourceKind === 'defenseBench') return ['fielder'];
   if (sourceKind === 'fielder') return ['fielder', 'bench'];
+  // 普通 DH 卡可拖到守备位上场守备；大谷规则下由页面拦截
+  if (sourceKind === 'dhCard') return ['fielder'];
   return [];
 }

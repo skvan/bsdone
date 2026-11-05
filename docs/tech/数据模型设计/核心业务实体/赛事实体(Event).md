@@ -107,7 +107,7 @@ Event --|> BaseEntity : "继承"
 
 > 变更（Issue #318，2026-10-14）：`requireRoster`（`bs_event.require_roster`）为**报名制**标记——新建赛事默认 true：至少 2 支「已确认且锁定名单」的球队才能建比赛，且主/客队须属该集合；历史存量赛事由迁移回填 false（沿用宽松口径，照顾历史比赛）。该标记**创建时定型**：编辑赛事一律沿用存量值（无 UI 开关）。状态置为 ended 前须该赛事全部比赛已终态（final/cancelled，与球队解散守卫同口径），否则 400「存在未结束的比赛，无法结束赛事」。
 
-> 变更（Issue #275，2026-10-24 口径调整）：`specialRules` 为**瞬态字段**（`@Transient` + `@JsonInclude(NON_NULL)`，不落表）——赛事级规则与能力标识 `{specialRulesEnabled, hasEventRules, extraBatter, forceHalf}`。`GET /event/{id}` 由 EventService 按赛事既有规则和联赛收费能力装配：赛事已有规则时沿用（能力关闭也保留）；否则 `specialRulesEnabled` 为联赛能力，规则默认 extraBatter=false、forceHalf=true。`update` 请求可携带 `{extraBatter, forceHalf}`，在同一事务写入 `bs_event_special_rule`：已有规则赛事始终允许；无规则赛事要求联赛能力开启。`create` 携带规则时要求联赛能力开启。规则数据见 `核心业务实体/赛事特殊规则实体(EventSpecialRule).md`。
+> 变更（Issue #275，2026-10-24 口径调整）：`specialRules` 为**瞬态字段**（`@Transient` + `@JsonInclude(NON_NULL)`，不落表）——赛事级规则与能力标识 `{specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}`。`GET /event/{id}` 由 EventService 按赛事既有规则和联赛收费能力装配：赛事已有规则时沿用（能力关闭也保留）；否则 `specialRulesEnabled` 为联赛能力，规则默认 extraBatter=false、forceHalf=true、ohtaniRule=false。`update` 请求可携带 `{extraBatter, forceHalf, ohtaniRule}`，在同一事务写入 `bs_event_special_rule`：已有规则赛事始终允许；无规则赛事要求联赛能力开启。`create` 携带规则时要求联赛能力开启。规则数据见 `核心业务实体/赛事特殊规则实体(EventSpecialRule).md`。
 
 ### 接口层：EventApi
 - 列表查询：支持分页、排序参数
@@ -202,7 +202,7 @@ Event 作为赛事主数据，具备清晰的字段定义与完善的权限控�
 - 分类信息：status（默认草稿）、gameMode（BASEBALL/SOFTBALL）
 - 报名制：requireRoster（新建默认 true；存量回填 false，Issue #318 决策 11）
 - 关联信息：leagueId（所属联赛）
-- 特殊规则（瞬态）：specialRules（`Map<String,Boolean>`，Issue #275）——GET /event/{id} 详情装配 `{specialRulesEnabled, hasEventRules, extraBatter, forceHalf}`；update/create 可携带 `{extraBatter, forceHalf}` 写入赛事规则；不落 Event 表
+- 特殊规则（瞬态）：specialRules（`Map<String,Boolean>`，Issue #275/#525）——GET /event/{id} 详情装配 `{specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}`；update/create 可携带 `{extraBatter, forceHalf, ohtaniRule}` 写入赛事规则；不落 Event 表
 
 ### 业务流程：赛事创建
 ```mermaid
