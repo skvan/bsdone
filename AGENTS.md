@@ -4,7 +4,7 @@
 
 这是一个棒球赛事管理与数据展示网站，功能类似 GameChanger App（赛事记录、数据统计、团队管理等）。
 
-- **主要技术**：Spring Boot 4.1.0 + Java 17（后端）、Vue 3 + Vite 6 + Element Plus（前端，重建版已随 v2.0.0 双轨上线）
+- **主要技术**：Spring Boot 4.1.0 + Java 17（后端）、Vue 3 + Vite 6 + Element Plus（前端，生产/测试统一部署 `/bs-ball/`）
 - **包管理器**：Maven 3.6.3（后端）、npm（前端，使用 `npm run ...`）
 - **数据库**：PostgreSQL
 - **部署环境**：阿里云服务器
@@ -23,12 +23,12 @@ bsdone/                      # 项目根目录
 │   │   └── core/            # 核心组件
 │   ├── src/test/java/com/bsball/        # 单元测试（与被测类同包）
 │   └── pom.xml
-├── bsball-frontend/         # 前端源码工程（Vite + Vue 3 + Element Plus；重建版已双轨上线）
+├── bsball-frontend/         # 前端源码工程（Vite + Vue 3 + Element Plus；生产/测试部署 /bs-ball/）
 │   ├── src/                 # 源码（router/views/...）
-│   ├── scripts/             # 打包脚本（package-webapps.mjs；--next 双轨打包）
-│   ├── vite.config.js       # 构建配置（默认 base=/bs-ball/；重建版构建见 build:next）
-│   └── vite.legacy-preview.config.js  # 旧编译版对照预览（3001）
-├── bsball_project/          # 部署包（webapps/ 为旧版编译产物基线，发布时组装双轨包）
+│   ├── scripts/             # 打包脚本（package-webapps.mjs；单轨 /bs-ball/ 打包）
+│   ├── vite.config.js       # 构建配置（base=/bs-ball/）
+│   └── vite.legacy-preview.config.js  # 旧编译版对照预览（3001，临时保留）
+├── bsball_project/          # 部署包（webapps/ 保留新版运行时静态资源；旧编译产物打包时排除）
 └── bsball_backup.sql        # 数据库备份文件
 ```
 
@@ -165,7 +165,7 @@ bsdone/                      # 项目根目录
   mvn test
   ```
 - 测试未通过不允许交付；确实无法运行时，必须在交付说明中写明原因
-- 前端（`bsball-frontend`）：重建版已随 v2.0.0 双轨上线（以编译产物为规格分批次重建）。新增前端代码适用本文件命名/风格约定；测试基建（Vitest）随批次建设，api 层与工具函数优先补单测，**页面级 UI 暂不纳入强制单测**；构建与打包使用 `npm run build` / `npm run package`（重建版双轨构建 `npm run build:next`；禁止在服务器构建）
+- 前端（`bsball-frontend`）：生产/测试统一部署 `/bs-ball/`，所有前端改动只修改 `bsball-frontend/src`。新增前端代码适用本文件命名/风格约定；测试基建（Vitest）随批次建设，api 层与工具函数优先补单测，**页面级 UI 暂不纳入强制单测**；构建与打包使用 `npm run build` / `npm run package`（禁止在服务器构建）
 
 ## 文档同步（重要！改代码必须同步改文档）
 

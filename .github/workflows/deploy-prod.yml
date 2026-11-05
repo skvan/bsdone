@@ -5,11 +5,10 @@
 #   1. builds bsball-server jar from the CURRENT commit (tests included);
 #      the release version is injected into the jar (-Dapp.release.version)
 #      and verified against the jar's application.yml placeholder
-#   2. applies the release version to the legacy frontend artifacts
-#      (apply-release-version.mjs), builds the rebuilt frontend
-#      (bs-ball-next) and packs the dual-track webapps package, then
-#      uploads it, together with the jar + scripts/deploy-prod.sh, to the
-#      server staging dir
+#   2. applies the release version to the legacy static frontend artifacts
+#      (apply-release-version.mjs), builds the frontend (single-track /bs-ball/)
+#      and packs the webapps package, then uploads it, together with the jar +
+#      scripts/deploy-prod.sh, to the server staging dir
 #   3. runs the deploy script on the server: safety gate -> backup ->
 #      atomic jar swap -> restart java-server -> health check ->
 #      frontend (STEP 4, from the staged package) -> automatic rollback on failure
@@ -162,7 +161,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: bsball-frontend/package-lock.json
 
-      - name: Build rebuilt frontend (bs-ball-next, dual-track) and pack webapps tarball
+      - name: Build frontend (/bs-ball) and pack webapps tarball
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
@@ -172,13 +171,17 @@ jobs:
           npm ci --no-audit --no-fund
           export VITE_APP_VERSION="$RELEASE_VERSION"
           export VITE_CLUBHOUSE_LAYOUT_EDITING=false
-          npx vite build --base=/bs-ball-next/
-          node scripts/package-webapps.mjs --next --version="$RELEASE_VERSION" --build-time="$VITE_APP_BUILD_TIME"
+          npx vite build
+          node scripts/package-webapps.mjs --version="$RELEASE_VERSION" --build-time="$VITE_APP_BUILD_TIME"
           cp dist/webapps-dev.tar.gz /tmp/webapps-prod.tar.gz
-          echo "== tarball structure check (dual-track) =="
-          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/bs-ball-next/index.html webapps/bs-ball-next/version.json webapps/portal.html webapps/premier12/index.html; do
+          echo "== tarball structure check (single-track /bs-ball/) =="
+          for entry in webapps/bs-ball/index.html webapps/bs-ball/version.json webapps/portal.html webapps/premier12/index.html; do
             tar -tzf /tmp/webapps-prod.tar.gz | grep -qx "$entry" || { echo "::error::missing $entry in tarball"; exit 1; }
           done
+          if tar -tzf /tmp/webapps-prod.tar.gz | grep -q '^webapps/bs-ball-next/'; then
+            echo "::error::legacy bs-ball-next/ must not be in the tarball"
+            exit 1
+          fi
           echo "tarball structure OK"
           echo "== tarball md5 =="
           ls -l /tmp/webapps-prod.tar.gz
