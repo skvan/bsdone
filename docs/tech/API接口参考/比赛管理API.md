@@ -316,6 +316,15 @@ EventService --> EventRepository
 - POST /game/{id}/fielding-adjustments/{adjustmentId}/revoke
   - 作用：撤销一条已生效补记，保留审计行并把球员行 `a/tc` 与位置 `a` 扣回
   - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同新增
+- POST /game/{id}/pitcher-transfers
+  - 作用：赛后补录把一条投手统计行转记到同队另一名投手；只转记，不删除源行
+  - 请求：`sourceStatId`、`targetPlayerId`、`note`（可空）
+  - 校验：仅 final；源行必须是本场投手行；目标必须是本场同队投手行；源行 R/ER/UER/PENDING/旧 `earnedR` 必须为 0 且无自责分判定，否则 400（先处理 ER）
+  - 合并：目标已有值优先；源行非零、目标为零的投球/守备字段并入目标；源行可转记字段清零；R/ER 不参与转记；逐位置守备按守位合并（目标已有优先，否则移动源位置行）
+  - 审计：写 `bs_game_pitcher_transfer`，保存源行/目标行前后快照、操作人、时间；源行保留，等待单独的删除确认
+- POST /game/{id}/pitcher-transfers/{transferId}/delete-source
+  - 作用：转记成功后单独删除源行（与转记是两个动作）
+  - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）
@@ -323,7 +332,7 @@ EventService --> EventRepository
   - 结果页人工覆写 R/ER：同一投手已有生效覆写时就地更新；如需恢复引擎值，到「比赛复核 → 投手 R/ER」撤销。该路径只写覆写与统计，不读写 LiveGame 现场快照
   - 赛后守备补记（Issue #554）：结果页统计来自 `GET /game/{id}/stats`（已含补记后的 A/TC），本接口不再回放补记；若后续客户端改为提交基础统计，需显式约定回放标记，避免重复 +1
   - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
-  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定不含 `pitchPa`
+  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定现在包含 `pitchPa`（PA 已开放为可编辑列并与 BF 同步）
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
@@ -346,7 +355,7 @@ EventService --> EventRepository
 - DELETE /game/stats/delete/{id}
   - 作用：球员统计CRUD
   - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 对投手行要求“全零且无自责分判定”，否则返回 400（先转记数据 / 先处理判定）；零数据投手行允许删除
-  - 全零判定不包含结果页不暴露的辅助字段 `pitchPa`（投手面对打者以 `pitchBf` 为准；`pitchPa` 非零但 `pitchBf` 为 0 时仍按零数据清理）；`pitchBf`、用球数、安打、失分等实际统计仍参与
+  - 全零判定包含 `pitchPa`：结果页新增 PA 列，PA 与 BF 双向同步；`pitchBf`、用球数、安打、失分等实际统计仍参与
   - 参考：`GameApi.java:125-141`
 
 ### 精彩时刻（HighlightMoment）

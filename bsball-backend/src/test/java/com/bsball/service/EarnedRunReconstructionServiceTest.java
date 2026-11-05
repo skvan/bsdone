@@ -15,15 +15,22 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.model.entity.EarnedRunPlayEntity;
+import com.bsball.model.entity.GameFieldingPosStat;
+import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
 import com.bsball.repository.EarnedRunDecisionRepository;
 import com.bsball.repository.EarnedRunPlayRepository;
+import com.bsball.repository.GameFieldingAdjustmentRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.stats.earnedrun.ScoringRunner;
@@ -52,14 +59,23 @@ class EarnedRunReconstructionServiceTest {
     @Mock
     private PitcherRunOverrideRepository pitcherRunOverrideRepository;
     @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
+    private GameFieldingAdjustmentRepository gameFieldingAdjustmentRepository;
+    @Mock
+    private GamePitcherTransferRepository gamePitcherTransferRepository;
+    @Mock
     private PlayerRepository playerRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private EarnedRunReconstructionService service;
 
     @BeforeEach
     void setUp() {
         service = new EarnedRunReconstructionService(
                 playRepository, decisionRepository, gamePlayerStatRepository,
-                pitcherRunOverrideRepository, playerRepository);
+                pitcherRunOverrideRepository, gameFieldingPosStatRepository,
+                gameFieldingAdjustmentRepository, gamePitcherTransferRepository,
+                playerRepository, objectMapper);
         GamePlayerStat tenantOnePitcher = pitcherStat(1L, 700L, 0, 0);
         GamePlayerStat tenantOneReliever = pitcherStat(1L, 701L, 0, 0);
         GamePlayerStat tenantTenPitcher = pitcherStat(10L, 901L, 0, 0);
@@ -592,6 +608,96 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(5, other.getPitchR(), "未编辑投手不得被引擎重算覆盖");
         assertEquals(4, other.getEr());
         verify(decisionRepository, never()).findByTenantIdAndGameId(1L, 20L);
+    }
+
+    @Test
+    @DisplayName("投手转记：目标已有值优先，源行可转记字段清零并写审计")
+    void transferPitcher_mergesTargetPriorityAndZerosSource() {
+        GamePlayerStat source = pitcherStat(1L, 700L, 0, 0);
+        source.setId(100L);
+        source.setTeamId(1L);
+        source.setNp(27);
+        source.setPitchPa(11);
+        source.setFo(3);
+        source.setIp(0d);
+        GamePlayerStat target = pitcherStat(1L, 701L, 3, 3);
+        target.setId(101L);
+        target.setTeamId(1L);
+        target.setNp(0);
+        target.setPitchPa(0);
+        target.setFo(0);
+        target.setIp(1.2d);
+        target.setPitchBf(11);
+        target.setPitchAb(7);
+        when(gamePlayerStatRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(source));
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(source, target));
+        when(gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L))
+                .thenReturn(List.of());
+        when(gamePitcherTransferRepository.save(any(GamePitcherTransfer.class)))
+                .thenAnswer(invocation -> {
+                    GamePitcherTransfer transfer = invocation.getArgument(0);
+                    transfer.setId(55L);
+                    return transfer;
+                });
+        when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PitcherTransferResultDTO result = service.transferPitcher(
+                1L, 20L, 100L, 701L, "补正", 9L);
+
+        assertEquals(Integer.valueOf(27), target.getNp());
+        assertEquals(Integer.valueOf(11), target.getPitchPa());
+        assertEquals(Integer.valueOf(3), target.getFo());
+        assertEquals(Double.valueOf(1.2d), target.getIp());
+        assertEquals(Integer.valueOf(0), source.getNp());
+        assertEquals(Integer.valueOf(0), source.getPitchPa());
+        assertEquals(Integer.valueOf(0), source.getFo());
+        assertEquals(Long.valueOf(55L), result.transferId());
+        assertEquals("TRANSFERRED", result.status());
+        verify(gamePitcherTransferRepository).save(any(GamePitcherTransfer.class));
+    }
+
+    @Test
+    @DisplayName("投手转记：源行仍有失分或自责分判定时拒绝")
+    void transferPitcher_rejectsEarnedRunData() {
+        GamePlayerStat source = pitcherStat(1L, 700L, 1, 0);
+        source.setId(100L);
+        source.setTeamId(1L);
+        when(gamePlayerStatRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(source));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.transferPitcher(1L, 20L, 100L, 701L, null, 9L));
+        verify(gamePitcherTransferRepository, never()).save(any(GamePitcherTransfer.class));
+    }
+
+    @Test
+    @DisplayName("投手转记：源行删除必须全零且无判定")
+    void deletePitcherTransferSource_deletesZeroSource() {
+        GamePitcherTransfer transfer = new GamePitcherTransfer();
+        transfer.setId(55L);
+        transfer.setTenantId(1L);
+        transfer.setGameId(20L);
+        transfer.setSourceStatId(100L);
+        transfer.setSourcePlayerId(700L);
+        transfer.setStatus("TRANSFERRED");
+        GamePlayerStat source = pitcherStat(1L, 700L, 0, 0);
+        source.setId(100L);
+        source.setTeamId(1L);
+        source.setNp(0);
+        source.setPitchPa(0);
+        when(gamePitcherTransferRepository.findByIdAndTenantIdAndGameId(55L, 1L, 20L))
+                .thenReturn(Optional.of(transfer));
+        when(gamePlayerStatRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(source));
+        when(gameFieldingPosStatRepository.findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L))
+                .thenReturn(List.of());
+        when(gamePitcherTransferRepository.save(any(GamePitcherTransfer.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.deletePitcherTransferSource(1L, 20L, 55L, 9L);
+
+        assertEquals("DELETED", transfer.getStatus());
+        assertEquals(Long.valueOf(9L), transfer.getSourceDeletedBy());
+        verify(gamePlayerStatRepository).delete(source);
     }
 
     @Test
