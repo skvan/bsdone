@@ -17,6 +17,9 @@ import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameRevisionAuditDTO;
+import com.bsball.model.dto.IdentityTransferPreviewDTO;
+import com.bsball.model.dto.IdentityTransferRequest;
+import com.bsball.model.dto.IdentityTransferResultDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.PitcherRunOverrideRequest;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
@@ -969,6 +972,72 @@ public class GameService {
             }
             return result;
         } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
+    }
+
+    /** 整名球员身份转记预览。 */
+    public IdentityTransferPreviewDTO previewIdentityTransfer(
+            Long gameId, Long sourcePlayerId, Long targetPlayerId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能进行身份转记");
+        if (sourcePlayerId == null || targetPlayerId == null) {
+            throw new BusinessException(400, "缺少源球员或目标球员");
+        }
+        try {
+            return this.earnedRunReconstructionService.previewIdentityTransfer(
+                    game.getTenantId(), gameId, sourcePlayerId, targetPlayerId);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        }
+    }
+
+    /** 整名球员身份转记；转记成功后再单独确认删除源数据。 */
+    public IdentityTransferResultDTO transferIdentity(
+            Long gameId, IdentityTransferRequest request) {
+        if (request == null || request.getSourcePlayerId() == null
+                || request.getTargetPlayerId() == null) {
+            throw new BusinessException(400, "缺少源球员或目标球员");
+        }
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能进行身份转记");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            IdentityTransferResultDTO result = this.earnedRunReconstructionService
+                    .transferIdentity(game.getTenantId(), gameId,
+                            request.getSourcePlayerId(), request.getTargetPlayerId(),
+                            request.getScopes(), request.getNote(), operatorId);
+            recordLedger(game, "IDENTITY_TRANSFER", "TRANSFER", "IDENTITY_TRANSFER",
+                    result.transferId(), null, result.targetPlayerId(), null,
+                    "identity", "球员身份", String.valueOf(result.sourcePlayerId()),
+                    String.valueOf(result.targetPlayerId()), "TRANSFERRED",
+                    request.getNote(), operatorId);
+            return result;
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new BusinessException(400, ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessException(409, "该转记与其他操作冲突，请刷新后重试");
+        }
+    }
+
+    /** 身份转记成功后单独删除源数据。 */
+    public void deleteIdentityTransferSource(Long gameId, Long transferId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能删除身份转记源数据");
+        Long operatorId = CurrentUserHolder.get();
+        if (operatorId == null) {
+            throw new BusinessException(401, "未登录");
+        }
+        try {
+            IdentityTransferResultDTO result = this.earnedRunReconstructionService
+                    .deleteIdentityTransferSource(
+                            game.getTenantId(), gameId, transferId, operatorId);
+            recordLedger(game, "IDENTITY_TRANSFER", "DELETE_SOURCE", "IDENTITY_TRANSFER",
+                    transferId, null, result.targetPlayerId(), null,
+                    "identity", "球员身份",
+                    String.valueOf(result.sourcePlayerId()), "—",
+                    "DELETED", null, operatorId);
+        } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
     }

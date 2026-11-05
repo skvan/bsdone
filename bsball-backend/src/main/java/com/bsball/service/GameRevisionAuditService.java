@@ -7,6 +7,7 @@ import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GameFieldingAdjustment;
 import com.bsball.model.entity.GameFieldingPosStat;
+import com.bsball.model.entity.GameIdentityTransfer;
 import com.bsball.model.entity.GamePitcherTransfer;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.GameStatAdjustment;
@@ -16,6 +17,7 @@ import com.bsball.model.entity.Player;
 import com.bsball.repository.ErDecisionAdjustmentRepository;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
+import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameStatAdjustmentRepository;
@@ -52,6 +54,7 @@ public class GameRevisionAuditService {
     private final PitcherRunOverrideRepository pitcherRunOverrideRepository;
     private final GameFieldingAdjustmentRepository fieldingAdjustmentRepository;
     private final GamePitcherTransferRepository pitcherTransferRepository;
+    private final GameIdentityTransferRepository identityTransferRepository;
     private final PlayerRepository playerRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
@@ -65,6 +68,7 @@ public class GameRevisionAuditService {
             PitcherRunOverrideRepository pitcherRunOverrideRepository,
             GameFieldingAdjustmentRepository fieldingAdjustmentRepository,
             GamePitcherTransferRepository pitcherTransferRepository,
+            GameIdentityTransferRepository identityTransferRepository,
             PlayerRepository playerRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
             GameFieldingPosStatRepository gameFieldingPosStatRepository,
@@ -76,6 +80,7 @@ public class GameRevisionAuditService {
         this.pitcherRunOverrideRepository = pitcherRunOverrideRepository;
         this.fieldingAdjustmentRepository = fieldingAdjustmentRepository;
         this.pitcherTransferRepository = pitcherTransferRepository;
+        this.identityTransferRepository = identityTransferRepository;
         this.playerRepository = playerRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
@@ -100,8 +105,11 @@ public class GameRevisionAuditService {
                         game.getTenantId(), game.getId());
         List<GamePitcherTransfer> transfers = pitcherTransferRepository
                 .findByTenantIdAndGameIdOrderByIdDesc(game.getTenantId(), game.getId());
+        List<GameIdentityTransfer> identityTransfers = identityTransferRepository
+                .findByTenantIdAndGameIdOrderByIdDesc(game.getTenantId(), game.getId());
         Map<Long, String> names = loadPlayerNames(
-                erAdjustments, pitcherOverrides, fieldingAdjustments, transfers);
+                erAdjustments, pitcherOverrides, fieldingAdjustments, transfers,
+                identityTransfers);
 
         List<GameRevisionAuditDTO> rows = new ArrayList<>();
         for (ErDecisionAdjustment row : erAdjustments) {
@@ -114,6 +122,9 @@ public class GameRevisionAuditService {
             rows.add(toDto(row, names));
         }
         for (GamePitcherTransfer row : transfers) {
+            rows.add(toDto(row, names));
+        }
+        for (GameIdentityTransfer row : identityTransfers) {
             rows.add(toDto(row, names));
         }
         rows.sort(Comparator
@@ -172,6 +183,19 @@ public class GameRevisionAuditService {
                 "DELETED".equals(row.getStatus()) ? "DELETE_SOURCE" : "TRANSFER",
                 row.getStatus(),
                 "投手行转记：" + playerName(names, row.getSourcePlayerId())
+                        + " → " + playerName(names, row.getTargetPlayerId()),
+                row.getNote(),
+                operatorId(row.getSourceDeletedBy(), row.getUpdatedBy(), row.getCreatedBy()),
+                operatedAt(row.getSourceDeletedAt(), row.getUpdatedAt(), row.getCreatedAt()));
+    }
+
+    private static GameRevisionAuditDTO toDto(GameIdentityTransfer row, Map<Long, String> names) {
+        return new GameRevisionAuditDTO(
+                "IDENTITY_TRANSFER",
+                row.getId(),
+                "DELETED".equals(row.getStatus()) ? "DELETE_SOURCE" : "TRANSFER",
+                row.getStatus(),
+                "球员身份转记：" + playerName(names, row.getSourcePlayerId())
                         + " → " + playerName(names, row.getTargetPlayerId()),
                 row.getNote(),
                 operatorId(row.getSourceDeletedBy(), row.getUpdatedBy(), row.getCreatedBy()),
@@ -476,7 +500,8 @@ public class GameRevisionAuditService {
             List<ErDecisionAdjustment> erAdjustments,
             List<PitcherRunOverride> pitcherOverrides,
             List<GameFieldingAdjustment> fieldingAdjustments,
-            List<GamePitcherTransfer> transfers) {
+            List<GamePitcherTransfer> transfers,
+            List<GameIdentityTransfer> identityTransfers) {
         Set<Long> ids = new HashSet<>();
         for (ErDecisionAdjustment row : erAdjustments) {
             addId(ids, row.getRunnerId());
@@ -489,6 +514,10 @@ public class GameRevisionAuditService {
             addId(ids, row.getPlayerId());
         }
         for (GamePitcherTransfer row : transfers) {
+            addId(ids, row.getSourcePlayerId());
+            addId(ids, row.getTargetPlayerId());
+        }
+        for (GameIdentityTransfer row : identityTransfers) {
             addId(ids, row.getSourcePlayerId());
             addId(ids, row.getTargetPlayerId());
         }

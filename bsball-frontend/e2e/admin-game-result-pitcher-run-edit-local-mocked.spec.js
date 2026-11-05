@@ -202,6 +202,39 @@ async function setup(page) {
             }]
           }
         : { statId, playerId: null, isPitcher: true, deletable: true, recommendedAction: 'NONE', blockers: [] };
+    } else if (path === '/player/team-options') {
+      const teamId = Number(url.searchParams.get('teamId') ?? 0);
+      data = teamId === AWAY_ID
+        ? awayPlayers.map((p) => ({ ...p, id: p.id }))
+        : teamId === HOME_ID
+          ? homePlayers.map((p) => ({ ...p, id: p.id }))
+          : [];
+    } else if (path === `/game/${GAME_ID}/identity-transfers/preview`
+        && request.method() === 'GET') {
+      data = {
+        sourcePlayerId: Number(url.searchParams.get('sourcePlayerId')),
+        sourcePlayerName: 'T1PITCHER2',
+        targetPlayerId: Number(url.searchParams.get('targetPlayerId')),
+        targetPlayerName: 'T1PITCHER',
+        teamId: AWAY_ID,
+        transferable: true,
+        blockers: [],
+        rows: [{
+          isPitcher: 1, sourceStatId: 3010, targetStatId: 3009, targetExists: true
+        }],
+        fieldingPositions: ['P'],
+        erDecisionCount: 1,
+        sourceOverride: false,
+        targetOverride: false
+      };
+    } else if (path === `/game/${GAME_ID}/identity-transfers`
+        && request.method() === 'POST') {
+      data = {
+        transferId: 66, sourcePlayerId: 1114, targetPlayerId: 1100, status: 'TRANSFERRED'
+      };
+    } else if (path === `/game/${GAME_ID}/identity-transfers/66/delete-source`
+        && request.method() === 'POST') {
+      data = {};
     } else if (path === `/game/${GAME_ID}/adjustments` && request.method() === 'GET') {
       data = [{
         id: 1, scope: 'PLAYER_STAT', action: 'UPDATE_FIELD', sourceType: 'RESULT_SAVE',
@@ -631,4 +664,42 @@ test('修订台账页签展示字段级修改', async ({ page }) => {
   const erRow = page.locator('.adjustment-ledger .el-table__row').filter({ hasText: 'T1PITCHER2' }).first();
   await expect(erRow).toContainText('ER 判定');
   await expect(erRow).toContainText('责任投手');
+});
+
+test('身份转记：预览同队球员并单独删除源数据', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '身份转记' }).click();
+
+  const form = page.locator('.identity-transfer__form');
+  await form.locator('.el-select').nth(0).click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: 'T1PITCHER2' }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+  await form.locator('.el-select').nth(1).click();
+  await page.locator('.el-select-dropdown:visible').last()
+    .locator('.el-select-dropdown__item')
+    .filter({ hasText: /T1PITCHER(?!\d)/ }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+  await page.getByRole('button', { name: '预览转记' }).click();
+
+  await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER2');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER');
+  await expect(page.getByRole('button', { name: '确认转记' })).toBeVisible();
+
+  const transferRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().endsWith(`/game/${GAME_ID}/identity-transfers`)
+  ));
+  await page.getByRole('button', { name: '确认转记' }).click();
+  await transferRequest;
+
+  const box = page.locator('.el-message-box:visible');
+  await expect(box).toContainText('是否删除源数据');
+  const deleteRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes('/identity-transfers/66/delete-source')
+  ));
+  await box.getByRole('button', { name: '删除源数据' }).click();
+  await deleteRequest;
 });

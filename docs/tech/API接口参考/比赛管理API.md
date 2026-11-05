@@ -349,6 +349,23 @@ EventService --> EventRepository
 - POST /game/{id}/pitcher-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源行（与转记是两个动作）
   - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/identity-transfers/preview
+  - 作用：整名球员身份转记预览，返回源/目标球员、可转记行、守备位置、ER 判定数与阻断项
+  - 参数：`sourcePlayerId`、`targetPlayerId`（必填，同队且不能相同）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`IdentityTransferPreviewDTO`，字段含 `sourcePlayerId/sourcePlayerName/targetPlayerId/targetPlayerName/teamId/transferable/blockers/rows/fieldingPositions/erDecisionCount/sourceOverride/targetOverride`
+  - `rows[]`：`isPitcher/sourceStatId/targetStatId/targetExists`；目标无对应统计行时表示转记时移动/新建
+  - 只读：不写库
+- POST /game/{id}/identity-transfers
+  - 作用：整名球员身份转记（统计、逐位置守备、ER 判定），覆盖“从头到尾选错人”
+  - 请求：`sourcePlayerId`、`targetPlayerId`、`scopes`（`STATS/FIELDING/ER_DECISIONS`，缺省三项全选；显式空数组或未知范围返回 400）、`note`（≤200 字）
+  - 校验：仅 final；源/目标必须在本场；同队且不同人；源数据全零时拒绝重复转记；目标无本场统计时必须在源球队名单中；目标已有统计行时按“目标值优先、源非零补缺”合并；R/ER 覆写随 `ER_DECISIONS` 范围移动；ER 判定通过 `REASSIGN` 调整改派到目标
+  - 审计：写 `bs_game_identity_transfer`，保存源/目标前后快照、范围、操作人、时间；统一台账写 `IDENTITY_TRANSFER/TRANSFER`
+  - 响应：`IdentityTransferResultDTO`（`transferId/sourcePlayerId/targetPlayerId/status`）
+  - 转记完成不删除源数据；删除是独立动作
+- POST /game/{id}/identity-transfers/{transferId}/delete-source
+  - 作用：转记成功后单独删除源球员的统计行与逐位置守备（保留现场记录）
+  - 校验：仅 `TRANSFERRED` 可删除；`transferId` 必须属于本场本租户；删除后转记审计置 `DELETED`，统一台账写 `DELETE_SOURCE`
 - GET /game/{id}/stat-rows/{statId}/delete-check
   - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
@@ -360,7 +377,7 @@ EventService --> EventRepository
   - 作用：统一修订台账（结果页字段修改 + ER 判定/R/ER 覆写/守备补记/投手转记）
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
   - 响应：`List<GameStatAdjustmentDTO>`；字段含 `scope/action/sourceType/sourceId/teamId/playerId/playerName/isPitcher/fieldKey/fieldLabel/beforeValue/afterValue/status/reason/operatorId/operatedAt`
-  - scope：`PLAYER_STAT/ER_DECISION/PITCHER_RUN_OVERRIDE/FIELDING_A/PITCHER_TRANSFER`
+  - scope：`PLAYER_STAT/ER_DECISION/PITCHER_RUN_OVERRIDE/FIELDING_A/PITCHER_TRANSFER/IDENTITY_TRANSFER`
   - 写入：`save-result` 逐字段 diff；领域动作由 GameService 编排层在成功后写入；写入使用独立事务，失败不阻断原操作
   - 说明：领域表仍是审计权威；统一台账提供跨类型视图，“修订记录”页签保留领域时间线
 - GET /game/{id}/stat-base/compare
@@ -370,7 +387,7 @@ EventService --> EventRepository
   - 差异字段：`key/label/baseValue/effectiveValue`
   - 口径：基座只在首次 final 保存（`save-result` 或 LiveGame `save-live`）时写入且不覆盖；无基座的历史场次返回 `legacy=true`；无差异的球员不返回
 - GET /game/{id}/revision-audit
-  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记
+  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记、整名球员身份转记
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
   - 响应：`List<GameRevisionAuditDTO>`；字段含 `auditType/recordId/action/status/summary/reason/operatorId/operatedAt`
   - 排序：`operatedAt` 倒序；相同时间按 `recordId` 倒序
