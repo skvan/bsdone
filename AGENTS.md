@@ -26,9 +26,8 @@ bsdone/                      # 项目根目录
 ├── bsball-frontend/         # 前端源码工程（Vite + Vue 3 + Element Plus；生产/测试部署 /bs-ball/）
 │   ├── src/                 # 源码（router/views/...）
 │   ├── scripts/             # 打包脚本（package-webapps.mjs；单轨 /bs-ball/ 打包）
-│   ├── vite.config.js       # 构建配置（base=/bs-ball/）
-│   └── vite.legacy-preview.config.js  # 旧编译版对照预览（3001，临时保留）
-├── bsball_project/          # 部署包（webapps/ 保留新版运行时静态资源；旧编译产物打包时排除）
+│   └── vite.config.js       # 构建配置（base=/bs-ball/）
+├── bsball_project/          # 部署包（webapps/ 仅保留新版运行时静态资源）
 └── bsball_backup.sql        # 数据库备份文件
 ```
 
@@ -122,7 +121,7 @@ bsdone/                      # 项目根目录
 ### 禁止事项
 
 - ❌ 不要自己发明新的架构模式，沿用现有代码风格
-- ❌ 不要直接修改已编译的前端产物（`bsball_project/webapps/assets/`）
+- ❌ 不要直接修改 `bsball_project/webapps/` 下的运行时静态资源（新增静态文件除外）；前端逻辑一律修改 `bsball-frontend/src`
 - ❌ 不要在代码中硬编码密码、密钥、服务器地址
 - ❌ 不要引入新的第三方依赖，除非明确讨论过
 - ❌ 不要创建与现有目录结构不一致的新目录
@@ -258,7 +257,6 @@ mvn package -DskipTests
 
 # 前端（在 bsball-frontend 目录执行）
 npm run dev              # 新工程开发服务器（3000，代理后端 8080）
-npm run preview:legacy   # 旧编译版对照预览（3001）
 npm run package          # 构建 + 打包 webapps-dev.tar.gz（部署包约定）
 ```
 

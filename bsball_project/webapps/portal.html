@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="https://bsdone.com/static/logo/logo2.png" />
   <style>
     /* 直通页（H25）：访问域名即进入新版 /bs-ball/（旧版「选择您的入口」职能由新版 welcome 页承接）。
-       meta refresh + JS 双通道跳转，附手动链接兜底；保留 APP_VERSION/页脚版本锚点供部署版本注入（Issue #123）。 */
+       meta refresh + JS 双通道跳转，附手动链接兜底。 */
     html, body { height: 100%; margin: 0; }
     body {
       display: flex;
@@ -24,7 +24,6 @@
     .mark { font-size: 30px; font-weight: 700; letter-spacing: 6px; color: #fff; }
     .tip { margin: 0; font-size: 14px; letter-spacing: 1px; }
     a { color: #c9a227; }
-    .footer { position: fixed; bottom: 14px; font-size: 12px; color: rgba(255, 255, 255, .45); }
   </style>
   <script>location.replace('/bs-ball/');</script>
 </head>
@@ -32,8 +31,5 @@
   <div class="mark">BSD</div>
   <p class="tip">正在进入新版…</p>
   <p class="tip">如未自动跳转，请<a href="/bs-ball/">点击此处</a></p>
-
-  <!-- APP_VERSION: v2.1.0 -->
-  <div class="footer">© 2026 BSD · Baseball & Softball Database · v2.1.0</div>
 </body>
 </html>
