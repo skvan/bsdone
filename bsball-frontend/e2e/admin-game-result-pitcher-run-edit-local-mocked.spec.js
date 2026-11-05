@@ -202,6 +202,18 @@ async function setup(page) {
             }]
           }
         : { statId, playerId: null, isPitcher: true, deletable: true, recommendedAction: 'NONE', blockers: [] };
+    } else if (path === `/game/${GAME_ID}/stat-base/compare` && request.method() === 'GET') {
+      data = {
+        legacy: false,
+        rows: [{
+          playerId: 1100, playerName: 'T1PITCHER', teamId: AWAY_ID, isPitcher: 1,
+          source: 'RESULT', capturedAt: '2026-11-05T10:00:00',
+          fields: [
+            { key: 'pitchPa', label: 'PA(投手)', baseValue: 11, effectiveValue: 13 },
+            { key: 'np', label: 'NP', baseValue: 27, effectiveValue: 30 }
+          ]
+        }]
+      };
     } else if (path === `/game/${GAME_ID}/revision-audit` && request.method() === 'GET') {
       data = [{
         auditType: 'PITCHER_TRANSFER', recordId: 4, action: 'DELETE_SOURCE',
@@ -578,4 +590,15 @@ test('删除前后端诊断：守备补记阻断时提示去守备补记 A', asy
 
   await expect(page.locator('.el-message').filter({ hasText: '守备补记或守备位置数据' })).toBeVisible();
   await expect(page.locator('.el-dialog:visible').filter({ hasText: '转记投手数据' })).toHaveCount(0);
+});
+
+test('基座对比页签展示基座与当前有效值差异', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '基座对比' }).click();
+
+  await expect(page.getByText('原始基座 · 当前有效值')).toBeVisible();
+  const row = page.locator('.stat-base-diff .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(row).toContainText('PA(投手)：11 → 13');
+  await expect(row).toContainText('NP：27 → 30');
 });

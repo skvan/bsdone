@@ -1,23 +1,35 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.model.dto.GameRevisionAuditDTO;
+import com.bsball.model.dto.StatBaseCompareDTO;
 import com.bsball.model.entity.ErDecisionAdjustment;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GameFieldingAdjustment;
+import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.GamePitcherTransfer;
+import com.bsball.model.entity.GamePlayerStat;
+import com.bsball.model.entity.GameStatBase;
 import com.bsball.model.entity.PitcherRunOverride;
 import com.bsball.model.entity.Player;
 import com.bsball.repository.ErDecisionAdjustmentRepository;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
+import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameStatBaseRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.bsball.repository.PlayerRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +50,14 @@ class GameRevisionAuditServiceTest {
     private GamePitcherTransferRepository pitcherTransferRepository;
     @Mock
     private PlayerRepository playerRepository;
+    @Mock
+    private GamePlayerStatRepository gamePlayerStatRepository;
+    @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
+    private GameStatBaseRepository gameStatBaseRepository;
 
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private GameRevisionAuditService service;
     private Game game;
 
@@ -47,7 +66,8 @@ class GameRevisionAuditServiceTest {
         service = new GameRevisionAuditService(
                 erDecisionAdjustmentRepository, pitcherRunOverrideRepository,
                 fieldingAdjustmentRepository, pitcherTransferRepository,
-                playerRepository);
+                playerRepository, gamePlayerStatRepository,
+                gameFieldingPosStatRepository, gameStatBaseRepository, objectMapper);
         game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
@@ -145,6 +165,107 @@ class GameRevisionAuditServiceTest {
                 .thenReturn(List.of());
 
         assertTrue(service.list(game).isEmpty());
+    }
+
+    @Test
+    @DisplayName("基座快照首次写入，已有基座不覆盖")
+    void captureBaseWritesOnceAndKeepsFirstSnapshot() {
+        game.setStatus("final");
+        GamePlayerStat stat = new GamePlayerStat();
+        stat.setId(500L);
+        stat.setTenantId(1L);
+        stat.setGameId(20L);
+        stat.setTeamId(1L);
+        stat.setPlayerId(700L);
+        stat.setIsPitcher(1);
+        stat.setPitchPa(11);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(stat));
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(20L)).thenReturn(List.of());
+        List<GameStatBase> saved = new ArrayList<>();
+        when(gameStatBaseRepository
+                .findByTenantIdAndGameIdOrderByPlayerIdAscIsPitcherAsc(1L, 20L))
+                .thenAnswer(invocation -> new ArrayList<>(saved));
+        when(gameStatBaseRepository.save(any(GameStatBase.class))).thenAnswer(invocation -> {
+            GameStatBase row = invocation.getArgument(0);
+            row.setId(900L);
+            saved.add(row);
+            return row;
+        });
+
+        service.captureBase(game, 9L, "RESULT");
+        service.captureBase(game, 9L, "RESULT");
+
+        verify(gameStatBaseRepository).save(any(GameStatBase.class));
+        assertEquals(1, saved.size());
+        assertEquals("RESULT", saved.get(0).getSource());
+        assertTrue(saved.get(0).getStatJson().contains("\"pitchPa\":11"));
+    }
+
+    @Test
+    @DisplayName("非 final 保存不写基座")
+    void captureBaseSkipsNonFinalGame() {
+        game.setStatus("live");
+
+        service.captureBase(game, 9L, "RESULT");
+
+        verifyNoInteractions(gameStatBaseRepository, gamePlayerStatRepository,
+                gameFieldingPosStatRepository);
+    }
+
+    @Test
+    @DisplayName("无基座时对比返回 legacy=true")
+    void compareBaseReturnsLegacyWhenNoSnapshot() {
+        when(gameStatBaseRepository
+                .findByTenantIdAndGameIdOrderByPlayerIdAscIsPitcherAsc(1L, 20L))
+                .thenReturn(List.of());
+
+        StatBaseCompareDTO result = service.compareBase(game);
+
+        assertTrue(result.legacy());
+        assertTrue(result.rows().isEmpty());
+    }
+
+    @Test
+    @DisplayName("基座对比返回差异字段与值")
+    void compareBaseReturnsChangedFields() throws Exception {
+        GamePlayerStat baseStat = new GamePlayerStat();
+        baseStat.setTeamId(1L);
+        baseStat.setPlayerId(700L);
+        baseStat.setIsPitcher(1);
+        baseStat.setPitchPa(11);
+        GameStatBase base = new GameStatBase();
+        base.setPlayerId(700L);
+        base.setTeamId(1L);
+        base.setIsPitcher(1);
+        base.setSource("RESULT");
+        base.setCapturedAt(LocalDateTime.of(2026, 11, 5, 10, 0));
+        base.setStatJson(objectMapper.writeValueAsString(baseStat));
+        when(gameStatBaseRepository
+                .findByTenantIdAndGameIdOrderByPlayerIdAscIsPitcherAsc(1L, 20L))
+                .thenReturn(List.of(base));
+
+        GamePlayerStat current = new GamePlayerStat();
+        current.setTenantId(1L);
+        current.setGameId(20L);
+        current.setTeamId(1L);
+        current.setPlayerId(700L);
+        current.setIsPitcher(1);
+        current.setPitchPa(13);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(current));
+        when(playerRepository.findAllById(any())).thenReturn(List.of(player(700L, "投手甲")));
+
+        StatBaseCompareDTO result = service.compareBase(game);
+
+        assertFalse(result.legacy());
+        assertEquals(1, result.rows().size());
+        StatBaseCompareDTO.PlayerDiff row = result.rows().get(0);
+        assertEquals("投手甲", row.playerName());
+        assertEquals(1, row.fields().size());
+        assertEquals("pitchPa", row.fields().get(0).key());
+        assertEquals("PA(投手)", row.fields().get(0).label());
+        assertEquals(11d, row.fields().get(0).baseValue());
+        assertEquals(13d, row.fields().get(0).effectiveValue());
     }
 
     private static Player player(long id, String name) {

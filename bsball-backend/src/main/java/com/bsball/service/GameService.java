@@ -23,6 +23,7 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferRequest;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.StatBaseCompareDTO;
 import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
@@ -374,6 +375,7 @@ public class GameService {
             this.fieldingAdjustmentService.reapplyPositionStats(game);
         }
         if ("final".equalsIgnoreCase(game.getStatus())) {
+            this.revisionAuditService.captureBase(game, CurrentUserHolder.get(), "LIVE");
             this.logSettlementValidation(gameId, game.getTenantId());
         }
     }
@@ -752,6 +754,12 @@ public class GameService {
     public List<GameRevisionAuditDTO> listRevisionAudit(Long gameId) {
         Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看修订记录");
         return this.revisionAuditService.list(game);
+    }
+
+    /** 基座与当前有效值对比；历史场次无基座返回 legacy=true。 */
+    public StatBaseCompareDTO compareStatBase(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看基座对比");
+        return this.revisionAuditService.compareBase(game);
     }
 
     /** 删除统计行前诊断：返回剩余字段、有效 ER 判定、守备补记与守备位置。 */
@@ -1172,6 +1180,8 @@ public class GameService {
             this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
         }
         // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
+        // 首次 final 保存写入基座快照；已有基座不覆盖。
+        this.revisionAuditService.captureBase(game, CurrentUserHolder.get(), "RESULT");
         // §11 結算驗證（非阻擋，僅記錄警告供人工複核）
         this.logSettlementValidation(gameId, statTenantId);
     }
