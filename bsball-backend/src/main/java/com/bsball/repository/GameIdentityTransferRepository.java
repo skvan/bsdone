@@ -12,4 +12,7 @@ public interface GameIdentityTransferRepository
 
     List<GameIdentityTransfer> findByTenantIdAndGameIdOrderByIdDesc(
             Long tenantId, Long gameId);
+
+    Optional<GameIdentityTransfer> findFirstByTenantIdAndGameIdAndSourcePlayerIdAndTargetPlayerIdAndStatusOrderByIdDesc(
+            Long tenantId, Long gameId, Long sourcePlayerId, Long targetPlayerId, String status);
 }

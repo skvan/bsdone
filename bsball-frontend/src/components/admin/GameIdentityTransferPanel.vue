@@ -47,8 +47,18 @@
             <el-checkbox label="STATS">统计</el-checkbox>
             <el-checkbox label="FIELDING">守备位置</el-checkbox>
             <el-checkbox label="ER_DECISIONS">ER 判定</el-checkbox>
+            <el-checkbox
+              label="LIVE_RECORDS"
+              :disabled="Boolean(preview) && (!preview.liveSnapshotAvailable || preview.liveRosterConflict)"
+            >现场记录</el-checkbox>
           </el-checkbox-group>
           <div v-if="!scopes.length" class="identity-transfer__hint">至少选择一个转记范围</div>
+          <div v-else-if="preview?.liveRosterConflict" class="identity-transfer__hint">
+            源/目标球员同时在同一阵容或替补名单，现场记录范围不可用；请先调整阵容
+          </div>
+          <div v-else-if="scopes.includes('LIVE_RECORDS')" class="identity-transfer__hint is-info">
+            现场记录将改写 Play 事件与阵容中的球员归属，转记前快照写入审计
+          </div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="note" maxlength="200" show-word-limit placeholder="可空，例如：16 号误录，应为 21 号" />
@@ -80,6 +90,12 @@
             </el-descriptions-item>
             <el-descriptions-item label="源 R/ER 覆写">{{ preview.sourceOverride ? '有' : '无' }}</el-descriptions-item>
             <el-descriptions-item label="目标 R/ER 覆写">{{ preview.targetOverride ? '有' : '无' }}</el-descriptions-item>
+            <el-descriptions-item label="现场记录引用">
+              {{ preview.liveSnapshotAvailable ? `${preview.liveReferenceCount || 0} 处` : '无现场记录' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="守备补记">
+              {{ preview.fieldingAdjustmentCount || 0 }} 条
+            </el-descriptions-item>
           </el-descriptions>
           <el-table :data="preview.rows || []" size="small" border stripe class="identity-transfer__rows">
             <el-table-column label="行类型" width="90" align="center">
@@ -208,6 +224,10 @@ async function loadPreview() {
       return;
     }
     preview.value = result?.data ?? null;
+    if (preview.value && (!preview.value.liveSnapshotAvailable || preview.value.liveRosterConflict)
+        && scopes.value.includes('LIVE_RECORDS')) {
+      scopes.value = scopes.value.filter((scope) => scope !== 'LIVE_RECORDS');
+    }
   } catch (e) {
     previewError.value = e?.message ?? '预览失败';
   } finally {
@@ -313,6 +333,9 @@ onMounted(loadPlayers);
   color: var(--el-color-danger);
   font-size: 12px;
   line-height: 1.4;
+}
+.identity-transfer__hint.is-info {
+  color: var(--el-text-color-secondary);
 }
 .identity-transfer__summary {
   margin-top: 4px;

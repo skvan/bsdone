@@ -21,10 +21,19 @@ test('身份转记面板覆盖目标、范围、预览与单独删除', () => {
   assert.ok(panel.includes('整名球员身份转记'), '缺少功能说明');
   assert.ok(panel.includes('目标球员'), '缺少目标球员');
   assert.ok(panel.includes('ER 判定'), '缺少 ER 判定范围');
+  assert.ok(panel.includes('LIVE_RECORDS'), '缺少现场记录范围');
+  assert.ok(panel.includes('现场记录引用'), '缺少现场记录引用数');
+  assert.ok(panel.includes('守备补记'), '缺少守备补记数');
   assert.ok(panel.includes('预览转记'), '缺少预览');
   assert.ok(panel.includes('是否删除源数据'), '缺少单独删除确认');
   assert.ok(panel.includes('transferIdentity'), '未调用转记接口');
   assert.ok(panel.includes('deleteIdentityTransferSource'), '未调用删除源数据接口');
+});
+
+test('修订记录页签支持身份转记与类型筛选', () => {
+  const audit = read('../src/components/admin/GameRevisionAuditPanel.vue');
+  assert.ok(audit.includes('IDENTITY_TRANSFER'), '缺少身份转记类型');
+  assert.ok(audit.includes('filterType'), '缺少类型筛选');
 });
 
 test('前端 API 与后端接口接线', () => {

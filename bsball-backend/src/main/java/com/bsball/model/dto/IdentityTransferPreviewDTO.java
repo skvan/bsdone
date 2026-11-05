@@ -15,7 +15,11 @@ public record IdentityTransferPreviewDTO(
         List<String> fieldingPositions,
         int erDecisionCount,
         boolean sourceOverride,
-        boolean targetOverride) {
+        boolean targetOverride,
+        boolean liveSnapshotAvailable,
+        int liveReferenceCount,
+        int fieldingAdjustmentCount,
+        boolean liveRosterConflict) {
 
     public record RowPreview(
             Integer isPitcher,

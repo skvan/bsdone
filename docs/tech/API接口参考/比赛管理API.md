@@ -353,19 +353,22 @@ EventService --> EventRepository
   - 作用：整名球员身份转记预览，返回源/目标球员、可转记行、守备位置、ER 判定数与阻断项
   - 参数：`sourcePlayerId`、`targetPlayerId`（必填，同队且不能相同）
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
-  - 响应：`IdentityTransferPreviewDTO`，字段含 `sourcePlayerId/sourcePlayerName/targetPlayerId/targetPlayerName/teamId/transferable/blockers/rows/fieldingPositions/erDecisionCount/sourceOverride/targetOverride`
+  - 响应：`IdentityTransferPreviewDTO`，字段含 `sourcePlayerId/sourcePlayerName/targetPlayerId/targetPlayerName/teamId/transferable/blockers/rows/fieldingPositions/erDecisionCount/sourceOverride/targetOverride/liveSnapshotAvailable/liveReferenceCount/fieldingAdjustmentCount/liveRosterConflict`
   - `rows[]`：`isPitcher/sourceStatId/targetStatId/targetExists`；目标无对应统计行时表示转记时移动/新建
+  - `liveReferenceCount`：现场记录中源球员的 Play/阵容/统计缓存引用数；`fieldingAdjustmentCount`：生效中的守备补记数
+  - `liveRosterConflict`：源/目标同时在同一阵容或替补名单；此时仍可转记统计/守备/ER，但 `LIVE_RECORDS` 范围不可用
   - 只读：不写库
 - POST /game/{id}/identity-transfers
-  - 作用：整名球员身份转记（统计、逐位置守备、ER 判定），覆盖“从头到尾选错人”
-  - 请求：`sourcePlayerId`、`targetPlayerId`、`scopes`（`STATS/FIELDING/ER_DECISIONS`，缺省三项全选；显式空数组或未知范围返回 400）、`note`（≤200 字）
-  - 校验：仅 final；源/目标必须在本场；同队且不同人；源数据全零时拒绝重复转记；目标无本场统计时必须在源球队名单中；目标已有统计行时按“目标值优先、源非零补缺”合并；R/ER 覆写随 `ER_DECISIONS` 范围移动；ER 判定通过 `REASSIGN` 调整改派到目标
+  - 作用：整名球员身份转记（统计、逐位置守备、ER 判定、现场记录），覆盖“从头到尾选错人”
+  - 请求：`sourcePlayerId`、`targetPlayerId`、`scopes`（`STATS/FIELDING/ER_DECISIONS/LIVE_RECORDS`，缺省前三项；显式空数组或未知范围返回 400）、`note`（≤200 字）
+  - 校验：仅 final；源/目标必须在本场；同队且不同人；源数据全零时拒绝重复转记；目标无本场统计时必须在源球队名单中；目标同一失误 Play 已有守备补记时阻断；`LIVE_RECORDS` 要求该场有现场记录且源/目标不在同一阵容/替补名单；目标已有统计行时按“目标值优先、源非零补缺”合并；R/ER 覆写随 `ER_DECISIONS` 范围移动；ER 判定通过 `REASSIGN` 调整改派到目标；守备补记随 `FIELDING` 范围改挂目标
+  - 现场记录：改写 `playEvents`、阵容/替补名单、`playerStatsById`、`gameState.runners`、`slotSubHistory` 等球员归属；转记前现场记录精简快照写入 `source_before`，undo/redo 历史不参与改写也不入库
   - 审计：写 `bs_game_identity_transfer`，保存源/目标前后快照、范围、操作人、时间；统一台账写 `IDENTITY_TRANSFER/TRANSFER`
   - 响应：`IdentityTransferResultDTO`（`transferId/sourcePlayerId/targetPlayerId/status`）
   - 转记完成不删除源数据；删除是独立动作
 - POST /game/{id}/identity-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源球员的统计行与逐位置守备（保留现场记录）
-  - 校验：仅 `TRANSFERRED` 可删除；`transferId` 必须属于本场本租户；删除后转记审计置 `DELETED`，统一台账写 `DELETE_SOURCE`
+  - 校验：仅 `TRANSFERRED` 可删除；`transferId` 必须属于本场本租户；源数据必须全零且无守备位置、有效判定、R/ER 覆写、守备补记；现场记录仍引用源球员时要求先按 `LIVE_RECORDS` 转记；删除后转记审计置 `DELETED`，统一台账写 `DELETE_SOURCE`
 - GET /game/{id}/stat-rows/{statId}/delete-check
   - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离

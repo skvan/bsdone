@@ -225,7 +225,11 @@ async function setup(page) {
         fieldingPositions: ['P'],
         erDecisionCount: 1,
         sourceOverride: false,
-        targetOverride: false
+        targetOverride: false,
+        liveSnapshotAvailable: true,
+        liveReferenceCount: 6,
+        fieldingAdjustmentCount: 1,
+        liveRosterConflict: false
       };
     } else if (path === `/game/${GAME_ID}/identity-transfers`
         && request.method() === 'POST') {
@@ -263,6 +267,10 @@ async function setup(page) {
       };
     } else if (path === `/game/${GAME_ID}/revision-audit` && request.method() === 'GET') {
       data = [{
+        auditType: 'IDENTITY_TRANSFER', recordId: 5, action: 'TRANSFER',
+        status: 'TRANSFERRED', summary: '球员身份转记：T1PITCHER2 → T1PITCHER',
+        reason: '整名转记', operatorId: 13, operatedAt: '2026-11-05T14:00:00'
+      }, {
         auditType: 'PITCHER_TRANSFER', recordId: 4, action: 'DELETE_SOURCE',
         status: 'DELETED', summary: '投手行转记：T1PITCHER → T1PITCHER2',
         reason: '转记', operatorId: 12, operatedAt: '2026-11-05T13:00:00'
@@ -606,18 +614,34 @@ test('ER 判定可改派、作废并恢复', async ({ page }) => {
   await expect(row).not.toContainText('已作废');
 });
 
-test('修订记录页签展示四类人工修订', async ({ page }) => {
+test('修订记录页签展示五类人工修订', async ({ page }) => {
   await setup(page);
   await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
   await page.getByRole('tab', { name: '修订记录' }).click();
 
   await expect(page.getByText('实时记录为基座 · 人工修订为最终值')).toBeVisible();
   const rows = page.locator('.revision-audit .el-table__row');
-  await expect(rows).toHaveCount(4);
-  await expect(rows.nth(0)).toContainText('投手行转记');
-  await expect(rows.nth(1)).toContainText('守备补记');
-  await expect(rows.nth(2)).toContainText('投手 R/ER 覆写');
-  await expect(rows.nth(3)).toContainText('ER 判定改派');
+  await expect(rows).toHaveCount(5);
+  await expect(rows.nth(0)).toContainText('球员身份转记');
+  await expect(rows.nth(1)).toContainText('投手行转记');
+  await expect(rows.nth(2)).toContainText('守备补记');
+  await expect(rows.nth(3)).toContainText('投手 R/ER 覆写');
+  await expect(rows.nth(4)).toContainText('ER 判定改派');
+});
+
+test('修订记录按类型筛选身份转记', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订记录' }).click();
+
+  await page.locator('.revision-audit .el-select').click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: '身份转记' }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+
+  const rows = page.locator('.revision-audit .el-table__row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('球员身份转记');
 });
 
 test('删除前后端诊断：守备补记阻断时提示去守备补记 A', async ({ page }) => {
@@ -685,6 +709,8 @@ test('身份转记：预览同队球员并单独删除源数据', async ({ page 
 
   await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER2');
   await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('6 处');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('1 条');
   await expect(page.getByRole('button', { name: '确认转记' })).toBeVisible();
 
   const transferRequest = page.waitForRequest((request) => (
