@@ -12,6 +12,7 @@ import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
+import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -675,6 +676,12 @@ public class GameService {
     public List<FieldingAdjustmentListDTO> listFieldingAdjustments(Long gameId) {
         Game game = this.requireGameForFieldingReview(gameId);
         return this.fieldingAdjustmentService.list(game);
+    }
+
+    /** 赛后守备补记候选：失误 Play 与守备方可补记球员。 */
+    public List<FieldingAdjustmentCandidateDTO> listFieldingAdjustmentCandidates(Long gameId) {
+        Game game = this.requireGameForFieldingReview(gameId);
+        return this.fieldingAdjustmentService.listCandidates(game);
     }
 
     /** 赛后补记助杀：源 Play 与守备统计同步由服务层校验。 */

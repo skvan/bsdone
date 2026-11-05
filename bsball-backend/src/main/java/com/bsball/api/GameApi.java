@@ -33,6 +33,7 @@ import com.bsball.model.dto.GameResponseDTO;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
+import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
@@ -202,6 +203,12 @@ public class GameApi {
     @GetMapping(value={"/{id}/fielding-adjustments"})
     public Result<List<FieldingAdjustmentListDTO>> listFieldingAdjustments(@PathVariable Long id) {
         return Result.ok(this.gameService.listFieldingAdjustments(id));
+    }
+
+    @GetMapping(value={"/{id}/fielding-adjustments/candidates"})
+    public Result<List<FieldingAdjustmentCandidateDTO>> listFieldingAdjustmentCandidates(
+            @PathVariable Long id) {
+        return Result.ok(this.gameService.listFieldingAdjustmentCandidates(id));
     }
 
     @PostMapping(value={"/{id}/fielding-adjustments"})

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.entity.Game;
@@ -115,6 +116,61 @@ class GameFieldingAdjustmentServiceTest {
         assertEquals(2, totals.get(23L));
         assertEquals(1, totals.get(24L));
         assertNull(totals.get(25L));
+    }
+
+    @Test
+    @DisplayName("候选补记：只返回失误 Play，并只带守备方球员")
+    void listCandidatesReturnsErrorPlaysForDefensiveSide() {
+        game.setLiveSnapshotJson("""
+                {"playEventsComplete":true,"playEvents":[
+                  {"id":"play-1","inning":5,"half":"bottom","sequence":167,
+                   "outsBefore":1,"basesBefore":{"1":true,"2":true,"3":false},
+                   "resultCode":"E","resultText":"失误"},
+                  {"id":"play-2","inning":6,"half":"top","sequence":200,
+                   "outsBefore":0,"basesBefore":{"1":false,"2":false,"3":false},
+                   "resultCode":"1B","resultText":"一垒安打"},
+                  {"id":"play-3","inning":7,"half":"top","sequence":220,
+                   "outsBefore":2,"basesBefore":{"1":false,"2":false,"3":true},
+                   "resultCode":"ADVANCE_FE","resultText":"趁传进垒"}
+                ]}
+                """);
+        GamePlayerStat homeStat = new GamePlayerStat();
+        homeStat.setTenantId(1L);
+        homeStat.setGameId(20L);
+        homeStat.setTeamId(100L);
+        homeStat.setPlayerId(31L);
+        homeStat.setPosition("LF");
+        homeStat.setNumber("31");
+        homeStat.setListOrder(1);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(fielderStat, homeStat));
+        when(playerRepository.findAllById(any()))
+                .thenReturn(List.of(player(23L, "客中外"), player(31L, "主左外")));
+
+        List<FieldingAdjustmentCandidateDTO> result = service.listCandidates(game);
+
+        assertEquals(2, result.size());
+        FieldingAdjustmentCandidateDTO bottom = result.get(0);
+        assertEquals("play-1", bottom.sourceEventId());
+        assertEquals(200L, bottom.teamId());
+        assertEquals("5下 #167", bottom.inningLabel());
+        assertEquals("一、二垒有人", bottom.baseLabel());
+        assertEquals(List.of(23L), bottom.players().stream()
+                .map(FieldingAdjustmentCandidateDTO.PlayerOption::id).toList());
+        FieldingAdjustmentCandidateDTO top = result.get(1);
+        assertEquals("play-3", top.sourceEventId());
+        assertEquals(100L, top.teamId());
+        assertEquals("7上 #220", top.inningLabel());
+        assertEquals("三垒有人", top.baseLabel());
+        assertEquals(List.of(31L), top.players().stream()
+                .map(FieldingAdjustmentCandidateDTO.PlayerOption::id).toList());
+    }
+
+    @Test
+    @DisplayName("候选补记：无快照或没有失误 Play 时返回空列表")
+    void listCandidatesReturnsEmptyWithoutSnapshotOrErrorPlay() {
+        assertEquals(List.of(), service.listCandidates(game));
+        game.setLiveSnapshotJson(snapshot("1B", "一垒安打"));
+        assertEquals(List.of(), service.listCandidates(game));
     }
 
     @Test

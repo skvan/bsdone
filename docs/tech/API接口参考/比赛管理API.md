@@ -303,10 +303,16 @@ EventService --> EventRepository
   - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同覆写
   - 失效规则：半局重建时，该半局新旧判定涉及的责任投手，其生效覆写自动置 `INVALIDATED` 并保留原因；已人工覆写的投手拒绝再修改其逐分判定，需先撤销覆写
 - GET /game/{id}/fielding-adjustments
-  - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供「比赛复核 → 守备补记」页签使用
+  - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供结果补录页「守备补记 A」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能进行守备补记」
   - 响应：`List<FieldingAdjustmentListDTO>`；字段含 `sourceEventId/sourceSequence/inning/half/teamId/playerId/playerName/position/assistCount/status/sourceText/note/revokedBy/revokedAt/invalidReason/sourceValid`
   - 失效：完整快照（`playEventsComplete=true`）中找不到源 Play 的有效补记会先置为 `INVALIDATED` 并扣回统计
+- GET /game/{id}/fielding-adjustments/candidates
+  - 作用：从比赛 live snapshot 计算守备补记候选，供结果补录页在无现场快照上下文时直接展示
+  - 前置：仅 `status=final`；权限同补记新增
+  - 响应：`List<FieldingAdjustmentCandidateDTO>`；字段含 `sourceEventId/inning/topBottom/teamId/sequence/inningLabel/outsBefore/baseLabel/resultText/players`
+  - 筛选：仅返回失误 Play（`E/ADVANCE_FE/DK3_REACH_E`、`ERROR*` 或文本含「失误」）；守备方按半局推导（上半局主队、下半局客队）
+  - 球员：`players[]` 含 `id/name/number/position/positions`，来自本场该守备方统计行，供前端选择补记球员与守位
 - POST /game/{id}/fielding-adjustments
   - 作用：在指定失误 Play 上补记 1 次助杀 A
   - 请求：`sourceEventId`（必填，源 Play 的 `id`）、`playerId`、`position`（P/C/1B/2B/3B/SS/LF/CF/RF；缺省取球员当前守位）、`note`（≤200 字）

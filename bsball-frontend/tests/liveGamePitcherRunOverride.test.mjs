@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const drawer = fs.readFileSync(
-  new URL('../src/components/admin/LiveGameEarnedRunDrawer.vue', import.meta.url),
+  new URL('../src/components/admin/GameEarnedRunReviewPanel.vue', import.meta.url),
   'utf8'
 );
 const api = fs.readFileSync(
