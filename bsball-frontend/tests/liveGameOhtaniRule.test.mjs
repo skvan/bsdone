@@ -53,3 +53,8 @@ test('普通 DH 拖到投手位：取消 DH 并换投，DH 球员留在原棒次
   assert.match(src, /转为投手 P，继续在第\$\{dhIndex\+1\}棒打击/);
   assert.match(src, /ctx\.lineup\.value\[dhIndex\]=\{\.\.\.dh,position:"P"/);
 });
+
+test('DH 拖到投手位后，原投手立即进入 unavailable，替补席灰显', () => {
+  assert.match(src, /oldPitcherId>0&&!\(ctx\.unavail\.value\?\?\[\]\)\.map\(Number\)\.includes\(oldPitcherId\)/);
+  assert.match(src, /ctx\.unavail\.value=\[\.\.\.\(ctx\.unavail\.value\?\?\[\]\),oldPitcherId\]/);
+});

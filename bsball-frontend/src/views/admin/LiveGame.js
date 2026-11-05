@@ -10863,6 +10863,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ctx.lineup.value[dhIndex]={...dh,position:"P",firstPosition:firstFieldPositionOf(dh,"P"),stats:dh.stats??Pt()};
         ctx.fpId.value=Number(dh.id);
+        // 原投手立即标为已换下，替补席灰显不可选（与提交后的 unavailable 一致）
+        const oldPitcherId=Number(pitcher.id);
+        oldPitcherId>0&&!(ctx.unavail.value??[]).map(Number).includes(oldPitcherId)&&(ctx.unavail.value=[...(ctx.unavail.value??[]),oldPitcherId]);
         // 保留旧 fpRow，让 ft() 回收旧投手并重新指向新的 P 行
         ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 转为 P，原投手 ${logPlayerName(pitcher)} 退场`})),Kt();
         return
