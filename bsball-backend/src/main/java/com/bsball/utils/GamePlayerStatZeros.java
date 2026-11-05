@@ -18,6 +18,10 @@ public final class GamePlayerStatZeros {
     private GamePlayerStatZeros() {
     }
 
+    /** 一个统计字段值，供基座对比/删除诊断使用。 */
+    public record FieldValue(String key, String label, double value) {
+    }
+
     /** 一个非零统计字段，供删除诊断展示中文名与值。 */
     public record NonZeroField(String key, String label, double value) {
     }
@@ -111,16 +115,25 @@ public final class GamePlayerStatZeros {
 
     /** 返回所有非零统计字段（按清单顺序），供删除诊断使用。 */
     public static List<NonZeroField> nonZeroFields(GamePlayerStat stat) {
+        List<NonZeroField> fields = new ArrayList<>();
+        for (FieldValue value : values(stat)) {
+            if (value.value() != 0d) {
+                fields.add(new NonZeroField(value.key(), value.label(), value.value()));
+            }
+        }
+        return fields;
+    }
+
+    /** 返回全部统计字段的值（null 按 0），供基座与有效值逐字段对比。 */
+    public static List<FieldValue> values(GamePlayerStat stat) {
         if (stat == null) {
             return List.of();
         }
-        List<NonZeroField> fields = new ArrayList<>();
+        List<FieldValue> fields = new ArrayList<>(FIELDS.size());
         for (Field field : FIELDS) {
             Number raw = field.getter().apply(stat);
-            double value = raw == null ? 0d : raw.doubleValue();
-            if (value != 0d) {
-                fields.add(new NonZeroField(field.key(), field.label(), value));
-            }
+            fields.add(new FieldValue(
+                    field.key(), field.label(), raw == null ? 0d : raw.doubleValue()));
         }
         return fields;
     }
