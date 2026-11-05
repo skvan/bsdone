@@ -402,7 +402,7 @@ public class EarnedRunReconstructionService {
 
     /** 转记成功后单独删除源行；源行必须已全零且无自责分判定。 */
     @Transactional
-    public void deletePitcherTransferSource(long tenantId, long gameId,
+    public PitcherTransferResultDTO deletePitcherTransferSource(long tenantId, long gameId,
             Long transferId, Long operatorId) {
         if (tenantId <= 0 || gameId <= 0 || transferId == null || transferId <= 0
                 || operatorId == null || operatorId <= 0) {
@@ -418,7 +418,7 @@ public class EarnedRunReconstructionService {
                 .orElse(null);
         if (source == null) {
             markSourceDeleted(transfer, operatorId);
-            return;
+            return transferResult(transfer);
         }
         if (!GamePlayerStatZeros.isZero(source)) {
             throw new IllegalArgumentException("原投手行仍有数据，请先清零或转记");
@@ -437,6 +437,17 @@ public class EarnedRunReconstructionService {
         }
         this.gamePlayerStatRepository.delete(source);
         markSourceDeleted(transfer, operatorId);
+        return transferResult(transfer);
+    }
+
+    private static PitcherTransferResultDTO transferResult(GamePitcherTransfer transfer) {
+        return new PitcherTransferResultDTO(
+                transfer.getId(),
+                transfer.getSourceStatId(),
+                transfer.getSourcePlayerId(),
+                transfer.getTargetStatId(),
+                transfer.getTargetPlayerId(),
+                transfer.getStatus());
     }
 
     private void validateTransferIds(long tenantId, long gameId, Long sourceStatId,

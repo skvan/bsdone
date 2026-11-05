@@ -19,6 +19,15 @@
         <span class="event-special-rule__hint">关闭后本赛事实时录入页隐藏「强制换局」按钮（默认开启）</span>
       </div>
     </el-form-item>
+    <el-form-item label="大谷规则">
+      <div class="event-special-rule">
+        <el-switch
+          :model-value="modelValue.ohtaniRule"
+          @update:model-value="update('ohtaniRule', $event)"
+        />
+        <span class="event-special-rule__hint">允许 DH 与先发投手为同一人；换投后保留 DH，但该球员不可再移防（默认关闭）</span>
+      </div>
+    </el-form-item>
   </template>
   <el-form-item v-else label="特殊规则">
     <span class="event-special-rule__hint">{{ hint }}</span>

@@ -60,8 +60,8 @@ extends BaseEntity {
 
     /**
      * 非持久化：赛事级特殊规则与联赛收费能力标识（Issue #275，2026-10-24 口径）。
-     * GET /event/{id} 返回 {specialRulesEnabled, hasEventRules, extraBatter, forceHalf}；
-     * create/update 请求可携带 {extraBatter, forceHalf} 写入赛事规则；
+     * GET /event/{id} 返回 {specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}；
+     * create/update 请求可携带 {extraBatter, forceHalf, ohtaniRule} 写入赛事规则；
      * 其余路径保持 null，序列化时省略。
      */
     @JsonInclude(value=JsonInclude.Include.NON_NULL)

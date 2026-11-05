@@ -106,7 +106,7 @@ test('开始录入快照写入先发守备位（含 DH 制纯投手）', () => {
     assert.ok(board.includes(`${pair[0]}: ${pair[1]}(`), `开始录入快照 ${pair[0]} 未走 ${pair[1]}`);
   }
   const live = read('../src/views/admin/LiveGame.js');
-  assert.ok(live.includes('const inheritedSources=[j,A,T,Y,ee].filter(E=>E&&E.startingPosition!=null)'),
+  assert.ok(live.includes('const inheritedSources=[A,T,Y,ee].filter(E=>E&&E.startingPosition!=null)'),
     'ft() 未按来源保留先发守备位');
   assert.ok(live.includes('startingPosition:inheritedStartingPosition'),
     'ft() 重建守备投手行时未写入继承的先发守备位');
