@@ -858,8 +858,11 @@ class EarnedRunReconstructionServiceTest {
         when(gamePitcherTransferRepository.save(any(GamePitcherTransfer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.deletePitcherTransferSource(1L, 20L, 55L, 9L);
+        PitcherTransferResultDTO result = service.deletePitcherTransferSource(1L, 20L, 55L, 9L);
 
+        assertEquals(55L, result.transferId());
+        assertEquals("DELETED", result.status());
+        assertEquals(700L, result.sourcePlayerId());
         assertEquals("DELETED", transfer.getStatus());
         assertEquals(Long.valueOf(9L), transfer.getSourceDeletedBy());
         verify(gamePlayerStatRepository).delete(source);
