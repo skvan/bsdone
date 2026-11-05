@@ -21,7 +21,30 @@
               </template>
             </el-table-column>
             <el-table-column label="跑者" prop="runnerName" min-width="70" />
-            <el-table-column label="责任投手" prop="pitcherName" min-width="70" />
+            <el-table-column label="责任投手" min-width="110">
+              <template #default="{ row }">
+                <span v-if="row.voided" class="pitcher-status">已作废</span>
+                <span v-else>{{ row.effectivePitcherName || row.pitcherName }}</span>
+                <el-tag
+                  v-if="row.adjustmentAction === 'REASSIGN'"
+                  size="small"
+                  type="warning"
+                  effect="plain"
+                  class="pitcher-team"
+                >人工改派</el-tag>
+                <el-tag
+                  v-else-if="row.voided"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                  class="pitcher-team"
+                >已作废</el-tag>
+                <span
+                  v-if="row.adjustmentAction === 'REASSIGN'"
+                  class="pitcher-engine"
+                >原：{{ row.pitcherName }}</span>
+              </template>
+            </el-table-column>
             <el-table-column label="判定" width="110" align="center">
               <template #default="{ row }">
                 <el-tag
@@ -37,16 +60,51 @@
                 <span v-if="row.overriddenBy" title="已人工覆写">✓</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80" align="center" fixed="right">
+            <el-table-column label="操作" width="190" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button
-                  link
-                  type="primary"
-                  size="small"
-                  :disabled="isPitcherOverridden(row.responsiblePitcherId)"
-                  :title="isPitcherOverridden(row.responsiblePitcherId) ? '该投手已人工覆写 R/ER，请先撤销' : ''"
-                  @click="openEdit(row)"
-                >覆写</el-button>
+                <template v-if="row.voided">
+                  <el-button
+                    link
+                    type="danger"
+                    size="small"
+                    :disabled="!isFinal"
+                    @click="restoreAdjustment(row)"
+                  >恢复</el-button>
+                </template>
+                <template v-else>
+                  <el-button
+                    link
+                    type="primary"
+                    size="small"
+                    :disabled="isPitcherOverridden(row.effectivePitcherId ?? row.responsiblePitcherId)"
+                    :title="isPitcherOverridden(row.effectivePitcherId ?? row.responsiblePitcherId) ? '该投手已人工覆写 R/ER，请先撤销' : ''"
+                    @click="openEdit(row)"
+                  >覆写</el-button>
+                  <el-button
+                    link
+                    type="primary"
+                    size="small"
+                    :disabled="!isFinal"
+                    :title="!isFinal ? '比赛结束后才能改派判定' : ''"
+                    @click="openAdjust(row, 'REASSIGN')"
+                  >改派</el-button>
+                  <el-button
+                    link
+                    type="warning"
+                    size="small"
+                    :disabled="!isFinal"
+                    :title="!isFinal ? '比赛结束后才能作废判定' : ''"
+                    @click="openAdjust(row, 'VOID')"
+                  >作废</el-button>
+                  <el-button
+                    v-if="row.adjustmentId"
+                    link
+                    type="danger"
+                    size="small"
+                    :disabled="!isFinal"
+                    @click="restoreAdjustment(row)"
+                  >恢复</el-button>
+                </template>
               </template>
             </el-table-column>
           </el-table>
@@ -120,6 +178,56 @@
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 改派/作废弹窗 -->
+    <el-dialog
+      v-model="adjustVisible"
+      :title="adjustMode === 'REASSIGN' ? '改派判定' : '作废判定'"
+      width="400px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-form label-width="82px" size="default">
+        <el-form-item label="跑者">
+          {{ adjustRow?.runnerName }}（局{{ adjustRow?.inning }}{{ adjustRow?.half === 'top' ? '上' : '下' }}#{{ adjustRow?.sequence }}）
+        </el-form-item>
+        <el-form-item label="当前投手">
+          {{ adjustRow?.effectivePitcherName || adjustRow?.pitcherName || '—' }}
+        </el-form-item>
+        <el-form-item v-if="adjustMode === 'REASSIGN'" label="改派到">
+          <el-select
+            v-model="adjustTargetId"
+            filterable
+            placeholder="选择同队投手"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="pitcher in adjustTargets"
+              :key="pitcher.playerId"
+              :label="adjustOptionLabel(pitcher)"
+              :value="pitcher.playerId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="原因">
+          <el-input
+            v-model="adjustReason"
+            maxlength="200"
+            show-word-limit
+            placeholder="可空，例如：16 号误录，应为 21 号"
+          />
+        </el-form-item>
+      </el-form>
+      <p v-if="adjustMode === 'VOID'" class="pitcher-warn">
+        作废后该得分不再计入任何投手 R/ER；原始判定保留，可随时恢复。
+      </p>
+      <template #footer>
+        <el-button @click="adjustVisible = false">取消</el-button>
+        <el-button type="primary" :loading="adjustSubmitting" @click="submitAdjust">
+          {{ adjustMode === 'REASSIGN' ? '确认改派' : '确认作废' }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- 覆写弹窗 -->
     <el-dialog
@@ -251,6 +359,26 @@ const pitcherEditVisible = ref(false);
 const pitcherEditRow = ref(null);
 const pitcherEditForm = ref({ runsAllowed: 0, earnedRuns: 0, note: '' });
 const pitcherSubmitting = ref(false);
+
+const adjustVisible = ref(false);
+const adjustMode = ref('REASSIGN');
+const adjustRow = ref(null);
+const adjustTargetId = ref(null);
+const adjustReason = ref('');
+const adjustSubmitting = ref(false);
+
+const adjustTeamId = computed(() => {
+  const row = adjustRow.value;
+  if (!row) return null;
+  const pitcherId = row.effectivePitcherId ?? row.responsiblePitcherId;
+  return pitcherRows.value.find(
+    (pitcher) => String(pitcher.playerId) === String(pitcherId)
+  )?.teamId ?? null;
+});
+const adjustTargets = computed(() => pitcherRows.value.filter((pitcher) => (
+  String(pitcher.teamId) === String(adjustTeamId.value)
+  && String(pitcher.playerId) !== String(adjustRow.value?.effectivePitcherId)
+)));
 
 const pitcherDerivedUnearned = computed(() => Math.max(
   0,
@@ -459,6 +587,79 @@ async function confirmRevokePitcher(row) {
     emit('changed');
   } catch (e) {
     ElMessage.error('撤销失败: ' + (e?.message || ''));
+  }
+}
+
+// ─── 判定改派/作废/恢复 ──────────────────────────────────
+function openAdjust(row, mode) {
+  if (!isFinal.value || !row) return;
+  adjustRow.value = row;
+  adjustMode.value = mode;
+  adjustTargetId.value = null;
+  adjustReason.value = '';
+  adjustVisible.value = true;
+  if (!pitcherLoaded.value) {
+    loadPitcherTotals();
+  }
+}
+
+function adjustOptionLabel(pitcher) {
+  if (!pitcher) return '';
+  const number = pitcher.number ? `${pitcher.number}号 ` : '';
+  return `${number}${pitcher.playerName || `#${pitcher.playerId}`}`;
+}
+
+async function submitAdjust() {
+  const row = adjustRow.value;
+  if (!row?.decisionId) return;
+  if (adjustMode.value === 'REASSIGN' && !adjustTargetId.value) {
+    ElMessage.warning('请选择改派目标投手');
+    return;
+  }
+  adjustSubmitting.value = true;
+  try {
+    if (adjustMode.value === 'REASSIGN') {
+      await gameApi.reassignEarnedRunDecision(props.gameId, row.decisionId, {
+        targetPitcherId: adjustTargetId.value,
+        reason: adjustReason.value.trim() || null
+      });
+      ElMessage.success('改派已保存');
+    } else {
+      await gameApi.voidEarnedRunDecision(props.gameId, row.decisionId, {
+        reason: adjustReason.value.trim() || null
+      });
+      ElMessage.success('判定已作废');
+    }
+    adjustVisible.value = false;
+    await load();
+    await loadPitcherTotals();
+    emit('changed');
+  } catch (e) {
+    ElMessage.error(e?.message || '保存失败');
+  } finally {
+    adjustSubmitting.value = false;
+  }
+}
+
+async function restoreAdjustment(row) {
+  if (!isFinal.value || !row?.adjustmentId) return;
+  try {
+    await ElMessageBox.confirm(
+      `恢复 ${row.runnerName || '该跑者'} 的判定为引擎责任投手？`,
+      '恢复判定',
+      { type: 'warning', confirmButtonText: '确认恢复', cancelButtonText: '取消' }
+    );
+  } catch {
+    return;
+  }
+  try {
+    await gameApi.revokeEarnedRunDecisionAdjustment(props.gameId, row.adjustmentId);
+    ElMessage.success('已恢复引擎责任投手');
+    await load();
+    await loadPitcherTotals();
+    emit('changed');
+  } catch (e) {
+    ElMessage.error(e?.message || '恢复失败');
   }
 }
 

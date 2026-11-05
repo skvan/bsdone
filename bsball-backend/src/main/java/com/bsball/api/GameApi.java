@@ -30,6 +30,7 @@ package com.bsball.api;
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.model.dto.GameResponseDTO;
+import com.bsball.model.dto.EarnedRunDecisionAdjustRequest;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
@@ -166,6 +167,30 @@ public class GameApi {
             @PathVariable Long decisionId,
             @RequestBody EarnedRunDecisionOverrideRequest body) {
         return Result.ok(this.gameService.overrideEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decisions/{decisionId}/reassign"})
+    public Result<EarnedRunDecisionListDTO> reassignEarnedRunDecision(
+            @PathVariable Long id,
+            @PathVariable Long decisionId,
+            @RequestBody EarnedRunDecisionAdjustRequest body) {
+        return Result.ok(this.gameService.reassignEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decisions/{decisionId}/void"})
+    public Result<EarnedRunDecisionListDTO> voidEarnedRunDecision(
+            @PathVariable Long id,
+            @PathVariable Long decisionId,
+            @RequestBody(required=false) EarnedRunDecisionAdjustRequest body) {
+        return Result.ok(this.gameService.voidEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decision-adjustments/{adjustmentId}/revoke"})
+    public Result<EarnedRunDecisionListDTO> revokeEarnedRunDecisionAdjustment(
+            @PathVariable Long id,
+            @PathVariable Long adjustmentId) {
+        return Result.ok(
+                this.gameService.revokeEarnedRunDecisionAdjustment(id, adjustmentId));
     }
 
     @GetMapping(value={"/{id}/earned-runs/pitchers"})

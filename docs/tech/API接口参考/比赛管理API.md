@@ -287,6 +287,24 @@ EventService --> EventRepository
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
+- GET /game/{id}/earned-runs/decisions
+  - 作用：查询该场逐分判定，含半局/跑者/原始责任投手/有效责任投手/人工调整信息
+  - 响应新增：`effectivePitcherId/effectivePitcherName`、`adjustmentId/adjustmentAction/adjustmentReason`、`voided`
+  - 口径：原始 `responsiblePitcherId/pitcherName` 永不覆盖；有生效改派时有效投手为目标投手，作废时有效投手为空
+- PUT /game/{id}/earned-runs/decisions/{decisionId}
+  - 作用：人工覆核自责/非自责（现有能力）
+  - 校验：若该判定已作废需先恢复；按有效责任投手检查 R/ER 人工覆写冲突
+- POST /game/{id}/earned-runs/decisions/{decisionId}/reassign
+  - 作用：把该得分的有效责任投手改派给同队另一名投手
+  - 请求：`targetPitcherId`（必填）、`reason`（≤200 字，可空）
+  - 校验：仅 final；目标必须是本场同队投手；不能等于当前有效责任投手；旧 ACTIVE 调整置 `SUPERSEDED`
+- POST /game/{id}/earned-runs/decisions/{decisionId}/void
+  - 作用：作废误录判定，该得分不再计入任何投手 R/ER；原始判定保留
+  - 请求：`reason`（≤200 字，可空）；重复作废返回 400
+- POST /game/{id}/earned-runs/decision-adjustments/{adjustmentId}/revoke
+  - 作用：撤销最近一次改派/作废，恢复引擎责任投手
+  - 校验：仅 `ACTIVE` 可撤销；撤销后状态置 `REVOKED`
+  - 生效：三个写接口均按全场判定绝对重算受影响投手 R/ER；删除/转记守卫按有效责任投手判断
 - GET /game/{id}/earned-runs/pitchers
   - 作用：赛后复核列出本场投手的 R/ER/UER/PENDING 合计及生效中的人工覆写，供「比赛复核 → 投手 R/ER」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能复核投手 R/ER」
