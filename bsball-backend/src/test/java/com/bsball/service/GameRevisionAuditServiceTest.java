@@ -309,6 +309,29 @@ class GameRevisionAuditServiceTest {
     }
 
     @Test
+    @DisplayName("通用台账：playerId 为空时跳过写入")
+    void recordAdjustmentSkipsNullPlayer() {
+        service.recordAdjustment(1L, 20L, "FIELDING_A", "APPROVE",
+                "FIELDING_ADJUSTMENT", 1L, 1L, null, null,
+                "a", "助杀 A", "0", "1", "APPROVED", null, 9L);
+
+        verifyNoInteractions(gameStatAdjustmentRepository);
+    }
+
+    @Test
+    @DisplayName("通用台账写入失败不抛出")
+    void recordAdjustmentSwallowsWriteFailure() {
+        when(gameStatAdjustmentRepository.save(any(GameStatAdjustment.class)))
+                .thenThrow(new RuntimeException("ledger unavailable"));
+
+        service.recordAdjustment(1L, 20L, "FIELDING_A", "APPROVE",
+                "FIELDING_ADJUSTMENT", 1L, 1L, 700L, null,
+                "a", "助杀 A", "0", "1", "APPROVED", null, 9L);
+
+        verify(gameStatAdjustmentRepository).save(any(GameStatAdjustment.class));
+    }
+
+    @Test
     @DisplayName("统一台账写入失败不抛出，不阻断结果保存")
     void recordStatChangesSwallowsWriteFailure() {
         when(gameStatAdjustmentRepository.saveAll(any()))

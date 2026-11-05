@@ -9,7 +9,7 @@
     />
     <template v-else>
       <div class="adjustment-ledger__head">
-        <span>结果页手工修改 · 字段级留痕</span>
+        <span>人工修订台账 · 字段级留痕</span>
         <span class="adjustment-ledger__actions">
           共 {{ rows.length }} 条
           <el-button link type="primary" size="small" @click="load">刷新</el-button>
@@ -23,6 +23,13 @@
         </el-table-column>
         <el-table-column label="球员" min-width="110">
           <template #default="{ row }">{{ row.playerName || `#${row.playerId}` }}</template>
+        </el-table-column>
+        <el-table-column label="类型" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain" :type="scopeTagType(row.scope)">
+              {{ scopeLabel(row.scope) }}
+            </el-tag>
+          </template>
         </el-table-column>
         <el-table-column label="身份" width="66" align="center">
           <template #default="{ row }">{{ row.isPitcher === 1 ? '投手' : '打者' }}</template>
@@ -91,6 +98,25 @@ async function load() {
 
 onMounted(load);
 watch(() => [props.gameId, props.gameStatus, props.refreshKey], load);
+
+function scopeLabel(scope) {
+  const labels = {
+    PLAYER_STAT: '结果字段',
+    ER_DECISION: 'ER 判定',
+    PITCHER_RUN_OVERRIDE: 'R/ER 覆写',
+    FIELDING_A: '守备补记',
+    PITCHER_TRANSFER: '投手转记'
+  };
+  return labels[scope] ?? scope ?? '—';
+}
+
+function scopeTagType(scope) {
+  if (scope === 'ER_DECISION') return 'warning';
+  if (scope === 'PITCHER_RUN_OVERRIDE') return 'primary';
+  if (scope === 'FIELDING_A') return 'success';
+  if (scope === 'PITCHER_TRANSFER') return 'info';
+  return 'info';
+}
 
 function formatTime(value) {
   if (!value) return '—';
