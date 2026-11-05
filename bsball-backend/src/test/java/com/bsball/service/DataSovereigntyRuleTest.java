@@ -147,7 +147,8 @@ class DataSovereigntyRuleTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository, stadiumRepository,
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService, gameFieldingPosStatRepository,
-                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
+                org.mockito.Mockito.mock(GameRevisionAuditService.class));
         platformAssetService = new PlatformAssetService(leagueRepository, teamRepository, playerRepository,
                 eventRepository, gameRepository, apiPermissionService);
         platformAssetApi = new PlatformAssetApi(platformAssetService);

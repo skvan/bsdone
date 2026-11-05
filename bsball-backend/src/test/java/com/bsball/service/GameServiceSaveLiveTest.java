@@ -86,7 +86,7 @@ class GameServiceSaveLiveTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
-                fieldingAdjustmentService);
+                fieldingAdjustmentService, org.mockito.Mockito.mock(GameRevisionAuditService.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         this.game = new Game();

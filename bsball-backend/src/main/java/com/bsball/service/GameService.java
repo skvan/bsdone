@@ -16,6 +16,7 @@ import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
+import com.bsball.model.dto.GameRevisionAuditDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.PitcherRunOverrideRequest;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
@@ -86,6 +87,7 @@ public class GameService {
     private final TenantQueryPolicyService tenantQueryPolicyService;
     private final EarnedRunReconstructionService earnedRunReconstructionService;
     private final GameFieldingAdjustmentService fieldingAdjustmentService;
+    private final GameRevisionAuditService revisionAuditService;
     private final EventRegistrationService eventRegistrationService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
@@ -742,6 +744,12 @@ public class GameService {
     public List<FieldingAdjustmentCandidateDTO> listFieldingAdjustmentCandidates(Long gameId) {
         Game game = this.requireGameForFieldingReview(gameId);
         return this.fieldingAdjustmentService.listCandidates(game);
+    }
+
+    /** 统一修订记录：聚合 ER 判定调整、R/ER 覆写、守备补记与投手行转记。 */
+    public List<GameRevisionAuditDTO> listRevisionAudit(Long gameId) {
+        Game game = this.requireFinalGameForReview(gameId, "比赛结束后才能查看修订记录");
+        return this.revisionAuditService.list(game);
     }
 
     /** 赛后补记助杀：源 Play 与守备统计同步由服务层校验。 */
@@ -1664,7 +1672,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository, GameFieldingAdjustmentService fieldingAdjustmentService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository, GameFieldingAdjustmentService fieldingAdjustmentService, GameRevisionAuditService revisionAuditService) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameSubstitutionEventRepository = gameSubstitutionEventRepository;
@@ -1678,6 +1686,7 @@ public class GameService {
         this.eventRegistrationService = eventRegistrationService;
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
         this.fieldingAdjustmentService = fieldingAdjustmentService;
+        this.revisionAuditService = revisionAuditService;
     }
 }
 
