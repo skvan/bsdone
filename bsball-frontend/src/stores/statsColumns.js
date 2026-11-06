@@ -1,6 +1,7 @@
 // 统计列定义与键常量 —— 行为移植自编译产物入口 chunk（区间切片 + 引用重写）
 // 由 recon-gen-stats-columns.mjs 生成（勿手改）；供 useStatsTableMeta 与门户统计页共享
-import { formatInningsPitched } from '../utils/inningsFormat';
+// 注：为兼容 node --test 直接导入，import 保留 .js 扩展名；重新生成时需保持。
+import { formatInningsPitched } from '../utils/inningsFormat.js';
 
 // 键常量（入口 chunk 同名逻辑键）
 export const KEY_BATTING_ORDER = 'battingOrder';

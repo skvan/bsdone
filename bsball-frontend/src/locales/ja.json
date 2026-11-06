@@ -464,6 +464,11 @@
         "fullName": "盗塁許容",
         "definition": "捕手が許した盗塁数",
         "shortLabel": "SB"
+      },
+      "gsFielding": {
+        "fullName": "守備先発試合",
+        "definition": "選手がこの守備位置で先発出場した試合数",
+        "shortLabel": "GS"
       }
     }
   },

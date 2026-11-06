@@ -464,6 +464,11 @@
         "fullName": "도루 허용",
         "definition": "포수가 허용한 도루 수",
         "shortLabel": "SB"
+      },
+      "gsFielding": {
+        "fullName": "수비 선발 경기",
+        "definition": "해당 수비 위치에서 선발 출전한 경기 수",
+        "shortLabel": "GS"
       }
     }
   },
