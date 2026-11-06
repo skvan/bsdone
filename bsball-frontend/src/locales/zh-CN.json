@@ -2213,5 +2213,266 @@
     "revokeFailed": "撤销失败",
     "genericHint": "列表仅显示未在本队的球员；未认领球员点击「邀请入队」将直接加入（保留其现有球队），已认领球员生成通用链接（本人确认后入队）。",
     "loadFailed": "加载失败"
+  },
+  "clubhouse": {
+    "header": {
+      "breadcrumbPortal": "门户",
+      "subtitle": "球员个人主页 · 已关联球员档案",
+      "editLayout": "编辑布局",
+      "backToPortal": "返回门户",
+      "claimedBadge": "已关联球员档案",
+      "emptyIntro": "这位球员还没有填写简介。",
+      "viewPublicProfile": "查看公开主页",
+      "teamHome": "球队主页",
+      "noTeam": "未加入球队",
+      "allTeamsCrest": "全",
+      "crossTeam": "跨全部代表球队",
+      "notJoinedTeam": "尚未加入球队",
+      "position": "守备位置",
+      "throwBat": "投打",
+      "heightWeight": "身高 / 体重",
+      "birthPlace": "出生地",
+      "handLeft": "左",
+      "handRight": "右",
+      "handBoth": "左右",
+      "throwBatValue": "{throwHand}投{batHand}打"
+    },
+    "scope": {
+      "title": "数据范围",
+      "gameMode": "运动类型",
+      "allLeagues": "全部联盟",
+      "representingTeams": "代表 {n} 支球队",
+      "allLeagueEvents": "本联盟全部赛事",
+      "leagueFallback": "联盟{id}",
+      "allEvents": "全部赛事",
+      "noGames": "暂无比赛"
+    },
+    "layoutEdit": {
+      "title": "布局编辑",
+      "dropToSwap": "松开与「{name}」交换位置",
+      "contentLimit": "内容下限 {height}px",
+      "hint": "拖动模块调整位置；拖到另一模块上可交换；拖动八个小方块缩放；点击空白处取消选中",
+      "resetSize": "重置尺寸",
+      "saving": "保存中…",
+      "saved": "已保存",
+      "done": "完成",
+      "releaseToSwap": "松手交换",
+      "resizeNw": "左上缩放",
+      "resizeN": "向上缩放",
+      "resizeNe": "右上缩放",
+      "resizeW": "向左缩放",
+      "resizeE": "向右缩放",
+      "resizeSw": "左下缩放",
+      "resizeS": "向下缩放",
+      "resizeSe": "右下缩放"
+    },
+    "modules": {
+      "ranks": {
+        "label": "队内坐标",
+        "placeholderHint": "选择球队后显示；此位置会保留",
+        "switchScope": "切换",
+        "playerCount": "{n} 人",
+        "noteLabel": "口径",
+        "rankInTeam": "队内第 {n}",
+        "noRank": "暂无排名",
+        "noMetric": "暂无该数据",
+        "scopeSameEvent": "同队同赛事",
+        "scopeSameLeague": "同队同联盟",
+        "scopeTeamCareer": "球队跨赛事生涯",
+        "note": "{scope} · 无最低打席门槛 · 本垒打不进入排名"
+      },
+      "evaluation": {
+        "label": "总体评价",
+        "compare": "对比 · {scope}",
+        "overallScore": "综合评分",
+        "noScore": "暂无评分",
+        "strength": "强项",
+        "improve": "提升",
+        "empty": "暂无评价数据",
+        "defaultComparison": "全租户生涯",
+        "rolePositionPlayer": "野手",
+        "rolePitcher": "投手",
+        "roleTwoWay": "二刀流",
+        "rolePlayer": "球员"
+      },
+      "spray": {
+        "label": "打击落点"
+      },
+      "milestones": {
+        "label": "生涯里程碑"
+      },
+      "performance": {
+        "label": "数据表现"
+      },
+      "schedule": {
+        "label": "接下来的比赛"
+      },
+      "recentGames": {
+        "label": "最近战报"
+      },
+      "teams": {
+        "label": "代表球队"
+      },
+      "quickLinks": {
+        "label": "快捷入口"
+      }
+    },
+    "settings": {
+      "title": "数据设置",
+      "modulesTitle": "模块布局",
+      "modulesHint": "拖动左侧把手排序，也可用上下按钮微调；顺序用于手机/紧凑模式。桌面位置与大小请在页面「编辑布局」中拖动调整。",
+      "ranksOnlyWithTeam": "仅在选择球队后显示",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "toggleModuleAria": "显示{name}",
+      "enabledCount": "已启用 {enabled} / {total}",
+      "milestonesTitle": "生涯里程碑 · 最多 {max} 项",
+      "milestonesHint": "选择要展示的累计指标；时间线会展示已选指标最近达成的里程碑。",
+      "selectedCount": "已选 {selected} / {max}",
+      "performanceTitle": "表现图",
+      "performanceHint": "选择要展示的指标与图表类型；不可用的指标会置灰。",
+      "metric": "指标",
+      "chartType": "图表类型",
+      "ranksTitle": "队内排名 · 四个指标",
+      "ranksHint": "排名按当前代表球队的同队同赛事或球队跨赛事生涯计算；未选择球队时模块不显示。默认不提供本垒打。",
+      "rankSlot": "排名位 {n}",
+      "resetDefaults": "恢复默认",
+      "save": "保存",
+      "vizKpi": "大数字",
+      "vizLine": "折线图",
+      "vizBar": "柱状图",
+      "vizDonut": "环形图"
+    },
+    "empty": {
+      "allHiddenTitle": "所有内容模块已隐藏",
+      "allHiddenBody": "可以随时在数据设置里重新打开需要的内容。",
+      "scopeEmptyTitle": "当前范围暂无展示模块",
+      "scopeEmptyBody": "选择球队或在数据设置中启用其他模块。",
+      "goSettings": "去设置",
+      "loadFailed": "驾驶舱加载失败",
+      "reload": "重新加载",
+      "unclaimed": "尚未关联球员档案"
+    },
+    "card": {
+      "zoomOpenAria": "放大查看球星卡",
+      "zoomDialogAria": "球星卡放大查看",
+      "closeZoomAria": "关闭放大",
+      "radarAria": "{title}雷达图，{axes}",
+      "radarAxis": "{label}{value}，百分位{percentile}",
+      "radarAxisSeparator": "；"
+    },
+    "spray": {
+      "modeAria": "落点显示模式",
+      "heatmap": "热力图",
+      "animation": "落点动画",
+      "replay": "重播",
+      "loading": "正在加载打击落点…",
+      "loadFailed": "打击落点加载失败",
+      "empty": "当前范围还没有记录击球落点。",
+      "chartAria": "打击落点分区",
+      "zoneStats": "区域统计",
+      "typeStats": "球种统计",
+      "hits": "安打",
+      "homeRuns": "本垒打",
+      "outs": "出局",
+      "hitsCount": "安打 {n}",
+      "recordedBalls": "记录 {n} 球",
+      "gamesCount": "{n} 场"
+    },
+    "milestones": {
+      "reached": "已达成 {n} 项",
+      "nextStop": "下一站 {target}",
+      "loading": "正在加载生涯里程碑…",
+      "loadFailed": "里程碑加载失败",
+      "remaining": "还差 {remaining} {unit}",
+      "maxReached": "已达最高里程碑",
+      "recentTitle": "最近里程碑",
+      "recentSummary": "最近 {shown} 项 / 共 {total} 项",
+      "timelineAria": "最近里程碑时间线",
+      "empty": "还没有达成里程碑，继续保持。",
+      "note": "统计自系统记录 · 仅计入排行的比赛",
+      "unavailable": "暂无生涯累计数据。",
+      "statusLoading": "加载中",
+      "statusUnavailable": "暂不可用",
+      "waitingData": "等待数据",
+      "noDate": "日期未记录"
+    },
+    "performance": {
+      "defaultLabel": "数据",
+      "hitsLabel": "安打",
+      "trendAria": "{metric}走势",
+      "chartNote": "近 {n} 场 · 按比赛日排序",
+      "empty": "所选范围暂无比赛数据。"
+    },
+    "schedule": {
+      "allEvents": "全部赛程",
+      "currentEvent": "当前赛事",
+      "currentLeague": "当前联盟",
+      "noUpcomingForEvent": "当前赛事近期暂无未开赛比赛",
+      "leagueEventCount": "共 {n} 项赛事",
+      "venueTbd": "场地待定",
+      "gameDetail": "赛事详情",
+      "statusScheduled": "赛程中",
+      "crossTeamCareer": "跨球队生涯",
+      "emptyEvent": "该赛事暂无未开赛的比赛。",
+      "emptyLeague": "该联盟暂无未开赛的比赛。",
+      "emptyTeam": "该球队暂无未开赛的比赛。",
+      "empty": "暂无未开赛的比赛。"
+    },
+    "recentGames": {
+      "allGames": "比赛记录",
+      "final": "最终",
+      "emptyEvent": "该赛事暂无比赛记录。",
+      "emptyLeague": "该联盟暂无比赛记录。",
+      "emptyTeam": "该球队暂无比赛记录。",
+      "empty": "暂无比赛记录。",
+      "battingLine": "{ab}打数 {h}安打",
+      "rbiLine": "{n}打点",
+      "sbLine": "{n}盗垒",
+      "pitchingLine": "{ip}局 · {so}三振 · {er}自责分",
+      "noIndividualStats": "本场暂无个人数据"
+    },
+    "teams": {
+      "pointsNote": "球队积分按各队主赛事显示",
+      "noEvents": "暂无已确认赛事",
+      "noRecord": "暂无战绩"
+    },
+    "quickLinks": {
+      "publicProfile": "公开球员主页",
+      "claims": "我的认领与资料"
+    },
+    "countdown": {
+      "today": "今天",
+      "tomorrow": "明天",
+      "days": "还有 {n} 天"
+    },
+    "weekday": {
+      "sun": "周日",
+      "mon": "周一",
+      "tue": "周二",
+      "wed": "周三",
+      "thu": "周四",
+      "fri": "周五",
+      "sat": "周六"
+    },
+    "toast": {
+      "layoutSaveFailed": "布局保存失败",
+      "resetSizeConflict": "默认尺寸会与其他模块重叠，请先调整位置",
+      "rankDuplicates": "四个排名位需要选择不同指标",
+      "milestonesRequired": "生涯里程碑至少选择 1 个指标",
+      "settingsSaved": "数据设置已保存",
+      "saveFailed": "保存失败",
+      "resetDone": "已恢复默认",
+      "resetFailed": "恢复失败",
+      "unclaimed": "当前账号未关联球员档案，已返回门户"
+    },
+    "confirm": {
+      "resetTitle": "恢复默认",
+      "resetMessage": "恢复默认数据设置？当前选择将被覆盖。",
+      "resetConfirm": "恢复"
+    },
+    "common": {
+      "notFilled": "未填写"
+    }
   }
 }
