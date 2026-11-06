@@ -2217,6 +2217,10 @@ implements CommandLineRunner {
             return false;
         }
         String path = a.getPath();
+        // 微信 JSSDK 签名是门户公开能力（比赛/球员等分享卡片），新装环境也需授予 guest
+        if (path.equals("/wechat/jssdk-config")) {
+            return true;
+        }
         if (path.contains("/stadium")) {
             return true;
         }
