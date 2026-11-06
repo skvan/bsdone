@@ -7,133 +7,133 @@
     "term": {
       "pa": {
         "fullName": "打席",
-        "definition": "球员完成打席的次数",
-        "shortLabel": "打席"
+        "definition": "球員完成打席的次數",
+        "shortLabel": "PA"
       },
       "gp": {
-        "fullName": "出场场次",
-        "definition": "球员出赛（上场）过的比赛场次",
-        "shortLabel": "場次"
+        "fullName": "出場場次",
+        "definition": "球員出賽（上場）過的比賽場次",
+        "shortLabel": "GP"
       },
       "g": {
-        "fullName": "出场",
-        "definition": "投手至少投出一球即记为出场一场",
+        "fullName": "出場",
+        "definition": "投手至少投出一球即記為出場一場",
         "shortLabel": "出賽"
       },
       "ab": {
-        "fullName": "打数",
-        "definition": "不包含保送、触身球、牺牲打、妨碍上垒等结果的打席次数",
-        "shortLabel": "打數"
+        "fullName": "打數",
+        "definition": "不包含保送、觸身球、犧牲打、妨礙上壘等結果的打席次數",
+        "shortLabel": "AB"
       },
       "oneB": {
-        "fullName": "一垒安打",
-        "definition": "打者凭安打安全上到一垒",
-        "shortLabel": "一安"
+        "fullName": "一壘安打",
+        "definition": "打者憑安打安全上到一壘",
+        "shortLabel": "1B"
       },
       "r": {
         "fullName": "得分",
-        "definition": "跑者安全返回本垒并完成得分",
-        "shortLabel": "得分"
+        "definition": "跑者安全返回本壘並完成得分",
+        "shortLabel": "R"
       },
       "h": {
         "fullName": "安打",
-        "definition": "打者击出界内球并安全上垒，且非失误或野手选择所致",
-        "shortLabel": "安打"
+        "definition": "打者擊出界內球並安全上壘，且非失誤或野手選擇所致",
+        "shortLabel": "H"
       },
       "pitchH": {
         "fullName": "被安打",
-        "definition": "投手被击出的安打数",
-        "shortLabel": "被安打"
+        "definition": "投手被擊出的安打數",
+        "shortLabel": "H"
       },
       "twoB": {
-        "fullName": "二垒安打",
-        "definition": "打者凭安打安全上到二垒",
-        "shortLabel": "二安"
+        "fullName": "二壘安打",
+        "definition": "打者憑安打安全上到二壘",
+        "shortLabel": "2B"
       },
       "threeB": {
-        "fullName": "三垒安打",
-        "definition": "打者凭安打安全上到三垒",
-        "shortLabel": "三安"
+        "fullName": "三壘安打",
+        "definition": "打者憑安打安全上到三壘",
+        "shortLabel": "3B"
       },
       "hr": {
-        "fullName": "全垒打",
-        "definition": "打者击球后依序通过一二三垒并回本垒得分，过程中未被刺杀且非因守备失误受益",
-        "shortLabel": "全壘打"
+        "fullName": "全壘打",
+        "definition": "打者擊球後依序通過一二三壘並回本壘得分，過程中未被刺殺且非因守備失誤受益",
+        "shortLabel": "HR"
       },
       "iphr": {
         "fullName": "場內全壘打",
         "definition": "球未飛越全壘打牆仍跑回本壘得分",
-        "shortLabel": "場內全壘打"
+        "shortLabel": "IPHR"
       },
       "pitchHr": {
-        "fullName": "被全垒打",
-        "definition": "投手被击出的全垒打数",
-        "shortLabel": "被全壘打"
+        "fullName": "被全壘打",
+        "definition": "投手被擊出的全壘打數",
+        "shortLabel": "HR"
       },
       "pitchInsideParkHr": {
         "fullName": "被場內全壘打",
         "definition": "投手被擊出的場內全壘打次數",
-        "shortLabel": "被場內全壘打"
+        "shortLabel": "IPHR"
       },
       "rbi": {
-        "fullName": "打点",
-        "definition": "因打者该次打席行为而带回的得分",
-        "shortLabel": "打點"
+        "fullName": "打點",
+        "definition": "因打者該次打席行為而帶回的得分",
+        "shortLabel": "RBI"
       },
       "bb": {
-        "fullName": "保送",
-        "definition": "投手四坏球或故意保送，打者被判上一垒",
-        "shortLabel": "保送"
+        "fullName": "四壞球",
+        "definition": "投手四壞球或故意保送，打者被判上一壘",
+        "shortLabel": "BB"
       },
       "pitchBb": {
-        "fullName": "投手保送",
-        "definition": "投手给予打者的保送次数",
-        "shortLabel": "保送"
+        "fullName": "四壞球",
+        "definition": "投手給予打者的保送次數",
+        "shortLabel": "BB"
       },
       "ibb": {
-        "fullName": "故意四坏",
-        "definition": "打者被故意保送的次数",
-        "shortLabel": "故四"
+        "fullName": "故意四壞球",
+        "definition": "打者被故意保送的次數",
+        "shortLabel": "IBB"
       },
       "hbp": {
-        "fullName": "触身球",
-        "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
-        "shortLabel": "觸身"
+        "fullName": "觸身球",
+        "definition": "打者未嘗試擊球時被投球擊中，並被裁定上一壘",
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "三振",
-        "definition": "打者在一个打席中被判三次好球而出局",
-        "shortLabel": "三振"
+        "definition": "打者在一個打席中被判三次好球而出局",
+        "shortLabel": "SO"
       },
       "pitchSo": {
-        "fullName": "夺三振",
-        "definition": "投手让打者累积三好球（挥空或目送）而出局",
-        "shortLabel": "奪三振"
+        "fullName": "奪三振",
+        "definition": "投手讓打者累積三好球（揮空或目送）而出局",
+        "shortLabel": "SO"
       },
       "w": {
-        "fullName": "胜投",
-        "definition": "球队取得并保持领先时对应的投手可记胜投（依官方记分规则裁定）",
-        "shortLabel": "勝場"
+        "fullName": "勝投",
+        "definition": "球隊取得並保持領先時對應的投手可記勝投（依官方記分規則裁定）",
+        "shortLabel": "W"
       },
       "l": {
-        "fullName": "败投",
-        "definition": "球队失去且未再夺回领先时对应投手记为败投",
-        "shortLabel": "敗場"
+        "fullName": "敗投",
+        "definition": "球隊失去且未再奪回領先時對應投手記為敗投",
+        "shortLabel": "L"
       },
       "gs": {
-        "fullName": "先发场次",
-        "definition": "该投手作为球队首位登板投手的场次",
-        "shortLabel": "先發"
+        "fullName": "先發場次",
+        "definition": "該投手作為球隊首位登板投手的場次",
+        "shortLabel": "GS"
       },
       "cg": {
         "fullName": "完投",
-        "definition": "先发投手从开局投到比赛结束且中途未被替换",
-        "shortLabel": "完投"
+        "definition": "先發投手從開局投到比賽結束且中途未被替換",
+        "shortLabel": "CG"
       },
       "pg": {
         "fullName": "完封",
         "definition": "投手完投且未失分",
-        "shortLabel": "PG"
+        "shortLabel": "SHO"
       },
       "sho": {
         "fullName": "完封",
@@ -142,182 +142,182 @@
       },
       "sv": {
         "fullName": "救援成功",
-        "definition": "后援投手在符合救援条件下守住胜利所记的成绩",
-        "shortLabel": "救援成功"
+        "definition": "後援投手在符合救援條件下守住勝利所記的成績",
+        "shortLabel": "SV"
       },
       "svo": {
-        "fullName": "救援机会",
-        "definition": "投手登板时具备可获得救援成功条件的次数",
-        "shortLabel": "救援機會"
+        "fullName": "救援機會",
+        "definition": "投手登板時具備可獲得救援成功條件的次數",
+        "shortLabel": "SVO"
       },
       "ip": {
-        "fullName": "投球局数",
-        "definition": "投手在场时制造出局数除以 3；.1 代表 1/3 局，.2 代表 2/3 局",
-        "shortLabel": "投球局數"
+        "fullName": "投球局數",
+        "definition": "投手在場時製造出局數除以 3；.1 代表 1/3 局，.2 代表 2/3 局",
+        "shortLabel": "IP"
       },
       "tbf": {
-        "fullName": "面对打者总数",
-        "definition": "投手面对打者的总人次",
+        "fullName": "面對打者總數",
+        "definition": "投手面對打者的總人次",
         "shortLabel": "TBF"
       },
       "bf": {
-        "fullName": "面对打者",
-        "definition": "投手面对打者的总人次",
+        "fullName": "面對打者",
+        "definition": "投手面對打者的總人次",
         "shortLabel": "BF"
       },
       "pitchBf": {
-        "fullName": "面对打者",
-        "definition": "投手面对打者的总人次",
-        "shortLabel": "打席"
+        "fullName": "面對打者",
+        "definition": "投手面對打者的總人次",
+        "shortLabel": "BF"
       },
       "np": {
-        "fullName": "投球数",
-        "definition": "投手投出的总球数",
-        "shortLabel": "投球數"
+        "fullName": "投球數",
+        "definition": "投手投出的總球數",
+        "shortLabel": "NP"
       },
       "pIp": {
-        "fullName": "每局用球数",
-        "definition": "投手每局平均投球数",
+        "fullName": "每局用球數",
+        "definition": "投手每局平均投球數",
         "shortLabel": "PIP"
       },
       "qs": {
-        "fullName": "优质先发",
-        "definition": "先发投手投满至少 6 局且自责分不超过 3 分",
+        "fullName": "優質先發",
+        "definition": "先發投手投滿至少 6 局且自責分不超過 3 分",
         "shortLabel": "QS"
       },
       "gf": {
-        "fullName": "终结出赛",
-        "definition": "投手作为球队该场最后登板投手（且非先发）时记一场",
+        "fullName": "終結出賽",
+        "definition": "投手作為球隊該場最後登板投手（且非先發）時記一場",
         "shortLabel": "GF"
       },
       "pitchR": {
         "fullName": "失分",
-        "definition": "投手失分总数（含自责与非自责）",
-        "shortLabel": "失分"
+        "definition": "投手失分總數（含自責與非自責）",
+        "shortLabel": "R"
       },
       "er": {
-        "fullName": "自责分",
-        "definition": "投手应负责任的失分",
-        "shortLabel": "自責"
+        "fullName": "自責分",
+        "definition": "投手應負責任的失分",
+        "shortLabel": "ER"
       },
       "era": {
-        "fullName": "自责分率",
-        "definition": "投手每九局平均自责分",
-        "shortLabel": "自責分率"
+        "fullName": "防禦率",
+        "definition": "投手每九局平均自責分",
+        "shortLabel": "ERA"
       },
       "whip": {
-        "fullName": "每局被上垒率",
-        "definition": "每投一局平均被保送与被安打总和",
-        "shortLabel": "每局被上壘率"
+        "fullName": "每局被上壘率",
+        "definition": "每投一局平均被保送與被安打總和",
+        "shortLabel": "WHIP"
       },
       "so9": {
         "fullName": "每九局三振",
-        "definition": "投手每九局平均三振数",
+        "definition": "投手每九局平均三振數",
         "shortLabel": "K9值"
       },
       "bb9": {
         "fullName": "每九局保送",
-        "definition": "投手每九局平均保送数",
+        "definition": "投手每九局平均保送數",
         "shortLabel": "B9值"
       },
       "h9": {
         "fullName": "每九局被安打",
-        "definition": "投手每九局平均被安打数",
+        "definition": "投手每九局平均被安打數",
         "shortLabel": "H9值"
       },
       "kBb": {
         "fullName": "三振保送比",
-        "definition": "投手三振次数与保送次数的比值",
-        "shortLabel": "保送三振比"
+        "definition": "投手三振次數與保送次數的比值",
+        "shortLabel": "K/BB"
       },
       "avgAgainst": {
-        "fullName": "被打击率",
-        "definition": "对手面对该投手时的打击率",
+        "fullName": "被打擊率",
+        "definition": "對手面對該投手時的打擊率",
         "shortLabel": "被打擊率"
       },
       "sbAllowed": {
-        "fullName": "被盗垒",
-        "definition": "投手在场时被跑者盗垒成功的总次数",
-        "shortLabel": "SBALLOWED"
+        "fullName": "被盜壘",
+        "definition": "投手在場時被跑者盜壘成功的總次數",
+        "shortLabel": "SB"
       },
       "csAllowed": {
-        "fullName": "盗垒刺杀",
-        "definition": "投手在场时对方跑者盗垒被刺杀总次数",
-        "shortLabel": "CSALLOWED"
+        "fullName": "盜壘阻殺",
+        "definition": "投手在場時對方跑者盜壘被刺殺總次數",
+        "shortLabel": "CS"
       },
       "pk": {
-        "fullName": "牵制出局",
-        "definition": "投手牵制传球配合守备员将离垒跑者刺杀出局",
+        "fullName": "牽制出局",
+        "definition": "投手牽制傳球配合守備員將離壘跑者刺殺出局",
         "shortLabel": "PK"
       },
       "sh": {
-        "fullName": "牺牲触击",
-        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "fullName": "犧牲觸擊",
+        "definition": "打者以觸擊推進一名或多名跑者至少一壘",
         "shortLabel": "SH"
       },
       "sac": {
-        "fullName": "牺牲触击",
-        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "fullName": "犧牲觸擊",
+        "definition": "打者以觸擊推進一名或多名跑者至少一壘",
         "shortLabel": "SAC"
       },
       "sf": {
-        "fullName": "高飞牺牲打",
-        "definition": "打者击出被接杀的高飞球并使跑者得分",
+        "fullName": "犧牲飛球",
+        "definition": "打者擊出被接殺的高飛球並使跑者得分",
         "shortLabel": "SF"
       },
       "gdp": {
-        "fullName": "滚地造成双杀",
-        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "fullName": "雙殺打",
+        "definition": "打者擊出滾地球並導致守方完成雙殺（或多重出局）",
         "shortLabel": "GDP"
       },
       "gidp": {
-        "fullName": "滚地造成双杀",
-        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "fullName": "雙殺打",
+        "definition": "打者擊出滾地球並導致守方完成雙殺（或多重出局）",
         "shortLabel": "GIDP"
       },
       "goFo": {
-        "fullName": "滚地出局 / 飞球出局比",
-        "definition": "打者滚地出局与飞球出局的比值",
-        "shortLabel": "GOFO"
+        "fullName": "滾飛比",
+        "definition": "打者滾地出局與飛球出局的比值",
+        "shortLabel": "GO/FO"
       },
       "goAo": {
-        "fullName": "滚地出局 / 飞球出局比",
-        "definition": "打者滚地出局与飞球出局的比值",
-        "shortLabel": "滾飛出局比"
+        "fullName": "滾飛比",
+        "definition": "打者滾地出局與飛球出局的比值",
+        "shortLabel": "GO/AO"
       },
       "xbh": {
-        "fullName": "长打数",
-        "definition": "除一垒安打外的安打总数",
-        "shortLabel": "長打數"
+        "fullName": "長打數",
+        "definition": "除一壘安打外的安打總數",
+        "shortLabel": "XBH"
       },
       "tb": {
-        "fullName": "垒打数",
-        "definition": "打者通过安打累计获得的总垒包数",
-        "shortLabel": "壘打數"
+        "fullName": "壘打數",
+        "definition": "打者透過安打累計獲得的總壘包數",
+        "shortLabel": "TB"
       },
       "babip": {
-        "fullName": "场内球打击率",
-        "definition": "仅统计进入场内的击球结果，排除全垒打与三振后的打击率指标",
+        "fullName": "場內球打擊率",
+        "definition": "僅統計進入場內的擊球結果，排除全壘打與三振後的打擊率指標",
         "shortLabel": "BABIP"
       },
       "iso": {
-        "fullName": "纯长打率",
-        "definition": "衡量打者每打数产生额外垒包能力的长打火力指标",
+        "fullName": "純長打率",
+        "definition": "衡量打者每打數產生額外壘包能力的長打火力指標",
         "shortLabel": "ISO"
       },
       "abHr": {
-        "fullName": "每轰打数",
-        "definition": "打者平均每击出一支全垒打所需的打数",
+        "fullName": "每全壘打打數",
+        "definition": "打者平均每擊出一支全壘打所需的打數",
         "shortLabel": "ABHR"
       },
       "bbK": {
         "fullName": "保送/三振比",
-        "definition": "打者保送次数与三振次数的比值",
+        "definition": "打者保送次數與三振次數的比值",
         "shortLabel": "BBK"
       },
       "bbPct": {
         "fullName": "保送率",
-        "definition": "打者在打席中获得保送的比例",
+        "definition": "打者在打席中獲得保送的比例",
         "shortLabel": "BB%"
       },
       "kPct": {
@@ -326,127 +326,127 @@
         "shortLabel": "K%"
       },
       "fip": {
-        "fullName": "独立防御率",
-        "definition": "以投手可较稳定主导的结果（全垒打、保送、触身、三振）估算失分能力",
+        "fullName": "獨立防禦率",
+        "definition": "以投手可較穩定主導的結果（全壘打、保送、觸身、三振）估算失分能力",
         "shortLabel": "FIP"
       },
       "eraPlus": {
-        "fullName": "调整后防御率",
-        "definition": "校正联盟与球场环境后的防御率指标，100 为联盟平均",
+        "fullName": "調整後防禦率",
+        "definition": "校正聯盟與球場環境後的防禦率指標，100 為聯盟平均",
         "shortLabel": "ERA+"
       },
       "inn": {
-        "fullName": "守备局数",
-        "definition": "球员在对应守位完成防守的总局数",
-        "shortLabel": "守備局數"
+        "fullName": "守備局數",
+        "definition": "球員在對應守位完成防守的總局數",
+        "shortLabel": "INN"
       },
       "tc": {
-        "fullName": "守备机会",
-        "definition": "总守备机会数（接杀 + 助杀 + 失误）",
-        "shortLabel": "守備機會"
+        "fullName": "守備機會",
+        "definition": "總守備機會數（接殺 + 助殺 + 失誤）",
+        "shortLabel": "TC"
       },
       "po": {
-        "fullName": "接杀",
-        "definition": "守备员直接完成出局时记一接杀",
-        "shortLabel": "接殺"
+        "fullName": "接殺",
+        "definition": "守備員直接完成出局時記一接殺",
+        "shortLabel": "PO"
       },
       "a": {
-        "fullName": "助杀",
-        "definition": "守备员传球或处理球并协助完成出局时记一助杀",
-        "shortLabel": "助殺"
+        "fullName": "助殺",
+        "definition": "守備員傳球或處理球並協助完成出局時記一助殺",
+        "shortLabel": "A"
       },
       "e": {
-        "fullName": "失误",
-        "definition": "守备员处理球失当，导致打者或跑者额外推进时记失误",
-        "shortLabel": "失誤"
+        "fullName": "失誤",
+        "definition": "守備員處理球失當，導致打者或跑者額外推進時記失誤",
+        "shortLabel": "E"
       },
       "dp": {
-        "fullName": "双杀",
-        "definition": "守备方在同一连贯守备中完成两人出局",
-        "shortLabel": "雙殺"
+        "fullName": "雙殺",
+        "definition": "守備方在同一連貫守備中完成兩人出局",
+        "shortLabel": "DP"
       },
       "pb": {
         "fullName": "捕逸",
         "definition": "應可由捕手以一般守備處理的合法投球漏接，並造成打者或跑者推進",
-        "shortLabel": "捕逸"
+        "shortLabel": "PB"
       },
       "catcherCs": {
         "fullName": "盜壘阻殺",
         "definition": "捕手對企圖盜壘的跑者完成刺殺出局的次數",
-        "shortLabel": "阻殺"
+        "shortLabel": "CS"
       },
       "tcPct": {
-        "fullName": "守备率",
-        "definition": "守备员在守备机会中不发生失误的比率",
-        "shortLabel": "守備率"
+        "fullName": "守備率",
+        "definition": "守備員在守備機會中不發生失誤的比率",
+        "shortLabel": "FPCT"
       },
       "sb": {
-        "fullName": "盗垒",
-        "definition": "跑者在非安打、失误等情形下，自行成功推进一个垒包",
-        "shortLabel": "盜壘"
+        "fullName": "盜壘",
+        "definition": "跑者在非安打、失誤等情形下，自行成功推進一個壘包",
+        "shortLabel": "SB"
       },
       "cs": {
-        "fullName": "盗垒失败",
-        "definition": "跑者尝试盗垒时在到达下一垒前被刺杀出局",
-        "shortLabel": "盜失"
+        "fullName": "盜壘失敗",
+        "definition": "跑者嘗試盜壘時在到達下一壘前被刺殺出局",
+        "shortLabel": "CS"
       },
       "avg": {
-        "fullName": "打击率",
-        "definition": "每打数获得安打的比率",
-        "shortLabel": "打擊率"
+        "fullName": "打擊率",
+        "definition": "每打數獲得安打的比率",
+        "shortLabel": "AVG"
       },
       "obp": {
-        "fullName": "上垒率",
-        "definition": "打者在打席中成功上垒的比率",
-        "shortLabel": "上壘率"
+        "fullName": "上壘率",
+        "definition": "打者在打席中成功上壘的比率",
+        "shortLabel": "OBP"
       },
       "slg": {
-        "fullName": "长打率",
-        "definition": "每打数可获得的平均垒打数",
-        "shortLabel": "長打率"
+        "fullName": "長打率",
+        "definition": "每打數可獲得的平均壘打數",
+        "shortLabel": "SLG"
       },
       "ops": {
-        "fullName": "攻击指数",
-        "definition": "上垒率与长打率之和",
-        "shortLabel": "攻擊指數"
+        "fullName": "攻擊指數",
+        "definition": "上壘率與長打率之和",
+        "shortLabel": "OPS"
       },
       "opsPlus": {
-        "fullName": "调整后 OPS",
-        "definition": "校正联盟与球场环境后的 OPS 指标，100 为联盟平均",
+        "fullName": "調整後 OPS",
+        "definition": "校正聯盟與球場環境後的 OPS 指標，100 為聯盟平均",
         "shortLabel": "OPS+"
       },
       "bipPct": {
-        "fullName": "场内球比例",
-        "definition": "打席结果为场内击球（非三振、保送、触身等）的比例",
+        "fullName": "場內球比例",
+        "definition": "打席結果為場內擊球（非三振、保送、觸身等）的比例",
         "shortLabel": "BIP%"
       },
       "io": {
-        "fullName": "妨阻上壘",
+        "fullName": "妨礙上壘",
         "definition": "打者因守方妨礙或阻擋而獲判上一壘；計入打席，不計打數",
         "shortLabel": "IO"
       },
       "pitchDoubles": {
-        "fullName": "被二壘打",
+        "fullName": "被二壘安打",
         "definition": "投手被對方擊出的二壘安打數",
         "shortLabel": "2B"
       },
       "pitchTriples": {
-        "fullName": "被三壘打",
+        "fullName": "被三壘安打",
         "definition": "投手被對方擊出的三壘安打數",
         "shortLabel": "3B"
       },
       "pitchSh": {
         "fullName": "被犧牲觸擊",
-        "definition": "投手被對方以犧牲觸擊推進出局",
+        "definition": "投手讓對方以犧牲觸擊推進跑者（打者出局）的次數",
         "shortLabel": "SH"
       },
       "pitchSf": {
-        "fullName": "被犧牲高飛",
-        "definition": "投手被對方以高飛犧牲打送回跑者",
+        "fullName": "被犧牲飛球",
+        "definition": "投手讓對方以犧牲飛球送回跑者的次數",
         "shortLabel": "SF"
       },
       "pitchIo": {
-        "fullName": "被妨阻上壘",
+        "fullName": "被妨礙上壘",
         "definition": "投手因其守方妨礙或阻擋導致打者上壘",
         "shortLabel": "IO"
       },
@@ -456,14 +456,34 @@
         "shortLabel": "UER"
       },
       "pendingR": {
-        "fullName": "待定分",
+        "fullName": "待判定失分",
         "definition": "自責分判定尚未完成的失分",
         "shortLabel": "PEND"
       },
       "catcherSb": {
-        "fullName": "被盜壘成功",
+        "fullName": "被盜壘",
         "definition": "捕手在場時對方成功盜壘的次數",
         "shortLabel": "SB"
+      },
+      "hld": {
+        "fullName": "中繼成功",
+        "definition": "後援投手在符合中繼條件下守住領先所記的成績",
+        "shortLabel": "HLD"
+      },
+      "wp": {
+        "fullName": "暴投",
+        "definition": "投手投出的球偏離本壘，使跑者得以推進的暴投次數",
+        "shortLabel": "WP"
+      },
+      "bk": {
+        "fullName": "投手犯規",
+        "definition": "投手在投球過程中違反規則被判的投手犯規次數",
+        "shortLabel": "BK"
+      },
+      "gsFielding": {
+        "fullName": "守備先發場次",
+        "definition": "該球員以該守位先發的場次",
+        "shortLabel": "GS"
       }
     }
   },
@@ -515,7 +535,9 @@
     "prevSlide": "上一張",
     "nextSlide": "下一張",
     "slideIndex": "第 {n} 屏",
-    "feedback": "意見回饋"
+    "feedback": "意見回饋",
+    "portalLoginEntry": "登入 / 註冊",
+    "accountProfile": "個人資料"
   },
   "portalFeedback": {
     "drawerTitle": "意見回饋",
@@ -783,7 +805,12 @@
     "stadiumDetail": "球場介紹",
     "announcementDoc": "公告詳情",
     "notFound": "頁面不存在",
-    "serviceUnavailable": "服務暫不可用"
+    "serviceUnavailable": "服務暫不可用",
+    "register": "註冊帳號",
+    "accountLogin": "帳號登入",
+    "accountProfile": "個人資料",
+    "forgotPassword": "找回密碼",
+    "playerClaimInvite": "球員認領"
   },
   "stadiumDetail": {
     "notFound": "球場不存在或已刪除",
@@ -1059,7 +1086,8 @@
         "pitchTriples": "被三壘打（Triples Allowed）",
         "pitchSh": "被犧牲觸擊（Sacrifice Bunts Allowed）",
         "pitchSf": "被犧牲高飛（Sacrifice Flies Allowed）",
-        "pitchIo": "被妨阻上壘（Obstruction Allowed）"
+        "pitchIo": "被妨阻上壘（Obstruction Allowed）",
+        "whip": "每局被上壘率（(H+BB)/IP）"
       }
     }
   },
@@ -1149,52 +1177,52 @@
       "winRate": "勝率",
       "points": "積分",
       "gp": "場次",
-      "gs": "先發",
+      "gs": "先發場次",
       "svo": "救援機會",
       "cg": "完投",
-      "pg": "完美比賽",
-      "w": "勝場",
-      "l": "敗場",
+      "pg": "完封",
+      "w": "勝投",
+      "l": "敗投",
       "sv": "救援成功",
       "hld": "中繼成功",
       "ip": "投球局數",
       "whip": "每局被上壘率",
-      "era": "自責分率",
+      "era": "防禦率",
       "pa": "打席",
-      "pitchBf": "打席",
+      "pitchBf": "面對打者",
       "np": "投球數",
       "ab": "打數",
       "h": "安打",
       "hr": "全壘打",
       "iphr": "場內全壘打",
       "pitchInsideParkHr": "被場內全壘打",
-      "bb": "保送",
-      "ibb": "故意四壞",
-      "hbp": "死球",
+      "bb": "四壞球",
+      "ibb": "故意四壞球",
+      "hbp": "觸身球",
       "so": "三振",
       "wp": "暴投",
       "bk": "投手犯規",
       "r": "得分",
       "er": "自責分",
       "unearnedR": "非自責分",
-      "pendingR": "待定分",
-      "go": "地滾出局",
-      "fo": "高飛球出局",
-      "goFo": "滾飛出局比",
+      "pendingR": "待判定失分",
+      "go": "滾地球出局",
+      "fo": "飛球出局",
+      "goFo": "滾飛比",
       "rbi": "打點",
-      "oneB": "一安",
-      "twoB": "二安",
-      "threeB": "三安",
+      "oneB": "一壘安打",
+      "twoB": "二壘安打",
+      "threeB": "三壘安打",
       "tb": "壘打數",
       "sb": "盜壘",
       "obp": "上壘率",
       "slg": "長打率",
       "avg": "打擊率",
       "gdp": "雙殺打",
-      "sh": "犧短",
-      "sf": "犧飛",
-      "cs": "盜失",
-      "sbPct": "偷壘成功率",
+      "sh": "犧牲觸擊",
+      "sf": "犧牲飛球",
+      "cs": "盜壘失敗",
+      "sbPct": "盜壘成功率",
       "ops": "攻擊指數",
       "ssi": "銀棒數",
       "pos": "位置",
@@ -1208,12 +1236,20 @@
       "catcherCs": "盜壘阻殺",
       "tcPct": "守備率",
       "catcherSb": "被盜壘",
-      "io": "妨阻上壘",
-      "pitchDoubles": "被二壘打",
-      "pitchTriples": "被三壘打",
-      "pitchSh": "被犧短",
-      "pitchSf": "被犧飛",
-      "pitchIo": "被妨阻上壘"
+      "io": "妨礙上壘",
+      "pitchDoubles": "被二壘安打",
+      "pitchTriples": "被三壘安打",
+      "pitchSh": "被犧牲觸擊",
+      "pitchSf": "被犧牲飛球",
+      "pitchIo": "被妨礙上壘",
+      "pitchH": "被安打",
+      "pitchR": "失分",
+      "pitchHr": "被全壘打",
+      "pitchHbp": "觸身球",
+      "pitchBb": "四壞球",
+      "pitchIbb": "故意四壞球",
+      "pitchSo": "奪三振",
+      "gsFielding": "先發場次"
     },
     "colEn": {
       "rank": "Rank",
@@ -1233,7 +1269,7 @@
       "gs": "GS",
       "svo": "SVO",
       "cg": "CG",
-      "pg": "PG",
+      "pg": "SHO",
       "w": "W",
       "l": "L",
       "sv": "SV",
@@ -1258,7 +1294,7 @@
       "r": "R",
       "er": "ER",
       "unearnedR": "UER",
-      "pendingR": "PENDING",
+      "pendingR": "PEND",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1287,14 +1323,22 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%",
+      "tcPct": "FPCT",
       "catcherSb": "SB",
       "io": "IO",
       "pitchDoubles": "2B",
       "pitchTriples": "3B",
       "pitchSh": "SH",
       "pitchSf": "SF",
-      "pitchIo": "IO"
+      "pitchIo": "IO",
+      "pitchH": "H",
+      "pitchR": "R",
+      "pitchHr": "HR",
+      "pitchHbp": "HBP",
+      "pitchBb": "BB",
+      "pitchIbb": "IBB",
+      "pitchSo": "SO",
+      "gsFielding": "GS"
     }
   },
   "player": {
@@ -1896,7 +1940,8 @@
         "hld": "中繼成功",
         "cg": "完投",
         "pg": "完全比賽",
-        "era": "防禦率"
+        "era": "防禦率",
+        "whip": "每局被上壘率（WHIP）"
       }
     },
     "resetDefault": "恢復預設",
@@ -1947,7 +1992,8 @@
     "pageTitle": "後台登入 - {site}",
     "reasonExpired": "登入已過期，請重新登入",
     "reasonInvalidToken": "登入資訊無效，請重新登入",
-    "reasonNeedLogin": "請先登入"
+    "reasonNeedLogin": "請先登入",
+    "captchaAutoFetchIn": "{n}s 後自動取得驗證碼…"
   },
   "captcha": {
     "colors": {
