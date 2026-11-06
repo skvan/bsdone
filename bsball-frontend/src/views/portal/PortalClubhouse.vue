@@ -840,6 +840,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
@@ -871,6 +872,13 @@ import {
 
 const router = useRouter();
 const { tenantCode } = useTenantRouter();
+const { t: translate, locale } = useI18n();
+
+function statMatrixLabel(key) {
+  const abbr = translate(`stats.colEn.${key}`);
+  if (!locale.value.startsWith('zh')) return abbr;
+  return `${translate(`stats.col.${key}`)} ${abbr}`;
+}
 
 const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
@@ -2037,33 +2045,33 @@ const matrixItems = computed(() => {
   const b = batting.value;
   if (hasBatting.value) {
     return [
-      { label: '上垒率 OBP', value: b.obp ?? '-' },
-      { label: '长打率 SLG', value: b.slg ?? '-' },
-      { label: 'OPS', value: b.ops ?? '-' },
-      { label: '安打 H', value: b.h ?? '-' },
-      { label: '盗垒 SB', value: b.sb ?? '-' },
-      { label: '保送 BB', value: b.bb ?? '-' }
+      { label: statMatrixLabel('obp'), value: b.obp ?? '-' },
+      { label: statMatrixLabel('slg'), value: b.slg ?? '-' },
+      { label: statMatrixLabel('ops'), value: b.ops ?? '-' },
+      { label: statMatrixLabel('h'), value: b.h ?? '-' },
+      { label: statMatrixLabel('sb'), value: b.sb ?? '-' },
+      { label: statMatrixLabel('bb'), value: b.bb ?? '-' }
     ];
   }
   const p = pitching.value;
   if (hasPitchingData.value) {
     return [
-      { label: '防御率 ERA', value: p.era ?? '-' },
-      { label: 'WHIP', value: p.whip ?? '-' },
-      { label: '夺三振 SO', value: p.pitchSo ?? '-' },
-      { label: '胜投 W', value: p.w ?? '-' },
-      { label: '救援 SV', value: p.sv ?? '-' },
-      { label: '投球局数 IP', value: p.ip ?? '-' }
+      { label: statMatrixLabel('era'), value: p.era ?? '-' },
+      { label: statMatrixLabel('whip'), value: p.whip ?? '-' },
+      { label: statMatrixLabel('pitchSo'), value: p.pitchSo ?? '-' },
+      { label: statMatrixLabel('w'), value: p.w ?? '-' },
+      { label: statMatrixLabel('sv'), value: p.sv ?? '-' },
+      { label: statMatrixLabel('ip'), value: p.ip ?? '-' }
     ];
   }
   const f = data.value?.stats?.fielding || {};
   return [
-    { label: '守备率 FPCT', value: f.tcPct ?? '-' },
-    { label: '守备机会 TC', value: f.tc ?? '-' },
-    { label: '刺杀 PO', value: f.po ?? '-' },
-    { label: '助杀 A', value: f.a ?? '-' },
-    { label: '失误 E', value: f.e ?? '-' },
-    { label: '双杀 DP', value: f.dp ?? '-' }
+    { label: statMatrixLabel('tcPct'), value: f.tcPct ?? '-' },
+    { label: statMatrixLabel('tc'), value: f.tc ?? '-' },
+    { label: statMatrixLabel('po'), value: f.po ?? '-' },
+    { label: statMatrixLabel('a'), value: f.a ?? '-' },
+    { label: statMatrixLabel('e'), value: f.e ?? '-' },
+    { label: statMatrixLabel('dp'), value: f.dp ?? '-' }
   ];
 });
 const nextGame = computed(() => data.value?.nextGame || null);

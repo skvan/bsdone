@@ -543,7 +543,7 @@ var Vt={
         key:0,type:"info",closable:!1,"show-icon":"",class:"undated-schedule-alert"
       }
       ,{
-        default:g(()=>[q(" 有 "+C(fe.value)+" 场比赛未填写比赛日或开始时间，月历中不会显示，仍可在列表「未指定日期」分组中查看。 ",1)]),_:1
+        default:g(()=>[q(" "+C(r("events.missingDateHint",{n:fe.value,group:r("events.pdfUndated")}))+" ",1)]),_:1
       }
       )):M("",!0),l(d)==="calendar"?(o(),c(O,{
         key:1
@@ -561,7 +561,7 @@ var Vt={
         key:"sched-"+l(d)+"-"+n.id,class:"event-group event-group--schedule"
       }
       ,[i(bt,{
-        title:n.name,"status-label":n.status?Le(n.status):"","status-type":n.status?Ue(n.status):"","date-text":n.startDate||n.endDate?`${n.startDate?l(Ie)(n.startDate):""}${n.startDate&&n.endDate?" - ":""}${n.endDate?l(Ie)(n.endDate):""}`:"",open:z(n.id),stuck:!!W.value[n.id],"sticky-data-id":n.id,"aria-label":(z(n.id)?"收起":"展开")+"「"+n.name+"」赛程",onToggle:m=>pe(n.id),onSpace:m=>Ve(n.id,m)
+        title:n.name,"status-label":n.status?Le(n.status):"","status-type":n.status?Ue(n.status):"","date-text":n.startDate||n.endDate?`${n.startDate?l(Ie)(n.startDate):""}${n.startDate&&n.endDate?" - ":""}${n.endDate?l(Ie)(n.endDate):""}`:"",open:z(n.id),stuck:!!W.value[n.id],"sticky-data-id":n.id,"aria-label":r(z(n.id)?"events.collapseScheduleAria":"events.expandScheduleAria",{name:n.name}),onToggle:m=>pe(n.id),onSpace:m=>Ve(n.id,m)
       }
       ,{
         actions:g(()=>[(l(d)==="list"||l(d)==="default")&&n.games.length>0?(o(),c("div",{

@@ -814,7 +814,11 @@
     "accountLogin": "Sign In",
     "accountProfile": "Account",
     "forgotPassword": "Forgot Password",
-    "playerClaimInvite": "Player Claim"
+    "playerClaimInvite": "Player Claim",
+    "leagues": "Leagues",
+    "clubhouse": "My Clubhouse",
+    "intro": "Platform Intro",
+    "welcome": "Welcome"
   },
   "stadiumDetail": {
     "notFound": "Stadium not found or removed.",
@@ -959,7 +963,33 @@
       "colWinner": "Winner",
       "colTeam": "Team",
       "colPosition": "Position",
-      "colValue": "Stat"
+      "colValue": "Stat",
+      "pending": "TBA"
+    },
+    "award": {
+      "hits": "Hits Leader",
+      "avg": "Batting Champion",
+      "rbi": "RBI Leader",
+      "sb": "Stolen Base Leader",
+      "hr": "Home Run Leader",
+      "w": "Wins Leader",
+      "so": "Strikeout Leader",
+      "era": "ERA Leader",
+      "reliever": "Best Reliever",
+      "holder": "Best Holds Pitcher",
+      "p": "Pitcher",
+      "c": "Catcher",
+      "1b": "First Baseman",
+      "2b": "Second Baseman",
+      "3b": "Third Baseman",
+      "ss": "Shortstop",
+      "of": "Outfielder",
+      "dh": "Designated Hitter",
+      "mvp": "Season MVP",
+      "improved": "Most Improved Player",
+      "rookie": "Rookie of the Year",
+      "manager": "Manager of the Year",
+      "comeback": "Comeback Player of the Year"
     }
   },
   "events": {
@@ -997,7 +1027,11 @@
       "published": "Published",
       "ended": "Ended",
       "ongoing": "Ongoing"
-    }
+    },
+    "missingDateHint": "{n} game(s) have no game date or start time and will not appear in the calendar; they remain available under \"{group}\" in the list.",
+    "specialResult": "Special Result",
+    "expandScheduleAria": "Expand schedule for {name}",
+    "collapseScheduleAria": "Collapse schedule for {name}"
   },
   "eventGames": {
     "title": "Schedule & Results",

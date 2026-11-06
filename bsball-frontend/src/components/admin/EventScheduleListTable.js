@@ -427,7 +427,7 @@ var me=q(((a,l)=>{
       ,[e("div",Be,[g.dateKey?(s(),r(k,{
         key:0
       }
-      ,[w(d(f(V)(g.dateKey)),1)],64)):(s(),r("span",Fe,"未指定日期"))]),(s(!0),r(k,null,x(g.games,t=>(s(),r("div",{
+      ,[w(d(f(V)(g.dateKey)),1)],64)):(s(),r("span",Fe,n("events.pdfUndated")))]),(s(!0),r(k,null,x(g.games,t=>(s(),r("div",{
         key:t.id,class:K(["mobile-game-card",{
           "mobile-game-card--final":t.status==="final"
         }
@@ -502,7 +502,7 @@ var me=q(((a,l)=>{
       ,[g.dateKey?(s(),r(k,{
         key:0
       }
-      ,[w(d(f(V)(g.dateKey)),1)],64)):(s(),r("span",ta,"未指定日期"))],8,aa)):S("",!0),e("td",sa,[b(L,{
+      ,[w(d(f(V)(g.dateKey)),1)],64)):(s(),r("span",ta,n("events.pdfUndated")))],8,aa)):S("",!0),e("td",sa,[b(L,{
         class:"game-no-link",to:a.gameLink(t)
       }
       ,{
