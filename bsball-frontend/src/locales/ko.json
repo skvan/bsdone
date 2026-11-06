@@ -782,7 +782,11 @@
     "stadiumDetail": "구장 안내",
     "announcementDoc": "공지",
     "notFound": "페이지 없음",
-    "serviceUnavailable": "서비스 이용 불가"
+    "serviceUnavailable": "서비스 이용 불가",
+    "leagues": "리그",
+    "clubhouse": "내 홈",
+    "intro": "시스템 소개",
+    "welcome": "환영합니다"
   },
   "stadiumDetail": {
     "notFound": "구장을 찾을 수 없습니다.",
@@ -927,7 +931,33 @@
       "colWinner": "수상자",
       "colTeam": "팀",
       "colPosition": "포지션",
-      "colValue": "기록"
+      "colValue": "기록",
+      "pending": "미정"
+    },
+    "award": {
+      "hits": "최다 안타",
+      "avg": "타격왕",
+      "rbi": "타점왕",
+      "sb": "도루왕",
+      "hr": "홈런왕",
+      "w": "다승왕",
+      "so": "탈삼진왕",
+      "era": "평균자책점왕",
+      "reliever": "최우수 구원투수",
+      "holder": "최우수 홀드 투수",
+      "p": "투수",
+      "c": "포수",
+      "1b": "1루수",
+      "2b": "2루수",
+      "3b": "3루수",
+      "ss": "유격수",
+      "of": "외야수",
+      "dh": "지명타자",
+      "mvp": "시즌 MVP",
+      "improved": "최우수 발전 선수",
+      "rookie": "신인왕",
+      "manager": "최우수 감독상",
+      "comeback": "재기상"
     }
   },
   "events": {
@@ -965,7 +995,11 @@
       "published": "공개",
       "ended": "종료",
       "ongoing": "진행 중"
-    }
+    },
+    "missingDateHint": "경기 날짜나 시작 시간이 없는 {n}경기는 달력에 표시되지 않으며, 목록의 \"{group}\" 그룹에서 확인할 수 있습니다.",
+    "specialResult": "특별 결과",
+    "expandScheduleAria": "{name} 일정 펼치기",
+    "collapseScheduleAria": "{name} 일정 접기"
   },
   "eventGames": {
     "title": "일정 및 결과",
@@ -1175,6 +1209,7 @@
       "ibb": "IBB",
       "hbp": "사구",
       "so": "삼진",
+      "pitchSo": "탈삼진",
       "wp": "폭투",
       "bk": "보크",
       "r": "득점",
@@ -1254,6 +1289,7 @@
       "ibb": "IBB",
       "hbp": "HBP",
       "so": "SO",
+      "pitchSo": "SO",
       "wp": "WP",
       "bk": "BK",
       "r": "R",

@@ -820,7 +820,11 @@
     "accountLogin": "帳號登入",
     "accountProfile": "個人資料",
     "forgotPassword": "找回密碼",
-    "playerClaimInvite": "球員認領"
+    "playerClaimInvite": "球員認領",
+    "leagues": "聯盟",
+    "clubhouse": "我的主場",
+    "intro": "系統介紹",
+    "welcome": "歡迎"
   },
   "stadiumDetail": {
     "notFound": "球場不存在或已刪除",
@@ -965,7 +969,33 @@
       "colWinner": "得主",
       "colTeam": "球隊",
       "colPosition": "守位",
-      "colValue": "數據"
+      "colValue": "數據",
+      "pending": "待公布"
+    },
+    "award": {
+      "hits": "安打王",
+      "avg": "打擊王",
+      "rbi": "打點王",
+      "sb": "盜壘王",
+      "hr": "全壘打王",
+      "w": "勝投王",
+      "so": "奪三振王",
+      "era": "防禦率王",
+      "reliever": "最佳救援投手",
+      "holder": "最佳中繼投手",
+      "p": "投手",
+      "c": "捕手",
+      "1b": "一壘手",
+      "2b": "二壘手",
+      "3b": "三壘手",
+      "ss": "游擊手",
+      "of": "外野手",
+      "dh": "指定打擊",
+      "mvp": "年度MVP",
+      "improved": "最佳進步獎",
+      "rookie": "年度新人獎",
+      "manager": "年度最佳總教練",
+      "comeback": "東山再起獎"
     }
   },
   "events": {
@@ -1003,7 +1033,11 @@
       "published": "已發布",
       "ended": "已結束",
       "ongoing": "進行中"
-    }
+    },
+    "missingDateHint": "有 {n} 場比賽未填寫比賽日或開始時間，月曆中不會顯示，仍可在列表「{group}」分組中查看。",
+    "specialResult": "特殊情況",
+    "expandScheduleAria": "展開「{name}」賽程",
+    "collapseScheduleAria": "收合「{name}」賽程"
   },
   "eventGames": {
     "title": "賽程與結果",

@@ -926,7 +926,7 @@ var is={
         key:0,type:"info",closable:!1,"show-icon":"",class:"undated-schedule-alert"
       }
       ,{
-        default:p(()=>[Q(" 有 "+v(Mt.value)+" 场比赛未填写比赛日或开始时间，月历中不会显示，仍可在列表「未指定日期」分组中查看。 ",1)]),_:1
+        default:p(()=>[Q(" "+v(n("events.missingDateHint",{n:Mt.value,group:n("events.pdfUndated")}))+" ",1)]),_:1
       }
       )):_("",!0),l(N)==="calendar"?(r(),d(z,{
         key:1
@@ -944,7 +944,7 @@ var is={
         key:"list-"+a.id,class:"event-group event-group--schedule"
       }
       ,[i(pa,{
-        title:a.name,"status-label":a.status?ta(a.status):"","status-type":a.status?aa(a.status):"","date-text":a.startDate||a.endDate?`${a.startDate?l(Ke)(a.startDate):""}${a.startDate&&a.endDate?" - ":""}${a.endDate?l(Ke)(a.endDate):""}`:"",open:se(a.id),stuck:!!Ce.value[a.id],"sticky-data-id":a.id,"aria-label":(se(a.id)?"收起":"展开")+"「"+a.name+"」赛程",onToggle:k=>Pt(a.id),onSpace:k=>na(a.id,k)
+        title:a.name,"status-label":a.status?ta(a.status):"","status-type":a.status?aa(a.status):"","date-text":a.startDate||a.endDate?`${a.startDate?l(Ke)(a.startDate):""}${a.startDate&&a.endDate?" - ":""}${a.endDate?l(Ke)(a.endDate):""}`:"",open:se(a.id),stuck:!!Ce.value[a.id],"sticky-data-id":a.id,"aria-label":n(se(a.id)?"events.collapseScheduleAria":"events.expandScheduleAria",{name:a.name}),onToggle:k=>Pt(a.id),onSpace:k=>na(a.id,k)
       }
       ,{
         actions:p(()=>[a.games.length>0?(r(),d("div",{
@@ -977,7 +977,7 @@ var is={
         key:a.id,class:"event-group event-group--schedule"
       }
       ,[i(pa,{
-        title:a.name,"status-label":a.status?ta(a.status):"","status-type":a.status?aa(a.status):"","date-text":a.startDate||a.endDate?`${a.startDate?l(Ke)(a.startDate):""}${a.startDate&&a.endDate?" - ":""}${a.endDate?l(Ke)(a.endDate):""}`:"",open:se(a.id),stuck:!!Ce.value[a.id],"sticky-data-id":a.id,"aria-label":(se(a.id)?"收起":"展开")+"「"+a.name+"」赛程",onToggle:k=>Pt(a.id),onSpace:k=>na(a.id,k)
+        title:a.name,"status-label":a.status?ta(a.status):"","status-type":a.status?aa(a.status):"","date-text":a.startDate||a.endDate?`${a.startDate?l(Ke)(a.startDate):""}${a.startDate&&a.endDate?" - ":""}${a.endDate?l(Ke)(a.endDate):""}`:"",open:se(a.id),stuck:!!Ce.value[a.id],"sticky-data-id":a.id,"aria-label":n(se(a.id)?"events.collapseScheduleAria":"events.expandScheduleAria",{name:a.name}),onToggle:k=>Pt(a.id),onSpace:k=>na(a.id,k)
       }
       ,{
         actions:p(()=>[a.games.length>0?(r(),d("div",{

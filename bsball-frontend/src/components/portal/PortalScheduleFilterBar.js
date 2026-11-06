@@ -243,7 +243,7 @@ var _e={
       ,{
         default:E(()=>[T(x(be))]),_:1
       }
-      )):M("",!0),l("span",Re,b(g.value),1)],8,ze)):M("",!0),e.game.isSpecialResult?(f(),C("span",qe,"特殊情况")):M("",!0),k.value?(f(),C("span",Ue,b(e.game.remark),1)):M("",!0)]),e.showExpand?(f(),N(F,{
+      )):M("",!0),l("span",Re,b(g.value),1)],8,ze)):M("",!0),e.game.isSpecialResult?(f(),C("span",qe,r("events.specialResult"))):M("",!0),k.value?(f(),C("span",Ue,b(e.game.remark),1)):M("",!0)]),e.showExpand?(f(),N(F,{
         key:0,class:"expand-btn",icon:e.expanded?x(ce):x(le),circle:"",size:"small",text:"",onClick:a[1]||(a[1]=R(v=>n("toggle-expand",e.game.id),["stop"]))
       }
       ,null,8,["icon"])):M("",!0)]),l("div",{
