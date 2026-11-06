@@ -15,7 +15,9 @@ import {
 import {
   HEADER_KEY_BY_COLUMN,
   statsColumnWidth,
-  statsHeaderKey
+  statsHeaderKey,
+  statsHeaderAbbr,
+  playerColumnWidth
 } from '../src/stores/statsHeaderKeys.js';
 
 const readJson = (rel) => JSON.parse(fs.readFileSync(new URL(rel, import.meta.url), 'utf8'));
@@ -100,6 +102,24 @@ test('守备 GS 接线：PortalStats 传 fielding 语境，PortalLeadersTable �
   assert.ok(statsEvent.includes('shk(a.key,a.colKey,e.termDomain)'), 'PortalLeadersTable 未把 termDomain 传给术语映射');
   assert.ok(portalStats.includes('"term-domain":"fielding"'), 'PortalStats 守备榜未传 fielding 语境');
   assert.ok(portalStats.includes('"term-domain":"pitching"'), 'PortalStats 投手榜未传 pitching 语境');
+});
+
+test('球员详情表头：singles 映射、MLB 缩写与列宽覆盖', () => {
+  assert.equal(statsHeaderKey('singles', 'singles'), 'oneB');
+  assert.equal(statsHeaderKey('pitchAb', 'pitchAb'), 'pitchAb');
+  assert.equal(statsHeaderKey('pitAb', 'pitAb'), 'pitchAb');
+  assert.equal(statsHeaderAbbr('cg', 'GG'), 'CG');
+  assert.equal(statsHeaderAbbr('pg', 'PG'), 'SHO');
+  assert.equal(statsHeaderAbbr('tcPct', 'TC%'), 'FPCT');
+  assert.equal(statsHeaderAbbr('bbHp', 'BB+HP'), 'BB+HBP');
+  assert.equal(statsHeaderAbbr('avg', 'AVG'), 'AVG', '无覆盖的缩写应原样返回');
+  assert.ok(playerColumnWidth('pitchSh', 52) >= 80, '被牺牲触击球列宽不足');
+  assert.ok(playerColumnWidth('whip', 68) >= 80, '每局被上垒率列宽不足');
+  assert.ok(playerColumnWidth('singles', 52) >= 56, '一垒打列宽不足');
+  assert.ok(playerColumnWidth('insideParkHr', 64) >= 84, '场内本垒打列宽不足');
+  assert.ok(playerColumnWidth('pitchDoubles', 64) >= 84, '被二垒打列宽不足');
+  assert.ok(playerColumnWidth('pitchTriples', 64) >= 84, '被三垒打列宽不足');
+  assert.equal(playerColumnWidth('gp', 70), 70, '无覆盖列不应缩小');
 });
 
 test('中文表头宽度按全称 + 排序箭头 + 内边距估算足够', () => {

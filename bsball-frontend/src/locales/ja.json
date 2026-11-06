@@ -1061,7 +1061,11 @@
         "pitchSf": "被犠飛（Sacrifice Flies Allowed）",
         "pitchIo": "被妨害出塁（Obstruction Allowed）"
       }
-    }
+    },
+    "batters": "打者",
+    "pitchers": "投手",
+    "totals": "合計",
+    "fieldingTableTitle": "守備"
   },
   "news": {
     "title": "ニュース",

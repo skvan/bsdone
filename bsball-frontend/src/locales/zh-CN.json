@@ -484,6 +484,16 @@
         "fullName": "守备先发场次",
         "definition": "该球员以该守位先发的场次",
         "shortLabel": "GS"
+      },
+      "pitchAb": {
+        "fullName": "自由打数",
+        "definition": "面对打者人次扣除四坏与触身（BB 含 IBB）",
+        "shortLabel": "AB"
+      },
+      "bbHp": {
+        "fullName": "四坏+触身",
+        "definition": "四坏球与触身球上垒合计（BB 含 IBB）",
+        "shortLabel": "BB+HBP"
       }
     }
   },
@@ -1061,7 +1071,7 @@
         "pitchSo": "夺三振（Strikeouts）",
         "pitchHr": "被墙外全垒打（Home Runs Allowed）",
         "pitchInsideParkHr": "被场内全垒打（Inside-the-park HR）",
-        "pitAb": "对手打数（BF−BB−HBP；BB 含 IBB）",
+        "pitAb": "自由打数（BF−BB−HBP；BB 含 IBB）",
         "pitE": "该投手本场打者数据的失误",
         "np": "投球数",
         "pitchPa": "面对打席（PA）",
@@ -1080,7 +1090,7 @@
         "svo": "救援机会",
         "hld": "中继成功",
         "cg": "是否本场完投（不是为 0，是为 1）",
-        "pg": "是否本场为完美比赛（不是为 0，是为 1）",
+        "pg": "是否本场完封（不是为 0，是为 1）",
         "era": "自责分率（ER×9/IP）",
         "whip": "每局被上垒率（(H+BB)/IP）",
         "pitchDoubles": "被二垒打（Doubles Allowed）",
@@ -1089,7 +1099,11 @@
         "pitchSf": "被牺牲高飞（Sacrifice Flies Allowed）",
         "pitchIo": "被妨阻上垒（Obstruction Allowed）"
       }
-    }
+    },
+    "batters": "打者",
+    "pitchers": "投手",
+    "totals": "合计",
+    "fieldingTableTitle": "守备"
   },
   "news": {
     "title": "资讯公告",
@@ -1249,7 +1263,9 @@
       "pitchBb": "四坏球",
       "pitchIbb": "故意四坏球",
       "pitchSo": "三振",
-      "gsFielding": "先发场次"
+      "gsFielding": "先发场次",
+      "pitchAb": "自由打数",
+      "bbHp": "四坏+触身"
     },
     "colEn": {
       "rank": "Rank",
@@ -1338,7 +1354,9 @@
       "pitchBb": "BB",
       "pitchIbb": "IBB",
       "pitchSo": "SO",
-      "gsFielding": "GS"
+      "gsFielding": "GS",
+      "pitchAb": "AB",
+      "bbHp": "BB+HBP"
     }
   },
   "player": {
@@ -1920,7 +1938,7 @@
         "pitchSo": "三振",
         "pitchHr": "被本垒打",
         "pitchInsideParkHr": "被场内本垒打",
-        "pitAb": "面对打者的简化打数相关指标（约 BF−BB−IBB−HBP）",
+        "pitAb": "自由打数（约 BF−BB−IBB−HBP）",
         "pitE": "该场该球员打者行守备失误（若有）",
         "np": "投球数",
         "pitchPa": "对局打席",
@@ -1939,7 +1957,7 @@
         "svo": "救援机会",
         "hld": "中继成功",
         "cg": "完投",
-        "pg": "完全比赛",
+        "pg": "完封",
         "era": "防御率",
         "whip": "每局被上垒率（WHIP）"
       }

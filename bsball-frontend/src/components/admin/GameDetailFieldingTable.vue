@@ -63,6 +63,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   buildFieldingDisplayRows,
   buildFieldingSummaryCells,
@@ -71,6 +72,8 @@ import {
 } from '../../utils/gameFieldingRows.js';
 import { formatInningsPitched } from '../../utils/inningsFormat.js';
 import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage.js';
+
+const { t } = useI18n();
 
 const props = defineProps({
   stats: { type: Array, default: () => [] },
@@ -93,7 +96,7 @@ const visibleFields = computed(() => {
 });
 
 const totals = computed(() => buildFieldingTotals(baseRows.value, visibleFields.value));
-const title = computed(() => `${props.teamName || ''} 守备`.trim());
+const title = computed(() => `${props.teamName || ''} ${t('gameDetail.fieldingTableTitle')}`.trim());
 
 function toggle(row) {
   if (!row?.multiPosition) return;

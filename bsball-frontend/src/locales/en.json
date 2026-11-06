@@ -484,6 +484,16 @@
         "fullName": "Games Started (Fielding)",
         "definition": "Games started at this fielding position.",
         "shortLabel": "GS"
+      },
+      "pitchAb": {
+        "fullName": "At Bats Against",
+        "definition": "Batters faced minus walks and hit by pitch (BB includes IBB).",
+        "shortLabel": "AB"
+      },
+      "bbHp": {
+        "fullName": "Walks + Hit by Pitch",
+        "definition": "Walks plus hit by pitch (BB includes IBB).",
+        "shortLabel": "BB+HBP"
       }
     }
   },
@@ -1074,7 +1084,7 @@
         "svo": "Save opportunities.",
         "hld": "Hold.",
         "cg": "Complete game flag (0=no, 1=yes).",
-        "pg": "Perfect game flag (0=no, 1=yes).",
+        "pg": "Shutout flag (0=no, 1=yes).",
         "era": "Earned run average (ER×9/IP).",
         "pitchDoubles": "Doubles allowed",
         "pitchTriples": "Triples allowed",
@@ -1083,7 +1093,11 @@
         "pitchIo": "Obstruction allowed",
         "whip": "Walks and hits allowed per inning pitched ((H+BB)/IP)"
       }
-    }
+    },
+    "batters": "Batters",
+    "pitchers": "Pitchers",
+    "totals": "Totals",
+    "fieldingTableTitle": "Fielding"
   },
   "news": {
     "title": "News",
@@ -1243,7 +1257,9 @@
       "pitchBb": "Walks Allowed",
       "pitchIbb": "Intentional Walks",
       "pitchSo": "Strikeouts",
-      "gsFielding": "Games Started (Fielding)"
+      "gsFielding": "Games Started (Fielding)",
+      "pitchAb": "At Bats Against",
+      "bbHp": "Walks + Hit by Pitch"
     },
     "colEn": {
       "rank": "Rank",
@@ -1332,7 +1348,9 @@
       "pitchBb": "BB",
       "pitchIbb": "IBB",
       "pitchSo": "SO",
-      "gsFielding": "GS"
+      "gsFielding": "GS",
+      "pitchAb": "AB",
+      "bbHp": "BB+HBP"
     }
   },
   "player": {
@@ -1913,7 +1931,7 @@
         "pitchSo": "Strikeouts",
         "pitchHr": "Home runs allowed",
         "pitchInsideParkHr": "Inside-the-park home runs (IPHR)",
-        "pitAb": "Approx. batters faced minus walks/IBB/HBP",
+        "pitAb": "At bats against (approx. BF−BB−IBB−HBP)",
         "pitE": "Fielding errors for this player in the game (if tracked)",
         "np": "Pitch count",
         "pitchPa": "Plate appearances against",
@@ -1932,7 +1950,7 @@
         "svo": "Save opportunities",
         "hld": "Holds",
         "cg": "Complete games",
-        "pg": "Perfect games",
+        "pg": "Shutouts",
         "era": "Earned run average",
         "whip": "Walks and hits allowed per inning pitched (WHIP)"
       }

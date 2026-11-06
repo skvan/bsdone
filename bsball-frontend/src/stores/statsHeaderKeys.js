@@ -13,6 +13,7 @@ const HEADER_KEY_BY_COLUMN = {
   ops: 'ops',
   r: 'r',
   h: 'h',
+  singles: 'oneB',
   doubles: 'twoB',
   triples: 'threeB',
   hr: 'hr',
@@ -56,6 +57,11 @@ const HEADER_KEY_BY_COLUMN = {
   pitchIbb: 'ibb',
   pitchIo: 'pitchIo',
   pitchSo: 'pitchSo',
+  pitchBbHp: 'bbHp',
+  pitAb: 'pitchAb',
+  pitchAb: 'pitchAb',
+  pitE: 'e',
+  pitchPa: 'pa',
   whip: 'whip',
   wp: 'wp',
   bk: 'bk',
@@ -102,10 +108,91 @@ export function statsHeaderKey(columnKey, fallbackKey, domain) {
   return HEADER_KEY_BY_COLUMN[columnKey] || fallbackKey || columnKey;
 }
 
-export function statsColumnWidth(columnKey, fallbackWidth) {
+// 编译产物中个别列沿用旧缩写（GG / PG / TC% / BB+HP），表头英文统一按 MLB 口径。
+const HEADER_ABBR_OVERRIDES = {
+  cg: 'CG',
+  pg: 'SHO',
+  tcPct: 'FPCT',
+  bbHp: 'BB+HBP',
+  pitchBbHp: 'BB+HBP'
+};
+
+export function statsHeaderAbbr(columnKey, fallbackAbbr) {
+  return HEADER_ABBR_OVERRIDES[columnKey] || fallbackAbbr;
+}
+
+function maxWithOverride(overrides, columnKey, fallbackWidth) {
   const base = Number(fallbackWidth) || 0;
-  const override = WIDTH_OVERRIDES[columnKey] || 0;
+  const override = overrides[columnKey] || 0;
   return Math.max(base, override);
+}
+
+export function statsColumnWidth(columnKey, fallbackWidth) {
+  return maxWithOverride(WIDTH_OVERRIDES, columnKey, fallbackWidth);
+}
+
+// 球员详情赛季表与比赛详情技术统计表：表头没有排序箭头，单元格内边距也更小；
+// 按中文全称给最小宽度（同样只放大，不缩小）。
+const PLAYER_WIDTH_OVERRIDES = {
+  singles: 56,
+  doubles: 56,
+  triples: 56,
+  hr: 56,
+  gdp: 56,
+  insideParkHr: 84,
+  sh: 72,
+  sf: 72,
+  cs: 60,
+  bb: 56,
+  ibb: 72,
+  hbp: 56,
+  io: 64,
+  so: 56,
+  sb: 56,
+  rbi: 56,
+  avg: 56,
+  obp: 56,
+  slg: 56,
+  ops: 68,
+  e: 56,
+  whip: 84,
+  era: 68,
+  ip: 64,
+  svo: 64,
+  pitchR: 56,
+  er: 56,
+  pitchH: 56,
+  pitchAb: 64,
+  pitchBf: 64,
+  pitchDoubles: 84,
+  pitchTriples: 84,
+  pitchHr: 64,
+  pitchInsideParkHr: 84,
+  pitchSh: 84,
+  pitchSf: 84,
+  pitchIbb: 72,
+  pitchIo: 72,
+  pitchHbp: 56,
+  pitchBb: 56,
+  pitchSo: 56,
+  pitAb: 64,
+  pitE: 56,
+  pitchPa: 64,
+  wp: 56,
+  bk: 64,
+  inn: 64,
+  tc: 64,
+  po: 56,
+  a: 56,
+  dp: 56,
+  pb: 56,
+  catcherCs: 68,
+  catcherSb: 68,
+  tcPct: 68
+};
+
+export function playerColumnWidth(columnKey, fallbackWidth) {
+  return maxWithOverride(PLAYER_WIDTH_OVERRIDES, columnKey, fallbackWidth);
 }
 
 export { HEADER_KEY_BY_COLUMN };

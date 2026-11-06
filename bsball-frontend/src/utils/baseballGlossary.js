@@ -1,8 +1,8 @@
 // 棒球术语表与公式 —— 行为移植自编译产物 baseballGlossary chunk；移除未使用的 hb 键（#387）
 const GLOSSARY_KEYS = new Set([
   'pa', 'gp', 'g', 'ab', 'oneB', 'r', 'h', 'pitchH', 'twoB', 'threeB', 'hr', 'iphr', 'pitchHr', 'pitchInsideParkHr',
-  'rbi', 'bb', 'pitchBb', 'ibb', 'hbp', 'so', 'pitchSo', 'w', 'l', 'gs', 'gsFielding', 'cg', 'pg', 'sho', 'sv', 'svo', 'hld',
-  'ip', 'tbf', 'bf', 'pitchBf', 'np', 'pIp', 'qs', 'gf', 'pitchR', 'er', 'era', 'whip', 'so9', 'bb9', 'h9',
+  'rbi', 'bb', 'pitchBb', 'ibb', 'hbp', 'bbHp', 'so', 'pitchSo', 'w', 'l', 'gs', 'gsFielding', 'cg', 'pg', 'sho', 'sv', 'svo', 'hld',
+  'ip', 'tbf', 'bf', 'pitchBf', 'pitchAb', 'np', 'pIp', 'qs', 'gf', 'pitchR', 'er', 'era', 'whip', 'so9', 'bb9', 'h9',
   'kBb', 'avgAgainst', 'sbAllowed', 'csAllowed', 'pk', 'wp', 'bk', 'sh', 'sac', 'sf', 'gdp', 'gidp', 'goFo', 'goAo', 'xbh',
   'tb', 'babip', 'iso', 'abHr', 'bbK', 'bbPct', 'kPct', 'fip', 'eraPlus', 'inn', 'tc', 'po', 'a', 'e', 'dp',
   'pb', 'catcherCs', 'catcherSb', 'tcPct', 'sb', 'cs', 'avg', 'obp', 'slg', 'ops', 'opsPlus', 'bipPct',
