@@ -625,6 +625,55 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
+    @DisplayName("投手合计：返回登板序，覆写球员无统计行时用所属球队兜底")
+    void listPitcherTotals_includesPitcherOrderAndTeamFallback() {
+        GamePlayerStat starter = pitcherStat(1L, 700L, 2, 1);
+        starter.setTeamId(5L);
+        starter.setPitcherOrder(2);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(starter));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision(700L, "EARNED")));
+        PitcherRunOverride override = overrideRow(5L, 1L, 20L, 701L, 3, 2);
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(override));
+        Player starterPlayer = player(700L, "投手甲");
+        starterPlayer.setTeamId(9L);
+        Player overridePlayer = player(701L, "投手乙");
+        overridePlayer.setTeamId(5L);
+        when(playerRepository.findAllById(any()))
+                .thenReturn(List.of(starterPlayer, overridePlayer));
+
+        List<PitcherRunTotalsDTO> rows = service.listPitcherTotals(1L, 20L);
+        PitcherRunTotalsDTO starterRow = rows.stream()
+                .filter(row -> Long.valueOf(700L).equals(row.playerId()))
+                .findFirst().orElseThrow();
+        PitcherRunTotalsDTO overrideOnlyRow = rows.stream()
+                .filter(row -> Long.valueOf(701L).equals(row.playerId()))
+                .findFirst().orElseThrow();
+
+        assertEquals(5L, starterRow.teamId(), "有统计行时以统计行球队为准");
+        assertEquals(2, starterRow.pitcherOrder());
+        assertEquals(5L, overrideOnlyRow.teamId(), "无统计行时用球员所属球队兜底");
+        assertNull(overrideOnlyRow.pitcherOrder());
+    }
+
+    @Test
+    @DisplayName("投手合计：覆写球员无统计行且球员缺失时球队为空")
+    void listPitcherTotals_missingPlayerKeepsTeamNull() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(overrideRow(6L, 1L, 20L, 702L, 1, 0)));
+        when(playerRepository.findAllById(any())).thenReturn(List.of());
+
+        List<PitcherRunTotalsDTO> rows = service.listPitcherTotals(1L, 20L);
+
+        assertEquals(1, rows.size());
+        assertNull(rows.get(0).teamId());
+        assertNull(rows.get(0).pitcherOrder());
+    }
+
+    @Test
     @DisplayName("投手覆写：ER 大于 R 或非本场投手时拒绝")
     void overridePitcherRuns_rejectsInvalidInput() {
         assertThrows(IllegalArgumentException.class, () ->
