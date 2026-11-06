@@ -4,6 +4,8 @@ const port = process.env.E2E_PORT || '3000';
 const baseURL = process.env.E2E_BASE_URL || `http://127.0.0.1:${port}/bs-ball/`;
 
 export default defineConfig({
+  // #511 防呆：跑测试前校验目标端口没被「其它 checkout」的旧 dev server 占用，避免静默复用旧代码
+  globalSetup: './e2e/global-setup.mjs',
   testDir: './e2e',
   timeout: 60_000,
   expect: { timeout: 10_000 },
