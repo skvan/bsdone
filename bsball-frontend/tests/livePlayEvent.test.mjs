@@ -144,6 +144,34 @@ test('漏接三振失误上垒推断为 ERROR 来源（DK3_REACH_E）', () => {
   assert.equal(makePlay('DK3_REACH_PB', 57).scoringRunners[0].origin, 'PASSED_BALL');
 });
 
+test('失误上垒打席补 reconstructedOuts +1，暴投/捕逸类不加（负向对照）', () => {
+  const atBat = (resultCode, batterOnBase) => toEarnedRunPlay({
+    inning: 1,
+    half: 'top',
+    sequence: 1,
+    outsBefore: 2,
+    outsAfter: 2,
+    resultCode,
+    batterPlayerId: 88,
+    basesAfter: batterOnBase ? { 1: 88, 2: null, 3: null } : { 1: 91, 2: null, 3: null }
+  });
+
+  // 打者因失误上垒（含漏接三振）：无失误即该出局，重建出局数 +1
+  assert.equal(atBat('E', true).reconstructedOutsAdded, 1);
+  assert.equal(atBat('E6T', true).reconstructedOutsAdded, 1);
+  assert.equal(atBat('DK3_REACH_E', true).reconstructedOutsAdded, 1);
+  // 负向对照：打者未上垒、以及暴投/捕逸造成的上垒都不该加
+  assert.equal(atBat('E', false).reconstructedOutsAdded, 0);
+  assert.equal(atBat('DK3_REACH_WP', true).reconstructedOutsAdded, 0);
+  assert.equal(atBat('DK3_REACH_PB', true).reconstructedOutsAdded, 0);
+  // 显式传入时以调用方为准，不被推倒覆盖
+  assert.equal(toEarnedRunPlay({
+    inning: 1, half: 'top', sequence: 1, outsBefore: 2, outsAfter: 2,
+    resultCode: 'DK3_REACH_E', batterPlayerId: 88, basesAfter: { 1: 88 },
+    reconstructedOutsAdded: 0
+  }).reconstructedOutsAdded, 0);
+});
+
 test('空/缺字段事件不抛错并给出安全缺省', () => {
   const play = toEarnedRunPlay({});
   assert.equal(play.sequence, 1);
