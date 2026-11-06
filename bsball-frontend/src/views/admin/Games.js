@@ -802,7 +802,7 @@ var Li={
             ,{
               default:o(()=>[...q[12]||(q[12]=[R("查看比赛实况记录",-1)])]),_:1
             }
-            ,8,["onClick"])):j("",!0),Y(ie)("business:game:edit")&&(K.status!=="scheduled"||!Y(ie)("business:game:saveResult"))?(a(),V(he,{
+            ,8,["onClick"])):j("",!0),((K.status==="final"&&Y(ie)("business:game:saveResult"))||Y(ie)("business:game:edit"))&&(K.status!=="scheduled"||!Y(ie)("business:game:saveResult"))?(a(),V(he,{
               key:3,link:"",type:"primary",onClick:ne=>$.$emit("edit",K)
             }
             ,{
