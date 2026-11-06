@@ -1131,7 +1131,10 @@
     "batters": "Batters",
     "pitchers": "Pitchers",
     "totals": "Totals",
-    "fieldingTableTitle": "Fielding"
+    "fieldingTableTitle": "Fielding",
+    "fieldingPlayer": "Player",
+    "expandFieldingAria": "Expand fielding breakdown for {name}",
+    "collapseFieldingAria": "Collapse fielding breakdown for {name}"
   },
   "news": {
     "title": "News",
@@ -1856,7 +1859,8 @@
       "L": "Left",
       "R": "Right",
       "B": "Switch"
-    }
+    },
+    "avatarAlt": "Player avatar"
   },
   "teamDetail": {
     "roster": "Roster",
@@ -2467,5 +2471,18 @@
     "common": {
       "notFilled": "Not set"
     }
+  },
+  "notice": {
+    "contentNotFound": "Content not found",
+    "parseFailed": "Failed to parse content",
+    "emptyBody": "No content",
+    "originalLink": "Original link",
+    "attachment": "Attachment",
+    "retry": "Retry",
+    "notFound": "Announcement not found or deleted"
+  },
+  "team": {
+    "textLogoAlt": "{name} text logo",
+    "logoInitialFallback": "T"
   }
 }

@@ -152,7 +152,7 @@ async function assertFieldingBreakdown(page, path) {
   await expect(breakdownP).toContainText('P');
   await expect(breakdownP.locator('td').nth(7)).toHaveText('4');
 
-  const totalsRow = homeTable.locator('.el-table__footer-wrapper tr').filter({ hasText: 'Totals' });
+  const totalsRow = homeTable.locator('.el-table__footer-wrapper tr').filter({ hasText: '合计' });
   await expect(totalsRow.locator('td').nth(3)).toHaveText('11');
   await expect(totalsRow.locator('td').nth(3)).not.toHaveText('12');
 

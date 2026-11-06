@@ -1558,16 +1558,13 @@ var kr=v.parse,dr=$.lex,Dt={
 }
 ,Kt=Le({
   __name:"NoticeDetail",setup(r){
-    const e=Xe(),{
-      t
-    }
-    =Oe(),s=je(),n=Y(null),{
+    const e=Xe(),{ t: tr } = Oe(),s=je(),n=Y(null),{
       loading:i,error:a,result:l,retry:c
     }
     =Je(async()=>{
       const f=Number(s.params.id),x=await Ge(`/api/sys/article/${f}`);
       if(x.error)throw new Error(x.error);
-      if(!x.data)throw new Error("内容不存在");
+      if(!x.data)throw new Error(tr("notice.contentNotFound"));
       const _={
         ...x.data
       }
@@ -1599,9 +1596,9 @@ var kr=v.parse,dr=$.lex,Dt={
         )
       }
       catch{
-        return"<p>内容解析失败</p>"
+        return"<p>"+tr("notice.parseFailed")+"</p>"
       }
-      return f||"<p>暂无正文</p>"
+      return f||"<p>"+tr("notice.emptyBody")+"</p>"
     }
     ),b=M(()=>{
       g.value;
@@ -1623,16 +1620,16 @@ var kr=v.parse,dr=$.lex,Dt={
     }
     return(f,x)=>{
       const _=qe,C=De,z=Me,E=He;
-      return w(),S("div",Dt,[m(l)?(w(),S("article",Zt,[L("h1",null,A(m(l).title),1),m(l).summary?(w(),S("p",Nt,A(m(l).summary),1)):I("",!0),L("div",Ht,[L("div",Mt,[m(l).createdAt?(w(),S("span",Qt,A(m(We)(m(l).createdAt)),1)):I("",!0),o.value?(w(),S("span",Ot,A(o.value),1)):I("",!0),m(l).author?(w(),S("span",jt," · "+A(m(l).author),1)):I("",!0),m(e).publicViewCount&&m(l).viewCount!=null?(w(),S("span",Gt," · "+A(m(t)("news.viewCount",{
+      return w(),S("div",Dt,[m(l)?(w(),S("article",Zt,[L("h1",null,A(m(l).title),1),m(l).summary?(w(),S("p",Nt,A(m(l).summary),1)):I("",!0),L("div",Ht,[L("div",Mt,[m(l).createdAt?(w(),S("span",Qt,A(m(We)(m(l).createdAt)),1)):I("",!0),o.value?(w(),S("span",Ot,A(o.value),1)):I("",!0),m(l).author?(w(),S("span",jt," · "+A(m(l).author),1)):I("",!0),m(e).publicViewCount&&m(l).viewCount!=null?(w(),S("span",Gt," · "+A(m(tr)("news.viewCount",{
         n:m(l).viewCount
       }
       )),1)):I("",!0)]),p.value?(w(),S("div",Vt,[L("a",{
         class:"source-link",href:p.value,target:"_blank",rel:"noopener noreferrer"
       }
-      ,[x[1]||(x[1]=L("span",{
+      ,[L("span",{
         class:"source-link-text"
       }
-      ,"原文链接",-1)),ee(_,{
+      ,A(tr("notice.originalLink")),1),ee(_,{
         class:"source-link-icon",size:15
       }
       ,{
@@ -1641,16 +1638,16 @@ var kr=v.parse,dr=$.lex,Dt={
       )],8,Wt)])):I("",!0)]),L("div",{
         ref_key:"contentRef",ref:n,class:"content notice-content",innerHTML:g.value,onClick:G
       }
-      ,null,8,Xt),h.value.length?(w(),S("div",Ft,[x[2]||(x[2]=L("div",{
+      ,null,8,Xt),h.value.length?(w(),S("div",Ft,[L("div",{
         class:"attachments-title"
       }
-      ,"附件",-1)),L("ul",null,[(w(!0),S(Ne,null,Qe(h.value,(H,Ce)=>(w(),S("li",{
+      ,A(tr("notice.attachment")),1),L("ul",null,[(w(!0),S(Ne,null,Qe(h.value,(H,Ce)=>(w(),S("li",{
         key:Ce
       }
       ,[H.url?(w(),S("a",{
         key:0,class:"portal-text-link",href:H.url,target:"_blank",rel:"noopener"
       }
-      ,A(H.name||"附件"),9,Ut)):(w(),S("span",Jt,A(H.name||"附件"),1))]))),128))])])):I("",!0)])):m(i)?(w(),V(C,{
+      ,A(H.name||tr("notice.attachment")),9,Ut)):(w(),S("span",Jt,A(H.name||tr("notice.attachment")),1))]))),128))])])):I("",!0)])):m(i)?(w(),V(C,{
         key:1,rows:8,animated:""
       }
       )):m(a)?(w(),V(E,{
@@ -1661,7 +1658,7 @@ var kr=v.parse,dr=$.lex,Dt={
           type:"primary",onClick:m(c)
         }
         ,{
-          default:te(()=>[Pe(A(m(t)("common.retry")),1)]),_:1
+          default:te(()=>[Pe(A(m(tr)("common.retry")),1)]),_:1
         }
         ,8,["onClick"])]),_:1
       }

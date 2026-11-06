@@ -1137,7 +1137,10 @@
     "batters": "打者",
     "pitchers": "投手",
     "totals": "合计",
-    "fieldingTableTitle": "守备"
+    "fieldingTableTitle": "守备",
+    "fieldingPlayer": "球员",
+    "expandFieldingAria": "展开 {name} 的逐位置守备数据",
+    "collapseFieldingAria": "收起 {name} 的逐位置守备数据"
   },
   "news": {
     "title": "资讯公告",
@@ -1863,7 +1866,8 @@
       "education": "学历",
       "joinDate": "加入日期",
       "debut": "职业首秀"
-    }
+    },
+    "avatarAlt": "球员头像"
   },
   "teamDetail": {
     "roster": "阵容",
@@ -2474,5 +2478,18 @@
     "common": {
       "notFilled": "未填写"
     }
+  },
+  "notice": {
+    "contentNotFound": "内容不存在",
+    "parseFailed": "内容解析失败",
+    "emptyBody": "暂无正文",
+    "originalLink": "原文链接",
+    "attachment": "附件",
+    "retry": "重试",
+    "notFound": "公告不存在或已删除"
+  },
+  "team": {
+    "textLogoAlt": "{name} 文字Logo",
+    "logoInitialFallback": "球"
   }
 }
