@@ -232,7 +232,7 @@ EventService --> EventRepository
   - 参考：`EventApi.java:51-55`
 - GET /event/{id}
   - 作用：获取单个赛事详情
-  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275，见文末专题）
+  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf, ohtaniRule}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275/#525，见文末专题）
   - 参考：`EventApi.java:57-64`
 - POST /event/create
   - 作用：创建赛事
@@ -349,6 +349,26 @@ EventService --> EventRepository
 - POST /game/{id}/pitcher-transfers/{transferId}/delete-source
   - 作用：转记成功后单独删除源行（与转记是两个动作）
   - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/identity-transfers/preview
+  - 作用：整名球员身份转记预览，返回源/目标球员、可转记行、守备位置、ER 判定数与阻断项
+  - 参数：`sourcePlayerId`、`targetPlayerId`（必填，同队且不能相同）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`IdentityTransferPreviewDTO`，字段含 `sourcePlayerId/sourcePlayerName/targetPlayerId/targetPlayerName/teamId/transferable/blockers/rows/fieldingPositions/erDecisionCount/sourceOverride/targetOverride/liveSnapshotAvailable/liveReferenceCount/fieldingAdjustmentCount/liveRosterConflict`
+  - `rows[]`：`isPitcher/sourceStatId/targetStatId/targetExists`；目标无对应统计行时表示转记时移动/新建
+  - `liveReferenceCount`：现场记录中源球员的 Play/阵容/统计缓存引用数；`fieldingAdjustmentCount`：生效中的守备补记数
+  - `liveRosterConflict`：源/目标同时在同一阵容或替补名单；此时仍可转记统计/守备/ER，但 `LIVE_RECORDS` 范围不可用
+  - 只读：不写库
+- POST /game/{id}/identity-transfers
+  - 作用：整名球员身份转记（统计、逐位置守备、ER 判定、现场记录），覆盖“从头到尾选错人”
+  - 请求：`sourcePlayerId`、`targetPlayerId`、`scopes`（`STATS/FIELDING/ER_DECISIONS/LIVE_RECORDS`，缺省前三项；显式空数组或未知范围返回 400）、`note`（≤200 字）
+  - 校验：仅 final；源/目标必须在本场；同队且不同人；源数据全零时拒绝重复转记；目标无本场统计时必须在源球队名单中；目标同一失误 Play 已有守备补记时阻断；`LIVE_RECORDS` 要求该场有现场记录且源/目标不在同一阵容/替补名单；目标已有统计行时按“目标值优先、源非零补缺”合并；R/ER 覆写随 `ER_DECISIONS` 范围移动；ER 判定通过 `REASSIGN` 调整改派到目标；守备补记随 `FIELDING` 范围改挂目标
+  - 现场记录：改写 `playEvents`、阵容/替补名单、`playerStatsById`、`gameState.runners`、`slotSubHistory` 等球员归属；转记前现场记录精简快照写入 `source_before`，undo/redo 历史不参与改写也不入库
+  - 审计：写 `bs_game_identity_transfer`，保存源/目标前后快照、范围、操作人、时间；统一台账写 `IDENTITY_TRANSFER/TRANSFER`
+  - 响应：`IdentityTransferResultDTO`（`transferId/sourcePlayerId/targetPlayerId/status`）
+  - 转记完成不删除源数据；删除是独立动作
+- POST /game/{id}/identity-transfers/{transferId}/delete-source
+  - 作用：转记成功后单独删除源球员的统计行与逐位置守备（保留现场记录）
+  - 校验：仅 `TRANSFERRED` 可删除；`transferId` 必须属于本场本租户；源数据必须全零且无守备位置、有效判定、R/ER 覆写、守备补记；现场记录仍引用源球员时要求先按 `LIVE_RECORDS` 转记；删除后转记审计置 `DELETED`，统一台账写 `DELETE_SOURCE`
 - GET /game/{id}/stat-rows/{statId}/delete-check
   - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
@@ -356,6 +376,13 @@ EventService --> EventRepository
   - blocker 类型：`DATA_FIELD`（key/label/value）、`ER_DECISION`（有效责任投手判定数）、`FIELDING_ADJUSTMENT`（生效补记数）、`FIELDING_POSITION`（守备位置行数）
   - 推荐动作：有 ER 判定/失分 → `ER_REVIEW`；有守备补记 → `FIELDING_REVIEW`；投手的守备位置可随转记搬移 → `TRANSFER`；仅剩余字段 → 投手 `TRANSFER`、非投手 `CLEAR_FIELDS`；无阻断 → `NONE`
   - 只读：不执行删除；删除仍走原接口并保留原守卫
+- GET /game/{id}/adjustments
+  - 作用：统一修订台账（结果页字段修改 + ER 判定/R/ER 覆写/守备补记/投手转记）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameStatAdjustmentDTO>`；字段含 `scope/action/sourceType/sourceId/teamId/playerId/playerName/isPitcher/fieldKey/fieldLabel/beforeValue/afterValue/status/reason/operatorId/operatedAt`
+  - scope：`PLAYER_STAT/ER_DECISION/PITCHER_RUN_OVERRIDE/FIELDING_A/PITCHER_TRANSFER/IDENTITY_TRANSFER`
+  - 写入：`save-result` 逐字段 diff；领域动作由 GameService 编排层在成功后写入；写入使用独立事务，失败不阻断原操作
+  - 说明：领域表仍是审计权威；统一台账提供跨类型视图，“修订记录”页签保留领域时间线
 - GET /game/{id}/stat-base/compare
   - 作用：对比首次 final 保存的基座快照与当前有效值，返回差异字段
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
@@ -363,7 +390,7 @@ EventService --> EventRepository
   - 差异字段：`key/label/baseValue/effectiveValue`
   - 口径：基座只在首次 final 保存（`save-result` 或 LiveGame `save-live`）时写入且不覆盖；无基座的历史场次返回 `legacy=true`；无差异的球员不返回
 - GET /game/{id}/revision-audit
-  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记
+  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记、整名球员身份转记
   - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
   - 响应：`List<GameRevisionAuditDTO>`；字段含 `auditType/recordId/action/status/summary/reason/operatorId/operatedAt`
   - 排序：`operatedAt` 倒序；相同时间按 `recordId` 倒序
@@ -472,14 +499,14 @@ EventService --> EventRepository
 
 ### 赛事级规则
 
-- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true。
-- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean}`；已有规则赛事能力关闭时仍返回并生效。
-- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf}`：
+- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true、ohtaniRule=false。
+- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean, ohtaniRule:boolean}`；已有规则赛事能力关闭时仍返回并生效。
+- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf, ohtaniRule}`：
   - 赛事已有规则（hasEventRules）→ 允许写入（能力关闭也保留）；
   - 无既有规则 → 要求赛事挂联赛且 `specialRulesEnabled=true`，否则 400「该联盟未开放特殊规则能力」。
 - `POST /event/create` 携带规则时同样要求联赛能力开启；不携带则按默认。
 - 权限点：复用 `business:event:edit`（赛事编辑入口）。
-- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
+- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮；`ohtaniRule` 开启 → 阵容板允许 DH 与先发投手为同一人（打线仍显示 DH，守备表按 P 显示）；本场仍可选择不用 DH；换投后保留 DH，但该球员不可再移防。已保存数据不回溯。
 
 ---
 

@@ -48,7 +48,7 @@ class FieldingAggregationMapperTest {
         Map<String, Object> params = playerParams();
         for (String id : List.of(
                 "selectFieldingStats",
-                "selectFieldingStatsByTeamScope",
+                "selectFieldingStatsByScope",
                 "selectFieldingStatsByEvent",
                 "countFieldingDrillDown",
                 "selectFieldingDrillDownPage")) {
@@ -173,6 +173,7 @@ class FieldingAggregationMapperTest {
         params.put("tenantId", 1L);
         params.put("teamId", 2L);
         params.put("eventId", null);
+        params.put("eventIds", null);
         params.put("season", null);
         params.put("gameMode", null);
         params.put("valueSql", "s.tc");

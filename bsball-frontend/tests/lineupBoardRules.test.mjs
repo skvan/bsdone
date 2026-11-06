@@ -465,3 +465,111 @@ test('垒球开启态：已有 DH 时 addToBatting 非投手 → 拒绝且不新
   assert.equal(b.pool.value.some((p) => p.id === 13), true); // 仍在池中，未被吃进打线
   assert.equal(b.notice.value, 'DH 已有人；垒球现口径最多 11 人打击（含 1 名 DH）');
 });
+
+/* ---------------- 大谷规则（DH 兼先发投手，Issue #525） ---------------- */
+function ohtaniBoard() {
+  const b = useLineupBoard(ref('BASEBALL'), ref(7), { ohtaniRule: ref(true) });
+  b.setRoster([...Array(16)].map((_, i) => P(i + 1)));
+  return b;
+}
+
+test('大谷规则：DH 一键兼先发投手，P 不占打序', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+
+  assert.equal(b.hasDhPitcher.value, false);
+  assert.equal(b.toggleDhPitcher(), true);
+  assert.equal(b.fieldingPitcherId.value, 12);
+  assert.equal(b.hasDhPitcher.value, true);
+  assert.equal(b.hasP.value, false);
+  assert.equal(posOf(b.slotOfRow('DH')), 'DH');
+  assert.equal(b.validation.value.ok, true);
+  assert.equal(b.lineupComplete.value, true);
+});
+
+test('大谷规则：再点一次取消兼投，DH 保留', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+  b.toggleDhPitcher();
+
+  assert.equal(b.toggleDhPitcher(), true);
+  assert.equal(b.fieldingPitcherId.value, null);
+  assert.equal(b.hasDhPitcher.value, false);
+  assert.equal(posOf(b.slotOfRow('DH')), 'DH');
+});
+
+test('大谷规则：拖 DH 到 P 不执行兼投，提示用按钮', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+
+  b.placeAtSlot(P(12), 'P');
+
+  assert.equal(posOf(b.slotOfRow('DH')), 'DH');
+  assert.equal(b.fieldingPitcherId.value, null);
+  assert.match(b.consumeNotice(), /设为兼投/);
+});
+
+test('大谷规则：setFieldingPitcher 对 DH 只登记投手身份，不移出打线', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+
+  b.setFieldingPitcher(12);
+
+  assert.equal(b.fieldingPitcherId.value, 12);
+  assert.equal(posOf(b.slotOfRow('DH')), 'DH');
+  assert.equal(b.validation.value.ok, true);
+});
+
+test('大谷规则：移除 DH 时兼投球员回到 P 打席', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+  b.toggleDhPitcher();
+
+  b.removeDh();
+
+  assert.equal(b.hasDh.value, false);
+  assert.equal(posOf(b.slotOfRow('P')), 'P');
+  assert.equal(b.slotOfRow('P').id, 12);
+  assert.equal(b.fieldingPitcherId.value, 12);
+  assert.equal(b.rows.value.filter((r) => !isPlaceholder(r)).length, 9);
+});
+
+test('未开大谷规则：toggleDhPitcher 拒绝并提示', () => {
+  const b = board();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+
+  assert.equal(b.toggleDhPitcher(), false);
+  assert.match(b.consumeNotice(), /未开启大谷规则/);
+});
+
+test('大谷规则：拖入新 DH 顶替兼投球员时，先发投手身份一并清除', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+  b.toggleDhPitcher();
+
+  b.placeAtSlot(P(13), 'DH');
+
+  assert.equal(b.slotOfRow('DH').id, 13);
+  assert.equal(b.fieldingPitcherId.value, null, '被顶替的兼投球员不能继续占据 P 槽');
+  assert.ok(b.pool.value.some((p) => p.id === 12), '被顶替球员回到可选池');
+});
+
+test('大谷规则：仅守备投手直接拖到 DH 不自动兼投，提示用按钮', () => {
+  const b = ohtaniBoard();
+  fill8(b);
+  b.placeAtSlot(P(12), 'DH');
+  b.placeAtSlot(P(14), 'P'); // 有 DH 时拖到 P = 仅守备投手
+
+  b.placeAtSlot(P(14), 'DH');
+
+  assert.equal(b.slotOfRow('DH').id, 12, 'DH 不被顶替');
+  assert.equal(b.fieldingPitcherId.value, 14, '仅守备投手身份保留');
+  assert.match(b.consumeNotice(), /设为兼投/);
+});

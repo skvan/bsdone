@@ -38,6 +38,9 @@ import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.dto.FieldingAdjustmentListDTO;
 import com.bsball.model.dto.GameRevisionAuditDTO;
+import com.bsball.model.dto.IdentityTransferPreviewDTO;
+import com.bsball.model.dto.IdentityTransferRequest;
+import com.bsball.model.dto.IdentityTransferResultDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
 import com.bsball.model.dto.PitcherRunOverrideRequest;
@@ -45,6 +48,7 @@ import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferRequest;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.GameStatAdjustmentDTO;
 import com.bsball.model.dto.StatBaseCompareDTO;
 import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Game;
@@ -215,6 +219,29 @@ public class GameApi {
         return Result.ok(this.gameService.revokePitcherRunOverride(id, overrideId));
     }
 
+    @GetMapping(value={"/{id}/identity-transfers/preview"})
+    public Result<IdentityTransferPreviewDTO> previewIdentityTransfer(
+            @PathVariable Long id,
+            @RequestParam Long sourcePlayerId,
+            @RequestParam Long targetPlayerId) {
+        return Result.ok(this.gameService.previewIdentityTransfer(
+                id, sourcePlayerId, targetPlayerId));
+    }
+
+    @PostMapping(value={"/{id}/identity-transfers"})
+    public Result<IdentityTransferResultDTO> transferIdentity(
+            @PathVariable Long id,
+            @RequestBody IdentityTransferRequest body) {
+        return Result.ok(this.gameService.transferIdentity(id, body));
+    }
+
+    @PostMapping(value={"/{id}/identity-transfers/{transferId}/delete-source"})
+    public Result<Object> deleteIdentityTransferSource(
+            @PathVariable Long id, @PathVariable Long transferId) {
+        this.gameService.deleteIdentityTransferSource(id, transferId);
+        return Result.ok(Map.of());
+    }
+
     @PostMapping(value={"/{id}/pitcher-transfers"})
     public Result<PitcherTransferResultDTO> transferPitcher(
             @PathVariable Long id, @RequestBody PitcherTransferRequest body) {
@@ -243,6 +270,11 @@ public class GameApi {
     public Result<StatRowDeleteCheckDTO> checkStatRowDelete(
             @PathVariable Long id, @PathVariable Long statId) {
         return Result.ok(this.gameService.checkStatRowDelete(id, statId));
+    }
+
+    @GetMapping(value={"/{id}/adjustments"})
+    public Result<List<GameStatAdjustmentDTO>> listStatAdjustments(@PathVariable Long id) {
+        return Result.ok(this.gameService.listStatAdjustments(id));
     }
 
     @GetMapping(value={"/{id}/stat-base/compare"})

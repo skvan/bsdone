@@ -9,7 +9,7 @@ const liveGame = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', impor
 test('实时录入全部 MessageBox 入口均启用原生 draggable', () => {
   const pattern = /\bal\(\{|al\.(?:confirm|alert|prompt)\(/g;
   const starts = [...liveGame.matchAll(pattern)].map((match) => match.index);
-  assert.equal(starts.length, 10, '应覆盖 LgPick、离开确认及全部 al.confirm 弹窗（含守备轮转取消 DH 确认）');
+  assert.equal(starts.length, 12, '应覆盖 LgPick、离开确认及全部 al.confirm 弹窗（含守备轮转取消 DH、普通 DH 移防/换投确认）');
 
   starts.forEach((start, index) => {
     const block = liveGame.slice(start, starts[index + 1] ?? liveGame.length);

@@ -202,6 +202,57 @@ async function setup(page) {
             }]
           }
         : { statId, playerId: null, isPitcher: true, deletable: true, recommendedAction: 'NONE', blockers: [] };
+    } else if (path === '/player/team-options') {
+      const teamId = Number(url.searchParams.get('teamId') ?? 0);
+      data = teamId === AWAY_ID
+        ? awayPlayers.map((p) => ({ ...p, id: p.id }))
+        : teamId === HOME_ID
+          ? homePlayers.map((p) => ({ ...p, id: p.id }))
+          : [];
+    } else if (path === `/game/${GAME_ID}/identity-transfers/preview`
+        && request.method() === 'GET') {
+      data = {
+        sourcePlayerId: Number(url.searchParams.get('sourcePlayerId')),
+        sourcePlayerName: 'T1PITCHER2',
+        targetPlayerId: Number(url.searchParams.get('targetPlayerId')),
+        targetPlayerName: 'T1PITCHER',
+        teamId: AWAY_ID,
+        transferable: true,
+        blockers: [],
+        rows: [{
+          isPitcher: 1, sourceStatId: 3010, targetStatId: 3009, targetExists: true
+        }],
+        fieldingPositions: ['P'],
+        erDecisionCount: 1,
+        sourceOverride: false,
+        targetOverride: false,
+        liveSnapshotAvailable: true,
+        liveReferenceCount: 6,
+        fieldingAdjustmentCount: 1,
+        liveRosterConflict: false
+      };
+    } else if (path === `/game/${GAME_ID}/identity-transfers`
+        && request.method() === 'POST') {
+      data = {
+        transferId: 66, sourcePlayerId: 1114, targetPlayerId: 1100, status: 'TRANSFERRED'
+      };
+    } else if (path === `/game/${GAME_ID}/identity-transfers/66/delete-source`
+        && request.method() === 'POST') {
+      data = {};
+    } else if (path === `/game/${GAME_ID}/adjustments` && request.method() === 'GET') {
+      data = [{
+        id: 1, scope: 'PLAYER_STAT', action: 'UPDATE_FIELD', sourceType: 'RESULT_SAVE',
+        sourceId: 3009, teamId: AWAY_ID, playerId: 1100, playerName: 'T1PITCHER',
+        isPitcher: 1, fieldKey: 'np', fieldLabel: 'NP',
+        beforeValue: '27', afterValue: '30', status: 'ACTIVE',
+        reason: null, operatorId: 9, operatedAt: '2026-11-05T10:00:00'
+      }, {
+        id: 2, scope: 'ER_DECISION', action: 'REASSIGN', sourceType: 'DECISION_ADJUSTMENT',
+        sourceId: 88, teamId: AWAY_ID, playerId: 1114, playerName: 'T1PITCHER2',
+        isPitcher: 1, fieldKey: 'responsiblePitcherId', fieldLabel: '责任投手',
+        beforeValue: '1100', afterValue: '1114', status: 'ACTIVE',
+        reason: '现场更正', operatorId: 9, operatedAt: '2026-11-05T11:00:00'
+      }];
     } else if (path === `/game/${GAME_ID}/stat-base/compare` && request.method() === 'GET') {
       data = {
         legacy: false,
@@ -216,6 +267,10 @@ async function setup(page) {
       };
     } else if (path === `/game/${GAME_ID}/revision-audit` && request.method() === 'GET') {
       data = [{
+        auditType: 'IDENTITY_TRANSFER', recordId: 5, action: 'TRANSFER',
+        status: 'TRANSFERRED', summary: '球员身份转记：T1PITCHER2 → T1PITCHER',
+        reason: '整名转记', operatorId: 13, operatedAt: '2026-11-05T14:00:00'
+      }, {
         auditType: 'PITCHER_TRANSFER', recordId: 4, action: 'DELETE_SOURCE',
         status: 'DELETED', summary: '投手行转记：T1PITCHER → T1PITCHER2',
         reason: '转记', operatorId: 12, operatedAt: '2026-11-05T13:00:00'
@@ -559,18 +614,34 @@ test('ER 判定可改派、作废并恢复', async ({ page }) => {
   await expect(row).not.toContainText('已作废');
 });
 
-test('修订记录页签展示四类人工修订', async ({ page }) => {
+test('修订记录页签展示五类人工修订', async ({ page }) => {
   await setup(page);
   await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
   await page.getByRole('tab', { name: '修订记录' }).click();
 
   await expect(page.getByText('实时记录为基座 · 人工修订为最终值')).toBeVisible();
   const rows = page.locator('.revision-audit .el-table__row');
-  await expect(rows).toHaveCount(4);
-  await expect(rows.nth(0)).toContainText('投手行转记');
-  await expect(rows.nth(1)).toContainText('守备补记');
-  await expect(rows.nth(2)).toContainText('投手 R/ER 覆写');
-  await expect(rows.nth(3)).toContainText('ER 判定改派');
+  await expect(rows).toHaveCount(5);
+  await expect(rows.nth(0)).toContainText('球员身份转记');
+  await expect(rows.nth(1)).toContainText('投手行转记');
+  await expect(rows.nth(2)).toContainText('守备补记');
+  await expect(rows.nth(3)).toContainText('投手 R/ER 覆写');
+  await expect(rows.nth(4)).toContainText('ER 判定改派');
+});
+
+test('修订记录按类型筛选身份转记', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订记录' }).click();
+
+  await page.locator('.revision-audit .el-select').click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: '身份转记' }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+
+  const rows = page.locator('.revision-audit .el-table__row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('球员身份转记');
 });
 
 test('删除前后端诊断：守备补记阻断时提示去守备补记 A', async ({ page }) => {
@@ -601,4 +672,60 @@ test('基座对比页签展示基座与当前有效值差异', async ({ page }) 
   const row = page.locator('.stat-base-diff .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
   await expect(row).toContainText('PA(投手)：11 → 13');
   await expect(row).toContainText('NP：27 → 30');
+});
+
+test('修订台账页签展示字段级修改', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '修订台账' }).click();
+
+  await expect(page.getByText('人工修订台账 · 字段级留痕')).toBeVisible();
+  const row = page.locator('.adjustment-ledger .el-table__row').filter({ hasText: 'T1PITCHER' }).first();
+  await expect(row).toContainText('结果字段');
+  await expect(row).toContainText('NP');
+  await expect(row).toContainText('27 → 30');
+  await expect(row).toContainText('#9');
+  const erRow = page.locator('.adjustment-ledger .el-table__row').filter({ hasText: 'T1PITCHER2' }).first();
+  await expect(erRow).toContainText('ER 判定');
+  await expect(erRow).toContainText('责任投手');
+});
+
+test('身份转记：预览同队球员并单独删除源数据', async ({ page }) => {
+  await setup(page);
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: '身份转记' }).click();
+
+  const form = page.locator('.identity-transfer__form');
+  await form.locator('.el-select').nth(0).click();
+  await page.locator('.el-select-dropdown:visible .el-select-dropdown__item')
+    .filter({ hasText: 'T1PITCHER2' }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+  await form.locator('.el-select').nth(1).click();
+  await page.locator('.el-select-dropdown:visible').last()
+    .locator('.el-select-dropdown__item')
+    .filter({ hasText: /T1PITCHER(?!\d)/ }).first().click();
+  await expect(page.locator('.el-select-dropdown:visible')).toHaveCount(0);
+  await page.getByRole('button', { name: '预览转记' }).click();
+
+  await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER2');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('T1PITCHER');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('6 处');
+  await expect(page.locator('.identity-transfer__summary')).toContainText('1 条');
+  await expect(page.getByRole('button', { name: '确认转记' })).toBeVisible();
+
+  const transferRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().endsWith(`/game/${GAME_ID}/identity-transfers`)
+  ));
+  await page.getByRole('button', { name: '确认转记' }).click();
+  await transferRequest;
+
+  const box = page.locator('.el-message-box:visible');
+  await expect(box).toContainText('是否删除源数据');
+  const deleteRequest = page.waitForRequest((request) => (
+    request.method() === 'POST'
+    && request.url().includes('/identity-transfers/66/delete-source')
+  ));
+  await box.getByRole('button', { name: '删除源数据' }).click();
+  await deleteRequest;
 });
