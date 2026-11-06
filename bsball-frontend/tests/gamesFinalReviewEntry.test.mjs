@@ -31,6 +31,13 @@ test('final 的编辑入口改名为“数据补录/复核”', () => {
   );
 });
 
+test('final 补录入口对“结果保存”权限单独可见', () => {
+  assert.ok(
+    games.includes('(K.status==="final"&&Y(ie)("business:game:saveResult"))||Y(ie)("business:game:edit")'),
+    '仅持有 business:game:saveResult 的角色看不到 final 数据补录/复核入口'
+  );
+});
+
 test('保留“查看比赛实况记录”入口', () => {
   assert.ok(
     games.includes('$.$emit("viewLiveRecord",K)'),
