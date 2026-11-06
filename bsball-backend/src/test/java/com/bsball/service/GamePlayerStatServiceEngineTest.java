@@ -199,18 +199,15 @@ class GamePlayerStatServiceEngineTest {
     }
 
     @Test
-    @DisplayName("引擎场次全零投手行仅残留隐藏 pitchPa 时允许删除")
-    void delete_engineManagedZeroPitcherWithPitchPaOnly_allowed() {
+    @DisplayName("引擎场次仅 pitchPa 残留的投手行不再视为全零，拒绝删除")
+    void delete_engineManagedPitchPaOnly_rejected() {
         GamePlayerStat zero = row(0, 0, 0, 0);
         zero.setPitchPa(Integer.valueOf(1));
         when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(zero));
         when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
-        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(GAME_ID, PLAYER_ID))
-                .thenReturn(false);
 
-        service.delete(ROW_ID);
-
-        verify(gamePlayerStatRepository).deleteById(ROW_ID);
+        assertThrows(BusinessException.class, () -> service.delete(ROW_ID));
+        verify(gamePlayerStatRepository, never()).deleteById(ROW_ID);
     }
 
     @Test

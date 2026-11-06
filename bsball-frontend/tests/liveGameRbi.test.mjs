@@ -76,7 +76,7 @@ test('LiveGame 要求記分員判定錯誤得分，並將 RBI 判定隨得分跑
 test('雙殺傳球失誤特例記一出局、取消 E 並將結果保存為 FC', () => {
   assert.match(liveGame, /isDoublePlayThrowingErrorException\(/);
   assert.match(liveGame, /Bt\(Gt\(r\[1\],"雙殺機會先取得一出局/);
-  assert.match(liveGame, /applyChainFieldingStats\("FC",e\.fielders\),m="FC"/);
+  assert.match(liveGame, /applyChainFieldingStats\("FC",e\.fielders\),recordPlayOut\(e\.fielders,"batterContact"\),m="FC"/);
   assert.match(liveGame, /doublePlayThrowingErrorException:!0/);
 });
 

@@ -236,3 +236,20 @@ test('净状态：P↔野手互换（旧投手仍在打序）不把旧投手列�
   assert.ok(!net.unavailable.includes(1), '仍在打序的旧投手不能进不可再上');
   assert.ok(!net.outPositions.has(1));
 });
+
+test('净状态：DH被代打但仍是守备投手，旧DH不进不可再上', () => {
+  const before = team([player(5, '大谷', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const after = team([player(9, '代打', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const diff = diffTeamState(before, after);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(net.unavailable.includes(9) === false, '新代打不能直接进不可再上');
+  assert.ok(!net.unavailable.includes(5), '仍在投球的旧DH不能进不可再上');
+});
+
+test('净状态：DH被代打且不再投球，旧DH进不可再上', () => {
+  const before = team([player(5, '大谷', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const after = team([player(9, '代打', 'DH')], [], { fpId: 10, fpRow: player(10, '新投', 'P') });
+  const diff = diffTeamState(before, after);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(net.unavailable.includes(5), '既不投球也不打DH时才进不可再上');
+});

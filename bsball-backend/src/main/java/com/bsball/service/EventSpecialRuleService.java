@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 赛事级特殊规则开关服务（Issue #275）：extra_batter（EP 制）/ force_half（强制换局）的读取与写入。
+ * 赛事级特殊规则开关服务（Issue #275）：extra_batter（EP 制）/ force_half（强制换局）/ ohtani_rule（大谷规则）的读取与写入。
  *
- * <p>语义：无记录 = 默认值（extraBatter=false、forceHalf=true）；有记录 = 以记录为准。
+ * <p>语义：无记录 = 默认值（extraBatter=false、forceHalf=true、ohtaniRule=false）；有记录 = 以记录为准。
  * 是否允许配置由 EventService 按「联赛收费能力或赛事既有规则」门禁后调用本服务。</p>
  */
 @Service
@@ -20,17 +20,22 @@ public class EventSpecialRuleService {
 
     public static final String RULE_EXTRA_BATTER = "extra_batter";
     public static final String RULE_FORCE_HALF = "force_half";
+    /** 大谷规则（DH 兼先发投手），Issue #525。 */
+    public static final String RULE_OHTANI = "ohtani_rule";
 
     private static final String API_EXTRA_BATTER = "extraBatter";
     private static final String API_FORCE_HALF = "forceHalf";
+    private static final String API_OHTANI = "ohtaniRule";
 
     private static final Map<String, String> API_TO_DB_KEY = Map.of(
             API_EXTRA_BATTER, RULE_EXTRA_BATTER,
-            API_FORCE_HALF, RULE_FORCE_HALF);
+            API_FORCE_HALF, RULE_FORCE_HALF,
+            API_OHTANI, RULE_OHTANI);
 
     private static final Map<String, Boolean> DEFAULTS = Map.of(
             RULE_EXTRA_BATTER, Boolean.FALSE,
-            RULE_FORCE_HALF, Boolean.TRUE);
+            RULE_FORCE_HALF, Boolean.TRUE,
+            RULE_OHTANI, Boolean.FALSE);
 
     private final EventSpecialRuleRepository eventSpecialRuleRepository;
 
@@ -42,7 +47,7 @@ public class EventSpecialRuleService {
      * 读取赛事规则生效值（含默认兜底）。
      *
      * @param eventId 赛事ID；可为 null（直接返回默认值）
-     * @return camelCase 键的生效值：{extraBatter, forceHalf}
+     * @return camelCase 键的生效值：{extraBatter, forceHalf, ohtaniRule}
      */
     public Map<String, Boolean> getEffective(Long eventId) {
         if (eventId == null) {
@@ -57,6 +62,8 @@ public class EventSpecialRuleService {
                 effective.put(API_EXTRA_BATTER, row.getEnabled());
             } else if (RULE_FORCE_HALF.equals(row.getRuleKey())) {
                 effective.put(API_FORCE_HALF, row.getEnabled());
+            } else if (RULE_OHTANI.equals(row.getRuleKey())) {
+                effective.put(API_OHTANI, row.getEnabled());
             }
         }
         return effective;
@@ -125,6 +132,7 @@ public class EventSpecialRuleService {
         Map<String, Boolean> defaults = new LinkedHashMap<>();
         defaults.put(API_EXTRA_BATTER, DEFAULTS.get(RULE_EXTRA_BATTER));
         defaults.put(API_FORCE_HALF, DEFAULTS.get(RULE_FORCE_HALF));
+        defaults.put(API_OHTANI, DEFAULTS.get(RULE_OHTANI));
         return defaults;
     }
 }

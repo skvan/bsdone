@@ -125,3 +125,19 @@ export function computeCatchBackFieldingStats(catchPos, tagPos) {
   add(tagPos, 1, 0);
   return [...stats.values()];
 }
+
+/**
+ * 双杀参与守备员（去重，保持链顺序）。
+ * 用于 DP 守备统计：同一 play 内的接杀链 + 回传链参与位置各自 +1 DP。
+ */
+export function computeDoublePlayParticipants(steps) {
+  const out = [];
+  const seen = new Set();
+  for (const step of Array.isArray(steps) ? steps : []) {
+    const pos = String(step ?? "").trim();
+    if (!pos || seen.has(pos)) continue;
+    seen.add(pos);
+    out.push(pos);
+  }
+  return out;
+}

@@ -4,6 +4,7 @@ import { get, post, put } from './request';
 function queryString(params) {
   const query = new URLSearchParams();
   if (params?.teamId != null && params.teamId !== '') query.set('teamId', String(params.teamId));
+  if (params?.leagueId != null && params.leagueId !== '') query.set('leagueId', String(params.leagueId));
   if (params?.eventId != null && params.eventId !== '') query.set('eventId', String(params.eventId));
   if (params?.gameMode) query.set('gameMode', String(params.gameMode));
   return query.toString();

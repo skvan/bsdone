@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const drawer = fs.readFileSync(
-  new URL('../src/components/admin/LiveGameEarnedRunDrawer.vue', import.meta.url),
+  new URL('../src/components/admin/GameEarnedRunReviewPanel.vue', import.meta.url),
   'utf8'
 );
 const api = fs.readFileSync(
@@ -35,8 +35,10 @@ test('投手 R/ER 覆写遵循 final 门禁与数值校验', () => {
 });
 
 test('有生效人工覆写时禁止再改该投手的逐分判定', () => {
-  assert.ok(drawer.includes('isPitcherOverridden(row.responsiblePitcherId)'),
-    '判定覆写按钮未按人工覆写状态禁用');
+  assert.ok(
+    drawer.includes('isPitcherOverridden(row.effectivePitcherId ?? row.responsiblePitcherId)'),
+    '判定覆写按钮未按有效责任投手的人工覆写状态禁用'
+  );
   assert.ok(drawer.includes('该投手已人工覆写 R/ER，请先撤销'), '缺少冲突提示');
 });
 

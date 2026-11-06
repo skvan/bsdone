@@ -1,9 +1,11 @@
 package com.bsball.utils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bsball.model.entity.GamePlayerStat;
+import java.util.List;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,9 +26,9 @@ class GamePlayerStatZerosTest {
     }
 
     @Test
-    @DisplayName("仅残留隐藏 pitchPa 仍视为全零（结果页不暴露该字段）")
-    void pitchPaOnly_isZero() {
-        assertTrue(GamePlayerStatZeros.isZero(row(stat -> stat.setPitchPa(Integer.valueOf(1)))));
+    @DisplayName("pitchPa 非零不再视为全零（PA 已开放为可编辑列）")
+    void pitchPaOnly_isNotZero() {
+        assertNotZero(stat -> stat.setPitchPa(Integer.valueOf(1)));
     }
 
     @Test
@@ -59,6 +61,29 @@ class GamePlayerStatZerosTest {
         assertNotZero(stat -> stat.setFieldingGs(Integer.valueOf(1)));
         assertNotZero(stat -> stat.setPitchDoubles(Integer.valueOf(1)));
         assertNotZero(stat -> stat.setW(Integer.valueOf(1)));
+    }
+
+    @Test
+    @DisplayName("删除诊断返回非零字段的 key/中文名/值")
+    void nonZeroFieldsReturnsDiagnostics() {
+        GamePlayerStat row = row(stat -> {
+            stat.setPitchPa(Integer.valueOf(11));
+            stat.setNp(Integer.valueOf(27));
+            stat.setFo(Integer.valueOf(3));
+        });
+
+        List<GamePlayerStatZeros.NonZeroField> fields =
+                GamePlayerStatZeros.nonZeroFields(row);
+
+        assertEquals(3, fields.size());
+        assertEquals("pitchPa", fields.get(0).key());
+        assertEquals("PA(投手)", fields.get(0).label());
+        assertEquals(11d, fields.get(0).value());
+        assertEquals("np", fields.get(1).key());
+        assertEquals(27d, fields.get(1).value());
+        assertEquals("fo", fields.get(2).key());
+        assertEquals(3d, fields.get(2).value());
+        assertTrue(GamePlayerStatZeros.nonZeroFields(baseRow()).isEmpty());
     }
 
     private static void assertNotZero(Consumer<GamePlayerStat> customizer) {

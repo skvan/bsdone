@@ -277,7 +277,11 @@ export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = 
       if (starterId !== outId && !slotHistory[slotIndex].includes(outId)) {
         slotHistory[slotIndex] = [...slotHistory[slotIndex], outId];
       }
-      if (String(sport).toUpperCase() !== 'SOFTBALL' && !unavailable.includes(outId)) {
+      // 大谷规则：DH兼投被代打但继续投球（或离开打序后仍为守备投手）时仍在比赛中，不能进不可再上
+      const outStillActive = (after?.lineup ?? []).some((p) => playerId(p) === outId)
+        || Number(after?.fpId) === outId
+        || playerId(after?.fpRow) === outId;
+      if (!outStillActive && String(sport).toUpperCase() !== 'SOFTBALL' && !unavailable.includes(outId)) {
         unavailable.push(outId);
       }
     }

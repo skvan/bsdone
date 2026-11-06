@@ -163,11 +163,13 @@ const props = defineProps({
   homeFieldingPitcherRow: { type: Object, default: null },
   awayFieldingPitcherRow: { type: Object, default: null },
   homeRoster: { type: Array, default: () => [] },
-  awayRoster: { type: Array, default: () => [] }
+  awayRoster: { type: Array, default: () => [] },
+  remoteCandidates: { type: Boolean, default: false }
 });
 const emit = defineEmits(['changed']);
 
 const rows = ref([]);
+const remoteCandidateRows = ref([]);
 const loading = ref(false);
 const loadError = ref('');
 const dialogVisible = ref(false);
@@ -178,18 +180,33 @@ const note = ref('');
 const submitting = ref(false);
 
 const isFinal = computed(() => String(props.gameStatus ?? '').toLowerCase() === 'final');
-const candidates = computed(() => buildFieldingAdjustmentCandidates({
-  playEvents: props.playEvents,
-  homeLineup: props.homeLineup,
-  awayLineup: props.awayLineup,
-  homeBench: props.homeBench,
-  awayBench: props.awayBench,
-  homeFieldingPitcherRow: props.homeFieldingPitcherRow,
-  awayFieldingPitcherRow: props.awayFieldingPitcherRow,
-  homeRoster: props.homeRoster,
-  awayRoster: props.awayRoster,
-  adjustments: rows.value
-}));
+const candidates = computed(() => {
+  if (!props.remoteCandidates) {
+    return buildFieldingAdjustmentCandidates({
+      playEvents: props.playEvents,
+      homeLineup: props.homeLineup,
+      awayLineup: props.awayLineup,
+      homeBench: props.homeBench,
+      awayBench: props.awayBench,
+      homeFieldingPitcherRow: props.homeFieldingPitcherRow,
+      awayFieldingPitcherRow: props.awayFieldingPitcherRow,
+      homeRoster: props.homeRoster,
+      awayRoster: props.awayRoster,
+      adjustments: rows.value
+    });
+  }
+  const bySource = new Map();
+  for (const row of rows.value) {
+    const key = String(row?.sourceEventId ?? '');
+    if (!key) continue;
+    if (!bySource.has(key)) bySource.set(key, []);
+    bySource.get(key).push(row);
+  }
+  return remoteCandidateRows.value.map((candidate) => ({
+    ...candidate,
+    adjustments: bySource.get(String(candidate.sourceEventId)) ?? []
+  }));
+});
 const selectedPlayer = computed(() => {
   if (!selectedPlayerId.value) return null;
   return selectedCandidate.value?.players.find(
@@ -199,11 +216,7 @@ const selectedPlayer = computed(() => {
 const selectedAvailablePlayers = computed(() => {
   const candidate = selectedCandidate.value;
   if (!candidate) return [];
-  const credited = new Set(
-    candidate.adjustments
-      .filter((item) => item.status === 'APPROVED')
-      .map((item) => Number(item.playerId))
-  );
+  const credited = creditedPlayerIds(candidate);
   return candidate.players.filter((player) => !credited.has(Number(player.id)));
 });
 const positionOptions = computed(() => {
@@ -218,29 +231,51 @@ watch(
 );
 watch(isFinal, (final) => {
   if (final) load();
-  else rows.value = [];
+  else {
+    rows.value = [];
+    remoteCandidateRows.value = [];
+  }
 });
 
 async function load() {
   if (!props.gameId) return;
   if (!isFinal.value) {
     rows.value = [];
+    remoteCandidateRows.value = [];
     loadError.value = '';
     return;
   }
   loading.value = true;
   loadError.value = '';
   try {
-    const result = await gameApi.listFieldingAdjustments(props.gameId);
+    const [result, candidateResult] = await Promise.all([
+      gameApi.listFieldingAdjustments(props.gameId),
+      props.remoteCandidates
+        ? gameApi.listFieldingAdjustmentCandidates(props.gameId)
+        : null
+    ]);
     if (result?.error) {
       rows.value = [];
+      remoteCandidateRows.value = [];
       loadError.value = result.error;
       ElMessage.error('加载守备补记失败');
       return;
     }
     rows.value = Array.isArray(result?.data) ? result.data : [];
+    if (!props.remoteCandidates) {
+      remoteCandidateRows.value = [];
+      return;
+    }
+    if (candidateResult?.error) {
+      remoteCandidateRows.value = [];
+      loadError.value = candidateResult.error;
+      ElMessage.error('加载补记候选失败');
+      return;
+    }
+    remoteCandidateRows.value = Array.isArray(candidateResult?.data) ? candidateResult.data : [];
   } catch (error) {
     rows.value = [];
+    remoteCandidateRows.value = [];
     loadError.value = error?.message ?? '加载失败';
     ElMessage.error('加载守备补记失败');
   } finally {
@@ -258,12 +293,16 @@ function openAdjust(candidate) {
 }
 
 function hasAvailablePlayers(candidate) {
-  const credited = new Set(
+  const credited = creditedPlayerIds(candidate);
+  return (candidate?.players ?? []).some((player) => !credited.has(Number(player.id)));
+}
+
+function creditedPlayerIds(candidate) {
+  return new Set(
     (candidate?.adjustments ?? [])
       .filter((item) => item.status === 'APPROVED')
       .map((item) => Number(item.playerId))
   );
-  return (candidate?.players ?? []).some((player) => !credited.has(Number(player.id)));
 }
 
 function handlePlayerChange() {

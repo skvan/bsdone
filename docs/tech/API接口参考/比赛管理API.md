@@ -232,7 +232,7 @@ EventService --> EventRepository
   - 参考：`EventApi.java:51-55`
 - GET /event/{id}
   - 作用：获取单个赛事详情
-  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275，见文末专题）
+  - 响应：附带 `specialRules` 字段（`{extraBatter, forceHalf, ohtaniRule}` 联赛特殊规则生效值；未挂联赛 / 无记录按默认兜底；Issue #275/#525，见文末专题）
   - 参考：`EventApi.java:57-64`
 - POST /event/create
   - 作用：创建赛事
@@ -287,6 +287,24 @@ EventService --> EventRepository
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
+- GET /game/{id}/earned-runs/decisions
+  - 作用：查询该场逐分判定，含半局/跑者/原始责任投手/有效责任投手/人工调整信息
+  - 响应新增：`effectivePitcherId/effectivePitcherName`、`adjustmentId/adjustmentAction/adjustmentReason`、`voided`
+  - 口径：原始 `responsiblePitcherId/pitcherName` 永不覆盖；有生效改派时有效投手为目标投手，作废时有效投手为空
+- PUT /game/{id}/earned-runs/decisions/{decisionId}
+  - 作用：人工覆核自责/非自责（现有能力）
+  - 校验：若该判定已作废需先恢复；按有效责任投手检查 R/ER 人工覆写冲突
+- POST /game/{id}/earned-runs/decisions/{decisionId}/reassign
+  - 作用：把该得分的有效责任投手改派给同队另一名投手
+  - 请求：`targetPitcherId`（必填）、`reason`（≤200 字，可空）
+  - 校验：仅 final；目标必须是本场同队投手；不能等于当前有效责任投手；旧 ACTIVE 调整置 `SUPERSEDED`
+- POST /game/{id}/earned-runs/decisions/{decisionId}/void
+  - 作用：作废误录判定，该得分不再计入任何投手 R/ER；原始判定保留
+  - 请求：`reason`（≤200 字，可空）；重复作废返回 400
+- POST /game/{id}/earned-runs/decision-adjustments/{adjustmentId}/revoke
+  - 作用：撤销最近一次改派/作废，恢复引擎责任投手
+  - 校验：仅 `ACTIVE` 可撤销；撤销后状态置 `REVOKED`
+  - 生效：三个写接口均按全场判定绝对重算受影响投手 R/ER；删除/转记守卫按有效责任投手判断
 - GET /game/{id}/earned-runs/pitchers
   - 作用：赛后复核列出本场投手的 R/ER/UER/PENDING 合计及生效中的人工覆写，供「比赛复核 → 投手 R/ER」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能复核投手 R/ER」
@@ -303,10 +321,16 @@ EventService --> EventRepository
   - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同覆写
   - 失效规则：半局重建时，该半局新旧判定涉及的责任投手，其生效覆写自动置 `INVALIDATED` 并保留原因；已人工覆写的投手拒绝再修改其逐分判定，需先撤销覆写
 - GET /game/{id}/fielding-adjustments
-  - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供「比赛复核 → 守备补记」页签使用
+  - 作用：查询该场赛后守备补记记录（`bs_game_fielding_adjustment`），供结果补录页「守备补记 A」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能进行守备补记」
   - 响应：`List<FieldingAdjustmentListDTO>`；字段含 `sourceEventId/sourceSequence/inning/half/teamId/playerId/playerName/position/assistCount/status/sourceText/note/revokedBy/revokedAt/invalidReason/sourceValid`
   - 失效：完整快照（`playEventsComplete=true`）中找不到源 Play 的有效补记会先置为 `INVALIDATED` 并扣回统计
+- GET /game/{id}/fielding-adjustments/candidates
+  - 作用：从比赛 live snapshot 计算守备补记候选，供结果补录页在无现场快照上下文时直接展示
+  - 前置：仅 `status=final`；权限同补记新增
+  - 响应：`List<FieldingAdjustmentCandidateDTO>`；字段含 `sourceEventId/inning/topBottom/teamId/sequence/inningLabel/outsBefore/baseLabel/resultText/players`
+  - 筛选：仅返回失误 Play（`E/ADVANCE_FE/DK3_REACH_E`、`ERROR*` 或文本含「失误」）；守备方按半局推导（上半局主队、下半局客队）
+  - 球员：`players[]` 含 `id/name/number/position/positions`，来自本场该守备方统计行，供前端选择补记球员与守位
 - POST /game/{id}/fielding-adjustments
   - 作用：在指定失误 Play 上补记 1 次助杀 A
   - 请求：`sourceEventId`（必填，源 Play 的 `id`）、`playerId`、`position`（P/C/1B/2B/3B/SS/LF/CF/RF；缺省取球员当前守位）、`note`（≤200 字）
@@ -316,6 +340,61 @@ EventService --> EventRepository
 - POST /game/{id}/fielding-adjustments/{adjustmentId}/revoke
   - 作用：撤销一条已生效补记，保留审计行并把球员行 `a/tc` 与位置 `a` 扣回
   - 校验：仅 `APPROVED` 可撤销；已撤销/失效返回 400；权限同新增
+- POST /game/{id}/pitcher-transfers
+  - 作用：赛后补录把一条投手统计行转记到同队另一名投手；只转记，不删除源行
+  - 请求：`sourceStatId`、`targetPlayerId`、`note`（可空）
+  - 校验：仅 final；源行必须是本场投手行；目标必须是本场同队投手行；源行 R/ER/UER/PENDING/旧 `earnedR` 必须为 0 且无自责分判定，否则 400（先处理 ER）
+  - 合并：目标已有值优先；源行非零、目标为零的投球/守备字段并入目标；源行可转记字段清零；R/ER 不参与转记；逐位置守备按守位合并（目标已有优先，否则移动源位置行）
+  - 审计：写 `bs_game_pitcher_transfer`，保存源行/目标行前后快照、操作人、时间；源行保留，等待单独的删除确认
+- POST /game/{id}/pitcher-transfers/{transferId}/delete-source
+  - 作用：转记成功后单独删除源行（与转记是两个动作）
+  - 校验：仅 `TRANSFERRED` 可删除；源行必须全零（含 PA）、无自责分判定、无剩余守备位置数据；删除后转记审计置 `DELETED`
+- GET /game/{id}/identity-transfers/preview
+  - 作用：整名球员身份转记预览，返回源/目标球员、可转记行、守备位置、ER 判定数与阻断项
+  - 参数：`sourcePlayerId`、`targetPlayerId`（必填，同队且不能相同）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`IdentityTransferPreviewDTO`，字段含 `sourcePlayerId/sourcePlayerName/targetPlayerId/targetPlayerName/teamId/transferable/blockers/rows/fieldingPositions/erDecisionCount/sourceOverride/targetOverride/liveSnapshotAvailable/liveReferenceCount/fieldingAdjustmentCount/liveRosterConflict`
+  - `rows[]`：`isPitcher/sourceStatId/targetStatId/targetExists`；目标无对应统计行时表示转记时移动/新建
+  - `liveReferenceCount`：现场记录中源球员的 Play/阵容/统计缓存引用数；`fieldingAdjustmentCount`：生效中的守备补记数
+  - `liveRosterConflict`：源/目标同时在同一阵容或替补名单；此时仍可转记统计/守备/ER，但 `LIVE_RECORDS` 范围不可用
+  - 只读：不写库
+- POST /game/{id}/identity-transfers
+  - 作用：整名球员身份转记（统计、逐位置守备、ER 判定、现场记录），覆盖“从头到尾选错人”
+  - 请求：`sourcePlayerId`、`targetPlayerId`、`scopes`（`STATS/FIELDING/ER_DECISIONS/LIVE_RECORDS`，缺省前三项；显式空数组或未知范围返回 400）、`note`（≤200 字）
+  - 校验：仅 final；源/目标必须在本场；同队且不同人；源数据全零时拒绝重复转记；目标无本场统计时必须在源球队名单中；目标同一失误 Play 已有守备补记时阻断；`LIVE_RECORDS` 要求该场有现场记录且源/目标不在同一阵容/替补名单；目标已有统计行时按“目标值优先、源非零补缺”合并；R/ER 覆写随 `ER_DECISIONS` 范围移动；ER 判定通过 `REASSIGN` 调整改派到目标；守备补记随 `FIELDING` 范围改挂目标
+  - 现场记录：改写 `playEvents`、阵容/替补名单、`playerStatsById`、`gameState.runners`、`slotSubHistory` 等球员归属；转记前现场记录精简快照写入 `source_before`，undo/redo 历史不参与改写也不入库
+  - 审计：写 `bs_game_identity_transfer`，保存源/目标前后快照、范围、操作人、时间；统一台账写 `IDENTITY_TRANSFER/TRANSFER`
+  - 响应：`IdentityTransferResultDTO`（`transferId/sourcePlayerId/targetPlayerId/status`）
+  - 转记完成不删除源数据；删除是独立动作
+- POST /game/{id}/identity-transfers/{transferId}/delete-source
+  - 作用：转记成功后单独删除源球员的统计行与逐位置守备（保留现场记录）
+  - 校验：仅 `TRANSFERRED` 可删除；`transferId` 必须属于本场本租户；源数据必须全零且无守备位置、有效判定、R/ER 覆写、守备补记；现场记录仍引用源球员时要求先按 `LIVE_RECORDS` 转记；删除后转记审计置 `DELETED`，统一台账写 `DELETE_SOURCE`
+- GET /game/{id}/stat-rows/{statId}/delete-check
+  - 作用：删除统计行前的结构化诊断，返回剩余字段与领域阻断项
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`StatRowDeleteCheckDTO`，字段含 `statId/playerId/isPitcher/deletable/recommendedAction/blockers`
+  - blocker 类型：`DATA_FIELD`（key/label/value）、`ER_DECISION`（有效责任投手判定数）、`FIELDING_ADJUSTMENT`（生效补记数）、`FIELDING_POSITION`（守备位置行数）
+  - 推荐动作：有 ER 判定/失分 → `ER_REVIEW`；有守备补记 → `FIELDING_REVIEW`；投手的守备位置可随转记搬移 → `TRANSFER`；仅剩余字段 → 投手 `TRANSFER`、非投手 `CLEAR_FIELDS`；无阻断 → `NONE`
+  - 只读：不执行删除；删除仍走原接口并保留原守卫
+- GET /game/{id}/adjustments
+  - 作用：统一修订台账（结果页字段修改 + ER 判定/R/ER 覆写/守备补记/投手转记）
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameStatAdjustmentDTO>`；字段含 `scope/action/sourceType/sourceId/teamId/playerId/playerName/isPitcher/fieldKey/fieldLabel/beforeValue/afterValue/status/reason/operatorId/operatedAt`
+  - scope：`PLAYER_STAT/ER_DECISION/PITCHER_RUN_OVERRIDE/FIELDING_A/PITCHER_TRANSFER/IDENTITY_TRANSFER`
+  - 写入：`save-result` 逐字段 diff；领域动作由 GameService 编排层在成功后写入；写入使用独立事务，失败不阻断原操作
+  - 说明：领域表仍是审计权威；统一台账提供跨类型视图，“修订记录”页签保留领域时间线
+- GET /game/{id}/stat-base/compare
+  - 作用：对比首次 final 保存的基座快照与当前有效值，返回差异字段
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`StatBaseCompareDTO`，字段含 `legacy`（无基座）、`rows[]`（球员/来源/捕获时间/差异字段）
+  - 差异字段：`key/label/baseValue/effectiveValue`
+  - 口径：基座只在首次 final 保存（`save-result` 或 LiveGame `save-live`）时写入且不覆盖；无基座的历史场次返回 `legacy=true`；无差异的球员不返回
+- GET /game/{id}/revision-audit
+  - 作用：统一修订记录，聚合 ER 判定改派/作废、投手 R/ER 覆写、守备补记、投手行转记、整名球员身份转记
+  - 前置：仅 `status=final`；比赛写入权限 + 租户隔离
+  - 响应：`List<GameRevisionAuditDTO>`；字段含 `auditType/recordId/action/status/summary/reason/operatorId/operatedAt`
+  - 排序：`operatedAt` 倒序；相同时间按 `recordId` 倒序
+  - 只读：撤销/恢复仍从 ER 复核、守备补记 A、投手 R/ER 各自页签操作
 - POST /game/{id}/save-result
   - 作用：保存比赛最终结果与统计
   - P/DH 强校验（#478）：`save-result` 与 `import-game-result` 中，同一球队的打击行（`battingOrder>0`，含 `isPitcher=1` 的二刀流合并行）不可同时出现 DH 与打击投手（P）；同一球员既列 DH 又列投手（规则 5.11(b) P/DH 二刀流）放行。门控：`save-result` 仅当库内与本次请求状态都为 `final`（纯赛后补录）时跳过；同请求置 `status=final` 或 final 重开 live 均照常校验。`import-game-result` 仅在导入进行中场次时校验（缺省落 final，特殊赛果不校验）
@@ -323,7 +402,7 @@ EventService --> EventRepository
   - 结果页人工覆写 R/ER：同一投手已有生效覆写时就地更新；如需恢复引擎值，到「比赛复核 → 投手 R/ER」撤销。该路径只写覆写与统计，不读写 LiveGame 现场快照
   - 赛后守备补记（Issue #554）：结果页统计来自 `GET /game/{id}/stats`（已含补记后的 A/TC），本接口不再回放补记；若后续客户端改为提交基础统计，需显式约定回放标记，避免重复 +1
   - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
-  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定不含 `pitchPa`
+  - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定现在包含 `pitchPa`（PA 已开放为可编辑列并与 BF 同步）
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
@@ -346,7 +425,7 @@ EventService --> EventRepository
 - DELETE /game/stats/delete/{id}
   - 作用：球员统计CRUD
   - 引擎场次（已有 `bs_earned_run_play`）：create 把 R/ER/UER/PENDING 归零；update 保留四个字段并拒绝修改比赛/球员/投手身份；delete 对投手行要求“全零且无自责分判定”，否则返回 400（先转记数据 / 先处理判定）；零数据投手行允许删除
-  - 全零判定不包含结果页不暴露的辅助字段 `pitchPa`（投手面对打者以 `pitchBf` 为准；`pitchPa` 非零但 `pitchBf` 为 0 时仍按零数据清理）；`pitchBf`、用球数、安打、失分等实际统计仍参与
+  - 全零判定包含 `pitchPa`：结果页新增 PA 列，PA 与 BF 双向同步；`pitchBf`、用球数、安打、失分等实际统计仍参与
   - 参考：`GameApi.java:125-141`
 
 ### 精彩时刻（HighlightMoment）
@@ -420,14 +499,14 @@ EventService --> EventRepository
 
 ### 赛事级规则
 
-- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true。
-- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean}`；已有规则赛事能力关闭时仍返回并生效。
-- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf}`：
+- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true、ohtaniRule=false。
+- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean, ohtaniRule:boolean}`；已有规则赛事能力关闭时仍返回并生效。
+- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf, ohtaniRule}`：
   - 赛事已有规则（hasEventRules）→ 允许写入（能力关闭也保留）；
   - 无既有规则 → 要求赛事挂联赛且 `specialRulesEnabled=true`，否则 400「该联盟未开放特殊规则能力」。
 - `POST /event/create` 携带规则时同样要求联赛能力开启；不携带则按默认。
 - 权限点：复用 `business:event:edit`（赛事编辑入口）。
-- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮。已保存数据不回溯。
+- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮；`ohtaniRule` 开启 → 阵容板允许 DH 与先发投手为同一人（打线仍显示 DH，守备表按 P 显示）；本场仍可选择不用 DH；换投后保留 DH，但该球员不可再移防。已保存数据不回溯。
 
 ---
 

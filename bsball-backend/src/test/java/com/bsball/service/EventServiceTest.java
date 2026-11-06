@@ -2,9 +2,9 @@
  * 赛事级特殊规则 + 联赛收费能力（Issue #275，2026-10-24 口径调整）。
  *
  * 契约：GET /event/{id} 的 specialRules 返回
- *   {specialRulesEnabled, hasEventRules, extraBatter, forceHalf}；
+ *   {specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}；
  *   - 联赛能力或赛事既有规则决定能否配置；已配置赛事在能力关闭后仍用自身规则；
- *   - 未配置且能力关闭 → 默认 extraBatter=false、forceHalf=true；
+ *   - 未配置且能力关闭 → 默认 extraBatter=false、forceHalf=true、ohtaniRule=false；
  *   - create/update 的 specialRules 由 EventService 在同一事务写库；
  *     create 必须联赛能力开启；update 仅在赛事已有规则（grandfather）或联赛能力开启时允许。
  *
@@ -87,7 +87,7 @@ class EventServiceTest {
         stubWideRead();
         stubEvent(LEAGUE_ID, null);
         when(eventSpecialRuleService.hasRules(EVENT_ID)).thenReturn(true);
-        when(eventSpecialRuleService.getEffective(EVENT_ID)).thenReturn(rules(true, false));
+        when(eventSpecialRuleService.getEffective(EVENT_ID)).thenReturn(rules(true, false, true));
         when(leagueSpecialRuleService.isSpecialRulesEnabled(LEAGUE_ID)).thenReturn(false);
 
         Event result = service.get(EVENT_ID);
@@ -96,6 +96,7 @@ class EventServiceTest {
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("hasEventRules"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("forceHalf"));
+        assertEquals(Boolean.TRUE, result.getSpecialRules().get("ohtaniRule"));
     }
 
     @Test
@@ -112,6 +113,7 @@ class EventServiceTest {
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("hasEventRules"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("forceHalf"));
+        assertEquals(Boolean.FALSE, result.getSpecialRules().get("ohtaniRule"));
         verify(eventSpecialRuleService, never()).getEffective(EVENT_ID);
     }
 
@@ -127,6 +129,7 @@ class EventServiceTest {
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("hasEventRules"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("forceHalf"));
+        assertEquals(Boolean.FALSE, result.getSpecialRules().get("ohtaniRule"));
     }
 
     @Test
@@ -435,9 +438,14 @@ class EventServiceTest {
     }
 
     private static Map<String, Boolean> rules(boolean extraBatter, boolean forceHalf) {
+        return rules(extraBatter, forceHalf, false);
+    }
+
+    private static Map<String, Boolean> rules(boolean extraBatter, boolean forceHalf, boolean ohtaniRule) {
         Map<String, Boolean> rules = new LinkedHashMap<>();
         rules.put("extraBatter", extraBatter);
         rules.put("forceHalf", forceHalf);
+        rules.put("ohtaniRule", ohtaniRule);
         return rules;
     }
 }

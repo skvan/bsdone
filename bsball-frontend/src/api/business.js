@@ -267,12 +267,38 @@ export const gameApi = {
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
+  reassignEarnedRunDecision: (id, decisionId, data) =>
+    post(`/api/game/${id}/earned-runs/decisions/${decisionId}/reassign`, data),
+  voidEarnedRunDecision: (id, decisionId, data) =>
+    post(`/api/game/${id}/earned-runs/decisions/${decisionId}/void`, data),
+  revokeEarnedRunDecisionAdjustment: (id, adjustmentId) =>
+    post(`/api/game/${id}/earned-runs/decision-adjustments/${adjustmentId}/revoke`, {}),
   listPitcherRunTotals: (id) => fetchResult(`/api/game/${id}/earned-runs/pitchers`),
   overridePitcherRuns: (id, playerId, data) =>
     put(`/api/game/${id}/earned-runs/pitchers/${playerId}/override`, data),
   revokePitcherRunOverride: (id, overrideId) =>
     post(`/api/game/${id}/earned-runs/overrides/${overrideId}/revoke`, {}),
+  transferPitcher: (id, data) => post(`/api/game/${id}/pitcher-transfers`, data),
+  deletePitcherTransferSource: (id, transferId) =>
+    post(`/api/game/${id}/pitcher-transfers/${transferId}/delete-source`, {}),
+  previewIdentityTransfer: (id, sourcePlayerId, targetPlayerId) => {
+    const query = new URLSearchParams({
+      sourcePlayerId: String(sourcePlayerId),
+      targetPlayerId: String(targetPlayerId)
+    });
+    return fetchResult(`/api/game/${id}/identity-transfers/preview?${query}`);
+  },
+  transferIdentity: (id, data) => post(`/api/game/${id}/identity-transfers`, data),
+  deleteIdentityTransferSource: (id, transferId) =>
+    post(`/api/game/${id}/identity-transfers/${transferId}/delete-source`, {}),
   listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
+  listFieldingAdjustmentCandidates: (id) =>
+    fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),
+  listRevisionAudit: (id) => fetchResult(`/api/game/${id}/revision-audit`),
+  compareStatBase: (id) => fetchResult(`/api/game/${id}/stat-base/compare`),
+  listStatAdjustments: (id) => fetchResult(`/api/game/${id}/adjustments`),
+  checkStatRowDelete: (id, statId) =>
+    fetchResult(`/api/game/${id}/stat-rows/${statId}/delete-check`),
   createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
   revokeFieldingAdjustment: (id, adjustmentId) =>
     post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
