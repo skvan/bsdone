@@ -1060,7 +1060,11 @@
         "pitchSf": "피희생플라이(Sacrifice Flies Allowed)",
         "pitchIo": "피방해 출루(Obstruction Allowed)"
       }
-    }
+    },
+    "batters": "타자",
+    "pitchers": "투수",
+    "totals": "합계",
+    "fieldingTableTitle": "수비"
   },
   "news": {
     "title": "소식",

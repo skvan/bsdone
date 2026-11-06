@@ -484,6 +484,16 @@
         "fullName": "守備先發場次",
         "definition": "該球員以該守位先發的場次",
         "shortLabel": "GS"
+      },
+      "pitchAb": {
+        "fullName": "自由打數",
+        "definition": "面對打者人次扣除四壞與觸身（BB 含 IBB）",
+        "shortLabel": "AB"
+      },
+      "bbHp": {
+        "fullName": "四壞+觸身",
+        "definition": "四壞球與觸身球上壘合計（BB 含 IBB）",
+        "shortLabel": "BB+HBP"
       }
     }
   },
@@ -1061,7 +1071,7 @@
         "pitchSo": "奪三振（Strikeouts）",
         "pitchHr": "被牆外全壘打（Home Runs Allowed）",
         "pitchInsideParkHr": "被場內全壘打（Inside-the-park HR）",
-        "pitAb": "對手打數（BF−BB−HBP；BB 含 IBB）",
+        "pitAb": "自由打數（BF−BB−HBP；BB 含 IBB）",
         "pitE": "該投手本場打者數據的失誤",
         "np": "投球數",
         "pitchPa": "面對打席（PA）",
@@ -1080,7 +1090,7 @@
         "svo": "救援機會",
         "hld": "中繼成功",
         "cg": "是否本場完投（不是為 0，是為 1）",
-        "pg": "是否本場為完美比賽（不是為 0，是為 1）",
+        "pg": "是否本場完封（不是為 0，是為 1）",
         "era": "自責分率（ER×9/IP）",
         "pitchDoubles": "被二壘打（Doubles Allowed）",
         "pitchTriples": "被三壘打（Triples Allowed）",
@@ -1089,7 +1099,11 @@
         "pitchIo": "被妨阻上壘（Obstruction Allowed）",
         "whip": "每局被上壘率（(H+BB)/IP）"
       }
-    }
+    },
+    "batters": "打者",
+    "pitchers": "投手",
+    "totals": "合計",
+    "fieldingTableTitle": "守備"
   },
   "news": {
     "title": "資訊公告",
@@ -1249,7 +1263,9 @@
       "pitchBb": "四壞球",
       "pitchIbb": "故意四壞球",
       "pitchSo": "奪三振",
-      "gsFielding": "先發場次"
+      "gsFielding": "先發場次",
+      "pitchAb": "自由打數",
+      "bbHp": "四壞+觸身"
     },
     "colEn": {
       "rank": "Rank",
@@ -1338,7 +1354,9 @@
       "pitchBb": "BB",
       "pitchIbb": "IBB",
       "pitchSo": "SO",
-      "gsFielding": "GS"
+      "gsFielding": "GS",
+      "pitchAb": "AB",
+      "bbHp": "BB+HBP"
     }
   },
   "player": {
@@ -1920,7 +1938,7 @@
         "pitchSo": "三振",
         "pitchHr": "被全壘打",
         "pitchInsideParkHr": "被場內全壘打",
-        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HBP）",
+        "pitAb": "自由打數（約 BF−BB−IBB−HBP）",
         "pitE": "同場該員守備失誤數（與統計源一致）",
         "np": "投球數",
         "pitchPa": "對局打席",
@@ -1939,7 +1957,7 @@
         "svo": "救援機會",
         "hld": "中繼成功",
         "cg": "完投",
-        "pg": "完全比賽",
+        "pg": "完封",
         "era": "防禦率",
         "whip": "每局被上壘率（WHIP）"
       }

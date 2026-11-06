@@ -10,6 +10,7 @@ import { normalizeVnodeProps as qt } from '../../utils/vnodeProps';
 import { mergePropValues as er } from '../../utils/vnodeProps';
 import { resolveAssetUrl as Ve } from '../../api/request';
 import { formatInningsPitched as Je } from '../../utils/inningsFormat';
+import { statsHeaderKey as playerHeaderKey, statsHeaderAbbr as playerHeaderAbbr, playerColumnWidth as playerWidth } from '../../stores/statsHeaderKeys';
 import { useStatsTableMeta as Dt } from '../../composables/useStatsTableMeta';
 import { loadPrintExport as br } from '../../utils/printExport';
 import { exportSfc as gt } from '../../utils/exportSfc';
@@ -1761,9 +1762,6 @@ var vl={
 ,Qn={
   class:"th-with-tip"
 }
-,eo={
-  class:"th-with-tip"
-}
 ,ao={
   class:"season-table-section-title"
 }
@@ -1773,9 +1771,6 @@ var vl={
 ,ro={
   class:"th-with-tip"
 }
-,lo={
-  class:"th-with-tip"
-}
 ,no={
   class:"season-table-section-title"
 }
@@ -1783,9 +1778,6 @@ var vl={
   class:"th-with-tip"
 }
 ,io={
-  class:"th-with-tip"
-}
-,so={
   class:"th-with-tip"
 }
 ,uo={
@@ -1881,6 +1873,22 @@ var vl={
       portalPath:V,tenantCode:x2
     }
     =yr(),G="/bs-ball/carousel/default_banner_2.jpg",D=S(void 0);
+    function playerHeaderFull(col){
+      const termKey=playerHeaderKey(col.prop,col.prop);
+      const statsLabel="stats.col."+termKey;
+      if(m(statsLabel))return r(statsLabel);
+      const glossaryLabel="glossary.term."+termKey+".fullName";
+      if(m(glossaryLabel))return r(glossaryLabel);
+      return col.abbr;
+    }
+    function playerHeaderNode(col){
+      const abbr=playerHeaderAbbr(col.prop,col.abbr);
+      if(!String(v.value||"").startsWith("zh"))return c("span",{class:"player-col-header"},[c("span",{class:"player-col-header__en"},u(abbr))]);
+      return c("span",{class:"player-col-header"},[
+        c("span",{class:"player-col-header__cn"},u(playerHeaderFull(col))),
+        c("span",{class:"player-col-header__en"},u(abbr))
+      ]);
+    }
     function X(){
       D.value=typeof window<"u"&&window.innerWidth<768?420:void 0
     }
@@ -3003,14 +3011,14 @@ var vl={
           )=>[B(u(pe(s)),1)]),_:1
         }
         ),(d(),b(x,null,Z(Ma,s=>p(F,{
-          key:s.prop,width:s.w,align:"center"
+          key:s.prop,width:playerWidth(s.prop,s.w),align:"center"
         }
         ,{
           header:n(()=>[p(l,{
             content:o(r)("player.seasonColTip."+s.tip),placement:"top"
           }
           ,{
-            default:n(()=>[c("span",eo,u(s.abbr),1)]),_:2
+            default:n(()=>[playerHeaderNode(s)]),_:2
           }
           ,1032,["content"])]),default:n(({
             row:ve
@@ -3057,14 +3065,14 @@ var vl={
           )=>[B(u(pe(s)),1)]),_:1
         }
         ),(d(),b(x,null,Z(Ua,s=>p(F,{
-          key:s.prop,width:s.w,align:"center"
+          key:s.prop,width:playerWidth(s.prop,s.w),align:"center"
         }
         ,{
           header:n(()=>[p(l,{
             content:o(r)("player.seasonColTip."+s.tip),placement:"top"
           }
           ,{
-            default:n(()=>[c("span",lo,u(s.abbr),1)]),_:2
+            default:n(()=>[playerHeaderNode(s)]),_:2
           }
           ,1032,["content"])]),default:n(({
             row:ve
@@ -3111,14 +3119,14 @@ var vl={
           )=>[B(u(pe(s)),1)]),_:1
         }
         ),(d(),b(x,null,Z(ya,s=>p(F,{
-          key:s.prop,width:s.w,align:"center"
+          key:s.prop,width:playerWidth(s.prop,s.w),align:"center"
         }
         ,{
           header:n(()=>[p(l,{
             content:o(r)("player.seasonColTip."+s.tip),placement:"top"
           }
           ,{
-            default:n(()=>[c("span",so,u(s.abbr),1)]),_:2
+            default:n(()=>[playerHeaderNode(s)]),_:2
           }
           ,1032,["content"])]),default:n(({
             row:ve
