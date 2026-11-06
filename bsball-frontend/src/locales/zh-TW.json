@@ -2213,5 +2213,266 @@
     "revokeFailed": "撤銷失敗",
     "genericHint": "清單僅顯示未在本隊的球員；未認領球員點擊「邀請入隊」將直接加入（保留其現有球隊），已認領球員產生通用連結（本人確認後入隊）。",
     "loadFailed": "載入失敗"
+  },
+  "clubhouse": {
+    "header": {
+      "breadcrumbPortal": "門戶",
+      "subtitle": "球員個人主頁 · 已關聯球員資料",
+      "editLayout": "編輯布局",
+      "backToPortal": "返回門戶",
+      "claimedBadge": "已關聯球員資料",
+      "emptyIntro": "這位球員還沒有填寫簡介。",
+      "viewPublicProfile": "查看公開主頁",
+      "teamHome": "球隊主頁",
+      "noTeam": "未加入球隊",
+      "allTeamsCrest": "全",
+      "crossTeam": "跨全部代表球隊",
+      "notJoinedTeam": "尚未加入球隊",
+      "position": "守備位置",
+      "throwBat": "投打",
+      "heightWeight": "身高 / 體重",
+      "birthPlace": "出生地",
+      "handLeft": "左",
+      "handRight": "右",
+      "handBoth": "左右",
+      "throwBatValue": "{throwHand}投{batHand}打"
+    },
+    "scope": {
+      "title": "資料範圍",
+      "gameMode": "運動類型",
+      "allLeagues": "全部聯盟",
+      "representingTeams": "代表 {n} 支球隊",
+      "allLeagueEvents": "本聯盟全部賽事",
+      "leagueFallback": "聯盟{id}",
+      "allEvents": "全部賽事",
+      "noGames": "暫無比賽"
+    },
+    "layoutEdit": {
+      "title": "布局編輯",
+      "dropToSwap": "鬆開與「{name}」交換位置",
+      "contentLimit": "內容下限 {height}px",
+      "hint": "拖動模組調整位置；拖到另一模組上可交換；拖動八個小方塊縮放；點擊空白處取消選取",
+      "resetSize": "重設尺寸",
+      "saving": "儲存中…",
+      "saved": "已儲存",
+      "done": "完成",
+      "releaseToSwap": "鬆手交換",
+      "resizeNw": "左上縮放",
+      "resizeN": "向上縮放",
+      "resizeNe": "右上縮放",
+      "resizeW": "向左縮放",
+      "resizeE": "向右縮放",
+      "resizeSw": "左下縮放",
+      "resizeS": "向下縮放",
+      "resizeSe": "右下縮放"
+    },
+    "modules": {
+      "ranks": {
+        "label": "隊內座標",
+        "placeholderHint": "選擇球隊後顯示；此位置會保留",
+        "switchScope": "切換",
+        "playerCount": "{n} 人",
+        "noteLabel": "口徑",
+        "rankInTeam": "隊內第 {n}",
+        "noRank": "暫無排名",
+        "noMetric": "暫無該資料",
+        "scopeSameEvent": "同隊同賽事",
+        "scopeSameLeague": "同隊同聯盟",
+        "scopeTeamCareer": "球隊跨賽事生涯",
+        "note": "{scope} · 無最低打席門檻 · 全壘打不進入排名"
+      },
+      "evaluation": {
+        "label": "整體評價",
+        "compare": "對比 · {scope}",
+        "overallScore": "綜合評分",
+        "noScore": "暫無評分",
+        "strength": "強項",
+        "improve": "提升",
+        "empty": "暫無評價資料",
+        "defaultComparison": "全租戶生涯",
+        "rolePositionPlayer": "野手",
+        "rolePitcher": "投手",
+        "roleTwoWay": "二刀流",
+        "rolePlayer": "球員"
+      },
+      "spray": {
+        "label": "打擊落點"
+      },
+      "milestones": {
+        "label": "生涯里程碑"
+      },
+      "performance": {
+        "label": "資料表現"
+      },
+      "schedule": {
+        "label": "接下來的比賽"
+      },
+      "recentGames": {
+        "label": "最近戰報"
+      },
+      "teams": {
+        "label": "代表球隊"
+      },
+      "quickLinks": {
+        "label": "快捷入口"
+      }
+    },
+    "settings": {
+      "title": "資料設定",
+      "modulesTitle": "模組布局",
+      "modulesHint": "拖動左側把手排序，也可用上下按鈕微調；順序用於手機/緊湊模式。桌面位置與大小請在頁面「編輯布局」中拖動調整。",
+      "ranksOnlyWithTeam": "僅在選擇球隊後顯示",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "toggleModuleAria": "顯示{name}",
+      "enabledCount": "已啟用 {enabled} / {total}",
+      "milestonesTitle": "生涯里程碑 · 最多 {max} 項",
+      "milestonesHint": "選擇要展示的累計指標；時間線會展示已選指標最近達成的里程碑。",
+      "selectedCount": "已選 {selected} / {max}",
+      "performanceTitle": "表現圖",
+      "performanceHint": "選擇要展示的指標與圖表類型；不可用的指標會置灰。",
+      "metric": "指標",
+      "chartType": "圖表類型",
+      "ranksTitle": "隊內排名 · 四個指標",
+      "ranksHint": "排名按目前代表球隊的同隊同賽事或球隊跨賽事生涯計算；未選擇球隊時模組不顯示。預設不提供全壘打。",
+      "rankSlot": "排名位 {n}",
+      "resetDefaults": "恢復預設",
+      "save": "儲存",
+      "vizKpi": "大數字",
+      "vizLine": "折線圖",
+      "vizBar": "柱狀圖",
+      "vizDonut": "環形圖"
+    },
+    "empty": {
+      "allHiddenTitle": "所有內容模組已隱藏",
+      "allHiddenBody": "可以隨時在資料設定裡重新開啟需要的內容。",
+      "scopeEmptyTitle": "目前範圍暫無展示模組",
+      "scopeEmptyBody": "選擇球隊或在資料設定中啟用其他模組。",
+      "goSettings": "去設定",
+      "loadFailed": "駕駛艙載入失敗",
+      "reload": "重新載入",
+      "unclaimed": "尚未關聯球員資料"
+    },
+    "card": {
+      "zoomOpenAria": "放大查看球星卡",
+      "zoomDialogAria": "球星卡放大查看",
+      "closeZoomAria": "關閉放大",
+      "radarAria": "{title}雷達圖，{axes}",
+      "radarAxis": "{label}{value}，百分位{percentile}",
+      "radarAxisSeparator": "；"
+    },
+    "spray": {
+      "modeAria": "落點顯示模式",
+      "heatmap": "熱力圖",
+      "animation": "落點動畫",
+      "replay": "重播",
+      "loading": "正在載入打擊落點…",
+      "loadFailed": "打擊落點載入失敗",
+      "empty": "目前範圍還沒有記錄擊球落點。",
+      "chartAria": "打擊落點分區",
+      "zoneStats": "區域統計",
+      "typeStats": "球種統計",
+      "hits": "安打",
+      "homeRuns": "全壘打",
+      "outs": "出局",
+      "hitsCount": "安打 {n}",
+      "recordedBalls": "記錄 {n} 球",
+      "gamesCount": "{n} 場"
+    },
+    "milestones": {
+      "reached": "已達成 {n} 項",
+      "nextStop": "下一站 {target}",
+      "loading": "正在載入生涯里程碑…",
+      "loadFailed": "里程碑載入失敗",
+      "remaining": "還差 {remaining} {unit}",
+      "maxReached": "已達最高里程碑",
+      "recentTitle": "最近里程碑",
+      "recentSummary": "最近 {shown} 項 / 共 {total} 項",
+      "timelineAria": "最近里程碑時間線",
+      "empty": "還沒有達成里程碑，繼續保持。",
+      "note": "統計自系統記錄 · 僅計入排行的比賽",
+      "unavailable": "暫無生涯累計資料。",
+      "statusLoading": "載入中",
+      "statusUnavailable": "暫不可用",
+      "waitingData": "等待資料",
+      "noDate": "日期未記錄"
+    },
+    "performance": {
+      "defaultLabel": "資料",
+      "hitsLabel": "安打",
+      "trendAria": "{metric}走勢",
+      "chartNote": "近 {n} 場 · 按比賽日排序",
+      "empty": "所選範圍暫無比賽資料。"
+    },
+    "schedule": {
+      "allEvents": "全部賽程",
+      "currentEvent": "目前賽事",
+      "currentLeague": "目前聯盟",
+      "noUpcomingForEvent": "目前賽事近期暫無未開賽比賽",
+      "leagueEventCount": "共 {n} 項賽事",
+      "venueTbd": "場地待定",
+      "gameDetail": "賽事詳情",
+      "statusScheduled": "賽程中",
+      "crossTeamCareer": "跨球隊生涯",
+      "emptyEvent": "該賽事暫無未開賽的比賽。",
+      "emptyLeague": "該聯盟暫無未開賽的比賽。",
+      "emptyTeam": "該球隊暫無未開賽的比賽。",
+      "empty": "暫無未開賽的比賽。"
+    },
+    "recentGames": {
+      "allGames": "比賽記錄",
+      "final": "最終",
+      "emptyEvent": "該賽事暫無比賽記錄。",
+      "emptyLeague": "該聯盟暫無比賽記錄。",
+      "emptyTeam": "該球隊暫無比賽記錄。",
+      "empty": "暫無比賽記錄。",
+      "battingLine": "{ab}打數 {h}安打",
+      "rbiLine": "{n}打點",
+      "sbLine": "{n}盜壘",
+      "pitchingLine": "{ip}局 · {so}三振 · {er}自責分",
+      "noIndividualStats": "本場暫無個人資料"
+    },
+    "teams": {
+      "pointsNote": "球隊積分按各隊主賽事顯示",
+      "noEvents": "暫無已確認賽事",
+      "noRecord": "暫無戰績"
+    },
+    "quickLinks": {
+      "publicProfile": "公開球員主頁",
+      "claims": "我的認領與資料"
+    },
+    "countdown": {
+      "today": "今天",
+      "tomorrow": "明天",
+      "days": "還有 {n} 天"
+    },
+    "weekday": {
+      "sun": "週日",
+      "mon": "週一",
+      "tue": "週二",
+      "wed": "週三",
+      "thu": "週四",
+      "fri": "週五",
+      "sat": "週六"
+    },
+    "toast": {
+      "layoutSaveFailed": "布局儲存失敗",
+      "resetSizeConflict": "預設尺寸會與其他模組重疊，請先調整位置",
+      "rankDuplicates": "四個排名位需要選擇不同指標",
+      "milestonesRequired": "生涯里程碑至少選擇 1 個指標",
+      "settingsSaved": "資料設定已儲存",
+      "saveFailed": "儲存失敗",
+      "resetDone": "已恢復預設",
+      "resetFailed": "恢復失敗",
+      "unclaimed": "目前帳號未關聯球員資料，已返回門戶"
+    },
+    "confirm": {
+      "resetTitle": "恢復預設",
+      "resetMessage": "恢復預設資料設定？目前選擇將被覆蓋。",
+      "resetConfirm": "恢復"
+    },
+    "common": {
+      "notFilled": "未填寫"
+    }
   }
 }

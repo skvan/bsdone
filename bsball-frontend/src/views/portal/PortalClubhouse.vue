@@ -3,44 +3,46 @@
     <template v-if="data">
       <div class="page-head">
         <div>
-          <div class="breadcrumb">门户 / <b>我的主场</b></div>
-          <h1>我的主场</h1>
-          <p class="page-sub">球员个人主页 · 已关联球员档案</p>
+          <div class="breadcrumb">{{ translate('clubhouse.header.breadcrumbPortal') }} / <b>{{ translate('nav.clubhouse') }}</b></div>
+          <h1>{{ translate('nav.clubhouse') }}</h1>
+          <p class="page-sub">{{ translate('clubhouse.header.subtitle') }}</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
-          <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
-          <el-button link type="primary" @click="goAccount">个人资料</el-button>
-          <el-button @click="goPortal">返回门户</el-button>
+          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">{{ translate('clubhouse.header.editLayout') }}</el-button>
+          <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">{{ translate('clubhouse.settings.title') }}</el-button>
+          <el-button link type="primary" @click="goAccount">{{ translate('nav.accountProfile') }}</el-button>
+          <el-button @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
         </div>
       </div>
 
       <div class="scope-bar">
-        <span class="scope-title">数据范围</span>
+        <span class="scope-title">{{ translate('clubhouse.scope.title') }}</span>
         <el-select
           v-if="availableGameModes.length > 1"
           v-model="gameMode"
           size="small"
           class="scope-select scope-game-mode"
-          aria-label="运动类型"
+          :aria-label="translate('clubhouse.scope.gameMode')"
           :disabled="layoutEditing"
           @change="onGameModeChange"
         >
           <el-option v-for="mode in availableGameModes" :key="mode" :label="gameModeLabel(mode)" :value="mode" />
         </el-select>
-        <el-select v-model="teamId" size="small" class="scope-select scope-team" aria-label="球队" :disabled="layoutEditing" @change="onTeamChange">
-          <el-option label="全部球队" :value="SCOPE_ALL" />
+        <el-select v-model="teamId" size="small" class="scope-select scope-team" :aria-label="translate('nav.teams')" :disabled="layoutEditing" @change="onTeamChange">
+          <el-option :label="translate('stats.allTeams')" :value="SCOPE_ALL" />
           <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
-        <el-select v-model="leagueId" size="small" class="scope-select scope-league" aria-label="联盟" :disabled="layoutEditing" @change="onLeagueChange">
-          <el-option label="全部联盟" :value="SCOPE_ALL" />
+        <el-select v-model="leagueId" size="small" class="scope-select scope-league" :aria-label="translate('nav.leagues')" :disabled="layoutEditing" @change="onLeagueChange">
+          <el-option :label="translate('clubhouse.scope.allLeagues')" :value="SCOPE_ALL" />
           <el-option v-for="league in availableLeagues" :key="league.id" :label="league.name" :value="league.id" />
         </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select scope-event" aria-label="赛事" :disabled="layoutEditing" @change="onEventChange">
+        <el-select v-model="eventId" size="small" class="scope-select scope-event" :aria-label="translate('player.event')" :disabled="layoutEditing" @change="onEventChange">
           <el-option :label="eventAllLabel" :value="SCOPE_ALL" />
           <el-option v-for="event in eventOptions" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
         </el-select>
-        <span class="scope-right">代表 <b>{{ availableTeams.length }}</b> 支球队</span>
+        <i18n-t keypath="clubhouse.scope.representingTeams" tag="span" class="scope-right">
+          <template #n><b>{{ availableTeams.length }}</b></template>
+        </i18n-t>
       </div>
 
       <section class="hero">
@@ -48,11 +50,11 @@
         <div class="hero-left">
           <div class="hero-top">
             <span class="hero-kicker">MY CLUBHOUSE</span>
-            <span class="claim"><i></i>已关联球员档案</span>
+            <span class="claim"><i></i>{{ translate('clubhouse.header.claimedBadge') }}</span>
           </div>
           <h1>{{ player.name }}</h1>
           <p class="hero-en">{{ player.nameEn || 'PLAYER' }} <template v-if="player.number">· #{{ player.number }}</template></p>
-          <p class="hero-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
+          <p class="hero-intro">{{ player.intro || translate('clubhouse.header.emptyIntro') }}</p>
           <div class="hero-tags">
             <span v-for="position in player.positions || []" :key="position" class="tag">{{ position }}</span>
             <span class="tag">{{ throwBatLabel }}</span>
@@ -66,13 +68,13 @@
             </div>
           </div>
           <div class="hero-actions">
-            <button class="hero-btn primary" type="button" @click="goPublicProfile">查看公开主页</button>
-            <button class="hero-btn ghost" type="button" @click="goTeam">球队主页</button>
+            <button class="hero-btn primary" type="button" @click="goPublicProfile">{{ translate('clubhouse.header.viewPublicProfile') }}</button>
+            <button class="hero-btn ghost" type="button" @click="goTeam">{{ translate('clubhouse.header.teamHome') }}</button>
           </div>
         </div>
 
         <div class="card-stage">
-          <button ref="heroCardBtnRef" type="button" class="card-slot" :style="{ '--hero-tilt': `${heroTiltDeg}deg` }" aria-label="放大查看球星卡" @click="openCardZoom">
+          <button ref="heroCardBtnRef" type="button" class="card-slot" :style="{ '--hero-tilt': `${heroTiltDeg}deg` }" :aria-label="translate('clubhouse.card.zoomOpenAria')" @click="openCardZoom">
             <span class="card-stack two" aria-hidden="true">
               <ClubhousePlayerCard v-bind="fanLegendCards[1]" :scale="heroCardScale" />
             </span>
@@ -85,27 +87,27 @@
       </section>
 
       <div class="identity-band">
-        <div class="id-item"><span>守备位置</span><b>{{ primaryPosition }}</b></div>
-        <div class="id-item"><span>投打</span><b>{{ throwBatLabel }}</b></div>
-        <div class="id-item"><span>身高 / 体重</span><b><em>{{ player.height || '-' }}</em> / {{ player.weight || '-' }}</b></div>
-        <div class="id-item"><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
+        <div class="id-item"><span>{{ translate('clubhouse.header.position') }}</span><b>{{ primaryPosition }}</b></div>
+        <div class="id-item"><span>{{ translate('clubhouse.header.throwBat') }}</span><b>{{ throwBatLabel }}</b></div>
+        <div class="id-item"><span>{{ translate('clubhouse.header.heightWeight') }}</span><b><em>{{ player.height || '-' }}</em> / {{ player.weight || '-' }}</b></div>
+        <div class="id-item"><span>{{ translate('clubhouse.header.birthPlace') }}</span><b>{{ player.birthPlace || translate('clubhouse.common.notFilled') }}</b></div>
       </div>
 
       <div v-if="layoutEditing" class="layout-edit-banner">
         <div class="edit-copy">
-          <b>布局编辑</b>
-          <span v-if="swapTargetLabel" class="edit-swap" role="status" aria-live="polite">松开与「{{ swapTargetLabel }}」交换位置</span>
+          <b>{{ translate('clubhouse.layoutEdit.title') }}</b>
+          <span v-if="swapTargetLabel" class="edit-swap" role="status" aria-live="polite">{{ translate('clubhouse.layoutEdit.dropToSwap', { name: swapTargetLabel }) }}</span>
           <span v-else-if="selectedModule" class="edit-selected">
             <b>{{ selectedModule.label }}</b>
             <em>{{ selectionSizeLabel }}</em>
-            <i v-if="contentLimitHeight" class="edit-content-limit">内容下限 {{ contentLimitHeight }}px</i>
+            <i v-if="contentLimitHeight" class="edit-content-limit">{{ translate('clubhouse.layoutEdit.contentLimit', { height: contentLimitHeight }) }}</i>
           </span>
-          <span v-else>拖动模块调整位置；拖到另一模块上可交换；拖动八个小方块缩放；点击空白处取消选中</span>
+          <span v-else>{{ translate('clubhouse.layoutEdit.hint') }}</span>
         </div>
         <div class="edit-actions">
-          <button v-if="selectedModule" type="button" class="edit-reset" :disabled="layoutSaving" @click="resetSelectedModule">重置尺寸</button>
-          <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? '保存中…' : layoutStatus === 'saved' ? '已保存' : '' }}</span>
-          <button type="button" class="edit-done" @click="finishLayoutEditing">完成</button>
+          <button v-if="selectedModule" type="button" class="edit-reset" :disabled="layoutSaving" @click="resetSelectedModule">{{ translate('clubhouse.layoutEdit.resetSize') }}</button>
+          <span class="edit-status" :class="{ 'is-saved': layoutStatus === 'saved' }" role="status" aria-live="polite">{{ layoutStatus === 'saving' ? translate('clubhouse.layoutEdit.saving') : layoutStatus === 'saved' ? translate('clubhouse.layoutEdit.saved') : '' }}</span>
+          <button type="button" class="edit-done" @click="finishLayoutEditing">{{ translate('clubhouse.layoutEdit.done') }}</button>
         </div>
       </div>
 
@@ -128,8 +130,8 @@
       >
         <div class="rank-placeholder-copy">
           <span class="kicker">TEAM RANKING</span>
-          <b>队内坐标</b>
-          <span>选择球队后显示；此位置会保留</span>
+          <b>{{ translate('clubhouse.modules.ranks.label') }}</b>
+          <span>{{ translate('clubhouse.modules.ranks.placeholderHint') }}</span>
         </div>
       </section>
 
@@ -146,11 +148,11 @@
         <div class="rank-band-head">
           <div>
             <span class="kicker">TEAM RANKING</span>
-            <h2>队内坐标 <small>{{ rankScopeLabel }}</small></h2>
+            <h2>{{ translate('clubhouse.modules.ranks.label') }} <small>{{ rankScopeLabel }}</small></h2>
           </div>
-          <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '生涯' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
+          <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || translate('player.dimensionCareer') }}<template v-if="rankPopulation"> · {{ translate('clubhouse.modules.ranks.playerCount', { n: rankPopulation }) }}</template> <a href="#" @click.prevent="openSettings">{{ translate('clubhouse.modules.ranks.switchScope') }}</a></span>
         </div>
-        <p class="rank-note"><b>口径</b><span>{{ rankNote }}</span></p>
+        <p class="rank-note"><b>{{ translate('clubhouse.modules.ranks.noteLabel') }}</b><span>{{ rankNote }}</span></p>
         <div class="rank-band-grid">
           <div v-for="(rank, index) in data.ranks" :key="rank.metricKey || index" class="rank-feature" :class="{ neutral: rank.rank == null || rank.metricKey === 'batting.obp' }">
             <div class="line">
@@ -161,7 +163,7 @@
               </div>
               <span class="value">{{ rank.rank != null ? rank.value : '-' }}</span>
             </div>
-            <div class="metric">{{ rank.label }}<span>{{ rank.rank != null ? `队内第 ${rank.rank}` : (rank.available ? '暂无排名' : '暂无该数据') }}</span></div>
+            <div class="metric">{{ rank.label }}<span>{{ rank.rank != null ? translate('clubhouse.modules.ranks.rankInTeam', { n: rank.rank }) : (rank.available ? translate('clubhouse.modules.ranks.noRank') : translate('clubhouse.modules.ranks.noMetric')) }}</span></div>
             <div class="track"><i :style="{ width: `${rank.rank != null ? rank.barPct : 0}%` }"></i></div>
           </div>
         </div>
@@ -180,7 +182,7 @@
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
-            <h3>总体评价 <small class="eval-scope">对比 · {{ evaluationComparison }}</small></h3>
+            <h3>{{ translate('clubhouse.modules.evaluation.label') }} <small class="eval-scope">{{ translate('clubhouse.modules.evaluation.compare', { scope: evaluationComparison }) }}</small></h3>
           </div>
           <div v-if="evaluationOverall.score != null" class="eval-overall" :style="{ '--eo-grade': overallGradeAccent }">
             <div class="eo-score">
@@ -204,10 +206,10 @@
                 <h4>{{ card.title }}</h4>
               </div>
               <div v-if="card.available" class="radar-score">
-                <b>{{ card.score }}</b><em>{{ card.grade }}</em><span>综合评分</span>
+                <b>{{ card.score }}</b><em>{{ card.grade }}</em><span>{{ translate('clubhouse.modules.evaluation.overallScore') }}</span>
               </div>
               <div v-else class="radar-score is-empty">
-                <b>—</b><span>暂无评分</span>
+                <b>—</b><span>{{ translate('clubhouse.modules.evaluation.noScore') }}</span>
               </div>
             </div>
 
@@ -250,13 +252,13 @@
                 </div>
               </div>
               <div class="radar-highlights">
-                <span>强项<b>{{ card.strongest.label }}</b><em>{{ card.strongest.percentile }}</em></span>
-                <span>提升<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
+                <span>{{ translate('clubhouse.modules.evaluation.strength') }}<b>{{ card.strongest.label }}</b><em>{{ card.strongest.percentile }}</em></span>
+                <span>{{ translate('clubhouse.modules.evaluation.improve') }}<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
               </div>
             </template>
             <div v-else class="radar-empty">
               <b>—</b>
-              <span>{{ card.reason || '暂无评价数据' }}</span>
+              <span>{{ card.reason || translate('clubhouse.modules.evaluation.empty') }}</span>
             </div>
           </article>
         </div>
@@ -275,26 +277,32 @@
         <div class="panel-head spray-head">
           <div>
             <span class="kicker">SPRAY CHART</span>
-            <h3>打击落点</h3>
+            <h3>{{ translate('clubhouse.modules.spray.label') }}</h3>
           </div>
           <div class="spray-head-actions">
-            <div class="spray-modes" role="group" aria-label="落点显示模式">
-              <button type="button" :class="{ 'is-active': sprayMode === 'heat' }" @click="setSprayMode('heat')">热力图</button>
-              <button type="button" :class="{ 'is-active': sprayMode === 'animate' }" @click="setSprayMode('animate')">落点动画</button>
+            <div class="spray-modes" role="group" :aria-label="translate('clubhouse.spray.modeAria')">
+              <button type="button" :class="{ 'is-active': sprayMode === 'heat' }" @click="setSprayMode('heat')">{{ translate('clubhouse.spray.heatmap') }}</button>
+              <button type="button" :class="{ 'is-active': sprayMode === 'animate' }" @click="setSprayMode('animate')">{{ translate('clubhouse.spray.animation') }}</button>
             </div>
             <div class="spray-summary">
-              <span>安打 <b>{{ spraySummary.hits || 0 }}</b></span>
-              <span>记录 <b>{{ spraySummary.balls || 0 }}</b> 球</span>
-              <span><b>{{ spraySummary.games || 0 }}</b> 场</span>
+              <i18n-t keypath="clubhouse.spray.hitsCount" tag="span">
+                <template #n><b>{{ spraySummary.hits || 0 }}</b></template>
+              </i18n-t>
+              <i18n-t keypath="clubhouse.spray.recordedBalls" tag="span">
+                <template #n><b>{{ spraySummary.balls || 0 }}</b></template>
+              </i18n-t>
+              <i18n-t keypath="clubhouse.spray.gamesCount" tag="span">
+                <template #n><b>{{ spraySummary.games || 0 }}</b></template>
+              </i18n-t>
             </div>
-            <button v-if="sprayMode === 'animate'" type="button" class="spray-replay" @click="replaySprayAnimation">重播</button>
+            <button v-if="sprayMode === 'animate'" type="button" class="spray-replay" @click="replaySprayAnimation">{{ translate('clubhouse.spray.replay') }}</button>
           </div>
         </div>
-        <div v-if="spraysLoading" class="data-empty">正在加载打击落点…</div>
+        <div v-if="spraysLoading" class="data-empty">{{ translate('clubhouse.spray.loading') }}</div>
         <div v-else-if="spraysError" class="data-empty">{{ spraysError }}</div>
-        <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">当前范围还没有记录击球落点。</div>
+        <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">{{ translate('clubhouse.spray.empty') }}</div>
         <div v-else class="spray-body">
-          <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点分区">
+          <svg class="spray-field" :viewBox="sprayViewBox" role="img" :aria-label="translate('clubhouse.spray.chartAria')">
             <defs>
               <linearGradient :id="sprayGrassId" x1="0%" y1="100%" x2="0%" y2="0%">
                 <stop offset="0%" stop-color="#2d7a32" />
@@ -366,7 +374,7 @@
           </svg>
           <div class="spray-side">
             <div class="spray-group">
-              <div class="spray-group-title">区域统计</div>
+              <div class="spray-group-title">{{ translate('clubhouse.spray.zoneStats') }}</div>
               <div class="spray-legend">
                 <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
                   <i :style="{ background: zone.heat }"></i>
@@ -378,7 +386,7 @@
               </div>
             </div>
             <div class="spray-group">
-              <div class="spray-group-title">球种统计</div>
+              <div class="spray-group-title">{{ translate('clubhouse.spray.typeStats') }}</div>
               <div class="spray-types">
                 <span v-for="type in sprayTypes" :key="`type-${type.code}`" class="spray-type-chip">
                   <i :style="{ background: sprayTypeColor(type.code) }"></i>
@@ -388,9 +396,9 @@
                 </span>
               </div>
               <div v-if="sprayMode === 'heat'" class="spray-legend-keys">
-                <span><i class="is-hit"></i>安打</span>
-                <span><i class="is-hr"></i>全垒打</span>
-                <span><i class="is-out"></i>出局</span>
+                <span><i class="is-hit"></i>{{ translate('clubhouse.spray.hits') }}</span>
+                <span><i class="is-hr"></i>{{ translate('clubhouse.spray.homeRuns') }}</span>
+                <span><i class="is-out"></i>{{ translate('clubhouse.spray.outs') }}</span>
               </div>
             </div>
           </div>
@@ -410,15 +418,19 @@
         <div class="panel-head milestone-head">
           <div>
             <span class="kicker">CAREER MILESTONES</span>
-            <h3>生涯里程碑</h3>
+            <h3>{{ translate('clubhouse.modules.milestones.label') }}</h3>
           </div>
           <div class="milestone-summary">
-            <span>已达成 <b>{{ milestoneData.reachedCount || 0 }}</b> 项</span>
-            <span>下一站 <b>{{ nextMilestoneText }}</b></span>
+            <i18n-t keypath="clubhouse.milestones.reached" tag="span">
+              <template #n><b>{{ milestoneData.reachedCount || 0 }}</b></template>
+            </i18n-t>
+            <i18n-t keypath="clubhouse.milestones.nextStop" tag="span">
+              <template #target><b>{{ nextMilestoneText }}</b></template>
+            </i18n-t>
           </div>
         </div>
 
-        <div v-if="milestonesLoading" class="data-empty">正在加载生涯里程碑…</div>
+        <div v-if="milestonesLoading" class="data-empty">{{ translate('clubhouse.milestones.loading') }}</div>
         <template v-else-if="milestoneData.available">
           <div class="milestone-body">
             <div class="milestone-metrics">
@@ -433,27 +445,27 @@
                 <div class="mm-label">{{ item.label }}</div>
                 <div class="mm-track"><i :style="{ width: `${item.progressPct}%` }"></i></div>
                 <div class="mm-foot">
-                  <span>{{ item.nextTarget ? `还差 ${item.remaining} ${item.unit}` : '已达最高里程碑' }}</span>
+                  <span>{{ item.nextTarget ? translate('clubhouse.milestones.remaining', { remaining: item.remaining, unit: item.unit }) : translate('clubhouse.milestones.maxReached') }}</span>
                   <b>{{ item.progressPct }}%</b>
                 </div>
               </article>
             </div>
             <div class="milestone-timeline">
-              <div class="mt-head"><b>最近里程碑</b><span>最近 {{ milestoneTimeline.length }} 项 / 共 {{ milestoneData.reachedCount || 0 }} 项</span></div>
+              <div class="mt-head"><b>{{ translate('clubhouse.milestones.recentTitle') }}</b><span>{{ translate('clubhouse.milestones.recentSummary', { shown: milestoneTimeline.length, total: milestoneData.reachedCount || 0 }) }}</span></div>
               <div v-if="milestoneTimeline.length" class="mt-scroll">
                 <div
                   ref="milestoneListEl"
                   class="mt-list"
                   tabindex="0"
                   role="region"
-                  aria-label="最近里程碑时间线"
+                  :aria-label="translate('clubhouse.milestones.timelineAria')"
                   @scroll="updateMilestoneScrollbar"
                 >
                   <div v-for="event in milestoneTimeline" :key="`${event.metricKey}-${event.gameId}-${event.title}`" class="mt-row">
                     <span class="mt-dot"></span>
                     <div class="mt-copy">
                       <b>{{ event.title }}</b>
-                      <span>{{ event.eventName || '赛事' }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
+                      <span>{{ event.eventName || translate('player.event') }}<template v-if="event.opponentName"> · vs {{ event.opponentName }}</template></span>
                     </div>
                     <time>{{ formatMilestoneDate(event.gameday) }}</time>
                   </div>
@@ -466,12 +478,12 @@
                   ></span>
                 </div>
               </div>
-              <p v-else class="mt-empty">还没有达成里程碑，继续保持。</p>
-              <p class="mt-note">{{ milestoneData.note || '统计自系统记录 · 仅计入排行的比赛' }}</p>
+              <p v-else class="mt-empty">{{ translate('clubhouse.milestones.empty') }}</p>
+              <p class="mt-note">{{ translate('clubhouse.milestones.note') }}</p>
             </div>
           </div>
         </template>
-        <div v-else class="data-empty">{{ milestonesError || '暂无生涯累计数据。' }}</div>
+        <div v-else class="data-empty">{{ milestonesError || translate('clubhouse.milestones.unavailable') }}</div>
       </section>
 
       <div class="content-grid">
@@ -487,18 +499,18 @@
             @keydown="onModuleKeydown('performance', $event)"
           >
             <div class="panel-head">
-              <div><span class="kicker">PERFORMANCE</span><h3>数据表现 <small>{{ performanceScopeLabel }}</small></h3></div>
+              <div><span class="kicker">PERFORMANCE</span><h3>{{ translate('clubhouse.modules.performance.label') }} <small>{{ performanceScopeLabel }}</small></h3></div>
               <div class="panel-head-actions">
                 <div class="chart-summary">
                   <div><b>{{ performanceSummary }}</b><span>{{ performanceLabel }}</span></div>
                 </div>
-                <el-button link :icon="Setting" aria-label="数据设置" @click="openSettings" />
+                <el-button link :icon="Setting" :aria-label="translate('clubhouse.settings.title')" @click="openSettings" />
               </div>
             </div>
 
             <div v-if="data.performance.available && data.performance.viz === 'donut'" class="donut-wrap">
               <div class="donut" :style="{ background: donutStyle }">
-                <div class="donut-center"><b>{{ donutTotal }}</b><span>安打</span></div>
+                <div class="donut-center"><b>{{ donutTotal }}</b><span>{{ translate('clubhouse.performance.hitsLabel') }}</span></div>
               </div>
               <div class="donut-legend">
                 <div v-for="(item, index) in data.performance.items" :key="item.label" class="donut-legend-row">
@@ -513,7 +525,7 @@
             </div>
 
             <div v-else-if="chart.points.length" class="chart-wrap">
-              <svg class="trend-chart" viewBox="0 0 640 190" role="img" :aria-label="`${performanceLabel}走势`">
+              <svg class="trend-chart" viewBox="0 0 640 190" role="img" :aria-label="translate('clubhouse.performance.trendAria', { metric: performanceLabel })">
                 <defs>
                   <linearGradient :id="areaGradientId" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stop-color="var(--bs-chart-line)" stop-opacity=".24" />
@@ -532,10 +544,10 @@
                 </template>
                 <text v-for="label in chart.xLabels" :key="`x-${label.x}`" class="axis" :x="label.x" y="182">{{ label.text }}</text>
               </svg>
-              <div class="chart-note"><span>近 {{ chart.points.length }} 场 · 按比赛日排序</span><b>{{ performanceScopeLabel }}</b></div>
+              <div class="chart-note"><span>{{ translate('clubhouse.performance.chartNote', { n: chart.points.length }) }}</span><b>{{ performanceScopeLabel }}</b></div>
             </div>
 
-            <div v-else class="data-empty">所选范围暂无比赛数据。</div>
+            <div v-else class="data-empty">{{ translate('clubhouse.performance.empty') }}</div>
 
             <div v-if="matrixItems.length" class="matrix-grid">
               <div v-for="item in matrixItems" :key="item.label" class="matrix-item">
@@ -554,37 +566,37 @@
             @pointerdown="startModulePointer('schedule', $event)"
             @keydown="onModuleKeydown('schedule', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>接下来的比赛 <small>{{ scheduleScopeLabel }}</small></h3></div><el-button link type="primary" @click="goEvents">全部赛程</el-button></div>
+            <div class="panel-head"><div><span class="kicker">UP NEXT</span><h3>{{ translate('clubhouse.modules.schedule.label') }} <small>{{ scheduleScopeLabel }}</small></h3></div><el-button link type="primary" @click="goEvents">{{ translate('clubhouse.schedule.allEvents') }}</el-button></div>
             <div v-if="currentEvent" class="event-context">
-              <span class="ec-label">当前赛事</span>
+              <span class="ec-label">{{ translate('clubhouse.schedule.currentEvent') }}</span>
               <b>{{ currentEvent.name }}</b>
               <span class="ec-status" :class="currentEvent.status ? `is-${currentEvent.status}` : ''">{{ currentEventStatus }}</span>
               <span v-if="currentEventDateRange" class="ec-dates">{{ currentEventDateRange }}</span>
-              <span v-if="featuredGame && !featuredGameIsCurrent" class="ec-note">当前赛事近期暂无未开赛比赛</span>
+              <span v-if="featuredGame && !featuredGameIsCurrent" class="ec-note">{{ translate('clubhouse.schedule.noUpcomingForEvent') }}</span>
             </div>
             <div v-else-if="scopeLeague" class="event-context">
-              <span class="ec-label">当前联盟</span>
+              <span class="ec-label">{{ translate('clubhouse.schedule.currentLeague') }}</span>
               <b>{{ scopeLeague.name }}</b>
-              <span class="ec-note">共 {{ scopeLeague.count }} 项赛事</span>
+              <span class="ec-note">{{ translate('clubhouse.schedule.leagueEventCount', { n: scopeLeague.count }) }}</span>
             </div>
             <div v-if="featuredGame" class="next-game">
-              <div class="ng-head"><span class="event-pill">{{ featuredGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(featuredGame.gameday) }}</span></div>
+              <div class="ng-head"><span class="event-pill">{{ featuredGame.eventName || translate('player.event') }}</span><span class="countdown">{{ countdown(featuredGame.gameday) }}</span></div>
               <div class="ng-body">
-                <div class="ng-side"><span class="crest">{{ featuredGame.teamName?.slice(0, 2) || '?' }}</span><div><b>{{ featuredGame.teamName }}</b><span>{{ featuredGame.isHome ? '主场' : '客场' }}</span></div></div>
+                <div class="ng-side"><span class="crest">{{ featuredGame.teamName?.slice(0, 2) || '?' }}</span><div><b>{{ featuredGame.teamName }}</b><span>{{ homeAwayLabel(featuredGame.isHome) }}</span></div></div>
                 <span class="ng-vs">VS</span>
-                <div class="ng-side right"><div><b>{{ featuredGame.opponentName }}</b><span>{{ featuredGame.isHome ? '客场' : '主场' }}</span></div><span class="crest dark">{{ opponentCrest(featuredGame) }}</span></div>
+                <div class="ng-side right"><div><b>{{ featuredGame.opponentName }}</b><span>{{ homeAwayLabel(!featuredGame.isHome) }}</span></div><span class="crest dark">{{ opponentCrest(featuredGame) }}</span></div>
               </div>
               <div class="ng-foot">
-                <div class="ng-meta"><span>{{ formatDay(featuredGame.gameday) }} · {{ weekday(featuredGame.gameday) }}</span><span>{{ featuredGame.venue || '场地待定' }}</span><span><b>{{ featuredGame.gameTime || '--:--' }}</b></span></div>
-                <el-button link type="primary" @click="goGame(featuredGame)">赛事详情 ›</el-button>
+                <div class="ng-meta"><span>{{ formatDay(featuredGame.gameday) }} · {{ weekday(featuredGame.gameday) }}</span><span>{{ featuredGame.venue || translate('clubhouse.schedule.venueTbd') }}</span><span><b>{{ featuredGame.gameTime || '--:--' }}</b></span></div>
+                <el-button link type="primary" @click="goGame(featuredGame)">{{ translate('clubhouse.schedule.gameDetail') }} ›</el-button>
               </div>
             </div>
             <div v-else class="data-empty">{{ scheduleEmptyText }}</div>
             <div v-if="upcomingGames.length" class="schedule-list">
               <div v-for="game in upcomingGames" :key="game.gameId" class="schedule-row">
                 <div class="sch-date">{{ formatDay(game.gameday) }}<span>{{ weekday(game.gameday) }}</span></div>
-                <div class="sch-main"><b>{{ game.teamName }} {{ game.isHome ? 'vs' : '@' }} {{ game.opponentName }}</b><span>{{ game.isHome ? '主场' : '客场' }} · {{ game.teamName }}</span></div>
-                <span class="sch-event" :class="eventTone(game.eventName)">{{ game.eventName || '赛事' }}</span>
+                <div class="sch-main"><b>{{ game.teamName }} {{ game.isHome ? 'vs' : '@' }} {{ game.opponentName }}</b><span>{{ homeAwayLabel(game.isHome) }} · {{ game.teamName }}</span></div>
+                <span class="sch-event" :class="eventTone(game.eventName)">{{ game.eventName || translate('player.event') }}</span>
                 <span class="sch-time">{{ game.gameTime || '--:--' }}</span>
               </div>
             </div>
@@ -600,13 +612,13 @@
             @pointerdown="startModulePointer('recentGames', $event)"
             @keydown="onModuleKeydown('recentGames', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>最近战报</h3></div><el-button link type="primary" @click="goEvents">比赛记录</el-button></div>
+            <div class="panel-head"><div><span class="kicker">RECENT FORM</span><h3>{{ translate('clubhouse.modules.recentGames.label') }}</h3></div><el-button link type="primary" @click="goEvents">{{ translate('clubhouse.recentGames.allGames') }}</el-button></div>
             <div v-if="data.recentGames.length" class="recent-cards">
               <article v-for="game in data.recentGames" :key="game.gameId" class="result-card">
-                <div class="result-top"><span class="date">{{ formatDay(game.gameday) }} · {{ game.isHome ? '主场' : '客场' }}</span><span class="res-badge" :class="resultType(game.result)">{{ game.result }}</span></div>
-                <div class="result-score"><b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b><span>最终</span></div>
+                <div class="result-top"><span class="date">{{ formatDay(game.gameday) }} · {{ homeAwayLabel(game.isHome) }}</span><span class="res-badge" :class="resultType(game.result)">{{ game.result }}</span></div>
+                <div class="result-score"><b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b><span>{{ translate('clubhouse.recentGames.final') }}</span></div>
                 <div class="result-opponent">{{ game.opponentName }}</div>
-                <div class="result-meta">{{ game.teamName }} · {{ game.eventName || '赛事' }}</div>
+                <div class="result-meta">{{ game.teamName }} · {{ game.eventName || translate('player.event') }}</div>
                 <div class="result-line">{{ recentLine(game) }}</div>
               </article>
             </div>
@@ -625,13 +637,13 @@
             @pointerdown="startModulePointer('teams', $event)"
             @keydown="onModuleKeydown('teams', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>代表球队</h3></div></div>
+            <div class="panel-head"><div><span class="kicker">REPRESENTED TEAMS</span><h3>{{ translate('clubhouse.modules.teams.label') }}</h3></div></div>
             <div v-for="team in availableTeams" :key="team.id" class="rep-team" :class="{ active: team.id === teamId }" @click="switchTeam(team)">
               <span class="crest-lg">{{ teamCrest(team) }}</span>
               <div class="rep-name"><b>{{ team.name }}</b><span>{{ teamEventLabel(team) }}</span></div>
               <div class="rep-stat"><b>{{ standingRank(team) }}</b><span>{{ standingRecord(team) }}</span></div>
             </div>
-            <div class="rep-scope"><span>球队积分按各队主赛事显示</span><el-button link type="primary" @click="goTeam">球队主页 ›</el-button></div>
+            <div class="rep-scope"><span>{{ translate('clubhouse.teams.pointsNote') }}</span><el-button link type="primary" @click="goTeam">{{ translate('clubhouse.header.teamHome') }} ›</el-button></div>
           </section>
 
           <section
@@ -644,11 +656,11 @@
             @pointerdown="startModulePointer('quickLinks', $event)"
             @keydown="onModuleKeydown('quickLinks', $event)"
           >
-            <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>快捷入口</h3></div></div>
+            <div class="panel-head"><div><span class="kicker">QUICK LINKS</span><h3>{{ translate('clubhouse.modules.quickLinks.label') }}</h3></div></div>
             <div class="shortcut-list">
-              <el-button link type="primary" class="shortcut" @click="goPublicProfile">公开球员主页</el-button>
-              <el-button link type="primary" class="shortcut" @click="goAccount">我的认领与资料</el-button>
-              <el-button link type="primary" class="shortcut" @click="openSettings">数据设置</el-button>
+              <el-button link type="primary" class="shortcut" @click="goPublicProfile">{{ translate('clubhouse.quickLinks.publicProfile') }}</el-button>
+              <el-button link type="primary" class="shortcut" @click="goAccount">{{ translate('clubhouse.quickLinks.claims') }}</el-button>
+              <el-button link type="primary" class="shortcut" @click="openSettings">{{ translate('clubhouse.settings.title') }}</el-button>
             </div>
           </section>
         </aside>
@@ -667,7 +679,7 @@
           type="button"
           class="resize-handle"
           :class="`handle-${handle}`"
-          :aria-label="HANDLE_LABELS[handle]"
+          :aria-label="handleLabel(handle)"
           :disabled="layoutSaving"
           @pointerdown.prevent.stop="startResize(handle, $event)"
           @keydown="onResizeHandleKeydown(handle, $event)"
@@ -680,20 +692,20 @@
         :style="swapFrameStyle"
         aria-hidden="true"
       >
-        <span class="swap-frame-badge">松手交换</span>
+        <span class="swap-frame-badge">{{ translate('clubhouse.layoutEdit.releaseToSwap') }}</span>
       </div>
 
       <div v-if="!activeModules.length" class="panel dashboard-empty">
         <span class="kicker">EMPTY DASHBOARD</span>
-        <h3>所有内容模块已隐藏</h3>
-        <p>可以随时在数据设置里重新打开需要的内容。</p>
-        <el-button type="primary" @click="openSettings">去设置</el-button>
+        <h3>{{ translate('clubhouse.empty.allHiddenTitle') }}</h3>
+        <p>{{ translate('clubhouse.empty.allHiddenBody') }}</p>
+        <el-button type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
       </div>
       <div v-else-if="!renderableModules.length" class="panel dashboard-empty">
         <span class="kicker">SCOPE EMPTY</span>
-        <h3>当前范围暂无展示模块</h3>
-        <p>选择球队或在数据设置中启用其他模块。</p>
-        <el-button type="primary" @click="openSettings">去设置</el-button>
+        <h3>{{ translate('clubhouse.empty.scopeEmptyTitle') }}</h3>
+        <p>{{ translate('clubhouse.empty.scopeEmptyBody') }}</p>
+        <el-button type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
       </div>
     </template>
 
@@ -701,20 +713,20 @@
       <el-skeleton :rows="6" animated />
     </div>
     <div v-else-if="loadError" class="page-state">
-      <el-empty description="驾驶舱加载失败">
-        <el-button type="primary" @click="load">重新加载</el-button>
+      <el-empty :description="translate('clubhouse.empty.loadFailed')">
+        <el-button type="primary" @click="load">{{ translate('clubhouse.empty.reload') }}</el-button>
       </el-empty>
       <p class="state-detail">{{ loadError }}</p>
     </div>
     <div v-else class="page-state">
-      <el-empty description="尚未关联球员档案">
-        <el-button type="primary" @click="goPortal">返回门户</el-button>
+      <el-empty :description="translate('clubhouse.empty.unclaimed')">
+        <el-button type="primary" @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
       </el-empty>
     </div>
 
     <el-drawer
       v-model="settingsOpen"
-      title="数据设置"
+      :title="translate('clubhouse.settings.title')"
       size="min(430px, 92vw)"
       :append-to-body="false"
       class="clubhouse-settings"
@@ -723,8 +735,8 @@
       @closed="destroyModuleSortable"
     >
       <div class="settings-section">
-        <div class="settings-label">模块布局</div>
-        <p class="settings-hint">拖动左侧把手排序，也可用上下按钮微调；顺序用于手机/紧凑模式。桌面位置与大小请在页面「编辑布局」中拖动调整。</p>
+        <div class="settings-label">{{ translate('clubhouse.settings.modulesTitle') }}</div>
+        <p class="settings-hint">{{ translate('clubhouse.settings.modulesHint') }}</p>
         <div ref="moduleListEl" class="module-sort-list">
           <div
             v-for="(module, index) in draft.modules"
@@ -734,24 +746,24 @@
           >
             <span class="module-drag" aria-hidden="true"></span>
             <div class="module-sort-name">
-              <b>{{ module.label }}</b>
-              <span>{{ moduleSizeLabel(module) }}<template v-if="module.key === 'ranks'"> · 仅在选择球队后显示</template></span>
+              <b>{{ moduleLabel(module.key, module.label) }}</b>
+              <span>{{ moduleSizeLabel(module) }}<template v-if="module.key === 'ranks'"> · {{ translate('clubhouse.settings.ranksOnlyWithTeam') }}</template></span>
             </div>
             <div class="module-sort-actions">
-              <el-button link :icon="ArrowUp" :disabled="index === 0" aria-label="上移" @click="moveDraftModule(index, -1)" />
-              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" aria-label="下移" @click="moveDraftModule(index, 1)" />
+              <el-button link :icon="ArrowUp" :disabled="index === 0" :aria-label="translate('clubhouse.settings.moveUp')" @click="moveDraftModule(index, -1)" />
+              <el-button link :icon="ArrowDown" :disabled="index === draft.modules.length - 1" :aria-label="translate('clubhouse.settings.moveDown')" @click="moveDraftModule(index, 1)" />
             </div>
             <div class="module-switch" @click.self="module.enabled = !module.enabled">
-              <el-switch v-model="module.enabled" size="small" :aria-label="`显示${module.label}`" />
+              <el-switch v-model="module.enabled" size="small" :aria-label="translate('clubhouse.settings.toggleModuleAria', { name: moduleLabel(module.key, module.label) })" />
             </div>
           </div>
         </div>
-        <div class="module-sort-count">已启用 {{ enabledDraftCount }} / {{ draft.modules.length }}</div>
+        <div class="module-sort-count">{{ translate('clubhouse.settings.enabledCount', { enabled: enabledDraftCount, total: draft.modules.length }) }}</div>
       </div>
 
       <div class="settings-section">
-        <div class="settings-label">生涯里程碑 · 最多 6 项</div>
-        <p class="settings-hint">选择要展示的累计指标；时间线会展示已选指标最近达成的里程碑。</p>
+        <div class="settings-label">{{ translate('clubhouse.settings.milestonesTitle', { max: 6 }) }}</div>
+        <p class="settings-hint">{{ translate('clubhouse.settings.milestonesHint') }}</p>
         <el-select
           v-model="draft.milestones.metricKeys"
           multiple
@@ -759,7 +771,7 @@
           :multiple-limit="6"
           class="settings-control"
         >
-          <el-option-group label="打击">
+          <el-option-group :label="translate('stats.batting')">
             <el-option
               v-for="metric in milestoneBattingOptions"
               :key="metric.key"
@@ -767,7 +779,7 @@
               :value="metric.key"
             />
           </el-option-group>
-          <el-option-group label="投球">
+          <el-option-group :label="translate('stats.pitching')">
             <el-option
               v-for="metric in milestonePitchingOptions"
               :key="metric.key"
@@ -776,24 +788,24 @@
             />
           </el-option-group>
         </el-select>
-        <div class="settings-count">已选 {{ draft.milestones.metricKeys.length }} / 6</div>
+        <div class="settings-count">{{ translate('clubhouse.settings.selectedCount', { selected: draft.milestones.metricKeys.length, max: 6 }) }}</div>
       </div>
 
       <div class="settings-section">
-        <div class="settings-label">表现图</div>
-        <p class="settings-hint">选择要展示的指标与图表类型；不可用的指标会置灰。</p>
+        <div class="settings-label">{{ translate('clubhouse.settings.performanceTitle') }}</div>
+        <p class="settings-hint">{{ translate('clubhouse.settings.performanceHint') }}</p>
         <el-form label-position="top">
-          <el-form-item label="指标">
+          <el-form-item :label="translate('clubhouse.settings.metric')">
             <el-select v-model="draft.performance.metricKey" filterable class="settings-control" @change="onPerformanceMetricChange">
-              <el-option-group label="打击">
+              <el-option-group :label="translate('stats.batting')">
                 <el-option v-for="metric in battingMetrics" :key="metric.key" :label="metric.label" :value="metric.key" :disabled="!metric.available" />
               </el-option-group>
-              <el-option-group label="投球">
+              <el-option-group :label="translate('stats.pitching')">
                 <el-option v-for="metric in pitchingMetrics" :key="metric.key" :label="metric.label" :value="metric.key" :disabled="!metric.available" />
               </el-option-group>
             </el-select>
           </el-form-item>
-          <el-form-item label="图表类型">
+          <el-form-item :label="translate('clubhouse.settings.chartType')">
             <el-radio-group v-model="draft.performance.viz">
               <el-radio-button v-for="viz in performanceVizOptions" :key="viz" :value="viz">{{ vizLabel(viz) }}</el-radio-button>
             </el-radio-group>
@@ -802,15 +814,15 @@
       </div>
 
       <div class="settings-section">
-        <div class="settings-label">队内排名 · 四个指标</div>
-        <p class="settings-hint">排名按当前代表球队的同队同赛事或球队跨赛事生涯计算；未选择球队时模块不显示。默认不提供全垒打。</p>
+        <div class="settings-label">{{ translate('clubhouse.settings.ranksTitle') }}</div>
+        <p class="settings-hint">{{ translate('clubhouse.settings.ranksHint') }}</p>
         <el-form label-position="top">
-          <el-form-item v-for="(slot, index) in draft.ranks" :key="index" :label="`排名位 ${index + 1}`">
+          <el-form-item v-for="(slot, index) in draft.ranks" :key="index" :label="translate('clubhouse.settings.rankSlot', { n: index + 1 })">
             <el-select v-model="slot.metricKey" filterable class="settings-control">
-              <el-option-group label="打击">
+              <el-option-group :label="translate('stats.batting')">
                 <el-option v-for="metric in battingRankMetrics" :key="metric.key" :label="metric.label" :value="metric.key" :disabled="rankOptionDisabled(metric, index)" />
               </el-option-group>
-              <el-option-group label="投球">
+              <el-option-group :label="translate('stats.pitching')">
                 <el-option v-for="metric in pitchingRankMetrics" :key="metric.key" :label="metric.label" :value="metric.key" :disabled="rankOptionDisabled(metric, index)" />
               </el-option-group>
             </el-select>
@@ -819,19 +831,19 @@
       </div>
 
       <template #footer>
-        <el-button @click="resetSettings">恢复默认</el-button>
-        <el-button @click="settingsOpen = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveSettings">保存</el-button>
+        <el-button @click="resetSettings">{{ translate('clubhouse.settings.resetDefaults') }}</el-button>
+        <el-button @click="settingsOpen = false">{{ translate('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="saveSettings">{{ translate('clubhouse.settings.save') }}</el-button>
       </template>
     </el-drawer>
 
     <Teleport to="body">
-      <div v-if="cardZoomOpen" class="pcard-zoom" role="dialog" aria-modal="true" aria-label="球星卡放大查看">
+      <div v-if="cardZoomOpen" class="pcard-zoom" role="dialog" aria-modal="true" :aria-label="translate('clubhouse.card.zoomDialogAria')">
         <div class="pcard-zoom-backdrop" :class="{ on: cardZoomShown }" @click="closeCardZoom"></div>
         <div class="pcard-zoom-card" :class="{ on: cardZoomShown }" :style="zoomCardStyle">
           <ClubhousePlayerCard v-bind="cardFaceProps" :scale="zoomScaleValue" />
         </div>
-        <button ref="zoomCloseBtnRef" type="button" class="pcard-zoom-close" aria-label="关闭放大" @click="closeCardZoom">×</button>
+        <button ref="zoomCloseBtnRef" type="button" class="pcard-zoom-close" :aria-label="translate('clubhouse.card.closeZoomAria')" @click="closeCardZoom">×</button>
       </div>
     </Teleport>
   </div>
@@ -887,16 +899,34 @@ const CONFIG_VERSION = 4;
 const CONFIG_LAYOUT = 'v4-board';
 const MILESTONE_TRACK_INSET = 4;
 const RESIZE_HANDLES = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
-const HANDLE_LABELS = {
-  nw: '左上缩放',
-  n: '向上缩放',
-  ne: '右上缩放',
-  w: '向左缩放',
-  e: '向右缩放',
-  sw: '左下缩放',
-  s: '向下缩放',
-  se: '右下缩放'
+const HANDLE_LABEL_KEYS = {
+  nw: 'clubhouse.layoutEdit.resizeNw',
+  n: 'clubhouse.layoutEdit.resizeN',
+  ne: 'clubhouse.layoutEdit.resizeNe',
+  w: 'clubhouse.layoutEdit.resizeW',
+  e: 'clubhouse.layoutEdit.resizeE',
+  sw: 'clubhouse.layoutEdit.resizeSw',
+  s: 'clubhouse.layoutEdit.resizeS',
+  se: 'clubhouse.layoutEdit.resizeSe'
 };
+function handleLabel(handle) {
+  return translate(HANDLE_LABEL_KEYS[handle]);
+}
+const MODULE_LABEL_KEYS = {
+  ranks: 'clubhouse.modules.ranks.label',
+  evaluation: 'clubhouse.modules.evaluation.label',
+  spray: 'clubhouse.modules.spray.label',
+  milestones: 'clubhouse.modules.milestones.label',
+  performance: 'clubhouse.modules.performance.label',
+  schedule: 'clubhouse.modules.schedule.label',
+  recentGames: 'clubhouse.modules.recentGames.label',
+  teams: 'clubhouse.modules.teams.label',
+  quickLinks: 'clubhouse.modules.quickLinks.label'
+};
+function moduleLabel(key, fallback) {
+  const labelKey = MODULE_LABEL_KEYS[key];
+  return labelKey ? translate(labelKey) : fallback;
+}
 const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
 // 生产构建通过 VITE_CLUBHOUSE_LAYOUT_EDITING=false 关闭布局编辑（测试/本地默认开启）
 const layoutEditingEnabled = import.meta.env.VITE_CLUBHOUSE_LAYOUT_EDITING !== 'false';
@@ -964,7 +994,7 @@ const draft = reactive({
 const player = computed(() => data.value?.player || {});
 const teams = computed(() => data.value?.teams || []);
 const catalog = computed(() => data.value?.catalog || []);
-const gameModeLabel = (mode) => ({ BASEBALL: '棒球', SOFTBALL: '垒球' }[mode] || mode);
+const gameModeLabel = (mode) => ({ BASEBALL: translate('stats.gameModeBaseball'), SOFTBALL: translate('stats.gameModeSoftball') }[mode] || mode);
 function eventGameMode(event) {
   return String(event?.gameMode || '').trim().toUpperCase() === 'SOFTBALL' ? 'SOFTBALL' : 'BASEBALL';
 }
@@ -995,7 +1025,7 @@ const availableLeagues = computed(() => {
   scopeEvents.value.forEach((event) => {
     const id = eventLeagueId(event);
     if (id && !leagues.has(id)) {
-      leagues.set(id, { id, name: event.leagueName || `联盟${id}` });
+      leagues.set(id, { id, name: event.leagueName || translate('clubhouse.scope.leagueFallback', { id }) });
     }
   });
   return [...leagues.values()];
@@ -1003,7 +1033,7 @@ const availableLeagues = computed(() => {
 const eventOptions = computed(() => scopeEvents.value.filter((event) => (
   leagueId.value === SCOPE_ALL || eventLeagueId(event) === leagueId.value
 )));
-const eventAllLabel = computed(() => (leagueId.value === SCOPE_ALL ? '生涯' : '本联盟全部赛事'));
+const eventAllLabel = computed(() => (leagueId.value === SCOPE_ALL ? translate('player.dimensionCareer') : translate('clubhouse.scope.allLeagueEvents')));
 const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
 /** 全部球队时展示当前运动类型下的全部代表球队；选中球队时只展示该队。 */
 const heroTeamNames = computed(() => availableTeams.value
@@ -1011,23 +1041,29 @@ const heroTeamNames = computed(() => availableTeams.value
   .filter(Boolean));
 const heroTeamName = computed(() => {
   if (scopeTeam.value) return scopeTeam.value.name;
-  return heroTeamNames.value.length ? heroTeamNames.value.join(' / ') : '未加入球队';
+  return heroTeamNames.value.length ? heroTeamNames.value.join(' / ') : translate('clubhouse.header.noTeam');
 });
 const heroTeamCrest = computed(() => (scopeTeam.value ? teamCrest(scopeTeam.value)
-  : heroTeamNames.value.length ? '全' : '—'));
+  : heroTeamNames.value.length ? translate('clubhouse.header.allTeamsCrest') : '—'));
 const heroTeamSub = computed(() => {
   if (scopeTeam.value) return teamEventLabel(scopeTeam.value);
-  return heroTeamNames.value.length ? '跨全部代表球队' : '尚未加入球队';
+  return heroTeamNames.value.length ? translate('clubhouse.header.crossTeam') : translate('clubhouse.header.notJoinedTeam');
 });
-const primaryPosition = computed(() => (player.value.positions || [])[0] || '未填写');
+const primaryPosition = computed(() => (player.value.positions || [])[0] || translate('clubhouse.common.notFilled'));
 function handSideText(raw) {
   const side = String(raw || '').replace(/[投打]$/, '');
-  if (side === 'L') return '左';
-  if (side === 'R') return '右';
-  if (side === 'B') return '左右';
+  if (side === 'L') return translate('clubhouse.header.handLeft');
+  if (side === 'R') return translate('clubhouse.header.handRight');
+  if (side === 'B') return translate('clubhouse.header.handBoth');
   return side || '-';
 }
-const throwBatLabel = computed(() => `${handSideText(player.value.throwHand)}投${handSideText(player.value.batHand)}打`);
+function throwBatText(throwHand, batHand) {
+  return translate('clubhouse.header.throwBatValue', {
+    throwHand: handSideText(throwHand),
+    batHand: handSideText(batHand)
+  });
+}
+const throwBatLabel = computed(() => throwBatText(player.value.throwHand, player.value.batHand));
 const cardFaceProps = computed(() => {
   const logoTeam = scopeTeam.value || availableTeams.value[0];
   return {
@@ -1072,8 +1108,8 @@ const fanLegendCards = computed(() => {
     teamCrest: cardFaceProps.value.teamCrest
   };
   return [
-    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: '右投左打', ...team },
-    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: '左投左打', ...team }
+    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: throwBatText('R', 'L'), ...team },
+    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: throwBatText('L', 'L'), ...team }
   ];
 });
 const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
@@ -1165,13 +1201,13 @@ onBeforeUnmount(() => {
 });
 const scopeLabel = computed(() => {
   const scope = data.value?.scope || {};
-  if (scope.teamAll && scope.career) return '生涯';
+  if (scope.teamAll && scope.career) return translate('player.dimensionCareer');
   const parts = [];
-  if (!scope.teamAll) parts.push(scope.teamName || '球队');
-  if (!scope.leagueAll) parts.push(scope.leagueName || '联盟');
-  if (scope.career) parts.push('生涯');
+  if (!scope.teamAll) parts.push(scope.teamName || translate('nav.teams'));
+  if (!scope.leagueAll) parts.push(scope.leagueName || translate('nav.leagues'));
+  if (scope.career) parts.push(translate('player.dimensionCareer'));
   else if (scope.eventId) parts.push(scope.eventName);
-  else parts.push('全部赛事');
+  else parts.push(translate('clubhouse.scope.allEvents'));
   return parts.join(' · ');
 });
 const scopeLeague = computed(() => {
@@ -1179,30 +1215,40 @@ const scopeLeague = computed(() => {
   return scope && !scope.leagueAll ? { name: scope.leagueName, count: scope.eventCount || 0 } : null;
 });
 const rankScopeLabel = computed(() => {
-  if (eventId.value) return '同队同赛事';
-  if (leagueId.value) return '同队同联盟';
-  return '球队跨赛事生涯';
+  if (eventId.value) return translate('clubhouse.modules.ranks.scopeSameEvent');
+  if (leagueId.value) return translate('clubhouse.modules.ranks.scopeSameLeague');
+  return translate('clubhouse.modules.ranks.scopeTeamCareer');
 });
-const rankNote = computed(() => `${rankScopeLabel.value} · 无最低打席门槛 · 全垒打不进入排名`);
+const rankNote = computed(() => translate('clubhouse.modules.ranks.note', { scope: rankScopeLabel.value }));
 const scheduleScopeLabel = computed(() => {
-  if (eventId.value) return teamId.value ? '同队同赛事' : '当前赛事';
-  if (leagueId.value) return teamId.value ? '同队同联盟' : '当前联盟';
-  return teamId.value ? '球队跨赛事生涯' : '跨球队生涯';
+  if (eventId.value) return teamId.value ? translate('clubhouse.modules.ranks.scopeSameEvent') : translate('clubhouse.schedule.currentEvent');
+  if (leagueId.value) return teamId.value ? translate('clubhouse.modules.ranks.scopeSameLeague') : translate('clubhouse.schedule.currentLeague');
+  return teamId.value ? translate('clubhouse.modules.ranks.scopeTeamCareer') : translate('clubhouse.schedule.crossTeamCareer');
 });
-const recentEmptyText = computed(() => (eventId.value
-  ? '该赛事暂无比赛记录。'
-  : leagueId.value ? '该联盟暂无比赛记录。'
-    : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
-const scheduleEmptyText = computed(() => (eventId.value
-  ? '该赛事暂无未开赛的比赛。'
-  : leagueId.value ? '该联盟暂无未开赛的比赛。'
-    : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
+function scopeEmptyText(keys) {
+  if (eventId.value) return translate(keys.event);
+  if (leagueId.value) return translate(keys.league);
+  if (teamId.value) return translate(keys.team);
+  return translate(keys.all);
+}
+const recentEmptyText = computed(() => scopeEmptyText({
+  event: 'clubhouse.recentGames.emptyEvent',
+  league: 'clubhouse.recentGames.emptyLeague',
+  team: 'clubhouse.recentGames.emptyTeam',
+  all: 'clubhouse.recentGames.empty'
+}));
+const scheduleEmptyText = computed(() => scopeEmptyText({
+  event: 'clubhouse.schedule.emptyEvent',
+  league: 'clubhouse.schedule.emptyLeague',
+  team: 'clubhouse.schedule.emptyTeam',
+  all: 'clubhouse.schedule.empty'
+}));
 const rankPopulation = computed(() => {
   const totals = (data.value?.ranks || []).map((item) => item.total).filter((total) => total > 0);
   return totals.length && totals.every((total) => total === totals[0]) ? totals[0] : 0;
 });
 const performance = computed(() => data.value?.performance || {});
-const performanceLabel = computed(() => performance.value.label || '数据');
+const performanceLabel = computed(() => performance.value.label || translate('clubhouse.performance.defaultLabel'));
 const performanceScopeLabel = computed(() => scopeLabel.value);
 const performanceSummary = computed(() => {
   const value = performance.value.summaryValue;
@@ -1220,13 +1266,13 @@ const hasStatsData = computed(() => (
   || Number(data.value?.stats?.fielding?.gp) > 0
 ));
 const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
-const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
+const evaluationComparison = computed(() => data.value?.evaluation?.comparison || translate('clubhouse.modules.evaluation.defaultComparison'));
 const overallGradeAccent = computed(() => cardGradeMaterial(evaluationOverall.value.grade).color);
 const overallRoleLabel = computed(() => ({
-  POSITION_PLAYER: '野手',
-  PITCHER: '投手',
-  TWO_WAY: '二刀流'
-}[evaluationOverall.value.role] || '球员'));
+  POSITION_PLAYER: translate('clubhouse.modules.evaluation.rolePositionPlayer'),
+  PITCHER: translate('clubhouse.modules.evaluation.rolePitcher'),
+  TWO_WAY: translate('clubhouse.modules.evaluation.roleTwoWay')
+}[evaluationOverall.value.role] || translate('clubhouse.modules.evaluation.rolePlayer')));
 /** 旧数据兜底：野手（POSITION_PLAYER）不渲染投球卡，即使接口仍返回了投球卡。 */
 const evaluationCards = computed(() => {
   const role = evaluationOverall.value.role;
@@ -1253,11 +1299,13 @@ watch(milestoneTimeline, async () => {
   observeMilestoneList();
 });
 const nextMilestoneText = computed(() => {
-  if (milestonesLoading.value) return '加载中';
-  if (milestonesError.value) return '暂不可用';
-  if (!milestoneItems.value.length) return '等待数据';
+  if (milestonesLoading.value) return translate('clubhouse.milestones.statusLoading');
+  if (milestonesError.value) return translate('clubhouse.milestones.statusUnavailable');
+  if (!milestoneItems.value.length) return translate('clubhouse.milestones.waitingData');
   const next = milestoneItems.value.find((item) => item.nextTarget != null);
-  return next ? `${next.nextTarget} ${next.label}` : '已达最高里程碑';
+  if (!next) return translate('clubhouse.milestones.maxReached');
+  const label = locale.value.startsWith('zh') ? next.label : next.shortLabel;
+  return label ? `${next.nextTarget} ${label}` : String(next.nextTarget);
 });
 const enabledDraftCount = computed(() => draft.modules.filter((module) => module.enabled).length);
 const moduleCatalog = computed(() => data.value?.moduleCatalog || []);
@@ -1281,7 +1329,7 @@ function resolveModule(module) {
   return {
     ...module,
     enabled: module.enabled !== false,
-    label: meta.label || module.label || module.key,
+    label: moduleLabel(module.key, meta.label || module.label || module.key),
     x,
     y,
     width,
@@ -1980,7 +2028,7 @@ async function persistLayout(snapshot) {
       data.value.config.modules = snapshot;
     }
     setLayoutStatus('');
-    ElMessage.error(error?.message || '布局保存失败');
+    ElMessage.error(error?.message || translate('clubhouse.toast.layoutSaveFailed'));
   } finally {
     layoutSaving.value = false;
     await nextTick();
@@ -2002,7 +2050,7 @@ function resetSelectedModule() {
     height: Math.max(module.defaultHeight || module.height, contentMin)
   });
   if (collidesWithAny(candidate, otherModuleRects(module.key))) {
-    ElMessage.warning('默认尺寸会与其他模块重叠，请先调整位置');
+    ElMessage.warning(translate('clubhouse.toast.resetSizeConflict'));
     return;
   }
   contentLimitHeight.value = 0;
@@ -2078,7 +2126,7 @@ const nextGame = computed(() => data.value?.nextGame || null);
 const currentEvent = computed(() => scopeEvents.value.find((event) => event.id === eventId.value) || null);
 const currentEventStatus = computed(() => {
   const status = currentEvent.value?.status;
-  return { draft: '未开始', ongoing: '进行中', ended: '已结束' }[status] || '赛程中';
+  return { draft: translate('events.eventStatus.draft'), ongoing: translate('events.eventStatus.ongoing'), ended: translate('events.eventStatus.ended') }[status] || translate('clubhouse.schedule.statusScheduled');
 });
 const currentEventDateRange = computed(() => {
   const event = currentEvent.value;
@@ -2360,12 +2408,22 @@ function replaySprayAnimation() {
 }
 
 function radarAria(card) {
-  const axes = (card.axes || []).map((axis) => `${axis.label}${axis.value}，百分位${axis.percentile}`).join('；');
-  return `${card.title}雷达图，${axes}`;
+  const separator = translate('clubhouse.card.radarAxisSeparator');
+  const axes = (card.axes || []).map((axis) => translate('clubhouse.card.radarAxis', {
+    label: axis.label,
+    value: axis.value,
+    percentile: axis.percentile
+  })).join(separator);
+  return translate('clubhouse.card.radarAria', { title: card.title, axes });
 }
 
 function vizLabel(viz) {
-  return { kpi: '大数字', line: '折线图', bar: '柱状图', donut: '环形图' }[viz] || viz;
+  return {
+    kpi: translate('clubhouse.settings.vizKpi'),
+    line: translate('clubhouse.settings.vizLine'),
+    bar: translate('clubhouse.settings.vizBar'),
+    donut: translate('clubhouse.settings.vizDonut')
+  }[viz] || viz;
 }
 
 function teamCrest(team) {
@@ -2374,7 +2432,7 @@ function teamCrest(team) {
 
 function teamEventLabel(team) {
   const events = team?.events || [];
-  return events.length ? events.map((event) => event.name).join(' · ') : '暂无已确认赛事';
+  return events.length ? events.map((event) => event.name).join(' · ') : translate('clubhouse.teams.noEvents');
 }
 
 function standingRank(team) {
@@ -2384,7 +2442,7 @@ function standingRank(team) {
 
 function standingRecord(team) {
   const standing = team?.standing;
-  if (!standing || standing.win == null) return '暂无战绩';
+  if (!standing || standing.win == null) return translate('clubhouse.teams.noRecord');
   return `${standing.win}–${standing.loss ?? 0}`;
 }
 
@@ -2402,6 +2460,10 @@ function resultType(result) {
   return result === 'W' ? 'w' : result === 'L' ? 'l' : '';
 }
 
+function homeAwayLabel(isHome) {
+  return translate(isHome ? 'stats.home' : 'stats.away');
+}
+
 function formatDay(value) {
   const date = dayjs(value);
   return date.isValid() ? date.format('MM.DD') : (value || '--.--');
@@ -2414,7 +2476,7 @@ function formatEventDate(value) {
 
 function formatMilestoneDate(value) {
   const date = dayjs(value);
-  return date.isValid() ? date.format('YYYY.MM.DD') : (value || '日期未记录');
+  return date.isValid() ? date.format('YYYY.MM.DD') : (value || translate('clubhouse.milestones.noDate'));
 }
 
 function milestoneScrollMetrics(el) {
@@ -2514,21 +2576,30 @@ function stopMilestoneScrollDrag(event) {
 }
 
 function milestoneDomainLabel(domain) {
-  return domain === 'pitching' ? '投球' : '打击';
+  return domain === 'pitching' ? translate('stats.pitching') : translate('stats.batting');
 }
 
+const WEEKDAY_KEYS = [
+  'clubhouse.weekday.sun',
+  'clubhouse.weekday.mon',
+  'clubhouse.weekday.tue',
+  'clubhouse.weekday.wed',
+  'clubhouse.weekday.thu',
+  'clubhouse.weekday.fri',
+  'clubhouse.weekday.sat'
+];
 function weekday(value) {
   const date = dayjs(value);
-  return date.isValid() ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.day()] : '';
+  return date.isValid() ? translate(WEEKDAY_KEYS[date.day()]) : '';
 }
 
 function countdown(value) {
   const target = dayjs(value).startOf('day');
   if (!target.isValid()) return '';
   const days = target.diff(dayjs().startOf('day'), 'day');
-  if (days <= 0) return '今天';
-  if (days === 1) return '明天';
-  return `还有 ${days} 天`;
+  if (days <= 0) return translate('clubhouse.countdown.today');
+  if (days === 1) return translate('clubhouse.countdown.tomorrow');
+  return translate('clubhouse.countdown.days', { n: days });
 }
 
 function recentLine(game) {
@@ -2536,15 +2607,22 @@ function recentLine(game) {
   const p = game?.pitching || {};
   const hasBattingLine = Number(b.ab) > 0 || Number(b.pa) > 0;
   if (hasBattingLine) {
-    const parts = [`${Number(b.ab) || 0}打数 ${Number(b.h) || 0}安打`];
-    if (b.rbi) parts.push(`${b.rbi}打点`);
-    if (b.sb) parts.push(`${b.sb}盗垒`);
+    const parts = [translate('clubhouse.recentGames.battingLine', {
+      ab: Number(b.ab) || 0,
+      h: Number(b.h) || 0
+    })];
+    if (b.rbi) parts.push(translate('clubhouse.recentGames.rbiLine', { n: b.rbi }));
+    if (b.sb) parts.push(translate('clubhouse.recentGames.sbLine', { n: b.sb }));
     return parts.join(' · ');
   }
   if (Number(p.ip) > 0) {
-    return `${p.ip}局 · ${p.pitchSo ?? 0}三振 · ${p.er ?? 0}自责分`;
+    return translate('clubhouse.recentGames.pitchingLine', {
+      ip: p.ip,
+      so: p.pitchSo ?? 0,
+      er: p.er ?? 0
+    });
   }
-  return '本场暂无个人数据';
+  return translate('clubhouse.recentGames.noIndividualStats');
 }
 
 function openSettings() {
@@ -2615,11 +2693,11 @@ function rankOptionDisabled(metric, index) {
 async function saveSettings() {
   const keys = draft.ranks.map((slot) => slot.metricKey);
   if (new Set(keys).size !== 4 || keys.some((key) => !key)) {
-    ElMessage.warning('四个排名位需要选择不同指标');
+    ElMessage.warning(translate('clubhouse.toast.rankDuplicates'));
     return;
   }
   if (!draft.milestones.metricKeys.length) {
-    ElMessage.warning('生涯里程碑至少选择 1 个指标');
+    ElMessage.warning(translate('clubhouse.toast.milestonesRequired'));
     return;
   }
   saving.value = true;
@@ -2630,10 +2708,10 @@ async function saveSettings() {
       ranks: draft.ranks.map((slot) => ({ metricKey: slot.metricKey }))
     }));
     settingsOpen.value = false;
-    ElMessage.success('数据设置已保存');
+    ElMessage.success(translate('clubhouse.toast.settingsSaved'));
     await load();
   } catch (error) {
-    ElMessage.error(error?.message || '保存失败');
+    ElMessage.error(error?.message || translate('clubhouse.toast.saveFailed'));
   } finally {
     saving.value = false;
   }
@@ -2641,9 +2719,9 @@ async function saveSettings() {
 
 async function resetSettings() {
   try {
-    await ElMessageBox.confirm('恢复默认数据设置？当前选择将被覆盖。', '恢复默认', {
-      confirmButtonText: '恢复',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(translate('clubhouse.confirm.resetMessage'), translate('clubhouse.confirm.resetTitle'), {
+      confirmButtonText: translate('clubhouse.confirm.resetConfirm'),
+      cancelButtonText: translate('common.cancel'),
       type: 'warning'
     });
   } catch {
@@ -2653,10 +2731,10 @@ async function resetSettings() {
   try {
     await clubhouseApi.resetConfig();
     settingsOpen.value = false;
-    ElMessage.success('已恢复默认');
+    ElMessage.success(translate('clubhouse.toast.resetDone'));
     await load();
   } catch (error) {
-    ElMessage.error(error?.message || '恢复失败');
+    ElMessage.error(error?.message || translate('clubhouse.toast.resetFailed'));
   } finally {
     saving.value = false;
   }
@@ -2732,7 +2810,7 @@ function switchTeam(team) {
 
 function scopeEventLabel(event) {
   const last = dayjs(event?.lastGameday);
-  return `${event?.name || '赛事'} · ${event?.lastGameday && last.isValid() ? last.format('MM.DD') : '暂无比赛'}`;
+  return `${event?.name || translate('player.event')} · ${event?.lastGameday && last.isValid() ? last.format('MM.DD') : translate('clubhouse.scope.noGames')}`;
 }
 
 async function load() {
@@ -2798,7 +2876,7 @@ async function load() {
       await goUnclaimed();
       return;
     }
-    loadError.value = error?.message || '加载失败';
+    loadError.value = error?.message || translate('common.error');
   } finally {
     if (seq === requestSeq) loading.value = false;
   }
@@ -2822,7 +2900,7 @@ async function loadMilestones(seq) {
       await redirectToLogin();
       return;
     }
-    milestonesError.value = error?.message || '里程碑加载失败';
+    milestonesError.value = error?.message || translate('clubhouse.milestones.loadFailed');
   } finally {
     if (seq === requestSeq) milestonesLoading.value = false;
   }
@@ -2853,7 +2931,7 @@ async function loadSprays(seq) {
       await redirectToLogin();
       return;
     }
-    spraysError.value = error?.message || '打击落点加载失败';
+    spraysError.value = error?.message || translate('clubhouse.spray.loadFailed');
   } finally {
     if (seq === requestSeq) spraysLoading.value = false;
   }
@@ -2867,7 +2945,7 @@ async function redirectToLogin() {  await router.replace({
 }
 
 async function goUnclaimed() {
-  ElMessage.warning('当前账号未关联球员档案，已返回门户');
+  ElMessage.warning(translate('clubhouse.toast.unclaimed'));
   await router.replace({ name: 'PortalHome', params: { tenantCode: tenantCode.value } });
 }
 
@@ -2922,12 +3000,12 @@ onBeforeUnmount(() => {
 <style scoped>
 /* 页面主体沿用 V3 设计令牌；宽屏自由画布，窄屏紧凑/单列。 */
 .clubhouse-page { position: relative; max-width: 1280px; margin: 0 auto; padding: 24px 32px 56px; color: var(--bs-text); background: var(--bs-canvas); font-family: var(--bs-font-sans); }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
 .breadcrumb { font-size: 10px; color: var(--bs-text-faint); }
 .breadcrumb b { color: var(--bs-text-muted); font-weight: 500; }
 .page-head h1 { margin: 6px 0 0; font-size: 27px; line-height: 1.15; font-weight: 800; color: var(--bs-ink); }
 .page-sub { margin: 6px 0 0; font-size: 11px; color: var(--bs-text-muted); }
-.page-actions { display: flex; gap: 10px; }
+.page-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .layout-edit-banner { position: sticky; top: 72px; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--bs-accent); border-radius: 10px; background: color-mix(in srgb, var(--bs-surface) 92%, var(--bs-accent-soft)); box-shadow: var(--bs-shadow-sm), 0 10px 30px rgba(7,26,51,.08); color: var(--bs-text); backdrop-filter: blur(10px); }
 .layout-edit-banner .edit-copy { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 11px; }
 .layout-edit-banner .edit-copy > b { color: var(--bs-ink); font-weight: 800; white-space: nowrap; }

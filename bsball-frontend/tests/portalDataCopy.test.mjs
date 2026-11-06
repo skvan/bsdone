@@ -104,3 +104,36 @@ test('门户路由标题键覆盖联盟/我的主场/介绍/欢迎页', () => {
     }
   }
 });
+
+test('驾驶舱 clubhouse.* 三语齐全、源码引用与词条一一对应', () => {
+  const referenced = new Set();
+  for (const match of clubhouse.matchAll(/['"](clubhouse\.[^'"]+)['"]/g)) referenced.add(match[1]);
+
+  const flat = (obj, prefix = '', out = {}) => {
+    for (const [key, value] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === 'object' && !Array.isArray(value)) flat(value, path, out);
+      else out[path] = value;
+    }
+    return out;
+  };
+  const zhFlat = flat(locales['zh-CN']);
+  const zhKeys = Object.keys(zhFlat).filter((key) => key.startsWith('clubhouse.'));
+  const zhKeySet = new Set(zhKeys);
+  assert.equal(zhKeys.length, 203, '驾驶舱词条数量应为 203');
+  assert.deepEqual(referenced, zhKeySet, '驾驶舱词条应与源码引用一一对应');
+  for (const locale of ['zh-CN', 'zh-TW', 'en']) {
+    const localeFlat = flat(locales[locale]);
+    const localeKeys = Object.keys(localeFlat).filter((key) => key.startsWith('clubhouse.'));
+    assert.deepEqual(new Set(localeKeys), zhKeySet, `${locale} clubhouse 键集合不一致`);
+    for (const key of zhKeys) {
+      assert.ok(localeFlat[key], `${locale} 缺少 ${key}`);
+    }
+  }
+  assert.ok(!/[\u4e00-\u9fff]/.test(JSON.stringify(locales.en.clubhouse)), '英文驾驶舱仍有中文');
+  assert.ok(clubhouse.includes('next.shortLabel'), '里程碑英文未使用缩写标签');
+  assert.ok(!clubhouse.includes("translate('clubhouse.milestones.nextStop'"), '里程碑下一站标签被重复拼接');
+  assert.ok(!clubhouse.includes('milestoneData.note'), '里程碑固定说明仍优先取后端中文');
+  assert.match(clubhouse, /\.page-head\s*\{[^}]*flex-wrap:\s*wrap/, '页头未允许换行');
+  assert.match(clubhouse, /\.page-actions\s*\{[^}]*flex-wrap:\s*wrap/, '头部按钮未允许换行');
+});

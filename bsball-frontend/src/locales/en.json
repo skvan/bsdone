@@ -2206,5 +2206,266 @@
     "revokeFailed": "Revoke failed",
     "genericHint": "Only players not on this team are listed; unclaimed players are added directly (keeping their current teams), while claimed players receive a generic link (join after their confirmation).",
     "loadFailed": "Load failed"
+  },
+  "clubhouse": {
+    "header": {
+      "breadcrumbPortal": "Portal",
+      "subtitle": "Player profile · Claimed profile",
+      "editLayout": "Edit layout",
+      "backToPortal": "Back to portal",
+      "claimedBadge": "Claimed profile",
+      "emptyIntro": "This player hasn't added an intro yet.",
+      "viewPublicProfile": "View public profile",
+      "teamHome": "Team page",
+      "noTeam": "No team yet",
+      "allTeamsCrest": "ALL",
+      "crossTeam": "Across all represented teams",
+      "notJoinedTeam": "Not on a team yet",
+      "position": "Position",
+      "throwBat": "Throws / Bats",
+      "heightWeight": "Height / Weight",
+      "birthPlace": "Birthplace",
+      "handLeft": "L",
+      "handRight": "R",
+      "handBoth": "S",
+      "throwBatValue": "{throwHand}/{batHand}"
+    },
+    "scope": {
+      "title": "Data scope",
+      "gameMode": "Sport",
+      "allLeagues": "All leagues",
+      "representingTeams": "Representing {n} teams",
+      "allLeagueEvents": "All league events",
+      "leagueFallback": "League {id}",
+      "allEvents": "All events",
+      "noGames": "No games"
+    },
+    "layoutEdit": {
+      "title": "Layout editing",
+      "dropToSwap": "Release to swap with “{name}”",
+      "contentLimit": "Minimum content height {height}px",
+      "hint": "Drag modules to move them; drop one onto another to swap; drag the eight handles to resize; click empty space to deselect",
+      "resetSize": "Reset size",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "done": "Done",
+      "releaseToSwap": "Release to swap",
+      "resizeNw": "Resize from top left",
+      "resizeN": "Resize upward",
+      "resizeNe": "Resize from top right",
+      "resizeW": "Resize left",
+      "resizeE": "Resize right",
+      "resizeSw": "Resize from bottom left",
+      "resizeS": "Resize downward",
+      "resizeSe": "Resize from bottom right"
+    },
+    "modules": {
+      "ranks": {
+        "label": "Team Ranks",
+        "placeholderHint": "Shown after you select a team; this spot stays reserved",
+        "switchScope": "Change",
+        "playerCount": "Players: {n}",
+        "noteLabel": "Scope",
+        "rankInTeam": "No. {n} on the team",
+        "noRank": "Not ranked",
+        "noMetric": "No data",
+        "scopeSameEvent": "Same team, same event",
+        "scopeSameLeague": "Same team, same league",
+        "scopeTeamCareer": "Team career across events",
+        "note": "{scope} · No minimum plate appearances · Home runs are not ranked"
+      },
+      "evaluation": {
+        "label": "Overall Rating",
+        "compare": "vs {scope}",
+        "overallScore": "Overall score",
+        "noScore": "No score",
+        "strength": "Strength",
+        "improve": "To improve",
+        "empty": "No evaluation data",
+        "defaultComparison": "Career (all leagues)",
+        "rolePositionPlayer": "Position player",
+        "rolePitcher": "Pitcher",
+        "roleTwoWay": "Two-way player",
+        "rolePlayer": "Player"
+      },
+      "spray": {
+        "label": "Hit Locations"
+      },
+      "milestones": {
+        "label": "Milestones"
+      },
+      "performance": {
+        "label": "Stats"
+      },
+      "schedule": {
+        "label": "Upcoming Games"
+      },
+      "recentGames": {
+        "label": "Recent Games"
+      },
+      "teams": {
+        "label": "Represented Teams"
+      },
+      "quickLinks": {
+        "label": "Shortcuts"
+      }
+    },
+    "settings": {
+      "title": "Data settings",
+      "modulesTitle": "Module layout",
+      "modulesHint": "Drag the handle on the left to reorder, or use the up and down buttons. This order applies to mobile and compact layouts. To adjust desktop positions and sizes, drag modules in “Edit layout” on the page.",
+      "ranksOnlyWithTeam": "Only shown after selecting a team",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "toggleModuleAria": "Show {name}",
+      "enabledCount": "{enabled} of {total} enabled",
+      "milestonesTitle": "Career milestones · Up to {max}",
+      "milestonesHint": "Choose the career totals to display; the timeline shows the most recent milestones for the selected metrics.",
+      "selectedCount": "{selected} of {max} selected",
+      "performanceTitle": "Performance chart",
+      "performanceHint": "Choose the metric and chart type to display; unavailable metrics are grayed out.",
+      "metric": "Metric",
+      "chartType": "Chart type",
+      "ranksTitle": "Team ranking · Four metrics",
+      "ranksHint": "Rankings use the selected team's same-event or cross-event career totals; the module is hidden when no team is selected. Home runs are not available by default.",
+      "rankSlot": "Ranking slot {n}",
+      "resetDefaults": "Reset to defaults",
+      "save": "Save",
+      "vizKpi": "Big number",
+      "vizLine": "Line chart",
+      "vizBar": "Bar chart",
+      "vizDonut": "Donut chart"
+    },
+    "empty": {
+      "allHiddenTitle": "All modules are hidden",
+      "allHiddenBody": "You can reopen any module in Data settings at any time.",
+      "scopeEmptyTitle": "No modules in this scope",
+      "scopeEmptyBody": "Select a team or enable more modules in Data settings.",
+      "goSettings": "Open settings",
+      "loadFailed": "Failed to load clubhouse",
+      "reload": "Reload",
+      "unclaimed": "No player profile linked"
+    },
+    "card": {
+      "zoomOpenAria": "Enlarge player card",
+      "zoomDialogAria": "Enlarged player card",
+      "closeZoomAria": "Close enlarged view",
+      "radarAria": "{title} radar chart, {axes}",
+      "radarAxis": "{label} {value}, percentile {percentile}",
+      "radarAxisSeparator": "; "
+    },
+    "spray": {
+      "modeAria": "Spray display mode",
+      "heatmap": "Heatmap",
+      "animation": "Spray animation",
+      "replay": "Replay",
+      "loading": "Loading spray chart…",
+      "loadFailed": "Failed to load spray chart",
+      "empty": "No batted-ball locations recorded in this scope.",
+      "chartAria": "Spray chart zones",
+      "zoneStats": "Zone stats",
+      "typeStats": "Pitch type stats",
+      "hits": "Hits",
+      "homeRuns": "Home runs",
+      "outs": "Outs",
+      "hitsCount": "{n} hits",
+      "recordedBalls": "{n} balls recorded",
+      "gamesCount": "{n} games"
+    },
+    "milestones": {
+      "reached": "{n} reached",
+      "nextStop": "Next: {target}",
+      "loading": "Loading career milestones…",
+      "loadFailed": "Failed to load milestones",
+      "remaining": "{remaining} to go",
+      "maxReached": "Highest milestone reached",
+      "recentTitle": "Recent milestones",
+      "recentSummary": "Latest {shown} of {total}",
+      "timelineAria": "Recent milestone timeline",
+      "empty": "No milestones reached yet. Keep going.",
+      "note": "Based on system records · Ranked games only",
+      "unavailable": "No career totals available.",
+      "statusLoading": "Loading",
+      "statusUnavailable": "Unavailable",
+      "waitingData": "Waiting for data",
+      "noDate": "Date not recorded"
+    },
+    "performance": {
+      "defaultLabel": "Data",
+      "hitsLabel": "Hits",
+      "trendAria": "{metric} trend",
+      "chartNote": "Last {n} games · Sorted by game date",
+      "empty": "No game data in the selected scope."
+    },
+    "schedule": {
+      "allEvents": "Full schedule",
+      "currentEvent": "Current event",
+      "currentLeague": "Current league",
+      "noUpcomingForEvent": "No upcoming games in this event right now",
+      "leagueEventCount": "{n} events",
+      "venueTbd": "Venue TBD",
+      "gameDetail": "Game details",
+      "statusScheduled": "Scheduled",
+      "crossTeamCareer": "Career across teams",
+      "emptyEvent": "No upcoming games in this event.",
+      "emptyLeague": "No upcoming games in this league.",
+      "emptyTeam": "No upcoming games for this team.",
+      "empty": "No upcoming games."
+    },
+    "recentGames": {
+      "allGames": "Game log",
+      "final": "Final",
+      "emptyEvent": "No games recorded in this event.",
+      "emptyLeague": "No games recorded in this league.",
+      "emptyTeam": "No games recorded for this team.",
+      "empty": "No games recorded.",
+      "battingLine": "{ab} AB, {h} H",
+      "rbiLine": "{n} RBI",
+      "sbLine": "{n} SB",
+      "pitchingLine": "{ip} IP · {so} K · {er} ER",
+      "noIndividualStats": "No individual stats in this game"
+    },
+    "teams": {
+      "pointsNote": "Team points follow each team's primary event",
+      "noEvents": "No confirmed events",
+      "noRecord": "No record yet"
+    },
+    "quickLinks": {
+      "publicProfile": "Public player profile",
+      "claims": "My claims & profile"
+    },
+    "countdown": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "days": "{n} days to go"
+    },
+    "weekday": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "toast": {
+      "layoutSaveFailed": "Failed to save layout",
+      "resetSizeConflict": "The default size would overlap another module. Move it first.",
+      "rankDuplicates": "The four ranking slots must use different metrics",
+      "milestonesRequired": "Select at least one career milestone metric",
+      "settingsSaved": "Data settings saved",
+      "saveFailed": "Save failed",
+      "resetDone": "Defaults restored",
+      "resetFailed": "Reset failed",
+      "unclaimed": "This account isn't linked to a player profile. Returning to the portal."
+    },
+    "confirm": {
+      "resetTitle": "Reset to defaults",
+      "resetMessage": "Reset data settings to defaults? Your current selections will be overwritten.",
+      "resetConfirm": "Reset"
+    },
+    "common": {
+      "notFilled": "Not set"
+    }
   }
 }
