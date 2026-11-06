@@ -40,10 +40,30 @@ export function toEarnedRunPlay(event = {}) {
     playId: resolvePlayId(event),
     sequence: Math.max(1, Math.floor(Number(event.sequence ?? 1)) || 1),
     actualOutsAdded,
-    reconstructedOutsAdded: clampOuts(event.reconstructedOutsAdded ?? actualOutsAdded),
+    reconstructedOutsAdded: clampOuts(
+      event.reconstructedOutsAdded ?? inferReconstructedOutsAdded(event, actualOutsAdded)
+    ),
     rulingPending: Boolean(event.rulingPending),
     scoringRunners: normalizeScoringRunners(event.scoringRunners, pitcherId, event.resultCode)
   };
+}
+
+// 无失误重放的关键输入：因失误上垒的打席，若无失误打者应被刺杀出局，
+// 重建出局数须记 actualOutsAdded+1。缺少这个输入时，引擎的
+// reconstructedOuts 永远凑不满 3，「失误延长局数→后续得分非自责」
+// (ERROR_EXTENDED_INNING) 判定不会触发（game 261 三局上实测）。
+// 仅限打者本人上垒的 E 码打席（E/E5/ERROR*）；跑者因失误进垒
+//（ADVANCE_FE/ERROR_ADVANCE）不算出局数，仍按实际出局数重放。
+export function inferReconstructedOutsAdded(event, actualOutsAdded) {
+  const code = String(event.resultCode ?? '').toUpperCase();
+  const reachedOnError = /^E\d*$/.test(code) || /^ERROR\d*$/.test(code);
+  if (!reachedOnError) return actualOutsAdded;
+  const batterId = positiveId(event.batterPlayerId);
+  const bases = event.basesAfter ?? {};
+  const batterOnBase = batterId != null
+    && [1, 2, 3].some((base) => positiveId(bases[base]) === batterId);
+  if (!batterOnBase) return actualOutsAdded;
+  return actualOutsAdded + 1;
 }
 
 function normalizeScoringRunners(runners, pitcherId, resultCode) {
