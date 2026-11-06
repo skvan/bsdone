@@ -245,6 +245,7 @@ EventService --> EventRepository
   - 参考：`EventApi.java:84-88`
 - POST /event/{eventId}/import-game-result
   - 作用：导入比赛结果（含比赛与统计）
+  - 把关：投手行若同时送来 R/ER/UER/PENDING 四栏，必须满足 `R = ER + UER + PENDING` 且 `ER ≤ R`，否则整份导入返回 400；缺任一栏即跳过判定（旧导入端兼容）。口径见《数据模型设计/统计实体》「单一写方」段。
   - 参考：`EventApi.java:72-76`
 
 ### 比赛（Game）
