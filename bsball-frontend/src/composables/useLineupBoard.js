@@ -12,6 +12,7 @@ import {
   makeRow, normalizeRows, posOf, slotRow,
 } from '../utils/lineupBoardRules.js';
 import { sortByJersey } from '../utils/sortByJersey.js';
+import { isFieldCode } from '../utils/lineupFieldPositions.js';
 
 export function useLineupBoard(mode, teamId, opts = {}) {
   const rows = ref([]);
@@ -262,6 +263,14 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     syncPitcher();
   }
 
+  /** 非投手守备位是否已满（棒球 8 个；垒球含 XF 共 9 个） */
+  function nonPitcherFieldSlotsFull() {
+    const total = mode.value === 'SOFTBALL' ? 9 : 8;
+    const filled = rows.value.filter((row) => !isPlaceholder(row)
+      && posOf(row) !== 'P' && isFieldCode(posOf(row))).length;
+    return filled >= total;
+  }
+
   /** 打线列表独立拖人：位置码 = 仅守备投手 → 'P'；无 DH → 'DH'；已有 DH → 棒球 'EP'（EP 制落位），
    *  垒球无 EP → 维持「DH 已有人」拒绝（垒球现口径最多 N 人打击，含 1 名 DH） */
   function addToBatting(player) {
@@ -277,16 +286,35 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       fieldingPitcherId.value != null &&
       String(fieldingPitcherId.value) === String(player.id) &&
       !slotRow(rows.value, 'P');
+    // 大谷规则：非投手不自动占 DH；DH 留给投手/「设为兼投」
+    const ohtaniNoDh = ohtaniRuleOn.value && !isFieldingPitcher && !hasDh.value;
+    // 守备位已满时，棒球有 EP 就记 EP；没 EP 则拒绝，避免留下永远补不上守备位的空行
+    const ohtaniExtraHitter = ohtaniNoDh && mode.value !== 'SOFTBALL' && nonPitcherFieldSlotsFull();
+    if (ohtaniExtraHitter && !extraBatterOn.value) {
+      notice.value = '大谷规则下守备位已满；请先移除一名野手，或开启额外打击者（EP）';
+      return;
+    }
+    // 其余「无 DH」情形：先以空守备位进入打线，待用户拖到守备位
+    const ohtaniBattingOnly = ohtaniNoDh && !ohtaniExtraHitter;
     // 垒球无 EP 制：已有 DH 时非投手不再新增（避免落出非法守备位 EP）
-    if (!isFieldingPitcher && slotRow(rows.value, 'DH') && mode.value === 'SOFTBALL') {
+    if (!isFieldingPitcher && hasDh.value && mode.value === 'SOFTBALL') {
       notice.value = `DH 已有人；垒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
       return;
     }
-    const position = isFieldingPitcher ? 'P' : (slotRow(rows.value, 'DH') ? 'EP' : 'DH');
+    let position = 'DH';
+    if (isFieldingPitcher) position = 'P';
+    else if (ohtaniBattingOnly) position = '';
+    else if (hasDh.value || ohtaniExtraHitter) position = 'EP';
     takeFirstEmpty(makeRow(player, teamId.value, position));
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));
     if (isFieldingPitcher) fieldingPitcherId.value = player.id;
+    else if (ohtaniBattingOnly || ohtaniExtraHitter) lastDhAddedFromPoolId.value = null;
     else lastDhAddedFromPoolId.value = player.id;
+    if (ohtaniBattingOnly) {
+      notice.value = '大谷规则下已加入打线，请拖到守备位；DH 留给投手或「设为兼投」';
+    } else if (ohtaniExtraHitter) {
+      notice.value = '大谷规则下守备位已满，已按 EP（额外打击者）加入';
+    }
     normalize();
   }
 
