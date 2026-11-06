@@ -842,7 +842,7 @@ var is={
         src:l(X)(u.value.logo)||l(xt),alt:u.value.name,onError:t[0]||(t[0]=(...a)=>l(va)&&l(va)(...a))
       }
       ,null,40,ds)]),m("h1",null,v(u.value.name),1),u.value.wordmark?(r(),d("img",{
-        key:0,src:l(X)(u.value.wordmark),alt:`${u.value.name} 文字Logo`,class:"team-wordmark",onError:ll
+        key:0,src:l(X)(u.value.wordmark),alt:l(n)("team.textLogoAlt",{name:u.value.name}),class:"team-wordmark",onError:ll
       }
       ,null,40,cs)):_("",!0),u.value.shortName&&u.value.shortName!==u.value.name?(r(),d("p",vs,v(u.value.shortName),1)):_("",!0),u.value.city||u.value.stadium?(r(),d("p",ms,[u.value.city?(r(),d("span",ps,v(l(n)("teamDetail.city"))+"："+v(u.value.city),1)):_("",!0),u.value.city&&u.value.stadium?(r(),d("span",fs," · ")):_("",!0),u.value.stadium?(r(),d("span",gs,v(l(n)("teamDetail.stadium"))+"："+v(u.value.stadium),1)):_("",!0)])):_("",!0),u.value.contactPerson||u.value.contactPhone||u.value.contactEmail?(r(),d("p",hs,[u.value.contactPerson?(r(),d("span",ys,v(l(n)("teamDetail.contactPerson"))+"："+v(u.value.contactPerson),1)):_("",!0),u.value.contactPerson&&(u.value.contactPhone||u.value.contactEmail)?(r(),d("span",_s," · ")):_("",!0),u.value.contactPhone?(r(),d("span",Ss,v(l(n)("teamDetail.contactPhone"))+"："+v(u.value.contactPhone),1)):_("",!0),u.value.contactPhone&&u.value.contactEmail?(r(),d("span",bs," · ")):_("",!0),u.value.contactEmail?(r(),d("span",ws,v(l(n)("teamDetail.contactEmail"))+"："+v(u.value.contactEmail),1)):_("",!0)])):_("",!0),u.value.description?(r(),d("p",Ts,v(u.value.description),1)):_("",!0)],6)):_("",!0),u.value?(r(),d("div",ks,[i(L,{
         modelValue:h.value,"onUpdate:modelValue":t[1]||(t[1]=a=>h.value=a),class:"team-tabs",onTabChange:Va
@@ -869,7 +869,7 @@ var is={
         ])
       }
       ,{
-        default:p(()=>[Q(v(a.name?.slice(0,1)||"球"),1)]),_:2
+        default:p(()=>[Q(v(a.name?.slice(0,1)||l(n)("team.logoInitialFallback")),1)]),_:2
       }
       ,1032,["src","class"])]),m("div",Fs,[m("span",Is,v(Zt(a)||" "),1),m("span",{
         class:"person-card-roster-name",title:He(a)
@@ -885,7 +885,7 @@ var is={
           ])
         }
         ,{
-          default:p(()=>[Q(v(a.name?.slice(0,1)||"球"),1)]),_:2
+          default:p(()=>[Q(v(a.name?.slice(0,1)||l(n)("team.logoInitialFallback")),1)]),_:2
         }
         ,1032,["src","class"])]),m("div",xs,[m("span",zs,v(Zt(a)||" "),1),m("span",{
           class:"person-card-roster-name",title:He(a)

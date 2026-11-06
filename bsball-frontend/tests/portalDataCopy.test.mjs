@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { statsHeaderKey } from '../src/stores/statsHeaderKeys.js';
 
 const read = (rel) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
 const readJson = (rel) => JSON.parse(read(rel));
@@ -17,6 +18,10 @@ const events = read('../src/views/portal/PortalEvents.js');
 const filterBar = read('../src/components/portal/PortalScheduleFilterBar.js');
 const scheduleTable = read('../src/components/admin/EventScheduleListTable.js');
 const legacyMeta = read('../src/router/legacy-meta.js');
+const noticeDetail = read('../src/views/portal/NoticeDetail.js');
+const announcementDoc = read('../src/views/portal/AnnouncementDoc.js');
+const playerCard = read('../src/components/portal/ClubhousePlayerCard.vue');
+const fieldingTable = read('../src/components/admin/GameDetailFieldingTable.vue');
 
 test('明星球员奖项使用 i18n 而不直接渲染中文 award', () => {
   assert.ok(starPlayers.includes('AWARD_KEY_BY_CN'), '缺少奖项中文名到 key 的映射');
@@ -136,4 +141,36 @@ test('驾驶舱 clubhouse.* 三语齐全、源码引用与词条一一对应', (
   assert.ok(!clubhouse.includes('milestoneData.note'), '里程碑固定说明仍优先取后端中文');
   assert.match(clubhouse, /\.page-head\s*\{[^}]*flex-wrap:\s*wrap/, '页头未允许换行');
   assert.match(clubhouse, /\.page-actions\s*\{[^}]*flex-wrap:\s*wrap/, '头部按钮未允许换行');
+});
+
+test('公告、球队 Logo、球员卡与守备表剩余文案走 i18n', () => {
+  for (const key of ['notice.contentNotFound', 'notice.parseFailed', 'notice.emptyBody', 'notice.originalLink', 'notice.attachment']) {
+    assert.ok(noticeDetail.includes(key), `公告详情未使用 ${key}`);
+  }
+  assert.ok(noticeDetail.includes('A(tr("notice.originalLink"))'), '原文链接未动态 i18n');
+  assert.ok(noticeDetail.includes('A(tr("notice.attachment"))'), '附件标题未动态 i18n');
+  assert.doesNotMatch(noticeDetail, /m\(t\)\(\"(?:news|common)\./, '公告详情仍有未改名的 m(t) 调用');
+  assert.match(announcementDoc, /const\s*\{\s*t:\s*tr\s*\}\s*=\s*qI18n\(\)/, '公告文档缺少 tr 解构');
+  assert.ok(!noticeDetail.includes('"原文链接"'), '公告详情仍硬编码原文链接');
+  assert.ok(!noticeDetail.includes('"附件"'), '公告详情仍硬编码附件');
+  assert.ok(announcementDoc.includes('notice.retry') && announcementDoc.includes('notice.notFound'), '公告文档错误态未走 i18n');
+  assert.ok(playerCard.includes("t('player.avatarAlt')"), '球员卡头像 alt 未走 i18n');
+  assert.ok(teamDetail.includes('team.textLogoAlt') && teamDetail.includes('team.logoInitialFallback'), '球队 Logo 文案未走 i18n');
+  assert.ok(fieldingTable.includes('StatsColHeader'), '守备表列头未复用统一表头');
+  assert.ok(fieldingTable.includes('gameDetail.fieldingPlayer'), '守备表球员列未走 i18n');
+  assert.ok(fieldingTable.includes('gameDetail.expandFieldingAria') && fieldingTable.includes('gameDetail.collapseFieldingAria'), '守备展开 aria 未走 i18n');
+  assert.ok(fieldingTable.includes("buildFieldingSummaryCells(columns, totals.value, t('gameDetail.totals'))"), '守备合计行未本地化');
+  assert.equal(statsHeaderKey('fieldingGs', 'fieldingGs', 'fielding'), 'gsFielding');
+  assert.equal(statsHeaderKey('defInn', 'defInn', 'fielding'), 'inn');
+  for (const locale of Object.keys(locales)) {
+    for (const key of ['contentNotFound', 'parseFailed', 'emptyBody', 'originalLink', 'attachment', 'retry', 'notFound']) {
+      assert.ok(locales[locale].notice[key], `${locale} 缺少 notice.${key}`);
+    }
+    assert.ok(locales[locale].team.textLogoAlt.includes('{name}'), `${locale} team.textLogoAlt 缺 {name}`);
+    assert.ok(locales[locale].team.logoInitialFallback, `${locale} 缺少 team.logoInitialFallback`);
+    assert.ok(locales[locale].player.avatarAlt, `${locale} 缺少 player.avatarAlt`);
+    for (const key of ['fieldingPlayer', 'expandFieldingAria', 'collapseFieldingAria']) {
+      assert.ok(locales[locale].gameDetail[key], `${locale} 缺少 gameDetail.${key}`);
+    }
+  }
 });

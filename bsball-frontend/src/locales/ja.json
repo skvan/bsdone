@@ -1099,7 +1099,10 @@
     "batters": "打者",
     "pitchers": "投手",
     "totals": "合計",
-    "fieldingTableTitle": "守備"
+    "fieldingTableTitle": "守備",
+    "fieldingPlayer": "選手",
+    "expandFieldingAria": "{name} の守備位置別データを展開",
+    "collapseFieldingAria": "{name} の守備位置別データを折りたたむ"
   },
   "news": {
     "title": "ニュース",
@@ -1801,7 +1804,8 @@
       "education": "Education",
       "joinDate": "Joined",
       "debut": "Pro debut"
-    }
+    },
+    "avatarAlt": "選手アバター"
   },
   "teamDetail": {
     "roster": "ロースター",
@@ -2149,5 +2153,18 @@
     "revokeFailed": "取消に失敗しました",
     "genericHint": "本チームに未在籍の選手のみ表示します。未紐付け選手は直接加入し（現在の所属チームは保持）、紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
     "loadFailed": "読み込みに失敗しました"
+  },
+  "notice": {
+    "contentNotFound": "コンテンツが見つかりません",
+    "parseFailed": "コンテンツの解析に失敗しました",
+    "emptyBody": "本文がありません",
+    "originalLink": "元のリンク",
+    "attachment": "添付ファイル",
+    "retry": "再試行",
+    "notFound": "お知らせが見つからないか削除されています"
+  },
+  "team": {
+    "textLogoAlt": "{name} テキストロゴ",
+    "logoInitialFallback": "球"
   }
 }

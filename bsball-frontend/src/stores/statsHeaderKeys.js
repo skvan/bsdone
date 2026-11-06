@@ -66,6 +66,8 @@ const HEADER_KEY_BY_COLUMN = {
   wp: 'wp',
   bk: 'bk',
   // 守备
+  fieldingGs: 'gsFielding',
+  defInn: 'inn',
   inn: 'inn',
   tc: 'tc',
   po: 'po',
