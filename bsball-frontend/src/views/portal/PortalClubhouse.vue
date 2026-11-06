@@ -604,9 +604,12 @@
             <div v-if="data.recentGames.length" class="recent-cards">
               <article v-for="game in data.recentGames" :key="game.gameId" class="result-card">
                 <div class="result-top"><span class="date">{{ formatDay(game.gameday) }} · {{ game.isHome ? '主场' : '客场' }}</span><span class="res-badge" :class="resultType(game.result)">{{ game.result }}</span></div>
-                <div class="result-score"><b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b><span>最终</span></div>
-                <div class="result-opponent">{{ game.opponentName }}</div>
-                <div class="result-meta">{{ game.teamName }} · {{ game.eventName || '赛事' }}</div>
+                <div class="result-score">
+                  <span class="result-team" :title="game.teamName">{{ game.teamName || '我方' }}</span>
+                  <b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b>
+                  <span class="result-team result-team--opponent" :title="game.opponentName">{{ game.opponentName || '对手' }}</span>
+                </div>
+                <div class="result-meta">{{ game.eventName || '赛事' }} · 最终</div>
                 <div class="result-line">{{ recentLine(game) }}</div>
               </article>
             </div>
@@ -3323,11 +3326,11 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .res-badge { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; }
 .res-badge.w { color: var(--bs-success); background: rgba(31,122,90,.1); }
 .res-badge.l { color: var(--bs-danger); background: rgba(181,18,46,.1); }
-.result-score { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; }
-.result-score b { font-family: var(--bs-font-num); font-size: 24px; line-height: 1; color: var(--bs-ink); }
-.result-score span { font-size: 10px; color: var(--bs-text-faint); }
-.result-opponent { margin-top: 5px; font-size: 10px; font-weight: 700; color: var(--bs-text); }
-.result-meta { margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
+.result-score { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 5px 7px; margin-top: 10px; text-align: center; }
+.result-score b { flex: none; font-family: var(--bs-font-num); font-size: 24px; line-height: 1; color: var(--bs-ink); white-space: nowrap; }
+.result-team { max-width: 100%; font-size: 11px; font-weight: 700; line-height: 1.3; color: var(--bs-text); overflow-wrap: anywhere; }
+.result-team--opponent { color: var(--bs-text-muted); font-weight: 600; }
+.result-meta { margin-top: 5px; font-size: 10px; color: var(--bs-text-faint); text-align: center; }
 .result-line { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; line-height: 1.65; color: var(--bs-text-muted); }
 
 .team-panel { position: relative; overflow: hidden; }
