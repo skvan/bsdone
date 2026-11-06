@@ -452,6 +452,54 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     return true;
   }
 
+  /** 大谷规则：把投手丘上的投手设为 DH 兼投，自动填充 DH 槽并保留打序 */
+  function setPitcherAsDh() {
+    if (!ohtaniRuleOn.value) {
+      notice.value = '该赛事未开启大谷规则';
+      return false;
+    }
+    const dh = slotRow(rows.value, 'DH');
+    const pRow = slotRow(rows.value, 'P');
+    const pitcherId = pRow?.id ?? fieldingPitcherId.value;
+    if (pitcherId == null) {
+      notice.value = '请先在投手丘放入投手';
+      return false;
+    }
+    if (dh && String(dh.id) !== String(pitcherId)) {
+      notice.value = 'DH 已有人，请先移除或调整 DH';
+      return false;
+    }
+    if (dh && String(dh.id) === String(pitcherId)) {
+      notice.value = '该球员已经是 DH 兼投';
+      return false;
+    }
+    if (pRow) {
+      const idx = findRowIndex(rows.value, pRow.id);
+      const next = [...rows.value];
+      next[idx] = { ...next[idx], position: 'DH' };
+      rows.value = next;
+      fieldingPitcherId.value = pRow.id;
+      lastDhAddedFromPoolId.value = null;
+      notice.value = `已把投手设为 DH 兼投，打序保持第 ${idx + 1} 棒`;
+      normalize();
+      syncPitcher();
+      return true;
+    }
+    const pitcher = roster.value.find((p) => String(p.id) === String(pitcherId));
+    if (!pitcher) {
+      notice.value = '找不到投手球员资料';
+      return false;
+    }
+    takeFirstEmpty(makeRow(pitcher, teamId.value, 'DH'));
+    bench.value = bench.value.filter((p) => String(p.id) !== String(pitcher.id));
+    fieldingPitcherId.value = pitcher.id;
+    lastDhAddedFromPoolId.value = pitcher.id;
+    notice.value = '已把投手设为 DH 兼投，并自动填充 DH 槽';
+    normalize();
+    syncPitcher();
+    return true;
+  }
+
   /** 批量设置替补（复用旧多选下拉的 id 列表） */
   function setBench(playerIds) {
     const ids = new Set((playerIds ?? []).map(String));
@@ -485,6 +533,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     validation, fieldingPitcherRequired, fieldingPitcherOk, lineupComplete, battingFull,
     slotOfRow, setRoster, loadDraft, reset,
     placeAtSlot, addToBatting, sendBackToBench, sendToBench, sendToPool, reorderBatting,
-    removeDh, setFieldingPitcher, hasDhPitcher, toggleDhPitcher, setBench, applyTemplate, consumeNotice,
+    removeDh, setFieldingPitcher, hasDhPitcher, toggleDhPitcher, setPitcherAsDh, setBench,
+    applyTemplate, consumeNotice,
   };
 }

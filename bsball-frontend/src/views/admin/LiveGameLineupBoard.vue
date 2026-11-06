@@ -84,10 +84,10 @@
         size="small"
         type="primary"
         plain
-        :disabled="!board.hasDh.value || board.hasP.value"
+        :disabled="ohtaniButtonDisabled"
         @click="onToggleOhtani"
       >
-        {{ board.hasDhPitcher.value ? '取消兼投' : '设为兼投' }}
+        {{ ohtaniButtonLabel }}
       </el-button>
       <span class="ohtani-rule-bar__hint">{{ ohtaniHint }}</span>
     </div>
@@ -218,14 +218,42 @@ const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
+const ohtaniAction = computed(() => {
+  const b = board.value;
+  if (!ohtaniRule.value) return 'none';
+  if (b.hasDhPitcher.value && !b.hasP.value) return 'cancel-dh-pitcher';
+  if (b.hasP.value && !b.hasDh.value) return 'pitcher-to-dh';
+  if (!b.hasDh.value && b.fieldingPitcherId.value != null) return 'pitcher-to-dh';
+  if (b.hasDh.value && !b.hasP.value) return 'dh-to-pitcher';
+  return 'none';
+});
+const ohtaniButtonLabel = computed(() => {
+  if (ohtaniAction.value === 'cancel-dh-pitcher') return '取消兼投';
+  if (ohtaniAction.value === 'pitcher-to-dh') return '兼DH';
+  return '设为兼投';
+});
+const ohtaniButtonDisabled = computed(() => ohtaniAction.value === 'none');
 const ohtaniHint = computed(() => {
   if (!ohtaniRule.value) return '';
-  if (!board.value.hasDh.value) return '大谷规则：先把球员放到 DH 槽，再点「设为兼投」';
-  if (board.value.hasP.value) return '大谷规则：打线已有投手位，不能设置 DH 兼投';
-  return '大谷规则：DH 可兼先发投手；换投后保留 DH，不可再移防。';
+  const b = board.value;
+  if (b.hasDhPitcher.value && !b.hasP.value) {
+    return '大谷规则：DH 可兼先发投手；换投后保留 DH，不可再移防。';
+  }
+  if (b.hasP.value && b.hasDh.value) return '大谷规则：打线同时有投手位和 DH，请先调整';
+  if (b.hasP.value) return '大谷规则：点「兼DH」把当前投手设为 DH 兼投，自动填充 DH 槽';
+  if (!b.hasDh.value && b.fieldingPitcherId.value != null) {
+    return '大谷规则：点「兼DH」把当前投手设为 DH 兼投';
+  }
+  if (b.hasDh.value) return '大谷规则：点「设为兼投」把 DH 设为先发投手';
+  return '大谷规则：先把球员放到 DH 槽或投手丘，再点对应按钮';
 });
 function onToggleOhtani() {
-  board.value.toggleDhPitcher();
+  const action = ohtaniAction.value;
+  if (action === 'cancel-dh-pitcher' || action === 'dh-to-pitcher') {
+    board.value.toggleDhPitcher();
+  } else if (action === 'pitcher-to-dh') {
+    board.value.setPitcherAsDh();
+  }
   showNotice(board.value);
 }
 
