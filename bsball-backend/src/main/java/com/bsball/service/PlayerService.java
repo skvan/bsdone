@@ -163,10 +163,11 @@ public class PlayerService {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
         EffectiveScope scope = this.accountScopeService.resolveCurrent();
         List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
-        if (!global && visibleTeamIds != null && visibleTeamIds.isEmpty()) {
+        List<Long> selfPlayerIds = this.claimedPlayerIds(tid);
+        if (!global && visibleTeamIds != null && visibleTeamIds.isEmpty() && selfPlayerIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
-        if (!(global || visibleTeamIds == null || teamId == null || teamId == 0L || visibleTeamIds.contains(teamId))) {
+        if (!(global || visibleTeamIds == null || teamId == null || teamId == 0L || visibleTeamIds.contains(teamId)) && selfPlayerIds.isEmpty()) {
             return PageResult.of((List)List.of(), (long)0L);
         }
         // 受限角色（manage 窄读）不提供「自由球员」视图：无当前归属的球员（含已离队且未加入新队者）
@@ -185,7 +186,10 @@ public class PlayerService {
                     list = tenantRows;
                 } else {
                     Map<Long, Set<Long>> currentTeams = this.playerTeamService.currentTeamIdsByPlayerIds(tenantRows.stream().map(Player::getId).toList());
-                    list = tenantRows.stream().filter(p -> this.visibleInScope(visibleTeamIds, currentTeams.get(p.getId()))).toList();
+                    list = tenantRows.stream()
+                            .filter(p -> selfPlayerIds.contains(p.getId())
+                                    || this.visibleInScope(visibleTeamIds, currentTeams.get(p.getId())))
+                            .toList();
                 }
             }
             this.playerTeamService.attachEntries(list);
@@ -193,14 +197,14 @@ public class PlayerService {
         }
         boolean hasFilter = keyword != null && !keyword.isBlank() || number != null && !number.isBlank() || position != null && !position.isBlank() || throwHand != null && !throwHand.isBlank() || batHand != null && !batHand.isBlank() || status != null && !status.isBlank() || joinDateFrom != null && !joinDateFrom.isBlank() || joinDateTo != null && !joinDateTo.isBlank() || teamId != null;
         Pageable p2 = this.buildPageable(page, pageSize, sortProp, sortOrder);
-        Specification spec = this.buildListSpec(teamId, keyword, number, position, throwHand, batHand, status, joinDateFrom, joinDateTo, tid, visibleTeamIds, hasFilter, global);
+        Specification spec = this.buildListSpec(teamId, keyword, number, position, throwHand, batHand, status, joinDateFrom, joinDateTo, tid, visibleTeamIds, selfPlayerIds, hasFilter, global);
         Page result = this.playerRepository.findAll(spec, p2);
         List<Player> content = result.getContent();
         this.playerTeamService.attachEntries(content);
         return PageResult.of((List)content, (long)result.getTotalElements());
     }
 
-    private Specification<Player> buildListSpec(Long teamId, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo, long tid, List<Long> visibleTeamIds, boolean applyExtraFilters, boolean global) {
+    private Specification<Player> buildListSpec(Long teamId, String keyword, String number, String position, String throwHand, String batHand, String status, String joinDateFrom, String joinDateTo, long tid, List<Long> visibleTeamIds, List<Long> selfPlayerIds, boolean applyExtraFilters, boolean global) {
         return (root, q, cb) -> {
             ArrayList<Predicate> preds = new ArrayList<Predicate>();
             preds.add(cb.isNull((Expression)root.get("deletedAt")));
@@ -209,10 +213,12 @@ public class PlayerService {
             }
             boolean freeAgentOnly = teamId != null && teamId == 0L;
             if (!(global || visibleTeamIds == null || freeAgentOnly)) {
-                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, visibleTeamIds, null)));
+                Predicate teamScoped = cb.exists(this.currentTeamSubquery(cb, q, root, visibleTeamIds, null));
+                preds.add(selfPlayerIds.isEmpty() ? teamScoped : cb.or(teamScoped, root.get("id").in(selfPlayerIds)));
             }
             if (teamId != null && teamId != 0L) {
-                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId)));
+                Predicate teamSpecific = cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId));
+                preds.add(selfPlayerIds.isEmpty() ? teamSpecific : cb.or(teamSpecific, root.get("id").in(selfPlayerIds)));
             } else if (freeAgentOnly) {
                 preds.add(cb.not(cb.exists(this.currentTeamSubquery(cb, q, root, null, null))));
             }
@@ -288,6 +294,18 @@ public class PlayerService {
         return cb.exists(sq);
     }
 
+    /** 当前账号在本租户认领的球员档案 id（不受球队范围限制，始终在球员管理中可见）。 */
+    private List<Long> claimedPlayerIds(long tenantId) {
+        Long userId = CurrentUserHolder.get();
+        if (userId == null) {
+            return List.of();
+        }
+        return this.playerRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(userId, Long.valueOf(tenantId)).stream()
+                .map(Player::getId)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
     private boolean visibleInScope(Collection<Long> visibleTeamIds, Set<Long> currentTeamIds) {
         if (currentTeamIds == null || currentTeamIds.isEmpty()) {
             return true;
@@ -311,7 +329,11 @@ public class PlayerService {
         }
         EffectiveScope scope = this.accountScopeService.resolveCurrent();
         List<Long> visibleTeamIds = this.scopeQuerySupport.visibleTeamIds(scope, tid);
-        if (visibleTeamIds != null && this.playerTeamService.countCurrentEntriesInTeams(p.getId(), visibleTeamIds) == 0L) {
+        // 认领人始终可查看本人档案（不受球队范围限制）
+        Long currentUserId = CurrentUserHolder.get();
+        boolean selfClaimed = currentUserId != null && currentUserId.equals(p.getUserId());
+        if (!selfClaimed && visibleTeamIds != null
+                && this.playerTeamService.countCurrentEntriesInTeams(p.getId(), visibleTeamIds) == 0L) {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u7403\u5458");
         }
         this.playerTeamService.attachEntries(p);
@@ -416,6 +438,11 @@ public class PlayerService {
         this.validateTeamId(entity.getTeamId());
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
+        // 认领关系、租户与当前经历指针由服务端维护：编辑表单不提交这些字段，整体保存时须继承原值
+        entity.setUserId(existing.getUserId());
+        entity.setTenantId(existing.getTenantId());
+        entity.setCreatedBy(existing.getCreatedBy());
+        entity.setCurrentJoinRecordId(existing.getCurrentJoinRecordId());
         if (entity.getName() != null) {
             String n = entity.getName().trim();
             entity.setName(n.isEmpty() ? null : n);
