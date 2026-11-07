@@ -544,6 +544,30 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
+    @DisplayName("§11.6 责任投手在场内没有投手统计行时进入违规清单（幻影投手，R/ER 无处落账）")
+    void validateSettlement_reportsResponsiblePitcherWithoutStatRow() {
+        when(gamePlayerStatRepository.findByGameId(20L))
+                .thenReturn(List.of(pitcherStat(1L, 700L, 1, 1)));
+        EarnedRunDecisionEntity normal = decision(700L, "EARNED");
+        normal.setId(6L);
+        normal.setPlayId(904L);
+        normal.setRunnerId(59L);
+        EarnedRunDecisionEntity phantom = decision(888L, "EARNED");
+        phantom.setId(5L);
+        phantom.setPlayId(903L);
+        phantom.setRunnerId(58L);
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(normal, phantom));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertEquals(1, violations.stream().filter(v -> v.contains("§11.6")).count(),
+                "只在场内缺投手统计行的责任投手才报幻影投手");
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.6") && v.contains("888")),
+                "违规信息要带出该投手 id 供人工复核");
+    }
+
+    @Test
     @DisplayName("判定清单：带出半局/序号/姓名与覆写信息")
     void listDecisions_mapsPlayAndPlayerNames() {
         EarnedRunPlayEntity play = new EarnedRunPlayEntity();
