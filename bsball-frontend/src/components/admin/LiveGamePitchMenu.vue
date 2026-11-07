@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="lgpm" :class="{ 'lgpm--no-icons': !showMenuOptionIcons }">
+    <div v-if="visible" class="lgpm" :class="{ 'lgpm--no-icons': !showMenuOptionIcons, 'lgpm--en': isEnglish }">
       <div class="lgpm__backdrop" @click="emit('close')"></div>
       <div
         ref="panelEl"
@@ -15,19 +15,19 @@
           <div class="lgpm__head-left">
             <img class="lgpm__ball" :src="ballIcon" alt="">
             <div class="lgpm__title-wrap">
-              <h2 class="lgpm__title">投球与裁定</h2>
+              <h2 v-if="!isEnglish" class="lgpm__title">投球与裁定</h2>
               <span class="lgpm__title-en">PITCH &amp; RULING</span>
             </div>
           </div>
           <div class="lgpm__state">
-            <span v-if="inning > 0" class="lgpm__state-chip">第 {{ inning }} 局{{ isTop ? '上' : '下' }}</span>
+            <span v-if="inning > 0" class="lgpm__state-chip">{{ isEnglish ? (isTop ? 'T' : 'B') + inning : '第 ' + inning + ' 局' + (isTop ? '上' : '下') }}</span>
             <span class="lgpm__count lgpm__count--b">B <b>{{ balls }}</b></span>
             <span class="lgpm__count lgpm__count--s">S <b>{{ strikes }}</b></span>
             <span class="lgpm__count lgpm__count--o">O <b>{{ currentOuts }}</b></span>
           </div>
           <div class="lgpm__actions">
-            <button type="button" class="lgpm__iconbtn" :disabled="!canUndo" title="撤销上一步" @click="emit('undo')">↩</button>
-            <button type="button" class="lgpm__iconbtn" title="关闭" @click="emit('close')">✕</button>
+            <button type="button" class="lgpm__iconbtn" :disabled="!canUndo" :title="isEnglish ? 'Undo' : '撤销上一步'" @click="emit('undo')">↩</button>
+            <button type="button" class="lgpm__iconbtn" :title="isEnglish ? 'Close' : '关闭'" @click="emit('close')">✕</button>
           </div>
         </header>
 
@@ -36,10 +36,10 @@
           <section class="lgpm__col lgpm__col--pitch" :class="{ 'lgpm__col--active': activeColumn === 'pitch' }">
             <template v-if="pitchDrill">
               <div class="lgpm__col-head lgpm__col-head--crumb">
-                <button type="button" class="lgpm__crumb-back" title="返回投球判定" @click="backPitch">‹</button>
+                <button type="button" class="lgpm__crumb-back" :title="isEnglish ? 'Back to Pitch Call' : '返回投球判定'" @click="backPitch">‹</button>
                 <div class="lgpm__crumb">
                   <div class="lgpm__crumb-line">
-                    <span class="lgpm__crumb-parent">投球判定</span>
+                    <span class="lgpm__crumb-parent">{{ isEnglish ? 'Pitch Call' : '投球判定' }}</span>
                     <span class="lgpm__crumb-sep">›</span>
                     <span class="lgpm__crumb-current">{{ pitchDrill.title }}</span>
                   </div>
@@ -73,14 +73,14 @@
                   :title="item.en"
                   @click="runCommand(item.cmd)"
                 >
-                  {{ item.cn }}
+                  {{ isEnglish ? item.en : item.cn }}
                 </button>
               </div>
               <div class="lgpm__col-foot">{{ pitchDrill.foot }}</div>
             </template>
             <template v-else>
               <div class="lgpm__col-head">
-                <span class="lgpm__col-title">投球判定</span>
+                <span v-if="!isEnglish" class="lgpm__col-title">投球判定</span>
                 <span class="lgpm__col-en">PITCH CALL</span>
               </div>
               <div class="lgpm__list">
@@ -91,7 +91,7 @@
                       <span class="lgpm__cn">{{ item.cn }}</span>
                       <span class="lgpm__en">{{ item.en }}</span>
                     </span>
-                    <span v-if="item.badge" class="lgpm__badge">{{ item.badge }}</span>
+                    <span v-if="item.badge" class="lgpm__badge">{{ isEnglish ? item.badgeEn : item.badge }}</span>
                   </button>
                   <div v-else class="lgpm__item lgpm__item--static">
                     <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
@@ -104,10 +104,10 @@
                           :key="chip.key"
                           type="button"
                           class="lgpm__chip"
-                          :title="chip.full"
+                          :title="isEnglish ? chip.fullEn : chip.full"
                           @click.stop="openDk3Choice(chip.key)"
                         >
-                          {{ chip.label }}
+                          {{ isEnglish ? chip.labelEn : chip.label }}
                         </button>
                       </span>
                     </span>
@@ -121,7 +121,7 @@
           <section class="lgpm__col lgpm__col--bip" :class="{ 'lgpm__col--active': activeColumn === 'bip' }">
             <template v-if="bipDrill">
               <div class="lgpm__col-head lgpm__col-head--crumb">
-                <button type="button" class="lgpm__crumb-back" :title="'返回' + bipCrumb.backTitle" @click="backBip">‹</button>
+                <button type="button" class="lgpm__crumb-back" :title="(isEnglish ? 'Back to ' : '返回') + bipCrumb.backTitle" @click="backBip">‹</button>
                 <div class="lgpm__crumb">
                   <div class="lgpm__crumb-line">
                     <span class="lgpm__crumb-parent">{{ bipCrumb.parent }}</span>
@@ -142,7 +142,7 @@
                   :title="item.en"
                   @click="runCommand(item.cmd)"
                 >
-                  {{ item.cn }}
+                  {{ isEnglish ? item.en : item.cn }}
                 </button>
               </div>
               <div v-else-if="bipStage === 'sac'" class="lgpm__result-grid lgpm__result-grid--single">
@@ -154,12 +154,12 @@
                   :title="item.en"
                   @click="runCommand(item.cmd)"
                 >
-                  {{ item.cn }}
+                  {{ isEnglish ? item.en : item.cn }}
                 </button>
               </div>
               <div v-else class="lgpm__result-grid">
                 <button type="button" class="lgpm__result lgpm__result--out" @click="openBipSub(bipData.outSub)">
-                  <span>出局</span>
+                  <span>{{ isEnglish ? 'Out' : '出局' }}</span>
                   <span class="lgpm__result-more">›</span>
                 </button>
                 <button
@@ -171,7 +171,7 @@
                   :title="item.en"
                   @click="onBipResult(item)"
                 >
-                  <span>{{ item.cn }}</span>
+                  <span>{{ isEnglish ? item.en : item.cn }}</span>
                   <span v-if="item.kind === 'sub'" class="lgpm__result-more">›</span>
                 </button>
               </div>
@@ -179,10 +179,10 @@
             </template>
             <template v-else>
               <div class="lgpm__col-head">
-                <span class="lgpm__col-title">界内球</span>
+                <span v-if="!isEnglish" class="lgpm__col-title">界内球</span>
                 <span class="lgpm__col-en">BALL IN PLAY</span>
               </div>
-              <div class="lgpm__col-hint">选球种 → 记录结果</div>
+              <div class="lgpm__col-hint">{{ isEnglish ? 'Pick pitch type → record result' : '选球种 → 记录结果' }}</div>
               <div class="lgpm__list">
                 <button
                   v-for="type in BIP_TYPES"
@@ -206,7 +206,7 @@
           <!-- 上垒与妨碍 -->
           <section class="lgpm__col lgpm__col--onbase">
             <div class="lgpm__col-head">
-              <span class="lgpm__col-title">上垒与妨碍</span>
+              <span v-if="!isEnglish" class="lgpm__col-title">上垒与妨碍</span>
               <span class="lgpm__col-en">ON BASE</span>
             </div>
             <div class="lgpm__list">
@@ -229,10 +229,10 @@
                         :key="chip.cmd"
                         type="button"
                         class="lgpm__chip"
-                        :title="chip.full"
+                        :title="isEnglish ? chip.fullEn : chip.full"
                         @click.stop="runCommand(chip.cmd)"
                       >
-                        {{ chip.label }}
+                        {{ isEnglish ? chip.labelEn : chip.label }}
                       </button>
                     </span>
                   </span>
@@ -244,7 +244,7 @@
           <!-- 其他裁定 -->
           <section class="lgpm__col lgpm__col--other">
             <div class="lgpm__col-head">
-              <span class="lgpm__col-title">其他裁定</span>
+              <span v-if="!isEnglish" class="lgpm__col-title">其他裁定</span>
               <span class="lgpm__col-en">OTHER</span>
             </div>
             <div class="lgpm__list">
@@ -260,7 +260,7 @@
                     <span class="lgpm__cn">{{ item.cn }}</span>
                     <span class="lgpm__en">{{ item.en }}</span>
                   </span>
-                  <span class="lgpm__badge">记坏球</span>
+                  <span class="lgpm__badge">{{ isEnglish ? 'Ball' : '记坏球' }}</span>
                 </button>
                 <div v-else-if="item.kind === 'illegal'" class="lgpm__item lgpm__item--static">
                   <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
@@ -273,10 +273,10 @@
                         :key="chip.cmd"
                         type="button"
                         class="lgpm__chip"
-                        :title="chip.full"
+                        :title="isEnglish ? chip.fullEn : chip.full"
                         @click.stop="onIllegalChip(chip.cmd)"
                       >
-                        {{ chip.label }}
+                        {{ isEnglish ? chip.labelEn : chip.label }}
                       </button>
                     </span>
                   </span>
@@ -290,13 +290,13 @@
                 </button>
               </template>
             </div>
-            <div class="lgpm__col-foot">条件项按当前局面显隐</div>
+            <div class="lgpm__col-foot">{{ isEnglish ? 'Options shown based on game state' : '条件项按当前局面显隐' }}</div>
           </section>
         </div>
 
         <footer class="lgpm__foot">
-          <span class="lgpm__foot-hint">点选项即记录 · 带 › 的进入下一步</span>
-          <button type="button" class="lgpm__close" @click="emit('close')">关闭</button>
+          <span class="lgpm__foot-hint">{{ isEnglish ? 'Tap to record · › opens the next step' : '点选项即记录 · 带 › 的进入下一步' }}</span>
+          <button type="button" class="lgpm__close" @click="emit('close')">{{ isEnglish ? 'Close' : '关闭' }}</button>
         </footer>
       </div>
     </div>
@@ -305,6 +305,10 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { locale } = useI18n();
+const isEnglish = computed(() => !String(locale.value || '').startsWith('zh'));
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -341,8 +345,8 @@ const PITCH_ROOT = [
     en: 'Dropped 3rd',
     glyph: 'K',
     chips: [
-      { key: 'dropped_3rd_swing', label: '挥空', full: '挥空三振' },
-      { key: 'dropped_3rd_look', label: '目送', full: '目送三振' },
+      { key: 'dropped_3rd_swing', label: '挥空', full: '挥空三振', labelEn: 'Swing', fullEn: 'Swinging Strikeout' },
+      { key: 'dropped_3rd_look', label: '目送', full: '目送三振', labelEn: 'Looking', fullEn: 'Looking Strikeout' },
     ],
   },
   { key: 'foul', cmd: 'pitch:F', cn: '界外球', en: 'Foul Ball', glyph: 'F' },
@@ -353,6 +357,7 @@ const PITCH_ROOT = [
     en: 'Foul Tip Out',
     glyph: 'FT',
     badge: '两好球',
+    badgeEn: 'Two Strikes',
   },
 ];
 
@@ -393,6 +398,7 @@ const BIP_SAC_ITEMS = [
 const BIP_RESULTS = {
   bip_g: {
     cn: '滚地球',
+    en: 'Ground Ball',
     outSub: 'bip_g_bo',
     outs: [
       { cmd: 'bip:g:bo:1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -415,6 +421,7 @@ const BIP_RESULTS = {
   },
   bip_hg: {
     cn: '强袭滚地球',
+    en: 'Hard Ground',
     outSub: 'bip_hg_bo',
     outs: [
       { cmd: 'bip:hg:o1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -437,6 +444,7 @@ const BIP_RESULTS = {
   },
   bip_fly: {
     cn: '飞球',
+    en: 'Fly Ball',
     outSub: 'bip_fly_bo',
     outs: [
       { cmd: 'bip:fly:o1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -463,6 +471,7 @@ const BIP_RESULTS = {
   },
   bip_ld: {
     cn: '平飞球',
+    en: 'Line Drive',
     outSub: 'bip_ld_bo',
     outs: [
       { cmd: 'bip:ld:o1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -488,6 +497,7 @@ const BIP_RESULTS = {
   },
   bip_bunt: {
     cn: '短打',
+    en: 'Bunt',
     outSub: 'bip_bunt_bo',
     outs: [
       { cmd: 'bip:b:o1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -513,6 +523,7 @@ const BIP_RESULTS = {
   },
   bip_pop: {
     cn: '内野高飞球',
+    en: 'Pop Fly',
     outSub: 'bip_pop_bo',
     outs: [
       { cmd: 'bip:pop:o1', cn: '一垒前出局', en: 'Out at 1st' },
@@ -549,9 +560,9 @@ const ONBASE_ROOT = [
     en: 'Put On Base',
     glyph: 'ON',
     chips: [
-      { label: '一垒', full: '进一垒', cmd: 'puton:1' },
-      { label: '二垒', full: '进二垒', cmd: 'puton:2' },
-      { label: '三垒', full: '进三垒', cmd: 'puton:3' },
+      { label: '一垒', full: '进一垒', cmd: 'puton:1', labelEn: '1B', fullEn: 'Advance to 1B' },
+      { label: '二垒', full: '进二垒', cmd: 'puton:2', labelEn: '2B', fullEn: 'Advance to 2B' },
+      { label: '三垒', full: '进三垒', cmd: 'puton:3', labelEn: '3B', fullEn: 'Advance to 3B' },
     ],
   },
 ];
@@ -564,8 +575,8 @@ const OTHER_ROOT = [
     en: 'Illegal Pitch',
     glyph: 'IL',
     chips: [
-      { label: '推进', full: '推进跑者', cmd: 'extra:ILLEGAL_ADVANCE' },
-      { label: '不推进', full: '不推进跑者', cmd: 'extra:ILLEGAL_NO_ADVANCE' },
+      { label: '推进', full: '推进跑者', cmd: 'extra:ILLEGAL_ADVANCE', labelEn: 'Advance', fullEn: 'Advance Runner' },
+      { label: '不推进', full: '不推进跑者', cmd: 'extra:ILLEGAL_NO_ADVANCE', labelEn: 'No Advance', fullEn: 'No Advance' },
     ],
   },
   { cmd: 'evt:BK', cn: '投手犯规', en: 'Balk', glyph: 'BK' },
@@ -611,18 +622,19 @@ const activeColumn = computed(() => {
 });
 
 const pitchDrill = computed(() => {
+  const en = isEnglish.value;
   if (panelStack.value[1] !== 'dropped_3rd') return null;
   const variant = panelStack.value[2];
   const results = DK3_RESULTS[variant];
   if (!results) {
-    return { stage: 'choose', title: '漏接三振', sub: '选择三振方式', count: DK3_CHOICES.length, foot: '先选三振方式' };
+    return { stage: 'choose', title: en ? 'Dropped 3rd Strike' : '漏接三振', sub: en ? 'Choose strikeout type' : '选择三振方式', count: DK3_CHOICES.length, foot: en ? 'Choose strikeout type first' : '先选三振方式' };
   }
   return {
     stage: 'results',
-    title: variant === 'dropped_3rd_swing' ? '挥空' : '目送',
-    sub: '选择三振结果',
+    title: en ? (variant === 'dropped_3rd_swing' ? 'Swinging' : 'Looking') : (variant === 'dropped_3rd_swing' ? '挥空' : '目送'),
+    sub: en ? 'Choose strikeout result' : '选择三振结果',
     count: results.length,
-    foot: '选择三振后的结果',
+    foot: en ? 'Choose the result after the strikeout' : '选择三振后的结果',
   };
 });
 
@@ -644,49 +656,57 @@ const bipStage = computed(() => {
 const bipResultItems = computed(() => bipData.value?.items.filter((item) => condMet(item.cond)) ?? []);
 
 const bipCrumb = computed(() => {
+  const en = isEnglish.value;
   const type = bipData.value;
-  if (!type) return { parent: '界内球', current: '', sub: '', count: 0, foot: '', backTitle: '球种' };
+  const typeLabel = type ? (en ? type.en : type.cn) : '';
+  if (!type) return { parent: en ? 'In Play' : '界内球', current: '', sub: '', count: 0, foot: '', backTitle: en ? 'Pitch Type' : '球种' };
   if (bipStage.value === 'out') {
     return {
-      parent: `界内球 › ${type.cn}`,
-      current: '出局',
-      sub: '选择出局垒位',
+      parent: en ? `In Play › ${typeLabel}` : `界内球 › ${typeLabel}`,
+      current: en ? 'Out' : '出局',
+      sub: en ? 'Choose the out base' : '选择出局垒位',
       count: type.outs.length,
-      foot: '选择出局发生的垒位',
-      backTitle: type.cn,
+      foot: en ? 'Choose where the out occurred' : '选择出局发生的垒位',
+      backTitle: typeLabel,
     };
   }
   if (bipStage.value === 'sac') {
     return {
-      parent: '界内球 › 短打',
-      current: '牺牲短打',
-      sub: '选择上垒方式',
+      parent: en ? 'In Play › Bunt' : '界内球 › 短打',
+      current: en ? 'Sacrifice Bunt' : '牺牲短打',
+      sub: en ? 'Choose how the batter reached' : '选择上垒方式',
       count: BIP_SAC_ITEMS.length,
-      foot: '选择安全上垒的原因',
-      backTitle: '短打结果',
+      foot: en ? 'Choose the reason for reaching safely' : '选择安全上垒的原因',
+      backTitle: en ? 'Bunt Result' : '短打结果',
     };
   }
   return {
-    parent: '界内球',
-    current: type.cn,
-    sub: '选择打席结果',
+    parent: en ? 'In Play' : '界内球',
+    current: typeLabel,
+    sub: en ? 'Choose plate result' : '选择打席结果',
     count: 1 + bipResultItems.value.length,
-    foot: '点结果即记录；“出局”再选具体垒位',
-    backTitle: '球种',
+    foot: en ? 'Tap a result to record; choose Out for a specific base' : '点结果即记录；“出局”再选具体垒位',
+    backTitle: en ? 'Pitch Type' : '球种',
   };
 });
 
 const routeLabel = computed(() => {
+  const en = isEnglish.value;
   if (pitchDrill.value) {
-    return pitchDrill.value.stage === 'choose' ? '漏接三振' : `漏接三振 > ${pitchDrill.value.title}`;
+    return pitchDrill.value.stage === 'choose'
+      ? (en ? 'Dropped 3rd Strike' : '漏接三振')
+      : `${en ? 'Dropped 3rd Strike' : '漏接三振'} > ${pitchDrill.value.title}`;
   }
   if (panelStack.value[1] !== 'bip') return '';
   const crumb = bipCrumb.value;
-  if (!crumb.current) return '界内球';
+  if (!crumb.current) return en ? 'In Play' : '界内球';
   return `${crumb.parent.replace(' › ', ' > ')} > ${crumb.current}`;
 });
 
-const ariaLabel = computed(() => (routeLabel.value ? `投球与裁定，${routeLabel.value}` : '投球与裁定'));
+const ariaLabel = computed(() => {
+  const title = isEnglish.value ? 'Pitch & Ruling' : '投球与裁定';
+  return routeLabel.value ? `${title}${isEnglish.value ? ', ' : '，'}${routeLabel.value}` : title;
+});
 
 function condMet(cond) {
   if (cond === 'runner') return runnerOnBase.value;
@@ -1293,6 +1313,28 @@ button.lgpm__item:hover:not(:disabled) {
   line-height: 1.18;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+ .lgpm--en .lgpm__title-en {
+  display: block;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+}
+.lgpm--en .lgpm__col-en {
+  font-size: 13px;
+  line-height: 1.2;
+}
+.lgpm--en .lgpm__cn {
+  display: none;
+}
+.lgpm--en .lgpm__en {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.lgpm--en .lgpm__copy {
+  gap: 0;
 }
 .lgpm__more {
   flex: none;
