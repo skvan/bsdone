@@ -6,5 +6,5 @@ export function useLiveGameText() {
   const { t, locale } = useI18n();
   const isEnglish = computed(() => !String(locale.value || '').startsWith('zh'));
   const text = (key, params) => t(key, params ?? {}, { locale: isEnglish.value ? 'en' : locale.value });
-  return { isEnglish, text };
+  return { isEnglish, locale, text };
 }
