@@ -220,6 +220,8 @@ class GameServiceImportPitcherTotalsTest {
         batter.setIsPitcher(Integer.valueOf(0));
         batter.setPitchR(Integer.valueOf(9));
         batter.setEr(Integer.valueOf(0));
+        batter.setUnearnedR(Integer.valueOf(1));
+        batter.setPendingR(Integer.valueOf(0));
 
         gameService.importGameResult(Long.valueOf(EVENT_ID), dtoWith(batter));
 
