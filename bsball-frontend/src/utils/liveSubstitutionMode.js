@@ -167,40 +167,61 @@ export function startingDhInfo(team) {
  * 先发 DH 至少完成一次打击，除非对方已经换投；P↔野手互换、DH 进守备等也会终止 DH。
  * 实时数据无法覆盖所有换投细节，因此返回 warning 供操作员确认，而不是静默放行。
  */
-export function canCancelDh({ team, opponentPlayers } = {}) {
+export function canCancelDh({ team, opponentPlayers, text } = {}) {
+  const tr = typeof text === 'function' ? text : null;
   const info = startingDhInfo(team);
-  if (!info) return { ok: false, warning: '当前打线没有 DH。' };
+  if (!info) return { ok: false, warning: tr ? tr('liveGame.sub.dhRuleNoDh') : '当前打线没有 DH。' };
   if (!info.starter) {
-    return { ok: false, warning: '无法确认先发 DH，请核对阵容后再取消 DH。' };
+    return { ok: false, warning: tr ? tr('liveGame.sub.dhRuleNoStarter') : '无法确认先发 DH，请核对阵容后再取消 DH。' };
   }
   const batted = battingAppearances(info.starter) > 0;
   const opponentChanged = countActivePitchers(opponentPlayers) >= 2;
   if (batted || opponentChanged) return { ok: true, warning: '' };
+  const name = playerName(info.starter, info.starterId);
   return {
     ok: false,
-    warning: `规则要求先发 DH 至少完成一次打击（对方换投除外）。先发 DH ${playerName(info.starter, info.starterId)} 尚未打击，当前取消 DH 可能不合规，请确认对方已换投或已满足条件。`,
+    warning: tr
+      ? tr('liveGame.sub.dhRuleNotBatted', { name })
+      : `规则要求先发 DH 至少完成一次打击（对方换投除外）。先发 DH ${name} 尚未打击，当前取消 DH 可能不合规，请确认对方已换投或已满足条件。`,
   };
 }
 
-export function summarizeTeamDiff(diff, teamName = '') {
+export function summarizeTeamDiff(diff, teamName = '', text) {
+  const tr = typeof text === 'function' ? text : null;
   const lines = [];
-  const prefix = teamName ? `【${teamName}】` : '';
+  const prefix = teamName ? (tr ? tr('liveGame.sub.summaryTeamPrefix', { team: teamName }) : `【${teamName}】`) : '';
+  const empty = tr ? tr('liveGame.sub.summaryEmpty') : '空位';
   for (const s of diff?.substitutions ?? []) {
-    const out = s.outPlayerId ? `${s.outName}(${s.outPosition || '-'})` : '空位';
-    const inP = s.inPlayerId ? `${s.inName}(${s.inPosition || '-'})` : '空位';
-    const dh = diff?.dhCancel && diff.dhCancel.slot === s.slot && diff.dhCancel.outPlayerId === s.outPlayerId
-      ? '（取消DH）'
-      : '';
-    lines.push(`${prefix}第${s.slot}棒 ${out} → ${inP}${dh}`);
+    const out = s.outPlayerId ? `${s.outName}(${s.outPosition || '-'})` : empty;
+    const inP = s.inPlayerId ? `${s.inName}(${s.inPosition || '-'})` : empty;
+    const dhCancel = diff?.dhCancel && diff.dhCancel.slot === s.slot && diff.dhCancel.outPlayerId === s.outPlayerId;
+    const dh = dhCancel ? (tr ? tr('liveGame.sub.summaryDhCancel') : '（取消DH）') : '';
+    lines.push(
+      tr
+        ? tr('liveGame.sub.summarySlot', { prefix, slot: s.slot, out, in: inP, dh })
+        : `${prefix}第${s.slot}棒 ${out} → ${inP}${dh}`,
+    );
   }
   for (const p of diff?.positionChanges ?? []) {
-    lines.push(`${prefix}守位调整：${p.name} ${p.outPosition || '-'} → ${p.inPosition || '-'}`);
+    const from = p.outPosition || '-';
+    const to = p.inPosition || '-';
+    lines.push(
+      tr
+        ? tr('liveGame.sub.summaryPosition', { prefix, name: p.name, from, to })
+        : `${prefix}守位调整：${p.name} ${from} → ${to}`,
+    );
   }
   if (diff?.pitchingChange) {
     const covered = (diff.substitutions ?? []).some(
       (s) => s.outPlayerId === diff.pitchingChange.outPlayerId && s.inPlayerId === diff.pitchingChange.inPlayerId,
     );
-    if (!covered) lines.push(`${prefix}投手更换：${diff.pitchingChange.outName} → ${diff.pitchingChange.inName}`);
+    if (!covered) {
+      lines.push(
+        tr
+          ? tr('liveGame.sub.summaryPitching', { prefix, from: diff.pitchingChange.outName, to: diff.pitchingChange.inName })
+          : `${prefix}投手更换：${diff.pitchingChange.outName} → ${diff.pitchingChange.inName}`,
+      );
+    }
   }
   return lines;
 }
