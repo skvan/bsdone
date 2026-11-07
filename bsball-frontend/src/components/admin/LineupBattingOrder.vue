@@ -1,11 +1,11 @@
 <template>
   <div class="lineup-batting">
     <div class="lineup-batting__header">
-      <h4>打线顺序</h4>
-      <span class="lineup-batting__hint">{{ filledCount }} / {{ maxCount }} 人</span>
+      <h4>{{ lt('liveGame.lineup.battingOrder.title') }}</h4>
+      <span class="lineup-batting__hint">{{ lt('liveGame.lineup.battingOrder.count', { filled: filledCount, max: maxCount }) }}</span>
     </div>
     <ul ref="listEl" class="lineup-batting__list" :class="{ 'is-drop-over': dropHover }">
-      <li v-if="!filledRows.length" class="lineup-batting__empty">把球员拖到球场上，或直接拖进这里（不占守备位）</li>
+      <li v-if="!filledRows.length" class="lineup-batting__empty">{{ lt('liveGame.lineup.battingOrder.empty') }}</li>
       <li
         v-for="(row, index) in filledRows"
         :key="`p-${row.id}`"
@@ -14,8 +14,8 @@
         :data-player-id="row.id"
         @click.stop="emit('pick', row.id)"
       >
-        <el-icon class="lineup-batting__handle drag-handle" title="按住拖动排序"><Rank /></el-icon>
-        <span class="lineup-batting__order">{{ index + 1 }}棒</span>
+        <el-icon class="lineup-batting__handle drag-handle" :title="lt('liveGame.lineup.battingOrder.handle')"><Rank /></el-icon>
+        <span class="lineup-batting__order">{{ orderText(index + 1) }}</span>
         <span class="lineup-batting__name">{{ row.name }}</span>
         <span class="lineup-batting__number">#{{ row.number ?? '-' }}</span>
       </li>
@@ -28,6 +28,16 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Sortable from 'sortablejs';
 import { Rank } from '@element-plus/icons-vue';
 import { isPlaceholder } from '../../utils/lineupBoardRules';
+import { useLiveGameText } from '../../composables/useLiveGameText';
+
+const { text: lt, isEnglish } = useLiveGameText();
+const ordinal = (n) => {
+  const value = Number(n);
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  return `${value}${['th', 'st', 'nd', 'rd'][value % 10] ?? 'th'}`;
+};
+const orderText = (n) => (isEnglish.value ? ordinal(n) : lt('liveGame.lineup.battingOrder.order', { n }));
 
 // 打线列表：只渲染非空行（下标即棒次），故 onEnd 的 oldIndex/newIndex 可直接喂 reorderBatting
 // 行可被页面绑定的 interactjs 拖起（data-player-id 供落点取人）；列表内排序走把手的 sortablejs
