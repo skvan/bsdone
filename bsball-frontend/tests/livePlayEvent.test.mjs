@@ -144,6 +144,20 @@ test('漏接三振失误上垒推断为 ERROR 来源（DK3_REACH_E）', () => {
   assert.equal(makePlay('DK3_REACH_PB', 57).scoringRunners[0].origin, 'PASSED_BALL');
 });
 
+test('失误码家族 E6T/E5-3 同样推断 ERROR 来源', () => {
+  const makePlay = (resultCode) => toEarnedRunPlay({
+    inning: 1,
+    half: 'top',
+    sequence: 1,
+    pitcherPlayerId: 77,
+    resultCode,
+    scoringRunners: [{ runnerId: 58, responsiblePitcherId: 77, origin: null }]
+  });
+
+  assert.equal(makePlay('E6T').scoringRunners[0].origin, 'ERROR');
+  assert.equal(makePlay('E5-3').scoringRunners[0].origin, 'ERROR');
+});
+
 test('失误上垒打席补 reconstructedOuts +1，暴投/捕逸类不加（负向对照）', () => {
   const atBat = (resultCode, batterOnBase) => toEarnedRunPlay({
     inning: 1,
