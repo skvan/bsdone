@@ -2,7 +2,7 @@
   <div class="lineup-pool">
     <section ref="poolEl" class="lineup-pool__section" :class="{ 'is-drop-over': hoverKind === 'pool' }">
       <div class="lineup-pool__header">
-        <h4>可用球员</h4>
+        <h4>{{ lt('liveGame.lineup.pool.title') }}</h4>
         <span class="lineup-pool__count">{{ pool.length }}</span>
       </div>
       <div class="lineup-pool__cards">
@@ -15,13 +15,13 @@
           @pick="emit('pick', $event)"
         />
       </div>
-      <p v-if="!pool.length" class="lineup-pool__empty">该队名册已全部安排</p>
+      <p v-if="!pool.length" class="lineup-pool__empty">{{ lt('liveGame.lineup.pool.empty') }}</p>
     </section>
 
     <section ref="benchEl" class="lineup-pool__section lineup-pool__section--bench" :class="{ 'is-drop-over': hoverKind === 'bench' }">
       <div class="lineup-pool__header">
-        <h4>替补名单</h4>
-        <el-button size="small" @click="batchVisible = true">批量添加</el-button>
+        <h4>{{ lt('liveGame.lineup.pool.bench') }}</h4>
+        <el-button size="small" @click="batchVisible = true">{{ lt('liveGame.lineup.pool.batchAdd') }}</el-button>
       </div>
       <div class="lineup-pool__cards">
         <LineupPlayerCard
@@ -33,10 +33,10 @@
           @pick="emit('pick', $event)"
         />
       </div>
-      <p v-if="!bench.length" class="lineup-pool__empty">拖到此处加入替补，或使用「批量添加」</p>
+      <p v-if="!bench.length" class="lineup-pool__empty">{{ lt('liveGame.lineup.pool.benchEmpty') }}</p>
     </section>
 
-    <el-dialog v-model="batchVisible" title="批量添加替补" width="420px">
+    <el-dialog v-model="batchVisible" :title="lt('liveGame.lineup.pool.batchTitle')" width="420px">
       <el-select
         v-model="batchIds"
         multiple
@@ -44,7 +44,7 @@
         clearable
         collapse-tags
         collapse-tags-tooltip
-        placeholder="从名册多选替补"
+        :placeholder="lt('liveGame.lineup.pool.batchPlaceholder')"
         style="width: 100%"
       >
         <el-option
@@ -55,8 +55,8 @@
         />
       </el-select>
       <template #footer>
-        <el-button @click="batchVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmBatch">确定</el-button>
+        <el-button @click="batchVisible = false">{{ lt('liveGame.lineup.pool.cancel') }}</el-button>
+        <el-button type="primary" @click="confirmBatch">{{ lt('liveGame.lineup.pool.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -65,6 +65,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import LineupPlayerCard from './LineupPlayerCard.vue';
+import { useLiveGameText } from '../../composables/useLiveGameText';
+
+const { text: lt } = useLiveGameText();
 
 // 可用球员池 + 替补区 + 批量添加（复用旧件的名册多选）
 const props = defineProps({
