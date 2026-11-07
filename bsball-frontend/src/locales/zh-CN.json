@@ -2491,5 +2491,257 @@
   "team": {
     "textLogoAlt": "{name} 文字Logo",
     "logoInitialFallback": "球"
+  },
+  "liveGame": {
+    "top": {
+      "title": "实时比赛录入",
+      "undo": "↩ 撤销",
+      "redo": "↪ 重做",
+      "editLineup": "编辑阵容",
+      "editLineupFinal": "比赛已结束，复核模式不支持修改阵容",
+      "editLineupStarted": "第一个 Play 已开始，不能再修改阵容",
+      "editLineupHint": "返回先发阵容页面修改阵容",
+      "fieldSettings": "场上设置",
+      "pitchIconsTitle": "投球菜单选项图标",
+      "pitchIconsDesc": "Pitch 浮层每行左侧的图示（B/K/HBP 等）",
+      "fixMenu": "垒况纠偏、得分纠偏",
+      "stateFix": "局面纠偏",
+      "stateFixHint": "修正一二三垒跑者；扣回误记的本垒得分（局分/总分），可选同步扣 RBI 与跑者得分(R)。",
+      "fixRunners": "垒况纠偏",
+      "fixRunnersTitle": "手动指定一、二、三垒跑者，纠正与真实局面不符的垒况",
+      "fixScore": "得分纠偏",
+      "fixScoreTitle": "从指定局次扣回分数，可选同步扣 RBI / 跑者得分(R)",
+      "forceHalf": "强制换局",
+      "forceHalfTitle": "特殊换局规则：一键结束本半局并攻守交换（打者顺序保持不变）",
+      "spray": "击球落点分布",
+      "erReview": "ER 复核",
+      "watchFloat": "浮窗打开观赛界面",
+      "watchTab": "新标签页打开观赛页面",
+      "watch": "实时观赛",
+      "fullscreen": "全屏显示",
+      "exitFullscreen": "退出全屏",
+      "subModeFinal": "比赛已结束，复核模式不支持换人",
+      "subMode": "换人模式",
+      "endSubMode": "结束换人",
+      "saveFinal": "赛后复核模式请使用复核抽屉保存",
+      "save": "保存比赛",
+      "restoreCloud": "从云端恢复录入现场",
+      "restoring": "读取中...",
+      "endGame": "结束比赛（标记赛果为已结束并保存）",
+      "more": "更多"
+    },
+    "sub": {
+      "banner": "换人模式进行中：记球已暂停；调整完成后点「结束换人」提交，或取消恢复。DH 卡片拖离槽位可取消 DH。",
+      "rotationAria": "守备轮转速记",
+      "rotationPlaceholder": "守备轮转 如 1341",
+      "rotate": "轮转",
+      "dhDragTitle": "{team} DH {player}：拖离卡片取消",
+      "dragOut": "拖离取消",
+      "defenseBench": "防守替补",
+      "offenseBench": "进攻替补",
+      "cancelMode": "取消换人模式",
+      "bench": "替补席",
+      "exitFullscreen": "退出全屏",
+      "appendNew": "追加新球员",
+      "leaveEmpty": "留空",
+      "leaveEmptyHint": "可稍后补位"
+    },
+    "flow": {
+      "swingK": "挥空三振",
+      "lookingK": "目送三振",
+      "foulK": "界外三振",
+      "foulTipCaught": "擦棒被捕",
+      "droppedK": "漏接三振",
+      "complete": "完成记录",
+      "multiErrorOff": "再记一名失误",
+      "multiErrorOn": "切回单选",
+      "editOuts": "修改出局",
+      "skip": "跳过",
+      "confirmHalf": "确认半局结束 / 攻守交换"
+    },
+    "common": {
+      "cancel": "取消",
+      "close": "关闭",
+      "apply": "应用",
+      "back": "返回"
+    },
+    "team": {
+      "away": "客队",
+      "home": "主队",
+      "awayShort": "客",
+      "homeShort": "主"
+    },
+    "field": {
+      "safe": "安全",
+      "out": "出局",
+      "noAdvance": "不进垒",
+      "currentLineup": "当前进攻方打线",
+      "lineup": "打线",
+      "ball": "坏球",
+      "ballTitle": "坏球 Ball",
+      "strike": "好球",
+      "strikeTitle": "好球 Called Strike",
+      "swing": "挥空",
+      "swingTitle": "挥空（计好球）Swing & Miss",
+      "foul": "界外球",
+      "foulTitle": "界外球 Foul Ball",
+      "bip": "界内球",
+      "bipTitle": "界内击球：与点击投手(P) 打开的菜单相同（滚地球/飞球等细分与直接结果）",
+      "hrLanding": "HR落点"
+    },
+    "verify": {
+      "busy": "正在校验比赛现场，若未完成先发阵容将自动跳转…"
+    },
+    "inning": {
+      "accept": "接受并交换攻守",
+      "summary": "本半局 {runs} 分；本场累计 {hits} 安打，对方失误 {oppE}",
+      "pitcherNp": "防守投手 {name} 本半局已累计 {np} 球（NP）",
+      "upNext": "即将登场打序（前三名）",
+      "endTop": "第 {inning} 局上半结束",
+      "endBottom": "第 {inning} 局结束",
+      "nextHalfHome": "{team} 将进攻下半",
+      "nextInningAway": "下一局为第 {inning} 局上半，{team} 先攻"
+    },
+    "bench": {
+      "addTitle": "追加板凳球员",
+      "add": "确认追加",
+      "search": "输入姓名检索"
+    },
+    "rdm": {
+      "title": "跑者进垒",
+      "selectResult": "请选择本次进垒结果（先选安全或出局，再选具体原因）",
+      "outReasonTitle": "出局原因选择",
+      "outReason": "出局原因",
+      "runnerOutHome": "请选择跑垒员 #{number} {name} 在本垒出局的原因：",
+      "routeStay": "留在{base}",
+      "routeToHome": "{from} → 本垒",
+      "routeTo": "{from} → {to}",
+      "safeStay": "跑者留在{base}时，如何记为安全？",
+      "safeToHome": "跑者从{from}进本垒时，如何记为安全？",
+      "safeBack": "跑者从{from}回到{to}时，如何记为安全？",
+      "safeAdvance": "跑者如何安全从{from}进到{to}？",
+      "outStay": "跑者留在{base}时，如何记出局？",
+      "outToHome": "跑者从{from}进本垒时，如何记出局？",
+      "outBack": "跑者从{from}回到{to}时，如何记出局？",
+      "outAdvance": "跑者从{from}进{to}时，如何记出局？"
+    },
+    "fixRunners": {
+      "title": "垒况纠偏",
+      "hint": "当系统按规则「整体推进」安打/WP/PB/BK 等与真实局面不符时，可在此指定归属打席，并直接指定一、二、三垒与本垒得分跑者。若需扣回误记的本垒得分，请在场地上方「设置」旁的交换图标菜单中选「得分纠偏」。",
+      "assignPa": "归属打席",
+      "currentPa": "当前打席（第 {order} 棒）",
+      "previousPa": "上一打席（第 {order} 棒）",
+      "noScoringRunner": "无得分跑者",
+      "noRunner": "无跑者",
+      "advance": "进垒",
+      "homeBase": "本垒"
+    },
+    "fixScore": {
+      "title": "得分纠偏（本垒回退）",
+      "hint": "从所选队伍的指定局局分列扣回分数，并同步减少总局分。若当时误加了打点或跑者得分，可在下方各选一名球员并指定扣减量（不超过本次扣回分数与该球员当前统计）。",
+      "team": "队伍",
+      "awayPrefix": "客 {name}",
+      "homePrefix": "主 {name}",
+      "inning": "局",
+      "inningRuns": "该局已记 {runs} 分",
+      "deduct": "扣回",
+      "maxRuns": "最多 {max} 分（不超出该局与总局分）",
+      "rbi": "扣RBI",
+      "noRbi": "不扣打点",
+      "runs": "扣得分(R)",
+      "noRuns": "不扣跑者得分"
+    },
+    "watchFloat": {
+      "title": "实时观赛",
+      "restore": "还原",
+      "maximize": "最大化",
+      "close": "关闭",
+      "resizeAria": "拖拽调整观赛浮窗大小"
+    },
+    "heatmap": {
+      "totalHits": "总击球数：",
+      "hitRate": "安打率：",
+      "noData": "暂无数据",
+      "empty": "还没有击球落点记录",
+      "legendTitle": "图例",
+      "legendHit": "安打（H1/H2/H3/HR）",
+      "legendOut": "出局/接杀",
+      "legendError": "失误"
+    },
+    "benchPanel": {
+      "empty": "板凳席无可用球员（已换下球员不可再上场）",
+      "offense": "进攻方替补席",
+      "defense": "防守方替补席",
+      "sub": "替补",
+      "used": "已换下，不可再上场"
+    },
+    "pbp": {
+      "aria": "Play by Play 实时动态",
+      "resizeAria": "调整实时动态高度",
+      "resizeTitle": "拖动调整高度，双击复位",
+      "hint": "实时动态 · 最新在上",
+      "count": "{count} 条",
+      "countTitle": "最多显示最近 {limit} 条",
+      "listAria": "实时比赛日志",
+      "empty": "暂无比赛日志"
+    },
+    "scoreboard": {
+      "aria": "实时记分牌",
+      "batter": "打者",
+      "pitcher": "投手",
+      "order": "{n}棒",
+      "inning": "{inning}局",
+      "inningAria": "第{inning}局{half}",
+      "top": "上半局",
+      "bottom": "下半局",
+      "strikesAria": "好球 {n}",
+      "ballsAria": "坏球 {n}",
+      "outsAria": "出局 {n}",
+      "basesEmpty": "垒包：无人",
+      "basesOccupied": "垒包：{bases}有人",
+      "base1": "一垒",
+      "base2": "二垒",
+      "base3": "三垒"
+    },
+    "leave": {
+      "title": "离开确认",
+      "message": "当前有进行中的实时录入。可直接离开（未写入「保存比赛」的进度可能丢失），或先保存再离开。直接离开保存现场快照（轻量版）最多等待 10 秒；未等待完成即离开的，下次恢复现场仅保留最近 20 步撤销历史。",
+      "stay": "留下",
+      "direct": "直接离开",
+      "directLoading": "正在保存现场…",
+      "save": "保存离开"
+    },
+    "forceHalf": {
+      "confirmTitle": "强制换局",
+      "confirmMessage": "将直接结束本半局并攻守交换：清空垒上与出局数，当前打者的打席不计入统计，下一半局再进攻时仍由此打者开始（特殊换局规则）。是否继续？",
+      "confirmOk": "确定换局",
+      "done": "强制换局完成：进入下一半局（打者顺序保持不变）",
+      "blockedScore": "请先完成或关闭本垒得分确认，再执行强制换局",
+      "blockedThreeOuts": "本半局已满三出局，请使用「确认半局结束 / 攻守交换」"
+    },
+    "save": {
+      "success": "保存成功",
+      "failed": "保存失败",
+      "reviewOnly": "赛后复核模式请使用复核抽屉保存，录入现场不会写回",
+      "subModeBlocked": "换人模式进行中，请先点「结束换人」提交或取消换人模式"
+    },
+    "endGame": {
+      "confirmTitle": "结束比赛",
+      "confirmMessage": "确定结束比赛？",
+      "confirmOk": "确定",
+      "blockedSubMode": "换人模式进行中，请先结束或取消换人模式"
+    },
+    "restore": {
+      "confirmTitle": "从云端恢复录入现场",
+      "confirmMessage": "将用云端数据覆盖当前录入页面（本地未保存的修改会丢失）。是否继续？",
+      "confirmContinue": "继续",
+      "snapshotRestored": "已从云端录入快照恢复现场",
+      "cannotContinue": "该比赛无法继续录入",
+      "noRecoverableData": "该场暂无可恢复的录入数据，请先确认先发阵容",
+      "cacheRestored": "已从本地缓存恢复录入现场（含未保存到服务器的进度）",
+      "serverRestored": "已从服务器恢复录入现场",
+      "gameFinal": "比赛已结束，可进行赛后复核",
+      "resumed": "已恢复比赛，继续录入"
+    }
   }
 }

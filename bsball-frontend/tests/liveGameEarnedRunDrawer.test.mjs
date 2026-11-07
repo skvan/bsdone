@@ -32,6 +32,6 @@ test('抽屉文案为简体中文，且入口按钮可打开抽屉', () => {
   assert.match(drawer, /守备补记/);
   assert.match(component, /暂无判定记录/);
   assert.match(component, /确认覆写/);
-  const buttons = liveGame.match(/Q\("ER 复核",-1\)/g) ?? [];
+  const buttons = liveGame.match(/Q\(lgText\("liveGame\.top\.erReview"\),-1\)/g) ?? [];
   assert.equal(buttons.length, 2, '普通与全屏两套布局都要保留 ER 复核入口');
 });

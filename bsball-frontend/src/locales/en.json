@@ -2484,5 +2484,257 @@
   "team": {
     "textLogoAlt": "{name} text logo",
     "logoInitialFallback": "T"
+  },
+  "liveGame": {
+    "top": {
+      "title": "Live Game Scoring",
+      "undo": "↩ Undo",
+      "redo": "↪ Redo",
+      "editLineup": "Edit Lineup",
+      "editLineupFinal": "Game is final; lineup editing is unavailable in review mode",
+      "editLineupStarted": "Lineup is locked after the first play",
+      "editLineupHint": "Go back to the starting lineup page to edit",
+      "fieldSettings": "On-Field Settings",
+      "pitchIconsTitle": "Pitch Menu Icons",
+      "pitchIconsDesc": "Icons on each pitch-menu row (B/K/HBP, etc.)",
+      "fixMenu": "Runner & Score Corrections",
+      "stateFix": "Game State Corrections",
+      "stateFixHint": "Correct runners on first, second, and third; deduct a mistaken run (inning/total) with optional RBI and runner-run adjustments.",
+      "fixRunners": "Fix Runners",
+      "fixRunnersTitle": "Manually set runners on first, second, and third to match the actual base situation",
+      "fixScore": "Fix Score",
+      "fixScoreTitle": "Deduct runs from a selected inning, with optional RBI / runner-run (R) adjustments",
+      "forceHalf": "Force Half-Inning",
+      "forceHalfTitle": "Special rule: end this half-inning and switch sides in one tap (batting order unchanged)",
+      "spray": "Hit Spray Chart",
+      "erReview": "ER Review",
+      "watchFloat": "Open Watch in Floating Window",
+      "watchTab": "Open Watch in New Tab",
+      "watch": "Live Watch",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit Fullscreen",
+      "subModeFinal": "Game is final; substitutions are unavailable in review mode",
+      "subMode": "Substitution Mode",
+      "endSubMode": "Finish Substitutions",
+      "saveFinal": "In review mode, save from the review drawer",
+      "save": "Save Game",
+      "restoreCloud": "Restore Session from Cloud",
+      "restoring": "Loading...",
+      "endGame": "End Game (mark final and save)",
+      "more": "More"
+    },
+    "sub": {
+      "banner": "Substitution mode is active: scoring is paused. Tap Finish Substitutions to apply, or cancel to resume. Drag a DH card out of its slot to cancel the DH.",
+      "rotationAria": "Field rotation shorthand",
+      "rotationPlaceholder": "Rotation, e.g. 1341",
+      "rotate": "Rotate",
+      "dhDragTitle": "{team} DH {player}: drag out to cancel",
+      "dragOut": "Drag out",
+      "defenseBench": "Defensive Bench",
+      "offenseBench": "Offensive Bench",
+      "cancelMode": "Cancel Sub Mode",
+      "bench": "Bench",
+      "exitFullscreen": "Exit Fullscreen",
+      "appendNew": "Add New Player",
+      "leaveEmpty": "Leave Empty",
+      "leaveEmptyHint": "Fill later"
+    },
+    "flow": {
+      "swingK": "K Swinging",
+      "lookingK": "K Looking",
+      "foulK": "Foul K",
+      "foulTipCaught": "Foul Tip Caught",
+      "droppedK": "Dropped 3rd K",
+      "complete": "Complete Play",
+      "multiErrorOff": "Add Another Error",
+      "multiErrorOn": "Back to Single",
+      "editOuts": "Edit Outs",
+      "skip": "Skip",
+      "confirmHalf": "Confirm Half-Inning / Change Sides"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "apply": "Apply",
+      "back": "Back"
+    },
+    "team": {
+      "away": "Away",
+      "home": "Home",
+      "awayShort": "A",
+      "homeShort": "H"
+    },
+    "field": {
+      "safe": "Safe",
+      "out": "Out",
+      "noAdvance": "No Advance",
+      "currentLineup": "Current offensive lineup",
+      "lineup": "Lineup",
+      "ball": "Ball",
+      "ballTitle": "Ball",
+      "strike": "Strike",
+      "strikeTitle": "Called Strike",
+      "swing": "Swing",
+      "swingTitle": "Swing & Miss",
+      "foul": "Foul",
+      "foulTitle": "Foul Ball",
+      "bip": "In Play",
+      "bipTitle": "In Play: opens the same menu as tapping the pitcher (P), including batted-ball details and direct results",
+      "hrLanding": "HR Spot"
+    },
+    "verify": {
+      "busy": "Verifying the game state. You will be redirected if the starting lineups are incomplete…"
+    },
+    "inning": {
+      "accept": "Accept & Change Sides",
+      "summary": "This half: {runs} R; game: {hits} H, opponent errors: {oppE}",
+      "pitcherNp": "Pitcher {name} has thrown {np} pitches (NP) this half",
+      "upNext": "Up next (top 3)",
+      "endTop": "End of Top {inning}",
+      "endBottom": "End of Inning {inning}",
+      "nextHalfHome": "{team} bat in the bottom half",
+      "nextInningAway": "Next: top {inning}, {team} bat first"
+    },
+    "bench": {
+      "addTitle": "Add Bench Player",
+      "add": "Add",
+      "search": "Search by name"
+    },
+    "rdm": {
+      "title": "Runner Advance",
+      "selectResult": "Select the result of this advance (choose Safe or Out, then the reason)",
+      "outReasonTitle": "Out Reason",
+      "outReason": "Out Reason",
+      "runnerOutHome": "Select the reason runner #{number} {name} was out at home:",
+      "routeStay": "stays at {base}",
+      "routeToHome": "{from} → Home",
+      "routeTo": "{from} → {to}",
+      "safeStay": "Runner stays at {base}: how is this scored safe?",
+      "safeToHome": "Runner advances from {from} to home: how is this scored safe?",
+      "safeBack": "Runner returns from {from} to {to}: how is this scored safe?",
+      "safeAdvance": "How does the runner advance safely from {from} to {to}?",
+      "outStay": "Runner stays at {base}: how is this scored out?",
+      "outToHome": "Runner advances from {from} to home: how is this scored out?",
+      "outBack": "Runner returns from {from} to {to}: how is this scored out?",
+      "outAdvance": "Runner advances from {from} to {to}: how is this scored out?"
+    },
+    "fixRunners": {
+      "title": "Fix Runners",
+      "hint": "When the automatic advance on a hit/WP/PB/BK does not match the actual play, assign the at-bat here and set the runners on first, second, third, and home. To deduct a mistaken run, use Fix Score from the swap-icon menu next to Settings above the field.",
+      "assignPa": "At-Bat",
+      "currentPa": "Current at-bat (No. {order})",
+      "previousPa": "Previous at-bat (No. {order})",
+      "noScoringRunner": "No run scored",
+      "noRunner": "No runner",
+      "advance": "Advance",
+      "homeBase": "Home"
+    },
+    "fixScore": {
+      "title": "Fix Score (Home Run Reversal)",
+      "hint": "Deduct runs from the selected team’s inning column and reduce the total score. If RBI or runner runs were credited by mistake, select a player below and specify how much to deduct (not exceeding this deduction or the player’s current stats).",
+      "team": "Team",
+      "awayPrefix": "Away {name}",
+      "homePrefix": "Home {name}",
+      "inning": "Inning",
+      "inningRuns": "Runs recorded: {runs}",
+      "deduct": "Deduct",
+      "maxRuns": "Max {max} (limited by inning and game totals)",
+      "rbi": "Deduct RBI",
+      "noRbi": "No RBI deduction",
+      "runs": "Deduct Runs (R)",
+      "noRuns": "No runner-run deduction"
+    },
+    "watchFloat": {
+      "title": "Live Watch",
+      "restore": "Restore",
+      "maximize": "Maximize",
+      "close": "Close",
+      "resizeAria": "Drag to resize the watch window"
+    },
+    "heatmap": {
+      "totalHits": "Total hits: ",
+      "hitRate": "Hit rate: ",
+      "noData": "No data",
+      "empty": "No hit-location records yet",
+      "legendTitle": "Legend",
+      "legendHit": "Hits (H1/H2/H3/HR)",
+      "legendOut": "Outs / Catches",
+      "legendError": "Errors"
+    },
+    "benchPanel": {
+      "empty": "No bench players available (substituted-out players cannot re-enter)",
+      "offense": "Offensive Bench",
+      "defense": "Defensive Bench",
+      "sub": "Sub",
+      "used": "Already out, cannot re-enter"
+    },
+    "pbp": {
+      "aria": "Play by Play live feed",
+      "resizeAria": "Resize live feed",
+      "resizeTitle": "Drag to resize; double-click to reset",
+      "hint": "Live · newest first",
+      "count": "{count} entries",
+      "countTitle": "Shows up to the latest {limit}",
+      "listAria": "Live game log",
+      "empty": "No plays yet"
+    },
+    "scoreboard": {
+      "aria": "Live scoreboard",
+      "batter": "BAT",
+      "pitcher": "PIT",
+      "order": "{n}",
+      "inning": "{inning}",
+      "inningAria": "Inning {inning}, {half}",
+      "top": "top",
+      "bottom": "bottom",
+      "strikesAria": "{n} strikes",
+      "ballsAria": "{n} balls",
+      "outsAria": "{n} outs",
+      "basesEmpty": "Bases empty",
+      "basesOccupied": "Occupied: {bases}",
+      "base1": "1B",
+      "base2": "2B",
+      "base3": "3B"
+    },
+    "leave": {
+      "title": "Leave Confirmation",
+      "message": "A live game is in progress. You can leave now (progress not saved via Save Game may be lost) or save first. Saving the session snapshot before leaving may take up to 10 seconds; if you leave before it finishes, the next restore keeps only the most recent 20 undo steps.",
+      "stay": "Stay",
+      "direct": "Leave Now",
+      "directLoading": "Saving session…",
+      "save": "Save & Leave"
+    },
+    "forceHalf": {
+      "confirmTitle": "Force Half-Inning",
+      "confirmMessage": "This will end the half-inning and switch sides immediately: bases and outs are cleared, the current batter’s plate appearance is not counted, and the same batter leads off the next half-inning (special rule). Continue?",
+      "confirmOk": "Force Half-Inning",
+      "done": "Half-inning ended. Next half-inning started (batting order unchanged).",
+      "blockedScore": "Finish or dismiss the home-plate run decision before forcing a half-inning.",
+      "blockedThreeOuts": "Three outs are already recorded. Use Confirm Half-Inning / Change Sides."
+    },
+    "save": {
+      "success": "Saved",
+      "failed": "Save failed",
+      "reviewOnly": "In review mode, save from the review drawer; the live session will not be written back.",
+      "subModeBlocked": "Substitution mode is active. Tap Finish Substitutions or cancel it first."
+    },
+    "endGame": {
+      "confirmTitle": "End Game",
+      "confirmMessage": "End this game?",
+      "confirmOk": "End Game",
+      "blockedSubMode": "Substitution mode is active. Finish or cancel it first."
+    },
+    "restore": {
+      "confirmTitle": "Restore Session from Cloud",
+      "confirmMessage": "Cloud data will overwrite the current scoring page (unsaved local changes will be lost). Continue?",
+      "confirmContinue": "Continue",
+      "snapshotRestored": "Live scoring session restored from the cloud snapshot.",
+      "cannotContinue": "This game cannot be resumed.",
+      "noRecoverableData": "No recoverable scoring data for this game. Confirm the starting lineup first.",
+      "cacheRestored": "Live scoring session restored from the local cache (including progress not yet saved to the server).",
+      "serverRestored": "Live scoring session restored from the server.",
+      "gameFinal": "Game is final; post-game review is available.",
+      "resumed": "Game restored. Continue scoring."
+    }
   }
 }
