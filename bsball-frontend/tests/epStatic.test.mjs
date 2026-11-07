@@ -81,7 +81,7 @@ test('事件加载点捕获 specialRules：forceHalf 缺省 true（!==false）/ 
 test('force_half 显隐：强制换局按钮挂 forceHalfOn 条件渲染（v-if 编译形态，其余渲染/disabled 逻辑不动）', () => {
   // 齿轮面板「垒况纠偏/得分纠偏」popover 内第三个按钮：v-if → cond?(h(),Oe(btn)):createCommentVNode
   assert.ok(
-    /c\(forceHalfOn\)\?\(h\(\),Oe\(s,\{\s+key:0,size:"small",type:"danger"[\s\S]{0,400}?Q\(" 强制换局 ",-1\)/.test(source),
+    /c\(forceHalfOn\)\?\(h\(\),Oe\(s,\{\s+key:0,size:"small",type:"danger"[\s\S]{0,400}?Q\(lgText\("liveGame\.top\.forceHalf"\),-1\)/.test(source),
     '强制换局按钮未挂 forceHalfOn 条件渲染（条件、按钮 props 与文案须在同一 vnode 分支内）'
   );
   assert.ok(source.includes(',8,["disabled"])):W("",!0)])])]),_:1'), '强制换局按钮 v-if 假分支（注释节点）或弹层容器闭合结构漂移');

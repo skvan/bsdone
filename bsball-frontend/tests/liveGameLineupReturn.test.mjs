@@ -16,7 +16,7 @@ function slice(src, startMarker, endMarker) {
 
 test('编辑阵容按钮同时出现在常规头部与全屏工具栏', () => {
   const src = read('../src/views/admin/LiveGame.js');
-  assert.equal((src.match(/"编辑阵容"/g) ?? []).length, 2, '编辑阵容按钮应有常规与全屏两个入口');
+  assert.equal((src.match(/Q\(lgText\("liveGame\.top\.editLineup"\),-1\)/g) ?? []).length, 2, '编辑阵容按钮应有常规与全屏两个入口');
   assert.equal((src.match(/disabled:(?:substitutionMode\.value\|\|)?c\(firstPlayStarted\)/g) ?? []).length, 2, '两个入口都应按首个 Play（及换人模式）状态禁用');
 });
 

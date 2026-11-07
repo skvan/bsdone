@@ -11,6 +11,7 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL,
+    locale: 'zh-CN',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? 'off' : 'retain-on-failure',

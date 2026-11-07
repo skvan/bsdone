@@ -146,3 +146,8 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 .live-bench-card--disabled{opacity:.5;cursor:not-allowed;border-style:solid;background:var(--el-fill-color-light);color:var(--el-text-color-disabled);filter:grayscale(1)}
 .live-bench-card--disabled:hover{border-color:var(--el-border-color-lighter);background:var(--el-fill-color-light)}
 .live-bench-card--disabled .live-bench-card__num{color:var(--el-text-color-disabled)}
+.rdm--en .rdm__cn{display:none}
+.rdm--en .rdm__en{font-size:15px;font-weight:600;line-height:1.2}
+.live-field-bench-ops-popover--en .live-field-bench-ops-grid--corr{display:flex;flex-wrap:wrap;gap:8px}
+.live-field-bench-ops-popover--en .live-field-bench-ops-grid--corr .live-field-bench-ops-tile{flex:1 1 100%;min-width:0}
+.runner-manual-fix-dialog--en .runner-manual-fix__label{flex:0 0 4.2em}

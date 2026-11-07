@@ -19,7 +19,7 @@ const sliceBetween = (src, start, end) => {
 test('横幅接线：速记输入框 + 轮转按钮，value 绑定带 patchFlag 以便成功后清空', () => {
   const banner = sliceBetween(LIVE, 'key:"sub-mode-banner"', 'key:"dh-card-"');
   assert.ok(banner.includes('class:"live-sub-rotation__input"'), '缺少速记输入框');
-  assert.ok(banner.includes('placeholder:"守备轮转 如 1341"'), '缺少输入提示');
+  assert.ok(banner.includes('placeholder:lgText("liveGame.sub.rotationPlaceholder")'), '缺少输入提示');
   assert.ok(banner.includes('event.key==="Enter"&&(event.preventDefault(),event.stopPropagation(),applyFieldRotation())'), 'Enter 未接轮转执行');
   assert.ok(banner.includes('onClick:applyFieldRotation'), '缺少轮转按钮接线');
   assert.ok(banner.includes(',null,8,["value"]'), '输入框 value 缺少 patchFlag（成功清空会失效）');

@@ -19,8 +19,8 @@ test('移除局数/球数条，但保留流程提示卡', () => {
 });
 
 test('三控件进 header；全屏场地行保留三控件与撤销/重做，顶栏只留退出', () => {
-  const undoCount = (liveGame.match(/Q\("↩ 撤销",-1\)/g) || []).length;
-  const redoCount = (liveGame.match(/Q\("↪ 重做",-1\)/g) || []).length;
+  const undoCount = (liveGame.match(/Q\(lgText\("liveGame\.top\.undo"\),-1\)/g) || []).length;
+  const redoCount = (liveGame.match(/Q\(lgText\("liveGame\.top\.redo"\),-1\)/g) || []).length;
   assert.equal(undoCount, 2);
   assert.equal(redoCount, 2);
 
@@ -30,10 +30,10 @@ test('三控件进 header；全屏场地行保留三控件与撤销/重做，顶
   assert.match(header, /key:"undo",size:"small",disabled:(?:substitutionMode\.value\|\|)?!c\(f\)\.canUndo(?:\|\|finalReviewMode)?,onClick:as/);
   assert.match(header, /key:"redo",size:"small",disabled:(?:substitutionMode\.value\|\|)?!c\(f\)\.canRedo(?:\|\|finalReviewMode)?,onClick:Ff/);
   assert.match(header, /key:"entry-tools"/);
-  assert.match(header, /场上设置/);
-  assert.match(header, /击球落点分布/);
-  assert.ok(header.indexOf('Q("↩ 撤销"') < header.indexOf('key:"entry-tools"'));
-  assert.ok(liveGame.indexOf('key:"entry-tools"') < liveGame.indexOf('Q(" 实时观赛 "'));
+  assert.match(header, /liveGame\.top\.fieldSettings/);
+  assert.match(header, /liveGame\.top\.spray/);
+  assert.ok(header.indexOf('lgText("liveGame.top.undo")') < header.indexOf('key:"entry-tools"'));
+  assert.ok(liveGame.indexOf('key:"entry-tools"') < liveGame.indexOf('lgText("liveGame.top.watch")'));
   assert.match(liveGame, /c\(F\)&&!c\(oe\)\?\(h\(\),C\(me,\{key:"entry-tools"\}/);
 
   assert.match(liveGame, /c\(oe\)\?\(h\(\),C\("div",Og,/);
@@ -43,9 +43,9 @@ test('三控件进 header；全屏场地行保留三控件与撤销/重做，顶
   const rowStart = liveGame.indexOf('n("div",Ug,[');
   const rowEnd = liveGame.indexOf(',n("div",{', rowStart);
   const fieldRow = liveGame.slice(rowStart, rowEnd);
-  assert.match(fieldRow, /↩ 撤销/);
-  assert.match(fieldRow, /↪ 重做/);
-  assert.match(fieldRow, /击球落点分布/);
+  assert.match(fieldRow, /liveGame\.top\.undo/);
+  assert.match(fieldRow, /liveGame\.top\.redo/);
+  assert.match(fieldRow, /liveGame\.top\.spray/);
 
   const fieldStart = liveGame.indexOf('c(oe)?(h(),C("div",Og,[');
   const fieldTools = liveGame.slice(fieldStart, liveGame.indexOf('class:re(["field-svg-wrap"', fieldStart));
