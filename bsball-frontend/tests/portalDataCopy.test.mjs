@@ -125,7 +125,7 @@ test('驾驶舱 clubhouse.* 三语齐全、源码引用与词条一一对应', (
   const zhFlat = flat(locales['zh-CN']);
   const zhKeys = Object.keys(zhFlat).filter((key) => key.startsWith('clubhouse.'));
   const zhKeySet = new Set(zhKeys);
-  assert.equal(zhKeys.length, 203, '驾驶舱词条数量应为 203');
+  assert.equal(zhKeys.length, 205, '驾驶舱词条数量应为 205');
   assert.deepEqual(referenced, zhKeySet, '驾驶舱词条应与源码引用一一对应');
   for (const locale of ['zh-CN', 'zh-TW', 'en']) {
     const localeFlat = flat(locales[locale]);
