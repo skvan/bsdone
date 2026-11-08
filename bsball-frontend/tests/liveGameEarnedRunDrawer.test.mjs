@@ -27,11 +27,11 @@ test('判定列表使用 fetchResult 解包数组，不再按 PageResult 解构'
 });
 
 test('抽屉文案为简体中文，且入口按钮可打开抽屉', () => {
-  assert.match(drawer, /比赛复核/);
-  assert.match(component, /自责分判定/);
-  assert.match(drawer, /守备补记/);
-  assert.match(component, /暂无判定记录/);
-  assert.match(component, /确认覆写/);
+  assert.match(drawer, /liveGame\.review\.drawerTitle/);
+  assert.match(component, /liveGame\.review\.tabDecisions/);
+  assert.match(drawer, /liveGame\.review\.tabFielding/);
+  assert.match(component, /liveGame\.review\.emptyDecisions/);
+  assert.match(component, /liveGame\.review\.confirmOverride/);
   const buttons = liveGame.match(/Q\(lgText\("liveGame\.top\.erReview"\),-1\)/g) ?? [];
   assert.equal(buttons.length, 2, '普通与全屏两套布局都要保留 ER 复核入口');
 });
