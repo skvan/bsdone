@@ -126,6 +126,9 @@
             </g>
             <g ref="fxLayer" class="ghr-fireworks-layer" aria-hidden="true" />
           </svg>
+          <div class="ghr-actions">
+            <el-button size="small" type="primary" plain :disabled="!visibleRecords.length" @click="playGroup()">同时重播</el-button>
+          </div>
           <div class="ghr-legend">
             <span class="ghr-legend-item">
               <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
@@ -178,10 +181,7 @@
           </li>
         </ul>
       </div>
-      <div class="ghr-actions">
-        <el-button size="small" type="primary" plain :disabled="!visibleRecords.length" @click="playGroup()">同时重播</el-button>
-        <span class="ghr-hint">点击场地圆点或左侧列表播放单球；「同时重播」同时播放当前分组全部击球的飞行</span>
-      </div>
+      <p class="ghr-hint">点击场地圆点或列表中的击球播放单球；「同时重播」同时播放当前分组全部击球的飞行</p>
     </template>
   </div>
 </template>
@@ -732,12 +732,14 @@ function zoneText(r) {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .ghr-hint {
+  margin: 12px 0 0;
   color: var(--el-text-color-secondary);
   font-size: 12px;
+  line-height: 1.6;
 }
 
 .ghr-mode-toggle { display: inline-flex; padding: 2px; margin-left: auto; border: 1px solid var(--el-border-color); border-radius: 999px; }

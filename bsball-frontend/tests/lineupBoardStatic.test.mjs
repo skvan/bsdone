@@ -91,3 +91,14 @@ test('打线整卡拖动排序（#340）：桌面按插入位重排、移动端�
   const fineBlock = css.slice(css.indexOf('@media (pointer: fine)'), css.indexOf('@media (max-width: 768px)'));
   assert.ok(fineBlock.includes('touch-action: none'), '触屏笔记本（主指针 fine）需禁触摸滚动抢占整卡拖动');
 });
+
+test('大谷规则：投手位/仅守备投手可点「兼DH」自动填充 DH 槽', () => {
+  const page = read('../src/views/admin/LiveGameLineupBoard.vue');
+  assert.ok(page.includes('setPitcherAsDh'), '页面需调用 setPitcherAsDh');
+  assert.ok(page.includes("'兼DH'"), '按钮需显示「兼DH」');
+  assert.ok(page.includes('ohtaniAction'), '按钮需按投手/DH 状态切换动作');
+
+  const board = read('../src/composables/useLineupBoard.js');
+  assert.ok(board.includes('function setPitcherAsDh()'), '规则层需提供 setPitcherAsDh');
+  assert.ok(board.includes('setPitcherAsDh, setBench'), '需导出 setPitcherAsDh');
+});

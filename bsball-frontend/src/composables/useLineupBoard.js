@@ -12,6 +12,7 @@ import {
   makeRow, normalizeRows, posOf, slotRow,
 } from '../utils/lineupBoardRules.js';
 import { sortByJersey } from '../utils/sortByJersey.js';
+import { isFieldCode } from '../utils/lineupFieldPositions.js';
 
 export function useLineupBoard(mode, teamId, opts = {}) {
   const rows = ref([]);
@@ -268,6 +269,14 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     syncPitcher();
   }
 
+  /** 非投手守备位是否已满（棒球 8 个；垒球含 XF 共 9 个） */
+  function nonPitcherFieldSlotsFull() {
+    const total = mode.value === 'SOFTBALL' ? 9 : 8;
+    const filled = rows.value.filter((row) => !isPlaceholder(row)
+      && posOf(row) !== 'P' && isFieldCode(posOf(row))).length;
+    return filled >= total;
+  }
+
   /** 打线列表独立拖人：位置码 = 仅守备投手 → 'P'；无 DH → 'DH'；已有 DH → 棒球 'EP'（EP 制落位），
    *  垒球无 EP → 维持「DH 已有人」拒绝（垒球现口径最多 N 人打击，含 1 名 DH） */
   function addToBatting(player) {
@@ -283,16 +292,35 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       fieldingPitcherId.value != null &&
       String(fieldingPitcherId.value) === String(player.id) &&
       !slotRow(rows.value, 'P');
+    // 大谷规则：非投手不自动占 DH；DH 留给投手/「设为兼投」
+    const ohtaniNoDh = ohtaniRuleOn.value && !isFieldingPitcher && !hasDh.value;
+    // 守备位已满时，棒球有 EP 就记 EP；没 EP 则拒绝，避免留下永远补不上守备位的空行
+    const ohtaniExtraHitter = ohtaniNoDh && mode.value !== 'SOFTBALL' && nonPitcherFieldSlotsFull();
+    if (ohtaniExtraHitter && !extraBatterOn.value) {
+      notice.value = '大谷规则下守备位已满；请先移除一名野手，或开启额外打击者（EP）';
+      return;
+    }
+    // 其余「无 DH」情形：先以空守备位进入打线，待用户拖到守备位
+    const ohtaniBattingOnly = ohtaniNoDh && !ohtaniExtraHitter;
     // 垒球无 EP 制：已有 DH 时非投手不再新增（避免落出非法守备位 EP）
-    if (!isFieldingPitcher && slotRow(rows.value, 'DH') && mode.value === 'SOFTBALL') {
+    if (!isFieldingPitcher && hasDh.value && mode.value === 'SOFTBALL') {
       setNotice('liveGame.lineup.notice.dhOccupiedSoftball', `DH 已有人；垒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`, { max: maxCount.value });
       return;
     }
-    const position = isFieldingPitcher ? 'P' : (slotRow(rows.value, 'DH') ? 'EP' : 'DH');
+    let position = 'DH';
+    if (isFieldingPitcher) position = 'P';
+    else if (ohtaniBattingOnly) position = '';
+    else if (hasDh.value || ohtaniExtraHitter) position = 'EP';
     takeFirstEmpty(makeRow(player, teamId.value, position));
     bench.value = bench.value.filter((p) => String(p.id) !== String(player.id));
     if (isFieldingPitcher) fieldingPitcherId.value = player.id;
+    else if (ohtaniBattingOnly || ohtaniExtraHitter) lastDhAddedFromPoolId.value = null;
     else lastDhAddedFromPoolId.value = player.id;
+    if (ohtaniBattingOnly) {
+      notice.value = '大谷规则下已加入打线，请拖到守备位；DH 留给投手或「设为兼投」';
+    } else if (ohtaniExtraHitter) {
+      notice.value = '大谷规则下守备位已满，已按 EP（额外打击者）加入';
+    }
     normalize();
   }
 
@@ -430,6 +458,54 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     return true;
   }
 
+  /** 大谷规则：把投手丘上的投手设为 DH 兼投，自动填充 DH 槽并保留打序 */
+  function setPitcherAsDh() {
+    if (!ohtaniRuleOn.value) {
+      notice.value = '该赛事未开启大谷规则';
+      return false;
+    }
+    const dh = slotRow(rows.value, 'DH');
+    const pRow = slotRow(rows.value, 'P');
+    const pitcherId = pRow?.id ?? fieldingPitcherId.value;
+    if (pitcherId == null) {
+      notice.value = '请先在投手丘放入投手';
+      return false;
+    }
+    if (dh && String(dh.id) !== String(pitcherId)) {
+      notice.value = 'DH 已有人，请先移除或调整 DH';
+      return false;
+    }
+    if (dh && String(dh.id) === String(pitcherId)) {
+      notice.value = '该球员已经是 DH 兼投';
+      return false;
+    }
+    if (pRow) {
+      const idx = findRowIndex(rows.value, pRow.id);
+      const next = [...rows.value];
+      next[idx] = { ...next[idx], position: 'DH' };
+      rows.value = next;
+      fieldingPitcherId.value = pRow.id;
+      lastDhAddedFromPoolId.value = null;
+      notice.value = `已把投手设为 DH 兼投，打序保持第 ${idx + 1} 棒`;
+      normalize();
+      syncPitcher();
+      return true;
+    }
+    const pitcher = roster.value.find((p) => String(p.id) === String(pitcherId));
+    if (!pitcher) {
+      notice.value = '找不到投手球员资料';
+      return false;
+    }
+    takeFirstEmpty(makeRow(pitcher, teamId.value, 'DH'));
+    bench.value = bench.value.filter((p) => String(p.id) !== String(pitcher.id));
+    fieldingPitcherId.value = pitcher.id;
+    lastDhAddedFromPoolId.value = pitcher.id;
+    notice.value = '已把投手设为 DH 兼投，并自动填充 DH 槽';
+    normalize();
+    syncPitcher();
+    return true;
+  }
+
   /** 批量设置替补（复用旧多选下拉的 id 列表） */
   function setBench(playerIds) {
     const ids = new Set((playerIds ?? []).map(String));
@@ -463,6 +539,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     validation, fieldingPitcherRequired, fieldingPitcherOk, lineupComplete, battingFull,
     slotOfRow, setRoster, loadDraft, reset,
     placeAtSlot, addToBatting, sendBackToBench, sendToBench, sendToPool, reorderBatting,
-    removeDh, setFieldingPitcher, hasDhPitcher, toggleDhPitcher, setBench, applyTemplate, consumeNotice,
+    removeDh, setFieldingPitcher, hasDhPitcher, toggleDhPitcher, setPitcherAsDh, setBench,
+    applyTemplate, consumeNotice,
   };
 }
