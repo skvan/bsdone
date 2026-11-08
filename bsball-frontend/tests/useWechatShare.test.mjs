@@ -7,7 +7,7 @@ import {
   useWechatShare
 } from '../src/composables/useWechatShare.js';
 
-function fakeRouter(base = '/bs-ball-next/') {
+function fakeRouter(base = '/bs-ball/') {
   return {
     resolve({ params, query }) {
       const q = query && query.from ? `?from=${query.from}` : '';
@@ -44,11 +44,11 @@ test('buildPlayerShareUrl：含 base 与 from，playerId 字符串化', () => {
   const router = fakeRouter();
   assert.equal(
     buildPlayerShareUrl(router, 9, 'share', 'team1'),
-    'https://www.bsdone.com/bs-ball-next/team1/players/9?from=share'
+    'https://www.bsdone.com/bs-ball/team1/players/9?from=share'
   );
   assert.equal(
     buildPlayerShareUrl(router, 9, 'poster', 'team1'),
-    'https://www.bsdone.com/bs-ball-next/team1/players/9?from=poster'
+    'https://www.bsdone.com/bs-ball/team1/players/9?from=poster'
   );
 });
 
@@ -128,7 +128,7 @@ test('buildPlayerShareMeta：空白头像回退平台 logo', () => {
 });
 
 test('useWechatShare：链接变化触发初始化、同链接标题变化不再请求签名', async () => {
-  const href = 'https://www.bsdone.com/bs-ball-next/t/players/9?from=share';
+  const href = 'https://www.bsdone.com/bs-ball/t/players/9?from=share';
   globalThis.window = { location: { href } };
   const { wx, calls } = wxHarness();
   let fetchCount = 0;
@@ -156,7 +156,7 @@ test('useWechatShare：链接变化触发初始化、同链接标题变化不再
 });
 
 test('useWechatShare：同链接仅 desc 变化也更新分享数据且不重复请求签名', async () => {
-  const href = 'https://www.bsdone.com/bs-ball-next/t/players/915?from=share';
+  const href = 'https://www.bsdone.com/bs-ball/t/players/915?from=share';
   globalThis.window = { location: { href } };
   const { wx, calls } = wxHarness();
   let fetchCount = 0;
@@ -184,8 +184,8 @@ test('useWechatShare：同链接仅 desc 变化也更新分享数据且不重复
 });
 
 test('useWechatShare：链接变化（页面跳转）重新初始化并应用新分享数据', async () => {
-  const href1 = 'https://www.bsdone.com/bs-ball-next/t/players/910?from=share';
-  const href2 = 'https://www.bsdone.com/bs-ball-next/t/players/911?from=poster';
+  const href1 = 'https://www.bsdone.com/bs-ball/t/players/910?from=share';
+  const href2 = 'https://www.bsdone.com/bs-ball/t/players/911?from=poster';
   globalThis.window = { location: { href: href1 } };
   const { wx, calls } = wxHarness();
   let fetchCount = 0;
@@ -216,7 +216,7 @@ test('useWechatShare：链接变化（页面跳转）重新初始化并应用新
 });
 
 test('useWechatShare：初始化期间标题更新，配置成功后补发最新标题', async () => {
-  const href = 'https://www.bsdone.com/bs-ball-next/t/players/912?from=share';
+  const href = 'https://www.bsdone.com/bs-ball/t/players/912?from=share';
   globalThis.window = { location: { href } };
   const { wx, calls } = wxHarness();
   let fetchCount = 0;
@@ -251,7 +251,7 @@ test('useWechatShare：初始化期间标题更新，配置成功后补发最新
 });
 
 test('useWechatShare：stop 后不再响应元数据变化', async () => {
-  const href = 'https://www.bsdone.com/bs-ball-next/t/players/913?from=share';
+  const href = 'https://www.bsdone.com/bs-ball/t/players/913?from=share';
   globalThis.window = { location: { href } };
   const { wx, calls } = wxHarness();
   let fetchCount = 0;
@@ -272,7 +272,7 @@ test('useWechatShare：stop 后不再响应元数据变化', async () => {
   metaRef.value = { title: '甲2', desc: '', imgUrl: '', link: href };
   await flush();
   assert.equal(calls.app.length, 1);
-  globalThis.window.location.href = 'https://www.bsdone.com/bs-ball-next/t/players/914?from=share';
+  globalThis.window.location.href = 'https://www.bsdone.com/bs-ball/t/players/914?from=share';
   metaRef.value = { title: '乙', desc: '', imgUrl: '', link: globalThis.window.location.href };
   await flush();
   assert.equal(fetchCount, 1);

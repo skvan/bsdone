@@ -58,12 +58,12 @@ class UserClubhouseConfigServiceTest {
         assertEquals(1216, ranks.get("width"));
         assertEquals(220, ranks.get("height"));
         Map<String, Object> performance = moduleRow(config, "performance");
-        assertEquals(1468, performance.get("y"));
+        assertEquals(2004, performance.get("y"));
         assertEquals(800, performance.get("width"));
         assertEquals(500, performance.get("height"));
         Map<String, Object> teams = moduleRow(config, "teams");
         assertEquals(816, teams.get("x"));
-        assertEquals(1468, teams.get("y"));
+        assertEquals(2004, teams.get("y"));
         assertEquals(400, teams.get("width"));
         assertEquals(300, teams.get("height"));
         @SuppressWarnings("unchecked")
@@ -158,8 +158,9 @@ class UserClubhouseConfigServiceTest {
         assertEquals("evaluation", modules.get(0).get("key"));
         assertEquals(false, modules.get(0).get("enabled"));
         assertEquals("ranks", modules.get(1).get("key"));
-        assertEquals("milestones", modules.get(2).get("key"));
-        assertEquals("performance", modules.get(3).get("key"));
+        assertEquals("spray", modules.get(2).get("key"));
+        assertEquals("milestones", modules.get(3).get("key"));
+        assertEquals("performance", modules.get(4).get("key"));
         assertTrue(modules.stream().skip(2)
                 .allMatch(row -> Boolean.TRUE.equals(row.get("enabled"))));
     }
@@ -398,10 +399,29 @@ class UserClubhouseConfigServiceTest {
         assertEquals(9, ((List<?>) saved.get("modules")).size());
         assertEquals(0, moduleRow(saved, "ranks").get("y"));
         assertEquals(236, moduleRow(saved, "evaluation").get("y"));
-        assertEquals(952, moduleRow(saved, "milestones").get("y"));
-        assertEquals(1468, moduleRow(saved, "performance").get("y"));
-        assertEquals(1984, moduleRow(saved, "teams").get("y"));
+        assertEquals(952, moduleRow(saved, "spray").get("y"));
+        assertEquals(1488, moduleRow(saved, "milestones").get("y"));
+        assertEquals(2004, moduleRow(saved, "performance").get("y"));
+        assertEquals(2520, moduleRow(saved, "teams").get("y"));
         assertNoOverlap(saved);
+    }
+
+    @Test
+    @DisplayName("已下线的关于我模块读取时静默丢弃，不报 400")
+    void retiresAboutModuleWithoutRejectingConfig() {
+        Map<String, Object> body = Map.of(
+                "performance", Map.of("metricKey", "batting.avg", "viz", "line"),
+                "ranks", validRanks(),
+                "modules", List.of(
+                        Map.of("key", "about", "enabled", true, "x", 0, "y", 0, "width", 400, "height", 280),
+                        Map.of("key", "ranks", "enabled", true, "x", 0, "y", 0, "width", 1216, "height", 220)));
+
+        Map<String, Object> saved = service.save(7L, 1L, body);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) saved.get("modules");
+        assertEquals(9, modules.size());
+        assertTrue(modules.stream().noneMatch(row -> "about".equals(row.get("key"))));
     }
 
     @Test

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Generated;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
@@ -52,6 +53,9 @@ extends BaseEntity {
     @Column(length=8)
     @Comment(value="\u672c\u573a\u9996\u6b21\u4e0a\u573a\u9632\u5b88\u7684\u5b88\u4f4d")
     private String firstPosition;
+    @Column(length=8)
+    @Comment(value="\u672c\u573a\u5148\u53d1\u5b88\u5907\u4f4d\u7f6e")
+    private String startingPosition;
     @Comment(value="\u80cc\u53f7")
     private String number;
     @Comment(value="\u6253\u51fb\u624b")
@@ -136,13 +140,19 @@ extends BaseEntity {
     @Column(name="outs_recorded", columnDefinition="integer")
     @Comment(value="投手取得的出局數（ERA 權威值）")
     private Integer outsRecorded = 0;
-    @Column(columnDefinition="integer")
+    // 投手失分分解四列的列名在此显式钉死，不要拿掉 name：
+    // PG 的 bs_game_player_stat 同时存在两组同义列——应用真正读写的是无下划线的
+    // pitchr/er/unearnedr/pendingr，而 unearned_r/pending_r 是后期 migration 按 snake_case 建的
+    // 退役列（见 V20261107120000__retire_er_stat_dead_columns.sql，全表被 DEFAULT 灌成 0）。
+    // 未显式指定 name 时列名取自 Hibernate 命名策略；策略一变就会把读写切到退役列，
+    // 外在表现为"引擎算对了但表与前台不动"。改这四列前先读那个 migration 文件。
+    @Column(name="earnedr", columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
-    @Column(columnDefinition="integer")
+    @Column(name="unearnedr", columnDefinition="integer")
     @Comment(value="非自責分")
     private Integer unearnedR;
-    @Column(columnDefinition="integer")
+    @Column(name="pendingr", columnDefinition="integer")
     @Comment(value="待判定失分")
     private Integer pendingR;
 
@@ -165,7 +175,7 @@ extends BaseEntity {
     @Column(name="scoring_revision_status", length=20)
     @Comment(value="計分修訂狀態（§8.1）")
     private String scoringRevisionStatus;
-    @Column(columnDefinition="integer")
+    @Column(name="er", columnDefinition="integer")
     @Comment(value="\u81ea\u8d23\u5206")
     private Integer er;
     @Column(columnDefinition="integer")
@@ -249,7 +259,7 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u6295\u624b\u72af\u89c4")
     private Integer bk;
-    @Column(columnDefinition="integer")
+    @Column(name="pitchr", columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer pitchR;
     @Column(columnDefinition="integer")
@@ -267,6 +277,9 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u52a9\u6740")
     private Integer a;
+    @Transient
+    @Comment(value="响应透传：该球员本场已计入的守备补记 A（不落库）")
+    private Integer fieldingAdjustmentA;
     @Column(name="fielding_gs", columnDefinition="integer")
     @Comment(value="\u5b88\u5907\u5148\u53d1\uff08\u8be5\u573a\u8be5\u4f4d\u7f6e\u662f\u5426\u5148\u53d1\uff0c0/1\uff09")
     private Integer fieldingGs;
@@ -333,6 +346,11 @@ extends BaseEntity {
     @Generated
     public String getFirstPosition() {
         return this.firstPosition;
+    }
+
+    @Generated
+    public String getStartingPosition() {
+        return this.startingPosition;
     }
 
     @Generated
@@ -638,6 +656,14 @@ extends BaseEntity {
         return this.a;
     }
 
+    public Integer getFieldingAdjustmentA() {
+        return this.fieldingAdjustmentA;
+    }
+
+    public void setFieldingAdjustmentA(Integer fieldingAdjustmentA) {
+        this.fieldingAdjustmentA = fieldingAdjustmentA;
+    }
+
     @Generated
     public Integer getFieldingGs() {
         return this.fieldingGs;
@@ -711,6 +737,11 @@ extends BaseEntity {
     @Generated
     public void setFirstPosition(String firstPosition) {
         this.firstPosition = firstPosition;
+    }
+
+    @Generated
+    public void setStartingPosition(String startingPosition) {
+        this.startingPosition = startingPosition;
     }
 
     @Generated
@@ -1098,7 +1129,7 @@ extends BaseEntity {
 
     @Generated
     public String toString() {
-        return "GamePlayerStat(gameId=" + this.getGameId() + ", tenantId=" + this.getTenantId() + ", teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", pitcherOrder=" + this.getPitcherOrder() + ", position=" + this.getPosition() + ", firstPosition=" + this.getFirstPosition() + ", number=" + this.getNumber() + ", batHand=" + this.getBatHand() + ", throwHand=" + this.getThrowHand() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", e=" + this.getE() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", ip=" + this.getIp() + ", earnedR=" + this.getEarnedR() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", gs=" + this.getGs() + ", svo=" + this.getSvo() + ", cg=" + this.getCg() + ", pg=" + this.getPg() + ", w=" + this.getW() + ", l=" + this.getL() + ", sv=" + this.getSv() + ", hld=" + this.getHld() + ", pitchPa=" + this.getPitchPa() + ", pitchBf=" + this.getPitchBf() + ", pitchAb=" + this.getPitchAb() + ", np=" + this.getNp() + ", pitchBb=" + this.getPitchBb() + ", pitchIbb=" + this.getPitchIbb() + ", pitchHbp=" + this.getPitchHbp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", pitchR=" + this.getPitchR() + ", go=" + this.getGo() + ", fo=" + this.getFo() + ", tc=" + this.getTc() + ", po=" + this.getPo() + ", a=" + this.getA() + ", fieldingGs=" + this.getFieldingGs() + ", defInn=" + this.getDefInn() + ", dp=" + this.getDp() + ", pb=" + this.getPb() + ", catcherSb=" + this.getCatcherSb() + ", catcherCs=" + this.getCatcherCs() + ")";
+        return "GamePlayerStat(gameId=" + this.getGameId() + ", tenantId=" + this.getTenantId() + ", teamId=" + this.getTeamId() + ", playerId=" + this.getPlayerId() + ", battingOrder=" + this.getBattingOrder() + ", listOrder=" + this.getListOrder() + ", pitcherOrder=" + this.getPitcherOrder() + ", position=" + this.getPosition() + ", firstPosition=" + this.getFirstPosition() + ", startingPosition=" + this.getStartingPosition() + ", number=" + this.getNumber() + ", batHand=" + this.getBatHand() + ", throwHand=" + this.getThrowHand() + ", pa=" + this.getPa() + ", ab=" + this.getAb() + ", r=" + this.getR() + ", h=" + this.getH() + ", e=" + this.getE() + ", bbHp=" + this.getBbHp() + ", sb=" + this.getSb() + ", so=" + this.getSo() + ", soSwing=" + this.getSoSwing() + ", soLooking=" + this.getSoLooking() + ", rbi=" + this.getRbi() + ", doubles=" + this.getDoubles() + ", triples=" + this.getTriples() + ", hr=" + this.getHr() + ", insideParkHr=" + this.getInsideParkHr() + ", gdp=" + this.getGdp() + ", sh=" + this.getSh() + ", sf=" + this.getSf() + ", bb=" + this.getBb() + ", ibb=" + this.getIbb() + ", hbp=" + this.getHbp() + ", cs=" + this.getCs() + ", isPitcher=" + this.getIsPitcher() + ", ip=" + this.getIp() + ", earnedR=" + this.getEarnedR() + ", er=" + this.getEr() + ", pitchH=" + this.getPitchH() + ", pitchBbHp=" + this.getPitchBbHp() + ", pitchSo=" + this.getPitchSo() + ", pitchHr=" + this.getPitchHr() + ", pitchInsideParkHr=" + this.getPitchInsideParkHr() + ", gs=" + this.getGs() + ", svo=" + this.getSvo() + ", cg=" + this.getCg() + ", pg=" + this.getPg() + ", w=" + this.getW() + ", l=" + this.getL() + ", sv=" + this.getSv() + ", hld=" + this.getHld() + ", pitchPa=" + this.getPitchPa() + ", pitchBf=" + this.getPitchBf() + ", pitchAb=" + this.getPitchAb() + ", np=" + this.getNp() + ", pitchBb=" + this.getPitchBb() + ", pitchIbb=" + this.getPitchIbb() + ", pitchHbp=" + this.getPitchHbp() + ", wp=" + this.getWp() + ", bk=" + this.getBk() + ", pitchR=" + this.getPitchR() + ", go=" + this.getGo() + ", fo=" + this.getFo() + ", tc=" + this.getTc() + ", po=" + this.getPo() + ", a=" + this.getA() + ", fieldingGs=" + this.getFieldingGs() + ", defInn=" + this.getDefInn() + ", dp=" + this.getDp() + ", pb=" + this.getPb() + ", catcherSb=" + this.getCatcherSb() + ", catcherCs=" + this.getCatcherCs() + ")";
     }
 
     @Generated
@@ -1461,6 +1492,11 @@ extends BaseEntity {
         if (this$firstPosition == null ? other$firstPosition != null : !this$firstPosition.equals(other$firstPosition)) {
             return false;
         }
+        String this$startingPosition = this.getStartingPosition();
+        String other$startingPosition = other.getStartingPosition();
+        if (this$startingPosition == null ? other$startingPosition != null : !this$startingPosition.equals(other$startingPosition)) {
+            return false;
+        }
         String this$number = this.getNumber();
         String other$number = other.getNumber();
         if (this$number == null ? other$number != null : !this$number.equals(other$number)) {
@@ -1623,6 +1659,8 @@ extends BaseEntity {
         result = result * 59 + ($position == null ? 43 : $position.hashCode());
         String $firstPosition = this.getFirstPosition();
         result = result * 59 + ($firstPosition == null ? 43 : $firstPosition.hashCode());
+        String $startingPosition = this.getStartingPosition();
+        result = result * 59 + ($startingPosition == null ? 43 : $startingPosition.hashCode());
         String $number = this.getNumber();
         result = result * 59 + ($number == null ? 43 : $number.hashCode());
         String $batHand = this.getBatHand();

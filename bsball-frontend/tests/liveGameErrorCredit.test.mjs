@@ -95,15 +95,21 @@ test('LiveGame 接线：使用判定/过滤函数、记 E 置位、投球/换局
   assert.ok(src.includes('filterErrorReasons(s,l.playErrorCredited,l.playWpCredited,l.playPbCredited)'), 'CI 进垒原因未按 WP/PB 过滤');
   assert.ok(src.includes('filterErrorReasons(Wd('), '常规进垒原因未过滤');
   assert.ok(src.includes('l.playWpCredited,l.playPbCredited)'), '常规进垒原因未接 WP/PB 标记');
-  assert.ok(src.includes('e.id==="safe_wp"&&!l.playWpCredited'), '暴投重复计数未防');
-  assert.ok(src.includes('e.id==="safe_pb"&&!l.playPbCredited'), '捕逸重复计数未防');
+  assert.ok(src.includes('e.id==="safe_wp"&&!l.playWpCredited'), '暴投缺少同球去重');
+  assert.ok(src.includes('kind:"wild_pitch"'), '拖拽暴投未写投球行');
+  assert.ok(src.includes('e.id==="safe_pb"&&!l.playPbCredited'), '捕逸缺少同球去重');
+  assert.ok(src.includes('kind:"passed_ball"'), '拖拽捕逸未写投球行');
+  assert.ok(src.includes('canWpPb=!!l.hasPitchThisAB&&!l.playWpCredited&&!l.playPbCredited'), 'WP/PB 未按投球/同球门禁');
+  assert.ok(src.includes('lastPitchWasBall'), '暴投未按最近一球是否坏球门禁');
   assert.ok(src.includes('l.playWpCredited=!0,l.flow=null'), '暴投投球未置位本 play 标记');
   assert.ok(src.includes('l.playPbCredited=!0'), '捕逸未置位本 play 标记');
+  assert.ok(src.includes('l.playPbCredited=!1,l.playWpCredited=!0'), '暴投未清除捕逸标记（同 play 承接类型会串）');
+  assert.ok(src.includes('l.playPbCredited=!0,l.playWpCredited=!1') || src.includes('l.playWpCredited=!1,l.playPbCredited=!0'), '捕逸未清除暴投标记（同 play 承接类型会串）');
   assert.ok(src.includes('const samePlayWpPb=e.id==="safe_same_err"'), '同一 play 承接 WP/PB 未走普通进垒');
   assert.ok(src.includes('advanceReasonId=samePlayWpPb'), '承接 WP/PB 未沿用 WP/PB 来源');
   assert.ok(src.includes('同一play内暴投推进') && src.includes('同一play内捕逸推进'), '承接 WP/PB 日志缺少来源');
   assert.ok(src.includes('zd.has(e.id)&&!samePlayWpPb'), '承接 WP/PB 仍进入失误守备员流程');
-  assert.ok(src.includes('if(e==="WP"&&l.playWpCredited)'), '暴投事件菜单仍可重复计数');
+  assert.ok(src.includes('if(e==="WP"&&(l.playWpCredited||l.playPbCredited))'), '暴投事件菜单缺少同球去重');
 
   // 所有记 E 的位置统一走 creditFieldingError，由该函数置位本 play 标记
   assert.match(body('function creditFieldingError(player){', 'function Bt('), /playErrorCredited=!0/, '记 E 助手未置位标记');

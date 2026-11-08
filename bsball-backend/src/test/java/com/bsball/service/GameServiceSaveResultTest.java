@@ -9,6 +9,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,7 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -27,13 +30,17 @@ import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
+import com.bsball.model.dto.PitcherTransferRequest;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
@@ -72,6 +79,8 @@ class GameServiceSaveResultTest {
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
+    @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
 
     @Mock
     private EventRepository eventRepository;
@@ -95,6 +104,10 @@ class GameServiceSaveResultTest {
     private EarnedRunReconstructionService earnedRunReconstructionService;
     @Mock
     private EventRegistrationService eventRegistrationService;
+    @Mock
+    private GameFieldingAdjustmentService fieldingAdjustmentService;
+    @Mock
+    private GameRevisionAuditService revisionAuditService;
 
     private GameService gameService;
 
@@ -105,7 +118,8 @@ class GameServiceSaveResultTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
+                fieldingAdjustmentService, revisionAuditService);
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
@@ -172,6 +186,48 @@ class GameServiceSaveResultTest {
         assertEquals(Double.valueOf(6.1D), pitcher.getIp());
         assertEquals(Integer.valueOf(0), batter.getIsPitcher());
         assertEquals(Integer.valueOf(1), pitcher.getIsPitcher());
+    }
+
+    @Test
+    @DisplayName("结果页显式修改投手 R/ER：保存为人工覆写")
+    void saveResult_manualPitcherRuns_savesOverride() {
+        existingGame.setStatus("final");
+        givenExistingRows(pitcherRow());
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(Boolean.TRUE);
+        SaveGameResultDTO.StatPart pitcherPart =
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), null);
+        pitcherPart.setPitchR(Integer.valueOf(5));
+        pitcherPart.setEr(Integer.valueOf(4));
+        pitcherPart.setManualPitcherRunOverride(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(pitcherPart)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        verify(earnedRunReconstructionService).applyResultPitcherRunOverrides(
+                eq(TENANT_ID), eq(GAME_ID), argThat(values -> values.size() == 1
+                        && values.get(PLAYER_ID)[0] == 5
+                        && values.get(PLAYER_ID)[1] == 4), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("非 final 比赛不允许结果页人工覆写 R/ER")
+    void saveResult_manualPitcherRuns_requiresFinal() {
+        existingGame.setStatus("live");
+        givenExistingRows(pitcherRow());
+        when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(Boolean.TRUE);
+        SaveGameResultDTO.StatPart pitcherPart =
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(0), null);
+        pitcherPart.setPitchR(Integer.valueOf(5));
+        pitcherPart.setEr(Integer.valueOf(4));
+        pitcherPart.setManualPitcherRunOverride(Boolean.TRUE);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(pitcherPart)));
+
+        assertThrows(BusinessException.class,
+                () -> gameService.saveResult(Long.valueOf(GAME_ID), dto));
+        verify(earnedRunReconstructionService, never()).applyResultPitcherRunOverrides(
+                anyLong(), anyLong(), any(), anyLong());
     }
 
     @Test
@@ -453,6 +509,103 @@ class GameServiceSaveResultTest {
 
     /* ---------- fixtures ---------- */
 
+    @Test
+    @DisplayName("删除诊断：全零且无判定/补记时可删除")
+    void checkStatRowDelete_zeroRowWithoutBlockers_isDeletable() {
+        existingGame.setStatus("final");
+        GamePlayerStat stat = zeroPitcherRow();
+        stat.setTenantId(Long.valueOf(TENANT_ID));
+        when(gamePlayerStatRepository.findById(Long.valueOf(PITCHER_ROW_ID)))
+                .thenReturn(Optional.of(stat));
+        when(earnedRunReconstructionService.countResponsiblePitcherDecisions(
+                Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(0);
+        when(fieldingAdjustmentService.countApprovedPlayerAdjustments(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID)))
+                .thenReturn(0L);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        StatRowDeleteCheckDTO result = gameService.checkStatRowDelete(
+                Long.valueOf(GAME_ID), Long.valueOf(PITCHER_ROW_ID));
+
+        assertTrue(result.deletable());
+        assertEquals("NONE", result.recommendedAction());
+        assertTrue(result.blockers().isEmpty());
+    }
+
+    @Test
+    @DisplayName("删除诊断：ER 判定与守备补记阻断并推荐 ER 复核")
+    void checkStatRowDelete_reportsDecisionAndFieldingBlockers() {
+        existingGame.setStatus("final");
+        GamePlayerStat stat = zeroPitcherRow();
+        stat.setTenantId(Long.valueOf(TENANT_ID));
+        when(gamePlayerStatRepository.findById(Long.valueOf(PITCHER_ROW_ID)))
+                .thenReturn(Optional.of(stat));
+        when(earnedRunReconstructionService.countResponsiblePitcherDecisions(
+                Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID))).thenReturn(2);
+        when(fieldingAdjustmentService.countApprovedPlayerAdjustments(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), Long.valueOf(PLAYER_ID)))
+                .thenReturn(1L);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(List.of());
+
+        StatRowDeleteCheckDTO result = gameService.checkStatRowDelete(
+                Long.valueOf(GAME_ID), Long.valueOf(PITCHER_ROW_ID));
+
+        assertFalse(result.deletable());
+        assertEquals("ER_REVIEW", result.recommendedAction());
+        assertTrue(result.blockers().stream().anyMatch(
+                b -> "ER_DECISION".equals(b.type()) && b.value() == 2d));
+        assertTrue(result.blockers().stream().anyMatch(
+                b -> "FIELDING_ADJUSTMENT".equals(b.type()) && b.value() == 1d));
+    }
+
+    @Test
+    @DisplayName("结果保存按字段写入统一修订台账")
+    void saveResultRecordsFieldLevelAdjustments() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(5), null))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameRevisionAuditService.StatChange>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(revisionAuditService).recordStatChanges(any(), captor.capture(), any());
+        assertTrue(captor.getValue().stream().anyMatch(change ->
+                "ab".equals(change.fieldKey())
+                        && change.beforeValue() == 3d
+                        && change.afterValue() == 5d));
+    }
+
+    @Test
+    @DisplayName("投手转记成功后写入统一修订台账")
+    void transferPitcherWritesLedger() {
+        existingGame.setStatus("final");
+        when(earnedRunReconstructionService.transferPitcher(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), 3009L, 1114L, "更正", Long.valueOf(USER_ID)))
+                .thenReturn(new PitcherTransferResultDTO(
+                        55L, 3009L, 1100L, 3011L, 1114L, "TRANSFERRED"));
+        PitcherTransferRequest request = new PitcherTransferRequest();
+        request.setSourceStatId(3009L);
+        request.setTargetPlayerId(1114L);
+        request.setNote("更正");
+
+        gameService.transferPitcher(Long.valueOf(GAME_ID), request);
+
+        verify(revisionAuditService).recordAdjustment(
+                eq(Long.valueOf(TENANT_ID)), eq(Long.valueOf(GAME_ID)),
+                eq("PITCHER_TRANSFER"), eq("TRANSFER"), eq("PITCHER_TRANSFER"), eq(55L),
+                isNull(), eq(1114L), eq(1), eq("pitcherRow"), eq("投手行"),
+                eq("1100"), eq("1114"), eq("TRANSFERRED"), eq("更正"),
+                eq(Long.valueOf(USER_ID)));
+    }
+
     private GamePlayerStat batterRow() {
         GamePlayerStat row = new GamePlayerStat();
         row.setId(Long.valueOf(BATTER_ROW_ID));
@@ -488,8 +641,7 @@ class GameServiceSaveResultTest {
         row.setIsPitcher(Integer.valueOf(1));
         row.setPitcherOrder(Integer.valueOf(3));
         row.setPosition("P");
-        // 结果页不暴露 pitchPa，前端无法清零；该字段单独残留时不应阻塞清理
-        row.setPitchPa(Integer.valueOf(1));
+        row.setPitchPa(Integer.valueOf(0));
         return row;
     }
 
@@ -676,6 +828,41 @@ class GameServiceSaveResultTest {
                 .filter((row) -> Long.valueOf(4321L).equals(row.getPlayerId()))
                 .findFirst().orElseThrow();
         assertEquals("CF", created.getFirstPosition(), "结果页新建行按当前守位兜底");
+    }
+
+    @Test
+    @DisplayName("saveResult：先发守备位只写新建的先发行；替补/已有行不写")
+    void saveResult_startingPosition_onlyNewStarterRows() {
+        GamePlayerStat batter = batterRow();
+        givenExistingRows(batter);
+        SaveGameResultDTO.StatPart existingPart = part(Long.valueOf(BATTER_ROW_ID), Long.valueOf(PLAYER_ID), 0, Integer.valueOf(4), null);
+        existingPart.setPosition("lf");
+
+        SaveGameResultDTO.StatPart starter = part(null, Long.valueOf(5001L), 0, Integer.valueOf(0), null);
+        starter.setBattingOrder(Integer.valueOf(2));
+        starter.setPosition("lf");
+        SaveGameResultDTO.StatPart substitute = part(null, Long.valueOf(5002L), 0, Integer.valueOf(0), null);
+        substitute.setPosition("rf");
+        SaveGameResultDTO.StatPart pitcher = part(null, Long.valueOf(5003L), 1, Integer.valueOf(0), Double.valueOf(1.0D));
+        pitcher.setPitcherOrder(Integer.valueOf(1));
+        pitcher.setPosition("P");
+
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(existingPart, starter, substitute, pitcher)));
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertNull(batter.getStartingPosition(), "已有行不得被结果页回填先发守备位");
+        ArgumentCaptor<GamePlayerStat> captor = ArgumentCaptor.forClass(GamePlayerStat.class);
+        verify(gamePlayerStatRepository, atLeastOnce()).save(captor.capture());
+        GamePlayerStat createdStarter = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5001L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdSub = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5002L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        GamePlayerStat createdPitcher = captor.getAllValues().stream()
+                .filter((row) -> Long.valueOf(5003L).equals(row.getPlayerId())).findFirst().orElseThrow();
+        assertEquals("LF", createdStarter.getStartingPosition(), "先发打者按守位写先发守备位");
+        assertNull(createdSub.getStartingPosition(), "替补不写先发守备位");
+        assertEquals("P", createdPitcher.getStartingPosition(), "先发投手写 P");
     }
 
     @Test

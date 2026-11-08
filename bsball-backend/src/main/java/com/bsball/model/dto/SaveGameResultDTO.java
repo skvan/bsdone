@@ -824,6 +824,9 @@ public class SaveGameResultDTO {
         private Integer pitchSh;
         private Integer pitchSf;
         private Integer pitchR;
+        /** 非自责分／待判定失分：导入（legacy）场次用它表达失分分解；旧客户端不送即为缺栏。 */
+        private Integer unearnedR;
+        private Integer pendingR;
         private Integer pitchPa;
         private Integer pitchBf;
         @JsonAlias(value={"pitAb"})
@@ -854,6 +857,8 @@ public class SaveGameResultDTO {
         private Integer pb;
         private Integer catcherSb;
         private Integer catcherCs;
+        /** 结果页显式修改过投手 R/ER：保存为人工覆写，而非被引擎值保留逻辑忽略。 */
+        private Boolean manualPitcherRunOverride;
 
         @Generated
         public StatPart() {
@@ -1062,6 +1067,16 @@ public class SaveGameResultDTO {
         @Generated
         public Integer getPitchR() {
             return this.pitchR;
+        }
+
+        @Generated
+        public Integer getUnearnedR() {
+            return this.unearnedR;
+        }
+
+        @Generated
+        public Integer getPendingR() {
+            return this.pendingR;
         }
 
         @Generated
@@ -1410,6 +1425,16 @@ public class SaveGameResultDTO {
         }
 
         @Generated
+        public void setUnearnedR(Integer unearnedR) {
+            this.unearnedR = unearnedR;
+        }
+
+        @Generated
+        public void setPendingR(Integer pendingR) {
+            this.pendingR = pendingR;
+        }
+
+        @Generated
         public void setPitchPa(Integer pitchPa) {
             this.pitchPa = pitchPa;
         }
@@ -1547,6 +1572,14 @@ public class SaveGameResultDTO {
         @Generated
         public void setCatcherCs(Integer catcherCs) {
             this.catcherCs = catcherCs;
+        }
+
+        public Boolean getManualPitcherRunOverride() {
+            return manualPitcherRunOverride;
+        }
+
+        public void setManualPitcherRunOverride(Boolean manualPitcherRunOverride) {
+            this.manualPitcherRunOverride = manualPitcherRunOverride;
         }
 
         @Generated

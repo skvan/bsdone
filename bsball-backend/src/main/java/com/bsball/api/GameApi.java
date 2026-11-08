@@ -30,15 +30,31 @@ package com.bsball.api;
 import com.bsball.common.PageResult;
 import com.bsball.common.Result;
 import com.bsball.model.dto.GameResponseDTO;
+import com.bsball.model.dto.EarnedRunDecisionAdjustRequest;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
+import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
+import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
+import com.bsball.model.dto.FieldingAdjustmentListDTO;
+import com.bsball.model.dto.GameRevisionAuditDTO;
+import com.bsball.model.dto.IdentityTransferPreviewDTO;
+import com.bsball.model.dto.IdentityTransferRequest;
+import com.bsball.model.dto.IdentityTransferResultDTO;
 import com.bsball.model.dto.GameSaveLiveDTO;
 import com.bsball.model.dto.LiveSnapshotSaveDTO;
+import com.bsball.model.dto.PitcherRunOverrideRequest;
+import com.bsball.model.dto.PitcherRunTotalsDTO;
+import com.bsball.model.dto.PitcherTransferRequest;
+import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.dto.SaveGameResultDTO;
+import com.bsball.model.dto.GameStatAdjustmentDTO;
+import com.bsball.model.dto.StatBaseCompareDTO;
+import com.bsball.model.dto.StatRowDeleteCheckDTO;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.model.entity.GameSubstitutionEvent;
+import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
 import com.bsball.service.GamePlayerStatService;
 import com.bsball.service.GameService;
@@ -109,6 +125,12 @@ public class GameApi {
         return Result.ok(PageResult.of(data, (long)data.size()));
     }
 
+    @GetMapping(value={"/{gameId}/fielding-positions"})
+    public Result<PageResult<GameFieldingPosStat>> listFieldingPositions(@PathVariable Long gameId) {
+        List<GameFieldingPosStat> data = this.gameService.listFieldingPositions(gameId);
+        return Result.ok(PageResult.of(data, (long)data.size()));
+    }
+
     @GetMapping(value={"/{gameId}/substitutions"})
     public Result<PageResult<GameSubstitutionEvent>> listSubstitutions(@PathVariable Long gameId) {
         List<GameSubstitutionEvent> data = this.gameService.listSubstitutions(gameId);
@@ -152,6 +174,131 @@ public class GameApi {
             @PathVariable Long decisionId,
             @RequestBody EarnedRunDecisionOverrideRequest body) {
         return Result.ok(this.gameService.overrideEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decisions/{decisionId}/reassign"})
+    public Result<EarnedRunDecisionListDTO> reassignEarnedRunDecision(
+            @PathVariable Long id,
+            @PathVariable Long decisionId,
+            @RequestBody EarnedRunDecisionAdjustRequest body) {
+        return Result.ok(this.gameService.reassignEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decisions/{decisionId}/void"})
+    public Result<EarnedRunDecisionListDTO> voidEarnedRunDecision(
+            @PathVariable Long id,
+            @PathVariable Long decisionId,
+            @RequestBody(required=false) EarnedRunDecisionAdjustRequest body) {
+        return Result.ok(this.gameService.voidEarnedRunDecision(id, decisionId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/decision-adjustments/{adjustmentId}/revoke"})
+    public Result<EarnedRunDecisionListDTO> revokeEarnedRunDecisionAdjustment(
+            @PathVariable Long id,
+            @PathVariable Long adjustmentId) {
+        return Result.ok(
+                this.gameService.revokeEarnedRunDecisionAdjustment(id, adjustmentId));
+    }
+
+    @GetMapping(value={"/{id}/earned-runs/pitchers"})
+    public Result<List<PitcherRunTotalsDTO>> listPitcherRunTotals(@PathVariable Long id) {
+        return Result.ok(this.gameService.listPitcherRunTotals(id));
+    }
+
+    @PutMapping(value={"/{id}/earned-runs/pitchers/{playerId}/override"})
+    public Result<PitcherRunTotalsDTO> overridePitcherRuns(
+            @PathVariable Long id,
+            @PathVariable Long playerId,
+            @RequestBody PitcherRunOverrideRequest body) {
+        return Result.ok(this.gameService.overridePitcherRuns(id, playerId, body));
+    }
+
+    @PostMapping(value={"/{id}/earned-runs/overrides/{overrideId}/revoke"})
+    public Result<PitcherRunTotalsDTO> revokePitcherRunOverride(
+            @PathVariable Long id, @PathVariable Long overrideId) {
+        return Result.ok(this.gameService.revokePitcherRunOverride(id, overrideId));
+    }
+
+    @GetMapping(value={"/{id}/identity-transfers/preview"})
+    public Result<IdentityTransferPreviewDTO> previewIdentityTransfer(
+            @PathVariable Long id,
+            @RequestParam Long sourcePlayerId,
+            @RequestParam Long targetPlayerId) {
+        return Result.ok(this.gameService.previewIdentityTransfer(
+                id, sourcePlayerId, targetPlayerId));
+    }
+
+    @PostMapping(value={"/{id}/identity-transfers"})
+    public Result<IdentityTransferResultDTO> transferIdentity(
+            @PathVariable Long id,
+            @RequestBody IdentityTransferRequest body) {
+        return Result.ok(this.gameService.transferIdentity(id, body));
+    }
+
+    @PostMapping(value={"/{id}/identity-transfers/{transferId}/delete-source"})
+    public Result<Object> deleteIdentityTransferSource(
+            @PathVariable Long id, @PathVariable Long transferId) {
+        this.gameService.deleteIdentityTransferSource(id, transferId);
+        return Result.ok(Map.of());
+    }
+
+    @PostMapping(value={"/{id}/pitcher-transfers"})
+    public Result<PitcherTransferResultDTO> transferPitcher(
+            @PathVariable Long id, @RequestBody PitcherTransferRequest body) {
+        return Result.ok(this.gameService.transferPitcher(id, body));
+    }
+
+    @PostMapping(value={"/{id}/pitcher-transfers/{transferId}/delete-source"})
+    public Result<Object> deletePitcherTransferSource(
+            @PathVariable Long id, @PathVariable Long transferId) {
+        this.gameService.deletePitcherTransferSource(id, transferId);
+        return Result.ok(Map.of());
+    }
+
+    @GetMapping(value={"/{id}/fielding-adjustments"})
+    public Result<List<FieldingAdjustmentListDTO>> listFieldingAdjustments(@PathVariable Long id) {
+        return Result.ok(this.gameService.listFieldingAdjustments(id));
+    }
+
+    @GetMapping(value={"/{id}/fielding-adjustments/candidates"})
+    public Result<List<FieldingAdjustmentCandidateDTO>> listFieldingAdjustmentCandidates(
+            @PathVariable Long id) {
+        return Result.ok(this.gameService.listFieldingAdjustmentCandidates(id));
+    }
+
+    @GetMapping(value={"/{id}/stat-rows/{statId}/delete-check"})
+    public Result<StatRowDeleteCheckDTO> checkStatRowDelete(
+            @PathVariable Long id, @PathVariable Long statId) {
+        return Result.ok(this.gameService.checkStatRowDelete(id, statId));
+    }
+
+    @GetMapping(value={"/{id}/adjustments"})
+    public Result<List<GameStatAdjustmentDTO>> listStatAdjustments(@PathVariable Long id) {
+        return Result.ok(this.gameService.listStatAdjustments(id));
+    }
+
+    @GetMapping(value={"/{id}/stat-base/compare"})
+    public Result<StatBaseCompareDTO> compareStatBase(@PathVariable Long id) {
+        return Result.ok(this.gameService.compareStatBase(id));
+    }
+
+    @GetMapping(value={"/{id}/revision-audit"})
+    public Result<List<GameRevisionAuditDTO>> listRevisionAudit(@PathVariable Long id) {
+        return Result.ok(this.gameService.listRevisionAudit(id));
+    }
+
+    @PostMapping(value={"/{id}/fielding-adjustments"})
+    public Result<FieldingAdjustmentListDTO> createFieldingAdjustment(
+            @PathVariable Long id,
+            @RequestBody FieldingAdjustmentCreateRequest body) {
+        return Result.ok(this.gameService.createFieldingAdjustment(id, body));
+    }
+
+    @PostMapping(value={"/{id}/fielding-adjustments/{adjustmentId}/revoke"})
+    public Result<FieldingAdjustmentListDTO> revokeFieldingAdjustment(
+            @PathVariable Long id,
+            @PathVariable Long adjustmentId) {
+        return Result.ok(this.gameService.revokeFieldingAdjustment(id, adjustmentId));
     }
 
     @PostMapping(value={"/{id}/save-result"})

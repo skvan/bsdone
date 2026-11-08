@@ -50,6 +50,7 @@ import com.bsball.model.dto.PlayerGameLogEntryDTO;
 import com.bsball.model.dto.PlayerStatsByEventDTO;
 import com.bsball.model.dto.PlayerStatsDTO;
 import com.bsball.model.dto.StandingGameRowDTO;
+import com.bsball.model.dto.HitSprayPointRow;
 import com.bsball.model.entity.Team;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.StatsService;
@@ -116,12 +117,28 @@ public class StatsService {
      * 不能用赛事总合计代替。返回结构与 {@link #getPlayerStats(Long, String)} 一致。</p>
      */
     public Map<String, Object> getPlayerStatsByTeam(Long playerId, Long teamId, Long eventId, String gameMode) {
+        return this.getPlayerStatsByScope(playerId, teamId,
+                eventId == null ? List.of() : List.of(eventId), gameMode);
+    }
+
+    /**
+     * 范围统计：按可选球队与赛事集合汇总球员比赛；{@code teamId}/{@code eventIds} 为空表示不限制该维度。
+     * <p>赛事集合用于驾驶舱“联盟=该联盟全部赛事”的统一口径，返回结构与
+     * {@link #getPlayerStats(Long, String)} 一致。</p>
+     */
+    public Map<String, Object> getPlayerStatsByScope(Long playerId, Long teamId, List<Long> eventIds,
+            String gameMode) {
         try {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
-            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
-            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
-            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByTeamScope(playerId, Long.valueOf(tid), teamId, eventId, gm);
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
+            PlayerStatsDTO.Batting bat = this.playerStatsMapper.selectBattingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
+            PlayerStatsDTO.Pitching pit = this.playerStatsMapper.selectPitchingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
+            PlayerStatsDTO.Fielding fld = this.playerStatsMapper.selectFieldingStatsByScope(
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, gm);
             HashMap<String, Object> result = new HashMap<String, Object>();
             result.put("batting", this.formatBatting(bat));
             result.put("pitching", this.formatPitching(pit));
@@ -129,7 +146,9 @@ public class StatsService {
             return result;
         }
         catch (Exception e) {
-            LoggerFactory.getLogger(StatsService.class).error("getPlayerStatsByTeam failed for playerId={}, teamId={}", (Object)playerId, (Object)teamId, (Object)e);
+            LoggerFactory.getLogger(StatsService.class).error(
+                    "getPlayerStatsByScope failed for playerId={}, teamId={}, eventIds={}",
+                    (Object)playerId, (Object)teamId, (Object)eventIds, (Object)e);
             return this.emptyPlayerStats();
         }
     }
@@ -238,6 +257,28 @@ public class StatsService {
         }
     }
 
+    /**
+     * 驾驶舱打击落点：球员在指定范围（可选球队/赛事集合、运动类型）内计入排行的比赛落点，
+     * 按比赛日正序返回；失败时返回空列表，不阻塞驾驶舱。
+     */
+    public List<HitSprayPointRow> getPlayerHitSprays(Long playerId, Long tenantId, Long teamId,
+            List<Long> eventIds, String gameMode) {
+        if (playerId == null || tenantId == null) {
+            return List.of();
+        }
+        try {
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
+            List<HitSprayPointRow> rows = this.playerStatsMapper.selectPlayerHitSprays(
+                    playerId, tenantId, teamId, scopeEventIds, StatsService.normalizeGameMode(gameMode));
+            return rows == null ? List.of() : rows;
+        }
+        catch (Exception e) {
+            LoggerFactory.getLogger(StatsService.class).error("getPlayerHitSprays failed for playerId={}", (Object)playerId, (Object)e);
+            return List.of();
+        }
+    }
+
     private static List<Long> parseTeamIds(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();
@@ -287,12 +328,12 @@ public class StatsService {
     }
 
     /**
-     * 驾驶舱表现/战报用：先按球队/赛事过滤再取最近 {@code limit} 场。
-     * <p>{@code teamId}/{@code eventId} 为空表示不限制该维度（全部球队/生涯）；
+     * 驾驶舱表现/战报用：先按球队/赛事集合过滤再取最近 {@code limit} 场。
+     * <p>{@code teamId}/{@code eventIds} 为空表示不限制该维度（全部球队/生涯）；
      * {@code rankingOnly=true} 只取计入排行的比赛，与生涯统计口径一致。</p>
      */
-    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId, Long eventId,
-            int limit, String gameMode, boolean rankingOnly) {
+    public List<PlayerGameLogEntryDTO> getPlayerGameLogForScope(Long playerId, Long teamId,
+            List<Long> eventIds, int limit, String gameMode, boolean rankingOnly) {
         if (playerId == null || limit <= 0) {
             return List.of();
         }
@@ -300,12 +341,16 @@ public class StatsService {
             long tid = this.resolveTenantId();
             String gm = StatsService.normalizeGameMode(gameMode);
             Integer queryLimit = Integer.valueOf(Math.min(limit, 100));
+            List<Long> scopeEventIds = eventIds == null ? List.of()
+                    : eventIds.stream().filter(Objects::nonNull).distinct().toList();
             List<Map<String, Object>> rows = this.playerStatsMapper.selectGameLogForScope(
-                    playerId, Long.valueOf(tid), teamId, eventId, queryLimit, gm, rankingOnly);
+                    playerId, Long.valueOf(tid), teamId, scopeEventIds, queryLimit, gm, rankingOnly);
             return this.toGameLogEntries(rows);
         }
         catch (Exception e) {
-            LoggerFactory.getLogger(StatsService.class).error("getPlayerGameLogForScope failed for playerId={}, teamId={}, eventId={}", (Object)playerId, (Object)teamId, (Object)eventId, (Object)e);
+            LoggerFactory.getLogger(StatsService.class).error(
+                    "getPlayerGameLogForScope failed for playerId={}, teamId={}, eventIds={}",
+                    (Object)playerId, (Object)teamId, (Object)eventIds, (Object)e);
             return List.of();
         }
     }
@@ -898,6 +943,56 @@ public class StatsService {
         LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
         meta.put("qualification", LeaderQualification.pitchingMeta((int)maxScheduledGames));
         return PageResult.of(rows.stream().map(arg_0 -> this.toPitchingLeaderMap(arg_0)).collect(Collectors.toList()), (long)total, meta);
+    }
+
+    /** 按位置守备榜（#478 P2）：player × position 聚合 GP/GS/INN；outs 换算棒球局数。 */
+    public PageResult<Map<String, Object>> getFieldingPositionLeaders(Long eventId, List<Long> eventIds, List<String> years, List<Long> teamIds,
+            String playerKeyword, String position, String homeAway, String gameMode, Integer minOuts, int page, int pageSize, String sortProp, String sortOrder) {
+        long tid = this.resolveTenantId();
+        int p = StatsService.normalizePage((int)page);
+        int ps = StatsService.normalizePageSize((int)pageSize);
+        long offset = (long)(p - 1) * (long)ps;
+        String kw = StatsService.normalizeLeaderKeyword((String)playerKeyword);
+        String pos = StatsService.normalizeLeaderKeyword((String)position);
+        String ha = StatsService.normalizeHomeAway((String)homeAway);
+        String gm = StatsService.normalizeGameMode((String)gameMode);
+        int min = minOuts == null ? 9 : Math.max(0, Math.min(999, (int)minOuts));
+        String orderBy = StatsLeadersOrderBy.fieldingPositions((String)sortProp, (String)sortOrder);
+        long total = this.statsLeadersMapper.countFieldingPositionLeaders(Long.valueOf(tid), eventId, eventIds, years, teamIds, kw, pos, ha, gm, Integer.valueOf(min));
+        List<Map<String, Object>> rows = this.statsLeadersMapper.selectFieldingPositionLeadersPage(Long.valueOf(tid), eventId, eventIds, years, teamIds, kw, pos, ha, gm, Integer.valueOf(min), orderBy, ps, offset);
+        List<Map<String, Object>> out = rows.stream().map(this::toFieldingPositionLeaderMap).collect(Collectors.toList());
+        LinkedHashMap<String, Object> meta = new LinkedHashMap<>();
+        meta.put("minOuts", Integer.valueOf(min));
+        return PageResult.of(out, (long)total, meta);
+    }
+
+    private Map<String, Object> toFieldingPositionLeaderMap(Map<String, Object> d) {
+        HashMap<String, Object> m = new HashMap<String, Object>();
+        long playerId = Optional.ofNullable(StatsService.getLong(d, "playerId")).orElse(0L);
+        long teamId = Optional.ofNullable(StatsService.getLong(d, "teamId")).orElse(0L);
+        m.put("playerId", Long.valueOf(playerId));
+        m.put("playerName", Optional.ofNullable(StatsService.strVal(d, "playerName")).orElse("#" + playerId));
+        m.put("teamId", Long.valueOf(teamId));
+        m.put("teamName", Optional.ofNullable(StatsService.strVal(d, "teamName")).orElse("球队#" + teamId));
+        m.put("position", StatsService.strVal(d, "position"));
+        m.put("gp", Integer.valueOf(StatsService.getInt(d, "gp")));
+        m.put("gs", Integer.valueOf(StatsService.getInt(d, "gs")));
+        int outs = StatsService.getInt(d, "outs");
+        m.put("inn", StatsFormatUtil.baseballOutsToIp(outs));
+        int po = StatsService.getInt(d, "po");
+        int a = StatsService.getInt(d, "a");
+        int e = StatsService.getInt(d, "e");
+        int tc = po + a + e;
+        m.put("po", Integer.valueOf(po));
+        m.put("a", Integer.valueOf(a));
+        m.put("e", Integer.valueOf(e));
+        m.put("dp", Integer.valueOf(StatsService.getInt(d, "dp")));
+        m.put("pb", Integer.valueOf(StatsService.getInt(d, "pb")));
+        m.put("catcherCs", Integer.valueOf(StatsService.getInt(d, "catcherCs")));
+        m.put("catcherSb", Integer.valueOf(StatsService.getInt(d, "catcherSb")));
+        m.put("tc", Integer.valueOf(tc));
+        m.put("tcPct", tc > 0 ? StatsFormatUtil.fmtPct((Double)(100.0 * (double)(po + a) / (double)tc)) : "0");
+        return m;
     }
 
     public PageResult<Map<String, Object>> getFieldingLeaders(Long eventId, List<Long> eventIds, List<String> years, List<Long> teamIds, String playerKeyword, String position, String homeAway, String batterHand, String pitcherHand, String gameMode, int page, int pageSize, String sortProp, String sortOrder) {

@@ -8,7 +8,7 @@
           <p class="page-sub">球员个人主页 · 已关联球员档案</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
+          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">编辑布局</el-button>
           <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">数据设置</el-button>
           <el-button link type="primary" @click="goAccount">个人资料</el-button>
           <el-button @click="goPortal">返回门户</el-button>
@@ -32,11 +32,14 @@
           <el-option label="全部球队" :value="SCOPE_ALL" />
           <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
         </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select scope-event" aria-label="赛事" :disabled="layoutEditing" @change="onEventChange">
-          <el-option label="生涯" :value="SCOPE_ALL" />
-          <el-option v-for="event in scopeEvents" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
+        <el-select v-model="leagueId" size="small" class="scope-select scope-league" aria-label="联盟" :disabled="layoutEditing" @change="onLeagueChange">
+          <el-option label="全部联盟" :value="SCOPE_ALL" />
+          <el-option v-for="league in availableLeagues" :key="league.id" :label="league.name" :value="league.id" />
         </el-select>
-        <span class="scope-hint">{{ scopeHint }}</span>
+        <el-select v-model="eventId" size="small" class="scope-select scope-event" aria-label="赛事" :disabled="layoutEditing" @change="onEventChange">
+          <el-option :label="eventAllLabel" :value="SCOPE_ALL" />
+          <el-option v-for="event in eventOptions" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
+        </el-select>
         <span class="scope-right">代表 <b>{{ availableTeams.length }}</b> 支球队</span>
       </div>
 
@@ -69,35 +72,15 @@
         </div>
 
         <div class="card-stage">
-          <div class="card-back one"></div>
-          <div class="card-back two"></div>
-          <div class="player-card">
-            <div>
-              <div class="card-top"><span>BSD PLAYER CARD</span><b>{{ new Date().getFullYear() }} / 001</b></div>
-              <div class="card-portrait">
-                <div class="card-avatar">
-                  <img v-if="player.avatar" :src="resolveAssetUrl(player.avatar)" :alt="player.name" />
-                  <span v-else>{{ (player.name || '?').slice(0, 1) }}</span>
-                </div>
-                <div class="card-name">
-                  <b>{{ player.name }}</b>
-                  <span>{{ player.nameEn || 'PLAYER' }} <template v-if="player.number">· #{{ player.number }}</template></span>
-                </div>
-                <div class="card-team">
-                  <span class="crest">{{ heroTeamCrest }}</span>
-                  <span class="card-team-name" :title="heroTeamName">{{ heroTeamName }} · {{ primaryPosition }}</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div class="card-stats">
-                <div class="card-stat"><b>{{ heroStats[0].value }}</b><span>{{ heroStats[0].label }}</span></div>
-                <div class="card-stat"><b>{{ heroStats[1].value }}</b><span>{{ heroStats[1].label }}</span></div>
-                <div class="card-stat"><b>{{ heroStats[2].value }}</b><span>{{ heroStats[2].label }}</span></div>
-              </div>
-              <div class="card-foot"><span>代表 {{ availableTeams.length }} 队 · {{ totalEvents }} 项赛事</span><b>{{ performanceScopeLabel }}</b></div>
-            </div>
-          </div>
+          <button ref="heroCardBtnRef" type="button" class="card-slot" :style="{ '--hero-tilt': `${heroTiltDeg}deg` }" aria-label="放大查看球星卡" @click="openCardZoom">
+            <span class="card-stack two" aria-hidden="true">
+              <ClubhousePlayerCard v-bind="fanLegendCards[1]" :scale="heroCardScale" />
+            </span>
+            <span class="card-stack one" aria-hidden="true">
+              <ClubhousePlayerCard v-bind="fanLegendCards[0]" :scale="heroCardScale" />
+            </span>
+            <ClubhousePlayerCard v-bind="cardFaceProps" :scale="heroCardScale" />
+          </button>
         </div>
       </section>
 
@@ -163,11 +146,7 @@
         <div class="rank-band-head">
           <div>
             <span class="kicker">TEAM RANKING</span>
-            <h2>队内坐标 <small>{{ rankScopeLabel }}</small>
-              <el-tooltip content="排名按当前代表球队的同队同赛事或球队跨赛事生涯口径统计；无最低打席门槛；全垒打不进入排名。" placement="bottom-start" trigger="click">
-                <button type="button" class="metric-info" aria-label="排名口径">i</button>
-              </el-tooltip>
-            </h2>
+            <h2>队内坐标 <small>{{ rankScopeLabel }}</small></h2>
           </div>
           <span class="rank-scope">{{ data.scope.teamName || '-' }} · {{ data.scope.eventName || '生涯' }}<template v-if="rankPopulation"> · {{ rankPopulation }} 人</template> <a href="#" @click.prevent="openSettings">切换</a></span>
         </div>
@@ -201,26 +180,15 @@
         <div class="eval-head">
           <div>
             <span class="kicker">OVERALL PROFILE</span>
-            <h3>总体评价 <small>职业指标 · {{ evaluationComparison }}百分位</small></h3>
+            <h3>总体评价 <small class="eval-scope">对比 · {{ evaluationComparison }}</small></h3>
           </div>
-          <div v-if="evaluationOverall.score != null" class="eval-overall">
+          <div v-if="evaluationOverall.score != null" class="eval-overall" :style="{ '--eo-grade': overallGradeAccent }">
             <div class="eo-score">
               <b>{{ evaluationOverall.score }}</b>
               <span class="eo-scale">/ 100</span>
               <em>{{ evaluationOverall.grade }}</em>
             </div>
-            <div class="eo-side">
-              <span class="eo-tags">
-                <b class="eo-role">{{ overallRoleLabel }}</b>
-                <i class="eo-confidence" :class="confidenceTone(evaluationOverall.confidenceLabel)">{{ evaluationOverall.confidenceLabel }}</i>
-              </span>
-              <span class="eo-sample">{{ overallSampleText }}</span>
-              <span class="eo-reliability">总体可靠性 {{ formatReliability(evaluationOverall.reliability) }}</span>
-            </div>
-          </div>
-          <div class="eval-meta">
-            <span><b>{{ evaluationCards.length }}</b> 个评价维度</span>
-            <span>{{ evaluationComparison }} · 不随筛选变化</span>
+            <b class="eo-role">{{ overallRoleLabel }}</b>
           </div>
         </div>
         <div class="radar-grid" :class="evaluationCards.length > 2 ? 'three-up' : 'two-up'">
@@ -234,7 +202,6 @@
               <div>
                 <span class="radar-kicker">{{ radarKicker(card.domain) }}</span>
                 <h4>{{ card.title }}</h4>
-                <p class="radar-card-sub">{{ card.subtitle }}</p>
               </div>
               <div v-if="card.available" class="radar-score">
                 <b>{{ card.score }}</b><em>{{ card.grade }}</em><span>综合评分</span>
@@ -286,22 +253,147 @@
                 <span>强项<b>{{ card.strongest.label }}</b><em>{{ card.strongest.percentile }}</em></span>
                 <span>提升<b>{{ card.weakest.label }}</b><em>{{ card.weakest.percentile }}</em></span>
               </div>
-              <div class="radar-foot">
-                <span><b>样本池</b> {{ card.sampleSize }} 人</span>
-                <span><b>本人</b> {{ ownSampleText(card) }}</span>
-                <span>{{ radarFoot(card) }}</span>
-              </div>
-              <div class="radar-tags">
-                <i class="radar-confidence" :class="confidenceTone(card.confidenceLabel)">{{ card.confidenceLabel }}</i>
-                <span class="radar-reliability">可靠性 {{ formatReliability(card.reliability) }}</span>
-                <span v-if="radarNote(card)" class="radar-note">{{ radarNote(card) }}</span>
-              </div>
             </template>
             <div v-else class="radar-empty">
               <b>—</b>
               <span>{{ card.reason || '暂无评价数据' }}</span>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section
+        v-if="isModuleVisible('spray')"
+        class="panel spray-panel dashboard-module"
+        data-module-key="spray"
+        :tabindex="layoutEditing ? 0 : undefined"
+        :style="moduleLayoutStyle('spray')"
+        @click="selectModule('spray')"
+        @pointerdown="startModulePointer('spray', $event)"
+        @keydown="onModuleKeydown('spray', $event)"
+      >
+        <div class="panel-head spray-head">
+          <div>
+            <span class="kicker">SPRAY CHART</span>
+            <h3>打击落点</h3>
+          </div>
+          <div class="spray-head-actions">
+            <div class="spray-modes" role="group" aria-label="落点显示模式">
+              <button type="button" :class="{ 'is-active': sprayMode === 'heat' }" @click="setSprayMode('heat')">热力图</button>
+              <button type="button" :class="{ 'is-active': sprayMode === 'animate' }" @click="setSprayMode('animate')">落点动画</button>
+            </div>
+            <div class="spray-summary">
+              <span>安打 <b>{{ spraySummary.hits || 0 }}</b></span>
+              <span>记录 <b>{{ spraySummary.balls || 0 }}</b> 球</span>
+              <span><b>{{ spraySummary.games || 0 }}</b> 场</span>
+            </div>
+            <button v-if="sprayMode === 'animate'" type="button" class="spray-replay" @click="replaySprayAnimation">重播</button>
+          </div>
+        </div>
+        <div v-if="spraysLoading" class="data-empty">正在加载打击落点…</div>
+        <div v-else-if="spraysError" class="data-empty">{{ spraysError }}</div>
+        <div v-else-if="!(spraySummary.balls > 0)" class="data-empty">当前范围还没有记录击球落点。</div>
+        <div v-else class="spray-body">
+          <svg class="spray-field" :viewBox="sprayViewBox" role="img" aria-label="打击落点分区">
+            <defs>
+              <linearGradient :id="sprayGrassId" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#2d7a32" />
+                <stop offset="100%" stop-color="#248528" />
+              </linearGradient>
+              <linearGradient :id="sprayDirtId" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#d98a4a" />
+                <stop offset="100%" stop-color="#c06830" />
+              </linearGradient>
+            </defs>
+            <path d="M 240 590 L -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8 Z" :fill="`url(#${sprayGrassId})`" />
+            <path d="M 240 575 L 415 410 C 445 410 355 270 240 270 C 120 270 40 410 65 410 Z" :fill="`url(#${sprayDirtId})`" />
+            <polygon points="240,555 352.5,445.5 240,333 127.5,445.5" :fill="`url(#${sprayGrassId})`" />
+            <g v-if="sprayMode === 'heat'" aria-hidden="true">
+              <path
+                v-for="zone in sprayZones"
+                :key="zone.code"
+                class="spray-zone"
+                :d="zone.path"
+                :style="{ fill: zone.heat }"
+              />
+            </g>
+            <g class="spray-field-lines" aria-hidden="true">
+              <line x1="218" y1="545" x2="-179.5" y2="165.8" />
+              <line x1="261" y1="545" x2="659.5" y2="165.8" />
+              <path d="M -179.5 165.8 A 572.2 572.2 0 0 1 659.5 165.8" fill="none" />
+              <circle cx="240" cy="559" r="38.9" class="spray-home-circle" />
+              <rect x="347.5" y="440.5" width="10" height="10" transform="rotate(45, 352.5, 445.5)" class="spray-base" />
+              <rect x="235" y="328" width="10" height="10" transform="rotate(45, 240, 333)" class="spray-base" />
+              <rect x="122.5" y="440.5" width="10" height="10" transform="rotate(45, 127.5, 445.5)" class="spray-base" />
+              <polygon points="233,548 247,548 247,555 240,562 233,555" class="spray-base" />
+            </g>
+            <g v-if="sprayMode === 'heat'" aria-hidden="true">
+              <template v-for="(point, index) in sprayPoints" :key="`dot-${index}`">
+                <circle
+                  v-if="point.hit"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="7.5"
+                  class="spray-dot-hit"
+                  :class="{ 'is-hr': point.hr }"
+                />
+                <path v-else :d="sprayCross(point)" class="spray-dot-out" />
+              </template>
+            </g>
+            <g v-else aria-hidden="true">
+              <template v-for="(flight, index) in sprayFlights" :key="`flight-${index}`">
+                <path v-if="flight.path" :d="flight.path" class="spray-flight" :style="{ stroke: flight.color }" />
+                <circle v-if="!flight.done" :cx="flight.head.x" :cy="flight.head.y" r="4.2" class="spray-flight-ball" />
+                <template v-else>
+                  <circle
+                    v-if="flight.point.hit"
+                    :cx="flight.point.x"
+                    :cy="flight.point.y"
+                    r="6"
+                    class="spray-flight-land"
+                    :style="{ fill: flight.color }"
+                  />
+                  <path v-else :d="sprayCross(flight.point)" class="spray-dot-out" />
+                </template>
+              </template>
+            </g>
+            <g v-if="sprayMode === 'heat'" class="spray-zone-labels" aria-hidden="true">
+              <g v-for="zone in sprayZones" :key="`zone-label-${zone.code}`">
+                <text :x="zone.labelX" :y="zone.labelY" text-anchor="middle" class="spray-zone-code">{{ zone.code }}</text>
+                <text :x="zone.labelX" :y="zone.labelY + 36" text-anchor="middle" class="spray-zone-hit">{{ zone.hits }}</text>
+              </g>
+            </g>
+          </svg>
+          <div class="spray-side">
+            <div class="spray-group">
+              <div class="spray-group-title">区域统计</div>
+              <div class="spray-legend">
+                <div v-for="zone in sprayZones" :key="`legend-${zone.code}`" class="spray-legend-row">
+                  <i :style="{ background: zone.heat }"></i>
+                  <b>{{ zone.code }}</b>
+                  <span>{{ zone.label }}</span>
+                  <em>{{ zone.hits }}</em>
+                  <small>/ {{ zone.balls }}</small>
+                </div>
+              </div>
+            </div>
+            <div class="spray-group">
+              <div class="spray-group-title">球种统计</div>
+              <div class="spray-types">
+                <span v-for="type in sprayTypes" :key="`type-${type.code}`" class="spray-type-chip">
+                  <i :style="{ background: sprayTypeColor(type.code) }"></i>
+                  {{ type.label }}
+                  <em>{{ type.hits }}</em>
+                  <small>/ {{ type.balls }}</small>
+                </span>
+              </div>
+              <div v-if="sprayMode === 'heat'" class="spray-legend-keys">
+                <span><i class="is-hit"></i>安打</span>
+                <span><i class="is-hr"></i>全垒打</span>
+                <span><i class="is-out"></i>出局</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -318,7 +410,7 @@
         <div class="panel-head milestone-head">
           <div>
             <span class="kicker">CAREER MILESTONES</span>
-            <h3>生涯里程碑 <small>全租户生涯 · 跨赛事与球队</small></h3>
+            <h3>生涯里程碑</h3>
           </div>
           <div class="milestone-summary">
             <span>已达成 <b>{{ milestoneData.reachedCount || 0 }}</b> 项</span>
@@ -400,9 +492,6 @@
                 <div class="chart-summary">
                   <div><b>{{ performanceSummary }}</b><span>{{ performanceLabel }}</span></div>
                 </div>
-                <el-tooltip content="按比赛日排序的最近 12 场；指标与图表可在数据设置切换。" placement="bottom-end" trigger="click">
-                  <button type="button" class="metric-info" aria-label="表现图口径">i</button>
-                </el-tooltip>
                 <el-button link :icon="Setting" aria-label="数据设置" @click="openSettings" />
               </div>
             </div>
@@ -473,6 +562,11 @@
               <span v-if="currentEventDateRange" class="ec-dates">{{ currentEventDateRange }}</span>
               <span v-if="featuredGame && !featuredGameIsCurrent" class="ec-note">当前赛事近期暂无未开赛比赛</span>
             </div>
+            <div v-else-if="scopeLeague" class="event-context">
+              <span class="ec-label">当前联盟</span>
+              <b>{{ scopeLeague.name }}</b>
+              <span class="ec-note">共 {{ scopeLeague.count }} 项赛事</span>
+            </div>
             <div v-if="featuredGame" class="next-game">
               <div class="ng-head"><span class="event-pill">{{ featuredGame.eventName || '赛事' }}</span><span class="countdown">{{ countdown(featuredGame.gameday) }}</span></div>
               <div class="ng-body">
@@ -510,9 +604,12 @@
             <div v-if="data.recentGames.length" class="recent-cards">
               <article v-for="game in data.recentGames" :key="game.gameId" class="result-card">
                 <div class="result-top"><span class="date">{{ formatDay(game.gameday) }} · {{ game.isHome ? '主场' : '客场' }}</span><span class="res-badge" :class="resultType(game.result)">{{ game.result }}</span></div>
-                <div class="result-score"><b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b><span>最终</span></div>
-                <div class="result-opponent">{{ game.opponentName }}</div>
-                <div class="result-meta">{{ game.teamName }} · {{ game.eventName || '赛事' }}</div>
+                <div class="result-score">
+                  <span class="result-team" :title="game.teamName">{{ game.teamName || '我方' }}</span>
+                  <b>{{ game.scoreFor ?? '-' }} : {{ game.scoreAgainst ?? '-' }}</b>
+                  <span class="result-team result-team--opponent" :title="game.opponentName">{{ game.opponentName || '对手' }}</span>
+                </div>
+                <div class="result-meta">{{ game.eventName || '赛事' }} · 最终</div>
                 <div class="result-line">{{ recentLine(game) }}</div>
               </article>
             </div>
@@ -538,26 +635,6 @@
               <div class="rep-stat"><b>{{ standingRank(team) }}</b><span>{{ standingRecord(team) }}</span></div>
             </div>
             <div class="rep-scope"><span>球队积分按各队主赛事显示</span><el-button link type="primary" @click="goTeam">球队主页 ›</el-button></div>
-          </section>
-
-          <section
-            v-if="isModuleVisible('about')"
-            class="panel about-panel dashboard-module"
-            data-module-key="about"
-            :tabindex="layoutEditing ? 0 : undefined"
-            :style="moduleLayoutStyle('about')"
-            @click="selectModule('about')"
-            @pointerdown="startModulePointer('about', $event)"
-            @keydown="onModuleKeydown('about', $event)"
-          >
-            <div class="panel-head"><div><span class="kicker">ABOUT ME</span><h3>关于我</h3></div></div>
-            <p class="about-intro">{{ player.intro || '这位球员还没有填写简介。' }}</p>
-            <div class="about-meta">
-              <div><span>守备位置</span><b>{{ (player.positions || []).join(' / ') || '未填写' }}</b></div>
-              <div><span>投打</span><b>{{ throwBatLabel }}</b></div>
-              <div><span>身高 / 体重</span><b>{{ player.height || '-' }} / {{ player.weight || '-' }}</b></div>
-              <div><span>出生地</span><b>{{ player.birthPlace || '未填写' }}</b></div>
-            </div>
           </section>
 
           <section
@@ -750,6 +827,16 @@
         <el-button type="primary" :loading="saving" @click="saveSettings">保存</el-button>
       </template>
     </el-drawer>
+
+    <Teleport to="body">
+      <div v-if="cardZoomOpen" class="pcard-zoom" role="dialog" aria-modal="true" aria-label="球星卡放大查看">
+        <div class="pcard-zoom-backdrop" :class="{ on: cardZoomShown }" @click="closeCardZoom"></div>
+        <div class="pcard-zoom-card" :class="{ on: cardZoomShown }" :style="zoomCardStyle">
+          <ClubhousePlayerCard v-bind="cardFaceProps" :scale="zoomScaleValue" />
+        </div>
+        <button ref="zoomCloseBtnRef" type="button" class="pcard-zoom-close" aria-label="关闭放大" @click="closeCardZoom">×</button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -761,7 +848,11 @@ import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import dayjs from 'dayjs';
 import { clubhouseApi } from '../../api/clubhouse';
+import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
+import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT, cardGradeMaterial } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
+import { battedGeo, battedShapeOf, battedShapeColor } from '../../utils/battedBallFlight';
+import { SPRAY_HOME, sprayPolar, sprayWedgePath, sprayPiePath, sprayZoneViews } from '../../utils/sprayZones';
 import { useTenantRouter } from '../../composables/useTenantRouter';
 import {
   BOARD_WIDTH,
@@ -786,7 +877,7 @@ const { tenantCode } = useTenantRouter();
 
 const SCOPE_ALL = 0;
 const DEFAULT_RANK_KEYS = ['batting.avg', 'batting.h', 'batting.obp', 'batting.rbi'];
-const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'milestones', 'performance', 'teams', 'schedule', 'about', 'recentGames', 'quickLinks'];
+const DEFAULT_MODULE_KEYS = ['ranks', 'evaluation', 'spray', 'milestones', 'performance', 'teams', 'schedule', 'recentGames', 'quickLinks'];
 const CONFIG_VERSION = 4;
 const CONFIG_LAYOUT = 'v4-board';
 const MILESTONE_TRACK_INSET = 4;
@@ -802,11 +893,14 @@ const HANDLE_LABELS = {
   se: '右下缩放'
 };
 const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
+// 生产构建通过 VITE_CLUBHOUSE_LAYOUT_EDITING=false 关闭布局编辑（测试/本地默认开启）
+const layoutEditingEnabled = import.meta.env.VITE_CLUBHOUSE_LAYOUT_EDITING !== 'false';
 const compactBoardQuery = window.matchMedia('(min-width: 981px) and (max-width: 1339px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
 const teamId = ref(SCOPE_ALL);
+const leagueId = ref(SCOPE_ALL);
 const eventId = ref(SCOPE_ALL);
 const gameMode = ref('BASEBALL');
 const settingsOpen = ref(false);
@@ -829,6 +923,12 @@ const swapTargetRect = ref(null);
 const milestonePayload = ref(null);
 const milestonesLoading = ref(false);
 const milestonesError = ref('');
+const sprayPayload = ref(null);
+const spraysLoading = ref(false);
+const spraysError = ref('');
+const sprayMode = ref('heat');
+const sprayAnim = reactive({ running: false, now: 0, startedAt: 0 });
+let sprayAnimFrame = 0;
 const milestoneListEl = ref(null);
 const milestoneScroll = reactive({ canScroll: false, thumbHeight: 0, thumbTop: 0 });
 const moduleListEl = ref(null);
@@ -846,6 +946,8 @@ let requestSeq = 0;
 let autoGameModeAdjusted = false;
 let eventScopeResetApplied = false;
 const areaGradientId = `clubhouse-area-${Math.random().toString(36).slice(2)}`;
+const sprayGrassId = `clubhouse-spray-grass-${Math.random().toString(36).slice(2)}`;
+const sprayDirtId = `clubhouse-spray-dirt-${Math.random().toString(36).slice(2)}`;
 
 const draft = reactive({
   performance: { metricKey: 'batting.avg', viz: 'line' },
@@ -863,13 +965,40 @@ function eventGameMode(event) {
 }
 const availableGameModes = computed(() => {
   const modes = new Set();
+  (data.value?.gameModes || []).forEach((mode) => modes.add(eventGameMode({ gameMode: mode })));
   teams.value.forEach((team) => (team.events || []).forEach((event) => modes.add(eventGameMode(event))));
+  scopeEvents.value.forEach((event) => modes.add(eventGameMode(event)));
   return ['BASEBALL', 'SOFTBALL'].filter((mode) => modes.has(mode));
 });
-const availableTeams = computed(() => teams.value.filter((team) => (
-  (team.events || []).some((event) => eventGameMode(event) === gameMode.value)
-)));
+const availableTeams = computed(() => {
+  const playedTeamIds = new Set();
+  scopeEvents.value
+    .filter((event) => eventGameMode(event) === gameMode.value)
+    .forEach((event) => (event.teamIds || []).forEach((id) => playedTeamIds.add(String(id))));
+  return teams.value.filter((team) => (
+    (team.events || []).some((event) => eventGameMode(event) === gameMode.value)
+    || playedTeamIds.has(String(team.id))
+  ));
+});
 const scopeEvents = computed(() => data.value?.events || []);
+const eventLeagueId = (event) => {
+  const id = Number(event?.leagueId);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+const availableLeagues = computed(() => {
+  const leagues = new Map();
+  scopeEvents.value.forEach((event) => {
+    const id = eventLeagueId(event);
+    if (id && !leagues.has(id)) {
+      leagues.set(id, { id, name: event.leagueName || `联盟${id}` });
+    }
+  });
+  return [...leagues.values()];
+});
+const eventOptions = computed(() => scopeEvents.value.filter((event) => (
+  leagueId.value === SCOPE_ALL || eventLeagueId(event) === leagueId.value
+)));
+const eventAllLabel = computed(() => (leagueId.value === SCOPE_ALL ? '生涯' : '本联盟全部赛事'));
 const scopeTeam = computed(() => teams.value.find((item) => item.id === teamId.value) || null);
 /** 全部球队时展示当前运动类型下的全部代表球队；选中球队时只展示该队。 */
 const heroTeamNames = computed(() => availableTeams.value
@@ -886,40 +1015,183 @@ const heroTeamSub = computed(() => {
   return heroTeamNames.value.length ? '跨全部代表球队' : '尚未加入球队';
 });
 const primaryPosition = computed(() => (player.value.positions || [])[0] || '未填写');
-const throwBatLabel = computed(() => {
-  const throwHand = String(player.value.throwHand || '-').replace(/投$/, '');
-  const batHand = String(player.value.batHand || '-').replace(/打$/, '');
-  return `${throwHand}投${batHand}打`;
+function handSideText(raw) {
+  const side = String(raw || '').replace(/[投打]$/, '');
+  if (side === 'L') return '左';
+  if (side === 'R') return '右';
+  if (side === 'B') return '左右';
+  return side || '-';
+}
+const throwBatLabel = computed(() => `${handSideText(player.value.throwHand)}投${handSideText(player.value.batHand)}打`);
+const cardFaceProps = computed(() => {
+  const logoTeam = scopeTeam.value || availableTeams.value[0];
+  return {
+    player: player.value,
+    grade: evaluationOverall.value.grade || '',
+    score: evaluationOverall.value.score ?? null,
+    positionLabel: primaryPosition.value,
+    throwBatLabel: throwBatLabel.value,
+    teamName: heroTeamName.value,
+    teamLogo: resolveAssetUrl(logoTeam?.logo),
+    teamCrest: heroTeamCrest.value
+  };
 });
-const totalEvents = computed(() => {
-  const ids = new Set();
-  availableTeams.value.forEach((team) => (team.events || [])
-    .filter((event) => eventGameMode(event) === gameMode.value)
-    .forEach((event) => ids.add(event.id)));
-  return ids.size;
+
+const heroCardBtnRef = ref(null);
+const zoomCloseBtnRef = ref(null);
+const cardZoomOpen = ref(false);
+const cardZoomShown = ref(false);
+const ZOOM_INITIAL_SCALE = 1.4;
+const zoomScaleValue = ref(ZOOM_INITIAL_SCALE);
+const zoomTarget = ref({
+  tx: 0,
+  ty: 0,
+  tw: Math.round(CARD_BASE_WIDTH * ZOOM_INITIAL_SCALE),
+  th: Math.round(CARD_BASE_HEIGHT * ZOOM_INITIAL_SCALE)
 });
-const scopeHint = computed(() => (teamId.value
-  ? '队内排名按所选球队与赛事/生涯口径计算；雷达为全租户生涯，不随筛选变化'
-  : '生涯合计跨全部球队与赛事；队内排名需选择球队；雷达不随筛选变化'));
+const zoomFrom = ref({ dx: 0, dy: 0, k: 1 });
+let zoomCloseTimer = 0;
+
+const narrowCardQuery = window.matchMedia('(max-width: 980px)');
+const isNarrowCard = ref(narrowCardQuery.matches);
+function onNarrowCardChange(event) {
+  isNarrowCard.value = event.matches;
+}
+narrowCardQuery.addEventListener('change', onNarrowCardChange);
+// 扇形背景：固定两张 The Show 风格传奇卡，纯装饰不参与数据口径
+// 队徽与主卡同源：叠卡底部露角处显示真实队徽，避免空区穿帮
+const fanLegendCards = computed(() => {
+  const team = {
+    teamName: cardFaceProps.value.teamName,
+    teamLogo: cardFaceProps.value.teamLogo,
+    teamCrest: cardFaceProps.value.teamCrest
+  };
+  return [
+    { player: { name: 'SUZUKI' }, grade: 'S', score: 97, positionLabel: 'RF', throwBatLabel: '右投左打', ...team },
+    { player: { name: 'RUTH' }, grade: 'A+', score: 93, positionLabel: '1B', throwBatLabel: '左投左打', ...team }
+  ];
+});
+const heroCardScale = computed(() => (isNarrowCard.value ? 1 : 1.16));
+// 手持扇形：桌面端主卡歪斜，放大飞入时顺势转正
+const heroTiltDeg = computed(() => -14);
+
+function calcZoomScale() {
+  const scale = Math.min((window.innerHeight - 140) / CARD_BASE_HEIGHT, (window.innerWidth - 56) / CARD_BASE_WIDTH, 1.8);
+  return Math.max(1.05, Math.round(scale * 100) / 100);
+}
+
+/** 按视口重算放大卡的缩放与居中目标位 */
+function applyZoomLayout() {
+  const scale = calcZoomScale();
+  const tw = Math.round(CARD_BASE_WIDTH * scale);
+  const th = Math.round(CARD_BASE_HEIGHT * scale);
+  zoomScaleValue.value = scale;
+  zoomTarget.value = {
+    tx: Math.round((window.innerWidth - tw) / 2),
+    ty: Math.round((window.innerHeight - th) / 2),
+    tw,
+    th
+  };
+}
+
+const zoomCardStyle = computed(() => {
+  const { tx, ty, tw, th } = zoomTarget.value;
+  const { dx, dy, k } = zoomFrom.value;
+  return {
+    left: `${tx}px`,
+    top: `${ty}px`,
+    width: `${tw}px`,
+    height: `${th}px`,
+    transform: cardZoomShown.value ? 'none' : `translate(${dx}px, ${dy}px) scale(${k}) rotate(${heroTiltDeg.value}deg)`
+  };
+});
+
+function openCardZoom() {
+  applyZoomLayout();
+  const { tx, ty, tw, th } = zoomTarget.value;
+  // 主卡带扇形歪斜：取视觉包围盒中心定位，缩放比按卡面名义宽度算（包围盒因旋转偏宽）
+  const origin = heroCardBtnRef.value?.querySelector(':scope > .pcard')?.getBoundingClientRect();
+  zoomFrom.value = origin
+    ? {
+      dx: origin.left + origin.width / 2 - (tx + tw / 2),
+      dy: origin.top + origin.height / 2 - (ty + th / 2),
+      k: (CARD_BASE_WIDTH * heroCardScale.value) / tw
+    }
+    : { dx: 0, dy: 0, k: 0.6 };
+  cardZoomOpen.value = true;
+  cardZoomShown.value = false;
+  document.body.style.overflow = 'hidden';
+  window.addEventListener('keydown', onZoomKeydown);
+  window.addEventListener('resize', applyZoomLayout);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    cardZoomShown.value = true;
+  }));
+  nextTick(() => zoomCloseBtnRef.value?.focus());
+}
+
+function closeCardZoom() {
+  if (!cardZoomOpen.value) return;
+  cardZoomShown.value = false;
+  window.removeEventListener('keydown', onZoomKeydown);
+  window.removeEventListener('resize', applyZoomLayout);
+  clearTimeout(zoomCloseTimer);
+  zoomCloseTimer = setTimeout(() => {
+    cardZoomOpen.value = false;
+    document.body.style.overflow = '';
+    heroCardBtnRef.value?.focus();
+  }, 420);
+}
+
+function onZoomKeydown(event) {
+  if (event.key === 'Escape') closeCardZoom();
+  // 弹层内仅关闭按钮可聚焦，锁住 Tab 防止焦点跑到遮罩后的页面
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    zoomCloseBtnRef.value?.focus();
+  }
+}
+
+onBeforeUnmount(() => {
+  narrowCardQuery.removeEventListener('change', onNarrowCardChange);
+  window.removeEventListener('keydown', onZoomKeydown);
+  window.removeEventListener('resize', applyZoomLayout);
+  clearTimeout(zoomCloseTimer);
+  if (cardZoomOpen.value) document.body.style.overflow = '';
+});
 const scopeLabel = computed(() => {
   const scope = data.value?.scope || {};
   if (scope.teamAll && scope.career) return '生涯';
-  return [scope.teamAll ? null : scope.teamName, scope.career ? '生涯' : scope.eventName]
-    .filter(Boolean)
-    .join(' · ');
+  const parts = [];
+  if (!scope.teamAll) parts.push(scope.teamName || '球队');
+  if (!scope.leagueAll) parts.push(scope.leagueName || '联盟');
+  if (scope.career) parts.push('生涯');
+  else if (scope.eventId) parts.push(scope.eventName);
+  else parts.push('全部赛事');
+  return parts.join(' · ');
 });
-const rankScopeLabel = computed(() => (eventId.value ? '同队同赛事' : '球队跨赛事生涯'));
+const scopeLeague = computed(() => {
+  const scope = data.value?.scope;
+  return scope && !scope.leagueAll ? { name: scope.leagueName, count: scope.eventCount || 0 } : null;
+});
+const rankScopeLabel = computed(() => {
+  if (eventId.value) return '同队同赛事';
+  if (leagueId.value) return '同队同联盟';
+  return '球队跨赛事生涯';
+});
 const rankNote = computed(() => `${rankScopeLabel.value} · 无最低打席门槛 · 全垒打不进入排名`);
 const scheduleScopeLabel = computed(() => {
   if (eventId.value) return teamId.value ? '同队同赛事' : '当前赛事';
+  if (leagueId.value) return teamId.value ? '同队同联盟' : '当前联盟';
   return teamId.value ? '球队跨赛事生涯' : '跨球队生涯';
 });
 const recentEmptyText = computed(() => (eventId.value
   ? '该赛事暂无比赛记录。'
-  : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
+  : leagueId.value ? '该联盟暂无比赛记录。'
+    : teamId.value ? '该球队暂无比赛记录。' : '暂无比赛记录。'));
 const scheduleEmptyText = computed(() => (eventId.value
   ? '该赛事暂无未开赛的比赛。'
-  : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
+  : leagueId.value ? '该联盟暂无未开赛的比赛。'
+    : teamId.value ? '该球队暂无未开赛的比赛。' : '暂无未开赛的比赛。'));
 const rankPopulation = computed(() => {
   const totals = (data.value?.ranks || []).map((item) => item.total).filter((total) => total > 0);
   return totals.length && totals.every((total) => total === totals[0]) ? totals[0] : 0;
@@ -942,22 +1214,14 @@ const hasStatsData = computed(() => (
   || hasPitchingData.value
   || Number(data.value?.stats?.fielding?.gp) > 0
 ));
-const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
 const evaluationOverall = computed(() => data.value?.evaluation?.overall || {});
+const evaluationComparison = computed(() => data.value?.evaluation?.comparison || '全租户生涯');
+const overallGradeAccent = computed(() => cardGradeMaterial(evaluationOverall.value.grade).color);
 const overallRoleLabel = computed(() => ({
   POSITION_PLAYER: '野手',
   PITCHER: '投手',
   TWO_WAY: '二刀流'
 }[evaluationOverall.value.role] || '球员'));
-const overallSampleText = computed(() => {
-  const sizes = evaluationOverall.value.sampleSize || {};
-  const parts = [
-    formatOwnSample(sizes.batting, 'PA'),
-    formatOwnSample(sizes.pitching, 'IP'),
-    formatOwnSample(sizes.fielding, 'INN')
-  ].filter(Boolean);
-  return parts.length ? parts.join(' · ') : '暂无有效样本';
-});
 /** 旧数据兜底：野手（POSITION_PLAYER）不渲染投球卡，即使接口仍返回了投球卡。 */
 const evaluationCards = computed(() => {
   const role = evaluationOverall.value.role;
@@ -1034,11 +1298,34 @@ function defaultModules() {
     });
   }));
 }
-const activeModules = computed(() => {
+const activeModules = computed(() => configuredModulesWithCatalog()
+  .filter((module) => module.enabled !== false)
+  .map(resolveModule));
+/** 已保存布局缺少模块目录里的新模块时，追加到画布底部，保证升级后新模块可见。 */
+function configuredModulesWithCatalog() {
   const configured = data.value?.config?.modules;
-  const source = configured?.length ? configured : defaultModules();
-  return source.filter((module) => module.enabled !== false).map(resolveModule);
-});
+  if (!Array.isArray(configured) || !configured.length) return defaultModules();
+  const known = new Set(configured.map((row) => row.key));
+  const missing = moduleCatalog.value.filter((item) => !known.has(item.key));
+  if (!missing.length) return configured;
+  let nextY = configured.reduce(
+    (bottom, row) => Math.max(bottom, finiteNumber(row.y, 0) + finiteNumber(row.height, 0)),
+    0
+  ) + BOARD_GAP;
+  const appended = missing.map((meta) => {
+    const row = {
+      key: meta.key,
+      enabled: true,
+      x: 0,
+      y: nextY,
+      width: meta.defaultWidth,
+      height: meta.defaultHeight
+    };
+    nextY += finiteNumber(meta.defaultHeight, 240) + BOARD_GAP;
+    return row;
+  });
+  return [...configured, ...appended];
+}
 /**
  * 查看态全部球队时收起隐藏的队内坐标占位，避免页面顶部出现大块空白；
  * 编辑态保留占位以便调整位置。任何潜在重叠都退回原始布局。
@@ -1575,7 +1862,7 @@ function autoScrollLayoutPointer() {
 }
 
 function enterLayoutEditing() {
-  if (!data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
+  if (!layoutEditingEnabled || !data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
@@ -1606,8 +1893,7 @@ function onLayoutKeydown(event) {
 }
 
 function currentModuleConfig() {
-  const source = data.value?.config?.modules?.length ? data.value.config.modules : defaultModules();
-  return toConfigRows(source.map(resolveModule));
+  return toConfigRows(configuredModulesWithCatalog().map(resolveModule));
 }
 
 function ensureModuleRows() {
@@ -1749,29 +2035,6 @@ function onViewportResize() {
   nextTick(updateSelectionRect);
 }
 
-const heroStats = computed(() => {
-  if (!hasStatsData.value || (!hasBatting.value && !hasPitchingData.value)) {
-    return [
-      { label: 'AVG', value: '—' },
-      { label: 'OBP', value: '—' },
-      { label: 'RBI', value: '—' }
-    ];
-  }
-  const b = batting.value;
-  if (hasBatting.value) {
-    return [
-      { label: 'AVG', value: b.avg ?? '-' },
-      { label: 'OBP', value: b.obp ?? '-' },
-      { label: 'RBI', value: b.rbi ?? '-' }
-    ];
-  }
-  const p = pitching.value;
-  return [
-    { label: 'ERA', value: p.era ?? '-' },
-    { label: 'WHIP', value: p.whip ?? '-' },
-    { label: 'SO', value: p.pitchSo ?? '-' }
-  ];
-});
 const matrixItems = computed(() => {
   if (!hasStatsData.value) return [];
   const b = batting.value;
@@ -1985,42 +2248,110 @@ function radarKicker(domain) {
   return { batting: 'BATTING', fielding: 'DEFENSE', pitching: 'PITCHING' }[domain] || 'EVALUATION';
 }
 
-function radarFoot(card) {
-  return `${(card.axes || []).length} 轴 · ${evaluationComparison.value}`;
-}
+/** 打击落点热力：场地坐标系与录入页一致（见 utils/sprayZones.js）。 */
 
-function ownSampleText(card) {
-  return formatOwnSample(card.ownSample, card.sampleUnit) || '暂无';
+function sprayCross(point) {
+  const size = 5.5;
+  return `M ${point.x - size} ${point.y - size} L ${point.x + size} ${point.y + size} `
+    + `M ${point.x + size} ${point.y - size} L ${point.x - size} ${point.y + size}`;
 }
-
-function formatOwnSample(value, unit) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) return '';
-  if (unit === 'IP') return `${amount.toFixed(1)} IP`;
-  if (unit === 'INN') return `${Number.isInteger(amount) ? amount : amount.toFixed(1)} 局`;
-  return `${Math.round(amount)} PA`;
+const spraySummary = computed(() => sprayPayload.value?.summary || {});
+const sprayViewBox = computed(() => (isNarrowCard.value ? '-220 -90 920 730' : '-300 -150 1080 780'));
+const sprayPoints = computed(() => (sprayPayload.value?.points || []).map((point) => ({
+  ...point,
+  hr: point.resultCode === 'HR' || point.resultCode === 'IPHR'
+})));
+const sprayZones = computed(() => sprayZoneViews(sprayPayload.value?.zones));
+const sprayTypes = computed(() => sprayPayload.value?.types || []);
+const sprayReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const SPRAY_ANIM_STAGGER = 220;
+const SPRAY_ANIM_LIMIT = 40;
+function sprayTypeColor(code) {
+  return code === 'other' ? 'var(--bs-text-faint)' : battedShapeColor(`bip:${code}:x`);
 }
-
-function formatReliability(value) {
-  const amount = Number(value);
-  return Number.isFinite(amount) ? amount.toFixed(2) : '—';
+function sprayLerp(from, to, t) {
+  return from + (to - from) * t;
 }
-
-function confidenceTone(label) {
-  if (label === '样本不足') return 'is-insufficient';
-  if (label === '参考值') return 'is-reference';
-  return 'is-sufficient';
+function sprayFlightOf(point, t) {
+  const shape = battedShapeOf(point.bipCode);
+  const geo = battedGeo(point.x, point.y, shape.k);
+  const head = {
+    x: Number(((1 - t) * (1 - t) * SPRAY_HOME.x + 2 * (1 - t) * t * geo.cx + t * t * point.x).toFixed(1)),
+    y: Number(((1 - t) * (1 - t) * SPRAY_HOME.y + 2 * (1 - t) * t * geo.cy + t * t * point.y).toFixed(1))
+  };
+  const control = { x: sprayLerp(SPRAY_HOME.x, geo.cx, t), y: sprayLerp(SPRAY_HOME.y, geo.cy, t) };
+  return {
+    ms: shape.ms,
+    head,
+    path: t > 0
+      ? `M ${SPRAY_HOME.x} ${SPRAY_HOME.y} Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${head.x} ${head.y}`
+      : null,
+    color: battedShapeColor(point.bipCode)
+  };
 }
-
-function radarNote(card) {
-  const note = String(card.note || '').trim();
-  const meta = card.meta || {};
-  if (meta.woba != null) return `${note || '参考 wOBA'} ${meta.woba}`;
-  if (meta.fip != null) {
-    const constant = meta.fipConstant != null ? `（C ${meta.fipConstant}）` : '';
-    return `${note || '参考 FIP'} ${meta.fip}${constant}`;
+const sprayFlights = computed(() => {
+  if (sprayMode.value !== 'animate') return [];
+  const points = sprayPoints.value;
+  if (!points.length) return [];
+  const start = Math.max(0, points.length - SPRAY_ANIM_LIMIT);
+  return points.map((point, index) => {
+    const base = sprayFlightOf(point, 1);
+    if (index < start) return { point, t: 1, done: true, ...base };
+    const delay = (index - start) * SPRAY_ANIM_STAGGER;
+    const t = sprayReduceMotion.matches
+      ? 1
+      : Math.min(1, Math.max(0, (sprayAnim.now - sprayAnim.startedAt - delay) / base.ms));
+    return { point, t, done: t >= 1, ...sprayFlightOf(point, t) };
+  });
+});
+function sprayAnimationEnd() {
+  const points = sprayPoints.value;
+  if (!points.length) return sprayAnim.startedAt;
+  const start = Math.max(0, points.length - SPRAY_ANIM_LIMIT);
+  let end = sprayAnim.startedAt;
+  for (let index = start; index < points.length; index += 1) {
+    end = Math.max(end, sprayAnim.startedAt
+      + (index - start) * SPRAY_ANIM_STAGGER + battedShapeOf(points[index].bipCode).ms);
   }
-  return note;
+  return end + 260;
+}
+function stopSprayAnimation() {
+  if (sprayAnimFrame) cancelAnimationFrame(sprayAnimFrame);
+  sprayAnimFrame = 0;
+  sprayAnim.running = false;
+}
+function startSprayAnimation() {
+  stopSprayAnimation();
+  if (sprayMode.value !== 'animate' || !sprayPoints.value.length) return;
+  if (sprayReduceMotion.matches) {
+    sprayAnim.now = window.performance.now() + 1e9;
+    return;
+  }
+  sprayAnim.startedAt = window.performance.now();
+  sprayAnim.now = sprayAnim.startedAt;
+  sprayAnim.running = true;
+  const tick = (timestamp) => {
+    sprayAnim.now = timestamp;
+    if (timestamp >= sprayAnimationEnd()) {
+      sprayAnim.running = false;
+      sprayAnim.now = sprayAnimationEnd();
+      sprayAnimFrame = 0;
+      return;
+    }
+    sprayAnimFrame = requestAnimationFrame(tick);
+  };
+  sprayAnimFrame = requestAnimationFrame(tick);
+}
+function setSprayMode(mode) {
+  sprayMode.value = mode;
+  if (mode === 'animate') {
+    startSprayAnimation();
+  } else {
+    stopSprayAnimation();
+  }
+}
+function replaySprayAnimation() {
+  startSprayAnimation();
 }
 
 function radarAria(card) {
@@ -2225,7 +2556,7 @@ function resetDraft() {
   draft.ranks = DEFAULT_RANK_KEYS.map((metricKey, index) => ({
     metricKey: ranks[index]?.metricKey || metricKey
   }));
-  const modules = config.modules?.length ? config.modules : defaultModules();
+  const modules = configuredModulesWithCatalog();
   draft.modules = modules.map(resolveModule);
   const selectedMilestones = config.milestones?.metricKeys;
   draft.milestones.metricKeys = selectedMilestones?.length
@@ -2335,6 +2666,11 @@ function eventIdsForScope(teamIdValue) {
   source.forEach((team) => (team.events || []).forEach((event) => {
     if (eventGameMode(event) === gameMode.value) ids.add(event.id);
   }));
+  scopeEvents.value.forEach((event) => {
+    if (eventGameMode(event) !== gameMode.value) return;
+    const playedTeamIds = (event.teamIds || []).map(String);
+    if (!teamIdValue || playedTeamIds.includes(String(teamIdValue))) ids.add(event.id);
+  });
   return ids;
 }
 
@@ -2368,6 +2704,14 @@ function onTeamChange() {
   load();
 }
 
+function onLeagueChange() {
+  if (!data.value) return;
+  if (layoutEditing.value) finishLayoutEditing();
+  eventScopeResetApplied = false;
+  eventId.value = SCOPE_ALL;
+  load();
+}
+
 function onEventChange() {
   if (!data.value) return;
   if (layoutEditing.value) finishLayoutEditing();
@@ -2393,9 +2737,13 @@ async function load() {
   milestonePayload.value = null;
   milestonesError.value = '';
   milestonesLoading.value = false;
+  sprayPayload.value = null;
+  spraysError.value = '';
+  spraysLoading.value = false;
   try {
     const result = await clubhouseApi.dashboard({
       teamId: teamId.value || null,
+      leagueId: leagueId.value || null,
       eventId: eventId.value || null,
       gameMode: gameMode.value
     });
@@ -2406,6 +2754,7 @@ async function load() {
     }
     data.value = result;
     teamId.value = result.scope?.teamId ?? SCOPE_ALL;
+    leagueId.value = result.scope?.leagueId ?? SCOPE_ALL;
     eventId.value = result.scope?.eventId ?? SCOPE_ALL;
     gameMode.value = result.scope?.gameMode || gameMode.value;
     // 仅垒球（或仅棒球）球员：当前类型没有任何赛事且只存在另一种类型时，自动切换一次并重载。
@@ -2415,6 +2764,7 @@ async function load() {
         autoGameModeAdjusted = true;
         gameMode.value = fallbackMode;
         teamId.value = SCOPE_ALL;
+        leagueId.value = SCOPE_ALL;
         eventId.value = SCOPE_ALL;
         await load();
         return;
@@ -2432,6 +2782,7 @@ async function load() {
     }
     resetDraft();
     void loadMilestones(seq);
+    void loadSprays(seq);
   } catch (error) {
     if (seq !== requestSeq) return;
     if (isAuthSessionError(error)) {
@@ -2472,8 +2823,38 @@ async function loadMilestones(seq) {
   }
 }
 
-async function redirectToLogin() {
-  await router.replace({
+async function loadSprays(seq) {
+  if (!renderableModules.value.some((module) => module.key === 'spray')) {
+    sprayPayload.value = null;
+    spraysLoading.value = false;
+    stopSprayAnimation();
+    return;
+  }
+  spraysLoading.value = true;
+  spraysError.value = '';
+  try {
+    const result = await clubhouseApi.sprays({
+      teamId: teamId.value || null,
+      leagueId: leagueId.value || null,
+      eventId: eventId.value || null,
+      gameMode: gameMode.value
+    });
+    if (seq !== requestSeq) return;
+    sprayPayload.value = result || {};
+    if (sprayMode.value === 'animate') startSprayAnimation();
+  } catch (error) {
+    if (seq !== requestSeq) return;
+    if (isAuthSessionError(error)) {
+      await redirectToLogin();
+      return;
+    }
+    spraysError.value = error?.message || '打击落点加载失败';
+  } finally {
+    if (seq === requestSeq) spraysLoading.value = false;
+  }
+}
+
+async function redirectToLogin() {  await router.replace({
     name: 'PortalAccountLogin',
     params: { tenantCode: tenantCode.value },
     query: { redirect: router.currentRoute.value.fullPath }
@@ -2524,6 +2905,7 @@ onBeforeUnmount(() => {
   if (milestoneScrollDrag) stopMilestoneScrollDrag();
   if (selectionFrameRaf) cancelAnimationFrame(selectionFrameRaf);
   if (layoutStatusTimer) window.clearTimeout(layoutStatusTimer);
+  stopSprayAnimation();
   freeBoardQuery.removeEventListener('change', syncBoardMode);
   compactBoardQuery.removeEventListener('change', syncBoardMode);
   window.removeEventListener('resize', onViewportResize);
@@ -2565,7 +2947,6 @@ onBeforeUnmount(() => {
 .scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-select { width: 148px; max-width: 100%; }
 .scope-select :deep(.el-select__wrapper) { min-height: 30px; border-radius: 7px; box-shadow: 0 0 0 1px var(--bs-hairline) inset; background: var(--bs-surface-soft); }
-.scope-hint { font-size: 10px; color: var(--bs-text-faint); margin-left: 4px; }
 .scope-right { margin-left: auto; font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }
 .scope-right b { color: var(--bs-ink); }
 .event-context { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: -2px 0 12px; padding: 8px 10px; border: 1px solid var(--bs-hairline-soft); border-radius: 8px; background: var(--bs-surface-soft); color: var(--bs-text-muted); font-size: 10px; }
@@ -2606,43 +2987,30 @@ onBeforeUnmount(() => {
 .team-copy b { display: block; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .team-copy span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-hero-muted); }
 
-.card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; perspective: 1200px; }
-.card-back { position: absolute; width: 252px; height: 334px; border-radius: 15px; border: 1px solid rgba(201,164,91,.26); background: rgba(255,255,255,.035); backdrop-filter: blur(3px); }
-.card-back.one { transform: rotate(7deg) translate(18px, 8px); }
-.card-back.two { transform: rotate(-8deg) translate(-16px, 2px); opacity: .55; }
-.player-card { position: relative; z-index: 3; width: 264px; height: 348px; padding: 18px 18px 16px; border-radius: 15px; border: 1px solid rgba(201,164,91,.55); background: radial-gradient(90% 70% at 84% 0%, rgba(201,164,91,.2), transparent 55%), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 8px, transparent 8px 16px), linear-gradient(160deg, #0d2b4a, #081524 70%); box-shadow: 0 34px 70px rgba(0,0,0,.4); transform: rotate(-3deg); display: flex; flex-direction: column; justify-content: space-between; }
-html.dark .player-card,
-html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70% at 84% 0%, rgba(212,175,106,.18), transparent 55%), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 8px, transparent 8px 16px), linear-gradient(160deg, #132f4c, #0a1727 70%); border-color: rgba(212,175,106,.55); }
-.player-card::before { content: ""; position: absolute; inset: 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; pointer-events: none; }
-.card-top { display: flex; align-items: center; justify-content: space-between; }
-.card-top span { font-size: 10px; font-weight: 700; letter-spacing: .2em; color: var(--bs-accent-ink); }
-.card-top b { font-family: var(--bs-font-num); font-size: 10px; color: rgba(255,255,255,.45); }
-.card-portrait { display: flex; flex-direction: column; align-items: center; margin-top: 9px; }
-.card-avatar { width: 92px; height: 92px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-family: var(--bs-font-serif); font-size: 38px; color: #f7ebd4; background: radial-gradient(circle at 35% 22%, rgba(255,255,255,.16), transparent 38%), repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 7px, transparent 7px 14px), linear-gradient(145deg, #214a74, #0a1c33); border: 1px solid rgba(201,164,91,.6); box-shadow: 0 0 0 5px rgba(201,164,91,.12), inset 0 0 24px rgba(0,0,0,.25); }
-.card-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.card-name { margin-top: 12px; text-align: center; }
-.card-name b { font-family: var(--bs-font-serif); font-size: 23px; font-weight: 700; letter-spacing: .04em; }
-.card-name span { display: block; margin-top: 3px; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .24em; color: var(--bs-hero-muted); }
-.card-team { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; padding: 0 4px; }
-.card-team .crest { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
-.card-team span:last-child { font-size: 10px; color: rgba(255,255,255,.65); }
-.card-team-name { display: block; line-height: 1.45; overflow-wrap: anywhere; text-align: center; }
-.card-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
-.card-stat { text-align: center; border-right: 1px solid rgba(255,255,255,.09); }
-.card-stat:last-child { border-right: 0; }
-.card-stat b { display: block; font-family: var(--bs-font-num); font-size: 19px; line-height: 1; color: #fff; }
-.card-stat span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-hero-muted); }
-.card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.1); }
-.card-foot span { font-size: 10px; color: var(--bs-hero-muted); }
-.card-foot b { font-size: 10px; color: var(--bs-accent-ink); letter-spacing: .1em; }
+.card-stage { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; }
+.card-slot { position: relative; z-index: 3; display: block; padding: 0; border: 0; background: none; pointer-events: none; }
+.card-slot:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 8px; border-radius: 18px; }
+.card-stack { position: absolute; inset: 0; pointer-events: none; transform-origin: 50% 100%; }
+.card-stack.one { transform: translateY(20px) rotate(-1deg); filter: brightness(.9); }
+.card-stack.two { transform: translateY(26px) rotate(12deg); filter: brightness(.78); }
+.card-slot > .pcard { transform: rotate(var(--hero-tilt, 0deg)); transform-origin: 50% 100%; transition: transform 220ms ease-out; pointer-events: auto; }
+.card-slot > .pcard:hover,
+.card-slot:focus-visible > .pcard { transform: rotate(var(--hero-tilt, 0deg)) translateY(-6px); }
+.pcard-zoom { position: fixed; inset: 0; z-index: 3000; }
+.pcard-zoom-backdrop { position: absolute; inset: 0; background: rgba(4, 8, 14, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; transition: opacity 320ms ease-out; }
+.pcard-zoom-backdrop.on { opacity: 1; }
+.pcard-zoom-card { position: absolute; transition: transform 400ms cubic-bezier(.22, .9, .26, 1); will-change: transform; }
+.pcard-zoom-close { position: absolute; right: max(16px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .28); background: rgba(10, 16, 26, .72); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
+.pcard-zoom-close:hover { border-color: rgba(255, 255, 255, .5); }
+.pcard-zoom-close:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 
-.identity-band { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 18px; border-top: 1px solid var(--bs-hairline); border-bottom: 1px solid var(--bs-hairline); padding: 13px 0; }
-.id-item { padding: 0 24px; border-right: 1px solid var(--bs-hairline); }
-.id-item:first-child { padding-left: 0; }
-.id-item:last-child { border-right: 0; padding-right: 0; }
-.id-item span { display: block; font-size: 10px; color: var(--bs-text-faint); letter-spacing: .05em; }
-.id-item b { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--bs-text); }
-.id-item b em { font-style: normal; font-family: var(--bs-font-num); font-size: 14px; color: var(--bs-ink); }
+.identity-band { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 20px; padding: 20px 6px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); }
+.id-item { min-width: 0; padding: 0 28px; border-right: 1px solid var(--bs-hairline); }
+.id-item:last-child { border-right: 0; }
+.id-item span { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .16em; color: var(--bs-text-muted); }
+.id-item span::before { content: ""; width: 12px; height: 2px; border-radius: 2px; background: var(--bs-accent); }
+.id-item b { display: block; margin-top: 8px; overflow: hidden; font-size: 19px; font-weight: 700; line-height: 1.25; color: var(--bs-ink); white-space: nowrap; text-overflow: ellipsis; }
+.id-item b em { font-style: normal; font-family: var(--bs-font-num); font-size: 22px; }
 
 .rank-band { margin-top: 22px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 18px; box-shadow: var(--bs-shadow-sm); padding: 18px 22px 17px; }
 .rank-band-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
@@ -2652,9 +3020,6 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .rank-scope a { color: var(--bs-accent-ink); font-weight: 700; margin-left: 5px; }
 .rank-note { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 10px; line-height: 1.5; color: var(--bs-text-muted); }
 .rank-note b { color: var(--bs-accent-ink); font-weight: 700; }
-.metric-info { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 6px; padding: 0; border: 1px solid var(--bs-hairline); border-radius: 50%; background: var(--bs-surface); color: var(--bs-text-muted); font: inherit; font-size: 10px; font-weight: 800; vertical-align: middle; cursor: help; }
-.metric-info:hover { border-color: var(--bs-accent); color: var(--bs-accent-ink); }
-.metric-info:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .rank-band-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 15px; }
 .rank-feature { padding: 0 24px; border-right: 1px solid var(--bs-hairline-soft); }
 .rank-feature:first-child { padding-left: 0; }
@@ -2675,22 +3040,14 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .eval-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .eval-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 22px; line-height: 1.2; color: var(--bs-ink); }
 .eval-head h3 small { margin-left: 5px; font-family: var(--bs-font-sans); font-size: 11px; font-weight: 400; color: var(--bs-text-muted); }
-.eval-meta { display: flex; align-items: center; gap: 16px; padding-bottom: 2px; font-size: 11px; color: var(--bs-text-muted); }
-.eval-meta b { color: var(--bs-ink); font-family: var(--bs-font-num); font-size: 14px; margin-right: 3px; }
-.eval-overall { display: flex; align-items: center; gap: 14px; padding: 7px 13px; border: 1px solid var(--bs-hairline); border-radius: 12px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
-.eo-score { display: flex; align-items: baseline; gap: 5px; }
-.eo-score b { font-family: var(--bs-font-num); font-size: 38px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
-.eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
-.eo-score em { align-self: center; padding: 3px 6px; font-style: normal; font-family: var(--bs-font-num); font-size: 11px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 5px; background: var(--bs-surface-soft); }
-.eo-side { display: flex; flex-direction: column; gap: 3px; font-size: 10px; line-height: 1.3; color: var(--bs-text-muted); }
-.eo-tags { display: flex; align-items: center; gap: 6px; }
-.eo-role { font-size: 10px; font-weight: 700; color: var(--bs-text); }
-.eo-confidence, .radar-confidence { padding: 1px 6px; font-style: normal; font-size: 10px; font-weight: 600; line-height: 1.5; color: var(--bs-text-muted); border: 1px solid var(--bs-hairline); border-radius: 99px; background: var(--bs-surface-soft); }
-.eo-confidence.is-reference, .radar-confidence.is-reference { color: var(--bs-accent-ink); border-color: var(--bs-accent-soft); background: var(--bs-accent-soft); }
-.eo-confidence.is-insufficient, .radar-confidence.is-insufficient { color: var(--bs-text-faint); }
-.eo-confidence.is-sufficient, .radar-confidence.is-sufficient { color: var(--bs-text); border-color: var(--bs-hairline); }
-.eo-sample { font-family: var(--bs-font-num); letter-spacing: .02em; color: var(--bs-text); }
-.eo-reliability { font-size: 9px; letter-spacing: .04em; color: var(--bs-text-faint); }
+.eval-head .eval-scope { display: block; margin: 6px 0 0; color: var(--bs-accent-ink); font-size: 10px; letter-spacing: .04em; }
+.eval-overall { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 16px 22px 15px 24px; border: 1px solid var(--bs-hairline-soft); border-radius: 16px; background: linear-gradient(180deg, var(--bs-surface), var(--bs-surface-soft)); box-shadow: var(--bs-shadow-sm); }
+.eval-overall::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(180deg, var(--eo-grade, var(--bs-accent)), transparent); opacity: .9; }
+.eo-score { display: flex; align-items: baseline; gap: 7px; }
+.eo-score b { font-family: var(--bs-font-num); font-size: 54px; line-height: .85; font-weight: 700; letter-spacing: -.05em; color: var(--bs-ink); }
+.eo-score .eo-scale { font-family: var(--bs-font-num); font-size: 12px; color: var(--bs-text-faint); }
+.eo-score em { align-self: center; margin-left: 2px; padding: 5px 9px; font-style: normal; font-family: var(--bs-font-num); font-size: 15px; font-weight: 800; color: var(--bs-ink); border: 1px solid color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 45%, var(--bs-hairline)); border-radius: 7px; background: color-mix(in srgb, var(--eo-grade, var(--bs-accent)) 12%, var(--bs-surface)); }
+.eo-role { align-self: center; font-size: 13px; font-weight: 700; color: var(--bs-text); }
 .radar-grid { display: grid; gap: 14px; margin-top: 14px; }
 .radar-grid.two-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .radar-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2702,7 +3059,6 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .radar-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .radar-kicker { display: block; font-size: 10px; font-weight: 700; letter-spacing: .16em; color: var(--bs-text-muted); }
 .radar-card h4 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 19px; line-height: 1.15; color: var(--bs-ink); }
-.radar-card-sub { margin: 5px 0 0; font-family: var(--bs-font-num); font-size: 10px; letter-spacing: .06em; color: var(--bs-text-muted); }
 .radar-score { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 7px; text-align: right; }
 .radar-score b { font-family: var(--bs-font-num); font-size: 35px; line-height: .9; font-weight: 700; letter-spacing: -.04em; color: var(--bs-ink); }
 .radar-score em { align-self: start; padding: 3px 5px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; color: var(--bs-ink); border: 1px solid var(--bs-hairline); border-radius: 4px; background: var(--bs-surface-soft); }
@@ -2729,13 +3085,49 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .radar-highlights span { font-size: 10px; color: var(--bs-text-muted); }
 .radar-highlights b { margin-left: 3px; font-size: 10px; color: var(--bs-text); }
 .radar-highlights em { margin-left: 3px; font-style: normal; font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; font-size: 10px; color: var(--bs-text-muted); }
-.radar-foot span:last-child { margin-left: auto; }
-.radar-foot b { color: var(--bs-text-faint); font-weight: 500; }
-.radar-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 9px; line-height: 1.5; color: var(--bs-text-faint); }
-.radar-reliability { letter-spacing: .03em; }
-.radar-note { flex-basis: 100%; color: var(--bs-text-muted); }
-.radar-note::before { content: "· "; color: var(--bs-text-faint); }
+.spray-summary { display: flex; align-items: baseline; gap: 14px; font-size: 11px; color: var(--bs-text-muted); }
+.spray-summary b { margin-right: 3px; font-family: var(--bs-font-num); font-size: 16px; color: var(--bs-ink); }
+.spray-head-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.spray-modes { display: inline-flex; padding: 2px; border: 1px solid var(--bs-hairline); border-radius: 999px; background: var(--bs-surface-soft); }
+.spray-modes button { padding: 4px 12px; border: 0; border-radius: 999px; background: none; font-size: 11px; color: var(--bs-text-muted); cursor: pointer; }
+.spray-modes button.is-active { background: var(--bs-surface); color: var(--bs-ink); font-weight: 600; box-shadow: var(--bs-shadow-sm); }
+.spray-replay { padding: 4px 10px; border: 1px solid var(--bs-hairline); border-radius: 999px; background: none; font-size: 11px; color: var(--bs-text-muted); cursor: pointer; }
+.spray-replay:hover { border-color: var(--bs-accent); color: var(--bs-accent-ink); }
+.spray-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.spray-group-title { margin-bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--bs-text-faint); }
+.spray-types { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.spray-type-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--bs-text-muted); white-space: nowrap; }
+.spray-type-chip i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.spray-type-chip em { margin-left: auto; font-family: var(--bs-font-num); font-style: normal; font-size: 12px; font-weight: 700; color: var(--bs-ink); }
+.spray-type-chip small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
+.spray-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr); align-items: center; gap: 18px; }
+.spray-field { display: block; width: 100%; max-width: 540px; height: auto; margin: 0 auto; }
+.spray-field-lines line, .spray-field-lines path { stroke: #ffffff; stroke-width: 1.4; opacity: .92; }
+.spray-home-circle { fill: none; stroke: #ffffff; stroke-width: 1.2; opacity: .55; }
+.spray-diamond-line { fill: none; stroke: #ffffff; stroke-width: 1.2; opacity: .7; }
+.spray-base { fill: #ffffff; }
+.spray-zone { mix-blend-mode: screen; stroke: rgba(255, 255, 255, .35); stroke-width: 1; }
+.spray-dot-hit { fill: var(--bs-accent); stroke: var(--bs-ink); stroke-width: .9; }
+.spray-dot-hit.is-hr { stroke: var(--bs-accent-ink); stroke-width: 2.2; }
+.spray-dot-out { fill: none; stroke: var(--bs-text-muted); stroke-width: 1.7; stroke-linecap: round; }
+.spray-zone-code { font-family: var(--bs-font-sans); font-size: 18px; font-weight: 700; fill: var(--bs-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
+.spray-zone-hit { font-family: var(--bs-font-num); font-size: 20px; font-weight: 700; fill: var(--bs-accent-ink); paint-order: stroke; stroke: var(--bs-surface); stroke-width: 3.5; }
+.spray-legend { display: grid; gap: 2px; }
+.spray-legend-row { display: grid; grid-template-columns: 8px 32px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--bs-hairline-soft); font-size: 11px; color: var(--bs-text-muted); }
+.spray-legend-row i { width: 8px; height: 8px; border-radius: 2px; background: var(--bs-accent); }
+.spray-flight { fill: none; stroke-width: 3.4; stroke-linecap: round; opacity: .85; }
+.spray-flight-ball { fill: var(--bs-surface); stroke: var(--bs-ink); stroke-width: 2; }
+.spray-flight-land { stroke: var(--bs-ink); stroke-width: .9; }
+.spray-legend-row b { font-family: var(--bs-font-num); font-size: 11px; color: var(--bs-text); }
+.spray-legend-row em { font-family: var(--bs-font-num); font-style: normal; font-size: 13px; font-weight: 700; color: var(--bs-ink); }
+.spray-legend-row small { font-family: var(--bs-font-num); font-size: 10px; color: var(--bs-text-faint); }
+.spray-legend-keys { display: flex; gap: 14px; padding: 8px 8px 0; font-size: 10px; color: var(--bs-text-muted); }
+.spray-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.spray-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--bs-accent); }
+.spray-legend-keys i.is-hr { border: 2px solid var(--bs-accent-ink); }
+.spray-legend-keys i.is-out { position: relative; border-radius: 0; background: none; }
+.spray-legend-keys i.is-out::before, .spray-legend-keys i.is-out::after { content: ""; position: absolute; left: 0; right: 0; top: 3px; height: 1.5px; background: var(--bs-text-muted); transform: rotate(45deg); }
+.spray-legend-keys i.is-out::after { transform: rotate(-45deg); }
 .radar-empty { display: grid; place-items: center; align-content: center; min-height: 270px; text-align: center; }
 .radar-empty b { font-family: var(--bs-font-num); font-size: 30px; font-weight: 700; color: var(--bs-text-faint); }
 .radar-empty span { margin-top: 6px; font-size: 11px; color: var(--bs-text-muted); }
@@ -2850,7 +3242,6 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
   .donut-wrap { flex-wrap: wrap; gap: 16px; }
   .chart-wrap { overflow-x: auto; }
   .trend-chart { min-width: 480px; }
-  .eval-meta { align-self: flex-start; }
 }
 .content-grid, .main-col, .side-col { display: contents; }
 .dashboard-empty { margin-top: 20px; padding: 46px 20px; text-align: center; }
@@ -2862,7 +3253,6 @@ html[data-portal-theme="dark"] .player-card { background: radial-gradient(90% 70
 .panel-head h3 { margin: 5px 0 0; font-family: var(--bs-font-serif); font-size: 20px; line-height: 1.2; font-weight: 700; color: var(--bs-ink); }
 .panel-head h3 small { font-family: var(--bs-font-sans); font-size: 10px; color: var(--bs-text-faint); font-weight: 400; margin-left: 5px; }
 .panel-head-actions { display: flex; align-items: center; gap: 14px; }
-.eval-meta .metric-info { margin-left: 0; }
 .chart-summary { text-align: right; }
 .chart-summary b { display: block; font-family: var(--bs-font-num); font-size: 18px; color: var(--bs-ink); }
 .chart-summary span { display: block; margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
@@ -2936,11 +3326,11 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .res-badge { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-family: var(--bs-font-num); font-size: 10px; font-weight: 800; }
 .res-badge.w { color: var(--bs-success); background: rgba(31,122,90,.1); }
 .res-badge.l { color: var(--bs-danger); background: rgba(181,18,46,.1); }
-.result-score { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; }
-.result-score b { font-family: var(--bs-font-num); font-size: 24px; line-height: 1; color: var(--bs-ink); }
-.result-score span { font-size: 10px; color: var(--bs-text-faint); }
-.result-opponent { margin-top: 5px; font-size: 10px; font-weight: 700; color: var(--bs-text); }
-.result-meta { margin-top: 3px; font-size: 10px; color: var(--bs-text-faint); }
+.result-score { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 5px 7px; margin-top: 10px; text-align: center; }
+.result-score b { flex: none; font-family: var(--bs-font-num); font-size: 24px; line-height: 1; color: var(--bs-ink); white-space: nowrap; }
+.result-team { max-width: 100%; font-size: 11px; font-weight: 700; line-height: 1.3; color: var(--bs-text); overflow-wrap: anywhere; }
+.result-team--opponent { color: var(--bs-text-muted); font-weight: 600; }
+.result-meta { margin-top: 5px; font-size: 10px; color: var(--bs-text-faint); text-align: center; }
 .result-line { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; line-height: 1.65; color: var(--bs-text-muted); }
 
 .team-panel { position: relative; overflow: hidden; }
@@ -2955,10 +3345,7 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
 .rep-stat b { display: block; font-family: var(--bs-font-num); font-size: 14px; color: var(--bs-ink); }
 .rep-stat span { display: block; margin-top: 2px; font-size: 10px; color: var(--bs-text-faint); }
 .rep-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bs-hairline-soft); font-size: 10px; color: var(--bs-text-muted); }
-.about-intro { margin: 0; font-size: 10px; line-height: 1.85; color: var(--bs-text-muted); }
-.about-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--bs-hairline-soft); }
-.about-meta span { display: block; font-size: 10px; color: var(--bs-text-faint); }
-.about-meta b { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--bs-text); }
+
 .shortcut-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .shortcut { padding: 5px 0 !important; font-size: 10px; }
 @media (prefers-reduced-motion: reduce) {
@@ -3014,21 +3401,20 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .hero { grid-template-columns: 1fr; min-height: 0; padding: 22px 18px; }
   .hero h1 { font-size: 44px; }
   .hero-27 { font-size: 260px; right: -20px; }
-  .card-stage { min-height: 0; margin-top: 20px; justify-content: flex-start; }
-  .card-back { display: none; }
-  .player-card { width: 100%; max-width: 330px; height: auto; min-height: 300px; transform: none; }
-  .identity-band { grid-template-columns: 1fr 1fr; }
-  .id-item { padding: 11px 14px; border-bottom: 1px solid var(--bs-hairline); }
-  .id-item:nth-child(odd) { padding-left: 0; border-right: 1px solid var(--bs-hairline); }
-  .id-item:nth-child(even) { padding-right: 0; }
+  .card-stage { min-height: 0; margin-top: 20px; padding-bottom: 38px; justify-content: center; }
+  .identity-band { grid-template-columns: 1fr 1fr; padding: 6px 2px; }
+  .id-item { padding: 14px 16px; border-right: 1px solid var(--bs-hairline); border-bottom: 1px solid var(--bs-hairline); }
+  .id-item:nth-child(even) { border-right: 0; }
   .id-item:nth-last-child(-n+2) { border-bottom: 0; }
+  .id-item span { font-size: 10px; letter-spacing: .12em; }
+  .id-item b { font-size: 16px; }
   .rank-band { padding: 16px; }
   .rank-band-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .rank-feature { padding: 0; border-right: 0; }
   .evaluation-panel { padding: 17px 16px 14px; }
   .eval-head { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .eval-overall { align-self: stretch; justify-content: space-between; }
-  .eval-meta { align-self: flex-end; }
+  .eval-overall { align-self: stretch; justify-content: space-between; gap: 14px; padding: 14px 16px 13px 18px; }
+  .eo-score b { font-size: 44px; }
   .milestone-panel { padding: 17px 16px 14px; }
   .milestone-head { align-items: flex-start; flex-direction: column; gap: 8px; }
   .milestone-summary { align-self: flex-end; flex-wrap: wrap; justify-content: flex-end; }
@@ -3046,7 +3432,6 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .recent-cards { grid-template-columns: 1fr; }
   .chart-summary { display: none; }
   .scope-bar { flex-wrap: wrap; }
-  .scope-hint { width: 100%; order: 5; }
   .scope-right { margin-left: 0; }
   .panel-head { align-items: flex-start; }
   .hero-kicker { color: var(--bs-accent-hover); }
@@ -3072,8 +3457,10 @@ html[data-portal-theme="dark"] .sch-event.teal { color: #7fd1c8; background: rgb
   .radar-metric { padding: 7px 0; }
   .radar-metric em { font-size: 13px; }
   .eval-overall { flex-wrap: wrap; gap: 8px 12px; }
-  .eo-side { flex-basis: 100%; }
-  .eo-tags, .eo-sample { overflow-wrap: anywhere; }
+  .spray-body { grid-template-columns: 1fr; gap: 12px; }
+  .spray-field { max-width: 100%; }
+  .spray-zone-labels { display: none; }
+  .spray-side { gap: 8px; }
 }
 </style>
 

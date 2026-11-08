@@ -64,7 +64,7 @@ class WechatJssdkApiTest {
     @DisplayName("happy path：字段齐全且签名可按算法复算")
     void happyPath() {
         when(tokenService.getJsapiTicket()).thenReturn("TK");
-        String url = "https://www.bsdone.com/bs-ball-next/team1/players/9?from=share";
+        String url = "https://www.bsdone.com/bs-ball/team1/players/9?from=share";
         Result<Map<String, Object>> r = api.jssdkConfig(url);
         assertEquals(200, r.getCode());
         Map<String, Object> data = r.getData();

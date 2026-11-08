@@ -128,10 +128,10 @@ function isPublicPath(url) {
 
 // 管理上下文判定（T4.1）：当前页面是否处于「管理视图」窄域。
 // 口径对齐 utils/tenantRoute 的部署基址剥离约定：先剥掉已知部署基址前缀，再判断 /{tenant}/admin 开头。
-// 基址集合（长前缀优先，避免 '/bs-ball' 误剥 '/bs-ball-next'）：dev '/'、新版 '/bs-ball-next/'、默认 '/bs-ball/'。
+// 基址集合：生产/测试均为 '/bs-ball/'；dev 为 '/' 时无前缀。
 // 注：硬编码前缀与 utils/tenantRoute.js 部署基址约定同源（BASE_URL / currentRoutePath 口径），改动需两处同步以防漂移。
 const DEPLOY_BASE_PREFIXES = Array.from(
-  new Set([BASE_URL, '/bs-ball-next', '/bs-ball'])
+  new Set([BASE_URL, '/bs-ball'])
 )
   .map((p) => String(p || '').replace(/\/+$/, ''))
   .filter((p) => p && p !== '/')
@@ -305,7 +305,7 @@ function httpErrorMessage(status, body) {
 // 此处单点处理（头优先、msg 兜底）：
 // - 仅 HTTP 404 触发跳转；403 即便带同头也保持既有 403 处理（防误跳）；
 // - 优先判定响应头 X-Tenant-Unavailable === '1'；缺头时回退 msg 精确匹配（trim，兼容旧后端）；
-// - BASE_URL 为 '/'、'/bs-ball-next/' 时分别产出 '/404'、'/bs-ball-next/404'（尾斜杠归一，防双斜杠）；
+// - BASE_URL 为 '/'、'/bs-ball/' 时分别产出 '/404'、'/bs-ball/404'（尾斜杠归一，防双斜杠）；
 // - 同一会话只跳一次（模块级防抖），跳转后仍 throw 以防调用方重复处理。
 const TENANT_NOT_FOUND_MSG = '租户不存在';
 let tenantUnavailableRedirected = false;
@@ -325,7 +325,7 @@ function redirectTenantUnavailableToNotFound(res, body) {
   if (!isTenantUnavailableResponse(res, body)) return false;
   if (typeof window !== 'undefined' && !tenantUnavailableRedirected) {
     tenantUnavailableRedirected = true;
-    const base = String(BASE_URL || '/').replace(/\/+$/, ''); // '/' → ''，'/bs-ball-next/' → '/bs-ball-next'
+    const base = String(BASE_URL || '/').replace(/\/+$/, ''); // '/' → ''，'/bs-ball/' → '/bs-ball'
     window.location.replace(`${base}/404`);
   }
   return true;

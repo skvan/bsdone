@@ -9,8 +9,11 @@
 package com.bsball.repository;
 
 import com.bsball.model.entity.GamePlayerStat;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,6 +24,11 @@ extends JpaRepository<GamePlayerStat, Long> {
     public List<GamePlayerStat> findByPlayerId(Long var1);
 
     public void deleteByGameId(Long var1);
+
+    /** 转记/删除源行时锁定统计行，避免并发双写。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from GamePlayerStat s where s.id = :id")
+    Optional<GamePlayerStat> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 统计某“球员+球队”的有效比赛场次（口径与 PlayerStatsMapper 一致）：
