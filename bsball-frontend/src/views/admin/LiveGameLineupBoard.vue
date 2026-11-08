@@ -84,10 +84,10 @@
         size="small"
         type="primary"
         plain
-        :disabled="!board.hasDh.value || board.hasP.value"
+        :disabled="ohtaniButtonDisabled"
         @click="onToggleOhtani"
       >
-        {{ board.hasDhPitcher.value ? lt('liveGame.lineup.cancelDhPitch') : lt('liveGame.lineup.setDhPitch') }}
+        {{ ohtaniButtonLabel }}
       </el-button>
       <span class="ohtani-rule-bar__hint">{{ ohtaniHint }}</span>
     </div>
@@ -222,14 +222,37 @@ const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
+const ohtaniAction = computed(() => {
+  const b = board.value;
+  if (!ohtaniRule.value) return 'none';
+  if (b.hasDhPitcher.value && !b.hasP.value) return 'cancel-dh-pitcher';
+  if (b.hasP.value && !b.hasDh.value) return 'pitcher-to-dh';
+  if (!b.hasDh.value && b.fieldingPitcherId.value != null) return 'pitcher-to-dh';
+  if (b.hasDh.value && !b.hasP.value) return 'dh-to-pitcher';
+  return 'none';
+});
+const ohtaniButtonLabel = computed(() => {
+  if (ohtaniAction.value === 'cancel-dh-pitcher') return lt('liveGame.lineup.cancelDhPitch');
+  if (ohtaniAction.value === 'pitcher-to-dh') return lt('liveGame.lineup.pitcherToDh');
+  return lt('liveGame.lineup.setDhPitch');
+});
+const ohtaniButtonDisabled = computed(() => ohtaniAction.value === 'none');
 const ohtaniHint = computed(() => {
   if (!ohtaniRule.value) return '';
-  if (!board.value.hasDh.value) return lt('liveGame.lineup.ohtaniNoDh');
-  if (board.value.hasP.value) return lt('liveGame.lineup.ohtaniHasP');
-  return lt('liveGame.lineup.ohtaniOk');
+  const b = board.value;
+  if (b.hasDhPitcher.value && !b.hasP.value) return lt('liveGame.lineup.ohtaniOk');
+  if (b.hasP.value && b.hasDh.value) return lt('liveGame.lineup.ohtaniHasP');
+  if (b.hasP.value || b.fieldingPitcherId.value != null) return lt('liveGame.lineup.ohtaniPitcherToDhHint');
+  if (b.hasDh.value) return lt('liveGame.lineup.ohtaniSetDhPitchHint');
+  return lt('liveGame.lineup.ohtaniNoDh');
 });
 function onToggleOhtani() {
-  board.value.toggleDhPitcher();
+  const action = ohtaniAction.value;
+  if (action === 'cancel-dh-pitcher' || action === 'dh-to-pitcher') {
+    board.value.toggleDhPitcher();
+  } else if (action === 'pitcher-to-dh') {
+    board.value.setPitcherAsDh();
+  }
   showNotice(board.value);
 }
 

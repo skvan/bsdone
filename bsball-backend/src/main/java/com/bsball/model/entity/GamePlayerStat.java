@@ -140,13 +140,19 @@ extends BaseEntity {
     @Column(name="outs_recorded", columnDefinition="integer")
     @Comment(value="投手取得的出局數（ERA 權威值）")
     private Integer outsRecorded = 0;
-    @Column(columnDefinition="integer")
+    // 投手失分分解四列的列名在此显式钉死，不要拿掉 name：
+    // PG 的 bs_game_player_stat 同时存在两组同义列——应用真正读写的是无下划线的
+    // pitchr/er/unearnedr/pendingr，而 unearned_r/pending_r 是后期 migration 按 snake_case 建的
+    // 退役列（见 V20261107120000__retire_er_stat_dead_columns.sql，全表被 DEFAULT 灌成 0）。
+    // 未显式指定 name 时列名取自 Hibernate 命名策略；策略一变就会把读写切到退役列，
+    // 外在表现为"引擎算对了但表与前台不动"。改这四列前先读那个 migration 文件。
+    @Column(name="earnedr", columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer earnedR;
-    @Column(columnDefinition="integer")
+    @Column(name="unearnedr", columnDefinition="integer")
     @Comment(value="非自責分")
     private Integer unearnedR;
-    @Column(columnDefinition="integer")
+    @Column(name="pendingr", columnDefinition="integer")
     @Comment(value="待判定失分")
     private Integer pendingR;
 
@@ -169,7 +175,7 @@ extends BaseEntity {
     @Column(name="scoring_revision_status", length=20)
     @Comment(value="計分修訂狀態（§8.1）")
     private String scoringRevisionStatus;
-    @Column(columnDefinition="integer")
+    @Column(name="er", columnDefinition="integer")
     @Comment(value="\u81ea\u8d23\u5206")
     private Integer er;
     @Column(columnDefinition="integer")
@@ -253,7 +259,7 @@ extends BaseEntity {
     @Column(columnDefinition="integer")
     @Comment(value="\u6295\u624b\u72af\u89c4")
     private Integer bk;
-    @Column(columnDefinition="integer")
+    @Column(name="pitchr", columnDefinition="integer")
     @Comment(value="\u5931\u5206")
     private Integer pitchR;
     @Column(columnDefinition="integer")
