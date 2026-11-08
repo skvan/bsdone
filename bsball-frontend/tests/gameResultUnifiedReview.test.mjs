@@ -30,8 +30,8 @@ test('结果页新增 ER 复核与守备补记 A 页签', () => {
     games.includes('GameEarnedRunReviewPanel') && games.includes('LiveGameFieldingAdjustmentPanel'),
     '结果页未导入复核面板'
   );
-  assert.ok(games.includes('label:"ER 复核",name:"erReview"'), '缺少 ER 复核页签');
-  assert.ok(games.includes('label:"守备补记 A",name:"fieldingAdjustment"'), '缺少守备补记 A 页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabErReview'),name:"erReview"`), '缺少 ER 复核页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabFieldingAdjust'),name:"fieldingAdjustment"`), '缺少守备补记 A 页签');
   assert.ok(games.includes('"remote-candidates":!0'), '守备补记 A 未使用服务端候选');
 });
 

@@ -5,19 +5,19 @@
       type="info"
       :closable="false"
       show-icon
-      title="比赛结束后才能进行身份转记"
+      :title="lt('liveGame.revision.identityFinalGate')"
     />
     <template v-else>
       <el-alert
         type="info"
         :closable="false"
         show-icon
-        title="整名球员身份转记"
-        description="把源球员的统计、逐位置守备与 ER 判定转到同队目标球员；转记成功后再单独确认是否删除源数据。"
+        :title="lt('liveGame.revision.identityTitle')"
+        :description="lt('liveGame.revision.identityDesc')"
       />
-      <el-form label-width="82px" size="default" class="identity-transfer__form">
-        <el-form-item label="源球员">
-          <el-select v-model="sourcePlayerId" filterable placeholder="选择录错的球员" style="width: 100%">
+      <el-form :label-width="isEnglish ? '112px' : '82px'" size="default" class="identity-transfer__form">
+        <el-form-item :label="lt('liveGame.revision.sourcePlayer')">
+          <el-select v-model="sourcePlayerId" filterable :placeholder="lt('liveGame.revision.sourcePlaceholder')" style="width: 100%">
             <el-option
               v-for="player in playerOptions"
               :key="player.playerId"
@@ -26,11 +26,11 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="目标球员">
+        <el-form-item :label="lt('liveGame.revision.targetPlayer')">
           <el-select
             v-model="targetPlayerId"
             filterable
-            placeholder="选择同队正确球员"
+            :placeholder="lt('liveGame.revision.targetPlaceholder')"
             :disabled="!sourceTeamId"
             style="width: 100%"
           >
@@ -42,30 +42,30 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="转记范围">
+        <el-form-item :label="lt('liveGame.revision.scopes')">
           <el-checkbox-group v-model="scopes">
-            <el-checkbox label="STATS">统计</el-checkbox>
-            <el-checkbox label="FIELDING">守备位置</el-checkbox>
-            <el-checkbox label="ER_DECISIONS">ER 判定</el-checkbox>
+            <el-checkbox label="STATS">{{ lt('liveGame.revision.scopeStats') }}</el-checkbox>
+            <el-checkbox label="FIELDING">{{ lt('liveGame.revision.scopeFieldingPositions') }}</el-checkbox>
+            <el-checkbox label="ER_DECISIONS">{{ lt('liveGame.revision.scopeEr') }}</el-checkbox>
             <el-checkbox
               label="LIVE_RECORDS"
               :disabled="Boolean(preview) && (!preview.liveSnapshotAvailable || preview.liveRosterConflict)"
-            >现场记录</el-checkbox>
+            >{{ lt('liveGame.revision.scopeLive') }}</el-checkbox>
           </el-checkbox-group>
-          <div v-if="!scopes.length" class="identity-transfer__hint">至少选择一个转记范围</div>
+          <div v-if="!scopes.length" class="identity-transfer__hint">{{ lt('liveGame.revision.scopeRequired') }}</div>
           <div v-else-if="preview?.liveRosterConflict" class="identity-transfer__hint">
-            源/目标球员同时在同一阵容或替补名单，现场记录范围不可用；请先调整阵容
+            {{ lt('liveGame.revision.liveConflict') }}
           </div>
           <div v-else-if="scopes.includes('LIVE_RECORDS')" class="identity-transfer__hint is-info">
-            现场记录将改写 Play 事件与阵容中的球员归属，转记前快照写入审计
+            {{ lt('liveGame.revision.liveHint') }}
           </div>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="note" maxlength="200" show-word-limit placeholder="可空，例如：16 号误录，应为 21 号" />
+        <el-form-item :label="lt('liveGame.revision.note')">
+          <el-input v-model="note" maxlength="200" show-word-limit :placeholder="lt('liveGame.revision.notePlaceholder')" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="previewLoading" :disabled="!canPreview" @click="loadPreview">
-            预览转记
+            {{ lt('liveGame.revision.previewBtn') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -77,35 +77,35 @@
           type="error"
           :closable="false"
           show-icon
-          title="无法转记"
-          :description="(preview.blockers || []).join('；')"
+          :title="lt('liveGame.revision.cannotTransfer')"
+          :description="(preview.blockers || []).join(lt('liveGame.revision.blockerSeparator'))"
         />
         <template v-else>
           <el-descriptions :column="2" border size="small" class="identity-transfer__summary">
-            <el-descriptions-item label="源">{{ preview.sourcePlayerName }}</el-descriptions-item>
-            <el-descriptions-item label="目标">{{ preview.targetPlayerName }}</el-descriptions-item>
-            <el-descriptions-item label="ER 判定">{{ preview.erDecisionCount }} 条</el-descriptions-item>
-            <el-descriptions-item label="守备位置">
-              {{ (preview.fieldingPositions || []).join('、') || '—' }}
+            <el-descriptions-item :label="lt('liveGame.revision.source')">{{ preview.sourcePlayerName }}</el-descriptions-item>
+            <el-descriptions-item :label="lt('liveGame.revision.target')">{{ preview.targetPlayerName }}</el-descriptions-item>
+            <el-descriptions-item :label="lt('liveGame.revision.scopeEr')">{{ lt('liveGame.revision.erCount', { count: preview.erDecisionCount }) }}</el-descriptions-item>
+            <el-descriptions-item :label="lt('liveGame.revision.fieldingPositions')">
+              {{ (preview.fieldingPositions || []).join(lt('liveGame.common.listSeparator')) || '—' }}
             </el-descriptions-item>
-            <el-descriptions-item label="源 R/ER 覆写">{{ preview.sourceOverride ? '有' : '无' }}</el-descriptions-item>
-            <el-descriptions-item label="目标 R/ER 覆写">{{ preview.targetOverride ? '有' : '无' }}</el-descriptions-item>
-            <el-descriptions-item label="现场记录引用">
-              {{ preview.liveSnapshotAvailable ? `${preview.liveReferenceCount || 0} 处` : '无现场记录' }}
+            <el-descriptions-item :label="lt('liveGame.revision.sourceOverride')">{{ preview.sourceOverride ? lt('liveGame.revision.yes') : lt('liveGame.revision.no') }}</el-descriptions-item>
+            <el-descriptions-item :label="lt('liveGame.revision.targetOverride')">{{ preview.targetOverride ? lt('liveGame.revision.yes') : lt('liveGame.revision.no') }}</el-descriptions-item>
+            <el-descriptions-item :label="lt('liveGame.revision.liveReference')">
+              {{ preview.liveSnapshotAvailable ? lt('liveGame.revision.liveRefCount', { count: preview.liveReferenceCount || 0 }) : lt('liveGame.revision.noLive') }}
             </el-descriptions-item>
-            <el-descriptions-item label="守备补记">
-              {{ preview.fieldingAdjustmentCount || 0 }} 条
+            <el-descriptions-item :label="lt('liveGame.revision.fieldingCredits')">
+              {{ lt('liveGame.revision.countUnit', { count: preview.fieldingAdjustmentCount || 0 }) }}
             </el-descriptions-item>
           </el-descriptions>
           <el-table :data="preview.rows || []" size="small" border stripe class="identity-transfer__rows">
-            <el-table-column label="行类型" width="90" align="center">
-              <template #default="{ row }">{{ row.isPitcher === 1 ? '投手行' : '打者行' }}</template>
+            <el-table-column :label="lt('liveGame.revision.rowType')" width="90" align="center">
+              <template #default="{ row }">{{ row.isPitcher === 1 ? lt('liveGame.revision.pitcherRow') : lt('liveGame.revision.batterRow') }}</template>
             </el-table-column>
-            <el-table-column label="源行" width="100" align="center">
+            <el-table-column :label="lt('liveGame.revision.sourceRow')" width="100" align="center">
               <template #default="{ row }">#{{ row.sourceStatId }}</template>
             </el-table-column>
-            <el-table-column label="目标行" min-width="120" align="center">
-              <template #default="{ row }">{{ row.targetExists ? `#${row.targetStatId}` : '新建/移动源行' }}</template>
+            <el-table-column :label="lt('liveGame.revision.targetRow')" min-width="120" align="center">
+              <template #default="{ row }">{{ row.targetExists ? `#${row.targetStatId}` : lt('liveGame.revision.newOrMove') }}</template>
             </el-table-column>
           </el-table>
           <div class="identity-transfer__actions">
@@ -114,7 +114,7 @@
               :loading="transferring"
               :disabled="!canTransfer"
               @click="confirmTransfer"
-            >确认转记</el-button>
+            >{{ lt('liveGame.revision.confirmTransfer') }}</el-button>
           </div>
         </template>
       </template>
@@ -124,11 +124,11 @@
         type="warning"
         :closable="false"
         show-icon
-        title="转记已完成，源数据尚未删除"
+        :title="lt('liveGame.revision.pendingTitle')"
         :description="`${pendingTransfer.sourceLabel} → ${pendingTransfer.targetLabel}`"
       >
         <template #default>
-          <el-button size="small" type="warning" @click="deletePendingSource">删除源数据</el-button>
+          <el-button size="small" type="warning" @click="deletePendingSource">{{ lt('liveGame.revision.deleteSource') }}</el-button>
         </template>
       </el-alert>
     </template>
@@ -139,7 +139,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { gameApi, playerApi } from '../../api/business';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 
+const { text: lt, isEnglish } = useLiveGameText();
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
   gameStatus: { type: String, default: '' },
@@ -179,8 +181,8 @@ async function loadPlayers() {
   try {
     const game = await gameApi.get(props.gameId);
     const teams = [
-      { id: game?.homeTeamId, label: '主' },
-      { id: game?.awayTeamId, label: '客' }
+      { id: game?.homeTeamId, label: lt('liveGame.team.homeShort') },
+      { id: game?.awayTeamId, label: lt('liveGame.team.awayShort') }
     ].filter((team) => team.id != null);
     const lists = await Promise.all(teams.map(async (team) => {
       const players = await playerApi.teamOptions(team.id).catch(() => []);
@@ -191,7 +193,7 @@ async function loadPlayers() {
       for (const player of players) {
         const playerId = player?.id ?? player?.playerId;
         if (playerId == null) continue;
-        const number = player.number ? `${player.number}号 ` : '';
+        const number = player.number ? lt('liveGame.review.numberPrefix', { n: player.number }) : '';
         const name = player.name || `#${playerId}`;
         options.push({
           playerId,
@@ -202,7 +204,7 @@ async function loadPlayers() {
     }
     playerOptions.value = options;
   } catch (e) {
-    previewError.value = e?.message ?? '加载球员失败';
+    previewError.value = e?.message ?? lt('liveGame.revision.loadPlayersFailed');
   }
 }
 
@@ -229,7 +231,7 @@ async function loadPreview() {
       scopes.value = scopes.value.filter((scope) => scope !== 'LIVE_RECORDS');
     }
   } catch (e) {
-    previewError.value = e?.message ?? '预览失败';
+    previewError.value = e?.message ?? lt('liveGame.revision.previewFailed');
   } finally {
     previewLoading.value = false;
   }
@@ -254,12 +256,12 @@ async function confirmTransfer() {
     }
     try {
       await ElMessageBox.confirm(
-        `已转记到 ${targetLabel}。是否删除源数据 ${sourceLabel}？`,
-        '转记完成',
-        { confirmButtonText: '删除源数据', cancelButtonText: '暂不删除', type: 'warning' }
+        lt('liveGame.revision.transferredTo', { target: targetLabel, source: sourceLabel }),
+        lt('liveGame.revision.transferDone'),
+        { confirmButtonText: lt('liveGame.revision.deleteSource'), cancelButtonText: lt('liveGame.revision.keepSource'), type: 'warning' }
       );
     } catch {
-      ElMessage.success('已转记，源数据保留');
+      ElMessage.success(lt('liveGame.revision.transferredKeep'));
       finishTransfer();
       return;
     }
@@ -268,15 +270,15 @@ async function confirmTransfer() {
         await gameApi.deleteIdentityTransferSource(props.gameId, transferId);
         pendingTransfer.value = null;
       } catch (e) {
-        ElMessage.error(e?.message ?? '转记已完成，但删除源数据失败');
+        ElMessage.error(e?.message ?? lt('liveGame.revision.deleteAfterTransferFailed'));
         finishTransfer();
         return;
       }
     }
-    ElMessage.success('已转记并删除源数据');
+    ElMessage.success(lt('liveGame.revision.transferredDeleted'));
     finishTransfer();
   } catch (e) {
-    ElMessage.error(e?.message ?? '身份转记失败');
+    ElMessage.error(e?.message ?? lt('liveGame.revision.transferFailed'));
   } finally {
     transferring.value = false;
   }
@@ -287,10 +289,10 @@ async function deletePendingSource() {
   try {
     await gameApi.deleteIdentityTransferSource(props.gameId, pendingTransfer.value.id);
     pendingTransfer.value = null;
-    ElMessage.success('已删除源数据');
+    ElMessage.success(lt('liveGame.revision.sourceDeleted'));
     emit('changed');
   } catch (e) {
-    ElMessage.error(e?.message ?? '删除源数据失败');
+    ElMessage.error(e?.message ?? lt('liveGame.revision.deleteSourceFailed'));
   }
 }
 
