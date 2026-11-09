@@ -73,7 +73,12 @@ import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGro
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
 import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
-import { buildHitSprayRecord as LgHitSprayRecord } from '../../utils/hitSprayRecord';
+import {
+  buildHitSprayRecord as LgHitSprayRecord,
+  newSprayRid as LgNewSprayRid,
+  pruneSentSprayRecords as LgPruneSentSpray,
+  toHitSprayPayload as LgSprayPayload
+} from '../../utils/hitSprayRecord';
 import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField';
 import { shouldCreditError, filterErrorReasons, selectErrorFielder, normalizeErrorFlow } from '../../utils/liveGameErrorCredit';
 import { resolveDoublePlay as LgResolveDoublePlay, canStartDoublePlay as LgCanStartDoublePlay, canStartTriplePlay as LgCanStartTriplePlay, BASE_NAME as LgDpBaseName } from '../../utils/liveGameDoublePlay';
@@ -961,6 +966,9 @@ function lu(u){
 function iu(u,f){
   return u==="safe_te"?`传球失误：${f} 失误`:u==="safe_fe"?`守备失误：${f} 失误`:u==="safe_pk_err"?`牵制失误：${f} 失误`:u==="safe_same_err"?`同一play内失误：${f} 失误`:u==="safe_diff_err"?`失误后推进：${f} 失误`:`暴传失误：${f} 失误`
 }
+// 已成功写入 bs_hit_spray 的落点记录 rid（跨撤销/重做/重进现场去重）。
+// 放模块作用域：store 的 applyHistoryEntry 与页面 setup 的 co()/撤销/重做/快照还原都要读它。
+const sentHitSprayRids=new Set();
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
   function F(){
@@ -1073,7 +1081,7 @@ var Bu=Yc("liveGame",()=>{
       };
       O.runners&&(O.runners[1]=t(O.runners[1]),O.runners[2]=t(O.runners[2]),O.runners[3]=t(O.runners[3])),O.mvp=t(O.mvp),O.svp=t(O.svp),O.flow&&O.flow.runner&&(O.flow.runner=t(O.flow.runner))
     }
-    )(),G.hitSprayQueue&&(O.hitSprayQueue=structuredClone(G.hitSprayQueue)),G.log&&(wn.value=structuredClone(G.log)),G.atBatSummaries&&(ln.value=structuredClone(G.atBatSummaries)),G.playEvents&&(pn.value=structuredClone(G.playEvents)),finalReviewMode&&(O.isGameEnd=!0)
+    )(),G.hitSprayQueue&&(O.hitSprayQueue=LgPruneSentSpray(structuredClone(G.hitSprayQueue),sentHitSprayRids)),G.log&&(wn.value=structuredClone(G.log)),G.atBatSummaries&&(ln.value=structuredClone(G.atBatSummaries)),G.playEvents&&(pn.value=structuredClone(G.playEvents)),finalReviewMode&&(O.isGameEnd=!0)
   }
   function pl(){
     if(finalReviewMode){
@@ -6635,7 +6643,10 @@ var sg={
     }
     function Cp(e){
       const t=e.undoHistory??e.undoHistoryCapped,a=e.redoHistory??e.redoHistoryCapped;
-      $e.value=Array.isArray(t)&&t.length>0?Pr(t):[],Ne.value=Array.isArray(a)&&a.length>0?Pr(a):[]
+      // 重进现场/从云端恢复时把「已送出的落点 rid」一并恢复，再据此剔除撤销栈里的重复项：
+      // 否则快照里带着已入库的记录，下一次撤销就把它放回队列、再被 co() 送一遍。
+      Array.isArray(e.spraySentRids)&&e.spraySentRids.forEach(rid=>typeof rid=="string"&&sentHitSprayRids.add(rid));
+      $e.value=Array.isArray(t)&&t.length>0?Pr(t):[],Ne.value=Array.isArray(a)&&a.length>0?Pr(a):[],pruneSentSpraySnapshots()
     }
     const aa=x(!1),Cr=$(()=>$e.value.length>0);
     let Nt=null;
@@ -7702,7 +7713,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             }
             
           }
-          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(f.playEvents)),playEventsComplete:earnedRunPlayEventsTrusted,playerStatsIncludeFieldingAdjustments,runLedger:snapshotRunLedger(),playerStatsById:kf(),...t?{
+          ,eventLog:[...ke.value],atBatSummaries:JSON.parse(JSON.stringify(Me.value)),playEvents:JSON.parse(JSON.stringify(f.playEvents)),playEventsComplete:earnedRunPlayEventsTrusted,playerStatsIncludeFieldingAdjustments,runLedger:snapshotRunLedger(),playerStatsById:kf(),spraySentRids:[...sentHitSprayRids].slice(-500),...t?{
             undoHistory:An($e.value),redoHistory:An(Ne.value)
           }
           :{
@@ -8195,7 +8206,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ),Ne.value.length>Fs&&Ne.value.shift();
       const s=ro(t,a,e.game,e.lineup,e.nextAction,"undo");
       xi(()=>{
-        ns(e),e.hitSprayQueue&&(l.hitSprayQueue=[...e.hitSprayQueue]),Qn(s.moves,s.exits)
+        ns(e),e.hitSprayQueue&&(l.hitSprayQueue=LgPruneSentSpray([...e.hitSprayQueue],sentHitSprayRids)),Qn(s.moves,s.exits)
       }
       ),He(()=>{
         He(()=>{
@@ -8224,7 +8235,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       );
       const s=e.lastAction??e.nextAction,r=ro(t,a,e.game,e.lineup,s,"redo");
       xi(()=>{
-        ns(e),e.hitSprayQueue&&(l.hitSprayQueue=[...e.hitSprayQueue]),Qn(r.moves,r.exits)
+        ns(e),e.hitSprayQueue&&(l.hitSprayQueue=LgPruneSentSpray([...e.hitSprayQueue],sentHitSprayRids)),Qn(r.moves,r.exits)
       }
       ),He(()=>{
         He(()=>{
@@ -8380,13 +8391,30 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function Qe(){
       $q(),l.needNextBatter=!0,Of(),cs()
     }
+    // 落点队列去重：每条记录入队时带 rid，送出成功后把 rid 记进模块级
+    // sentHitSprayRids，并把撤销/重做快照与还原出来的 queue 里的同一笔剔除。否则「送出后
+    // 撤销（或重进现场还原快照）」会把已入库的记录整批放回队列，下一次 co() 再送一遍——
+    // 库里就多出一模一样的落点行。无 rid 的历史记录（部署前写入的快照）一律保留，
+    // 交由数据清理处理。
+    function pruneSentSpraySnapshots(){
+      if(sentHitSprayRids.size===0)return;
+      for(const stack of[$e.value,Ne.value])for(const entry of stack){
+        if(!Array.isArray(entry?.hitSprayQueue))continue;
+        const kept=LgPruneSentSpray(entry.hitSprayQueue,sentHitSprayRids);
+        kept.length!==entry.hitSprayQueue.length&&(entry.hitSprayQueue=kept)
+      }
+    }
     async function co(){
-      if(l.hitSprayQueue.length!==0)try{
-        const e=[...l.hitSprayQueue];
-        l.hitSprayQueue=[],await Xo.saveBatch(e),console.log(`[HitSpray] 成功发送 ${e.length} 条落点记录`)
+      if(l.hitSprayQueue.length===0)return;
+      const batch=[...l.hitSprayQueue];
+      l.hitSprayQueue=[];
+      try{
+        await Xo.saveBatch(batch.map(LgSprayPayload));
+        for(const record of batch)record?.rid&&sentHitSprayRids.add(record.rid);
+        pruneSentSpraySnapshots(),console.log(`[HitSpray] 成功发送 ${batch.length} 条落点记录`)
       }
       catch(e){
-        console.error("[HitSpray] 发送落点记录失败:",e),Fe.error("落点数据保存失败，请检查网络连接"),l.hitSprayQueue.unshift(...records)
+        console.error("[HitSpray] 发送落点记录失败:",e),Fe.error("落点数据保存失败，请检查网络连接"),l.hitSprayQueue.unshift(...batch)
       }
       
     }
@@ -11385,7 +11413,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         runners:l.runners
       }
       ,resultCode,rbi,spray);
-      record&&l.hitSprayQueue.push(record)
+      record&&(record.rid=LgNewSprayRid(),l.hitSprayQueue.push(record))
     }
     function bt(e,t,a,rbiOverride,meta){
       l.playOut=null;
