@@ -25,7 +25,13 @@ import {
   runCauseLabel,
   staysOnBaseText,
   errorNoteText,
-  fieldingIpNoteText
+  fieldingIpNoteText,
+  hitResultText,
+  noAdvanceRunText,
+  noAdvanceThirdText,
+  runOutNoScoreText,
+  dpMainText,
+  dpRunnerOutText
 } from '../src/utils/liveGameLogTexts.js';
 
 const player = { name: 'Alex', number: 7 };
@@ -114,8 +120,34 @@ test('英文注入注记：留垒/失误/守备局数', () => {
   assert.equal(fieldingIpNoteText('Sam (#21)', 3), ' (Sam (#21): 3 fielding innings settled for this game)');
 });
 
+test('英文安打与本垒跑垒确认日志', () => {
+  setLogTextLocale('en');
+  assert.equal(hitResultText('H2'), 'Double');
+  assert.equal(hitResultText('HR', 3), 'Home run 3 runs');
+  assert.equal(noAdvanceRunText('Sam (#21)'), 'No advance · Sam (#21) — returns to 3B');
+  assert.equal(noAdvanceThirdText('Sam (#21)'), 'No advance · Sam (#21) returns to 3B');
+  assert.equal(runOutNoScoreText('安打', 'Sam (#21)', '封杀出局 (FO)'), 'Hit · Sam (#21) Force out (FO) — no run');
+});
+
+test('英文双杀/三杀主行与跑者行', () => {
+  setLogTextLocale('en');
+  assert.equal(
+    dpMainText({ batterName: 'Alex', type: 'DP', chainText: '6-4-3', batterOut: true, batterBase: 1, batterBaseText: '一垒', fielderLabel: 'Sam', gdp: true }),
+    'Alex: Double play (6-4-3) (out at 1B on force by Sam, GDP +1)'
+  );
+  assert.equal(
+    dpRunnerOutText({ runner, base: 2, baseText: '二垒', fielderLabel: 'Sam ', action: 'force', chainText: '6-4-3' }),
+    'Sam (#21) out at 2B by Sam (force) (6-4-3)'
+  );
+});
+
 test('切回中文后输出恢复', () => {
   setLogTextLocale('zh-CN');
   assert.equal(runnerLabel(1, runner), '一垒跑者 Sam (#21)');
   assert.equal(pitchText({ who: 'Alex', kind: 'ball' }), 'Alex: 坏球');
+  assert.equal(hitResultText('HR', 3), '全垒打 3分');
+  assert.equal(hitResultText('IPHR'), '场内全垒打');
+  assert.equal(noAdvanceRunText('Sam (#21)'), '不进垒 · Sam (#21) — 退回三垒');
+  assert.equal(noAdvanceThirdText('Sam (#21)'), '不进垒 · Sam (#21) 退回三垒');
+  assert.equal(runOutNoScoreText('安打', 'Sam (#21)', '封杀出局 (FO)'), '安打 · Sam (#21) 封杀出局 (FO) — 未得分');
 });

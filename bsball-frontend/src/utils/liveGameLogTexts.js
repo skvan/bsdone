@@ -17,6 +17,8 @@ const POS_EN = {
   1: "Pitcher", 2: "Catcher", 3: "First Base", 4: "Second Base", 5: "Third Base", 6: "Shortstop", 7: "Left Field", 8: "Center Field", 9: "Right Field"
 };
 const BASE_EN = { 1: "1B", 2: "2B", 3: "3B", 4: "Home" };
+const HIT_CN = { H1: "一垒安打", H2: "二垒安打", H3: "三垒安打", HR: "全垒打", IPHR: "场内全垒打" };
+const HIT_EN = { H1: "Single", H2: "Double", H3: "Triple", HR: "Home run", IPHR: "Inside-the-park home run" };
 // 英文兜底词：按中文兜底词映射，未收录的回退 Player
 const NAME_FALLBACK_EN = { 跑者: "Runner", 守备员: "Fielder", 投手: "Pitcher" };
 const REASON_EN = {
@@ -485,4 +487,55 @@ export function fieldingIpNoteText(playerLabel, ip) {
   return isEn()
     ? ` (${playerLabel}: ${ip} fielding inning${ip === 1 ? "" : "s"} settled for this game)`
     : `（${playerLabel} 本场守备 ${ip} 局结清）`;
+}
+
+/** 安打结果名（HR/IPHR 可带打点/得分人数后缀） */
+export function hitResultText(code, runs) {
+  const en = isEn();
+  const label = (en ? HIT_EN : HIT_CN)[code] ?? code;
+  if ((code === "HR" || code === "IPHR") && runs > 0) {
+    return en ? `${label} ${runs} run${runs > 1 ? "s" : ""}` : `${label} ${runs}分`;
+  }
+  return label;
+}
+
+/** 本垒跑垒确认：不进垒 */
+export function noAdvanceRunText(playerLabel) {
+  return isEn() ? `No advance · ${playerLabel} — returns to 3B` : `不进垒 · ${playerLabel} — 退回三垒`;
+}
+
+/** 三垒跑者不进垒（另一处日志口径） */
+export function noAdvanceThirdText(playerLabel) {
+  return isEn() ? `No advance · ${playerLabel} returns to 3B` : `不进垒 · ${playerLabel} 退回三垒`;
+}
+
+/** 本垒跑垒确认：出局未得分 */
+export function runOutNoScoreText(reason, playerLabel, verdict) {
+  return isEn()
+    ? `${reasonEn(reason, "Out")} · ${playerLabel} ${VERDICT_EN[verdict] ?? verdict} — no run`
+    : `${reason} · ${playerLabel} ${verdict} — 未得分`;
+}
+
+/** 双杀/三杀跑者出局行 */
+export function dpRunnerOutText({ runner, base, baseText, fielderLabel, action, chainText }) {
+  if (isEn()) {
+    const where = BASE_EN[base] ?? baseText;
+    return `${runner?.name ?? "Runner"}${runner?.number != null ? ` (#${runner.number})` : ""} out at ${where} by ${fielderLabel}(${action === "tag" ? "tag" : "force"}) (${chainText})`;
+  }
+  return `${runner?.name ?? "跑者"}${runner?.number != null ? ` (#${runner.number})` : ""} 于${baseText}被${fielderLabel}${action === "tag" ? "触杀" : "封杀"}出局（${chainText}）`;
+}
+
+/** 双杀/三杀主行（打者） */
+export function dpMainText({ batterName, type, chainText, batterOut, batterBase, batterBaseText, fielderLabel, gdp }) {
+  const isDp = type === "DP";
+  if (isEn()) {
+    const note = batterOut
+      ? ` (out at ${BASE_EN[batterBase] ?? batterBaseText} on force by ${fielderLabel}${isDp ? ", GDP +1" : ""})`
+      : ` (batter reaches first${isDp ? ", GDP" : ""})`;
+    return `${batterName}: ${isDp ? "Double play" : "Triple play"}${chainText ? ` (${chainText})` : ""}${note}`;
+  }
+  const note = isDp
+    ? (batterOut ? `（于${batterBaseText}被${fielderLabel} 封杀出局，GDP +1）` : "（打者上一垒，记 GDP）")
+    : (batterOut ? `（于${batterBaseText}被${fielderLabel} 封杀出局）` : "（打者上一垒）");
+  return `${batterName}: ${chainText ? `${chainText} 传杀 ${isDp ? "双杀" : "三杀"}` : (isDp ? "双杀 (DP)" : "三杀 (TP)")}${note}`;
 }
