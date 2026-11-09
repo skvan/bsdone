@@ -123,3 +123,14 @@ test('English UI: top bar, scoreboard, corrections menu and fix-runners dialog',
   await expect(leaveBox).toContainText('Save & Leave');
   await leaveBox.getByRole('button', { name: 'Stay' }).click();
 });
+
+test('English PBP logs new pitches in English', async ({ page }) => {
+  await openLive(page, 'en');
+  await expect(page.getByRole('button', { name: 'Save Game' })).toBeVisible();
+  await page.locator('button[title="Ball"]').click();
+  await page.getByRole('button', { name: 'Fullscreen' }).click();
+  const pbp = page.locator('.lg-pbp');
+  await expect(pbp).toBeVisible();
+  await expect(pbp).toContainText('Ball');
+  await expect(pbp).not.toContainText('坏球');
+});

@@ -70,7 +70,7 @@ import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeam
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, setLogTextLocale } from '../../utils/liveGameLogTexts';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
 import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
@@ -5122,6 +5122,7 @@ var sg={
 ),Y_=Wn({
   name:"AdminLiveGame",__name:"LiveGame",setup(u){
     const { isEnglish: isEnglishUi, locale: lgLocale, text: lgText } = useLiveGameText();
+    Ce(lgLocale, (locale) => setLogTextLocale(locale), { immediate: true });
     const f=Bu(),l=f.gameState,o=f.teamsData,_=f.setupForm,{
       eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
@@ -6300,7 +6301,7 @@ var sg={
       }
       ,g=advanceOrigin(r);
       if(a===t){
-        t>=1&&t<=3?m(LgAdvance({reasonCn:s,runner:e,from:t,to:t})):m(`跑者 ${logPlayerName(e)} 留在垒上`),Qa(!1);
+        t>=1&&t<=3?m(LgAdvance({reasonCn:s,runner:e,from:t,to:t})):m(LgStay(logPlayerName(e))),Qa(!1);
         return
       }
       t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]&&ds(a,{origin:g,reasonCn:s}),l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
@@ -6856,8 +6857,10 @@ var sg={
       b&&m>0&&(ue(b),b.stats.batting.rbi=Math.max(0,(b.stats.batting.rbi??0)-m));
       const w=Mt.value!=null?ra.value.find(A=>A.id===Mt.value):null;
       w&&y>0&&(ue(w),w.stats.batting.r=Math.max(0,(w.stats.batting.r??0)-y));
-      const P=[`${t==="away"?At.value?.name??"客队":xt.value?.name??"主队"} 第${a}局 -${r}分`];
-      m&&P.push(b?`RBI ${m}（${b.name}）`:`RBI ${m}`),y&&P.push(w?`跑回 ${y}（${w.name}）`:`R ${y}`),D(LgSys({kind:"adjust_score",detail:P.join("；")})),Ya.value=!1,J("得分已扣回，可按「撤销」恢复上一步")
+      const P=[isEnglishUi.value
+        ? `${t==="away"?At.value?.name??"Away":xt.value?.name??"Home"} inning ${a} -${r} runs`
+        : `${t==="away"?At.value?.name??"客队":xt.value?.name??"主队"} 第${a}局 -${r}分`];
+      m&&P.push(b?(isEnglishUi.value?`RBI ${m} (${b.name})`:`RBI ${m}（${b.name}）`):`RBI ${m}`),y&&P.push(w?(isEnglishUi.value?`runs ${y} (${w.name})`:`跑回 ${y}（${w.name}）`):`R ${y}`),D(LgSys({kind:"adjust_score",detail:P.join(isEnglishUi.value?"; ":"；")})),Ya.value=!1,J("得分已扣回，可按「撤销」恢复上一步")
     }
     function Vp(){
       na();
@@ -6893,7 +6896,10 @@ var sg={
         return T?`${T.name}#${T.number??"-"}`:"无"
       }
       ,w=s!=null?p(s):null,P=w?`${w.name}#${w.number??"-"} 得分`:"无";
-      D(LgSys({kind:"adjust_bases",detail:`一垒 ${b(1)}；二垒 ${b(2)}；三垒 ${b(3)}；本垒 ${P}`})),Wa.value=!1,J("垒况已更新，可按「撤销」恢复上一步")
+      const bEn=A=>{const T=l.runners[A];return T?`${T.name}#${T.number??"-"}`:"empty"};
+      D(LgSys({kind:"adjust_bases",detail:isEnglishUi.value
+        ? `1B ${bEn(1)}; 2B ${bEn(2)}; 3B ${bEn(3)}; Home ${w?`${w.name}#${w.number??"-"} scores`:"empty"}`
+        : `一垒 ${b(1)}；二垒 ${b(2)}；三垒 ${b(3)}；本垒 ${P}`})),Wa.value=!1,J("垒况已更新，可按「撤销」恢复上一步")
     }
     function Nn(e){
       const t=String(e??"").trim().toUpperCase();
@@ -8573,16 +8579,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const list=Array.isArray(fielders)?fielders:[];
       return list.map(pos=>{
         const player=Vt(pos);
-        const label=ya[pos]??It[pos]??pos;
+        const label=isEnglishUi.value?LgPosEn(pos):(ya[pos]??It[pos]??pos);
         return player?`${label} ${logPlayerName(player)}`:label
       }
-      ).join("、")
+      ).join(isEnglishUi.value?", ":"、")
     }
     function errorCreditNote(fielders){
       const names=errorCreditNames(fielders);
       if(!names)return"";
       const multiple=Array.isArray(fielders)&&fielders.length>1;
-      return`（${names}${multiple?" 各记 E":" 记 E"}）`
+      return LgErrNote(names,multiple)
     }
     function Bt(e,t){
       l.halfInningOuts.push((e??"出局").trim()),l.outs++,Ipy(),D(jr(e??"出局"),void 0,{
@@ -10159,7 +10165,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       if(a?.type==="INT"&&a.selectRunner){
         l.runners[e]=null,Bt(Gt(t,"妨碍守备出局"));
-        const s=`${t.name}: 跑垒员妨碍守备出局`;
+        const s=isEnglishUi.value?`${t.name}: runner interference out`:`${t.name}: 跑垒员妨碍守备出局`;
         D(s),l.flow=null,l.outs>=3&&(Je("THIRD_OUT",s),Qe());
         return
       }
@@ -10355,7 +10361,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // P3 · #226：被换下球员守备局数结清注记（fielding.ip>0 时；名 (#N) 口径）
     function fieldingIpNote(p){
       const ip=p?.stats?.fielding?.ip??0;
-      return ip>0?`（${logPlayerName(p)} 本场守备 ${ip} 局结清）`:""
+      return ip>0?LgIpNote(logPlayerName(p),ip):""
     }
     // P 位持有人变更时的统一投手同步（#205）：fpId 落位 → ft 同步守备投手行 → Ka 刷新 → 换投日志
     // 三路径共用（板凳替换/DH 制换投、守备组互换涉 P、非 DH 制 P 位替换），保证任何实际投球者单独记账
@@ -10782,7 +10788,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ]),ctx.unavail.value=(ctx.unavail.value??[]).filter(id=>Number(id)!==Number(pitcher.id)),ctx.lineup.value[dhIndex]={
         ...pitcher,position:"P",firstPosition:firstFieldPositionOf(pitcher,"P"),stats:pitcher.stats??Pt()
       }
-      ,ctx.fpId.value=Number(pitcher.id),ctx.fpRow.value=null,ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 换下，投手 ${logPlayerName(pitcher)} 进入打序`}));
+      ,ctx.fpId.value=Number(pitcher.id),ctx.fpRow.value=null,ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:isEnglishUi.value?`${logPlayerName(dh)} leaves; pitcher ${logPlayerName(pitcher)} enters the batting order`:`${logPlayerName(dh)} 换下，投手 ${logPlayerName(pitcher)} 进入打序`}));
       return!0
     }
     async function requestCancelDh(side){
@@ -10893,7 +10899,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const oldPitcherId=Number(pitcher.id);
         oldPitcherId>0&&!(ctx.unavail.value??[]).map(Number).includes(oldPitcherId)&&(ctx.unavail.value=[...(ctx.unavail.value??[]),oldPitcherId]);
         // 保留旧 fpRow，让 ft() 回收旧投手并重新指向新的 P 行
-        ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 转为 P，原投手 ${logPlayerName(pitcher)} 退场`})),Kt();
+        ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:isEnglishUi.value?`${logPlayerName(dh)} moves to P; original pitcher ${logPlayerName(pitcher)} leaves`:`${logPlayerName(dh)} 转为 P，原投手 ${logPlayerName(pitcher)} 退场`})),Kt();
         return
       }
       const fielderIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)===code),fielder=fielderIndex>=0?ctx.lineup.value[fielderIndex]:null;
@@ -10928,7 +10934,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ctx.bench.value=ctx.bench.value.filter(p=>Number(p.id)!==Number(pitcher.id));
       ctx.bench.value.some(p=>Number(p.id)===Number(fielder.id))||(ctx.bench.value=[...ctx.bench.value,{...fielder,position:"",lastPosition:code,stats:fielder.stats??Pt()}]);
       ctx.fpId.value=Number(pitcher.id),ctx.fpRow.value=null;
-      ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:`${logPlayerName(dh)} 转为 ${code}，投手 ${logPlayerName(pitcher)} 进入第${fielderIndex+1}棒打序`})),Kt()
+      ri(side),ft(side),Ka(),D(LgSys({kind:"dh_cancel",detail:isEnglishUi.value?`${logPlayerName(dh)} moves to ${code}; pitcher ${logPlayerName(pitcher)} enters the No.${fielderIndex+1} slot`:`${logPlayerName(dh)} 转为 ${code}，投手 ${logPlayerName(pitcher)} 进入第${fielderIndex+1}棒打序`})),Kt()
     }
     /* ---------------- 守备轮转速记（#478 扩展）：输入闭环数字串一次完成多位置轮转 ----------------
        纯规则（闭环解析/占用校验/置换表）在 utils/liveSubRotation.js（含单测）；此处只做页内接线。
