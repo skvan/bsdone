@@ -2,7 +2,7 @@
 // 运行：node --test tests/hitSprayRecord.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSprayZone, buildHitSprayRecord, newSprayRid, toHitSprayPayload, pruneSentSprayRecords } from '../src/utils/hitSprayRecord.js';
+import { resolveSprayZone, buildHitSprayRecord, newSprayRid, toHitSprayPayload, pruneSentSprayRecords, restoreFailedSprayBatch } from '../src/utils/hitSprayRecord.js';
 
 const batter = { id: '42', name: '张三' };
 const baseState = {
@@ -129,4 +129,17 @@ test('pruneSentSprayRecords：剔除已送出 rid，保留无 rid 的历史记�
   ]);
   assert.equal(pruneSentSprayRecords(queue, new Set()).length, 4, '无已送出 rid 时原样返回');
   assert.deepEqual(pruneSentSprayRecords(null, sent), []);
+});
+
+test('restoreFailedSprayBatch：发送期间撤销已放回同一批时不重复回灌', () => {
+  const batch = [{ rid: 'a' }, { rid: 'b' }, { rid: 'b' }, { resultCode: 'E' }];
+  const queue = [{ rid: 'a' }, { rid: 'c' }];
+  assert.deepEqual(restoreFailedSprayBatch(batch, queue), [
+    { rid: 'b' },
+    { resultCode: 'E' },
+    { rid: 'a' },
+    { rid: 'c' },
+  ]);
+  assert.equal(restoreFailedSprayBatch(batch, null).length, 3, 'batch 内同 rid 应去重');
+  assert.equal(restoreFailedSprayBatch([], queue), queue, '空 batch 原样返回当前队列');
 });

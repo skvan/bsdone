@@ -27,6 +27,7 @@ test('落点重复上传修复：rid 入队、送出后剔除、撤销/重做/�
   for (const alias of [
     'newSprayRid as LgNewSprayRid',
     'pruneSentSprayRecords as LgPruneSentSpray',
+    'restoreFailedSprayBatch as LgRestoreFailedSpray',
     'toHitSprayPayload as LgSprayPayload',
   ]) {
     assert.ok(source.includes(alias), `应引入 ${alias}`);
@@ -35,9 +36,15 @@ test('落点重复上传修复：rid 入队、送出后剔除、撤销/重做/�
   assert.match(source, /record&&\(record\.rid=LgNewSprayRid\(\),l\.hitSprayQueue\.push\(record\)\)/);
   // 送出前剥掉 rid（bs_hit_spray 无此列）
   assert.match(source, /await Xo\.saveBatch\(batch\.map\(LgSprayPayload\)\)/);
-  // 送出成功后记 rid 并回洗撤销/重做快照
+  // 送出成功后记 rid 并回洗撤销/重做快照；发送期间被撤销放回 live queue 的同一批也要剔除
   assert.match(source, /record\?\.rid&&sentHitSprayRids\.add\(record\.rid\)/);
+  assert.ok(
+    (source.match(/l\.hitSprayQueue=LgPruneSentSpray\(l\.hitSprayQueue,sentHitSprayRids\)/g) ?? []).length >= 2,
+    'co() 入口与成功后都应剔除 live queue 中已送出的记录',
+  );
   assert.match(source, /function pruneSentSpraySnapshots\(\)\{/);
+  // 发送失败回灌按 rid 去重
+  assert.match(source, /l\.hitSprayQueue=LgRestoreFailedSpray\(batch,l\.hitSprayQueue\)/);
   // 撤销、重做、applyHistoryEntry 还原队列时都要剔除已送出记录
   assert.ok(
     (source.match(/l\.hitSprayQueue=LgPruneSentSpray\(\[\.\.\.e\.hitSprayQueue\],sentHitSprayRids\)/g) ?? []).length >= 2,

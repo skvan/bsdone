@@ -81,3 +81,26 @@ export function pruneSentSprayRecords(records, sentRids) {
   if (!(sentRids instanceof Set) || sentRids.size === 0) return records;
   return records.filter((record) => !record?.rid || !sentRids.has(record.rid));
 }
+
+/**
+ * 发送失败回灌：按 rid 去重后再放回队列。
+ * 发送期间若发生撤销，同一批记录可能已被放回队列；直接 unshift 会造成同 rid 两份，
+ * 下一次 flush 就会重复插入。无 rid 的历史记录照常保留。
+ */
+export function restoreFailedSprayBatch(batch, queue) {
+  const current = Array.isArray(queue) ? queue : [];
+  if (!Array.isArray(batch) || batch.length === 0) return current;
+  const existing = new Set(current.map((record) => record?.rid).filter(Boolean));
+  const seen = new Set();
+  const restored = [];
+  for (const record of batch) {
+    const rid = record?.rid;
+    if (rid) {
+      if (existing.has(rid) || seen.has(rid)) continue;
+      seen.add(rid);
+    }
+    restored.push(record);
+  }
+  return restored.length ? [...restored, ...current] : current;
+}
+

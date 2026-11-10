@@ -77,6 +77,7 @@ import {
   buildHitSprayRecord as LgHitSprayRecord,
   newSprayRid as LgNewSprayRid,
   pruneSentSprayRecords as LgPruneSentSpray,
+  restoreFailedSprayBatch as LgRestoreFailedSpray,
   toHitSprayPayload as LgSprayPayload
 } from '../../utils/hitSprayRecord';
 import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField';
@@ -8405,16 +8406,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
     }
     async function co(){
+      l.hitSprayQueue=LgPruneSentSpray(l.hitSprayQueue,sentHitSprayRids);
       if(l.hitSprayQueue.length===0)return;
       const batch=[...l.hitSprayQueue];
       l.hitSprayQueue=[];
       try{
         await Xo.saveBatch(batch.map(LgSprayPayload));
         for(const record of batch)record?.rid&&sentHitSprayRids.add(record.rid);
+        // 发送期间可能发生撤销：已送出记录被放回 live queue，成功后同样要剔除
+        l.hitSprayQueue=LgPruneSentSpray(l.hitSprayQueue,sentHitSprayRids);
         pruneSentSpraySnapshots(),console.log(`[HitSpray] 成功发送 ${batch.length} 条落点记录`)
       }
       catch(e){
-        console.error("[HitSpray] 发送落点记录失败:",e),Fe.error("落点数据保存失败，请检查网络连接"),l.hitSprayQueue.unshift(...batch)
+        console.error("[HitSpray] 发送落点记录失败:",e),Fe.error("落点数据保存失败，请检查网络连接"),l.hitSprayQueue=LgRestoreFailedSpray(batch,l.hitSprayQueue)
       }
       
     }
