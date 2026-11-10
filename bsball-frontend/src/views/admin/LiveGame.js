@@ -10927,8 +10927,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           J("目标守备位无人","warning");
           return
         }
-          return
-        }
         const oldPitcher=code==="P"?target:null;
         de("换守备"),dh.position=code,dh.firstPosition=firstFieldPositionOf(dh,code),target.position="DH",D(fc("DH",logPlayerName(dh),code,code,logPlayerName(target),"DH"));
         if(code==="P"){
