@@ -35,7 +35,8 @@ test('执行接线：纯函数解析/占位校验/置换表，含 DH 取消确�
   assert.ok(applyBody.includes('buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side))'), '未使用占位校验/置换表');
   assert.ok(applyBody.includes('守备轮转并取消DH'), '含投手+DH 未走取消 DH 确认');
   assert.ok(applyBody.includes('if(!applyCancelDh(side))return;'), '未复用取消 DH 实现');
-  assert.ok(applyBody.includes('lineup.some(p=>Nn(p.position)==="P")'), 'DH 队已有 P 时未拦截');
+  assert.ok(applyBody.includes('hasDh&&includesPitcher&&hasPitcherInOrder&&N.value!=="SOFTBALL"'), 'DH 队已有 P 时仅棒球拦截（垒球 11 人为普通轮转）');
+  assert.ok(applyBody.includes('hasDh&&includesPitcher&&!hasPitcherInOrder'), '仅投手不在打序且轮转含 1 号位时走取消 DH 确认');
   assert.ok(applyBody.includes('if(substitutionModeBusy.value){'), '缺少提交进行中门禁');
 
   const enterBody = sliceBetween(LIVE, 'function enterSubstitutionMode(){', 'function toggleSubstitutionMode(){');
