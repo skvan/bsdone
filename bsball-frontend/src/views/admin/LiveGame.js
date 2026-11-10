@@ -1020,7 +1020,7 @@ var Bu=Yc("liveGame",()=>{
     applyAbsolutePitcherTotals(players,absolute);
   }
   function Cn(){
-    O.inning=1,O.isTop=!0,O.outs=0,O.halfInningOuts=[],O.balls=0,O.strikes=0,O.runners={
+    sentHitSprayRids.clear(),O.inning=1,O.isTop=!0,O.outs=0,O.halfInningOuts=[],O.balls=0,O.strikes=0,O.runners={
       1:null,2:null,3:null
     }
     ,O.batterIndex={

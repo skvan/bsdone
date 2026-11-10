@@ -104,10 +104,10 @@ test('newSprayRid：每次生成不同的非空字符串（快照深拷贝后仍
   assert.equal(structuredClone(rec).rid, a);
 });
 
-test('toHitSprayPayload：送出前剥掉 rid，其余字段原样、不改动入参', () => {
+test('toHitSprayPayload：保留 rid 供服务端幂等，其余字段原样、不改动入参', () => {
   const rec = { ...buildHitSprayRecord(baseState, 'E', 0, baseSpray), rid: 'rid-1' };
   const payload = toHitSprayPayload(rec);
-  assert.equal('rid' in payload, false);
+  assert.equal(payload.rid, 'rid-1');
   assert.equal(payload.resultCode, 'E');
   assert.equal(payload.sprayZone, 'LF');
   assert.equal(rec.rid, 'rid-1', '入参对象不应被改写');

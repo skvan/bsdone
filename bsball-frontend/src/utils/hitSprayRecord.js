@@ -65,11 +65,10 @@ export function newSprayRid() {
   return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** 送出前剥掉 rid：bs_hit_spray 没有这一列，后端 DTO 也不认这个字段 */
+/** 送出前浅拷贝；保留 rid 供服务端按 (gameId, rid) 幂等去重 */
 export function toHitSprayPayload(record) {
   if (!record || typeof record !== 'object') return record;
-  const { rid, ...payload } = record;
-  return payload;
+  return { ...record };
 }
 
 /**
