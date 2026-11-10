@@ -28,15 +28,6 @@
         <span class="event-special-rule__hint">允许 DH 与先发投手为同一人；换投后保留 DH，但该球员不可再移防（默认关闭）</span>
       </div>
     </el-form-item>
-    <el-form-item v-if="gameMode === 'SOFTBALL'" label="垒球再上场">
-      <div class="event-special-rule">
-        <el-switch
-          :model-value="modelValue.softballReentry === true"
-          @update:model-value="update('softballReentry', $event)"
-        />
-        <span class="event-special-rule__hint">允许垒球换下球员再上场，须回到原打序（默认关闭）</span>
-      </div>
-    </el-form-item>
   </template>
   <el-form-item v-else label="特殊规则">
     <span class="event-special-rule__hint">{{ hint }}</span>
@@ -47,8 +38,7 @@
 const props = defineProps({
   modelValue: { type: Object, required: true },
   available: { type: Boolean, default: false },
-  hint: { type: String, default: '' },
-  gameMode: { type: String, default: 'BASEBALL' }
+  hint: { type: String, default: '' }
 });
 const emit = defineEmits(['update:modelValue']);
 

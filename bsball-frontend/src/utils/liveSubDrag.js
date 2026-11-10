@@ -4,22 +4,21 @@ import { sortByJersey } from './sortByJersey.js';
 const BASEBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员（已换下球员不可再上场）';
 const SOFTBALL_BENCH_EMPTY_TEXT = '板凳席无可用球员';
 
-/** 替补席球员：不可再上名单内且未开放再上场时标 disabled（灰显不可操作）。
- *  垒球按赛事 softballReentry 开关（默认关）决定是否允许再上；棒球恒不允许。 */
-export function buildLiveBenchItems(bench, unavailableIds, gameMode, reentryAllowed = gameMode === 'SOFTBALL') {
+/** 替补席球员：棒球把已换下球员保留并标 disabled（灰显不可操作）；垒球按现规则仍可再上 */
+export function buildLiveBenchItems(bench, unavailableIds, gameMode) {
   const list = Array.isArray(bench) ? bench : [];
   const blocked = new Set((Array.isArray(unavailableIds) ? unavailableIds : []).map((id) => String(id)));
   const toItem = (p) => ({
     id: p.id,
     name: p.name,
     number: p.number,
-    disabled: !reentryAllowed && blocked.has(String(p.id)),
+    disabled: gameMode !== 'SOFTBALL' && blocked.has(String(p.id)),
   });
   return sortByJersey(list.map(toItem));
 }
 
-export function liveBenchEmptyText(gameMode, reentryAllowed = gameMode === 'SOFTBALL') {
-  return reentryAllowed ? SOFTBALL_BENCH_EMPTY_TEXT : BASEBALL_BENCH_EMPTY_TEXT;
+export function liveBenchEmptyText(gameMode) {
+  return gameMode === 'SOFTBALL' ? SOFTBALL_BENCH_EMPTY_TEXT : BASEBALL_BENCH_EMPTY_TEXT;
 }
 
 const withinTolerance = (x, y, r, tolerance) => {

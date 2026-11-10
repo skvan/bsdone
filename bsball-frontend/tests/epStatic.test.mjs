@@ -51,7 +51,6 @@ test('剩余合法 11 用法白名单：仅限编译产物下标/常量，不得
   // 3. H(...),11,kg —— createElementVNode 的 patchFlag 位掩码常量（TEXT|CLASS|PROPS 组合位）
   // 4. d.cy±d.r/2-11 —— 场上跑垒图标 SVG 坐标偏移（像素值）
   // 5. ?11:12 —— 原本任务的目标值本身（垒球 11 / 棒球 12 的恢复补齐上限；PR #461 后该式已移入工具档，此处 scrub 保留以防有人把内联式加回来）
-  // 6. 「垒球 11 人」注释 —— 2026-11-10 换人模式 DH/自由人修复的语义说明，不是打线槽位常量
   const scrubbed = source
     .replace(/key:11,class:"pmg__pill"/g, '')
     .replace(/key:11,class:"lgpfm__scroll"/g, '')
@@ -60,9 +59,7 @@ test('剩余合法 11 用法白名单：仅限编译产物下标/常量，不得
     .replace(/t\[11\]\|\|\(t\[11\]/g, '')
     .replace(/\),11,/g, '')
     .replace(/y:d\.cy[+-]d\.r\/2-11/g, '')
-    .replace(/\?11:12/g, '')
-    .replace(/\/\/ 投手已在打序（垒球 11 人[^\n]*/g, '')
-    .replace(/\/\/ 垒球 11 人：[^\n]*/g, '');
+    .replace(/\?11:12/g, '');
   const leftover = scrubbed.match(/(?<![\w$])11(?![\w$])/);
   if (leftover) {
     const around = scrubbed.slice(Math.max(0, leftover.index - 40), leftover.index + 40).replace(/\s+/g, ' ');
@@ -91,10 +88,9 @@ test('force_half 显隐：强制换局按钮挂 forceHalfOn 条件渲染（v-if 
   assert.ok(!source.includes(',8,["disabled"])])])]),_:1'), '强制换局按钮不得退回无条件渲染（v-if 条件被移除）');
 });
 
-test('录入页校验接入规则：Er() 透传赛制与 extraBatter 开关，仅守备投手判定对齐 T8 口径', () => {
-  // 2026-11-10 垒球 XF 修复：第二参（mode）默认 N.value（SOFTBALL/BASEBALL），结束换人调用点显式传 N.value
-  assert.ok(source.includes('sd(e,mode,{extraBatter:extraBatterOn.value})'), 'Er() 未把赛制与 extraBatter 开关传入 validateRosterPositions');
-  assert.ok(source.includes('const check=Er(after[side].lineup,N.value)'), 'finishSubstitutionMode 的 Er 调用必须显式传 N.value');
+test('录入页校验接入规则：Er() 透传 extraBatter 开关，仅守备投手判定对齐 T8 口径', () => {
+  // 第二参（mode）保持现状不传（undefined → 棒球口径），本任务仅接入开关
+  assert.ok(source.includes('sd(e,void 0,{extraBatter:extraBatterOn.value})'), 'Er() 未把 extraBatter 开关传入 validateRosterPositions');
   // 判定对齐 useLineupBoard.fieldingPitcherRequired（T8）：删「行数=9」硬编码，补「未指定守备投手」
   assert.ok(source.includes('Yp=$(()=>Nr.value.ok&&!oa(X.value)&&O.value==null)'), 'Yp 应为「校验通过且打线无 P 且未指定守备投手」');
   assert.ok(source.includes('Kp=$(()=>Hr.value.ok&&!oa(q.value)&&te.value==null)'), 'Kp 应为「校验通过且打线无 P 且未指定守备投手」');
