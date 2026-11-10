@@ -8429,7 +8429,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ))
       }
-      )
+      ),l.outs>3&&(l.outs=3)
     }
     function startForceQueue(plan,onApply){
       if(!plan?.homeRunners?.length)return!1;
@@ -11538,7 +11538,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       else if(e==="G"||e==="F"||e==="L"||e==="TAG"){
         l.outs++,Ipy(),r.stats.batting.ab=(r.stats.batting.ab??0)+1,paceGoFo(e,p),Dn(t);
         let groundPlan=null;
-        if(e==="G"){
+        if(e==="G"&&l.outs<3){
           groundPlan=resolveGroundOutForceAdvance({runners:l.runners}),applyForcePlanMoves(groundPlan,{
             runCause:"BATTER_ACTION",reasonCn:"地滚球出局推进",batter:r,pitcher:p
           }

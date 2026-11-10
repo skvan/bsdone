@@ -79,7 +79,10 @@ test('地滚球出局满垒三垒自动回本垒并确认；双杀结算无“�
   assert.match(g, /applyForcePlanMoves\(groundPlan,/);
   assert.match(g, /startForceQueue\(groundPlan,/);
   assert.match(g, /applyForcedHomeOutcomes\(groundPlan,outcomes/);
+  assert.match(g, /if\(e==="G"&&l\.outs<3\)/, '第三出局不再弹本垒确认');
   assert.ok(!g.includes('bo(r)'), '地滚出局不再用 bo 全体推进');
+  const outcomeHelper = sliceBetween('function applyForcedHomeOutcomes(', 'function startForceQueue(');
+  assert.match(outcomeHelper, /l\.outs>3&&\(l\.outs=3\)/, '本垒出局兜底封顶 3 出局');
   const dpPrompt = sliceBetween('if(preview.needsRunner3Decision){', 'function applyDoublePlay');
   assert.match(dpPrompt, /key:"safe"/);
   assert.match(dpPrompt, /key:"out"/);
