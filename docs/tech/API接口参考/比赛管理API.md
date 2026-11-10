@@ -482,11 +482,11 @@ EventService --> EventRepository
 - `require_roster` 创建时定型：编辑赛事一律沿用存量值（无 UI 开关，防请求体缺省把存量 false 赛事翻转）。
 - 排赛选队候选：`GET /event/{eventId}/game-team-options`（见《球队球员API》）；联盟解散守卫同步改为「名下赛事全部 ended 才可解散」（决策 6）。
 
-## 特殊规则：联赛收费能力 + 赛事级规则（Issue #275 / #274）
+## 特殊规则：联赛收费能力 + 赛事级规则（Issue #275 / #274 / #525 / #479）
 
 2026-10-24 口径调整：特殊规则改为两层——
 1. 联赛收费能力 `special_rules_enabled`（租户管理员/超管在联赛编辑弹窗开启）；
-2. 赛事级实际规则 `extra_batter` / `force_half`（赛事编辑弹窗配置）。
+2. 赛事级实际规则 `extra_batter` / `force_half` / `ohtani_rule` / `softball_reentry`（赛事编辑弹窗配置；`softball_reentry` 仅垒球赛事显示）。
 已配置规则的赛事在联赛能力关闭后保留规则；该联赛新建赛事不再提供特殊规则开关。
 
 ### 联赛收费能力（联赛级）
@@ -501,14 +501,14 @@ EventService --> EventRepository
 
 ### 赛事级规则
 
-- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true、ohtaniRule=false。
-- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean, ohtaniRule:boolean}`；已有规则赛事能力关闭时仍返回并生效。
-- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf, ohtaniRule}`：
+- 存储：`bs_event_special_rule`（唯一约束 `(event_id, rule_key)`）；默认 extraBatter=false、forceHalf=true、ohtaniRule=false、softballReentry=false。
+- `GET /event/{id}` 的 `specialRules`：`{specialRulesEnabled:boolean, hasEventRules:boolean, extraBatter:boolean, forceHalf:boolean, ohtaniRule:boolean, softballReentry:boolean}`；已有规则赛事能力关闭时仍返回并生效。
+- `PUT /event/update/{id}` 请求可携带 `specialRules:{extraBatter, forceHalf, ohtaniRule, softballReentry}`：
   - 赛事已有规则（hasEventRules）→ 允许写入（能力关闭也保留）；
   - 无既有规则 → 要求赛事挂联赛且 `specialRulesEnabled=true`，否则 400「该联盟未开放特殊规则能力」。
 - `POST /event/create` 携带规则时同样要求联赛能力开启；不携带则按默认。
 - 权限点：复用 `business:event:edit`（赛事编辑入口）。
-- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮；`ohtaniRule` 开启 → 阵容板允许 DH 与先发投手为同一人（打线仍显示 DH，守备表按 P 显示）；本场仍可选择不用 DH；换投后保留 DH，但该球员不可再移防。已保存数据不回溯。
+- 消费口径（编辑先发阵容页 / 实时录入页 / 结果录入页）：`extraBatter` 关闭 → 棒球阵容恰 9 人、垒球恰 10 人；开启 → 棒球 9-12 人（八守位各 1 + P/DH 至少其一 + EP 至多 3，EP 不守备只打击）、垒球 10-11 人；`forceHalf` 关闭 → 实时录入页隐藏「强制换局」按钮；`ohtaniRule` 开启 → 阵容板允许 DH 与先发投手为同一人（打线仍显示 DH，守备表按 P 显示）；本场仍可选择不用 DH；换投后保留 DH，但该球员不可再移防。`softballReentry` 开启 → 垒球换下球员可在替补席再上，必须回到原打序槽位（错槽提示并阻止）；关闭 → 与棒球一致，换下球员进不可再上、替补席灰显。已保存数据不回溯。
 
 ---
 
