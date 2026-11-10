@@ -11099,7 +11099,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const{bench:benchRef}=Ee(liveBenchTeamKey(side));
       return buildLiveBenchItems(benchRef.value,effectiveUnavailable(liveBenchTeamKey(side)),N.value,softballReentryAllowed())
     }
-    const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>liveBenchEmptyText(N.value));
+    const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>liveBenchEmptyText(N.value,softballReentryAllowed()));
     // 换人被禁的原因：文案复用既有 tf（口径不漂移），追加「跑垒待确认（ge）」与「三出局后需先确认半局结束」
     function liveBenchSubBlockedReason(){
       return substitutionModeBusy.value?"正在提交换人，请稍候":substitutionModeCommitFailed.value?"上次提交换人失败，请先重试或取消换人模式":tf.value||(ge.value!=null?"请先完成或取消当前跑垒确认":l.needNextBatter?"请先确认半局结束（三出局后的攻守交换）":"")

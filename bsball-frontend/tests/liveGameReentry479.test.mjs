@@ -55,7 +55,7 @@ test('实时录入：规则默认关闭，Ki/替补席/净状态统一走 reentr
   assert.ok(LIVE.includes('function softballReentryAllowed(){'), '缺少 softballReentryAllowed()');
   assert.ok(LIVE.includes('if(N.value==="SOFTBALL"&&softballReentryOn.value)return;'), 'Ki 应按开关放行再上');
   assert.ok(LIVE.includes('buildLiveBenchItems(benchRef.value,effectiveUnavailable(liveBenchTeamKey(side)),N.value,softballReentryAllowed())'), '替补席应按开关灰显');
-  assert.ok(LIVE.includes('reentryAllowed:softballReentryAllowed()'), '净状态应按开关落不可再上');
+  assert.ok(/applyNetTeamState\(before\[side\],after\[side\],diffs\[index\],\{\s*sport:N\.value,reentryAllowed:softballReentryAllowed\(\)/.test(LIVE), '净状态应按开关落不可再上');
   assert.ok(LIVE.includes('if(N.value==="SOFTBALL"&&softballReentryOn.value)return t;'), '旧换人浮层替补/阵容过滤应按开关');
   assert.ok(SUB.includes("reentryAllowed = String(sport).toUpperCase() === 'SOFTBALL'"), '净状态应支持显式 reentryAllowed');
   assert.ok(DRAG.includes('!reentryAllowed && blocked.has(String(p.id))'), '替补灰显应使用 reentryAllowed');
