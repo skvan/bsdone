@@ -8664,7 +8664,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function Nf(e){
       return Hn.value.find(t=>!String(t.position??"").trim())??null
     }
-    function Wt(e,{logKind}={}){
+    function Wt(e,{logKind,deferWalk,tail}={}){
       l.playOut=null;
       if(l.flow?.type==="K_CHOOSE"||l.needNextBatter){
         J("请先完成当前打席（选择三振类型；若为三出局，请先确认半局结束/攻守交换）","warning");
@@ -8680,10 +8680,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=t?.name??"投手";
       if(e==="B"){
         if(l.balls++,l.balls>=4){
-          logKind&&D(LgPitch({who:a,kind:logKind,count:_n(l.balls,l.strikes)}));
+          logKind&&D(LgPitch({who:a,kind:logKind,count:_n(l.balls,l.strikes)}),tail);
+          if(deferWalk)return;
           return D(LgPitch({who:a,kind:"walk"})),bt("BB",[]);
         }
-        D(LgPitch({who:a,kind:logKind??"ball",count:_n(l.balls,l.strikes)}))
+        D(LgPitch({who:a,kind:logKind??"ball",count:_n(l.balls,l.strikes)}),tail)
       }
       else if(e==="S"){
         if(l.strikes++,l.strikes>=3){
@@ -8786,7 +8787,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("暴投只能在坏球后记录","warning");
         return
       }
-      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?(Ut()>0?"投手犯规":"不合法投球"):e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
+      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?(N.value==="SOFTBALL"||Ut()===0?"不合法投球":"投手犯规"):e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
         l.flow={
           type:"OBST",selectRunner:!0
         };
@@ -8824,14 +8825,23 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const t=Se.value,a=t?.name??"投手";
       if(e==="BK"){
-        // 垒上有人：Balk（跑者各进一垒、投手记 BK、不记坏球与打者 RBI）；
-        // 垒上无人：Illegal Pitch（记一坏球、不记 BK、满四坏保送）。
-        const action=LgBalkAction({runnersOnBase:Ut()>0});
-        if(action.advanceRunners){
+        // 棒球 OBR：有跑者 Balk（推进、不记坏球、记 BK）；无跑者 Illegal Pitch（记坏球、不记 BK）。
+        // 垒球 WBSC：始终 Illegal Pitch（记坏球；有跑者时同时各进一垒；不记 BK）。
+        const action=LgBalkAction({sport:N.value,runnersOnBase:Ut()>0});
+        if(action.countPitcherBalk){
+          // 投手犯规不记打者 RBI；ai 不传 resultCode，避免污染当前打席结果。
           t?.stats?.pitching&&(t.stats.pitching.bk=(t.stats.pitching.bk??0)+1);
           D(LgPitch({who:a,kind:action.logKind}),ca()??void 0);
-          // 投手犯规不记打者 RBI；ai 不传 resultCode，避免污染当前打席结果。
           ai({runCause:"BALK"})
+        }
+        else if(action.advanceRunners){
+          // 垒球有跑者：先记坏球（Wt 负责球数/NP/第四坏球延迟保送），再推进全部跑者；
+          // 第四坏球先推进再保送，此时一垒已空，bt("BB") 不会重复推进。
+          const ballsBefore=l.balls;
+          Wt("B",{logKind:action.logKind,deferWalk:!0,tail:ca()});
+          if(l.balls===ballsBefore)return; // Wt 被守卫拦截时不推进
+          ai({runCause:"ILLEGAL_PITCH"});
+          if(l.balls>=4)return bt("BB",[]);
         }
         else Wt("B",{logKind:action.logKind});
         l.flow=null
@@ -13450,9 +13460,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,null,8,["records"])]),_:1
       }
       ,8,["modelValue","style"]),v(LiveGamePitchMenu,{
-        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"runner-on-third":!!l.runners[3],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,"inning":l.inning,"is-top":l.isTop,"balls":l.balls,"strikes":l.strikes,onClose:gt,onUndo:Kf,onCommand:$o
+        visible:aa.value,"pitch-play-disabled":it.value,"show-foul-tip-out":jp.value,"show-dropped-third-strike":Jp.value,"show-dk3-other-runner-out":Qp.value,"runner-count-on-base":Zp.value,"current-outs":l.outs,"first-base-occupied":!!l.runners[1],"second-base-occupied":!!l.runners[2],"runner-on-third":!!l.runners[3],"initial-panel-stack":Ha.value,"show-menu-option-icons":c(Al),"can-undo":Cr.value,"block-click-ms-after-open":240,"center-offset-x":Cn.value,"inning":l.inning,"is-top":l.isTop,"balls":l.balls,"strikes":l.strikes,"game-mode":N.value,onClose:gt,onUndo:Kf,onCommand:$o
       }
-      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x","inning","is-top","balls","strikes"]),v(pv,{
+      ,null,8,["visible","pitch-play-disabled","show-foul-tip-out","show-dropped-third-strike","show-dk3-other-runner-out","runner-count-on-base","current-outs","first-base-occupied","second-base-occupied","runner-on-third","initial-panel-stack","show-menu-option-icons","can-undo","center-offset-x","inning","is-top","balls","strikes","game-mode"]),v(pv,{
         visible:On.value,title:Tp.value,prompt:Ap.value,groups:Op.value,"block-click-ms-after-open":420,"center-offset-x":Cn.value,onClose:Kt,onSelect:cc
       }
       ,null,8,["visible","title","prompt","groups","center-offset-x"]),v(LiveGameEarnedRunDrawer,{key:reviewDrawerSession.value,visible:reviewDrawerVisible.value,"onUpdate:visible":(v2)=>{reviewDrawerVisible.value=v2},gameId:c(R),playEvents:c(f.playEvents),homeLineup:c(f.homeLineup),awayLineup:c(f.awayLineup),homeBench:c(f.homeBench),awayBench:c(f.awayBench),homeFieldingPitcherRow:c(f.homeFieldingPitcherRow),awayFieldingPitcherRow:c(f.awayFieldingPitcherRow),homeRoster:c(f.homeRoster),awayRoster:c(f.awayRoster)})])

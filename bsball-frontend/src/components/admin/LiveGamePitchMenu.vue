@@ -249,7 +249,7 @@
             </div>
             <div class="lgpm__list">
               <button
-                v-for="item in OTHER_ROOT"
+                v-for="item in otherRoot"
                 :key="item.cmd"
                 type="button"
                 class="lgpm__item"
@@ -286,6 +286,7 @@ const props = defineProps({
   showDk3OtherRunnerOut: { type: Boolean, default: false },
   initialPanelStack: { type: Array, default: null },
   showMenuOptionIcons: { type: Boolean, default: true },
+  gameMode: { type: String, default: 'BASEBALL' },
   canUndo: { type: Boolean, default: false },
   blockClickMsAfterOpen: { type: Number, default: 0 },
   centerOffsetX: { type: Number, default: 0 },
@@ -540,6 +541,13 @@ const OTHER_ROOT = [
     glyphTone: 'danger',
   },
 ];
+
+const isSoftball = computed(() => String(props.gameMode ?? '').toUpperCase() === 'SOFTBALL');
+const otherRoot = computed(() => OTHER_ROOT.map((item) => (
+  item.cmd === 'evt:BK' && isSoftball.value
+    ? { ...item, cn: '不合法投球', en: 'Illegal Pitch', glyph: 'IP' }
+    : item
+)));
 
 const panelStack = ref(['root']);
 const panelEl = ref(null);
