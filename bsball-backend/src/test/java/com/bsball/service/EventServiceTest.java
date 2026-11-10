@@ -2,9 +2,9 @@
  * 赛事级特殊规则 + 联赛收费能力（Issue #275，2026-10-24 口径调整）。
  *
  * 契约：GET /event/{id} 的 specialRules 返回
- *   {specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule, softballReentry}；
+ *   {specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}；
  *   - 联赛能力或赛事既有规则决定能否配置；已配置赛事在能力关闭后仍用自身规则；
- *   - 未配置且能力关闭 → 默认 extraBatter=false、forceHalf=true、ohtaniRule=false、softballReentry=false；
+ *   - 未配置且能力关闭 → 默认 extraBatter=false、forceHalf=true、ohtaniRule=false；
  *   - create/update 的 specialRules 由 EventService 在同一事务写库；
  *     create 必须联赛能力开启；update 仅在赛事已有规则（grandfather）或联赛能力开启时允许。
  *
@@ -97,7 +97,6 @@ class EventServiceTest {
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("forceHalf"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("ohtaniRule"));
-        assertEquals(Boolean.FALSE, result.getSpecialRules().get("softballReentry"));
     }
 
     @Test
@@ -115,7 +114,6 @@ class EventServiceTest {
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("forceHalf"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("ohtaniRule"));
-        assertEquals(Boolean.FALSE, result.getSpecialRules().get("softballReentry"));
         verify(eventSpecialRuleService, never()).getEffective(EVENT_ID);
     }
 
@@ -132,23 +130,6 @@ class EventServiceTest {
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("extraBatter"));
         assertEquals(Boolean.TRUE, result.getSpecialRules().get("forceHalf"));
         assertEquals(Boolean.FALSE, result.getSpecialRules().get("ohtaniRule"));
-        assertEquals(Boolean.FALSE, result.getSpecialRules().get("softballReentry"));
-    }
-
-    @Test
-    @DisplayName("已配置 softballReentry=true：详情响应对应键为 true")
-    void get_eventWithSoftballReentry_attachesTrue() {
-        stubWideRead();
-        stubEvent(LEAGUE_ID, null);
-        when(eventSpecialRuleService.hasRules(EVENT_ID)).thenReturn(true);
-        Map<String, Boolean> rules = rules(true, true, false);
-        rules.put("softballReentry", true);
-        when(eventSpecialRuleService.getEffective(EVENT_ID)).thenReturn(rules);
-        when(leagueSpecialRuleService.isSpecialRulesEnabled(LEAGUE_ID)).thenReturn(true);
-
-        Event result = service.get(EVENT_ID);
-
-        assertEquals(Boolean.TRUE, result.getSpecialRules().get("softballReentry"));
     }
 
     @Test
@@ -402,7 +383,6 @@ class EventServiceTest {
         value.put("hasEventRules", false);
         value.put("extraBatter", false);
         value.put("forceHalf", true);
-        value.put("softballReentry", false);
         event.setSpecialRules(value);
 
         String json = new ObjectMapper().writeValueAsString(event);
@@ -411,7 +391,6 @@ class EventServiceTest {
         assertTrue(json.contains("\"hasEventRules\":false"));
         assertTrue(json.contains("\"extraBatter\":false"));
         assertTrue(json.contains("\"forceHalf\":true"));
-        assertTrue(json.contains("\"softballReentry\":false"));
     }
 
     @Test

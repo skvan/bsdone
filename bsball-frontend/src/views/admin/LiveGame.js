@@ -65,7 +65,7 @@ import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
 import { formatCountText as _n } from '../../utils/liveGameFieldLayout';
 import { buildLiveBenchItems, resolveLiveSubDropHits, liveSubDropAction, liveSubTargetKinds } from '../../utils/liveSubDrag.js';
 import { buildFieldRotationMoves, formatFieldRotation, parseFieldRotation } from '../../utils/liveSubRotation.js';
-import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh, validateReentrySlot, effectiveUnavailableIds, findReentryInTransaction } from '../../utils/liveSubstitutionMode.js';
+import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
@@ -6654,8 +6654,8 @@ var sg={
       return Ee(e).unavail.value
     }
     function Yi(e,t){
-      if(N.value==="SOFTBALL"&&softballReentryOn.value)return t;
-      const a=new Set(effectiveUnavailable(e).map(s=>Number(s)));
+      if(N.value==="SOFTBALL")return t;
+      const a=new Set($p(e).map(s=>Number(s)));
       return t.filter(s=>!a.has(Number(s.id)))
     }
     function Rp(){
@@ -6679,8 +6679,7 @@ var sg={
     }
     function Ki(e,t){
       if(substitutionMode.value)return;
-      if(!t?.id)return;
-      if(N.value==="SOFTBALL"&&softballReentryOn.value)return;
+      if(!t?.id||N.value==="SOFTBALL")return;
       const a=Number(t.id),s=Ee(e).unavail;
       s.value.includes(a)||(s.value=[...s.value,a])
     }
@@ -6902,22 +6901,9 @@ var sg={
     function oa(e){
       return e.some(t=>Nn(t.position)==="P")
     }
-    const forceHalfOn=x(!0),extraBatterOn=x(!1),ohtaniRuleOn=x(!1),softballReentryOn=x(!1);
-    function softballReentryAllowed(){
-      return N.value==="SOFTBALL"&&softballReentryOn.value
-    }
-    function effectiveUnavailable(side){
-      const ctx=Ee(side),before=substitutionMode.value?substitutionModeBefore.value?.[side]:null;
-      return effectiveUnavailableIds({
-        unavailable:before?before.unavailable:ctx.unavail.value,
-        bench:before?before.bench:ctx.bench.value,
-        starterIds:before?before.starterIds:ctx.lineupStarterIds.value,
-        slotHistory:before?before.slotHistory:ctx.slotSubHistory.value,
-        reentryAllowed:softballReentryAllowed()
-      })
-    }
-    function Er(e,mode=N.value){
-      const t=sd(e,mode,{extraBatter:extraBatterOn.value});
+    const forceHalfOn=x(!0),extraBatterOn=x(!1),ohtaniRuleOn=x(!1);
+    function Er(e){
+      const t=sd(e,void 0,{extraBatter:extraBatterOn.value});
       return e.length===9&&e.every(a=>!(a.position??"").toString().trim())&&!t.ok&&(t.msg??"").includes("未指定守备位置")?{
         ok:!1,msg:void 0,errorRowIndices:[]
       }
@@ -10391,24 +10377,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         bench:r,lineup:p,fpId:g
       }
       =Ee(a),m=[...r.value],y=p.value;
-      if(N.value==="SOFTBALL"){
-        const ctx=Ee(a);
-        if(!softballReentryOn.value&&effectiveUnavailable(a).map(Number).includes(s)){
-          J(lgText("liveGame.sub.playerUnavailable"),"warning");
-          return
-        }
-        if(softballReentryOn.value&&((mt.value==="fielder"&&!e.groupKey)||mt.value==="pinchHit"||mt.value==="pinchRunner")){
-          const reentry=validateReentrySlot({
-            team:{starterIds:ctx.lineupStarterIds.value,slotHistory:ctx.slotSubHistory.value},playerId:s,
-            targetSlot:y.findIndex(P=>Number(P.id)===Number(t?.id)),text:lgText
-          }
-          );
-          if(!reentry.ok){
-            J(reentry.error,"warning");
-            return
-          }
-        }
-      }
       if(mt.value==="fielder"){
         const b=(Va.value??t?.position??"").toString().toUpperCase();
         if(!b)return;
@@ -10424,8 +10392,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
               return
             }
           }
-          // 投手已在打序（垒球 11 人 / P+DH）时，P↔野手只是普通守位互换，不走棒球取消 DH 流程
-          if(t&&!oa(y)&&y.some(player=>Nn(player.position)==="DH")&&(b==="P"||Y==="P")){
+          if(t&&y.some(player=>Nn(player.position)==="DH")&&(b==="P"||Y==="P")){
             if(!substitutionMode.value){
               J(lgText("liveGame.sub.pitcherFielderSwap"),"warning");
               return
@@ -10701,13 +10668,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         before.away&&restoreSubstitutionTeam("away",before.away),before.home&&restoreSubstitutionTeam("home",before.home),before.runners&&applySubstitutionRunners(before.runners),Array.isArray(substitutionModeLogBase.value)&&(ke.value=[...substitutionModeLogBase.value]),Array.isArray(substitutionModeHistoryBase.value)&&($e.value=[...substitutionModeHistoryBase.value]),exitSubstitutionMode(),Fe.info(lgText("liveGame.sub.noChanges"));
         return
       }
-      // 关闭再上场时，同一事务内被换下者不得以其他槽位/投手身份再上（净 diff 会同时含 out/in，绕过 unavailable）
-      if(findReentryInTransaction(diffs,{reentryAllowed:softballReentryAllowed()})){
-        J(lgText("liveGame.sub.reentryBlockedInTransaction"),"warning");
-        return
-      }
       for(const side of sides){
-        const check=Er(after[side].lineup,N.value);
+        const check=Er(after[side].lineup);
         if(!check.ok){
           J(lgLocale.value==="zh-CN"?(check.msg??lgText("liveGame.sub.lineupIncomplete")):lgText("liveGame.sub.lineupIncomplete"),"warning");
           return
@@ -10737,7 +10699,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         index<sides.length;
         index++){
           const side=sides[index],net=applyNetTeamState(before[side],after[side],diffs[index],{
-            sport:N.value,reentryAllowed:softballReentryAllowed()
+            sport:N.value
           }
           );
           applySubstitutionNet(side,net),ensureSubstitutedOutBench(side,before[side],diffs[index])
@@ -10775,7 +10737,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function dhRuleForSide(side){
       return canCancelDh({
-        team:substitutionTeamForDhRule(side),opponentPlayers:opponentPlayersForDhRule(side),sport:N.value,text:lgText
+        team:substitutionTeamForDhRule(side),opponentPlayers:opponentPlayersForDhRule(side),text:lgText
       })
     }
     function appendDhRuleWarning(lines,rule){
@@ -10829,11 +10791,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(ohtani.stillPitching
           ?lgText("liveGame.sub.dhBlockedOhtani")
           :lgText("liveGame.sub.dhBlockedFormerDh"),"warning");
-        return
-      }
-      const ctx=Ee(side);
-      if(oa(ctx.lineup.value)){
-        J(lgText("liveGame.sub.dhCancelPitcherInOrder"),"warning");
         return
       }
       const rule=dhRuleForSide(side);
@@ -10903,24 +10860,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(lgText("liveGame.sub.dhChanged"),"warning");
         return
       }
-      // 投手已在打序（垒球 11 人 / P+DH）：DH 拖到守备位是互换守位，不取消 DH
-      if(oa(ctx.lineup.value)){
-        const targetIndex=ctx.lineup.value.findIndex(p=>Nn(p.position)===code);
-        const target=targetIndex>=0?ctx.lineup.value[targetIndex]:null;
-        if(!target||targetIndex===dhIndex){
-          J(lgText("liveGame.sub.targetEmpty"),"warning");
+      if(code==="P"){
+        if(oa(ctx.lineup.value)){
+          J(lgText("liveGame.sub.lineupHasPitcher"),"warning");
           return
         }
-        const oldPitcher=code==="P"?target:null;
-        de("换守备"),dh.position=code,dh.firstPosition=firstFieldPositionOf(dh,code),target.position="DH",D(fc("DH",logPlayerName(dh),code,code,logPlayerName(target),"DH"));
-        if(code==="P"){
-          ctx.fpRow.value=null;
-          syncFieldingPitcher(side,oldPitcher,dh)
-        }
-        ri(side),Kt();
-        return
-      }
-      if(code==="P"){
         const fpId=Number(ctx.fpId.value),pitcher=ctx.fpRow.value&&Number(ctx.fpRow.value.id)===fpId?ctx.fpRow.value:ctx.bench.value.find(p=>Number(p.id)===fpId)??ctx.roster.value.find(p=>Number(p.id)===fpId);
         if(!pitcher){
           J(lgText("liveGame.sub.noPitcher"),"warning");
@@ -11039,18 +10983,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         Fe.warning(parsed.error);
         return
       }
-      const side=cr(),ctx=Ee(side),lineup=ctx.lineup.value,hasDh=lineup.some(p=>Nn(p.position)==="DH"),includesPitcher=parsed.codes.includes("P"),hasPitcherInOrder=lineup.some(p=>Nn(p.position)==="P");
+      const side=cr(),ctx=Ee(side),lineup=ctx.lineup.value,hasDh=lineup.some(p=>Nn(p.position)==="DH"),includesPitcher=parsed.codes.includes("P");
       let check=buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side),lgText);
       if(!check.ok){
         Fe.warning(check.error);
         return
       }
-      // 垒球 11 人：投手已在打序，含 1 号位也是普通守位轮转；棒球打线已有投手时无法取消 DH，直接拒绝
-      if(hasDh&&includesPitcher&&hasPitcherInOrder&&N.value!=="SOFTBALL"){
-        Fe.warning(lgText("liveGame.sub.rotationHasPitcher"));
-        return
-      }
-      if(hasDh&&includesPitcher&&!hasPitcherInOrder){
+      if(hasDh&&includesPitcher){
+        if(lineup.some(p=>Nn(p.position)==="P")){
+          Fe.warning(lgText("liveGame.sub.rotationHasPitcher"));
+          return
+        }
         const rule=dhRuleForSide(side),dh=lineup.find(p=>Nn(p.position)==="DH"),pitcher=rotationPitcher(side),lines=[
           lgText("liveGame.sub.rotationCancelDh"),
           lgText("liveGame.sub.rotationDhOut",{dh:logPlayerName(dh)}),
@@ -11095,8 +11038,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return liveBenchTeamKey(side)==="away"?(At.value?.name??lgText("liveGame.team.away")):(xt.value?.name??lgText("liveGame.team.home"))
     }
     function liveBenchItems(side){
-      const{bench:benchRef}=Ee(liveBenchTeamKey(side));
-      return buildLiveBenchItems(benchRef.value,effectiveUnavailable(liveBenchTeamKey(side)),N.value,softballReentryAllowed())
+      const{bench:benchRef,unavail:unavailRef}=Ee(liveBenchTeamKey(side));
+      return buildLiveBenchItems(benchRef.value,unavailRef.value,N.value)
     }
     const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>lgText("liveGame.benchPanel.empty"));
     // 换人被禁的原因：文案复用既有 tf（口径不漂移），追加「跑垒待确认（ge）」与「三出局后需先确认半局结束」
@@ -12308,7 +12251,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Le.value=!0,Ti=!0;
       try{
         const ev=await jc.get(Re.value);
-        S.value=ev?.name??"当前赛事",forceHalfOn.value=ev?.specialRules?.forceHalf!==!1,extraBatterOn.value=ev?.specialRules?.extraBatter===!0,ohtaniRuleOn.value=ev?.specialRules?.ohtaniRule===!0,softballReentryOn.value=ev?.specialRules?.softballReentry===!0,Pa.value=await Zc.selectOptions()??[];
+        S.value=ev?.name??"当前赛事",forceHalfOn.value=ev?.specialRules?.forceHalf!==!1,extraBatterOn.value=ev?.specialRules?.extraBatter===!0,ohtaniRuleOn.value=ev?.specialRules?.ohtaniRule===!0,Pa.value=await Zc.selectOptions()??[];
         const t=ld(Re.value,e);
         if(t){
           const a=t.setupForm??{
