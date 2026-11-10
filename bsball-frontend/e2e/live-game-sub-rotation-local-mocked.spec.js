@@ -26,11 +26,13 @@ function player(id, name, position, teamId) {
   };
 }
 
-function buildSnapshot({ dh }) {
+function buildSnapshot({ dh, mode = 'BASEBALL' }) {
+  const softball = mode === 'SOFTBALL';
   const awayLineup = [
     player(201, '客投手', 'P', 2), player(202, '客捕手', 'C', 2), player(203, '客一垒', '1B', 2),
     player(204, '客二垒', '2B', 2), player(205, '客三垒', '3B', 2), player(206, '客游击', 'SS', 2),
     player(207, '客左外', 'LF', 2), player(208, '客中外', 'CF', 2), player(209, '客右外', 'RF', 2),
+    ...(softball ? [player(210, '客自由人', 'XF', 2)] : []),
   ];
   const homeFielders = [
     player(102, '主捕手', 'C', 1), player(103, '主一垒', '1B', 1), player(104, '主二垒', '2B', 1),
@@ -38,30 +40,37 @@ function buildSnapshot({ dh }) {
     player(108, '主中外', 'CF', 1), player(109, '主右外', 'RF', 1),
   ];
   const homePitcher = player(120, '主投手', 'P', 1);
-  const homeLineup = dh
-    ? [...homeFielders, player(101, '主DH', 'DH', 1)]
-    : [...homeFielders, player(101, '主投手', 'P', 1)];
+  const homeLineup = softball
+    ? (dh
+      ? [homePitcher, ...homeFielders, player(101, '主DH', 'DH', 1), player(110, '主自由人', 'XF', 1)]
+      : [player(101, '主投手', 'P', 1), ...homeFielders, player(110, '主自由人', 'XF', 1)])
+    : (dh
+      ? [...homeFielders, player(101, '主DH', 'DH', 1)]
+      : [...homeFielders, player(101, '主投手', 'P', 1)]);
   const homeBench = [player(111, 'H替补', '', 1)];
-  const allPlayers = [...homeLineup, ...awayLineup, ...homeBench, ...(dh ? [homePitcher] : [])];
+  const allPlayers = [...homeLineup, ...awayLineup, ...homeBench, ...(!softball && dh ? [homePitcher] : [])];
+  const homeFpId = dh ? 120 : 101;
+  const homeFpRow = !softball && dh ? homePitcher : null;
+  const starterIds12 = (lineup) => Array.from({ length: 12 }, (_, i) => lineup[i]?.id ?? null);
 
   return {
     snapshot: {
       v: 1,
       savedAt: 1,
       gameId: 10,
-      gameMode: 'BASEBALL',
+      gameMode: mode,
       gameStarted: true,
       setupForm: { homeTeamId: 1, awayTeamId: 2, venue: '' },
       homeLineup,
       awayLineup,
       homeBench,
       awayBench: [player(211, 'A替补', '', 2)],
-      homeFieldingPitcherId: dh ? 120 : 101,
+      homeFieldingPitcherId: homeFpId,
       awayFieldingPitcherId: 201,
-      homeFieldingPitcherRow: dh ? homePitcher : null,
+      homeFieldingPitcherRow: homeFpRow,
       awayFieldingPitcherRow: null,
-      homeLineupStarterIds: [...homeLineup.map((p) => p.id), null, null, null],
-      awayLineupStarterIds: [...awayLineup.map((p) => p.id), null, null, null],
+      homeLineupStarterIds: starterIds12(homeLineup),
+      awayLineupStarterIds: starterIds12(awayLineup),
       homeSlotSubHistory: Array.from({ length: 12 }, () => []),
       awaySlotSubHistory: Array.from({ length: 12 }, () => []),
       homeUnavailablePlayerIds: [],
@@ -92,9 +101,10 @@ function buildSnapshot({ dh }) {
   };
 }
 
-async function setup(page, { dh }) {
+async function setup(page, { dh, mode = 'BASEBALL' }) {
   const savedLive = [];
-  const { snapshot, allPlayers } = buildSnapshot({ dh });
+  const { snapshot, allPlayers } = buildSnapshot({ dh, mode });
+  const extraBatter = mode === 'SOFTBALL' && dh;
 
   await page.addInitScript(() => {
     Object.keys(localStorage)
@@ -111,13 +121,17 @@ async function setup(page, { dh }) {
     const url = new URL(request.url());
     const path = url.pathname.replace('/bsball-server', '');
     let data = [];
-    if (path === '/event/1') data = { id: 1, name: 'Local E2E Event' };
+    if (path === '/event/1') data = {
+      id: 1,
+      name: 'Local E2E Event',
+      specialRules: { extraBatter },
+    };
     else if (path === '/team/select-options') data = [
       { id: 1, name: 'Home', tenantId: 1 }, { id: 2, name: 'Away', tenantId: 1 },
     ];
     else if (path === '/game/10') data = {
       id: 10, eventId: 1, homeTeamId: 1, awayTeamId: 2, status: 'live',
-      gameMode: 'BASEBALL', inning: 1, topBottom: 'top', homeScore: 0, awayScore: 0,
+      gameMode: mode, inning: 1, topBottom: 'top', homeScore: 0, awayScore: 0,
     };
     else if (path === '/game/10/stats') data = { list: [], total: 0 };
     else if (path === '/game/10/live-snapshot' && request.method() === 'GET') {
@@ -166,6 +180,17 @@ async function submit(page, savedLive) {
   await expect(page.getByText('确认换人')).toBeVisible();
   await page.getByRole('button', { name: '提交换人' }).click();
   await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+}
+
+async function dragBetween(page, fromLocator, toLocator) {
+  const from = await fromLocator.boundingBox();
+  const to = await toLocator.boundingBox();
+  expect(from && to).toBeTruthy();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(300);
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+  await page.mouse.up();
 }
 
 test('无 DH：1341 完成 1→3→4→1 轮转，提交落位置变更与投手更换', async ({ page }) => {
@@ -246,4 +271,114 @@ test('有 DH：取消确认时不变更阵容', async ({ page }) => {
   await expect(page.locator('.live-sub-dh-card')).toHaveCount(1);
   expect(await cardNum(page, 'P')).toBe('#20');
   expect(await cardNum(page, '1B')).toBe('#3');
+});
+
+// ===== 2026-11-10 垒球自由人（XF）/DH 缺口回归 =====
+
+const positionOf = (body, playerId) => body.stats
+  .find((s) => Number(s.playerId) === playerId)?.position;
+
+test('垒球 10 人（P+八守位+XF）：轮转含投手可正常提交，不再误报 EP/无效守位', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: false, mode: 'SOFTBALL' });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.getByText('换人模式进行中')).toBeVisible();
+
+  await rotate(page, '121');
+  await expect(page.getByText('守备轮转已应用')).toBeVisible();
+  await submit(page, savedLive);
+
+  const body = savedLive.at(-1);
+  expect(positionOf(body, 101)).toBe('C');
+  expect(positionOf(body, 102)).toBe('P');
+  const events = body.substitutions || [];
+  expect(events.filter((e) => e.changeType === 'POSITION_CHANGE').length).toBe(2);
+  expect(events.some((e) => e.changeType === 'PITCHING_CHANGE')).toBe(true);
+  expect(events.some((e) => e.changeType === 'DH_CANCEL')).toBe(false);
+});
+
+test('垒球 11 人（P+DH+八守位+XF）：含 1 号位轮转不取消 DH，提交无 DH_CANCEL', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: true, mode: 'SOFTBALL' });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.locator('.live-sub-dh-card')).toHaveCount(1);
+
+  await rotate(page, '121');
+  await expect(page.getByText('守备轮转已应用')).toBeVisible();
+  await expect(page.getByText('当前打线已有投手')).toHaveCount(0);
+  await submit(page, savedLive);
+
+  const body = savedLive.at(-1);
+  expect(positionOf(body, 120)).toBe('C');
+  expect(positionOf(body, 102)).toBe('P');
+  expect(positionOf(body, 101)).toBe('DH');
+  expect(positionOf(body, 110)).toBe('XF');
+  const events = body.substitutions || [];
+  expect(events.filter((e) => e.changeType === 'POSITION_CHANGE').length).toBe(2);
+  expect(events.some((e) => e.changeType === 'DH_CANCEL')).toBe(false);
+});
+
+test('垒球 11 人：DH 拖到游击守备位为守位互换，不取消 DH', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: true, mode: 'SOFTBALL' });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.locator('.live-sub-dh-card')).toHaveCount(1);
+
+  await dragBetween(
+    page,
+    page.locator('.live-sub-dh-card'),
+    page.locator('g.defender-hit[data-pos="SS"]'),
+  );
+  expect(await cardNum(page, 'SS')).toBe('#1');
+  await expect(page.locator('.live-sub-dh-card__num')).toHaveText('#6');
+
+  await submit(page, savedLive);
+  const body = savedLive.at(-1);
+  expect(positionOf(body, 101)).toBe('SS');
+  expect(positionOf(body, 106)).toBe('DH');
+  const events = body.substitutions || [];
+  expect(events.filter((e) => e.changeType === 'POSITION_CHANGE').length).toBe(2);
+  expect(events.filter((e) => e.changeType === 'SUBSTITUTION').length).toBe(0);
+  expect(events.some((e) => e.changeType === 'DH_CANCEL')).toBe(false);
+});
+
+test('垒球 11 人：DH 卡片拖离给明确提示，阵容不变', async ({ page }) => {
+  await setup(page, { dh: true, mode: 'SOFTBALL' });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  const card = await page.locator('.live-sub-dh-card').boundingBox();
+  expect(card).toBeTruthy();
+
+  await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(300);
+  await page.mouse.move(Math.max(5, card.x - 80), card.y + card.height / 2, { steps: 12 });
+  await page.mouse.up();
+
+  await expect(page.getByText('无法取消 DH')).toBeVisible();
+  await expect(page.locator('.live-sub-dh-card')).toHaveCount(1);
+  await expect(page.locator('.live-sub-dh-card__num')).toHaveText('#1');
+  expect(await cardNum(page, 'P')).toBe('#20');
+});
+
+test('垒球 11 人：P↔游击拖拽互换只换守位，不弹取消 DH', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: true, mode: 'SOFTBALL' });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.locator('.live-sub-dh-card')).toHaveCount(1);
+
+  await dragBetween(
+    page,
+    page.locator('g.defender-hit[data-pos="P"]'),
+    page.locator('g.defender-hit[data-pos="SS"]'),
+  );
+  expect(await cardNum(page, 'P')).toBe('#6');
+  expect(await cardNum(page, 'SS')).toBe('#20');
+  await expect(page.getByText('取消DH并换位')).toHaveCount(0);
+
+  await submit(page, savedLive);
+  const body = savedLive.at(-1);
+  expect(positionOf(body, 120)).toBe('SS');
+  expect(positionOf(body, 106)).toBe('P');
+  expect(positionOf(body, 101)).toBe('DH');
+  const events = body.substitutions || [];
+  expect(events.filter((e) => e.changeType === 'POSITION_CHANGE').length).toBe(2);
+  expect(events.some((e) => e.changeType === 'PITCHING_CHANGE'
+    && Number(e.outPlayerId) === 120 && Number(e.inPlayerId) === 106)).toBe(true);
+  expect(events.some((e) => e.changeType === 'DH_CANCEL')).toBe(false);
 });
