@@ -45,6 +45,6 @@ test('投手犯规有跑者时自动推进，并按三垒跑者归属 RBI', () =
 });
 
 test('ai() 将完整事件传给 ti()，避免 RBI 记分字段被丢弃', () => {
-  const body = pick('function ai(event){', 'function bo(');
+  const body = pick('function ai(event){', 'function _o(){');
   assert.match(body, /ti\(event\?\?\{\}\)/, 'ai 必须透传事件对象');
 });

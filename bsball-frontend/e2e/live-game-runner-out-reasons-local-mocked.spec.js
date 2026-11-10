@@ -107,7 +107,7 @@ async function startRunnerDrag(page, base) {
 }
 
 async function dropRunnerOnBase(page, base, half) {
-  const rect = page.locator('rect.runner-drop-zone-rect:visible').nth(base - 1);
+  const rect = page.locator(`rect.runner-drop-zone-rect[data-base="${base}"]:visible`).first();
   await expect(rect).toBeVisible({ timeout: 10000 });
   const box = await rect.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height * (half === 'out' ? 0.78 : 0.22), { steps: 6 });
@@ -292,6 +292,25 @@ test('Issue #527：没有接杀时同垒菜单不提供封杀', async ({ page })
   await page.locator('.rdm__cancel:visible').click();
 });
 
+test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，拖拽安打推进后才进垒', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const toSecond = await dragRunner(page, 1, 2, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await recordSingle(page);
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒、二垒有人');
+  await waitForRunnerToken(page, 2);
+  const menu = await dragRunner(page, 2, 3, 'safe');
+  await expect(menu.getByText('安打推进（不计打点）')).toBeVisible();
+  await pickMenuItem(page, '安打推进（不计打点）');
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒、三垒有人');
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.gameState.runners[2]).toBeNull();
+  expect(snapshot.gameState.runners[3]).toBe(201);
+  expect(snapshot.gameState.runners[1]).not.toBeNull();
+});
+
 test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
@@ -302,6 +321,32 @@ test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page })
   expect(snapshot.gameState.outs).toBe(1);
   expect(snapshot.gameState.runners[1]).toBeNull();
   expect(snapshot.gameState.runners[2]).toBe(201);
+});
+
+test('满垒地滚出局：三垒跑者自动回本垒并确认，无“不进垒”', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 1);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 2);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 3);
+  await recordGroundOut(page, 'SS');
+  await expect(page.locator('.hsc-inline__btn--safe')).toBeVisible();
+  await expect(page.locator('.hsc-inline__btn').filter({ hasText: '不进垒' })).toHaveCount(0);
+  await page.locator('.hsc-inline__btn--safe').click();
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：二垒、三垒有人');
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.gameState.outs).toBe(1);
+  expect(snapshot.gameState.runners[1]).toBeNull();
+  expect(snapshot.gameState.runners[2]).not.toBeNull();
+  expect(snapshot.gameState.runners[3]).not.toBeNull();
+  const totalRuns = Object.values(snapshot.playerStatsById).reduce(
+    (sum, player) => sum + (player.batting?.r ?? 0),
+    0
+  );
+  expect(totalRuns).toBe(1);
 });
 
 test('Issue #527：地滚出局一、二垒跑者同时被迫前进', async ({ page }) => {
@@ -462,7 +507,7 @@ test('Issue #527：三振后同垒出局不提供封杀', async ({ page }) => {
   expect(snapshot.playerStatsById['106'].fielding.dp).toBe(0);
 });
 
-test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page }) => {
+test('Issue #527：非满垒三垒跑者不自动回本垒；拖拽出局不提供封杀', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
@@ -471,12 +516,13 @@ test('Issue #527：本垒出局原因，非满垒不显示封杀', async ({ page
   await dragRunner(page, 2, 3, 'safe');
   await pickMenuItem(page, '盗垒成功 (SB)');
   await recordSingle(page);
-  await page.locator('.hsc-inline__btn--out').click();
-  const panel = page.locator('.rdm__panel:visible', { hasText: '在本垒出局的原因' }).first();
-  await expect(panel).toBeVisible();
-  await expect(panel.getByText('封杀出局')).toHaveCount(0);
-  await expect(panel.getByText('触杀出局')).toBeVisible();
-  await panel.locator('.rdm__cancel').click();
+  // 非强迫进垒：三垒跑者留垒，不弹本垒确认
+  await expect(page.locator('.hsc-inline__btn--out')).toHaveCount(0);
+  await waitForRunnerToken(page, 3);
+  const menu = await dragRunner(page, 3, 4, 'out');
+  await expect(menu.getByText('封杀出局')).toHaveCount(0);
+  await expect(menu.getByText('触杀出局')).toBeVisible();
+  await page.locator('.rdm__head-close:visible').click();
 });
 
 test('Issue #527：本垒出局原因，满垒被迫进垒显示封杀', async ({ page }) => {
@@ -489,6 +535,9 @@ test('Issue #527：本垒出局原因，满垒被迫进垒显示封杀', async (
   await throwBalls(page, 4);
   await waitForRunnerToken(page, 3);
   await recordSingle(page);
+  await expect(page.locator('.hsc-inline__btn--safe')).toBeVisible();
+  await expect(page.locator('.hsc-inline__btn--out')).toBeVisible();
+  await expect(page.locator('.hsc-inline__btn').filter({ hasText: '不进垒' })).toHaveCount(0);
   await page.locator('.hsc-inline__btn--out').click();
   const panel = page.locator('.rdm__panel:visible', { hasText: '在本垒出局的原因' }).first();
   await expect(panel).toBeVisible();

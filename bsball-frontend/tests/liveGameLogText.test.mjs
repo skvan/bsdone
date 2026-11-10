@@ -50,19 +50,23 @@ test('FC 无跑者出局分支：安全上垒、不计失误、只记打者 FC',
   assert.ok(i >= 0, 'safe 分支存在');
   const body = src.slice(i, src.indexOf('const fc_base=Number(fc_choice)', i));
   assert.match(body, /pushHitSpray\("FC",0,a\)/, '仍记 FC 落点');
-  assert.match(body, /Jv\(fc_old,r\)/, '打者上一垒并按被迫进垒推进');
+  assert.match(body, /resolveBatterForceAdvance\(\{batterBase:1,runners:l\.runners,batter:r\}\)/, '打者上一垒并按强迫进垒链推进');
+  assert.match(body, /applyForcePlanMoves\(fc_plan,/, '只落位强迫链跑者');
+  assert.match(body, /startForceQueue\(fc_plan,/, '被迫回本垒跑者进入安全/出局确认');
   assert.match(body, /r\.stats\.batting\.ab=\(r\.stats\.batting\.ab\?\?0\)\+1/, '打者记 AB');
   assert.match(body, /野手选择上垒 \(FC\)/, '日志只记打者野选上垒');
   assert.doesNotMatch(body, /fielding\.(?:e|po|a)\s*=/, '不记失误或 PO/A');
   assert.doesNotMatch(body, /Dn\(/, '不走守备记账');
 });
 
-test('共用得分行按 runCause 记原因：失误不再写成安打得分', () => {
+test('共用得分/出局行按原因记账：失误不再写成安打得分', () => {
   assert.match(src, /runCauseLabel as LgRunCauseLabel/, '导入原因文案映射');
-  const i = src.indexOf('function pu(');
-  const body = src.slice(i, src.indexOf('function fu(', i));
+  const i = src.indexOf('function recordForcedHomeRun(');
+  assert.ok(i >= 0, '强迫回本垒得分助手存在');
+  const body = src.slice(i, src.indexOf('function startForceQueue(', i));
   assert.match(body, /LgRunCauseLabel\(runCause,"score"\)/, '得分行按 runCause 取原因');
-  assert.match(body, /LgRunCauseLabel\(runCause,"play"\)/, '本垒出局行按 runCause 取前缀');
+  assert.match(body, /Bt\(Gt\(runner,label\)\)/, '本垒出局按判定结果记账');
+  assert.match(body, /reasonCn:`\$\{ctx\.reasonCn\?\?"本垒"\} · \$\{label\}`/, '本垒出局行带原因前缀与判定');
   assert.doesNotMatch(body, /reasonCn:"安打得分"/, '不得再固定写安打得分');
   assert.doesNotMatch(body, /`安打 · /, '不得再固定写安打前缀');
 });
