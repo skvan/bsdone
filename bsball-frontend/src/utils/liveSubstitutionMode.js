@@ -96,14 +96,24 @@ export function diffTeamState(before, after, { gameMode = 'BASEBALL' } = {}) {
     };
   }
 
+  const beforeHasDh = beforeLineup.some((p) => normalizePosition(p?.position) === 'DH');
+  const afterHasDh = afterLineup.some((p) => normalizePosition(p?.position) === 'DH');
+  // 取消 DH 的两种净变化形态：
+  // 1) DH 槽位被投手（或互换后的投手）占用；
+  // 2) DH 移防后打线不再有 DH，且原投手进入打序（换上者 = before 的投手）。
+  // 垒球 11 人 P↔野手 / DH↔野手互换后打线仍有 DH，不得误标；同人只换守位也不算。
   const dhSub = substitutions.find((s) => s.outPosition === 'DH' && s.inPosition !== 'DH') ?? null;
-  const dhCancel = dhSub
+  const pitcherEnteredLineup = beforePitcherId > 0
+    ? substitutions.find((s) => s.inPlayerId === beforePitcherId) ?? null
+    : null;
+  const dhCancelSource = beforeHasDh && !afterHasDh ? (dhSub ?? pitcherEnteredLineup) : null;
+  const dhCancel = dhCancelSource
     ? {
-      slot: dhSub.slot,
-      outPlayerId: dhSub.outPlayerId,
-      inPlayerId: dhSub.inPlayerId,
-      outName: dhSub.outName,
-      inName: dhSub.inName,
+      slot: dhCancelSource.slot,
+      outPlayerId: dhCancelSource.outPlayerId,
+      inPlayerId: dhCancelSource.inPlayerId,
+      outName: dhCancelSource.outName,
+      inName: dhCancelSource.inName,
     }
     : null;
 
@@ -167,13 +177,15 @@ export function startingDhInfo(team) {
  * 先发 DH 至少完成一次打击，除非对方已经换投；P↔野手互换、DH 进守备等也会终止 DH。
  * 实时数据无法覆盖所有换投细节，因此返回 warning 供操作员确认，而不是静默放行。
  */
-export function canCancelDh({ team, opponentPlayers, text } = {}) {
+export function canCancelDh({ team, opponentPlayers, sport = 'BASEBALL', text } = {}) {
   const tr = typeof text === 'function' ? text : null;
   const info = startingDhInfo(team);
   if (!info) return { ok: false, warning: tr ? tr('liveGame.sub.dhRuleNoDh') : '当前打线没有 DH。' };
   if (!info.starter) {
     return { ok: false, warning: tr ? tr('liveGame.sub.dhRuleNoStarter') : '无法确认先发 DH，请核对阵容后再取消 DH。' };
   }
+  // 先发 DH 至少打击一次的规定（MLB OBR 5.11）只适用于棒球；垒球不弹此提醒。
+  if (String(sport).toUpperCase() === 'SOFTBALL') return { ok: true, warning: '' };
   const batted = battingAppearances(info.starter) > 0;
   const opponentChanged = countActivePitchers(opponentPlayers) >= 2;
   if (batted || opponentChanged) return { ok: true, warning: '' };
