@@ -53,6 +53,13 @@ test('垒球：不过滤已换下球员（可再上场）', () => {
   ]);
 });
 
+test('垒球：赛事开关关闭时已换下球员灰显不可再上（#479）', () => {
+  const bench = [{ id: 1, name: '甲', number: 5 }];
+  assert.deepEqual(buildLiveBenchItems(bench, [1], 'SOFTBALL', false), [
+    { id: 1, name: '甲', number: 5, disabled: true },
+  ]);
+});
+
 test('空/缺省输入安全', () => {
   assert.deepEqual(buildLiveBenchItems(null, [1], 'BASEBALL'), []);
   assert.deepEqual(buildLiveBenchItems([], null, 'BASEBALL'), []);
@@ -73,6 +80,10 @@ test('替补席按背号升序，空背号排最后', () => {
 test('空席文案：棒球注明已换下不可再上场，垒球不带该说明', () => {
   assert.equal(liveBenchEmptyText('BASEBALL'), '板凳席无可用球员（已换下球员不可再上场）');
   assert.equal(liveBenchEmptyText('SOFTBALL'), '板凳席无可用球员');
+});
+
+test('空席文案：垒球开关关闭时恢复已换下不可再上的说明（#479）', () => {
+  assert.equal(liveBenchEmptyText('SOFTBALL', false), '板凳席无可用球员（已换下球员不可再上场）');
 });
 
 /* ---------------- resolveLiveSubDropHits ---------------- */

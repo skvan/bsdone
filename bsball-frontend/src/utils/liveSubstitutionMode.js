@@ -295,10 +295,22 @@ export function buildSubstitutionEvents(diffsBySide, { transactionId, inning, to
   return events;
 }
 
-export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = {}) {
+export function applyNetTeamState(before, after, diff, {
+  sport = 'BASEBALL',
+  reentryAllowed = String(sport).toUpperCase() === 'SOFTBALL',
+} = {}) {
   const starterIds = starterIdsFromBefore(before);
   const slotHistory = historyFromBefore(before);
   const unavailable = Array.from(new Set((before?.unavailable ?? []).map(Number).filter((id) => Number.isFinite(id) && id > 0)));
+  // 关闭态读时回填：历史快照可能未把垒球换下者写入 unavailable；替补席上的前打序球员一律视为不可再上。
+  if (!reentryAllowed) {
+    const formerIds = new Set([...starterIds, ...slotHistory.flat()]
+      .map(Number).filter((id) => Number.isFinite(id) && id > 0));
+    for (const p of before?.bench ?? []) {
+      const id = Number(p?.id);
+      if (id > 0 && formerIds.has(id) && !unavailable.includes(id)) unavailable.push(id);
+    }
+  }
 
   for (const s of diff?.substitutions ?? []) {
     const slotIndex = Number(s.slot) - 1;
@@ -314,7 +326,7 @@ export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = 
       const outStillActive = (after?.lineup ?? []).some((p) => playerId(p) === outId)
         || Number(after?.fpId) === outId
         || playerId(after?.fpRow) === outId;
-      if (!outStillActive && String(sport).toUpperCase() !== 'SOFTBALL' && !unavailable.includes(outId)) {
+      if (!outStillActive && !reentryAllowed && !unavailable.includes(outId)) {
         unavailable.push(outId);
       }
     }
@@ -333,7 +345,7 @@ export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = 
     || playerId(after?.fpRow) === outPitcherId
   );
   if (outPitcherId > 0 && outPitcherId !== inPitcherId && !outPitcherStillActive
-      && String(sport).toUpperCase() !== 'SOFTBALL' && !unavailable.includes(outPitcherId)) {
+      && !reentryAllowed && !unavailable.includes(outPitcherId)) {
     unavailable.push(outPitcherId);
   }
   if (inPitcherId > 0) {
@@ -353,5 +365,96 @@ export function applyNetTeamState(before, after, diff, { sport = 'BASEBALL' } = 
     slotHistory,
     unavailable,
     outPositions,
+  };
+}
+
+/**
+ * 有效不可再上名单（Issue #479）：
+ * - 显式 unavailable；
+ * - 关闭再上场时，回填替补席上的前打序球员（先发槽或换人史出现过的球员），
+ *   兼容历史快照里垒球未写 unavailable 的场次。
+ */
+export function effectiveUnavailableIds({
+  unavailable, bench, starterIds, slotHistory, reentryAllowed = false,
+} = {}) {
+  const ids = new Set((Array.isArray(unavailable) ? unavailable : [])
+    .map(Number).filter((id) => Number.isFinite(id) && id > 0));
+  if (!reentryAllowed) {
+    const formerIds = new Set([
+      ...(Array.isArray(starterIds) ? starterIds : []),
+      ...(Array.isArray(slotHistory) ? slotHistory.flat() : []),
+    ].map(Number).filter((id) => Number.isFinite(id) && id > 0));
+    for (const p of Array.isArray(bench) ? bench : []) {
+      const id = Number(p?.id);
+      if (id > 0 && formerIds.has(id)) ids.add(id);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * 同一换人事务内的再上场拦截（Issue #479）：关闭再上场时，任何被换下者不得在同事务内以
+ * 其他槽位/投手身份重新上场（净 diff 会同时出现该人的 out 与 in，绕过 unavailable 判断）。
+ */
+export function findReentryInTransaction(diffsBySide, { reentryAllowed = false } = {}) {
+  if (reentryAllowed) return null;
+  for (const diff of Array.isArray(diffsBySide) ? diffsBySide : []) {
+    const substitutions = Array.isArray(diff?.substitutions) ? diff.substitutions : [];
+    const outs = new Set(substitutions.map((s) => Number(s?.outPlayerId))
+      .filter((id) => Number.isFinite(id) && id > 0));
+    const hit = substitutions.find((s) => outs.has(Number(s?.inPlayerId)));
+    if (hit) {
+      return { teamId: Number(diff?.teamId) || 0, inPlayerId: Number(hit.inPlayerId), slot: hit.slot };
+    }
+    const pitcherIn = Number(diff?.pitchingChange?.inPlayerId);
+    if (Number.isFinite(pitcherIn) && pitcherIn > 0 && outs.has(pitcherIn)) {
+      return { teamId: Number(diff?.teamId) || 0, inPlayerId: pitcherIn, slot: null };
+    }
+  }
+  return null;
+}
+
+/**
+ * 球员原打序槽位（0-based）：先发槽优先，其次换人史；纯板凳球员返回 null。
+ * 供垒球再上场「回原棒次」校验使用（Issue #479）。
+ */
+export function originalLineupSlot(team, playerId) {
+  const id = Number(playerId) || 0;
+  if (!id) return null;
+  const starters = Array.isArray(team?.starterIds) ? team.starterIds : [];
+  const fromStarter = starters.findIndex((value) => Number(value) === id);
+  if (fromStarter >= 0) return fromStarter;
+  const history = Array.isArray(team?.slotHistory) ? team.slotHistory : [];
+  for (let i = 0; i < history.length; i++) {
+    const row = Array.isArray(history[i]) ? history[i] : [];
+    if (row.some((value) => Number(value) === id)) return i;
+  }
+  return null;
+}
+
+/**
+ * 垒球再上场同棒次校验（Issue #479）：纯板凳球员放行；有原槽位时必须回到该槽位。
+ * targetSlot 为 -1/空表示无法定位目标打序（如仅守备投手行），对再上场球员同样阻止。
+ */
+export function validateReentrySlot({ team, playerId, targetSlot, text } = {}) {
+  const tr = typeof text === 'function' ? text : null;
+  const original = originalLineupSlot(team, playerId);
+  if (original == null) return { ok: true, error: '' };
+  const target = targetSlot == null || targetSlot === '' ? -1 : Number(targetSlot);
+  if (target === original) return { ok: true, error: '' };
+  if (target < 0 || !Number.isInteger(target)) {
+    return {
+      ok: false,
+      error: tr
+        ? tr('liveGame.sub.reentrySlotUnknown')
+        : '无法确认该球员的原打序槽位，请从其原打序位置换人',
+    };
+  }
+  const slot = original + 1;
+  return {
+    ok: false,
+    error: tr
+      ? tr('liveGame.sub.reentrySlot', { slot })
+      : `垒球再上场必须回到原打序（第${slot}棒）`,
   };
 }

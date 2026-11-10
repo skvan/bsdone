@@ -101,10 +101,12 @@ function buildSnapshot({ dh, mode = 'BASEBALL' }) {
   };
 }
 
-async function setup(page, { dh, mode = 'BASEBALL' }) {
+async function setup(page, { dh, mode = 'BASEBALL', reentry = false }) {
   const savedLive = [];
+  const savedSnapshots = [];
   const { snapshot, allPlayers } = buildSnapshot({ dh, mode });
   const extraBatter = mode === 'SOFTBALL' && dh;
+  const softballReentry = mode === 'SOFTBALL' && reentry === true;
 
   await page.addInitScript(() => {
     Object.keys(localStorage)
@@ -124,7 +126,7 @@ async function setup(page, { dh, mode = 'BASEBALL' }) {
     if (path === '/event/1') data = {
       id: 1,
       name: 'Local E2E Event',
-      specialRules: { extraBatter },
+      specialRules: { extraBatter, softballReentry },
     };
     else if (path === '/team/select-options') data = [
       { id: 1, name: 'Home', tenantId: 1 }, { id: 2, name: 'Away', tenantId: 1 },
@@ -137,7 +139,9 @@ async function setup(page, { dh, mode = 'BASEBALL' }) {
     else if (path === '/game/10/live-snapshot' && request.method() === 'GET') {
       data = { snapshotJson: JSON.stringify(snapshot) };
     } else if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
-      data = { snapshotJson: request.postDataJSON().snapshotJson };
+      const body = request.postDataJSON();
+      savedSnapshots.push(body.snapshotJson);
+      data = { snapshotJson: body.snapshotJson };
     } else if (path === '/game/10/save-live') {
       savedLive.push(request.postDataJSON());
       data = { success: true };
@@ -164,7 +168,7 @@ async function setup(page, { dh, mode = 'BASEBALL' }) {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
   await expect(page.getByRole('button', { name: '换人模式' })).toBeVisible();
-  return { savedLive };
+  return { savedLive, savedSnapshots };
 }
 
 const cardNum = (page, pos) => page.locator(`g.defender-hit[data-pos="${pos}"] .defender-card__num`).textContent();
@@ -176,10 +180,11 @@ async function rotate(page, value) {
 }
 
 async function submit(page, savedLive) {
+  const before = savedLive.length;
   await page.getByRole('button', { name: '结束换人' }).click();
   await expect(page.getByText('确认换人')).toBeVisible();
   await page.getByRole('button', { name: '提交换人' }).click();
-  await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+  await expect.poll(() => savedLive.length).toBeGreaterThan(before);
 }
 
 async function dragBetween(page, fromLocator, toLocator) {
@@ -381,4 +386,73 @@ test('垒球 11 人：P↔游击拖拽互换只换守位，不弹取消 DH', asy
   expect(events.some((e) => e.changeType === 'PITCHING_CHANGE'
     && Number(e.outPlayerId) === 120 && Number(e.inPlayerId) === 106)).toBe(true);
   expect(events.some((e) => e.changeType === 'DH_CANCEL')).toBe(false);
+});
+
+// ===== 2026-11-10 #479 垒球再上场 =====
+
+test('垒球再上场开启：换下球员回原守位成功，错槽提示并阻止', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: false, mode: 'SOFTBALL', reentry: true });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(page.getByText('换人模式进行中')).toBeVisible();
+
+  await dragBetween(
+    page,
+    page.locator('.live-bench-card[data-player-id="111"][data-team-side="defense"]'),
+    page.locator('g.defender-hit[data-pos="CF"]'),
+  );
+  await submit(page, savedLive);
+  const first = (savedLive[0].substitutions || []).find((e) => e.changeType === 'SUBSTITUTION' && Number(e.slot) === 8);
+  expect(Number(first.outPlayerId)).toBe(108);
+  expect(Number(first.inPlayerId)).toBe(111);
+
+  await page.getByRole('button', { name: '换人模式' }).click();
+  const bench108 = page.locator('.live-bench-card[data-player-id="108"][data-team-side="defense"]');
+  await expect(bench108).toBeVisible();
+  await dragBetween(page, bench108, page.locator('g.defender-hit[data-pos="LF"]'));
+  await expect(page.getByText('垒球再上场必须回到原打序（第8棒）')).toBeVisible();
+  expect(savedLive.length).toBe(1);
+
+  await dragBetween(page, bench108, page.locator('g.defender-hit[data-pos="CF"]'));
+  await submit(page, savedLive);
+  const second = (savedLive.at(-1).substitutions || []).find((e) => e.changeType === 'SUBSTITUTION' && Number(e.slot) === 8);
+  expect(Number(second.outPlayerId)).toBe(111);
+  expect(Number(second.inPlayerId)).toBe(108);
+  expect(positionOf(savedLive.at(-1), 108)).toBe('CF');
+});
+
+test('垒球再上场关闭：换下球员灰显不可再上，并进不可再上名单', async ({ page }) => {
+  const { savedLive, savedSnapshots } = await setup(page, { dh: false, mode: 'SOFTBALL', reentry: false });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  const bench108 = page.locator('.live-bench-card[data-player-id="108"][data-team-side="defense"]');
+  await dragBetween(
+    page,
+    page.locator('.live-bench-card[data-player-id="111"][data-team-side="defense"]'),
+    page.locator('g.defender-hit[data-pos="CF"]'),
+  );
+  await submit(page, savedLive);
+  await expect.poll(() => savedSnapshots.length).toBeGreaterThan(0);
+  const snapshot = JSON.parse(savedSnapshots.at(-1));
+  expect(snapshot.homeUnavailablePlayerIds).toContain(108);
+
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await expect(bench108).toHaveClass(/live-bench-card--disabled/);
+  await expect(bench108).toHaveAttribute('disabled', '');
+});
+
+test('垒球再上场关闭：同事务换下后换其他槽，提交前被拦截', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: false, mode: 'SOFTBALL', reentry: false });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  await dragBetween(
+    page,
+    page.locator('.live-bench-card[data-player-id="111"][data-team-side="defense"]'),
+    page.locator('g.defender-hit[data-pos="CF"]'),
+  );
+  const bench108 = page.locator('.live-bench-card[data-player-id="108"][data-team-side="defense"]');
+  // 模式内允许中间犹豫：刚换下的 108 尚不灰显，但换到其他槽会在提交时被拦截
+  await expect(bench108).not.toHaveClass(/live-bench-card--disabled/);
+  await dragBetween(page, bench108, page.locator('g.defender-hit[data-pos="LF"]'));
+  await page.getByRole('button', { name: '结束换人' }).click();
+  await expect(page.getByText('同一换人事务中，换下球员不可再以其他槽位上场')).toBeVisible();
+  expect(savedLive.length).toBe(0);
+  await page.getByRole('button', { name: '取消换人模式' }).click();
 });
