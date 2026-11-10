@@ -2581,6 +2581,7 @@
       "noDh": "The current lineup has no DH.",
       "noPitcher": "Cannot find the current fielding pitcher; the DH cannot be canceled.",
       "pitcherInOrder": "The current pitcher is already in the batting order.",
+      "dhCancelPitcherInOrder": "The pitcher is already in the batting order, so the DH cannot be cancelled. Drag the DH onto a field position to swap instead.",
       "cannotConfirmSwap": "Cannot resolve the pitcher, fielder, or DH. Cancel substitution mode and try again.",
       "swapFailed": "Failed to swap field positions. Cancel substitution mode and try again.",
       "onlyFieldingSide": "You can only adjust positions for the current fielding side.",

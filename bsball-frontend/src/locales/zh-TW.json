@@ -2588,6 +2588,7 @@
       "noDh": "當前打線沒有 DH",
       "noPitcher": "找不到當前守備投手，無法取消 DH",
       "pitcherInOrder": "當前投手已在打序中",
+      "dhCancelPitcherInOrder": "目前投手已在打序中，無法取消 DH；可將 DH 拖到守備位置交換",
       "cannotConfirmSwap": "無法確認投手、野手或 DH，請取消換人模式後重試",
       "swapFailed": "交換守備位置失敗，請取消換人模式後重試",
       "onlyFieldingSide": "只能調整當前守備方的守位",
