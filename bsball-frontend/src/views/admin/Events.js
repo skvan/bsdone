@@ -50,7 +50,7 @@ var tt={
       ]
     }
     ,U=qe(),z=c([]),P=c([]),L=c(!1),w=c(!1),D=c(null),o=I({
-      name:"",leagueId:null,season:"",startDate:"",endDate:"",status:"draft",gameMode:"BASEBALL",description:"",specialRules:{extraBatter:!1,forceHalf:!0,ohtaniRule:!1}
+      name:"",leagueId:null,season:"",startDate:"",endDate:"",status:"draft",gameMode:"BASEBALL",description:"",specialRules:{extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1}
     }
     ),C=I({
       keyword:""
@@ -96,11 +96,11 @@ var tt={
       [n||"draft"]||"info"
     }
     async function O(n){
-      D.value=n?.id??null,o.name=n?.name??"",o.leagueId=n?.leagueId??null,o.season=n?.season??"",o.startDate=n?.startDate??"",o.endDate=n?.endDate??"",o.status=n?.status??"draft",o.gameMode=n?.gameMode??"BASEBALL",o.description=n?.description??"",o.specialRules={extraBatter:!1,forceHalf:!0,ohtaniRule:!1},hasEventRules.value=!1,leagueCapabilityEnabled.value=!1;
+      D.value=n?.id??null,o.name=n?.name??"",o.leagueId=n?.leagueId??null,o.season=n?.season??"",o.startDate=n?.startDate??"",o.endDate=n?.endDate??"",o.status=n?.status??"draft",o.gameMode=n?.gameMode??"BASEBALL",o.description=n?.description??"",o.specialRules={extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1},hasEventRules.value=!1,leagueCapabilityEnabled.value=!1;
       if(n?.id)try{
         const e=await E.get(n.id),t=e?.specialRules;
         if(t){
-          hasEventRules.value=t.hasEventRules===!0,leagueCapabilityEnabled.value=t.specialRulesEnabled===!0,o.specialRules={extraBatter:t.extraBatter===!0,forceHalf:t.forceHalf!==!1,ohtaniRule:t.ohtaniRule===!0}
+          hasEventRules.value=t.hasEventRules===!0,leagueCapabilityEnabled.value=t.specialRulesEnabled===!0,o.specialRules={extraBatter:t.extraBatter===!0,forceHalf:t.forceHalf!==!1,ohtaniRule:t.ohtaniRule===!0,softballReentry:t.softballReentry===!0}
         }
       }
       catch{
@@ -113,7 +113,7 @@ var tt={
         if(S.value)try{
           await S.value.validate();
           const n={...o};
-          if(D.value&&specialRulesAvailable.value)n.specialRules={extraBatter:o.specialRules.extraBatter===!0,forceHalf:o.specialRules.forceHalf!==!1,ohtaniRule:o.specialRules.ohtaniRule===!0};
+          if(D.value&&specialRulesAvailable.value)n.specialRules={extraBatter:o.specialRules.extraBatter===!0,forceHalf:o.specialRules.forceHalf!==!1,ohtaniRule:o.specialRules.ohtaniRule===!0,...(o.gameMode==="SOFTBALL"?{softballReentry:o.specialRules.softballReentry===!0}:{})};
           else delete n.specialRules;
           D.value?(await E.update(D.value,n),V.success("修改成功")):(await E.create(n),V.success("新增成功")),w.value=!1,v()
         }
@@ -531,9 +531,9 @@ var tt={
             ,null,8,["modelValue"])]),_:1
           }
           ),d(D)?(p(),g(EventSpecialRuleFields,{
-            key:0,modelValue:o.specialRules,available:d(specialRulesAvailable),hint:d(specialRulesHint),"onUpdate:modelValue":updateSpecialRules
+            key:0,modelValue:o.specialRules,available:d(specialRulesAvailable),hint:d(specialRulesHint),gameMode:o.gameMode,"onUpdate:modelValue":updateSpecialRules
           }
-          ,null,8,["modelValue","available","hint"])):y("",!0)]),_:1
+          ,null,8,["modelValue","available","hint","gameMode"])):y("",!0)]),_:1
         }
         ,8,["model"])]),_:1
       }
