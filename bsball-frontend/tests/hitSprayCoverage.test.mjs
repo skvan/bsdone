@@ -34,8 +34,10 @@ test('落点重复上传修复：rid 入队、送出后剔除、撤销/重做/�
   }
   // 入队时生成客户端唯一键
   assert.match(source, /record&&\(record\.rid=LgNewSprayRid\(\),l\.hitSprayQueue\.push\(record\)\)/);
-  // 送出前剥掉 rid（bs_hit_spray 无此列）
+  // 送出时保留 rid，服务端按 (gameId, rid) 幂等去重
   assert.match(source, /await Xo\.saveBatch\(batch\.map\(LgSprayPayload\)\)/);
+  // 新场次开始时清空已送出 rid，避免跨场累计
+  assert.match(source, /sentHitSprayRids\.clear\(\)/);
   // 送出成功后记 rid 并回洗撤销/重做快照；发送期间被撤销放回 live queue 的同一批也要剔除
   assert.match(source, /record\?\.rid&&sentHitSprayRids\.add\(record\.rid\)/);
   assert.ok(

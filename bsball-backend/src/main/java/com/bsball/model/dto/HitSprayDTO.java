@@ -25,6 +25,7 @@ public class HitSprayDTO {
     private Double sprayY;
     private String sprayZone;
     private String sprayDepth;
+    private String rid;
 
     @Generated
     public HitSprayDTO() {
@@ -106,6 +107,11 @@ public class HitSprayDTO {
     }
 
     @Generated
+    public String getRid() {
+        return this.rid;
+    }
+
+    @Generated
     public void setGameId(Long gameId) {
         this.gameId = gameId;
     }
@@ -178,6 +184,11 @@ public class HitSprayDTO {
     @Generated
     public void setSprayDepth(String sprayDepth) {
         this.sprayDepth = sprayDepth;
+    }
+
+    @Generated
+    public void setRid(String rid) {
+        this.rid = rid;
     }
 
     @Generated
