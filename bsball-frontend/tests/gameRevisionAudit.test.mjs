@@ -13,7 +13,7 @@ const api = read('../../bsball-backend/src/main/java/com/bsball/api/GameApi.java
 
 test('结果页新增修订记录页签并接入面板', () => {
   assert.ok(games.includes('GameRevisionAuditPanel'), '未导入审计面板');
-  assert.ok(games.includes('label:"修订记录",name:"revisionAudit"'), '缺少修订记录页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabAudit'),name:"revisionAudit"`), '缺少修订记录页签');
   assert.ok(games.includes('"refresh-key":reviewVersion.value'), '复核变更后未刷新审计页签');
   assert.ok(
     games.replace(/\r\n/g, '\n').includes(
@@ -27,9 +27,9 @@ test('审计面板覆盖四类修订与空状态', () => {
   for (const type of ['ER_DECISION', 'PITCHER_RUN_OVERRIDE', 'FIELDING_ADJUSTMENT', 'PITCHER_TRANSFER']) {
     assert.ok(panel.includes(type), `缺少审计类型：${type}`);
   }
-  assert.ok(panel.includes('暂无修订记录'), '缺少空状态');
-  assert.ok(panel.includes('实时记录为基座 · 人工修订为最终值'), '缺少状态说明');
-  assert.ok(panel.includes('刷新'), '缺少刷新入口');
+  assert.ok(panel.includes('liveGame.revision.auditEmpty'), '缺少空状态');
+  assert.ok(panel.includes('liveGame.revision.auditTitle'), '缺少状态说明');
+  assert.ok(panel.includes('liveGame.revision.refresh'), '缺少刷新入口');
 });
 
 test('前端 API 与后端接口接线', () => {

@@ -1,5 +1,5 @@
 <template>
-  <section class="lg-pbp" :style="{ height: `${height}px` }" aria-label="Play by Play 实时动态">
+  <section class="lg-pbp" :style="{ height: `${height}px` }" :aria-label="lt('liveGame.pbp.aria')">
     <div
       class="lg-pbp__resize"
       role="separator"
@@ -7,8 +7,8 @@
       :aria-valuemin="PBP_MIN_HEIGHT"
       :aria-valuemax="maxHeight"
       :aria-valuenow="height"
-      aria-label="调整实时动态高度"
-      title="拖动调整高度，双击复位"
+      :aria-label="lt('liveGame.pbp.resizeAria')"
+      :title="lt('liveGame.pbp.resizeTitle')"
       tabindex="0"
       @pointerdown="startResize"
       @keydown="handleKeydown"
@@ -19,12 +19,12 @@
 
     <header class="lg-pbp__head">
       <span class="lg-pbp__title">PLAY BY PLAY</span>
-      <span class="lg-pbp__hint">实时动态 · 最新在上</span>
-      <span class="lg-pbp__count" :title="`最多显示最近 ${PBP_LOG_LIMIT} 条`">{{ entries.length }} 条</span>
+      <span class="lg-pbp__hint">{{ lt('liveGame.pbp.hint') }}</span>
+      <span class="lg-pbp__count" :title="lt('liveGame.pbp.countTitle', { limit: PBP_LOG_LIMIT })">{{ lt('liveGame.pbp.count', { count: entries.length }) }}</span>
     </header>
     <p class="lg-pbp__sr" aria-live="polite" aria-atomic="true">{{ latestAnnouncement }}</p>
 
-    <div class="lg-pbp__list" aria-label="实时比赛日志" tabindex="0">
+    <div class="lg-pbp__list" :aria-label="lt('liveGame.pbp.listAria')" tabindex="0">
       <article
         v-for="(entry, index) in entries"
         :key="entry.key"
@@ -42,13 +42,14 @@
           <p v-for="(line, lineIndex) in entry.lines" :key="lineIndex" class="lg-pbp__sub">{{ line }}</p>
         </div>
       </article>
-      <p v-if="!entries.length" class="lg-pbp__empty">暂无比赛日志</p>
+      <p v-if="!entries.length" class="lg-pbp__empty">{{ lt('liveGame.pbp.empty') }}</p>
     </div>
   </section>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 import {
   buildPbpEntries,
   clampPbpHeight,
@@ -57,6 +58,8 @@ import {
   PBP_MIN_HEIGHT,
   PBP_STORAGE_KEY
 } from '../../utils/liveGamePbp.js';
+
+const { text: lt } = useLiveGameText();
 
 const props = defineProps({
   logs: { type: Array, default: () => [] }

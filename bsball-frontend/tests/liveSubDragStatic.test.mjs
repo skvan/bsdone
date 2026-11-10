@@ -74,7 +74,7 @@ test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落�
   assert.ok(src.includes(':not([disabled])'), '拖拽落点未排除已换下球员');
   assert.ok(src.includes('ensureSubstitutedOutBench('), '换下球员未回落到板凳');
   assert.ok(src.includes('ensureSubstitutedOutBench(side,before[side],diffs[index])'), '换人提交后未调用换下球员回落');
-  assert.ok(src.includes('该球员已换下，不可再上场'), '缺少已换下球员拦截提示');
+  assert.ok(src.includes('liveGame.sub.playerUnavailable'), '缺少已换下球员拦截提示');
   assert.ok(!src.includes('"show-append-button":!0'), '追加新球员入口必须移除');
   assert.ok(src.includes('fieldingPositionsBaseline') && src.includes('awayStarterFpId'), '逐位置基线/开局投手未持久化');
   assert.ok(src.includes('hasHistoricalFieldingStats('), 'Do 重建路径未做逐位置基线可信判定');
@@ -107,7 +107,7 @@ test('换人模式外禁止一切换人执行路径（含换守备位置）', ()
   const ccBody = sliceBetween(src, 'function cc(e){', '/* ---------------- 换人事务模式');
   assert.ok(ccBody.includes('if(!substitutionMode.value&&mt.value!=="setRunner")'), '换人执行器 cc() 未做模式外硬拦截');
   assert.ok(ccBody.includes('if(substitutionModeBusy.value)return;'), 'cc() 提交进行中未拒绝执行');
-  assert.ok(ccBody.includes('换人模式进行中，请先结束或取消换人模式后再设置跑者'), '模式内 setRunner 纠偏未拦截（会被净变化 diff 忽略）');
+  assert.ok(ccBody.includes('liveGame.sub.setRunnerBlocked'), '模式内 setRunner 纠偏未拦截（会被净变化 diff 忽略）');
   const zaBody = sliceBetween(src, 'function Za(e,t,a,s){', 'async function oc(');
   assert.ok(zaBody.includes('if(!substitutionMode.value&&e!=="setRunner")'), '换人浮层入口未做模式外拦截');
   assert.ok(zaBody.includes('if(substitutionModeBusy.value)return;'), 'Za() 提交进行中未拒绝打开浮层');

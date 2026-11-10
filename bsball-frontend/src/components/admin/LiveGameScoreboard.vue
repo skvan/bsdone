@@ -1,21 +1,21 @@
 <template>
-  <section class="lg-scoreboard" role="group" aria-label="实时记分牌">
+  <section class="lg-scoreboard" role="group" :aria-label="lt('liveGame.scoreboard.aria')">
     <div class="lg-scoreboard__grid lg-scoreboard__grid--top">
       <div class="lg-scoreboard__teams">
         <div
           :class="['lg-team-row', { 'is-batting': isTop }]"
           :style="{ '--lg-team-logo': logoSrc(awayLogo) }"
         >
-          <span class="lg-team-side">客</span>
-          <span class="lg-team-name">{{ awayName || '客队' }}</span>
+          <span class="lg-team-side">{{ lt('liveGame.team.awayShort') }}</span>
+          <span class="lg-team-name">{{ awayName || lt('liveGame.team.away') }}</span>
           <span class="lg-team-score" aria-live="polite">{{ awayScore ?? 0 }}</span>
         </div>
         <div
           :class="['lg-team-row', { 'is-batting': !isTop }]"
           :style="{ '--lg-team-logo': logoSrc(homeLogo) }"
         >
-          <span class="lg-team-side">主</span>
-          <span class="lg-team-name">{{ homeName || '主队' }}</span>
+          <span class="lg-team-side">{{ lt('liveGame.team.homeShort') }}</span>
+          <span class="lg-team-name">{{ homeName || lt('liveGame.team.home') }}</span>
           <span class="lg-team-score" aria-live="polite">{{ homeScore ?? 0 }}</span>
         </div>
       </div>
@@ -30,7 +30,7 @@
         </div>
 
         <div class="lg-lights">
-          <div class="lg-light-group" :aria-label="`好球 ${strikes}`">
+          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.strikesAria', { n: strikes })">
             <span class="lg-light-label">S</span>
             <span
               v-for="i in 2"
@@ -38,7 +38,7 @@
               :class="['lg-light', 'lg-light--strike', { 'is-on': strikes >= i }]"
             ></span>
           </div>
-          <div class="lg-light-group" :aria-label="`坏球 ${balls}`">
+          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.ballsAria', { n: balls })">
             <span class="lg-light-label">B</span>
             <span
               v-for="i in 3"
@@ -46,7 +46,7 @@
               :class="['lg-light', 'lg-light--ball', { 'is-on': balls >= i }]"
             ></span>
           </div>
-          <div class="lg-light-group" :aria-label="`出局 ${outs}`">
+          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.outsAria', { n: outs })">
             <span class="lg-light-label">O</span>
             <span
               v-for="i in 2"
@@ -60,18 +60,18 @@
 
     <div class="lg-scoreboard__grid lg-scoreboard__grid--bottom">
       <div class="lg-actor-main lg-actor-main--batter" :style="battingLogoStyle">
-        <span class="lg-actor-label">打者</span>
+        <span class="lg-actor-label">{{ lt('liveGame.scoreboard.batter') }}</span>
         <span class="lg-actor-number">#{{ batter.number || '-' }}</span>
         <span class="lg-actor-name">{{ batter.name || '--' }}</span>
       </div>
-      <span v-if="batter.order" class="lg-actor-extra lg-actor-extra--batter" :style="battingLogoStyle">{{ batter.order }}棒</span>
-      <div class="lg-inning-number" :aria-label="`第${inning}局${isTop ? '上半局' : '下半局'}`">{{ inning }}局</div>
+      <span v-if="batter.order" class="lg-actor-extra lg-actor-extra--batter" :style="battingLogoStyle">{{ orderText }}</span>
+      <div class="lg-inning-number" :aria-label="lt('liveGame.scoreboard.inningAria', { inning, half: isTop ? lt('liveGame.scoreboard.top') : lt('liveGame.scoreboard.bottom') })">{{ lt('liveGame.scoreboard.inning', { inning }) }}</div>
       <div class="lg-inning-arrows" aria-hidden="true">
         <span :class="['lg-inning-arrow', { 'is-on': isTop }]">▲</span>
         <span :class="['lg-inning-arrow', { 'is-on': !isTop }]">▼</span>
       </div>
       <div class="lg-actor-main lg-actor-main--pitcher" :style="fieldingLogoStyle">
-        <span class="lg-actor-label">投手</span>
+        <span class="lg-actor-label">{{ lt('liveGame.scoreboard.pitcher') }}</span>
         <span class="lg-actor-number">#{{ pitcher.number || '-' }}</span>
         <span class="lg-actor-name">{{ pitcher.name || '--' }}</span>
       </div>
@@ -82,6 +82,9 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useLiveGameText } from '../../composables/useLiveGameText';
+
+const { isEnglish, text: lt } = useLiveGameText();
 
 const props = defineProps({
   awayName: { type: String, default: '' },
@@ -100,10 +103,20 @@ const props = defineProps({
   pitcher: { type: Object, default: () => ({}) }
 });
 
+const ordinal = (n) => {
+  const value = Number(n);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  return `${value}${['th', 'st', 'nd', 'rd'][value % 10] ?? 'th'}`;
+};
+const orderText = computed(() => (isEnglish.value ? ordinal(props.batter?.order) : lt('liveGame.scoreboard.order', { n: props.batter?.order })));
+
 const basesLabel = computed(() => {
-  const names = { 1: '一垒', 2: '二垒', 3: '三垒' };
-  const occupied = [1, 2, 3].filter((base) => props.bases?.[base]).map((base) => names[base]);
-  return occupied.length ? `垒包：${occupied.join('、')}有人` : '垒包：无人';
+  const occupied = [1, 2, 3].filter((base) => props.bases?.[base]).map((base) => lt(`liveGame.scoreboard.base${base}`));
+  return occupied.length
+    ? lt('liveGame.scoreboard.basesOccupied', { bases: occupied.join(isEnglish.value ? ', ' : '、') })
+    : lt('liveGame.scoreboard.basesEmpty');
 });
 
 const logoSrc = (logo) => (logo ? `url('${logo}')` : 'none');

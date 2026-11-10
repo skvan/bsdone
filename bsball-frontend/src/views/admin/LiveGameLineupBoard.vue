@@ -1,29 +1,29 @@
 <template>
   <div v-loading="loading" class="admin-page live-game-lineup-board">
     <div class="lineup-board-header">
-      <span class="header-left">确认先发阵容 · {{ eventName }}</span>
+      <span class="header-left">{{ lt('liveGame.lineup.title') }} · {{ eventName }}</span>
       <div class="header-actions">
-        <el-button v-if="hasPerm('business:lineup-template:manage')" @click="openTemplates(activeTeam)">应用阵容模板</el-button>
-        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(false)">保存</el-button>
-        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(true)">保存并退出</el-button>
-        <el-button type="primary" :disabled="!canStartEntry" :loading="saving" @click="startEntry">开始录入</el-button>
+        <el-button v-if="hasPerm('business:lineup-template:manage')" @click="openTemplates(activeTeam)">{{ lt('liveGame.lineup.applyTemplate') }}</el-button>
+        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(false)">{{ lt('liveGame.lineup.save') }}</el-button>
+        <el-button v-if="gameStatus !== 'live'" :disabled="!canSave || saving" @click="save(true)">{{ lt('liveGame.lineup.saveExit') }}</el-button>
+        <el-button type="primary" :disabled="!canStartEntry" :loading="saving" @click="startEntry">{{ lt('liveGame.lineup.startEntry') }}</el-button>
       </div>
     </div>
 
     <!-- 设置区：与旧件同字段同校验 -->
-    <el-form :model="setupForm" label-width="90px" class="setup-form">
+    <el-form :model="setupForm" :label-width="isEnglish ? '110px' : '90px'" class="setup-form">
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="比赛模式">
-            <el-select v-model="mode" placeholder="比赛模式" disabled style="width: 100%">
-              <el-option label="棒球" value="BASEBALL" />
-              <el-option label="垒球" value="SOFTBALL" />
+          <el-form-item :label="lt('liveGame.lineup.mode')">
+            <el-select v-model="mode" :placeholder="lt('liveGame.lineup.mode')" disabled style="width: 100%">
+              <el-option :label="lt('liveGame.lineup.baseball')" value="BASEBALL" />
+              <el-option :label="lt('liveGame.lineup.softball')" value="SOFTBALL" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="场地">
-            <el-select v-model="setupForm.venue" placeholder="选择球场" clearable filterable style="width: 100%">
+          <el-form-item :label="lt('liveGame.lineup.venue')">
+            <el-select v-model="setupForm.venue" :placeholder="lt('liveGame.lineup.venuePlaceholder')" clearable filterable style="width: 100%">
               <el-option v-for="s in stadiums" :key="s.value" :label="s.label" :value="s.value" />
             </el-select>
           </el-form-item>
@@ -31,10 +31,10 @@
       </el-row>
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="客队" required>
+          <el-form-item :label="lt('liveGame.lineup.awayTeam')" required>
             <el-select
               v-model="setupForm.awayTeamId"
-              placeholder="选择客队"
+              :placeholder="lt('liveGame.lineup.awayPlaceholder')"
               filterable
               style="width: 100%"
               @change="loadRosters"
@@ -44,10 +44,10 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="主队" required>
+          <el-form-item :label="lt('liveGame.lineup.homeTeam')" required>
             <el-select
               v-model="setupForm.homeTeamId"
-              placeholder="选择主队"
+              :placeholder="lt('liveGame.lineup.homePlaceholder')"
               filterable
               style="width: 100%"
               @change="loadRosters"
@@ -59,12 +59,12 @@
       </el-row>
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="比赛时间">
+          <el-form-item :label="lt('liveGame.lineup.gameTime')">
             <el-date-picker
               v-model="gameTime"
               type="datetime"
               value-format="YYYY-MM-DD HH:mm:ss"
-              placeholder="选择比赛时间"
+              :placeholder="lt('liveGame.lineup.gameTimePlaceholder')"
               style="width: 100%"
             />
           </el-form-item>
@@ -75,8 +75,8 @@
     <el-divider content-position="left">{{ rosterHint }}</el-divider>
 
     <el-radio-group v-model="activeTeam" class="team-switch">
-      <el-radio-button value="away">{{ awayTeamName }}（客）</el-radio-button>
-      <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
+      <el-radio-button value="away">{{ awayTeamName }}{{ lt('liveGame.lineup.awaySuffix') }}</el-radio-button>
+      <el-radio-button value="home">{{ homeTeamName }}{{ lt('liveGame.lineup.homeSuffix') }}</el-radio-button>
     </el-radio-group>
 
     <div v-if="ohtaniRule" class="ohtani-rule-bar">
@@ -93,7 +93,7 @@
     </div>
 
     <div v-if="pending" class="lineup-pending-hint">
-      待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
+      {{ lt('liveGame.lineup.pendingHint', { player: pending.player.name }) }}
     </div>
 
     <div class="lineup-board">
@@ -131,13 +131,13 @@
     <div v-if="lineupErrorMsg" class="lineup-warn">{{ lineupErrorMsg }}</div>
 
     <!-- 模板对话框：应用前二次确认 -->
-    <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
-      <el-select v-model="templateDialog.selected" placeholder="选择阵容模板" filterable style="width: 100%">
+    <el-dialog v-model="templateDialog.visible" :title="lt('liveGame.lineup.templateDialogTitle')" width="420px" :close-on-click-modal="false">
+      <el-select v-model="templateDialog.selected" :placeholder="lt('liveGame.lineup.templatePlaceholder')" filterable style="width: 100%">
         <el-option v-for="t in templateDialog.list" :key="t.id" :label="t.name" :value="t.id" />
       </el-select>
       <template #footer>
-        <el-button @click="templateDialog.visible = false">取消</el-button>
-        <el-button type="primary" :disabled="templateDialog.selected == null" @click="applyTemplate">应用</el-button>
+        <el-button @click="templateDialog.visible = false">{{ lt('liveGame.common.cancel') }}</el-button>
+        <el-button type="primary" :disabled="templateDialog.selected == null" @click="applyTemplate">{{ lt('liveGame.lineup.apply') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -165,11 +165,13 @@ import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
 import LineupPoolPanel from '../../components/admin/LineupPoolPanel.vue';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 import '../../styles/lineup-board.css';
 
 // 兜底：保证 v-loading 指令在 <script setup> 下可解析（与全局注册等价）
 void vLoading;
 
+const { text: lt, isEnglish } = useLiveGameText();
 const route = useRoute();
 const router = useRouter();
 const tabs = useTabsStore();
@@ -204,17 +206,19 @@ const dragHover = ref(null);        // 拖拽中指针所在的可释放区域�
 const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
 const rosterHint = computed(() => {
-  if (mode.value === 'SOFTBALL') return extraBatter.value ? '阵容确认（垒球：10-11 人）' : '阵容确认（垒球：10 人）';
-  return extraBatter.value ? '阵容确认（棒球：9-12 人，含 EP 额外打击者）' : '阵容确认（棒球：9 人）';
+  if (mode.value === 'SOFTBALL') return lt(extraBatter.value ? 'liveGame.lineup.rosterSoftballExtra' : 'liveGame.lineup.rosterSoftball');
+  return lt(extraBatter.value ? 'liveGame.lineup.rosterBaseballExtra' : 'liveGame.lineup.rosterBaseball');
 });
 
 const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null), {
   extraBatter,
   ohtaniRule,
+  text: lt,
 });
 const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null), {
   extraBatter,
   ohtaniRule,
+  text: lt,
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
@@ -228,24 +232,19 @@ const ohtaniAction = computed(() => {
   return 'none';
 });
 const ohtaniButtonLabel = computed(() => {
-  if (ohtaniAction.value === 'cancel-dh-pitcher') return '取消兼投';
-  if (ohtaniAction.value === 'pitcher-to-dh') return '兼DH';
-  return '设为兼投';
+  if (ohtaniAction.value === 'cancel-dh-pitcher') return lt('liveGame.lineup.cancelDhPitch');
+  if (ohtaniAction.value === 'pitcher-to-dh') return lt('liveGame.lineup.pitcherToDh');
+  return lt('liveGame.lineup.setDhPitch');
 });
 const ohtaniButtonDisabled = computed(() => ohtaniAction.value === 'none');
 const ohtaniHint = computed(() => {
   if (!ohtaniRule.value) return '';
   const b = board.value;
-  if (b.hasDhPitcher.value && !b.hasP.value) {
-    return '大谷规则：DH 可兼先发投手；换投后保留 DH，不可再移防。';
-  }
-  if (b.hasP.value && b.hasDh.value) return '大谷规则：打线同时有投手位和 DH，请先调整';
-  if (b.hasP.value) return '大谷规则：点「兼DH」把当前投手设为 DH 兼投，自动填充 DH 槽';
-  if (!b.hasDh.value && b.fieldingPitcherId.value != null) {
-    return '大谷规则：点「兼DH」把当前投手设为 DH 兼投';
-  }
-  if (b.hasDh.value) return '大谷规则：点「设为兼投」把 DH 设为先发投手';
-  return '大谷规则：先把球员放到 DH 槽或投手丘，再点对应按钮';
+  if (b.hasDhPitcher.value && !b.hasP.value) return lt('liveGame.lineup.ohtaniOk');
+  if (b.hasP.value && b.hasDh.value) return lt('liveGame.lineup.ohtaniHasP');
+  if (b.hasP.value || b.fieldingPitcherId.value != null) return lt('liveGame.lineup.ohtaniPitcherToDhHint');
+  if (b.hasDh.value) return lt('liveGame.lineup.ohtaniSetDhPitchHint');
+  return lt('liveGame.lineup.ohtaniNoDh');
 });
 function onToggleOhtani() {
   const action = ohtaniAction.value;
@@ -265,11 +264,14 @@ const teamsReady = computed(() =>
 const canSave = computed(() => teamsReady.value);
 const canStartEntry = computed(() => teamsReady.value && awayBoard.lineupComplete.value && homeBoard.lineupComplete.value);
 
-const homeTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.homeTeamId)?.name ?? '主队');
-const awayTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.awayTeamId)?.name ?? '客队');
+const homeTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.homeTeamId)?.name ?? lt('liveGame.team.home'));
+const awayTeamName = computed(() => teams.value.find((t) => t.id === setupForm.value.awayTeamId)?.name ?? lt('liveGame.team.away'));
 
 const errorIndices = computed(() => board.value.validation.value.errorRowIndices ?? []);
-const lineupErrorMsg = computed(() => visibleLineupError(board.value.validation.value.msg));
+const lineupErrorMsg = computed(() => {
+  const msg = visibleLineupError(board.value.validation.value.msg);
+  return msg && isEnglish.value ? lt('liveGame.lineup.notice.epNotOpenInline') : msg;
+});
 
 // R1：球场卡槽视图（9 守备位 + DH）
 const fieldSlotViews = computed(() => {
@@ -292,13 +294,13 @@ const fieldSlotViews = computed(() => {
         (r) => !isPlaceholder(r) && posOf(r) === 'DH' && String(r.id) === String(b.fieldingPitcherId.value)
       );
       player = b.roster.value.find((p) => String(p.id) === String(b.fieldingPitcherId.value)) ?? null;
-      if (player) badge = dhPitcherRow ? 'DH兼投' : '仅守备';
+      if (player) badge = dhPitcherRow ? lt('liveGame.lineup.badgeTwoWay') : lt('liveGame.lineup.badgeFieldOnly');
       if (dhPitcherRow) orderRow = dhPitcherRow;
     }
     const orderIndex = orderRow ? filledRows.findIndex((r) => String(r.id) === String(orderRow.id)) + 1 : 0;
     const error = rowIndex >= 0 && errIdx.includes(rowIndex);
     const selfPending = !!player && String(player.id) === pickedId;
-    return { code, player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code), selfPending };
+    return { code, label: lt(`liveGame.lineup.position.${code}`), player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code), selfPending };
   });
 });
 
@@ -489,7 +491,7 @@ async function loadRosters() {
   ]);
   if (homePool.failed || awayPool.failed) {
     // 秩序册服务不可用：回落本队全名册保持可用（保存时门①/门②仍兜底），并提示
-    ElMessage.warning('未能加载赛事秩序册名单，已回退本队全名册（保存时仍将校验）');
+    ElMessage.warning(lt('liveGame.lineup.rosterFallback'));
     homePool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.homeTeamId) };
     awayPool = { restricted: false, players: await fetchPlayersByTeam(setupForm.value.awayTeamId) };
   }
@@ -497,14 +499,14 @@ async function loadRosters() {
   homeBoard.setRoster(homePool.players);
   awayBoard.setRoster(awayPool.players);
   unavailable.value = { home: [], away: [] };
-  warnEmptyPool('主队', homePool);
-  warnEmptyPool('客队', awayPool);
+  warnEmptyPool(lt('liveGame.team.home'), homePool);
+  warnEmptyPool(lt('liveGame.team.away'), awayPool);
 }
 
 // 受限赛事下池空提示（未报名 / 未提交名单）
 function warnEmptyPool(label, pool) {
   if (pool?.restricted === true && !(pool.players ?? []).length) {
-    ElMessage.warning(`${label}尚未在本赛事报名或提交名单，暂无可选球员`);
+    ElMessage.warning(lt('liveGame.lineup.poolEmpty', { label }));
   }
 }
 
@@ -591,20 +593,20 @@ async function loadGame(id) {
   try {
     const e = await gameApi.get(id);
     if (e == null || e.id == null) {
-      ElMessage.warning('比赛不存在或已删除');
+      ElMessage.warning(lt('liveGame.lineup.gameMissing'));
       await router.replace({ name: 'AdminGames', params: { eventId: String(eventId.value) } });
       return;
     }
     gameStatus.value = e.status ?? '';
     if (e.status === 'final') {
-      ElMessage.warning('该比赛已结束，无法编辑先发阵容');
+      ElMessage.warning(lt('liveGame.lineup.gameFinal'));
       await router.replace({ name: 'AdminGames', params: { eventId: String(eventId.value) } });
       return;
     }
     if (e.status === 'live') {
       const r = await gameStatsApi.listByGame(id).catch(() => null);
       if ((r?.list ?? []).some(hasRecordedGameStat)) {
-        ElMessage.warning('该比赛已开始录入，请从列表点「继续录入」进入录入页');
+        ElMessage.warning(lt('liveGame.lineup.gameLive'));
         await router.replace({ name: 'AdminGameLiveResume', params: { eventId: String(eventId.value), gameId: String(id) } });
         return;
       }
@@ -628,7 +630,7 @@ async function loadGame(id) {
           .map((x) => x.name || x.id)
           .filter((x) => x != null);
         if (removedNames.length) {
-          ElMessage.warning(`已从阵容中移除未报名球员：${removedNames.join('、')}`);
+          ElMessage.warning(lt('liveGame.lineup.removedUnregistered', { names: removedNames.join(isEnglish.value ? ', ' : '、') }));
         }
         homeBoard.loadDraft({
           rows: homeFiltered.keptRows,
@@ -647,18 +649,18 @@ async function loadGame(id) {
       }
     }
   } catch (err) {
-    ElMessage.error(err?.message ?? '加载已保存阵容失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.loadLineupFailed'));
   }
 }
 
 // 旧件 Ns()：保存 / 保存并退出
 async function save(exit) {
   if (setupForm.value.homeTeamId == null || setupForm.value.awayTeamId == null) {
-    ElMessage.warning('请先选择主客队');
+    ElMessage.warning(lt('liveGame.lineup.selectTeams'));
     return;
   }
   if (setupForm.value.homeTeamId === setupForm.value.awayTeamId) {
-    ElMessage.warning('主队与客队不能相同');
+    ElMessage.warning(lt('liveGame.lineup.sameTeams'));
     return;
   }
   saving.value = true;
@@ -679,7 +681,7 @@ async function save(exit) {
       });
       id = res?.data?.id ?? null;
       if (id == null) {
-        ElMessage.error(res?.msg || '保存失败');
+        ElMessage.error(res?.msg || lt('liveGame.lineup.saveFailed'));
         return;
       }
       currentGameId.value = id;
@@ -702,7 +704,7 @@ async function save(exit) {
     }
     const payload = draftPayload(id);
     await gameApi.saveLineup(id, JSON.stringify(payload));
-    ElMessage.success('已保存，可在赛程/结果页继续录入');
+    ElMessage.success(lt('liveGame.lineup.savedContinue'));
     if (exit) {
       tabs.removeTab(route.path);
       await router.replace({ name: 'AdminGames', params: { eventId: String(eventId.value) } });
@@ -710,7 +712,7 @@ async function save(exit) {
       await router.replace({ name: 'AdminGameLiveLineupGame', params: { eventId: String(eventId.value), gameId: String(id) } });
     }
   } catch (err) {
-    ElMessage.error(err?.message ?? '保存失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.saveFailed'));
   } finally {
     saving.value = false;
   }
@@ -737,7 +739,7 @@ async function startEntry() {
       });
       id = res?.data?.id ?? null;
       if (!id) {
-        ElMessage.error(res?.msg || '创建比赛失败');
+        ElMessage.error(res?.msg || lt('liveGame.lineup.createGameFailed'));
         return;
       }
       currentGameId.value = id;
@@ -808,18 +810,18 @@ async function startEntry() {
     } catch (error) {
       if (isBusinessError(error)) {
         // 业务校验失败（如秩序册名单外球员 400）：中止进入录入，先修正阵容（不写 bootstrap）
-        ElMessage.error(error.message ?? '阵容校验未通过，请修正后重试');
+        ElMessage.error(error.message ?? lt('liveGame.lineup.lineupInvalid'));
         return;
       }
       console.warn('[LiveGameLineup] initial snapshot save failed', error);
-      ElMessage.warning('初始阵容未同步到服务器，切换页面后可能需要重排阵容');
+      ElMessage.warning(lt('liveGame.lineup.initialSyncFailed'));
     }
     // 保存成功或网络降级均写入录入引导（业务校验失败路径已在上面 return，不写）
     writeEntryBootstrap(eventId.value, id, payload);
-    ElMessage.success('阵容与对战信息已保存，正在进入录入…');
+    ElMessage.success(lt('liveGame.lineup.savedEntering'));
     await router.replace({ name: 'AdminGameLiveResume', params: { eventId: String(eventId.value), gameId: String(id) } });
   } catch (err) {
-    ElMessage.error(err?.message ?? '保存阵容失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.saveLineupFailed'));
   } finally {
     saving.value = false;
   }
@@ -829,7 +831,7 @@ async function startEntry() {
 async function openTemplates(team) {
   const teamId = team === 'away' ? setupForm.value.awayTeamId : setupForm.value.homeTeamId;
   if (!teamId) {
-    ElMessage.warning('请先选择主客队');
+    ElMessage.warning(lt('liveGame.lineup.selectTeams'));
     return;
   }
   templateDialog.value.team = team;
@@ -838,12 +840,12 @@ async function openTemplates(team) {
     const list = (await lineupTemplateApi.list(teamId)) ?? [];
     templateDialog.value.list = list;
     if (!list.length) {
-      ElMessage.info('该球队暂无阵容模板，请先在「阵容模板」菜单中创建');
+      ElMessage.info(lt('liveGame.lineup.templateNone'));
       return;
     }
     templateDialog.value.visible = true;
   } catch (err) {
-    ElMessage.error(err?.message ?? '加载模板列表失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.templateListFailed'));
   }
 }
 
@@ -855,14 +857,14 @@ async function applyTemplate() {
   try {
     const t = await lineupTemplateApi.get(teamId, id);
     if (!t?.slots?.length) {
-      ElMessage.warning('模板数据为空');
+      ElMessage.warning(lt('liveGame.lineup.templateEmpty'));
       return;
     }
-    await ElMessageBox.confirm('将用该模板覆盖当前球队的先发阵容与替补名单，是否继续？', '应用阵容模板');
+    await ElMessageBox.confirm(lt('liveGame.lineup.templateConfirm'), lt('liveGame.lineup.templateConfirmTitle'));
     // 电子秩序册（Issue #310）：受限赛事下过滤模板中的名单外球员（槽位置空待选、替补/投手剔除）
     const filtered = filterTemplateByPool(t, rosterPools.value[team]);
     if (filtered.removedCount > 0) {
-      ElMessage.warning(`模板中有 ${filtered.removedCount} 名球员不在本赛事报名名单中，已留空或移除，请重新选择`);
+      ElMessage.warning(lt('liveGame.lineup.templateRemoved', { count: filtered.removedCount }));
     }
     boardOf(team).applyTemplate({
       slots: filtered.slots,
@@ -872,7 +874,7 @@ async function applyTemplate() {
     templateDialog.value.visible = false;
   } catch (err) {
     if (err === 'cancel' || err === 'close') return; // 用户取消二次确认
-    ElMessage.error(err?.message ?? '加载模板失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.templateLoadFailed'));
   }
 }
 
@@ -889,7 +891,7 @@ async function ensureSetupTeamOptions() {
     try {
       name = (await fetchResult(`/api/team/${id}`))?.data?.name ?? '';
     } catch { /* 网络异常同样退回 ID 展示 */ }
-    teams.value = [...teams.value, { id, name: name ? `${name}（历史）` : String(id) }];
+    teams.value = [...teams.value, { id, name: name ? `${name}${lt('liveGame.lineup.historySuffix')}` : String(id) }];
   }
 }
 
@@ -920,7 +922,7 @@ onMounted(async () => {
     }
     await ensureSetupTeamOptions();
   } catch (err) {
-    ElMessage.error(err?.message ?? '加载失败');
+    ElMessage.error(err?.message ?? lt('liveGame.lineup.loadFailed'));
   } finally {
     loading.value = false;
   }
