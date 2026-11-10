@@ -292,6 +292,24 @@ test('Issue #527：没有接杀时同垒菜单不提供封杀', async ({ page })
   await page.locator('.rdm__cancel:visible').click();
 });
 
+test('拖拽时前方垒位有人保持阻塞：不能越过二垒跑者', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 1);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 2);
+  await startRunnerDrag(page, 1);
+  await expect(page.locator('rect.runner-drop-zone-rect[data-base="2"]:visible')).toHaveCount(0);
+  await expect(page.locator('rect.runner-drop-zone-rect[data-base="3"]:visible')).toHaveCount(0);
+  await expect(page.locator('rect.runner-drop-zone-rect[data-base="4"]:visible')).toHaveCount(0);
+  await expect(page.locator('rect.runner-drop-zone-rect[data-base="1"]:visible')).toHaveCount(1);
+  await page.mouse.up();
+  await expect(page.locator('rect.runner-drop-zone-rect:visible')).toHaveCount(0);
+  await waitForRunnerToken(page, 1);
+  await waitForRunnerToken(page, 2);
+});
+
 test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，拖拽安打推进后才进垒', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);

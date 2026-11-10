@@ -6170,7 +6170,7 @@ var sg={
         t>=1&&t<=3?m(LgAdvance({reasonCn:s,runner:e,from:t,to:t})):m(`跑者 ${logPlayerName(e)} 留在垒上`),Qa(!1);
         return
       }
-      t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]&&ds(a,{origin:g,reasonCn:s}),l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
+      t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
     }
     function fr(e){
       const t=[];
@@ -6194,6 +6194,10 @@ var sg={
         runner:a,fromBase:s,toBase:r
       }
       =t,p=a.id??a.name??"?";
+      if(!va(s,r,Ei.value)){
+        ge.value=null,J("前方垒位有人，请先处理前位跑者","warning");
+        return
+      }
       de(`拖拽进垒-安全[${s}>${r}]`),ge.value=null,e.id==="safe_sb"&&(a.stats.batting.sb=(a.stats.batting.sb??0)+1,paceCatcherStat("catcherSb"));
       if(e.id==="safe_pb"&&!l.playPbCredited)l.playPbCredited=!0,l.playWpCredited=!1,paceCatcherStat("pb"),D(LgPitch({who:Vt("C")?.name??"捕手",kind:"passed_ball"}));
       const g=Se.value;
@@ -6241,10 +6245,9 @@ var sg={
         );
         return
       }
-      const m=r<4&&l.runners[r]?fr(r):[];
       let rbiWho=null;
       e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_hit_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
-      wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([...m,{
+      wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([{
         playerId:p,from:s,to:r
       }
       ])
