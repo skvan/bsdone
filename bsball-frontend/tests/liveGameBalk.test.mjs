@@ -1,10 +1,11 @@
-// 投手犯规（BK）：自动坏球、自动推进与三垒得分 RBI 归属——静态回归断言（Issue #571）
+// 投手犯规 / 不合法投球：按垒上状态自动分流——静态回归断言（Issue #651）
 // 运行：node --test tests/liveGameBalk.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
+const pitchMenuSrc = fs.readFileSync(new URL('../src/components/admin/LiveGamePitchMenu.vue', import.meta.url), 'utf8');
 
 const pick = (startMark, endMark) => {
   const i = src.indexOf(startMark);
@@ -21,30 +22,44 @@ test('投手犯规不再被「请先记录至少一次投球」守卫拦截', ()
   assert.doesNotMatch(body, /\["BK","WP"/, '旧守卫不得残留');
 });
 
-test('投手犯规无论垒上是否有人都会自动记一个坏球，满四坏按保送处理', () => {
+test('BK 使用纯函数按垒上状态分流，不再无条件记坏球或记 RBI', () => {
   const body = pick('if(e==="BK"){', 'else if(e==="WP"){');
-  assert.match(body, /l\.balls\+\+/, 'BK 必须累加坏球');
-  assert.match(body, /kind:"balk_ball"/, '日志使用「投手犯规（记坏球 Bx-Sy）」');
-  assert.match(body, /l\.balls>=4[^;]*bt\("BB",\[\]\)/, '第四坏球按四坏保送收尾');
-  const ballPos = body.indexOf('l.balls++');
-  const aiPos = body.indexOf('ai({');
-  assert.ok(aiPos < 0 || ballPos < aiPos, '坏球累加独立于「是否有跑者」分支');
+  assert.match(body, /LgBalkAction\(\{runnersOnBase:Ut\(\)>0\}\)/,
+    '有跑者才推进，垒上无人改判不合法投球');
+  assert.match(body, /action\.advanceRunners/, '有跑者推进一垒');
+  assert.match(body, /stats\.pitching\.bk/, '只有 Balk 记投手 BK');
+  assert.match(body, /Wt\("B",\{logKind:action\.logKind\}\)/, '垒上无人走坏球记账（满四坏由 Wt 收尾为保送）');
+  assert.doesNotMatch(body, /l\.balls\+\+/, '不得无条件累加坏球');
+  assert.doesNotMatch(body, /creditRbiToBatter|lastAb|rbiReason:"BALK"/, '投手犯规不得再给打者记 RBI');
+  assert.match(body, /ai\(\{runCause:"BALK"\}\)/, '有跑者推进且得分原因记为 BALK');
+  assert.match(body, /kind:action\.logKind/, '有跑者日志为投手犯规');
 });
 
-test('投手犯规有跑者时自动推进，并按三垒跑者归属 RBI', () => {
-  const body = pick('if(e==="BK"){', 'else if(e==="WP"){');
-  assert.match(body, /dt\.value\?\.runnerIdsBefore\?\.\[3\]/, '以打席开始时的三垒跑者判定 RBI 归属');
-  assert.match(body, /Me\.value\.reduce\(\(found,s\)=>s\.inning===l\.inning&&s\.half===halfNow\?s:found,null\)/,
-    '上一棒取本半局最后一条已落定打席，避免打线回卷时取错');
-  assert.doesNotMatch(body, /El\.value/, '不得再用按当前棒次过滤的 El，回卷时会漏掉上一棒');
-  assert.match(body, /rbiBatter=thirdAtPaStart\?lastBatter:be\.value/, '上一棒找不到时不得回退到下一棒记打点');
-  assert.match(body, /creditRbiToBatter:!!\(runnerOnThird&&rbiBatter\)/, '三垒有人且归属打者明确时才记 RBI');
-  assert.match(body, /batter:runnerOnThird&&rbiBatter\?rbiBatter:void 0/, 'RBI 记给判定后的打者');
-  assert.match(body, /lastAb\.rbi=\(lastAb\.rbi\?\?0\)\+1/, 'RBI 同步写入上一打席摘要');
-  assert.match(body, /runCause:"BALK"/, '得分原因标记为投手犯规');
+test('不合法投球仍按正常投球计球数：满四坏保送且日志可区分', () => {
+  const body = pick('function Wt(e,{logKind}={}){', 'function Hf(){');
+  assert.match(body, /kind:logKind\?\?"ball"/, '默认仍为普通坏球');
+  assert.match(body, /l\.balls\+\+,l\.balls>=4/, '坏球累加与满四坏判定保留');
+  assert.match(body, /bt\("BB",\[\]\)/, '第四坏球按四坏保送收尾');
+  assert.match(body, /kind:logKind,count:/, '第四坏球也先记不合法投球日志');
 });
 
-test('ai() 将完整事件传给 ti()，避免 RBI 记分字段被丢弃', () => {
-  const body = pick('function ai(event){', 'function bo(');
-  assert.match(body, /ti\(event\?\?\{\}\)/, 'ai 必须透传事件对象');
+test('移除重复的「不合法投球」入口与推进/不推进子菜单', () => {
+  assert.ok(!src.includes('extra:ILLEGAL_ADVANCE'), '旧 ILLEGAL_ADVANCE 命令与映射必须移除');
+  assert.ok(!src.includes('extra:ILLEGAL_NO_ADVANCE'), '旧 ILLEGAL_NO_ADVANCE 命令与映射必须移除');
+  assert.ok(!src.includes('M.value==="illegal"'), '旧“不合法投球”子菜单必须移除');
+  assert.ok(!src.includes('onClick:le'), '旧“推进跑者”处理器必须移除');
+  assert.ok(!src.includes('onClick:fe'), '旧“不推进跑者”处理器必须移除');
+});
+
+test('保留单一入口，标签同时说明 Balk / Illegal Pitch', () => {
+  assert.ok(src.includes('投手犯规 / 不合法投球'), '中文入口标签');
+  assert.ok(src.includes('Balk / Illegal Pitch'), '英文入口标签');
+  assert.ok(!src.includes('"不合法投球"),n("span",{'), '旧独立“不合法投球”按钮不得残留');
+});
+
+test('实战使用的 PitchMenu 组件同样只保留单一入口', () => {
+  assert.ok(!pitchMenuSrc.includes('extra:ILLEGAL'), '组件不得再发送旧 ILLEGAL 命令');
+  assert.ok(!pitchMenuSrc.includes('不推进跑者'), '组件不得残留“不推进跑者”');
+  assert.ok(pitchMenuSrc.includes('投手犯规 / 不合法投球'), '组件入口标签');
+  assert.ok(pitchMenuSrc.includes('Balk / Illegal Pitch'), '组件英文标签');
 });

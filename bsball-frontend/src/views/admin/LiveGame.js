@@ -70,6 +70,8 @@ import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.j
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { resolveBalkAction as LgBalkAction } from '../../utils/liveGameBalk';
+import { resolveSacrificeCredit as LgSacrificeCredit } from '../../utils/liveGameSacrifice';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
 import { battedShapeColor, battedShapeOf as LgBattedShapeOf, isHomeRunBip as LgIsHomeRun } from '../../utils/battedBallFlight';
 import { projectHomeRunLanding as LgProjectHrLanding, playHomeRunFireworks as LgPlayHrFireworks, spawnHomeRunSideSparks as LgSpawnHrSparks, clearHomeRunFx as LgClearHrFx, HR_FIREWORK_HOLD_MS as LgHrHoldMs, HR_SIDE_SPARK_INTERVAL_MS as LgHrSparkMs, HR_TRAIL_STOPS as LgHrTrailStops, homeRunFieldPos as LgHrFieldPos } from '../../utils/homeRunEffect';
@@ -1300,7 +1302,7 @@ function Zd(u){
   return u in su?su[u]:null
 }
 var em={
-  "play:SH":"lblSAC","pitch:B":"ballB","pitch:S":"strikeLook","pitch:F":"foulF","pitch:FOUL_TIP_OUT":"tip","pitch:HBP":"hbp","pitch:INT_BALL":"ib","walk:IBB":"ibb","extra:CI":"ci","extra:ILLEGAL_ADVANCE":"ilp","extra:ILLEGAL_NO_ADVANCE":"ilp","extra:BATTER_OUT_OTHER":"lblO","extra:PUT_ON":"puton","evt:COACH_TIMEOUT":"puton"
+  "play:SH":"lblSAC","pitch:B":"ballB","pitch:S":"strikeLook","pitch:F":"foulF","pitch:FOUL_TIP_OUT":"tip","pitch:HBP":"hbp","pitch:INT_BALL":"ib","walk:IBB":"ibb","extra:CI":"ci","extra:BATTER_OUT_OTHER":"lblO","extra:PUT_ON":"puton","evt:COACH_TIMEOUT":"puton"
 }
 ,tm={
   swing_miss:"swingK",dropped_3rd:"dk3",illegal:"ilp",dropped_3rd_swing:"swingK",dropped_3rd_look:"strikeLook",bip:"bat",bip_g:"lblG",bip_hg:"lblHG",bip_fly:"lblFlyKind",bip_ld:"lblLD",bip_bunt:"lblBU",bip_pop:"lblPF",bip_g_bo:"lblBO",bip_hg_bo:"lblBO",bip_fly_bo:"lblBO",bip_ld_bo:"lblBO",bip_bunt_bo:"lblBO",bip_bunt_sac:"lblSAC",bip_pop_bo:"lblBO"
@@ -1680,12 +1682,6 @@ var hm=["aria-label"],ym={
     function I(ve){
       performance.now()<K||(ve!=="evt:COACH_TIMEOUT"&&Ae(),S("command",ve),ve==="evt:COACH_TIMEOUT"&&S("close"))
     }
-    function le(){
-      I("extra:ILLEGAL_ADVANCE"),S("close")
-    }
-    function fe(){
-      I("extra:ILLEGAL_NO_ADVANCE"),R.value=["root"]
-    }
     function Ae(){
       F.value=!1,requestAnimationFrame(()=>{
         F.value=!0
@@ -1929,24 +1925,6 @@ var hm=["aria-label"],ym={
         class:"lgpfm__en"
       }
       ,"C. Interference")],-1))]),n("button",{
-        type:"button",class:re(["lgpfm__item",{
-          "lgpfm__item--has-more":he.value
-        }
-        ]),onClick:i[14]||(i[14]=k=>he.value?ie("illegal"):I("pitch:B"))
-      }
-      ,[v(B,{
-        variant:c(o)("open:illegal")
-      }
-      ,null,8,["variant"]),i[155]||(i[155]=n("span",{
-        class:"lgpfm__item-main"
-      }
-      ,[n("span",{
-        class:"lgpfm__cn"
-      }
-      ,"不合法投球"),n("span",{
-        class:"lgpfm__en"
-      }
-      ,"Illegal Pitch (Ball)")],-1)),he.value?(h(),C("span",Bm,"›")):W("",!0)],2),n("button",{
         type:"button",class:"lgpfm__item",onClick:i[305]||(i[305]=k=>I("evt:BK"))
       }
       ,[v(B,{
@@ -1958,10 +1936,10 @@ var hm=["aria-label"],ym={
       ,[n("span",{
         class:"lgpfm__cn"
       }
-      ,"投手犯规"),n("span",{
+      ,"投手犯规 / 不合法投球"),n("span",{
         class:"lgpfm__en"
       }
-      ,"Balk")],-1))]),i[162]||(i[162]=n("div",{
+      ,"Balk / Illegal Pitch")],-1))]),i[162]||(i[162]=n("div",{
         class:"lgpfm__sep"
       }
       ,null,-1)),n("button",{
@@ -2057,37 +2035,7 @@ var hm=["aria-label"],ym={
       ,"进三垒"),n("span",{
         class:"lgpfm__en"
       }
-      ,"Advance to 3rd")],-1))])])):M.value==="illegal"?(h(),C("div",Fm,[n("button",{
-        type:"button",class:"lgpfm__item",onClick:le
-      }
-      ,[v(B,{
-        variant:c(o)("open:illegal")
-      }
-      ,null,8,["variant"]),i[166]||(i[166]=n("span",{
-        class:"lgpfm__item-main"
-      }
-      ,[n("span",{
-        class:"lgpfm__cn"
-      }
-      ,"推进跑者"),n("span",{
-        class:"lgpfm__en"
-      }
-      ,"Advance Runner")],-1))]),n("button",{
-        type:"button",class:"lgpfm__item",onClick:fe
-      }
-      ,[v(B,{
-        variant:c(o)("open:illegal")
-      }
-      ,null,8,["variant"]),i[167]||(i[167]=n("span",{
-        class:"lgpfm__item-main"
-      }
-      ,[n("span",{
-        class:"lgpfm__cn"
-      }
-      ,"不推进跑者"),n("span",{
-        class:"lgpfm__en"
-      }
-      ,"Don't Advance Runner")],-1))])])):M.value==="dropped_3rd"?(h(),C("div",Tm,[n("button",{
+      ,"Advance to 3rd")],-1))])])):M.value==="dropped_3rd"?(h(),C("div",Tm,[n("button",{
         type:"button",class:"lgpfm__item lgpfm__item--has-more",onClick:i[21]||(i[21]=k=>ie("dropped_3rd_swing"))
       }
       ,[v(B,{
@@ -6376,7 +6324,7 @@ var sg={
       }
       const m=r<4&&l.runners[r]?fr(r):[];
       let rbiWho=null;
-      e.id==="safe_last_play_sac"&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi());
+      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi());
       wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([...m,{
         playerId:p,from:s,to:r
       }
@@ -7398,9 +7346,21 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function wf(e){
       const t=El.value;
       if(!t)return null;
+      // 只允许补记本半局已落定的上一棒；El 在本半局无打席时会回退到上一半局。
+      const halfNow=l.isTop?"top":"bottom";
+      if(t.inning!==l.inning||t.half!==halfNow)return null;
       const a=Ar.value.find(s=>Number(s.id)===Number(t.batterPlayerId))??null;
       if(!a)return null;
-      ue(a),e===4?(a.stats.batting.sf=(a.stats.batting.sf??0)+1,a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.resultCode="SF",t.rbi=(t.rbi??0)+1):(a.stats.batting.sh=(a.stats.batting.sh??0)+1,t.resultCode="SH");
+      // 牺牲打补记：只认上一棒已记的击球出局；补记 SF/SH 并回减 AB（PA 不变）。
+      const resultCode=String(t.resultCode??""),credit=LgSacrificeCredit({resultCode,toBase:e});
+      if(!credit){
+        if(resultCode!=="SF"&&resultCode!=="SH")J("上一棒结果不是可用于牺牲打的出局，已仅记录跑者推进","warning");
+        return null
+      }
+      ue(a),a.stats.batting.ab=Math.max(0,(a.stats.batting.ab??0)-1);
+      credit.resultCode==="SF"?(a.stats.batting.sf=(a.stats.batting.sf??0)+1):(a.stats.batting.sh=(a.stats.batting.sh??0)+1),t.resultCode=credit.resultCode;
+      if(!credit.creditRbi)return null;
+      a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.rbi=(t.rbi??0)+1;
       return a
     }
     // 「上一棒内推进（有打点）」：给上一棒打者记 1 分打点（#206；与 wf 的牺牲打记账同机制）
@@ -8704,7 +8664,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function Nf(e){
       return Hn.value.find(t=>!String(t.position??"").trim())??null
     }
-    function Wt(e){
+    function Wt(e,{logKind}={}){
       l.playOut=null;
       if(l.flow?.type==="K_CHOOSE"||l.needNextBatter){
         J("请先完成当前打席（选择三振类型；若为三出局，请先确认半局结束/攻守交换）","warning");
@@ -8719,8 +8679,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       Ea(),l.lastPitchWasBall=e==="B";
       const a=t?.name??"投手";
       if(e==="B"){
-        if(l.balls++,l.balls>=4)return D(LgPitch({who:a,kind:"walk"})),bt("BB",[]);
-        D(LgPitch({who:a,kind:"ball",count:_n(l.balls,l.strikes)}))
+        if(l.balls++,l.balls>=4){
+          logKind&&D(LgPitch({who:a,kind:logKind,count:_n(l.balls,l.strikes)}));
+          return D(LgPitch({who:a,kind:"walk"})),bt("BB",[]);
+        }
+        D(LgPitch({who:a,kind:logKind??"ball",count:_n(l.balls,l.strikes)}))
       }
       else if(e==="S"){
         if(l.strikes++,l.strikes>=3){
@@ -8823,7 +8786,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("暴投只能在坏球后记录","warning");
         return
       }
-      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?"投手犯规":e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
+      if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?(Ut()>0?"投手犯规":"不合法投球"):e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
         l.flow={
           type:"OBST",selectRunner:!0
         };
@@ -8861,27 +8824,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const t=Se.value,a=t?.name??"投手";
       if(e==="BK"){
-        t?.stats?.pitching&&(t.stats.pitching.bk=(t.stats.pitching.bk??0)+1);
-        const runnerOnThird=l.runners[3];
-        const thirdAtPaStart=!!runnerOnThird&&dt.value?.runnerIdsBefore?.[3]!=null&&Number(dt.value.runnerIdsBefore[3])===Number(runnerOnThird.id);
-        const halfNow=l.isTop?"top":"bottom";
-        const lastAb=thirdAtPaStart?Me.value.reduce((found,s)=>s.inning===l.inning&&s.half===halfNow?s:found,null):null;
-        const lastBatter=lastAb?Ar.value.find(p=>Number(p.id)===Number(lastAb.batterPlayerId))??null:null;
-        const rbiBatter=thirdAtPaStart?lastBatter:be.value;
-        const s=ca();
-        l.balls++,D(LgPitch({who:a,kind:"balk_ball",count:_n(l.balls,l.strikes)}),s??void 0);
-        Ut()>0&&ai({
-          resultCode:"BK",
-          resultText:`${a}: 投手犯规`,
-          creditRbiToBatter:!!(runnerOnThird&&rbiBatter),
-          batter:runnerOnThird&&rbiBatter?rbiBatter:void 0,
-          runCause:"BALK",
-          rbiReason:"BALK"
+        // 垒上有人：Balk（跑者各进一垒、投手记 BK、不记坏球与打者 RBI）；
+        // 垒上无人：Illegal Pitch（记一坏球、不记 BK、满四坏保送）。
+        const action=LgBalkAction({runnersOnBase:Ut()>0});
+        if(action.advanceRunners){
+          t?.stats?.pitching&&(t.stats.pitching.bk=(t.stats.pitching.bk??0)+1);
+          D(LgPitch({who:a,kind:action.logKind}),ca()??void 0);
+          // 投手犯规不记打者 RBI；ai 不传 resultCode，避免污染当前打席结果。
+          ai({runCause:"BALK"})
         }
-        );
-        lastAb&&lastBatter&&(lastAb.rbi=(lastAb.rbi??0)+1);
-        l.flow=null;
-        if(l.balls>=4)return bt("BB",[])
+        else Wt("B",{logKind:action.logKind});
+        l.flow=null
       }
       else if(e==="WP"){
         const s=ca();
@@ -9912,10 +9865,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             tagFirstBaseRunnerFromCatcherInterference:!0
           }
           );
-          break;
-          case"extra:ILLEGAL_ADVANCE":Ut()>0?(de("不合法投球-推进跑者"),D(LgSys({kind:"illegal_pitch"}),ca()??void 0),ai()):(Wt("B"),l.needNextBatter?D(LgSys({kind:"illegal_pitch",detail:"walk_ab_end"})):D(LgSys({kind:"illegal_pitch",detail:"walk_no_runner"})));
-          break;
-          case"extra:ILLEGAL_NO_ADVANCE":Wt("B"),D(LgSys({kind:"illegal_pitch",detail:"walk_no_advance"}));
           break;
           case"extra:BATTER_OUT_OTHER":rt("F"),J("请选择完成接杀/封杀的守备员","info");
           break;
