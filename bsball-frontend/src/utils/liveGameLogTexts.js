@@ -168,9 +168,10 @@ export function fcGroup({ batter, ballDesc, chain = [], chainPlayers = [], outRu
 
 // ===== P2 批次2（模板收敛·纯迁移）：投球/换人/特例行（输出与既有文案逐字一致） =====
 
-/** A 组投球行：{主体}: {文案}[ {计数}]；kind 语义见 LABELS（balk_ball 为「投手犯规（记坏球 X）」特例） */
+/** A 组投球行：{主体}: {文案}[ {计数}]；kind 语义见 LABELS（balk_ball 兼容历史日志，illegal_pitch_ball 为垒上无人的不合法投球） */
 export function pitchText({ who, kind, count }) {
   if (kind === "balk_ball") return `${who}: 投手犯规（记坏球 ${count}）`;
+  if (kind === "illegal_pitch_ball") return `${who}: 不合法投球（记坏球 ${count}）`;
   if (kind === "foul_k") return `${who}: 击出界外球（两好球后界外三振）${count}`;
   const LABELS = {
     ball: "坏球",

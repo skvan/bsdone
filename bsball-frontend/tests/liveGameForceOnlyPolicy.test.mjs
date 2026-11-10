@@ -98,9 +98,8 @@ test('牺牲打/暴投改手动；投手犯规/不合法投球保留自动', () 
   assert.ok(!wp.includes('ai('), 'WP 不再自动推进跑者');
   assert.match(wp, /Je\("WP"/);
 
-  const bk = sliceBetween('if(e==="BK"){', 'else if(e==="WP")');
-  assert.match(bk, /ai\(\{/, 'BK 保留自动奖励进垒');
-  assert.ok(source.includes('case"extra:ILLEGAL_ADVANCE":Ut()>0?(de("不合法投球-推进跑者")'), '不合法投球保留自动');
+  assert.match(source, /ai\(\{runCause:"ILLEGAL_PITCH"\}\)/, '垒球不合法投球保留自动奖励进垒');
+  assert.match(source, /ai\(\{runCause:"BALK"\}\)/, '棒球投手犯规保留自动奖励进垒');
 });
 
 test('拖拽安全原因新增安打/牺牲打，去掉未进垒；非强迫封杀不出现', () => {

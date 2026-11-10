@@ -78,26 +78,3 @@ export function resolveGroundOutForceAdvance({ runners } = {}) {
   }
   return collectPlan(slots, homeRunners, 0, false);
 }
-
-// 投手犯规/不合法投球：每个跑者奖励一个垒，三垒跑者回本垒；不是强迫链，但按规则必须前进。
-export function resolveBalkForceAdvance({ runners } = {}) {
-  const homeRunners = [];
-  const moves = [];
-  for (const from of BASES) {
-    const runner = runners?.[from];
-    if (!runner) continue;
-    if (from === 3) homeRunners.push({ runner, from });
-    else moves.push({ runner, from, to: from + 1 });
-  }
-  return {
-    batterTo: 0,
-    batterHome: false,
-    moves,
-    homeRunners,
-    finalBases: {
-      1: null,
-      2: runners?.[1] ?? null,
-      3: runners?.[2] ?? null
-    }
-  };
-}

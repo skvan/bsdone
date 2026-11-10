@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   resolveBatterForceAdvance,
-  resolveGroundOutForceAdvance,
-  resolveBalkForceAdvance
+  resolveGroundOutForceAdvance
 } from '../src/utils/liveGameForceAdvance.js';
 
 const runner = (id) => ({ id });
@@ -128,9 +127,3 @@ test('地滚出局：一垒无人时二垒三垒跑者都不动', () => {
   assert.deepEqual(finalKeys(plan), { 1: null, 2: 'R2', 3: 'R3' });
 });
 
-test('投手犯规：所有跑者奖励一个垒，三垒跑者回本垒', () => {
-  const plan = resolveBalkForceAdvance({ runners: bases({ 1: 'R1', 2: 'R2', 3: 'R3' }) });
-  assert.deepEqual(moveKeys(plan), ['R1:1>2', 'R2:2>3']);
-  assert.deepEqual(homeKeys(plan), ['R3:3']);
-  assert.deepEqual(finalKeys(plan), { 1: null, 2: 'R1', 3: 'R2' });
-});

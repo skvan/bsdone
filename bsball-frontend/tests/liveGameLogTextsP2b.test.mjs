@@ -18,6 +18,7 @@ test('pitchText：投球族逐字映射（纯迁移基线）', () => {
   assert.equal(pitchText({ who: '梁志伟', kind: 'hit_by_pitch' }), '梁志伟: 触身球');
   assert.equal(pitchText({ who: '梁志伟', kind: 'balk' }), '梁志伟: 投手犯规');
   assert.equal(pitchText({ who: '梁志伟', kind: 'balk_ball', count: '(B1-S0)' }), '梁志伟: 投手犯规（记坏球 (B1-S0)）');
+  assert.equal(pitchText({ who: '梁志伟', kind: 'illegal_pitch_ball', count: '(B1-S0)' }), '梁志伟: 不合法投球（记坏球 (B1-S0)）');
   assert.equal(pitchText({ who: '梁志伟', kind: 'wild_pitch' }), '梁志伟: 暴投 (WP)');
   assert.equal(pitchText({ who: '陈捕', kind: 'passed_ball' }), '陈捕: 捕逸 (PB)');
   assert.equal(pitchText({ who: '梁志伟', kind: 'walk' }), '梁志伟: 四坏保送');
@@ -41,7 +42,7 @@ test('教练暂停/换人/设置跑者/牵制 none/野选未得分/界外+失误
 test('P3 门禁（承接 P2b）：D( 字面量直写归零（双引号/反引号形态）+ 系统类已归口', () => {
   const n = (src.match(/D\(\s*[`"']/g) || []).length;
   assert.equal(n, 0, `D( 字面量直写数 ${n} 应为 0（新增文案请经 liveGameLogTexts 生成器）`);
-  for (const f of ['LgSys({kind:"adjust_score"', 'LgSys({kind:"adjust_bases"', 'LgSys({kind:"inning_header"', 'LgSys({kind:"dk3_guard"', 'LgSys({kind:"game_start"', 'LgSys({kind:"illegal_pitch"', 'LgErr({reasonCn:b', 'LgSteal({name:t.name']) {
+  for (const f of ['LgSys({kind:"adjust_score"', 'LgSys({kind:"adjust_bases"', 'LgSys({kind:"inning_header"', 'LgSys({kind:"dk3_guard"', 'LgSys({kind:"game_start"', 'LgErr({reasonCn:b', 'LgSteal({name:t.name']) {
     assert.ok(src.includes(f), '归口断言：' + f);
   }
 });
@@ -49,7 +50,7 @@ test('P3 门禁（承接 P2b）：D( 字面量直写归零（双引号/反引号
 test('P2b 静态：import 别名与迁移点抽检', () => {
   assert.ok(src.includes('pitchText as LgPitch'), 'pitchText 别名');
   assert.ok(src.includes('subText as LgSub'), 'subText 别名');
-  assert.ok(src.includes('D(LgPitch({who:a,kind:"ball",count:'), '坏球迁移');
+  assert.ok(src.includes('D(LgPitch({who:a,kind:logKind??"ball",count:'), '坏球迁移（支持不合法投球日志类型）');
   assert.ok(src.includes('D(LgPitch({who:a,kind:"walk"})'), '四坏保送迁移');
   assert.ok(src.includes('D(LgCoach((l.isTop?At:xt).value?.name))'), '教练暂停迁移');
   assert.ok(src.includes('LgSub({kind:"run",inName:P.name,outName:t.name})'), '代跑迁移（P3 注记追加后仍以 LgSub 为基）');
