@@ -6074,6 +6074,10 @@ var sg={
       (t.pointerType==="touch"&&t.moved||t.moved)&&e.preventDefault(),t.moved&&vp()
     }
     function gp(e,t){
+      if(l.flow?.type==="ADVANCE_FE"&&l.flow.advanceFeStep==="pick_target"&&l.flow.runner&&l.flow.errorPos!=null){
+        lc(e),t.preventDefault(),t.stopPropagation();
+        return
+      }
       if(l.flow&&isChainFlow(l.flow)&&!settleChainIfReady()){
         warnFlowBusy(l.flow),t.preventDefault(),t.stopPropagation();
         return
@@ -6171,21 +6175,6 @@ var sg={
         return
       }
       t>0&&(l.runners[t]=null),a===4?(ls(1,{runner:e,pitcher:p,origin:g}),e.stats.batting.r=(e.stats.batting.r??0)+1,m(LgAdvance({reasonCn:s,runner:e,from:t,to:4,rbiNote}))):(l.runners[a]=e,m(LgAdvance({reasonCn:s,runner:e,from:t,to:a}))),Qa(!1)
-    }
-    function fr(e){
-      const t=[];
-      for(let a=3;
-      a>=e;
-      a--){
-        const s=l.runners[a];
-        if(!s)continue;
-        const r=s.id??s.name??"?";
-        t.push({
-          playerId:r,from:a,to:a+1
-        }
-        )
-      }
-      return t
     }
     function Sp(e){
       const t=ge.value;
@@ -9954,15 +9943,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!t||t.type!=="ADVANCE_FE"||t.advanceFeStep!=="pick_target"||!t.runner||t.errorPos==null)return;
       const a=t.runnerBase??0;
       if(e<=a)return;
+      if(!va(a,e,Ei.value)){
+        J("前方垒位有人，请先处理前位跑者","warning");
+        return
+      }
       const s=t.runner,r=Vt(t.errorPos),p={
         1:"一垒",2:"二垒",3:"三垒",4:"本垒"
       }
-      ,g=s.id??s.name??"?",m=e<4&&l.runners[e]?fr(e):[];
+      ,g=s.id??s.name??"?";
       const credit=shouldCreditError(t.advanceFeReasonId);
       de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt();
       const credited=credit&&creditFieldingError(r);
       const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
-      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]&&ds(e,{origin:"ERROR",runCause:"ERROR",reasonCn:t.advanceFeReasonCn??b}),l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
+      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([{
         playerId:g,from:a,to:e
       }
       ]),Qa(!1)
@@ -9986,22 +9979,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!e||e.type!=="E")return;
       e.multiError=!e.multiError;
       pt(),J(e.multiError?"已切换多失误模式：继续点选其他失误责任者，各记 1E；再点已选守备员可取消":"已切回单选：当前选择保留，点其他守备员将替换全部","info")
-    }
-    function ds(e,cause={}){
-      const t=l.runners[e];
-      if(!t)return;
-      l.runners[e]=null;
-      const a=e+1;
-      if(a===4){
-        t.stats.batting.r=(t.stats.batting.r??0)+1;
-        ls(1,{runner:t,pitcher:Se.value??void 0,origin:cause.origin??"NORMAL",runCause:cause.runCause});
-        // 被前位跑者挤回本垒的得分同样要留日志，否则记分板有分、日志无分
-        cause.reasonCn&&D(LgAdvance({reasonCn:cause.reasonCn,runner:t,from:e,to:4}))
-      }
-      else{
-        l.runners[a]&&ds(a,cause),l.runners[a]=t;
-        cause.reasonCn&&D(LgAdvance({reasonCn:cause.reasonCn,runner:t,from:e,to:a}))
-      }
     }
     function ms(){
       na(),clearChainVisual();

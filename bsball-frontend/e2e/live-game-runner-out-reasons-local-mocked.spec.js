@@ -180,6 +180,14 @@ async function clickFielder(page, pos) {
   await page.waitForTimeout(250);
 }
 
+async function clickBase(page, base) {
+  const group = page.locator('.runners-group > .runner-draggable-group').nth(base - 1);
+  await group.scrollIntoViewIfNeeded();
+  const box = await group.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(250);
+}
+
 async function saveGame(page, bucket) {
   const before = bucket.snapshots.length;
   await page.getByRole('button', { name: '保存比赛' }).click();
@@ -308,6 +316,25 @@ test('拖拽时前方垒位有人保持阻塞：不能越过二垒跑者', async
   await expect(page.locator('rect.runner-drop-zone-rect:visible')).toHaveCount(0);
   await waitForRunnerToken(page, 1);
   await waitForRunnerToken(page, 2);
+});
+
+test('同垒牵制暴传：选守备员后点目标垒完成推进', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const menu = await dragRunner(page, 1, 1, 'safe');
+  await expect(menu.getByText('投手牵制尝试')).toBeVisible();
+  await pickMenuItem(page, '投手牵制尝试');
+  await page.getByRole('button', { name: '暴传失误推进' }).click();
+  const flow = page.locator('.les-flow-card');
+  await expect(flow).toContainText('请点击失误责任守备员');
+  await clickFielder(page, 'P');
+  await expect(flow).toContainText('选择目标垒');
+  await clickBase(page, 2);
+  await expect(flow).toHaveCount(0);
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：二垒有人');
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['101'].fielding.e).toBe(1);
 });
 
 test('拖拽选失误推进后直接使用拖拽目标垒，不再二次选目标垒', async ({ page }) => {

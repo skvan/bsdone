@@ -110,8 +110,12 @@ test('拖拽时前方垒位有人保持阻塞，不自动前推占垒者', () =>
   assert.match(sp, /if\(!va\(s,r,Ei\.value\)\)/, '拖拽按占用路径阻塞');
   assert.match(sp, /前方垒位有人，请先处理前位跑者/, '阻塞提示');
   assert.ok(!sp.includes('fr(r)'), '拖拽不再自动前推前位跑者');
-  const wp = sliceBetween('function wp(e,t,a,s,r,rbiNote){', 'function fr(e){');
+  const wp = sliceBetween('function wp(e,t,a,s,r,rbiNote){', 'function Sp(e){');
   assert.ok(!wp.includes('ds(a'), '拖拽进垒不再自动前推占垒者');
+  const lc = sliceBetween('function lc(e){', 'function ic(){');
+  assert.match(lc, /if\(!va\(a,e,Ei\.value\)\)/, '失误推进目标垒同样按占用阻塞');
+  assert.ok(!lc.includes('fr(e)') && !lc.includes('ds(e'), '失误推进不再自动前推占垒者');
+  assert.match(source, /l\.flow\?\.type==="ADVANCE_FE"&&l\.flow\.advanceFeStep==="pick_target"[\s\S]{0,80}lc\(e\)/, '点目标垒完成 ADVANCE_FE 推进');
 });
 
 test('拖拽安全原因新增安打/牺牲打，去掉未进垒；非强迫封杀不出现', () => {
