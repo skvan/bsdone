@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { pitchText, coachTimeoutText, subText, setRunnerText, pickoffNoneText, fpMissText, foulErrorText } from '../src/utils/liveGameLogTexts.js';
+import { pitchText, coachTimeoutText, subText, setRunnerText, pickoffNoneText, fpMissText, foulErrorText, sacrificeBackfillNote } from '../src/utils/liveGameLogTexts.js';
 
 const src = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
 
@@ -45,6 +45,13 @@ test('P3 门禁（承接 P2b）：D( 字面量直写归零（双引号/反引号
   for (const f of ['LgSys({kind:"adjust_score"', 'LgSys({kind:"adjust_bases"', 'LgSys({kind:"inning_header"', 'LgSys({kind:"dk3_guard"', 'LgSys({kind:"game_start"', 'LgErr({reasonCn:b', 'LgSteal({name:t.name']) {
     assert.ok(src.includes(f), '归口断言：' + f);
   }
+});
+
+test('sacrificeBackfillNote：牺牲打事后补记的 PBP 尾注', () => {
+  assert.equal(sacrificeBackfillNote('SF'), '补记高飞牺牲 (SF)');
+  assert.equal(sacrificeBackfillNote('SH'), '补记牺牲触击 (SH)');
+  assert.equal(sacrificeBackfillNote('OUT_F'), '');
+  assert.equal(sacrificeBackfillNote(undefined), '');
 });
 
 test('P2b 静态：import 别名与迁移点抽检', () => {
