@@ -6,6 +6,13 @@
         <el-button @click="goBack">返回比赛列表</el-button>
         <el-button v-if="hasPerm('business:lineup-template:manage')" @click="openTemplates">应用阵容模板</el-button>
         <el-button type="primary" :disabled="saving" :loading="saving" @click="save">保存阵容</el-button>
+        <el-tooltip :disabled="!posterDisabledReason" :content="posterDisabledReason" placement="top">
+          <span class="poster-btn-wrap">
+            <el-button :disabled="!canGeneratePoster" :loading="posterGenerating" @click="generatePoster">
+              生成海报
+            </el-button>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 
@@ -66,6 +73,27 @@
 
     <div v-if="lineupErrorMsg" class="lineup-warn">{{ lineupErrorMsg }}</div>
 
+    <LineupPoster
+      v-if="context"
+      ref="posterRef"
+      :context="context"
+      :rows="board.rows.value"
+      :roster="board.roster.value"
+      :bench="board.bench.value"
+      :fielding-pitcher-id="board.fieldingPitcherId.value"
+    />
+
+    <el-dialog v-model="posterDialogVisible" title="赛前阵容海报" width="520px" @closed="revokePoster">
+      <div class="poster-preview-wrap">
+        <img v-if="posterUrl" :src="posterUrl" class="poster-preview" alt="赛前阵容海报" />
+      </div>
+      <template #footer>
+        <el-button @click="posterDialogVisible = false">关闭</el-button>
+        <el-button :disabled="!posterBlob" @click="copyPoster">复制图片</el-button>
+        <el-button type="primary" :disabled="!posterBlob" @click="savePoster">保存图片</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="templateDialog.visible" title="应用阵容模板" width="420px" :close-on-click-modal="false">
       <el-select v-model="templateDialog.selected" placeholder="选择阵容模板" filterable style="width: 100%">
         <el-option v-for="t in templateDialog.list" :key="t.id" :label="t.name" :value="t.id" />
@@ -101,6 +129,8 @@ import {
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
 import LineupPoolPanel from '../../components/admin/LineupPoolPanel.vue';
+import LineupPoster from '../../components/admin/LineupPoster.vue';
+import { downloadBlob } from '../../utils/gameDetailCollage';
 import '../../styles/lineup-board.css';
 
 void vLoading;
@@ -126,6 +156,11 @@ const pending = ref(null);
 const dragHover = ref(null);
 const dragSource = ref(null);
 const savedSignature = ref(null);
+const posterRef = ref(null);
+const posterGenerating = ref(false);
+const posterDialogVisible = ref(false);
+const posterUrl = ref('');
+const posterBlob = ref(null);
 
 const board = useLineupBoard(mode, computed(() => context.value?.teamId ?? null), {
   extraBatter,
@@ -379,6 +414,61 @@ function buildPayload() {
 const payloadSignature = computed(() => JSON.stringify(buildPayload()));
 const isDirty = computed(() => savedSignature.value != null && payloadSignature.value !== savedSignature.value);
 
+const posterDisabledReason = computed(() => {
+  if (posterGenerating.value) return '正在生成海报';
+  if (savedSignature.value == null) return '请先保存阵容';
+  if (!board.lineupComplete.value) return '阵容完整后才能生成海报';
+  if (isDirty.value) return '请先保存最新修改';
+  return '';
+});
+const canGeneratePoster = computed(() => !posterDisabledReason.value);
+
+async function generatePoster() {
+  if (!canGeneratePoster.value || !posterRef.value) return;
+  posterGenerating.value = true;
+  try {
+    const { url, blob } = await posterRef.value.generate();
+    // 生成期间离开页面：组件已卸载，丢弃结果避免遗留 blob URL
+    if (!posterRef.value) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+    revokePoster();
+    posterUrl.value = url;
+    posterBlob.value = blob;
+    posterDialogVisible.value = true;
+  } catch (err) {
+    ElMessage.error(err?.message ?? '海报生成失败');
+  } finally {
+    posterGenerating.value = false;
+  }
+}
+
+function revokePoster() {
+  if (posterUrl.value) URL.revokeObjectURL(posterUrl.value);
+  posterUrl.value = '';
+  posterBlob.value = null;
+}
+
+function savePoster() {
+  if (!posterBlob.value) return;
+  downloadBlob(posterBlob.value, `赛前阵容-${context.value?.teamName ?? '球队'}-${context.value?.gameId ?? ''}.png`);
+}
+
+async function copyPoster() {
+  if (!posterBlob.value) return;
+  try {
+    if (navigator.clipboard?.write && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': posterBlob.value })]);
+      ElMessage.success('海报已复制');
+      return;
+    }
+    ElMessage.warning('当前浏览器不支持复制图片，请使用保存图片');
+  } catch {
+    ElMessage.warning('复制失败，请使用保存图片');
+  }
+}
+
 async function save() {
   if (saving.value || !context.value) return;
   saving.value = true;
@@ -503,6 +593,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick);
   unbind();
+  revokePoster();
 });
 </script>
 
@@ -538,5 +629,25 @@ onBeforeUnmount(() => {
   color: #909399;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.poster-btn-wrap {
+  display: inline-flex;
+}
+
+.poster-preview-wrap {
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1b2b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.poster-preview {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
 }
 </style>
