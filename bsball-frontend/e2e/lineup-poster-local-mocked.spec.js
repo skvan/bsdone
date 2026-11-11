@@ -106,6 +106,12 @@ test('完整阵容保存后生成海报：3:4、打线 + 先发投手、二维�
   const logo = page.locator('.lineup-poster__logo-card img');
   await expect(logo).toHaveCount(1);
   await expect.poll(() => logo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator('.lineup-poster__order')).toHaveCount(9);
+  await expect(page.locator('.lineup-poster__order.tier2, .lineup-poster__order.tier3')).toHaveCount(0);
+  const orderBackgrounds = await page.locator('.lineup-poster__order')
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundImage));
+  expect(new Set(orderBackgrounds).size).toBe(1);
+  expect(orderBackgrounds[0]).toContain('linear-gradient');
   await expect(page.getByRole('button', { name: '生成海报' })).toBeEnabled();
   await page.getByRole('button', { name: '生成海报' }).click();
 

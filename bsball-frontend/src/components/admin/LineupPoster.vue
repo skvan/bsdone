@@ -39,7 +39,7 @@
 
         <div class="lineup-poster__rows">
           <div v-for="row in battingRows" :key="row.id" class="lineup-poster__row">
-            <span class="lineup-poster__order" :class="orderTier(row.order)">{{ row.order }}</span>
+            <span class="lineup-poster__order">{{ row.order }}</span>
             <div class="lineup-poster__player">
               <span class="lineup-poster__name">{{ row.name }}</span>
               <span class="lineup-poster__number">#{{ row.number || '-' }}</span>
@@ -179,12 +179,6 @@ async function ensureQr() {
     margin: 1,
     errorCorrectionLevel: 'M'
   });
-}
-
-function orderTier(order) {
-  if (order <= 3) return '';
-  if (order <= 6) return 'tier2';
-  return 'tier3';
 }
 
 async function generate() {
@@ -458,16 +452,6 @@ defineExpose({ generate });
   font-weight: 900;
   background: linear-gradient(135deg, #f4d58b, #c9953c);
   box-shadow: 0 4px 12px rgba(201, 149, 60, .22);
-}
-.lineup-poster__order.tier2 {
-  color: #f7fbff;
-  background: linear-gradient(135deg, #82bdff, #2e6eb5);
-  box-shadow: 0 4px 12px rgba(46, 110, 181, .22);
-}
-.lineup-poster__order.tier3 {
-  color: #04201d;
-  background: linear-gradient(135deg, #8be9dc, #2d8f83);
-  box-shadow: 0 4px 12px rgba(45, 143, 131, .22);
 }
 .lineup-poster__player {
   display: flex;
