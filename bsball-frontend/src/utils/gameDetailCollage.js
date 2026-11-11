@@ -6,7 +6,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForImages(container, timeout = 12000) {
+export async function waitForImages(container, timeout = 12000) {
   const images = Array.from(container.querySelectorAll('img'));
   const waitOne = (img) =>
     new Promise((resolve) => {
