@@ -310,6 +310,20 @@ test('拖拽时前方垒位有人保持阻塞：不能越过二垒跑者', async
   await waitForRunnerToken(page, 2);
 });
 
+test('拖拽选失误推进后直接使用拖拽目标垒，不再二次选目标垒', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const menu = await dragRunner(page, 1, 2, 'safe');
+  await expect(menu.getByText('传球失误推进')).toBeVisible();
+  await pickMenuItem(page, '传球失误推进');
+  const flow = page.locator('.les-flow-card');
+  await expect(flow).toContainText('请点击失误责任守备员');
+  await clickFielder(page, 'SS');
+  await expect(flow).toHaveCount(0);
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：二垒有人');
+});
+
 test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，拖拽安打推进后才进垒', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
