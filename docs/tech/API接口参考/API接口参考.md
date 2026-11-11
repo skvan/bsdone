@@ -302,6 +302,24 @@ A-->>C : Result包装的响应
 - 示例
   - 导入比赛结果请求体示例：{"eventId":1,"results":[...] }
 
+### 赛前阵容提交模块
+- 球队侧
+  - GET /team/{teamId}/lineup-games?eventId={eventId}
+    - 守卫：可管理该球队；球队须已确认参赛
+    - 响应：Result<TeamLineupGameListDto>，本队未开始比赛及阵容保存状态
+  - GET /team/{teamId}/lineup-games/{gameId}
+    - 守卫：可管理该球队；比赛须为本队参加且未开始
+    - 响应：Result<TeamLineupContextDto>，只含本队提交与赛事规则
+  - PUT /team/{teamId}/lineup-games/{gameId}
+    - 请求体：{lineupJson:string, complete:boolean}
+    - 校验：v:1、比赛/球队匹配、人数上限、重复球员、报名名单、比赛未开始
+    - 响应：Result<Object>，{saved:true}
+- 办赛方
+  - GET /game/{gameId}/lineup-submissions
+    - 守卫：可管理该比赛
+    - 响应：Result<List<GameLineupSubmissionDto>>，仅返回仍在比赛双方中的提交
+- 详细字段与错误码见 `docs/tech/API接口参考/赛前阵容API.md`
+
 ### 系统管理模块
 - 用户
   - GET /sys/user/list
