@@ -102,3 +102,21 @@ test('大谷规则：投手位/仅守备投手可点「兼DH」自动填充 DH �
   assert.ok(board.includes('function setPitcherAsDh()'), '规则层需提供 setPitcherAsDh');
   assert.ok(board.includes('setPitcherAsDh, setBench'), '需导出 setPitcherAsDh');
 });
+
+test('批量添加替补：行前 checkbox + 表头全选/半选，不再使用多选下拉', () => {
+  const panel = read('../src/components/admin/LineupPoolPanel.vue');
+  assert.ok(panel.includes('el-checkbox-group'), '批量弹窗需使用 checkbox 组');
+  assert.ok(panel.includes('class="lineup-batch__row"'), '球员行需带 checkbox 行样式');
+  assert.ok(panel.includes('全选'), '表头需有全选 checkbox');
+  assert.ok(panel.includes(':indeterminate="batchSelection.indeterminate"'), '表头需呈半选态');
+  assert.ok(panel.includes('@change="toggleAll"'), '表头勾选需一键全选/取消');
+  assert.ok(panel.includes('batchSelection.selectedCount'), '需显示已选数量');
+  assert.ok(panel.includes('sanitizeBenchIds'), '提交前需剔除候选外旧 id');
+  assert.ok(!panel.includes('<el-select'), '批量弹窗不得再使用多选下拉');
+  assert.ok(panel.includes('openBatch'), '打开弹窗需重置为当前替补席勾选态');
+
+  const css = read('../src/styles/lineup-board.css');
+  assert.ok(css.includes('.lineup-batch__head'), '缺少表头样式');
+  assert.ok(css.includes('.lineup-batch__row'), '缺少球员行 checkbox 样式');
+  assert.ok(css.includes('.lineup-batch__list'), '缺少可滚动列表样式');
+});
