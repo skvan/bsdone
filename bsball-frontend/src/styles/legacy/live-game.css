@@ -32,6 +32,7 @@
 .live-lineup-rail__num[data-v-78b7b6a8]{flex:0 0 36px;color:var(--el-text-color-secondary);font-variant-numeric:tabular-nums}
 .live-lineup-rail__name[data-v-78b7b6a8]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .live-lineup-rail__item--current[data-v-78b7b6a8]{background:var(--el-color-primary-light-9);border-left-color:var(--el-color-primary);font-weight:700;color:var(--el-text-color-primary)}
+.live-lineup-rail__item--drop{background:var(--el-color-primary-light-8);outline:2px solid var(--el-color-primary);outline-offset:-2px}
 .live-lineup-rail__item--current .live-lineup-rail__order[data-v-78b7b6a8],.live-lineup-rail__item--current .live-lineup-rail__num[data-v-78b7b6a8]{color:var(--el-text-color-primary)}
 @media (width<=1279px){.live-lineup-rail[data-v-78b7b6a8]{display:none}}
 

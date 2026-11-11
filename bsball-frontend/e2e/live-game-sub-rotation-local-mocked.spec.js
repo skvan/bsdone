@@ -456,3 +456,23 @@ test('垒球再上场关闭：同事务换下后换其他槽，提交前被拦�
   expect(savedLive.length).toBe(0);
   await page.getByRole('button', { name: '取消换人模式' }).click();
 });
+
+// ===== 2026-11-11 换人模式：进攻替补拖到打线栏替换指定棒次 =====
+
+test('进攻替补拖到打线栏：替换指定棒次击球员', async ({ page }) => {
+  const { savedLive } = await setup(page, { dh: false });
+  await page.getByRole('button', { name: '换人模式' }).click();
+  const bench = page.locator('.live-bench-card[data-player-id="211"][data-team-side="offense"]');
+  const railSlot2 = page.locator('.live-lineup-rail__item').nth(1);
+  await expect(bench).toBeVisible();
+  await expect(railSlot2).toBeVisible();
+
+  await dragBetween(page, bench, railSlot2);
+  await submit(page, savedLive);
+
+  const body = savedLive.at(-1);
+  const event = (body.substitutions || []).find((e) => e.changeType === 'SUBSTITUTION' && Number(e.slot) === 2);
+  expect(Number(event.outPlayerId)).toBe(202);
+  expect(Number(event.inPlayerId)).toBe(211);
+  expect(positionOf(body, 211)).toBe('C');
+});
