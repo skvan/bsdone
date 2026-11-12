@@ -122,8 +122,6 @@ async function recordDouble(page) {
   await expect(safe).toBeVisible({ timeout: 8000 });
   await page.waitForTimeout(300);
   await safe.click();
-  await page.waitForTimeout(300);
-  await safe.click();
 }
 
 test('二三垒跑者责任投手已被换下：二垒安打得分正常记账且不崩溃', async ({ page }) => {
@@ -138,15 +136,15 @@ test('二三垒跑者责任投手已被换下：二垒安打得分正常记账�
 
   const body = savedLive.at(-1);
   const stat = (playerId) => (body.stats || []).find((row) => row.playerId === playerId);
-  expect(stat(166)).toMatchObject({ h: 1, doubles: 1, rbi: 2 });
-  expect(stat(107)).toMatchObject({ r: 1 });
+  expect(stat(166)).toMatchObject({ h: 1, doubles: 1, rbi: 1 });
+  expect(stat(107)).toMatchObject({ r: 0 });
   expect(stat(108)).toMatchObject({ r: 1 });
 
   const snapshot = JSON.parse(snapshots.at(-1));
-  expect(snapshot.gameState.runners).toMatchObject({ 2: 166, 3: null });
+  expect(snapshot.gameState.runners).toMatchObject({ 2: 166, 3: 107 });
   expect(snapshot.gameState.batterIndex.home).toBe(6);
-  // 两分都记在责任投手（已被换下、在替补席）头上，当前投手不背
-  expect(snapshot.playerStatsById['635'].pitching).toMatchObject({ pitchR: 2 });
+  // 三垒跑者被迫回本垒，得分记在责任投手（已被换下、在替补席）头上，当前投手不背
+  expect(snapshot.playerStatsById['635'].pitching).toMatchObject({ pitchR: 1 });
   expect(snapshot.playerStatsById['201'].pitching?.pitchR ?? 0).toBe(0);
   const logText = snapshot.eventLog
     .map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry)))
