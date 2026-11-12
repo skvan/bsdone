@@ -5098,7 +5098,7 @@ var sg={
       const st=player?.stats;
       if(!st)return!1;
       const b=st.batting??{},p=st.pitching??{},fd=st.fielding??{};
-      return (b.ab??0)>0||(b.r??0)>0||(b.h??0)>0||(b.rbi??0)>0||(b.bb??0)>0||(b.hbp??0)>0||(b.so??0)>0||(b.sb??0)>0||(b.cs??0)>0||(p.np??0)>0||(p.ip??0)>0||(p.pitchPa??0)>0||(p.pitchBf??0)>0||(p.pitchSo??0)>0||(p.pitchH??0)>0||(p.wp??0)>0||(p.bk??0)>0||(fd.po??0)>0||(fd.a??0)>0||(fd.e??0)>0||(fd.pb??0)>0
+      return (b.ab??0)>0||(b.r??0)>0||(b.h??0)>0||(b.rbi??0)>0||(b.bb??0)>0||(b.hbp??0)>0||(b.so??0)>0||(b.sb??0)>0||(b.cs??0)>0||(p.np??0)>0||(p.ip??0)>0||(p.pitchPa??0)>0||(p.pitchBf??0)>0||(p.pitchSo??0)>0||(p.pitchH??0)>0||(p.pickoffAttempts??0)>0||(p.wp??0)>0||(p.bk??0)>0||(fd.po??0)>0||(fd.a??0)>0||(fd.e??0)>0||(fd.pb??0)>0
     }
     const firstPlayStarted=$(()=>((Array.isArray(ke.value)&&ke.value.some(row=>{
       const text=ll(row);
@@ -6163,6 +6163,11 @@ var sg={
         t.preventDefault(),t.stopPropagation();
         return
       }
+      // 同垒牵制暴传/失误推进：选完责任守备员后，点击目标垒完成（目标垒可能本来空着）
+      if(l.flow?.type==="ADVANCE_FE"&&l.flow.advanceFeStep==="pick_target"&&l.flow.runner&&l.flow.errorPos!=null){
+        lc(e),t.preventDefault(),t.stopPropagation();
+        return
+      }
       if(!l.runners[e]&&!l.flow){
         vs(e),t.preventDefault(),t.stopPropagation();
         return
@@ -6268,6 +6273,10 @@ var sg={
       }
       return t
     }
+    function creditPickoffAttempt(){
+      const pitching=Se.value?.stats?.pitching;
+      pitching&&(pitching.pickoffAttempts=(pitching.pickoffAttempts??0)+1)
+    }
     function Sp(e){
       const t=ge.value;
       if(!t)return;
@@ -6304,7 +6313,7 @@ var sg={
         }
         ],"投手牵制","请选择牵制结果（未造成进垒·出局 / 牵制出局 / 暴传失误推进）：").then(pk=>{
           if(pk==="none"){
-            D(LgPickoffNone({pitcher:Se.value,base:s}));
+            creditPickoffAttempt(),D(LgPickoffNone({pitcher:Se.value,base:s}));
             return
           }
           if(pk==="out"){
@@ -6375,7 +6384,7 @@ var sg={
           ab:0,r:0,h:0,rbi:0,bb:0,hbp:0,so:0,so_swing:0,so_looking:0,sf:0,sh:0,sb:0,cs:0,doubles:0,triples:0,hr:0,gdp:0,io:0
         }
         ,pitching:{
-          ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,pitchBb:0,pitchIbb:0,pitchHbp:0,pitchDoubles:0,pitchTriples:0,pitchSh:0,pitchSf:0,pitchIo:0,go:0,fo:0,gs:0,wp:0,bk:0,pk:0
+          ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,pitchBb:0,pitchIbb:0,pitchHbp:0,pitchDoubles:0,pitchTriples:0,pitchSh:0,pitchSf:0,pitchIo:0,pickoffAttempts:0,go:0,fo:0,gs:0,wp:0,bk:0,pk:0
         }
         ,fielding:{
           po:0,a:0,e:0,ip:0,dp:0,pb:0,catcherSb:0,catcherCs:0
@@ -6448,7 +6457,7 @@ var sg={
       const t=e?.stats?.pitching??{
         
       };
-      return (t.np??0)+(t.ip??0)+(t.pitchSo??0)+(t.pitchH??0)+(t.er??0)+(t.wp??0)+(t.bk??0)+(t.pitchBbHp??0)+(t.pitchPa??0)+(t.pitchBf??0)>0
+      return (t.np??0)+(t.ip??0)+(t.pitchSo??0)+(t.pitchH??0)+(t.er??0)+(t.pickoffAttempts??0)+(t.wp??0)+(t.bk??0)+(t.pitchBbHp??0)+(t.pitchPa??0)+(t.pitchBf??0)>0
     }
     function Et(e){
       return e!=null&&e.id<0
@@ -9936,7 +9945,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt();
       const credited=credit&&creditFieldingError(r);
       const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
-      a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]&&ds(e,{origin:"ERROR",runCause:"ERROR",reasonCn:t.advanceFeReasonCn??b}),l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
+      // 牵制暴传推进同样是一次牵制企图；拖拽直接选「牵制失误推进」也走这里
+      t.advanceFeReasonId==="safe_pk_err"&&creditPickoffAttempt(),a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]&&ds(e,{origin:"ERROR",runCause:"ERROR",reasonCn:t.advanceFeReasonCn??b}),l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([...m,{
         playerId:g,from:a,to:e
       }
       ]),Qa(!1)
@@ -10046,6 +10056,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const P1=a.runner,P2=a.runnerBase;
         l.flow=null,beginPlayLedger(),pt(),l.runners[P2]=null,yl(P1.id??P1.name??"?",P2,P2+1),l.halfInningOuts.push(Gt(P1,"牵制出局").trim()),l.outs++,Ipy(),recordPlayOut(["P",e],"pickoff");
         P0.stats?.fielding&&(P0.stats.fielding.po=(P0.stats.fielding.po??0)+1,accrueFieldingPlay(P0.stats.fielding,e,{po:1}));
+        // 牵制出局：接球触杀者若不是投手本人，投手补记助杀 A（同一人不能既 PO 又 A）
+        creditPickoffAttempt(),Number(P0?.id)!==Number(Se.value?.id)&&Se.value?.stats?.fielding&&(Se.value.stats.fielding.a=(Se.value.stats.fielding.a??0)+1,accrueFieldingPlay(Se.value.stats.fielding,"P",{a:1}));
         const P3=LgPickoff({
           pitcher:Se.value,runner:P1,from:P2,fielderCode:e,fielder:P0,chain:["P",e],outsCum:1,total:l.outs
         }).lines;
@@ -11688,7 +11700,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,s=e.stats.fielding??{
         
       }
-      ,r=(t.ab??0)+(t.r??0)+(t.h??0)+(t.bb??0)+(t.hbp??0)+(t.so??0)+(t.rbi??0)+(t.sb??0)+(t.sf??0)+(t.sh??0)+(t.hr??0)+(t.doubles??0)+(t.triples??0),p=(a.np??0)+(a.ip??0)+(a.er??0)+(a.pitchSo??0)+(a.pitchH??0)+(a.wp??0),g=(s.po??0)+(s.a??0)+(s.e??0);
+      ,r=(t.ab??0)+(t.r??0)+(t.h??0)+(t.bb??0)+(t.hbp??0)+(t.so??0)+(t.rbi??0)+(t.sb??0)+(t.sf??0)+(t.sh??0)+(t.hr??0)+(t.doubles??0)+(t.triples??0),p=(a.np??0)+(a.ip??0)+(a.er??0)+(a.pitchSo??0)+(a.pitchH??0)+(a.pickoffAttempts??0)+(a.wp??0),g=(s.po??0)+(s.a??0)+(s.e??0);
       return r+p+g>0
     }
     function Lo(e){
@@ -11772,7 +11784,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       // #566：守备 GS 按先发名单落库，避免结果页/个人统计恒为 0
       const fieldingGs=isStartingPlayer(e.id,starterIds,starterFpId)?1:0;
       return{
-        teamId:t,playerId:e.id,battingOrder:a.isPitcherRow?void 0:a.battingOrder,listOrder:a.listOrder,position:a.isPitcherRow?"P":(e.position||e.lastPosition||""),firstPosition:normalizeFieldPos(e.firstPosition)||(a.isPitcherRow?"P":""),startingPosition:e.startingPosition==null?void 0:normalizeFieldPos(e.startingPosition)||"",fieldingGs,pa:(s.ab??0)+(s.bb??0)+(s.hbp??0)+(s.sf??0)+(s.sh??0)+(s.io??0),ab:s.ab??0,r:s.r??0,h:s.h??0,bbHp:(s.bb??0)+(s.hbp??0),sb:s.sb??0,so:s.so??0,soSwing:s.so_swing??0,soLooking:s.so_looking??0,e:p.e??0,rbi:s.rbi??0,doubles:s.doubles??0,triples:s.triples??0,hr:s.hr??0,insideParkHr:s.insideParkHr??0,gdp:s.gdp??0,sh:s.sh??0,sf:s.sf??0,bb:s.bb??0,ibb:s.ibb??0,hbp:s.hbp??0,io:s.io??0,cs:s.cs??0,isPitcher:a.isPitcherRow?1:0,pitcherOrder:a.isPitcherRow?a.pitcherOrder??1:void 0,ip:r.ip??0,pitchH:r.pitchH??0,pitchDoubles:r.pitchDoubles??0,pitchTriples:r.pitchTriples??0,pitchBbHp:(r.pitchBb??0)+(r.pitchHbp??0),pitchSo:r.pitchSo??0,pitchHr:r.pitchHr??0,pitchInsideParkHr:r.pitchInsideParkHr??0,pitchSh:r.pitchSh??0,pitchSf:r.pitchSf??0,pitchPa:r.pitchPa??0,pitchBf:r.pitchBf??0,np:r.np??0,pitchBb:r.pitchBb??0,pitchIbb:r.pitchIbb??0,pitchHbp:r.pitchHbp??0,pitchIo:r.pitchIo??0,go:r.go??0,fo:r.fo??0,gs:r.gs??0,wp:r.wp??0,bk:r.bk??0,po:p.po??0,a:p.a??0,tc:(p.po??0)+(p.a??0)+(p.e??0)||void 0,defInn:p.ip??0,dp:p.dp??0,pb:p.pb??0,catcherSb:p.catcherSb??0,catcherCs:p.catcherCs??0
+        teamId:t,playerId:e.id,battingOrder:a.isPitcherRow?void 0:a.battingOrder,listOrder:a.listOrder,position:a.isPitcherRow?"P":(e.position||e.lastPosition||""),firstPosition:normalizeFieldPos(e.firstPosition)||(a.isPitcherRow?"P":""),startingPosition:e.startingPosition==null?void 0:normalizeFieldPos(e.startingPosition)||"",fieldingGs,pa:(s.ab??0)+(s.bb??0)+(s.hbp??0)+(s.sf??0)+(s.sh??0)+(s.io??0),ab:s.ab??0,r:s.r??0,h:s.h??0,bbHp:(s.bb??0)+(s.hbp??0),sb:s.sb??0,so:s.so??0,soSwing:s.so_swing??0,soLooking:s.so_looking??0,e:p.e??0,rbi:s.rbi??0,doubles:s.doubles??0,triples:s.triples??0,hr:s.hr??0,insideParkHr:s.insideParkHr??0,gdp:s.gdp??0,sh:s.sh??0,sf:s.sf??0,bb:s.bb??0,ibb:s.ibb??0,hbp:s.hbp??0,io:s.io??0,cs:s.cs??0,isPitcher:a.isPitcherRow?1:0,pitcherOrder:a.isPitcherRow?a.pitcherOrder??1:void 0,ip:r.ip??0,pitchH:r.pitchH??0,pitchDoubles:r.pitchDoubles??0,pitchTriples:r.pitchTriples??0,pitchBbHp:(r.pitchBb??0)+(r.pitchHbp??0),pitchSo:r.pitchSo??0,pitchHr:r.pitchHr??0,pitchInsideParkHr:r.pitchInsideParkHr??0,pitchSh:r.pitchSh??0,pitchSf:r.pitchSf??0,pitchPa:r.pitchPa??0,pitchBf:r.pitchBf??0,np:r.np??0,pitchBb:r.pitchBb??0,pitchIbb:r.pitchIbb??0,pitchHbp:r.pitchHbp??0,pitchIo:r.pitchIo??0,pickoffAttempts:r.pickoffAttempts??0,go:r.go??0,fo:r.fo??0,gs:r.gs??0,wp:r.wp??0,bk:r.bk??0,po:p.po??0,a:p.a??0,tc:(p.po??0)+(p.a??0)+(p.e??0)||void 0,defInn:p.ip??0,dp:p.dp??0,pb:p.pb??0,catcherSb:p.catcherSb??0,catcherCs:p.catcherCs??0
       }
       
     }
@@ -11971,7 +11983,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             }
             ,pitching:{
               // 必须与 Eo() 存档 payload 读取的投手字段一一对应：漏一项就会在「重新进入录入现场→再保存」时被 ??0 静默清零回写（#387）
-              ip:T?.ip??0,np:T?.np??0,pitchH:T?.pitchH??0,er:T?.er??0,pitchBbHp:T?.pitchBbHp??0,pitchBb:T?.pitchBb??0,pitchIbb:T?.pitchIbb??0,pitchHbp:T?.pitchHbp??0,pitchSo:T?.pitchSo??0,pitchHr:T?.pitchHr??0,pitchInsideParkHr:T.pitchInsideParkHr??0,wp:T?.wp??0,bk:T?.bk??0,pitchPa:T?.pitchPa??0,pitchBf:T?.pitchBf??0,pitchDoubles:T?.pitchDoubles??0,pitchTriples:T?.pitchTriples??0,pitchSh:T?.pitchSh??0,pitchSf:T?.pitchSf??0,pitchIo:T?.pitchIo??0,go:T?.go??0,fo:T?.fo??0,gs:T?.gs??0
+              ip:T?.ip??0,np:T?.np??0,pitchH:T?.pitchH??0,er:T?.er??0,pitchBbHp:T?.pitchBbHp??0,pitchBb:T?.pitchBb??0,pitchIbb:T?.pitchIbb??0,pitchHbp:T?.pitchHbp??0,pitchSo:T?.pitchSo??0,pitchHr:T?.pitchHr??0,pitchInsideParkHr:T.pitchInsideParkHr??0,wp:T?.wp??0,bk:T?.bk??0,pitchPa:T?.pitchPa??0,pitchBf:T?.pitchBf??0,pitchDoubles:T?.pitchDoubles??0,pitchTriples:T?.pitchTriples??0,pitchSh:T?.pitchSh??0,pitchSf:T?.pitchSf??0,pitchIo:T?.pitchIo??0,pickoffAttempts:T?.pickoffAttempts??0,go:T?.go??0,fo:T?.fo??0,gs:T?.gs??0
             }
             ,fielding:{
               po:T?.po??0,a:T?.a??0,e:T?.e??0,ip:T?.defInn??0,dp:T?.dp??0,pb:T?.pb??0,catcherSb:T?.catcherSb??0,catcherCs:T?.catcherCs??0

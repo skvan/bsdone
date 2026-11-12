@@ -20,6 +20,7 @@ export const PITCHER_TRANSFER_FIELDS = Object.freeze([
   'pitchIbb',
   'pitchHbp',
   'pitchIo',
+  'pickoffAttempts',
   'wp',
   'bk',
   'go',

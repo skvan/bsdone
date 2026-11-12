@@ -836,6 +836,7 @@ public class SaveGameResultDTO {
         private Integer pitchIbb;
         private Integer pitchHbp;
         private Integer pitchIo;
+        private Integer pickoffAttempts;
         private Integer wp;
         private Integer bk;
         private Integer go;
@@ -1640,6 +1641,16 @@ public class SaveGameResultDTO {
         @Generated
         public void setPitchIo(Integer pitchIo) {
             this.pitchIo = pitchIo;
+        }
+
+        @Generated
+        public Integer getPickoffAttempts() {
+            return this.pickoffAttempts;
+        }
+
+        @Generated
+        public void setPickoffAttempts(Integer pickoffAttempts) {
+            this.pickoffAttempts = pickoffAttempts;
         }
 
         @Generated

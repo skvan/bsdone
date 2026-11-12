@@ -65,6 +65,7 @@ public class EventStatRow {
     private int pitchIbb;
     private int pitchHbp;
     private int pitchIo;
+    private int pickoffAttempts;
     private int wp;
     private int bk;
     private int pitchR;
@@ -1012,6 +1013,14 @@ public class EventStatRow {
 
     public void setPitchIo(int pitchIo) {
         this.pitchIo = pitchIo;
+    }
+
+    public int getPickoffAttempts() {
+        return this.pickoffAttempts;
+    }
+
+    public void setPickoffAttempts(int pickoffAttempts) {
+        this.pickoffAttempts = pickoffAttempts;
     }
 
     @Generated

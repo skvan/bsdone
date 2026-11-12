@@ -866,6 +866,22 @@ class GameServiceSaveResultTest {
     }
 
     @Test
+    @DisplayName("saveResult：载荷缺牵制企图栏时保留既有值")
+    void saveResult_missingPickoffAttempts_preservesExisting() {
+        GamePlayerStat pitcher = pitcherRow();
+        givenExistingRows(pitcher);
+        pitcher.setPickoffAttempts(Integer.valueOf(4));
+
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setStats(new ArrayList<>(List.of(
+                part(Long.valueOf(PITCHER_ROW_ID), Long.valueOf(PLAYER_ID), 1, Integer.valueOf(16), Double.valueOf(3.0D)))));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(4), pitcher.getPickoffAttempts());
+    }
+
+    @Test
     @DisplayName("saveResult：纸质表单新增字段全部落库")
     void saveResult_paperFormFields_written() {
         GamePlayerStat pitcher = pitcherRow();
@@ -879,6 +895,7 @@ class GameServiceSaveResultTest {
         p.setPitchSh(Integer.valueOf(1));
         p.setPitchSf(Integer.valueOf(1));
         p.setPitchIo(Integer.valueOf(1));
+        p.setPickoffAttempts(Integer.valueOf(2));
         SaveGameResultDTO dto = new SaveGameResultDTO();
         dto.setStats(new ArrayList<>(List.of(p)));
 
@@ -892,6 +909,7 @@ class GameServiceSaveResultTest {
         assertEquals(Integer.valueOf(1), pitcher.getPitchSh());
         assertEquals(Integer.valueOf(1), pitcher.getPitchSf());
         assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
+        assertEquals(Integer.valueOf(2), pitcher.getPickoffAttempts());
         assertEquals(Integer.valueOf(19), pitcher.getOutsRecorded(), "6.1 局 = 19 个出局");
     }
 
