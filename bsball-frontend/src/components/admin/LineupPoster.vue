@@ -2,10 +2,10 @@
   <div class="lineup-poster-shell">
     <div ref="posterRef" class="lineup-poster" :class="{ 'lineup-poster--compact': battingRows.length > 9 }">
       <img
-        v-if="watermarkUrl"
+        v-if="teamMarkUrl || watermarkUrl"
         class="lineup-poster__bg-logo"
-        :class="{ 'is-keyed': watermarkKeyed }"
-        :src="watermarkUrl"
+        :class="{ 'is-keyed': teamMarkUrl || watermarkKeyed }"
+        :src="teamMarkUrl || watermarkUrl"
         alt=""
       />
       <div v-else class="lineup-poster__bg-fallback">{{ teamInitial }}</div>
@@ -21,7 +21,7 @@
 
         <div class="lineup-poster__header">
           <div class="lineup-poster__logo-card">
-            <img v-if="teamLogoRaw" :src="watermarkUrl || teamLogoRaw" alt="" />
+            <img v-if="teamMarkUrl || teamLogoRaw" :src="teamMarkUrl || watermarkUrl || teamLogoRaw" alt="" />
             <span v-else>{{ teamInitial }}</span>
           </div>
           <div class="lineup-poster__team-block">
@@ -120,6 +120,11 @@ const POSITION_LABELS = {
   DH: '指定打击', PH: '代打', PR: '代跑', XF: '自由人', XF1: '自由人①', XF2: '自由人②', EP: '额外打击者'
 };
 
+// 与球星卡一致：野钻上传件为红底位图，统一使用重绘的黑白矢量队标（海报用透明 PNG，html2canvas 可稳定导出）
+const TEAM_MARKS = {
+  '野钻': new URL('../portal/wild-diamond-mark.png', import.meta.url).href
+};
+
 function playerName(player, fallbackId) {
   return player?.name || `球员${fallbackId}`;
 }
@@ -127,6 +132,11 @@ function playerName(player, fallbackId) {
 const teamName = computed(() => props.context?.teamName || '本队');
 const teamInitial = computed(() => (teamName.value || '?').slice(0, 1));
 const teamLogoRaw = computed(() => resolveAssetUrl(props.context?.teamLogo));
+const teamMarkUrl = computed(() => {
+  const names = String(teamName.value || '').split(' / ').map((name) => name.trim());
+  const markTeam = names.find((name) => TEAM_MARKS[name]);
+  return markTeam ? TEAM_MARKS[markTeam] : '';
+});
 const platformLogo = computed(() =>
   appConfig.resolveAssetUrl(appConfig.adminLogoUrl || appConfig.logoUrl || '/bs-ball-logo.png')
 );
@@ -166,7 +176,7 @@ const shareUrl = computed(() => {
 let logoTask = Promise.resolve();
 watch(teamLogoRaw, (url) => {
   logoTask = (async () => {
-    if (!url) {
+    if (!url || teamMarkUrl.value) {
       watermarkUrl.value = '';
       watermarkKeyed.value = false;
       return;
