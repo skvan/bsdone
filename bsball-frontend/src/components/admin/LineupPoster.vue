@@ -4,8 +4,8 @@
       <img
         v-if="teamMarkUrl || watermarkUrl"
         class="lineup-poster__bg-logo"
-        :class="{ 'is-keyed': teamMarkUrl || watermarkKeyed }"
-        :src="teamMarkUrl || watermarkUrl"
+        :class="{ 'is-keyed': !watermarkSilhouetteUrl && (teamMarkUrl || watermarkKeyed) }"
+        :src="watermarkSilhouetteUrl || teamMarkUrl || watermarkUrl"
         alt=""
       />
       <div v-else class="lineup-poster__bg-fallback">{{ teamInitial }}</div>
@@ -113,6 +113,7 @@ const posterRef = ref(null);
 const qrUrl = ref('');
 const watermarkUrl = ref('');
 const watermarkKeyed = ref(false);
+const watermarkSilhouetteUrl = ref('');
 
 const POSITION_LABELS = {
   P: '投手', C: '捕手', '1B': '一垒手', '2B': '二垒手', '3B': '三垒手',
@@ -174,17 +175,54 @@ const shareUrl = computed(() => {
 });
 
 let logoTask = Promise.resolve();
-watch(teamLogoRaw, (url) => {
+
+/** html2canvas 不解析 CSS filter，白色剪影必须预渲染成图片再插入海报。 */
+async function toWhiteSilhouette(url) {
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = new URL(url, window.location.origin).href;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) return '';
+  context.drawImage(image, 0, 0);
+  context.globalCompositeOperation = 'source-in';
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+
+watch([teamLogoRaw, teamMarkUrl], ([url, mark]) => {
   logoTask = (async () => {
-    if (!url || teamMarkUrl.value) {
+    watermarkSilhouetteUrl.value = '';
+    if (!url && !mark) {
       watermarkUrl.value = '';
       watermarkKeyed.value = false;
+      return;
+    }
+    if (mark) {
+      watermarkUrl.value = mark;
+      watermarkKeyed.value = false;
+      try {
+        watermarkSilhouetteUrl.value = await toWhiteSilhouette(mark);
+      } catch {
+        // 剪影失败时退回 CSS filter 兜底
+      }
       return;
     }
     try {
       const result = await keyTeamLogo(url);
       watermarkUrl.value = result?.url || url;
       watermarkKeyed.value = result?.keyed === true;
+      if (watermarkKeyed.value) {
+        try {
+          watermarkSilhouetteUrl.value = await toWhiteSilhouette(watermarkUrl.value);
+        } catch {
+          // 剪影失败时退回 CSS filter 兜底
+        }
+      }
     } catch {
       watermarkUrl.value = url;
       watermarkKeyed.value = false;
