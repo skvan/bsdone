@@ -94,6 +94,13 @@ test('全垒打：所有跑者和打者回本垒', () => {
   assert.equal(plan.batterTo, 4);
 });
 
+test('地滚出局：垒上无人时不产生占位或移动', () => {
+  const plan = resolveGroundOutForceAdvance({ runners: bases({}) });
+  assert.deepEqual(moveKeys(plan), []);
+  assert.deepEqual(homeKeys(plan), []);
+  assert.deepEqual(finalKeys(plan), { 1: null, 2: null, 3: null });
+});
+
 test('地滚出局：仅一垒有人时一垒跑者到二垒', () => {
   const plan = resolveGroundOutForceAdvance({ runners: bases({ 1: 'R1' }) });
   assert.deepEqual(moveKeys(plan), ['R1:1>2']);

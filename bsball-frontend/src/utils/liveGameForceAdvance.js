@@ -73,7 +73,7 @@ export function resolveGroundOutForceAdvance({ runners } = {}) {
   for (let base = 3; base > top; base -= 1) {
     if (runners?.[base]) slots[base] = { runner: runners[base], from: base };
   }
-  for (let from = top; from >= 1; from -= 1) {
+  for (let from = Math.min(top, 3); from >= 1; from -= 1) {
     place(runners[from], from, from + 1);
   }
   return collectPlan(slots, homeRunners, 0, false);
