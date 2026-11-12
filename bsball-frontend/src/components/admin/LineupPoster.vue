@@ -1,7 +1,13 @@
 <template>
   <div class="lineup-poster-shell">
     <div ref="posterRef" class="lineup-poster" :class="{ 'lineup-poster--compact': battingRows.length > 9 }">
-      <img v-if="watermarkUrl" class="lineup-poster__bg-logo" :src="watermarkUrl" alt="" />
+      <img
+        v-if="watermarkUrl"
+        class="lineup-poster__bg-logo"
+        :class="{ 'is-keyed': watermarkKeyed }"
+        :src="watermarkUrl"
+        alt=""
+      />
       <div v-else class="lineup-poster__bg-fallback">{{ teamInitial }}</div>
       <div class="lineup-poster__ring"></div>
       <div class="lineup-poster__vignette"></div>
@@ -15,7 +21,7 @@
 
         <div class="lineup-poster__header">
           <div class="lineup-poster__logo-card">
-            <img v-if="teamLogoRaw" :src="teamLogoRaw" alt="" />
+            <img v-if="teamLogoRaw" :src="watermarkUrl || teamLogoRaw" alt="" />
             <span v-else>{{ teamInitial }}</span>
           </div>
           <div class="lineup-poster__team-block">
@@ -106,6 +112,7 @@ const appConfig = useAppConfigStore();
 const posterRef = ref(null);
 const qrUrl = ref('');
 const watermarkUrl = ref('');
+const watermarkKeyed = ref(false);
 
 const POSITION_LABELS = {
   P: '投手', C: '捕手', '1B': '一垒手', '2B': '二垒手', '3B': '三垒手',
@@ -161,13 +168,16 @@ watch(teamLogoRaw, (url) => {
   logoTask = (async () => {
     if (!url) {
       watermarkUrl.value = '';
+      watermarkKeyed.value = false;
       return;
     }
     try {
       const result = await keyTeamLogo(url);
       watermarkUrl.value = result?.url || url;
+      watermarkKeyed.value = result?.keyed === true;
     } catch {
       watermarkUrl.value = url;
+      watermarkKeyed.value = false;
     }
   })();
 }, { immediate: true });
@@ -243,6 +253,10 @@ defineExpose({ generate });
   opacity: .16;
   filter: blur(.5px) saturate(.85);
   pointer-events: none;
+}
+.lineup-poster__bg-logo.is-keyed {
+  opacity: .18;
+  filter: brightness(0) invert(1) blur(.4px);
 }
 .lineup-poster__bg-fallback {
   position: absolute;
