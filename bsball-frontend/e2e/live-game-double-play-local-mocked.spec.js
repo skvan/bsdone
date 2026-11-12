@@ -295,7 +295,7 @@ test('先点完整条 6-4-3 链，再拖 4 到二垒、3 到一垒', async ({ pa
   assert643Result(snap);
 });
 
-test('满垒 6-4-3：三垒跑者选不进垒，日志写明退回三垒', async ({ page }) => {
+test('满垒 6-4-3：三垒跑者只选安全/出局，选安全得分后二垒跑者进三垒', async ({ page }) => {
   const { snapshots } = await setup(page, { runners: 'loaded' });
   const flowBar = page.locator('.les-flow-card');
   await openDoublePlayGroundBall(page);
@@ -307,18 +307,18 @@ test('满垒 6-4-3：三垒跑者选不进垒，日志写明退回三垒', async
   await expect(flowBar).toContainText('三垒跑者得分待确认');
 
   await page.getByRole('button', { name: '完成记录' }).click();
-  await expect(page.getByRole('button', { name: /不进垒/ })).toBeVisible();
-  await page.getByRole('button', { name: /不进垒/ }).click();
+  await expect(page.getByRole('button', { name: /回本垒得分/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /本垒出局/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /不进垒/ })).toHaveCount(0);
+  await page.getByRole('button', { name: /回本垒得分/ }).click();
   await expect(flowBar).toHaveCount(0);
 
   const snap = await saveSnapshot(page, snapshots);
   expect(snap.gameState.runners[1]).toBeNull();
-  expect(snap.gameState.runners[2]).toBe(26);
-  expect(snap.gameState.runners[3]).toBe(204);
+  expect(snap.gameState.runners[2]).toBeNull();
+  expect(snap.gameState.runners[3]).toBe(26);
+  expect(snap.playerStatsById['204'].batting.r).toBe(1);
   expect(snap.playerStatsById['32'].batting).toMatchObject({ ab: 1, gdp: 1 });
-  const logText = snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
-  expect(logText).toContain('不进垒');
-  expect(logText).toContain('退回三垒');
 });
 
 test('第二个出局后可继续延长传球链，完成记录仍只结算两个出局', async ({ page }) => {

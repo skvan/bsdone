@@ -49,6 +49,14 @@ test('wf() 使用纯函数判定，并回减 AB（PA 不变）', () => {
   assert.match(body, /credit\.creditRbi/, 'RBI 只在跑者得分时记');
   assert.match(body, /t\.inning!==l\.inning\|\|t\.half!==halfNow/, '只允许补记本半局的上一棒');
   assert.match(body, /return null/, '不可补记时仅保留跑者推进');
+  assert.match(body, /runnerPitcher\(\{responsiblePitcherId:t\.pitcherPlayerId\},null\)/, '按上一打席投手定位');
+  assert.match(body, /credit\.resultCode==="SF"\?"pitchSf":"pitchSh"/, '同步投手被记牺牲飞球/牺牲触击');
+  assert.match(body, /未找到上一打席投手/, '投手定位失败时提示');
+  assert.match(body, /f\.playEvents\.find\(x=>x\.id===t\.id\)/, '定位上一打席对应 playEvent');
+  assert.match(body, /event\.resultCode=credit\.resultCode/, '同步 playEvent 结果码');
+  assert.match(body, /event&&\(event\.rbi=t\.rbi\)/, 'RBI 补记后同步 playEvent');
+  assert.match(body, /LgSacrificeNote\(credit\.resultCode\)/, '生成 PBP 补记尾注');
+  assert.match(body, /yf\(note,""\)/, '写入上一打席日志');
 });
 
 test('未实际推进时不补记牺牲打', () => {

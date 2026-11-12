@@ -272,8 +272,8 @@ test('同垒牵制未果：投手只记牵制企图，不记助杀', async ({ pa
   await expect(menu.getByText('投手牵制尝试')).toBeVisible();
   await pickMenu(page, '投手牵制尝试');
   const box = page.locator('.el-message-box');
-  await expect(box.getByRole('button', { name: '未造成进垒 / 出局' })).toBeVisible();
-  await box.getByRole('button', { name: '未造成进垒 / 出局' }).click();
+  await expect(box.getByRole('button', { name: '牵制未果（安全回垒）' })).toBeVisible();
+  await box.getByRole('button', { name: '牵制未果（安全回垒）' }).click();
   await page.waitForTimeout(300);
 
   await page.getByRole('button', { name: '保存比赛' }).click();
