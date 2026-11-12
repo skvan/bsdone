@@ -82,7 +82,28 @@
 .hr-fireworks-layer,.hr-drag-preview{pointer-events:none}
 
 /* ===== #359 实时录入全屏 · 下方 Play-by-Play（2026-10-25） ===== */
-body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important}
+/* 日志栏四向吸附：shell 用 grid 承载 主内容 / 分界线 / 日志，--pbp-size 由分界线写入 */
+.live-pbp-shell[data-v-78b7b6a8]{--pbp-size:220px;display:grid;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
+.live-pbp-shell[data-v-78b7b6a8]>.main-content[data-v-78b7b6a8]{grid-area:main;min-width:0;min-height:0;overflow:hidden}
+.live-pbp-shell[data-v-78b7b6a8]>.live-pbp-splitter{grid-area:bar}
+.live-pbp-shell[data-v-78b7b6a8]>.lg-pbp[data-v-78b7b6a8]{grid-area:pbp;min-width:0;min-height:0}
+.live-pbp-shell[data-dock=bottom][data-v-78b7b6a8]{grid-template-areas:"main" "bar" "pbp";grid-template-rows:minmax(0,1fr) 12px var(--pbp-size);grid-template-columns:minmax(0,1fr)}
+.live-pbp-shell[data-dock=top][data-v-78b7b6a8]{grid-template-areas:"pbp" "bar" "main";grid-template-rows:var(--pbp-size) 12px minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
+.live-pbp-shell[data-dock=left][data-v-78b7b6a8]{grid-template-areas:"pbp bar main";grid-template-rows:minmax(0,1fr);grid-template-columns:var(--pbp-size) 12px minmax(0,1fr)}
+.live-pbp-shell[data-dock=right][data-v-78b7b6a8]{grid-template-areas:"main bar pbp";grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) 12px var(--pbp-size)}
+/* 非全屏时日志不渲染，shell 退化为普通容器，避免残留空白轨道 */
+.live-pbp-shell[data-v-78b7b6a8]:has(>.main-content:only-child){display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.live-pbp-shell[data-v-78b7b6a8]:has(>.main-content:only-child)>.main-content[data-v-78b7b6a8]{flex:1 1 auto}
+.live-pbp-splitter{display:flex;align-items:center;justify-content:center;flex:0 0 12px;background:var(--el-fill-color-light);cursor:row-resize;touch-action:none;user-select:none;-webkit-user-select:none;outline:none}
+.live-pbp-splitter:hover,.live-pbp-splitter:focus-visible{background:var(--el-color-primary-light-9)}
+.live-pbp-splitter:focus-visible{box-shadow:inset 0 0 0 2px var(--el-color-primary)}
+.live-pbp-splitter__grip{width:36px;height:4px;border-radius:2px;background:var(--el-border-color)}
+.live-pbp-shell[data-dock=left]>.live-pbp-splitter,.live-pbp-shell[data-dock=right]>.live-pbp-splitter{cursor:col-resize}
+.live-pbp-shell[data-dock=left]>.live-pbp-splitter .live-pbp-splitter__grip,.live-pbp-shell[data-dock=right]>.live-pbp-splitter .live-pbp-splitter__grip{width:4px;height:36px}
+/* 上方吸附时给全屏右上角「退出全屏」留出安全区，避免遮挡吸附按钮 */
+.live-pbp-shell[data-dock=top]>.lg-pbp .lg-pbp__head{padding-right:96px}
+body.lg-pbp-dock-resizing{user-select:none!important;cursor:row-resize!important}
+body.lg-pbp-dock-resizing--col{user-select:none!important;cursor:col-resize!important}
 .card-body-wrap.card-body-fullscreen[data-v-78b7b6a8]{overflow:hidden}
 .card-body-wrap.card-body-fullscreen>.live-content[data-v-78b7b6a8]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .card-body-fullscreen .main-content--entry-only[data-v-78b7b6a8]{display:flex;flex-direction:column;flex-wrap:nowrap;flex:1 1 auto;min-height:0;align-items:stretch;gap:0}

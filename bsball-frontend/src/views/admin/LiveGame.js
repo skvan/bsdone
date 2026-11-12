@@ -26,6 +26,8 @@ import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import LiveGameScoreboard from '../../components/admin/LiveGameScoreboard.vue';
 import LiveGamePlayByPlay from '../../components/admin/LiveGamePlayByPlay.vue';
+import LiveGamePbpSplitter from '../../components/admin/LiveGamePbpSplitter.vue';
+import { PBP_NARROW_MAX, effectivePbpDock, isHorizontalDock, normalizePbpDock, persistPbpDock, readPbpDock } from '../../utils/liveGamePbpDock.js';
 import LiveGameEarnedRunDrawer from '../../components/admin/LiveGameEarnedRunDrawer.vue';
 import LiveGamePitchMenu from '../../components/admin/LiveGamePitchMenu.vue';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -6606,6 +6608,27 @@ var sg={
     }
     const lt=x(!1),Ma=x(!1),Xi=x("away"),Ua=x(""),la=x(!1),On=x(!1),mt=x("fielder"),ia=x("away"),Ga=x(null),Qt=x(null),Va=x(null),sa=x(null),Tp=$(()=>mt.value==="pinchHit"?"代打":"换人");
     const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense"),awayStarterFpId=x(null),homeStarterFpId=x(null),rotationDraft=x("");
+    // 球场/日志分栏：吸附边持久化；尺寸由 LiveGamePbpSplitter 持有，拖动不触发整页重渲染。
+    const pbpViewportWidth=()=>typeof window!=="undefined"?window.innerWidth:1440;
+    const pbpDock=x(readPbpDock()),pbpNarrow=x(pbpViewportWidth()<=PBP_NARROW_MAX);
+    const pbpEffectiveDock=$(()=>effectivePbpDock(pbpDock.value,pbpNarrow.value?PBP_NARROW_MAX:pbpViewportWidth()));
+    function setPbpDock(dock){
+      const next=normalizePbpDock(dock);
+      if(pbpNarrow.value&&isHorizontalDock(next))return;
+      pbpDock.value=next,persistPbpDock(next)
+    }
+    const pbpNarrowQuery=typeof window!=="undefined"&&window.matchMedia?window.matchMedia(`(max-width:${PBP_NARROW_MAX}px)`):null;
+    function syncPbpNarrow(){
+      pbpNarrow.value=!!pbpNarrowQuery?.matches
+    }
+    As(()=>{
+      syncPbpNarrow(),pbpNarrowQuery?.addEventListener?.("change",syncPbpNarrow)
+    }
+    );
+    yu(()=>{
+      pbpNarrowQuery?.removeEventListener?.("change",syncPbpNarrow)
+    }
+    );
     let fieldingPositionsTrusted=!1;
     function $p(e){
       return Ee(e).unavail.value
@@ -12577,7 +12600,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ),t[63]||(t[63]=Q(" 退出全屏 ",-1))]),_:1
         }
-        )])):W("",!0),n("div",{
+        )])):W("",!0),n("div",{class:"live-pbp-shell","data-dock":"bottom"},[n("div",{
           ref_key:"entryMainContentRef",ref:ul,class:"main-content main-content--entry-only"
         }
         ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
@@ -13088,7 +13111,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,"界内球",-1))]),_:1
         }
-        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value},null,16):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,onDockChange:setPbpDock},null,8,["logs","dock","allowHorizontal"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
           description:"正在校验比赛现场，若未完成先发阵容将自动跳转…"
         }
         )]))],2)]),_:1
