@@ -26,6 +26,8 @@ import { swapAssetIcon as ed } from '../../components/admin/menuIcons';
 import { staticIconMap as td } from '../../components/admin/menuIcons';
 import LiveGameScoreboard from '../../components/admin/LiveGameScoreboard.vue';
 import LiveGamePlayByPlay from '../../components/admin/LiveGamePlayByPlay.vue';
+import LiveGamePbpSplitter from '../../components/admin/LiveGamePbpSplitter.vue';
+import { PBP_NARROW_MAX, effectivePbpDock, isHorizontalDock, normalizePbpDock, persistPbpDock, readPbpDock } from '../../utils/liveGamePbpDock.js';
 import LiveGameEarnedRunDrawer from '../../components/admin/LiveGameEarnedRunDrawer.vue';
 import LiveGamePitchMenu from '../../components/admin/LiveGamePitchMenu.vue';
 import { useModalClose as nd } from '../../composables/useModalClose';
@@ -6606,6 +6608,27 @@ var sg={
     }
     const lt=x(!1),Ma=x(!1),Xi=x("away"),Ua=x(""),la=x(!1),On=x(!1),mt=x("fielder"),ia=x("away"),Ga=x(null),Qt=x(null),Va=x(null),sa=x(null),Tp=$(()=>mt.value==="pinchHit"?"代打":"换人");
     const substitutionMode=x(!1),substitutionModeBefore=x(null),substitutionModeHistoryBase=x(null),substitutionModeBusy=x(!1),substitutionModeTransactionId=x(null),substitutionModeCommitFailed=x(!1),substitutionModeLogBase=x(null),substitutionModeUndoEntry=x(null),subBenchSheetOpen=x(!1),subBenchSheetSide=x("defense"),awayStarterFpId=x(null),homeStarterFpId=x(null),rotationDraft=x("");
+    // 球场/日志分栏：吸附边持久化；尺寸由 LiveGamePbpSplitter 持有，拖动不触发整页重渲染。
+    const pbpViewportWidth=()=>typeof window!=="undefined"?window.innerWidth:1440;
+    const pbpDock=x(readPbpDock()),pbpNarrow=x(pbpViewportWidth()<=PBP_NARROW_MAX);
+    const pbpEffectiveDock=$(()=>effectivePbpDock(pbpDock.value,pbpNarrow.value?PBP_NARROW_MAX:pbpViewportWidth()));
+    function setPbpDock(dock){
+      const next=normalizePbpDock(dock);
+      if(pbpNarrow.value&&isHorizontalDock(next))return;
+      pbpDock.value=next,persistPbpDock(next)
+    }
+    const pbpNarrowQuery=typeof window!=="undefined"&&window.matchMedia?window.matchMedia(`(max-width:${PBP_NARROW_MAX}px)`):null;
+    function syncPbpNarrow(){
+      pbpNarrow.value=!!pbpNarrowQuery?.matches
+    }
+    As(()=>{
+      syncPbpNarrow(),pbpNarrowQuery?.addEventListener?.("change",syncPbpNarrow)
+    }
+    );
+    yu(()=>{
+      pbpNarrowQuery?.removeEventListener?.("change",syncPbpNarrow)
+    }
+    );
     let fieldingPositionsTrusted=!1;
     function $p(e){
       return Ee(e).unavail.value
@@ -11046,6 +11069,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     const liveBenchPendingCard=x(null);   // 待放置：{ player, side, teamKey } | null
     const liveBenchDragUi=x(null);        // 拖拽界面态：{ mode, sourceKind, side, playerId, sourcePos, moved, x, y, label }
     const liveBenchHoverHit=x(null);      // 拖拽中当前悬停的合法落点
+    const liveLineupHoverId=$(()=>liveBenchHoverHit.value?.kind==="lineup"?Number(liveBenchHoverHit.value.playerId):null);
     let liveBenchDragSession=null;        // 拖拽会话（卡 / 守备员）
     let liveBenchDragEndAt=0;             // 拖拽结束时间戳：抑制浏览器补发的 click
     function liveBenchTeamKey(side){
@@ -11088,8 +11112,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         );
         if(action==="pinchHit"){
-          if(!be.value)return!1;
-          mt.value="pinchHit",Ga.value=be.value,ia.value=oK,Qt.value=null,Va.value=null
+          const target=hit.kind==="lineup"?Ll.value.find(p=>Number(p.id)===Number(hit.playerId)):be.value;
+          if(!target)return!1;
+          mt.value="pinchHit",Ga.value=target,ia.value=oK,Qt.value=null,Va.value=null
         }else if(action==="pinchRun")mt.value="pinchRunner",Ga.value=l.runners[hit.base],ia.value=oK,Qt.value=hit.base,Va.value=null;
         else if(action==="setRunner")mt.value="setRunner",Ga.value=null,ia.value=oK,Qt.value=hit.base,Va.value=null;
         else return!1;
@@ -11179,8 +11204,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
       }
       ).filter(item=>Number.isFinite(item.playerId)&&item.playerId>0&&item.rect.width>0&&item.rect.height>0);
+      // 打线栏有两份（左列 + iPad 固定栏）：逐实例按 Ll 棒次映射，隐藏栏因零尺寸自然被过滤
+      const lineup=Ll.value,lineupRects=[];
+      for(const rail of document.querySelectorAll(".live-lineup-rail")){
+        const items=rail.querySelectorAll(".live-lineup-rail__item");
+        for(let i=0;i<items.length;i++){
+          const playerId=Number(lineup[i]?.id),rect=toRect(items[i]);
+          if(Number.isFinite(playerId)&&playerId>0&&rect.width>0&&rect.height>0)lineupRects.push({
+            playerId,rect
+          })
+        }
+      }
       return{
-        fielderRects,runnerRects,batterRect:batterEl?toRect(batterEl):null,benchRects
+        fielderRects,runnerRects,batterRect:batterEl?toRect(batterEl):null,benchRects,lineupRects
       }
     }
     function liveBenchInvalidateDragLayout(){
@@ -12577,7 +12613,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ),t[63]||(t[63]=Q(" 退出全屏 ",-1))]),_:1
         }
-        )])):W("",!0),n("div",{
+        )])):W("",!0),n("div",{class:"live-pbp-shell","data-dock":"bottom"},[n("div",{
           ref_key:"entryMainContentRef",ref:ul,class:"main-content main-content--entry-only"
         }
         ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
@@ -13004,10 +13040,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         ,[n("div",{class:"live-lineup-rail__head"},[n("span",{class:"live-lineup-rail__title"},"打线"),n("span",{class:"live-lineup-rail__team"},H(c(l).isTop?(At.value?.name??"客队"):(xt.value?.name??"主队")),1)]),n("ol",{class:"live-lineup-rail__list"},[(h(!0),C(me,null,et(c(Ll),(d,z)=>(h(),C("li",{
           key:d.id??z,class:re(["live-lineup-rail__item",{
-            "live-lineup-rail__item--current":z===c(Dl)
-          }]),"aria-current":z===c(Dl)?"true":void 0
+            "live-lineup-rail__item--current":z===c(Dl),"live-lineup-rail__item--drop":c(liveLineupHoverId)===Number(d.id)
+          }]),"aria-current":z===c(Dl)?"true":void 0,onClick:(ev)=>{ev&&ev.stopPropagation&&ev.stopPropagation();liveBenchConsumePendingClicks({kind:"lineup",playerId:Number(d.id)})}
         }
-        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current"]))),128))])])):W("",!0)]):W("",!0),c(F)?v(LiveBenchPanel,liveBenchPanelProps("defense"),null,16):W("",!0),v(LiveBenchGhost,{ui:liveBenchDragUi.value},null,16),n("div",{
+        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current","onClick"]))),128))])])):W("",!0)]):W("",!0),c(F)&&c(Ll).length?(h(),C("div",{
+          key:"lineup-fixed",class:"live-lineup-rail live-lineup-rail--fixed",role:"group","aria-label":"当前进攻方打线"
+        }
+        ,[n("div",{class:"live-lineup-rail__head"},[n("span",{class:"live-lineup-rail__title"},"打线"),n("span",{class:"live-lineup-rail__team"},H(c(l).isTop?(At.value?.name??"客队"):(xt.value?.name??"主队")),1)]),n("ol",{class:"live-lineup-rail__list"},[(h(!0),C(me,null,et(c(Ll),(d,z)=>(h(),C("li",{
+          key:"fx-"+(d.id??z),class:re(["live-lineup-rail__item",{
+            "live-lineup-rail__item--current":z===c(Dl),"live-lineup-rail__item--drop":c(liveLineupHoverId)===Number(d.id)
+          }]),"aria-current":z===c(Dl)?"true":void 0,onClick:(ev)=>{ev&&ev.stopPropagation&&ev.stopPropagation();liveBenchConsumePendingClicks({kind:"lineup",playerId:Number(d.id)})}
+        }
+        ,[n("span",{class:"live-lineup-rail__order"},H(z+1),1),n("span",{class:"live-lineup-rail__num"},"#"+H(d.number??"-"),1),n("span",{class:"live-lineup-rail__name"},H(d.name??"-"),1)],10,["aria-current","onClick"]))),128))])])):W("",!0),c(F)?v(LiveBenchPanel,liveBenchPanelProps("defense"),null,16):W("",!0),v(LiveBenchGhost,{ui:liveBenchDragUi.value},null,16),n("div",{
           class:"field-quick-pitch",onClick:t[35]||(t[35]=Ze(()=>{
             
           }
@@ -13088,7 +13132,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,"界内球",-1))]),_:1
         }
-        ,8,["class","disabled"])])])]),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value},null,16):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,onDockChange:setPbpDock},null,8,["logs","dock","allowHorizontal"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
           description:"正在校验比赛现场，若未完成先发阵容将自动跳转…"
         }
         )]))],2)]),_:1
