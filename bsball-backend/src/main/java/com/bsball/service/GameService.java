@@ -1083,6 +1083,9 @@ public class GameService {
             throw new BusinessException(400, "\u8d5b\u4e8b\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u4f7f\u7528");
         }
         this.resourceGuard.assertCanManageEvent(eventId);
+        // 导入创建的是全新比赛，不可能有 ER 引擎判定可依恃（必然属于 legacy），
+        // 因此这里不重算、只做分解自洽把关：对不上就不允许进表。
+        this.assertImportedPitcherTotalsCoherent(dto.getStats());
         SaveGameResultDTO.GamePart g = dto.getGame();
         Game game = new Game();
         game.setEventId(eventId);
@@ -1523,6 +1526,14 @@ public class GameService {
             if (part.getPitchR() != null) {
                 stat.setPitchR(part.getPitchR());
             }
+            // 导入/legacy 客户端若带来自责分分解的两栏，按同口径写入；缺栏保留既有值，
+            // 不把已算好的 UER/PEND 抹成 NULL（否则 R=ER+UER+PENDING 永远无法核对）。
+            if (part.getUnearnedR() != null) {
+                stat.setUnearnedR(part.getUnearnedR());
+            }
+            if (part.getPendingR() != null) {
+                stat.setPendingR(part.getPendingR());
+            }
         }
         stat.setPitchH(part.getPitchH());
         if (part.getPitchDoubles() != null) {
@@ -1583,6 +1594,42 @@ public class GameService {
         stat.setPb(Integer.valueOf(part.getPb() != null ? part.getPb() : 0));
         stat.setCatcherSb(Integer.valueOf(part.getCatcherSb() != null ? part.getCatcherSb() : 0));
         stat.setCatcherCs(Integer.valueOf(part.getCatcherCs() != null ? part.getCatcherCs() : 0));
+    }
+
+    /**
+     * 导入场次的投手失分分解把关：失分必须等于自责分＋非自责分＋待判定，且自责分不得大于失分。
+     *
+     * <p>importGameResult 新建的比赛没有 bs_earned_run_decision 可依附，引擎无从重算，
+     * 所以只能要求送进来的数字自己对得上；这与 saveLive/saveResult「引擎场次不收客户端 er」
+     * 是同一个目标的两面：能算的交给引擎，算不了的至少不能自相矛盾。
+     *
+     * <p>任一栏缺失即跳过该列不判（历史数据缺值略过判定的既定口径），
+     * 因此只送 er/pitchR 的旧导入端不会被新规则挡下。
+     */
+    private void assertImportedPitcherTotalsCoherent(List<SaveGameResultDTO.StatPart> stats) {
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        for (SaveGameResultDTO.StatPart part : stats) {
+            if (part == null || part.getPlayerId() == null || part.getTeamId() == null) {
+                continue;
+            }
+            if (!Integer.valueOf(1).equals(part.getIsPitcher())) {
+                continue;
+            }
+            Integer r = part.getPitchR();
+            Integer er = part.getEr();
+            Integer unearned = part.getUnearnedR();
+            Integer pending = part.getPendingR();
+            if (r == null || er == null || unearned == null || pending == null) {
+                continue;
+            }
+            if (er < 0 || unearned < 0 || pending < 0 || er > r || er + unearned + pending != r) {
+                throw new BusinessException(400, String.format(
+                        "投手失分分解不一致：球员 %d 失分 R=%d，自责分 %d＋非自责分 %d＋待判定 %d=%d。导入场次没有引擎判定可重算，请先让四项对得上再导入。",
+                        part.getPlayerId(), r, er, unearned, pending, er + unearned + pending));
+            }
+        }
     }
 
     private void assertStarterFieldingPositions(List<SaveGameResultDTO.StatPart> stats, String sceneLabel) {

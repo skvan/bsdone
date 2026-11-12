@@ -824,6 +824,9 @@ public class SaveGameResultDTO {
         private Integer pitchSh;
         private Integer pitchSf;
         private Integer pitchR;
+        /** 非自责分／待判定失分：导入（legacy）场次用它表达失分分解；旧客户端不送即为缺栏。 */
+        private Integer unearnedR;
+        private Integer pendingR;
         private Integer pitchPa;
         private Integer pitchBf;
         @JsonAlias(value={"pitAb"})
@@ -1064,6 +1067,16 @@ public class SaveGameResultDTO {
         @Generated
         public Integer getPitchR() {
             return this.pitchR;
+        }
+
+        @Generated
+        public Integer getUnearnedR() {
+            return this.unearnedR;
+        }
+
+        @Generated
+        public Integer getPendingR() {
+            return this.pendingR;
         }
 
         @Generated
@@ -1409,6 +1422,16 @@ public class SaveGameResultDTO {
         @Generated
         public void setPitchR(Integer pitchR) {
             this.pitchR = pitchR;
+        }
+
+        @Generated
+        public void setUnearnedR(Integer unearnedR) {
+            this.unearnedR = unearnedR;
+        }
+
+        @Generated
+        public void setPendingR(Integer pendingR) {
+            this.pendingR = pendingR;
         }
 
         @Generated

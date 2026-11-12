@@ -22,6 +22,7 @@ import { attachFieldingPositions } from '../../utils/gameFieldingRows';
 import { useTenantRouter as ot } from '../../composables/useTenantRouter';
 import ut from '../../components/admin/GameDetailContent.js';
 import HitReplay from '../../components/common/GameDetailHitReplay.vue';
+import GameShareFab from '../../components/portal/GameShareFab.vue';
 import { buildInitialFieldSettings as pe } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveDetailPageSettings as dt } from '../../utils/gameDetailFieldSettingsStorage';
 import { saveValueControlSettings as ct } from '../../utils/gameDetailFieldSettingsStorage';
@@ -260,7 +261,10 @@ var _t={
           }
           ]),onMouseenter:Pe,onMouseleave:be,onFocusin:Ce,onFocusout:Ge
         }
-        ,[d(z,{
+        ,[d(GameShareFab,{
+          key:"game-share"
+        }
+        ),d(z,{
           "is-dot":!l.value,type:"danger"
         }
         ,{

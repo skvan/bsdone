@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1975,6 +1976,24 @@ public class EarnedRunReconstructionService {
                 violations.add(String.format(
                         "\u00a711.5 缺少責任投手: decisionId=%d status=%s",
                         d.getId(), d.getEarnedStatus()));
+            }
+        }
+
+        // \u00a711.6 責任投手（含轉記後口徑）在場內卻無投手統計列：這筆分數的 R/ER 無處落帳，
+        // box score 會直接看不見它（game 261 判定掛在 114、場內無 114 投手列實測）。
+        Set<Long> pitcherRowIds = new HashSet<>();
+        for (GamePlayerStat p : gamePlayerStatRepository.findByGameId(gameId)) {
+            if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
+            if (Integer.valueOf(1).equals(p.getIsPitcher()) && p.getPlayerId() != null) {
+                pitcherRowIds.add(p.getPlayerId());
+            }
+        }
+        Map<Long, int[]> effectiveTotals = new TreeMap<>(enginePitcherTotals(tenantId, gameId));
+        for (Map.Entry<Long, int[]> entry : effectiveTotals.entrySet()) {
+            if (entry.getValue()[0] > 0 && !pitcherRowIds.contains(entry.getKey())) {
+                violations.add(String.format(
+                        "\u00a711.6 投手 %d 有 %d 筆判定但場內無投手統計列（R/ER 無處落帳）",
+                        entry.getKey(), entry.getValue()[0]));
             }
         }
 

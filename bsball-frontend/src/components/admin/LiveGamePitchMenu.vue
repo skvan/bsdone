@@ -248,47 +248,19 @@
               <span class="lgpm__col-en">OTHER</span>
             </div>
             <div class="lgpm__list">
-              <template v-for="item in OTHER_ROOT" :key="item.key || item.cmd">
-                <button
-                  v-if="item.kind === 'illegal' && !runnerOnBase"
-                  type="button"
-                  class="lgpm__item"
-                  @click="runCommand('pitch:B')"
-                >
-                  <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
-                  <span class="lgpm__copy">
-                    <span class="lgpm__cn">{{ item.cn }}</span>
-                    <span class="lgpm__en">{{ item.en }}</span>
-                  </span>
-                  <span class="lgpm__badge">记坏球</span>
-                </button>
-                <div v-else-if="item.kind === 'illegal'" class="lgpm__item lgpm__item--static">
-                  <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
-                  <span class="lgpm__copy">
-                    <span class="lgpm__cn">{{ item.cn }}</span>
-                    <span class="lgpm__en">{{ item.en }}</span>
-                    <span class="lgpm__chips">
-                      <button
-                        v-for="chip in item.chips"
-                        :key="chip.cmd"
-                        type="button"
-                        class="lgpm__chip"
-                        :title="chip.full"
-                        @click.stop="onIllegalChip(chip.cmd)"
-                      >
-                        {{ chip.label }}
-                      </button>
-                    </span>
-                  </span>
-                </div>
-                <button v-else type="button" class="lgpm__item" @click="runCommand(item.cmd)">
-                  <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
-                  <span class="lgpm__copy">
-                    <span class="lgpm__cn" :class="cnToneClass(item)">{{ item.cn }}</span>
-                    <span class="lgpm__en">{{ item.en }}</span>
-                  </span>
-                </button>
-              </template>
+              <button
+                v-for="item in otherRoot"
+                :key="item.cmd"
+                type="button"
+                class="lgpm__item"
+                @click="runCommand(item.cmd)"
+              >
+                <span v-if="showMenuOptionIcons" class="lgpm__glyph" aria-hidden="true" :class="glyphClass(item)">{{ item.glyph }}</span>
+                <span class="lgpm__copy">
+                  <span class="lgpm__cn" :class="cnToneClass(item)">{{ item.cn }}</span>
+                  <span class="lgpm__en">{{ item.en }}</span>
+                </span>
+              </button>
             </div>
             <div class="lgpm__col-foot">条件项按当前局面显隐</div>
           </section>
@@ -314,6 +286,7 @@ const props = defineProps({
   showDk3OtherRunnerOut: { type: Boolean, default: false },
   initialPanelStack: { type: Array, default: null },
   showMenuOptionIcons: { type: Boolean, default: true },
+  gameMode: { type: String, default: 'BASEBALL' },
   canUndo: { type: Boolean, default: false },
   blockClickMsAfterOpen: { type: Number, default: 0 },
   centerOffsetX: { type: Number, default: 0 },
@@ -557,18 +530,7 @@ const ONBASE_ROOT = [
 ];
 
 const OTHER_ROOT = [
-  {
-    key: 'illegal',
-    kind: 'illegal',
-    cn: '不合法投球',
-    en: 'Illegal Pitch',
-    glyph: 'IL',
-    chips: [
-      { label: '推进', full: '推进跑者', cmd: 'extra:ILLEGAL_ADVANCE' },
-      { label: '不推进', full: '不推进跑者', cmd: 'extra:ILLEGAL_NO_ADVANCE' },
-    ],
-  },
-  { cmd: 'evt:BK', cn: '投手犯规', en: 'Balk', glyph: 'BK' },
+  { cmd: 'evt:BK', cn: '投手犯规 / 不合法投球', en: 'Balk / Illegal Pitch', glyph: 'BK' },
   { cmd: 'evt:COACH_TIMEOUT', cn: '教练暂停', en: 'Coach Timeout', glyph: 'TO' },
   {
     cmd: 'extra:BATTER_OUT_OTHER',
@@ -579,6 +541,13 @@ const OTHER_ROOT = [
     glyphTone: 'danger',
   },
 ];
+
+const isSoftball = computed(() => String(props.gameMode ?? '').toUpperCase() === 'SOFTBALL');
+const otherRoot = computed(() => OTHER_ROOT.map((item) => (
+  item.cmd === 'evt:BK' && isSoftball.value
+    ? { ...item, cn: '不合法投球', en: 'Illegal Pitch', glyph: 'IP' }
+    : item
+)));
 
 const panelStack = ref(['root']);
 const panelEl = ref(null);
@@ -785,16 +754,6 @@ function backBip() {
   } else {
     panelStack.value = ['root'];
   }
-  afterStackChange();
-}
-
-function onIllegalChip(cmd) {
-  runCommand(cmd);
-  if (cmd === 'extra:ILLEGAL_ADVANCE') {
-    emit('close');
-    return;
-  }
-  panelStack.value = ['root'];
   afterStackChange();
 }
 
