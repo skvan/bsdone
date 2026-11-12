@@ -16,6 +16,7 @@ import com.bsball.model.entity.Team;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
+import com.bsball.repository.GameLineupSubmissionRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
@@ -57,6 +58,7 @@ public class EventRegistrationService {
     private final EventRosterPlayerRepository eventRosterPlayerRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameRepository gameRepository;
+    private final GameLineupSubmissionRepository gameLineupSubmissionRepository;
     private final PlayerService playerService;
     private final ResourceGuard resourceGuard;
     private final TenantQueryPolicyService tenantQueryPolicyService;
@@ -69,6 +71,7 @@ public class EventRegistrationService {
             EventRosterPlayerRepository eventRosterPlayerRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
             GameRepository gameRepository,
+            GameLineupSubmissionRepository gameLineupSubmissionRepository,
             PlayerService playerService,
             ResourceGuard resourceGuard,
             TenantQueryPolicyService tenantQueryPolicyService) {
@@ -80,6 +83,7 @@ public class EventRegistrationService {
         this.eventRosterPlayerRepository = eventRosterPlayerRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameRepository = gameRepository;
+        this.gameLineupSubmissionRepository = gameLineupSubmissionRepository;
         this.playerService = playerService;
         this.resourceGuard = resourceGuard;
         this.tenantQueryPolicyService = tenantQueryPolicyService;
@@ -274,6 +278,9 @@ public class EventRegistrationService {
                 .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(reg.getEventId(), reg.getTeamId())) {
             this.softDelete(row);
         }
+        // 撤销报名/移除参赛时一并清理赛前阵容提交，避免重新邀请后出现旧阵容
+        this.gameLineupSubmissionRepository.softDeleteByEventIdAndTeamId(
+                reg.getEventId(), reg.getTeamId(), LocalDateTime.now(), CurrentUserHolder.get());
     }
 
     /** 本队在给定赛事中“已开赛”（进行中/已结束）的赛事 ID 集（一次批量查询，防逐行）。 */
@@ -391,8 +398,28 @@ public class EventRegistrationService {
         if (teamId == null) {
             return;
         }
+        this.assertIdsInRoster(eventId, teamId, this.collectLineupPlayerIds(root,
+                List.of(side + "Lineup", side + "Bench"),
+                List.of(side + "FieldingPitcherId", side + "LastDhAddedFromPoolId")));
+    }
+
+    /**
+     * 门①（球队端赛前阵容提交）：校验本队阵容 JSON 中打线/替补/守备投手/DH 池均 ∈ 报名名单。
+     * 赛事未受限、阵容为空或缺席时不拦截。
+     */
+    public void assertTeamLineupInRoster(Long eventId, Long teamId, JsonNode root) {
+        if (teamId == null || root == null || !this.eventRestricted(eventId)) {
+            return;
+        }
+        this.assertIdsInRoster(eventId, teamId, this.collectLineupPlayerIds(root,
+                List.of("lineup", "bench"),
+                List.of("fieldingPitcherId", "lastDhAddedFromPoolId")));
+    }
+
+    /** 收集阵容 JSON 内球员 ID：数组字段取行对象 id，单值字段直接取 id；缺失/非法值忽略。 */
+    private Set<Long> collectLineupPlayerIds(JsonNode root, List<String> arrayFields, List<String> idFields) {
         Set<Long> ids = new LinkedHashSet<Long>();
-        for (String field : List.of(side + "Lineup", side + "Bench")) {
+        for (String field : arrayFields) {
             JsonNode arr = root.path(field);
             if (!arr.isArray()) {
                 continue;
@@ -404,12 +431,16 @@ public class EventRegistrationService {
                 }
             }
         }
-        for (String field : List.of(side + "FieldingPitcherId", side + "LastDhAddedFromPoolId")) {
+        for (String field : idFields) {
             long id = root.path(field).asLong(0L);
             if (id > 0L) {
                 ids.add(Long.valueOf(id));
             }
         }
+        return ids;
+    }
+
+    private void assertIdsInRoster(Long eventId, Long teamId, Set<Long> ids) {
         if (ids.isEmpty()) {
             return;
         }

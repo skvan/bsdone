@@ -239,6 +239,15 @@ export const eventRegistrationApi = {
   submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
 };
 
+// 赛前阵容提交（电子打序单）：球队侧列表/上下文/保存 + 办赛方读取
+export const teamLineupApi = {
+  listGames: (teamId, eventId) => getData(`/api/team/${teamId}/lineup-games`, { eventId }),
+  getContext: (teamId, gameId) => getData(`/api/team/${teamId}/lineup-games/${gameId}`),
+  save: (teamId, gameId, data) => put(`/api/team/${teamId}/lineup-games/${gameId}`, data),
+  // 办赛方读取用 fetchResult：失败时不弹全局提示，由阵容页决定是否降级
+  listSubmissions: (gameId) => fetchResult(`/api/game/${gameId}/lineup-submissions`)
+};
+
 export const gameApi = {
   list: (params) => {
     const query = typeof params === 'number' ? { eventId: params } : params;
