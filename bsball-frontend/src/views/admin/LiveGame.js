@@ -71,7 +71,7 @@ import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeam
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal } from '../../utils/liveGameLogTexts';
 import { resolveBalkAction as LgBalkAction } from '../../utils/liveGameBalk';
 import { resolveSacrificeCredit as LgSacrificeCredit } from '../../utils/liveGameSacrifice';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
@@ -7382,8 +7382,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       ue(a),a.stats.batting.ab=Math.max(0,(a.stats.batting.ab??0)-1);
       credit.resultCode==="SF"?(a.stats.batting.sf=(a.stats.batting.sf??0)+1):(a.stats.batting.sh=(a.stats.batting.sh??0)+1),t.resultCode=credit.resultCode;
+      // PBP：给上一打席日志追加「补记 SF/SH」；日志定位失败时至少更新打席摘要文本。
+      const note=LgSacrificeNote(credit.resultCode);
+      yf(note,"")||(t.resultText=t.resultText?`${t.resultText}，${note}`:note);
+      // playEvents：同步上一打席的结果码与文本，避免统计是 SF/SH、事件仍是普通出局。
+      const event=Array.isArray(f.playEvents)?f.playEvents.find(x=>x.id===t.id):null;
+      event&&(event.resultCode=credit.resultCode,event.resultText=t.resultText);
+      // 投手统计：按上一打席的投手（可能已被换下）记 pitchSf/pitchSh，不能记给当前投手。
+      const pitcher=runnerPitcher({responsiblePitcherId:t.pitcherPlayerId},null),key=credit.resultCode==="SF"?"pitchSf":"pitchSh";
+      pitcher?.stats?.pitching?(pitcher.stats.pitching[key]=(pitcher.stats.pitching[key]??0)+1):Number(t.pitcherPlayerId)>0&&J("未找到上一打席投手，pitchSf/pitchSh 未记","warning");
       if(!credit.creditRbi)return null;
-      a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.rbi=(t.rbi??0)+1;
+      a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,t.rbi=(t.rbi??0)+1,event&&(event.rbi=t.rbi);
       return a
     }
     // 「上一棒内推进（有打点）」：给上一棒打者记 1 分打点（#206；与 wf 的牺牲打记账同机制）
