@@ -258,6 +258,7 @@ test('同垒牵制出局：投手记牵制企图与助杀，一垒手记接杀',
   expect(awayPitcher).toMatchObject({ pickoffAttempts: 1, a: 1 });
   expect(awayFirstBase).toMatchObject({ po: 1, a: 0 });
 
+  await expect.poll(() => snapshots.length).toBeGreaterThan(0);
   const snapshot = JSON.parse(snapshots.at(-1));
   expect(snapshot.playerStatsById['220'].pitching).toMatchObject({ pickoffAttempts: 1 });
   expect(snapshot.playerStatsById['220'].fielding).toMatchObject({ a: 1 });
