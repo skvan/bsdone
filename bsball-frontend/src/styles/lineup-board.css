@@ -138,6 +138,20 @@ body.lineup-dragging .lineup-pool__section.is-drop-over { border-color: #67c23a;
 .lineup-pool__cards { display: flex; flex-wrap: wrap; gap: 6px; }
 .lineup-pool__count { color: #909399; font-size: 12px; }
 
+/* 批量添加替补：表头全选 + 行前 checkbox 列表（替代多选下拉） */
+.lineup-batch { display: flex; flex-direction: column; gap: 8px; }
+.lineup-batch__head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 8px; border-bottom: 1px solid #ebeef5; }
+.lineup-batch__head .el-checkbox { margin-right: 0; font-weight: 600; }
+.lineup-batch__count { color: #909399; font-size: 12px; }
+.lineup-batch__list { max-height: 52vh; overflow-y: auto; padding-right: 2px; }
+.lineup-batch__row { display: flex; align-items: center; width: 100%; height: auto; margin: 0; padding: 8px 6px; border-radius: 4px; }
+.lineup-batch__row + .lineup-batch__row { border-top: 1px solid #f5f7fa; }
+.lineup-batch__row:hover { background: #f5f7fa; }
+.lineup-batch__row .el-checkbox__label { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+.lineup-batch__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.lineup-batch__number { color: #409eff; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.lineup-batch__empty { margin: 14px 0; text-align: center; color: #909399; font-size: 12px; }
+
 /* 仅保留 EP 未开放等画布上看不出来的规则提示 */
 .lineup-warn { margin-top: 10px; color: #f56c6c; font-size: 13px; }
 

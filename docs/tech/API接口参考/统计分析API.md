@@ -160,6 +160,7 @@ MapRows --> Return["返回PageResult"]
   - GET /hit-spray/player/{playerId}/game/{gameId}：按选手+比赛查询
   - GET /hit-spray/team/{teamId}/game/{gameId}：按队伍+比赛查询
 - 用途：记录每次击球的落点坐标，用于可视化与分析（管理端热力图、管理端与门户的比赛详情「打击落点回放」）
+- 幂等：`POST /hit-spray` 与 `/hit-spray/batch` 支持可选字段 `rid`（客户端唯一键）；服务端按 `(gameId, rid)` 去重，重复提交直接跳过。历史无 `rid` 的记录仍按原语义插入
 - 权限：`GET /hit-spray/game/{gameId}` 已注册至 sys_api 并对游客角色（guest）及全部角色授权（Flyway `V20261011090000__hit_spray_api_guest_grant.sql`），门户匿名访客可读；其余 hit-spray 接口未注册（对登录用户默认放行，游客不可访问）
 
 ### 数据钻取与多维分析

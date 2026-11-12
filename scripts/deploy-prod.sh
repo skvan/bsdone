@@ -146,6 +146,12 @@ if [ -f "$FRONT_NEW" ]; then
             mv "$item" "$FRONT_DIR/$b"
         fi
     done
+    # 双轨退役：旧入口 /bs-ball-next/ 不再保留（生产保留逻辑会把它捡回来，必须显式删除）
+    if [ -e "$FRONT_DIR/bs-ball-next" ]; then
+        rm -rf "$FRONT_DIR/bs-ball-next" || fail "cannot remove legacy bs-ball-next/"
+        echo "  removed legacy entry: bs-ball-next"
+    fi
+    [ ! -e "$FRONT_DIR/bs-ball-next" ] || fail "legacy bs-ball-next/ still exists after cleanup"
     chown -R root:root "$FRONT_DIR" 2>/dev/null || true
     chmod -R a+rX "$FRONT_DIR" || true
 
@@ -153,11 +159,12 @@ if [ -f "$FRONT_NEW" ]; then
     # https directly (-k skips the local cert check) to assert real content.
     FS1=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/)
     FS2=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/portal.html)
-    FS3=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/bs-ball)
-    FS4=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball-next/)
-    FS5=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/premier12/)
-    echo "frontend smoke(https): / -> $FS1  /portal.html -> $FS2  /bs-ball/bs-ball -> $FS3  /bs-ball-next/ -> $FS4  /premier12/ -> $FS5 (expect 200)"
-    if [ "$FS1" = "200" ] && [ "$FS2" = "200" ] && [ "$FS3" = "200" ] && [ "$FS4" = "200" ] && [ "$FS5" = "200" ]; then
+    FS3=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/)
+    FS4=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/bs-ball)
+    FS5=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/bs-ball/welcome)
+    FS6=$(curl -sk -o /dev/null -m 5 -w '%{http_code}' -H 'Host: bsdone.com' https://127.0.0.1/premier12/)
+    echo "frontend smoke(https): / -> $FS1  /portal.html -> $FS2  /bs-ball/ -> $FS3  /bs-ball/bs-ball -> $FS4  /bs-ball/welcome -> $FS5  /premier12/ -> $FS6 (expect 200)"
+    if [ "$FS1" = "200" ] && [ "$FS2" = "200" ] && [ "$FS3" = "200" ] && [ "$FS4" = "200" ] && [ "$FS5" = "200" ] && [ "$FS6" = "200" ]; then
         rm -rf "$OLD"
         mv -f "$FRONT_NEW" "$STAGING/webapps-prod.tar.gz.deployed-$STAMP" || true
         FRONT_RESULT="deployed (backup: $BAK_DIR/webapps.tar.gz)"

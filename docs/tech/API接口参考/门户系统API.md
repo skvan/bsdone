@@ -161,6 +161,8 @@ F-->>U : Result.ok
 ### 微信 JSSDK 配置接口
 - 端点：`GET /wechat/jssdk-config?url=<当前页面完整 URL（不含 # 片段，encodeURIComponent）>`
 - 免登录（guest 白名单 `/wechat`）；幂等、无副作用；仅返回公开信息（appId 与签名），不返回任何凭证
+- 访问由 guest 白名单 `/wechat` 或 `sys_api` 授权放行；若部署环境覆盖 `APP_GUEST_WHITELIST`，需保留 `/wechat` 或执行 `V20261106120000__wechat_jssdk_api_grant.sql` 迁移
+- `app.wechat.allowed-hosts` 默认覆盖 `bsdone.com` 与 `www.bsdone.com`；测试环境需把 `test.bsdone.com` 加入 `WECHAT_ALLOWED_HOSTS` 与公众号 JS 接口安全域名
 - 响应 data：`{ "appId": "...", "timestamp": 1710000000, "nonceStr": "16位随机串", "signature": "SHA1小写hex" }`
 - 参数校验：url 非空、长度 ≤1024、协议为 http(s)、主机命中 `app.wechat.allowed-hosts`（忽略大小写）
 - 失败语义：400 非法 url；503 未配置微信凭证（appId/appSecret）；502 微信侧不可用（获取 jsapi_ticket 或签名失败，统一降级，不返回 500）

@@ -30,6 +30,12 @@ import Ge from './AdminMenu.js';
 // 值解包（等价编译产物 Gn：兼容 ref 与普通值）
 const Gn = (value) => (value && typeof value === "object" && "value" in value ? value.value : value);
 import '../../styles/legacy/admin-layout.css';
+// 版本号：构建期注入（部署时由 VITE_APP_VERSION 覆盖），显示在品牌标题上方
+const APP_VERSION = String((import.meta.env && import.meta.env.VITE_APP_VERSION) || '').trim();
+const renderBrandTitle = (appConfig) => n("span", { class: "header-logo-text-wrap" }, [
+  APP_VERSION ? n("span", { class: "header-logo-version" }, `v${APP_VERSION}`) : _("", !0),
+  n("span", { class: "header-logo-text" }, F(appConfig.getAdminTitle()))
+]);
 var Cl={
   key:0,class:"admin-layout admin-layout--standalone-content"
 }
@@ -570,7 +576,7 @@ var Cl={
           default:a(()=>[n("div",Vl,[r(y).adminLogoUrl?(d(),x("img",{
             key:0,src:r(y).resolveAssetUrl(r(y).adminLogoUrl),class:"header-logo-img",alt:"logo"
           }
-          ,null,8,Sl)):_("",!0),n("span",$l,F(r(y).getAdminTitle()),1)]),r(p).showBreadcrumb?(d(),b(Et,{
+          ,null,8,Sl)):_("",!0),renderBrandTitle(r(y))]),r(p).showBreadcrumb?(d(),b(Et,{
             key:0,class:"breadcrumb breadcrumb--mix"
           }
           )):_("",!0),n("div",Al,[l.value?(d(),b(I,{
@@ -703,7 +709,7 @@ var Cl={
       )):r(p).menuMode==="sidebar"&&!l.value?(d(),x("div",Bl,[n("header",Ll,[n("div",Rl,[n("div",Il,[r(y).adminLogoUrl?(d(),x("img",{
         key:0,src:r(y).resolveAssetUrl(r(y).adminLogoUrl),class:"header-logo-img",alt:"logo"
       }
-      ,null,8,Fl)):_("",!0),n("span",Hl,F(r(y).getAdminTitle()),1)]),t(Be,{
+      ,null,8,Fl)):_("",!0),renderBrandTitle(r(y))]),t(Be,{
         mode:"horizontal","default-active":Qt.value,router:"",class:"top-menu top-menu--combo","background-color":"transparent"
       }
       ,{
@@ -886,10 +892,10 @@ var Cl={
       ,[n("header",to,[n("div",no,[l.value?(d(),x("div",ao,[r(y).adminLogoUrl?(d(),x("img",{
         key:0,src:r(y).resolveAssetUrl(r(y).adminLogoUrl),class:"header-logo-img",alt:"logo"
       }
-      ,null,8,lo)):_("",!0),n("span",oo,F(r(y).getAdminTitle()),1)])):r(p).menuMode==="top"||r(p).menuMode==="mix"||r(p).menuMode==="sidebar"?(d(),x("div",so,[r(y).adminLogoUrl?(d(),x("img",{
+      ,null,8,lo)):_("",!0),renderBrandTitle(r(y))])):r(p).menuMode==="top"||r(p).menuMode==="mix"||r(p).menuMode==="sidebar"?(d(),x("div",so,[r(y).adminLogoUrl?(d(),x("img",{
         key:0,src:r(y).resolveAssetUrl(r(y).adminLogoUrl),class:"header-logo-img",alt:"logo"
       }
-      ,null,8,io)):_("",!0),n("span",ro,F(r(y).getAdminTitle()),1)])):_("",!0)]),r(p).menuMode==="top"&&!l.value?(d(),b(Be,{
+      ,null,8,io)):_("",!0),renderBrandTitle(r(y))])):_("",!0)]),r(p).menuMode==="top"&&!l.value?(d(),b(Be,{
         key:0,mode:"horizontal","default-active":De.value,router:"",class:"top-menu","background-color":"transparent"
       }
       ,{

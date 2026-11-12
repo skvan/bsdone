@@ -21,8 +21,9 @@
           </div>
         </div>
         <span v-for="spot in sparks" :key="spot.id" class="pcard-spark" :style="spot.style"></span>
-        <div class="pcard-logo" :title="teamName">
-          <img v-if="teamLogo && logoSrc" :src="logoSrc" :alt="teamName" />
+        <div class="pcard-logo" :class="{ 'pcard-logo--outlined': teamNeedsOutline }" :title="teamName">
+          <img v-if="teamMarkSrc" :src="teamMarkSrc" :alt="teamName" />
+          <img v-else-if="teamLogo && logoSrc" :src="logoSrc" :alt="teamName" />
           <span v-else-if="!teamLogo" class="pcard-logo-crest">{{ teamCrest }}</span>
         </div>
       </div>
@@ -33,7 +34,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { resolveAssetUrl } from '../../api/request';
-import { whiteKeyedLogo } from './logoWhiteKey.js';
+import { keyTeamLogo } from './logoBackgroundKey.js';
 import {
   CARD_BASE_WIDTH,
   CARD_BASE_HEIGHT,
@@ -60,17 +61,31 @@ const gradeLabel = computed(() => props.grade || material.value.key);
 const avatarUrl = computed(() => resolveAssetUrl(props.player.avatar));
 const sparks = computed(() => gradeSparkSpots(material.value));
 
+// 野钻上传件为红底位图，卡面统一使用重绘的黑白矢量队标
+const TEAM_MARKS = {
+  '野钻': new URL('./wild-diamond-mark.svg', import.meta.url).href
+};
+const OUTLINED_TEAMS = new Set(['阿达力']);
+const teamNames = computed(() => String(props.teamName || '')
+  .split(' / ')
+  .map((name) => name.trim())
+  .filter(Boolean));
 const logoSrc = ref('');
+const teamMarkSrc = computed(() => {
+  const markTeam = teamNames.value.find((name) => TEAM_MARKS[name]);
+  return markTeam ? TEAM_MARKS[markTeam] : '';
+});
+const teamNeedsOutline = computed(() => teamNames.value.some((name) => OUTLINED_TEAMS.has(name)));
 let logoRequest = 0;
-watch(() => props.teamLogo, async (url) => {
+watch([() => props.teamLogo, () => props.teamName], async ([url]) => {
   const request = ++logoRequest;
   logoSrc.value = '';
-  if (!url) {
+  if (!url || teamMarkSrc.value) {
     return;
   }
-  const keyed = await whiteKeyedLogo(url);
+  const keyed = await keyTeamLogo(url);
   if (request === logoRequest) {
-    logoSrc.value = keyed;
+    logoSrc.value = keyed.url;
   }
 }, { immediate: true });
 
@@ -115,5 +130,6 @@ const slotStyle = computed(() => ({
 .pcard-spark { position: absolute; z-index: 4; background: #fff; opacity: .92; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); pointer-events: none; }
 .pcard-logo { position: absolute; right: 2px; bottom: 2px; width: 72px; height: 72px; z-index: 5; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .6)); }
 .pcard-logo img { width: 100%; height: 100%; object-fit: contain; }
+.pcard-logo--outlined img { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .95)) drop-shadow(0 0 1.5px rgba(255, 255, 255, .45)); }
 .pcard-logo-crest { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 12px; font-family: var(--bs-font-num, "Bahnschrift", sans-serif); font-size: 22px; font-weight: 800; color: #071a33; background: linear-gradient(145deg, var(--grade-light), var(--grade)); }
 </style>

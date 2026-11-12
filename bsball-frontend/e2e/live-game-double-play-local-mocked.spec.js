@@ -157,11 +157,11 @@ async function saveSnapshot(page, snapshots) {
 
 async function openDoublePlayGroundBall(page) {
   await page.getByRole('button', { name: '界内球' }).click();
-  const menu = page.locator('.lgpfm__panel');
+  const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   await page.waitForTimeout(350);
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^滚地球$/ }).click();
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^双杀$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^滚地球$/ }).click();
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^双杀$/ }).click();
 }
 
 async function record654(page, onFirstOut) {
@@ -340,10 +340,10 @@ test('第二个出局后可继续延长传球链，完成记录仍只结算两�
 test('双杀入口：仅二垒有人时不提供双杀', async ({ page }) => {
   await setup(page, { runners: 'secondOnly' });
   await page.getByRole('button', { name: '界内球' }).click();
-  const menu = page.locator('.lgpfm__panel');
+  const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   await page.waitForTimeout(350);
-  await menu.locator('.lgpfm__cn').filter({ hasText: /^滚地球$/ }).click();
-  await expect(menu.locator('.lgpfm__cn').filter({ hasText: /^双杀$/ })).toHaveCount(0);
-  await expect(menu.locator('.lgpfm__cn').filter({ hasText: /^三杀$/ })).toHaveCount(0);
+  await menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^滚地球$/ }).click();
+  await expect(menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^双杀$/ })).toHaveCount(0);
+  await expect(menu.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result').filter({ hasText: /^三杀$/ })).toHaveCount(0);
 });

@@ -59,7 +59,7 @@ BsBall 是一套**棒球 / 垒球赛事数据管理平台**，支持：
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | **后端** | Java + Spring Boot 4.1.0 | `com.bsball:bsball-server:1.0.0` |
-| **前端** | Vite 6 + Vue 3 + Element Plus | 重建工程 `bsball-frontend/`；重建版（/bs-ball-next/）已随 v2.0.0 双轨上线生产（2026-10-08）；旧版入口已封锁（/bs-ball/*、/index.html 直通新版对应页，H60），旧版产物仅保留供部署级回滚 |
+| **前端** | Vite 6 + Vue 3 + Element Plus | 源码工程 `bsball-frontend/`；生产与测试均部署于 `/bs-ball/`（2026-11-05 起单轨）；旧编译产物已删除 |
 | **数据库** | PostgreSQL | Flyway migration 管理 schema |
 | **反向代理** | Nginx | gzip_static on（优先返回 .gz） |
 | **部署** | 阿里云 ECS | systemd 管理 Java 服务 |
@@ -100,12 +100,11 @@ Bsdone-project/
 │   ├── target/                     # Maven 编译产物
 │   └── pom.xml                     # Maven 配置
 │
-├── bsball-frontend/          # 前端源码工程（Vite + Vue 3 + Element Plus；重建版已双轨上线）
+├── bsball-frontend/          # 前端源码工程（Vite + Vue 3 + Element Plus；生产/测试部署 /bs-ball/）
 │   ├── index.html            # SPA 入口
 │   ├── src/                  # 源码（router/views/...）
-│   ├── scripts/              # 打包脚本（package-webapps.mjs；--next 双轨打包）
-│   ├── vite.config.js        # 构建配置（默认 base=/bs-ball/；重建版构建见 build:next）
-│   ├── vite.legacy-preview.config.js  # 旧编译版对照预览（npm run preview:legacy，3001）
+│   ├── scripts/              # 打包脚本（package-webapps.mjs；单轨 /bs-ball/ 打包）
+│   ├── vite.config.js        # 构建配置（base=/bs-ball/）
 │   └── node_modules/         # npm 依赖（可重建）
 │
 ├── bsball-source-full/       # 反编译完整源码（JAR 解压）
@@ -119,16 +118,14 @@ Bsdone-project/
 │   │   ├── uploads/            # 上传文件
 │   │   └── data/               # 运行期数据
 │   └── webapps/
-│       ├── bs-ball/            # 旧版前端静态资源（/bs-ball/ 轨道；入口已封锁 H60）
-│       │   ├── assets/         # Vite 编译产物（JS/CSS）
+│       ├── bs-ball/            # 新版前端（/bs-ball/；发布时写入构建产物）
+│       │   ├── assets/         # Vite 编译产物（发布时组装，不进源码库）
 │       │   ├── team-logos/     # 球队 Logo 图片
-│       │   ├── index.html      # 已改为直通页 → /bs-ball-next/（深链映射）
-│       │   └── *.svg           # 球场 SVG
-│       ├── bs-ball-next/       # 重建版前端（发布时构建组装）
+│       │   └── *.svg           # 球场、头像等静态资源
 │       ├── home/               # 门户首页
 │       ├── static/             # 共用静态资源（fonts/logo）
-│       ├── index.html          # 已改为直通页 → /bs-ball-next/intro
-│       └── portal.html         # 门户页面
+│       ├── index.html          # 直通页 → /bs-ball/intro
+│       └── portal.html         # 域名入口直通页 → /bs-ball/
 │
 ├── premier12/                # 十二强赛（Premier12）宣传微站（静态页；部署时并入 webapps/premier12/）
 │
@@ -194,21 +191,20 @@ Bsdone-project/
 
 ## 5. 前端 (bsball-frontend)
 
-### 5.1 现状（重建版已双轨上线，2026-10-08 起）
+### 5.1 现状（单轨 `/bs-ball/`，2026-11-05 起）
 
-原始 `.vue` 源码缺失（历史仓库与上游均无、无 source map），重建工程以 **编译产物为规格** 分批次实施，重建版已随 v2.0.0 双轨上线生产：
+原始 `.vue` 源码缺失（历史仓库与上游均无、无 source map），重建工程以 **编译产物为规格** 分批次实施，现已完成切换，生产与测试统一部署于 `/bs-ball/`：
 
-- 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；默认 `base=/bs-ball/`；重建版构建 `npm run build:next`，产物落 `/bs-ball-next/`）
-- 前端依赖：`interactjs`（^1.10.28）—— 编辑先发阵容页的球员卡拖放与卡槽落点判定（`sortablejs` 等既有依赖保持不变）
+- 工程：`bsball-frontend/`（Vite 6 + Vue 3 + Element Plus + vue-router；`base=/bs-ball/`；构建 `npm run build` / 打包 `npm run package`）
+- 前端依赖：`interactjs`（^1.10.28）—— 编辑先发阵容页的球员卡片拖放与卡槽落点判定（`sortablejs` 等既有依赖保持不变）
 - 批次：B0 工程化 → B1 骨架与契约底座 → B2 认证族 → B3 标准 CRUD 族 → B4 领域族 → B5 LiveGame 家族
-- 双轨收口（2026-10-12，H60）：旧版入口全部封锁——`/bs-ball/*` 与 `/index.html` 改为直通页映射至新版对应路径（深链前缀互换保留 query/hash），新版「切回旧版」按钮已彻底移除；旧版编译产物仅保留供部署级回滚，不再对外提供入口
+- 路径收口：根 `webapps/index.html` → `/bs-ball/intro`，`portal.html` → `/bs-ball/`；`/bs-ball-next/` 已移除；旧编译产物已从仓库删除
 
-### 5.2 开发与对照
+### 5.2 开发与打包
 
 ```bash
 cd bsball-frontend
 npm run dev              # 新工程开发服务器（3000，/bsball-server 代理到本地后端 8080）
-npm run preview:legacy   # 旧编译版对照预览（3001）
 npm run package          # 构建 + 打包 webapps-dev.tar.gz（部署包约定：顶层含 webapps/）
 ```
 
@@ -248,17 +244,15 @@ java-server/
 
 ```
 webapps/
-├── index.html           # 直通页 → /bs-ball-next/intro（H60）
-├── portal.html          # 门户首页（域名访问直通 /bs-ball-next/）
+├── index.html           # 直通页 → /bs-ball/intro
+├── portal.html          # 域名入口直通页 → /bs-ball/
 ├── static/              # 共用资源（fonts, logo）
 ├── home/                # 门户子页面
 ├── premier12/           # 十二强赛微站（打包时并入；/premier12/ 目录入口）
-├── bs-ball/             # 旧版：后台 + 实时比赛前端（/bs-ball/；入口已封锁，仅留产物供部署级回滚）
-│   ├── assets/          # JS + CSS（Vite 编译）
-│   ├── team-logos/      # 球队 Logo
-│   ├── index.html       # 直通页 → /bs-ball-next/（深链前缀互换映射）
-│   └── *.svg            # 球场、头像等 SVG
-└── bs-ball-next/        # 重建版前端（/bs-ball-next/；发布时构建组装）
+└── bs-ball/             # 新版前端（/bs-ball/；发布时写入 index.html + assets/）
+    ├── assets/          # JS + CSS（Vite 编译，发布时组装）
+    ├── team-logos/      # 球队 Logo
+    └── *.svg            # 球场、头像等静态资源
 ```
 
 ---
@@ -504,11 +498,9 @@ systemctl restart java-server
 
 > **排查时 `grep` 要含 `java-server`**，不能只筛 `ball` / `bs` 关键字。
 
-### 11.6 basebal-field.svg 改了没效果
+### 11.6 球场 SVG 修改
 
-**原因**：`baseball-field.svg` 是孤立文件，前端无引用。球场 SVG 在 `LiveGame-Bjdd5Cir.js` 内联渲染。
-
-**解决**：改 `LiveGame-Bjdd5Cir.js` 中的 SVG 参数，不要动 `baseball-field.svg`。
+球场 SVG 由新前端 `bsball-frontend/src/views/admin/LiveGame.js` 内联渲染；旧的孤立文件 `baseball-field.svg` 已随旧前端退役删除。改球场图形请修改新前端源码，不要寻找独立 SVG 文件。
 
 ---
 

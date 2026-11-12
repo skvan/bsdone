@@ -21,9 +21,9 @@ class WechatSignatureUtilTest {
     @Test
     @DisplayName("含 query 的 https URL：字段序固定、原样拼接")
     void queryUrlVector() {
-        assertEquals("c188101a97f571a42de0ac93a2734a85ad3d7d9b",
+        assertEquals("0dd71a1d3d6713280df75571b4ab6b881de74336",
                 WechatSignatureUtil.sign("TICKET", "AbCd1234EfGh5678", 1700000000L,
-                        "https://www.bsdone.com/bs-ball-next/team1/players/9?from=share"));
+                        "https://www.bsdone.com/bs-ball/team1/players/9?from=share"));
     }
 
     @Test

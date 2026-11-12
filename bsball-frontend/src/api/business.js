@@ -239,6 +239,15 @@ export const eventRegistrationApi = {
   submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
 };
 
+// 赛前阵容提交（电子打序单）：球队侧列表/上下文/保存 + 办赛方读取
+export const teamLineupApi = {
+  listGames: (teamId, eventId) => getData(`/api/team/${teamId}/lineup-games`, { eventId }),
+  getContext: (teamId, gameId) => getData(`/api/team/${teamId}/lineup-games/${gameId}`),
+  save: (teamId, gameId, data) => put(`/api/team/${teamId}/lineup-games/${gameId}`, data),
+  // 办赛方读取用 fetchResult：失败时不弹全局提示，由阵容页决定是否降级
+  listSubmissions: (gameId) => fetchResult(`/api/game/${gameId}/lineup-submissions`)
+};
+
 export const gameApi = {
   list: (params) => {
     const query = typeof params === 'number' ? { eventId: params } : params;
@@ -267,6 +276,41 @@ export const gameApi = {
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),
+  reassignEarnedRunDecision: (id, decisionId, data) =>
+    post(`/api/game/${id}/earned-runs/decisions/${decisionId}/reassign`, data),
+  voidEarnedRunDecision: (id, decisionId, data) =>
+    post(`/api/game/${id}/earned-runs/decisions/${decisionId}/void`, data),
+  revokeEarnedRunDecisionAdjustment: (id, adjustmentId) =>
+    post(`/api/game/${id}/earned-runs/decision-adjustments/${adjustmentId}/revoke`, {}),
+  listPitcherRunTotals: (id) => fetchResult(`/api/game/${id}/earned-runs/pitchers`),
+  overridePitcherRuns: (id, playerId, data) =>
+    put(`/api/game/${id}/earned-runs/pitchers/${playerId}/override`, data),
+  revokePitcherRunOverride: (id, overrideId) =>
+    post(`/api/game/${id}/earned-runs/overrides/${overrideId}/revoke`, {}),
+  transferPitcher: (id, data) => post(`/api/game/${id}/pitcher-transfers`, data),
+  deletePitcherTransferSource: (id, transferId) =>
+    post(`/api/game/${id}/pitcher-transfers/${transferId}/delete-source`, {}),
+  previewIdentityTransfer: (id, sourcePlayerId, targetPlayerId) => {
+    const query = new URLSearchParams({
+      sourcePlayerId: String(sourcePlayerId),
+      targetPlayerId: String(targetPlayerId)
+    });
+    return fetchResult(`/api/game/${id}/identity-transfers/preview?${query}`);
+  },
+  transferIdentity: (id, data) => post(`/api/game/${id}/identity-transfers`, data),
+  deleteIdentityTransferSource: (id, transferId) =>
+    post(`/api/game/${id}/identity-transfers/${transferId}/delete-source`, {}),
+  listFieldingAdjustments: (id) => fetchResult(`/api/game/${id}/fielding-adjustments`),
+  listFieldingAdjustmentCandidates: (id) =>
+    fetchResult(`/api/game/${id}/fielding-adjustments/candidates`),
+  listRevisionAudit: (id) => fetchResult(`/api/game/${id}/revision-audit`),
+  compareStatBase: (id) => fetchResult(`/api/game/${id}/stat-base/compare`),
+  listStatAdjustments: (id) => fetchResult(`/api/game/${id}/adjustments`),
+  checkStatRowDelete: (id, statId) =>
+    fetchResult(`/api/game/${id}/stat-rows/${statId}/delete-check`),
+  createFieldingAdjustment: (id, data) => post(`/api/game/${id}/fielding-adjustments`, data),
+  revokeFieldingAdjustment: (id, adjustmentId) =>
+    post(`/api/game/${id}/fielding-adjustments/${adjustmentId}/revoke`, {}),
   getLiveSnapshot: async (id) => {
     const { data } = await fetchResult(`/api/game/${id}/live-snapshot?_t=${Date.now()}`);
     return data?.snapshotJson ?? '';

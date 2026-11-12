@@ -8,6 +8,8 @@ import {
   buildFieldingPositionRows,
   hasFieldingByPosBaseline,
   hasHistoricalFieldingStats,
+  isStartingPlayer,
+  mergeFieldingByPos,
   normalizeFieldingPosition,
 } from '../src/utils/liveGameFieldingByPos.js';
 
@@ -159,4 +161,37 @@ test('历史守备局数：Do 重建路径据此判定基线不可信', () => {
   assert.equal(hasHistoricalFieldingStats([{ defInn: 0 }, {}]), false);
   assert.equal(hasHistoricalFieldingStats([{ defInn: 1.2 }]), true);
   assert.equal(hasHistoricalFieldingStats(null), false);
+});
+
+test('先发判定：首发名单与 DH 制先发投手为 1，替补/无效值为 0', () => {
+  const starters = [11, 12, null, 13];
+  assert.equal(isStartingPlayer(11, starters, null), true);
+  assert.equal(isStartingPlayer('12', starters, null), true);
+  assert.equal(isStartingPlayer(13, starters, null), true);
+  assert.equal(isStartingPlayer(99, starters, 99), true);
+  assert.equal(isStartingPlayer('99', starters, 99), true);
+  assert.equal(isStartingPlayer(98, starters, 99), false);
+  assert.equal(isStartingPlayer(0, starters, null), false);
+  assert.equal(isStartingPlayer(null, starters, null), false);
+  assert.equal(isStartingPlayer(11, null, null), false);
+  assert.equal(isStartingPlayer(11, [], null), false);
+});
+
+test('并行行 byPos 合并：按守位逐项取 max，对象字段不参与 Number 运算', () => {
+  const a = { P: { outs: 2, po: 1, a: 0, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 } };
+  const b = { P: { outs: 1, po: 0, a: 1, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 }, LF: { outs: 1 } };
+  const merged = mergeFieldingByPos(a, b);
+  assert.equal(Number.isNaN(merged.P.outs), false, '不能把 byPos 对象合并成 NaN');
+  assert.deepEqual(merged.P, { outs: 2, po: 1, a: 1, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 });
+  assert.equal(merged.LF.outs, 1);
+  assert.deepEqual(a.P, { outs: 2, po: 1, a: 0, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 }, '不得修改入参');
+});
+
+test('byPos 合并：旧数字值按 outs 处理；单侧缺失返回另一侧副本', () => {
+  const merged = mergeFieldingByPos({ P: 2 }, { P: { outs: 1 } });
+  assert.equal(merged.P.outs, 2);
+  const only = mergeFieldingByPos(undefined, { P: { outs: 3 } });
+  assert.equal(only.P.outs, 3);
+  only.P.outs = 99;
+  assert.equal(mergeFieldingByPos(undefined, { P: { outs: 3 } }).P.outs, 3, '返回副本');
 });
