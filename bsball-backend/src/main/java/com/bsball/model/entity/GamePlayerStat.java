@@ -253,6 +253,9 @@ extends BaseEntity {
     @Column(name="pitch_io", columnDefinition="integer")
     @Comment(value="\u88ab\u59a8\u963b\u4e0a\u5792\uff08IO\uff09")
     private Integer pitchIo;
+    @Column(name="pickoff_attempts", columnDefinition="integer")
+    @Comment(value="牵制企图（POA，非官方统计）")
+    private Integer pickoffAttempts;
     @Column(columnDefinition="integer")
     @Comment(value="\u66b4\u6295")
     private Integer wp;
@@ -1125,6 +1128,16 @@ extends BaseEntity {
     @Generated
     public void setPitchIo(Integer pitchIo) {
         this.pitchIo = pitchIo;
+    }
+
+    @Generated
+    public Integer getPickoffAttempts() {
+        return this.pickoffAttempts;
+    }
+
+    @Generated
+    public void setPickoffAttempts(Integer pickoffAttempts) {
+        this.pickoffAttempts = pickoffAttempts;
     }
 
     @Generated

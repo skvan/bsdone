@@ -267,7 +267,7 @@ SVC --> MET3["PlayerStatDrillFieldingMetric"]
   - PageResult包含：data（List<Map>）、total（Long）、meta（Map，可能包含qualification等）
 - 击球/投球/防守行字段
   - 击球：gp、pa、ab、r、h、rbi、hr、insideParkHr、sb、bbHp、so、doubles、triples、e、gdp、sh、sf、bb、ibb、hbp、io、cs、singles、tb、avg、obp、slg、ops、sbPct
-  - 投球：gp、ip、outsRecorded、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
+  - 投球：gp、ip、outsRecorded、er、pitchH、pitchDoubles、pitchTriples、pitchBbHp、pitchSo、pitchHr、pitchInsideParkHr、pitchSh、pitchSf、pitchIo、pickoffAttempts、gs、svo、cg、pg、w、l、sv、hld、pitchPa、pitchBf、np、pitchBb、pitchIbb、pitchHbp、wp、bk、pitchR、go、fo、whip、era、goFo、pitchAb
   - 防守：gp、inn、tc、po、a、e、dp、pb、catcherCs、catcherSb、tcPct
 - 团队统计行字段
   - 击球：teamId、teamName、gp、pa、ab、r、h、rbi、doubles、triples、hr、insideParkHr、sb、cs、so、bb、ibb、hbp、io、tb、avg、obp、slg、ops

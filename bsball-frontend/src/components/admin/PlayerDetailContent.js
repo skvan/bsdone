@@ -2058,7 +2058,7 @@ var vl={
       GP:"gp",PA:"pa",AB:"ab",AVG:"avg",OBP:"obp",SLG:"slg",OPS:"ops",H:"h","1B":"singles","2B":"doubles","3B":"triples",HR:"hr",GDP:"gdp",IPHR:"insideParkHr",SH:"sh",SF:"sf",TB:"tb",RBI:"rbi",R:"r",SB:"sb",CS:"cs",BB:"bb",IBB:"ibb",HBP:"hbp",IO:"io",SO:"batSo"
     }
     ,ee={
-      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",R:"pitchR",ER:"er",UER:"unearnedR",PENDING:"pendingR",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH","2B":"pitchDoubles","3B":"pitchTriples",HR:"pitchHr",IPHR:"pitchInsideParkHr",SH:"pitchSh",SF:"pitchSf",BB:"pitchBb",IBB:"pitchIbb",HBP:"pitchHbp",IO:"pitchIo",SO:"pitK",WP:"wp",BK:"bk"
+      GP:"gp",IP:"ip",ERA:"era",WHIP:"whip",R:"pitchR",ER:"er",UER:"unearnedR",PENDING:"pendingR",BF:"pitchBf",AB:"pitchAb",GG:"ggComplete",PG:"pgShutout",H:"pitchH","2B":"pitchDoubles","3B":"pitchTriples",HR:"pitchHr",IPHR:"pitchInsideParkHr",SH:"pitchSh",SF:"pitchSf",BB:"pitchBb",IBB:"pitchIbb",HBP:"pitchHbp",IO:"pitchIo",POA:"pickoffAttempts",SO:"pitK",WP:"wp",BK:"bk"
     }
     ,Ie={
       GP:"gp",INN:"inn",TC:"tc",PO:"po",A:"a",E:"e",DP:"dp","TC%":"tcPct",PB:"fldPb",SB:"catcherSb",CS:"fldCatcherCs"
@@ -2287,6 +2287,9 @@ var vl={
     }
     ,{
       prop:"pitchIo",abbr:"IO",tip:"pitchIo",w:52
+    }
+    ,{
+      prop:"pickoffAttempts",abbr:"POA",tip:"pickoffAttempts",w:64
     }
     ,{
       prop:"pitchSo",abbr:"SO",tip:"pitK",w:52
@@ -2553,7 +2556,7 @@ var vl={
         key:f,label:r(l),enAbbr:Va[f]??f,val:P,drillable:w(e,f),desc:M
       }
       );
-      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("R","player.careerPitch.pitchR",e.pitchR??0,k("pitching","R",ee)),a("ER","player.careerPitch.er",e.er??0,k("pitching","ER",ee)),a("UER","player.careerPitch.unearnedR",e.unearnedR??0,k("pitching","UER",ee)),a("PENDING","player.careerPitch.pendingR",e.pendingR??0,k("pitching","PENDING",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("2B","player.careerPitch.pitchDoubles",e.pitchDoubles??0,k("pitching","2B",ee)),a("3B","player.careerPitch.pitchTriples",e.pitchTriples??0,k("pitching","3B",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("SH","player.careerPitch.pitchSh",e.pitchSh??0,k("pitching","SH",ee)),a("SF","player.careerPitch.pitchSf",e.pitchSf??0,k("pitching","SF",ee)),a("BB","player.careerPitch.pitchBb",e.pitchBb??0,k("pitching","BB",ee)),a("IBB","player.careerPitch.pitchIbb",e.pitchIbb??0,k("pitching","IBB",ee)),a("HBP","player.careerPitch.pitchHbp",e.pitchHbp??0,k("pitching","HBP",ee)),a("IO","player.careerPitch.pitchIo",e.pitchIo??0,k("pitching","IO",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
+      return[a("GP","player.careerPitch.gp",e.gp,k("pitching","GP",ee)),a("IP","player.careerPitch.ip",Je(e.ip),k("pitching","IP",ee)),a("ERA","player.careerPitch.era",E(e.era),k("pitching","ERA",ee)),a("WHIP","player.careerPitch.whip",E(e.whip),k("pitching","WHIP",ee)),a("R","player.careerPitch.pitchR",e.pitchR??0,k("pitching","R",ee)),a("ER","player.careerPitch.er",e.er??0,k("pitching","ER",ee)),a("UER","player.careerPitch.unearnedR",e.unearnedR??0,k("pitching","UER",ee)),a("PENDING","player.careerPitch.pendingR",e.pendingR??0,k("pitching","PENDING",ee)),a("BF","player.careerPitch.pitchBf",e.pitchBf??0,k("pitching","BF",ee)),a("AB","player.careerPitch.pitchAb",i(e),k("pitching","AB",ee)),a("GG","player.careerPitch.ggComplete",e.cg,k("pitching","GG",ee)),a("PG","player.careerPitch.pgShutout",e.pg,k("pitching","PG",ee)),a("H","player.careerPitch.pitchH",e.pitchH,k("pitching","H",ee)),a("2B","player.careerPitch.pitchDoubles",e.pitchDoubles??0,k("pitching","2B",ee)),a("3B","player.careerPitch.pitchTriples",e.pitchTriples??0,k("pitching","3B",ee)),a("HR","player.careerPitch.pitchHr",e.pitchHr,k("pitching","HR",ee)),a("IPHR","player.careerPitch.pitchInsideParkHr",e.pitchInsideParkHr??0,k("pitching","IPHR",ee)),a("SH","player.careerPitch.pitchSh",e.pitchSh??0,k("pitching","SH",ee)),a("SF","player.careerPitch.pitchSf",e.pitchSf??0,k("pitching","SF",ee)),a("BB","player.careerPitch.pitchBb",e.pitchBb??0,k("pitching","BB",ee)),a("IBB","player.careerPitch.pitchIbb",e.pitchIbb??0,k("pitching","IBB",ee)),a("HBP","player.careerPitch.pitchHbp",e.pitchHbp??0,k("pitching","HBP",ee)),a("IO","player.careerPitch.pitchIo",e.pitchIo??0,k("pitching","IO",ee)),a("POA","player.careerPitch.pickoffAttempts",e.pickoffAttempts??0,k("pitching","POA",ee)),a("SO","player.careerPitch.so",e.pitchSo,k("pitching","SO",ee)),a("WP","player.careerPitch.wp",e.wp,k("pitching","WP",ee)),a("BK","player.careerPitch.bk",e.bk,k("pitching","BK",ee))]
     }
     );
     function W(e,a){

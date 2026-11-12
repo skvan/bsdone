@@ -1573,6 +1573,9 @@ public class GameService {
         if (part.getPitchIo() != null) {
             stat.setPitchIo(part.getPitchIo());
         }
+        if (part.getPickoffAttempts() != null) {
+            stat.setPickoffAttempts(part.getPickoffAttempts());
+        }
         stat.setWp(part.getWp());
         stat.setBk(part.getBk());
         stat.setGo(part.getGo());
@@ -1880,6 +1883,9 @@ public class GameService {
         }
         if (part.getPitchIo() != null) {
             stat.setPitchIo(part.getPitchIo());
+        }
+        if (part.getPickoffAttempts() != null) {
+            stat.setPickoffAttempts(part.getPickoffAttempts());
         }
         stat.setWp(part.getWp());
         stat.setBk(part.getBk());

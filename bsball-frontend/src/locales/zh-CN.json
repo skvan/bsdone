@@ -1437,7 +1437,8 @@
       "pitchBb": "四坏（含IBB）",
       "pitchIbb": "故意四坏",
       "pitchHbp": "触身",
-      "pitchIo": "被妨阻上垒"
+      "pitchIo": "被妨阻上垒",
+      "pickoffAttempts": "牵制企图"
     },
     "careerFld": {
       "gp": "出赛场次",
@@ -1495,6 +1496,7 @@
       "pitchBbHp": "四坏、故意与触身球等合计",
       "wp": "暴投",
       "bk": "投手犯规",
+      "pickoffAttempts": "牵制企图（投手向垒上牵制投球次数，含未果/出局/暴传；非官方统计）",
       "inn": "守备局数，记法同投球局数",
       "tc": "守备机会",
       "po": "接杀",

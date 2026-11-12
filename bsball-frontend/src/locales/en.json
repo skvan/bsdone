@@ -1396,7 +1396,8 @@
       "pitchBb": "Walks (incl. IBB)",
       "pitchIbb": "Intentional walks",
       "pitchHbp": "Hit by pitch",
-      "pitchIo": "Obstruction allowed"
+      "pitchIo": "Obstruction allowed",
+      "pickoffAttempts": "Pickoff attempts"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1454,6 +1455,7 @@
       "pitchBbHp": "Walks, intentional walks, and hit by pitch",
       "wp": "Wild pitch",
       "bk": "Balk",
+      "pickoffAttempts": "Pickoff attempts by the pitcher (includes no-result, out, and throwing error; not an official stat)",
       "inn": "Innings in the field, same style as IP",
       "tc": "Total chances",
       "po": "Putouts",
