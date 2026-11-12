@@ -134,7 +134,7 @@
             :row-class-name="pitcherRowClassName"
             :cell-class-name="pitcherCellClassName"
           >
-            <el-table-column label="球队" width="88" align="center">
+            <el-table-column label="球队" width="68" align="center">
               <template #default="{ row }">
                 <div v-if="row._teamRowspan" class="pitcher-team-cell">
                   <span class="pitcher-team-cell__side">{{ row._teamLabel }}</span>
@@ -142,12 +142,12 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="投手" min-width="120" show-overflow-tooltip>
+            <el-table-column label="投手" min-width="96" show-overflow-tooltip>
               <template #default="{ row }">
                 <span>{{ row.playerName || `#${row.playerId}` }}</span>
               </template>
             </el-table-column>
-            <el-table-column width="58" align="center">
+            <el-table-column width="40" align="center">
               <template #header>
                 <span title="投手上场先后顺序">登板</span>
               </template>
@@ -155,16 +155,16 @@
                 <span class="pitcher-order">{{ row.pitcherOrder ?? '—' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="R" width="52" align="center">
+            <el-table-column label="R" width="44" align="center">
               <template #default="{ row }">{{ row.runsAllowed ?? 0 }}</template>
             </el-table-column>
-            <el-table-column label="ER" width="52" align="center">
+            <el-table-column label="ER" width="44" align="center">
               <template #default="{ row }">{{ row.earnedRuns ?? 0 }}</template>
             </el-table-column>
-            <el-table-column label="非自责" width="64" align="center">
+            <el-table-column label="非自责" width="52" align="center">
               <template #default="{ row }">{{ row.unearnedRuns ?? 0 }}</template>
             </el-table-column>
-            <el-table-column label="状态" width="86" align="center">
+            <el-table-column label="状态" width="74" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.overrideId" size="small" type="warning" effect="plain">
                   人工覆写
@@ -172,7 +172,7 @@
                 <span v-else class="pitcher-status">引擎</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="76" align="center" fixed="right">
+            <el-table-column label="操作" width="60" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button
                   v-if="row.overrideId"
