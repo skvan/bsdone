@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class FirstPositionBackfillMigrationTest {
 
     private static final String MIGRATION =
-            "db/migration/postgresql/V20261029100000__backfill_game_player_stat_first_position.sql";
+            "db/migration/postgresql/V20261112100000__backfill_game_player_stat_first_position.sql";
     private static final Pattern STAT_UPDATE = Pattern.compile("(?s)UPDATE bs_game_player_stat.*?;");
     private static final String VALID_POSITIONS =
             "('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF')";

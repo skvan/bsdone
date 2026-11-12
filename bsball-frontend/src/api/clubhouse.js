@@ -4,6 +4,7 @@ import { get, post, put } from './request';
 function queryString(params) {
   const query = new URLSearchParams();
   if (params?.teamId != null && params.teamId !== '') query.set('teamId', String(params.teamId));
+  if (params?.leagueId != null && params.leagueId !== '') query.set('leagueId', String(params.leagueId));
   if (params?.eventId != null && params.eventId !== '') query.set('eventId', String(params.eventId));
   if (params?.gameMode) query.set('gameMode', String(params.gameMode));
   return query.toString();
@@ -15,6 +16,10 @@ export const clubhouseApi = {
     return get(`/api/account/clubhouse${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
   },
   milestones: () => get('/api/account/clubhouse/milestones').then((res) => res?.data ?? null),
+  sprays: (params) => {
+    const qs = queryString(params);
+    return get(`/api/account/clubhouse/sprays${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
+  },
   saveConfig: (config) => put('/api/account/clubhouse/config', config).then((res) => res?.data ?? null),
   resetConfig: () => post('/api/account/clubhouse/config/reset', {}).then((res) => res?.data ?? null)
 };

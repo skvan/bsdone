@@ -72,16 +72,14 @@ export function currentTenantCodeFromUrl() {
   let code = firstPathSegment(path);
   if (!code || isReservedTenantCode(code)) {
     const raw = (window.location.pathname || '/').replace(/^\/+/, '/').match(/^\/([^/]+)/);
-    // H40：部署前缀段仅当等于默认租户码时才视为租户——生产前缀 /bs-ball/ 与默认租户码一致（行为不变）；
-    // 测试环境双轨前缀 /bs-ball-next/ ≠ 任何租户码，此前被误当租户发出请求（portal/settings、
-    // portal/visit/record）触发 #154「租户不可用 404」→ 整页跳 /404
+    // 部署前缀段仅当等于默认租户码时才视为租户——生产/测试前缀 /bs-ball/ 与默认租户码一致（行为不变）
     if (raw && raw[1].toLowerCase() === DEFAULT_TENANT_CODE) code = raw[1];
   }
   if ((!code || isReservedTenantCode(code)) && (path === '/' || path === '')) {
     const base = BASE_URL.replace(/\/+$/, '') || '';
     if (base && base !== '/') {
       const seg = base.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)[0];
-      // H40：同上游回退——仅默认租户码时采用（/bs-ball-next/ 前缀不再被回退为租户码）
+      // 同上游回退——仅默认租户码时采用
       if (seg && seg.toLowerCase() === DEFAULT_TENANT_CODE) code = seg;
     }
   }

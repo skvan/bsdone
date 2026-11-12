@@ -18,6 +18,7 @@ import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.List;
@@ -51,6 +52,8 @@ class GameServiceSaveLiveSubstitutionTest {
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
     @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -73,7 +76,9 @@ class GameServiceSaveLiveSubstitutionTest {
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository,
                 eventRepository, stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
+                org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
+                org.mockito.Mockito.mock(GameRevisionAuditService.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();

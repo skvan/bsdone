@@ -9,9 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.exception.BusinessException;
+import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,15 +39,84 @@ class GamePlayerStatServiceEngineTest {
     private EventRegistrationService eventRegistrationService;
     @Mock
     private EarnedRunReconstructionService earnedRunReconstructionService;
+    @Mock
+    private GameFieldingAdjustmentService fieldingAdjustmentService;
 
     private GamePlayerStatService service;
 
     @BeforeEach
     void setUp() {
         service = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
-                eventRegistrationService, earnedRunReconstructionService);
+                eventRegistrationService, earnedRunReconstructionService, fieldingAdjustmentService);
         lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("listByGame 透传该球员本场已生效补记 A")
+    void listByGameCarriesApprovedAdjustmentTotal() {
+        GamePlayerStat row = new GamePlayerStat();
+        row.setId(ROW_ID);
+        row.setGameId(GAME_ID);
+        row.setTeamId(48L);
+        row.setPlayerId(PLAYER_ID);
+        row.setIsPitcher(0);
+        when(gamePlayerStatRepository.findByGameId(GAME_ID)).thenReturn(List.of(row));
+        when(fieldingAdjustmentService.approvedAssistTotalsByGame(GAME_ID))
+                .thenReturn(Map.of(PLAYER_ID, 1));
+
+        List<GamePlayerStat> rows = service.listByGame(GAME_ID);
+
+        assertEquals(1, rows.get(0).getFieldingAdjustmentA());
+    }
+
+    @Test
+    @DisplayName("listByGame 只把补记 A 透传到可计入的球员行")
+    void listByGamePutsAdjustmentOnCountedRowOnly() {
+        GamePlayerStat batterRow = new GamePlayerStat();
+        batterRow.setId(ROW_ID);
+        batterRow.setGameId(GAME_ID);
+        batterRow.setTeamId(48L);
+        batterRow.setPlayerId(PLAYER_ID);
+        batterRow.setIsPitcher(0);
+        GamePlayerStat pitcherRow = new GamePlayerStat();
+        pitcherRow.setId(ROW_ID + 1);
+        pitcherRow.setGameId(GAME_ID);
+        pitcherRow.setTeamId(48L);
+        pitcherRow.setPlayerId(PLAYER_ID);
+        pitcherRow.setIsPitcher(1);
+        when(gamePlayerStatRepository.findByGameId(GAME_ID))
+                .thenReturn(List.of(batterRow, pitcherRow));
+        when(fieldingAdjustmentService.approvedAssistTotalsByGame(GAME_ID))
+                .thenReturn(Map.of(PLAYER_ID, 1));
+
+        service.listByGame(GAME_ID);
+
+        assertEquals(1, batterRow.getFieldingAdjustmentA());
+        assertEquals(0, pitcherRow.getFieldingAdjustmentA());
+    }
+
+    @Test
+    @DisplayName("删除统计行：有已生效守备补记时拒绝")
+    void delete_rejectsApprovedFieldingAdjustment() {
+        GamePlayerStat existing = new GamePlayerStat();
+        existing.setId(ROW_ID);
+        existing.setGameId(GAME_ID);
+        existing.setPlayerId(PLAYER_ID);
+        existing.setIsPitcher(0);
+        Game game = new Game();
+        game.setId(GAME_ID);
+        game.setTenantId(1L);
+        when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(existing));
+        when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(game));
+        when(fieldingAdjustmentService.hasApprovedPlayerAdjustment(1L, GAME_ID, PLAYER_ID))
+                .thenReturn(true);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.delete(ROW_ID));
+
+        assertEquals(400, error.getCode());
+        verify(gamePlayerStatRepository, never()).deleteById(ROW_ID);
     }
 
     @Test
@@ -127,18 +199,15 @@ class GamePlayerStatServiceEngineTest {
     }
 
     @Test
-    @DisplayName("引擎场次全零投手行仅残留隐藏 pitchPa 时允许删除")
-    void delete_engineManagedZeroPitcherWithPitchPaOnly_allowed() {
+    @DisplayName("引擎场次仅 pitchPa 残留的投手行不再视为全零，拒绝删除")
+    void delete_engineManagedPitchPaOnly_rejected() {
         GamePlayerStat zero = row(0, 0, 0, 0);
         zero.setPitchPa(Integer.valueOf(1));
         when(gamePlayerStatRepository.findById(ROW_ID)).thenReturn(Optional.of(zero));
         when(earnedRunReconstructionService.hasEngineData(GAME_ID)).thenReturn(true);
-        when(earnedRunReconstructionService.hasResponsiblePitcherDecisions(GAME_ID, PLAYER_ID))
-                .thenReturn(false);
 
-        service.delete(ROW_ID);
-
-        verify(gamePlayerStatRepository).deleteById(ROW_ID);
+        assertThrows(BusinessException.class, () -> service.delete(ROW_ID));
+        verify(gamePlayerStatRepository, never()).deleteById(ROW_ID);
     }
 
     @Test

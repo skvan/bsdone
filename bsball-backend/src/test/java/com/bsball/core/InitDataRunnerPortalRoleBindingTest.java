@@ -268,6 +268,16 @@ class InitDataRunnerPortalRoleBindingTest {
         }
     }
 
+    @Test
+    @DisplayName("guest 公开 GET 谓词：精确放行 /wechat/jssdk-config，不放开其他 /wechat 路径")
+    void guestPublicGetApiIncludesWechatJssdk() throws Exception {
+        Method m = InitDataRunner.class.getDeclaredMethod("isGuestRolePublicGetApi", SysApi.class);
+        m.setAccessible(true);
+        assertTrue((Boolean) m.invoke(runner, guestApi("/wechat/jssdk-config", "GET")));
+        assertFalse((Boolean) m.invoke(runner, guestApi("/wechat/jssdk-config", "POST")));
+        assertFalse((Boolean) m.invoke(runner, guestApi("/wechat/other", "GET")));
+    }
+
     // ---- helpers ----
 
     private void invokeBindings() throws Exception {
@@ -346,6 +356,13 @@ class InitDataRunnerPortalRoleBindingTest {
     private static SysApi api(long id, String path, String method) {
         SysApi a = new SysApi();
         a.setId(id);
+        a.setPath(path);
+        a.setMethod(method);
+        return a;
+    }
+
+    private static SysApi guestApi(String path, String method) {
+        SysApi a = new SysApi();
         a.setPath(path);
         a.setMethod(method);
         return a;

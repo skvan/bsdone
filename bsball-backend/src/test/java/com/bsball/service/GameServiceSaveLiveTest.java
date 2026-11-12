@@ -3,25 +3,33 @@ package com.bsball.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bsball.core.CurrentUserHolder;
+import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.GameSaveLiveDTO;
+import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
 import com.bsball.model.entity.Event;
 import com.bsball.model.entity.Game;
 import com.bsball.model.entity.GamePlayerStat;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
+import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +57,8 @@ class GameServiceSaveLiveTest {
     @Mock
     private GameSubstitutionEventRepository gameSubstitutionEventRepository;
     @Mock
+    private GameFieldingPosStatRepository gameFieldingPosStatRepository;
+    @Mock
     private EventRepository eventRepository;
     @Mock
     private StadiumRepository stadiumRepository;
@@ -64,27 +74,31 @@ class GameServiceSaveLiveTest {
     private EarnedRunReconstructionService earnedRunReconstructionService;
     @Mock
     private EventRegistrationService eventRegistrationService;
+    @Mock
+    private GameFieldingAdjustmentService fieldingAdjustmentService;
 
     private GameService gameService;
     private GamePlayerStat pitcher;
+    private Game game;
 
     @BeforeEach
     void setUp() {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
-                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService);
+                tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
+                fieldingAdjustmentService, org.mockito.Mockito.mock(GameRevisionAuditService.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
-        Game game = new Game();
-        game.setId(Long.valueOf(GAME_ID));
-        game.setTenantId(Long.valueOf(TENANT_ID));
-        game.setEventId(Long.valueOf(EVENT_ID));
+        this.game = new Game();
+        this.game.setId(Long.valueOf(GAME_ID));
+        this.game.setTenantId(Long.valueOf(TENANT_ID));
+        this.game.setEventId(Long.valueOf(EVENT_ID));
         Event event = new Event();
         event.setId(Long.valueOf(EVENT_ID));
         event.setTenantId(Long.valueOf(TENANT_ID));
 
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(Long.valueOf(TENANT_ID));
-        when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.of(game));
+        when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.of(this.game));
         when(eventRepository.findById(Long.valueOf(EVENT_ID))).thenReturn(Optional.of(event));
 
         pitcher = new GamePlayerStat();
@@ -115,6 +129,34 @@ class GameServiceSaveLiveTest {
         gameService.saveLive(Long.valueOf(GAME_ID), dtoWithEr(99));
 
         assertEquals(Integer.valueOf(3), pitcher.getEr());
+    }
+
+    @Test
+    @DisplayName("saveLive：统计与逐位置覆盖后重放赛后守备补记")
+    void saveLive_reappliesFieldingAdjustments() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        GameSaveLiveDTO dto = dtoWithEr(null);
+        dto.setFieldingPositions(List.of());
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(fieldingAdjustmentService).reapplyPlayerStats(
+                any(Game.class), eq(Set.of("57_1324_1")));
+        verify(fieldingAdjustmentService).reapplyPositionStats(any(Game.class));
+    }
+
+    @Test
+    @DisplayName("saveLive：API 统计已含补记时跳过回放，避免重复 +1")
+    void saveLive_statsAlreadyAdjusted_skipsReplay() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        GameSaveLiveDTO dto = dtoWithEr(null);
+        dto.setStatsIncludeFieldingAdjustments(true);
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        verify(fieldingAdjustmentService, never()).reapplyPlayerStats(any(Game.class), anySet());
     }
 
     @Test
@@ -274,6 +316,33 @@ class GameServiceSaveLiveTest {
     }
 
     @Test
+    @DisplayName("saveLive：先发守备位统一大写落库，DH 不写；缺栏保留")
+    void saveLive_startingPosition_normalizedAndPreserved() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        part.setStartingPosition("lf");
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("LF", pitcher.getStartingPosition());
+
+        part.setStartingPosition("dh");
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertNull(pitcher.getStartingPosition(), "DH 不是守备位，先发守备位应清空");
+
+        pitcher.setStartingPosition("RF");
+        part.setStartingPosition(null);
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+        assertEquals("RF", pitcher.getStartingPosition(), "旧客户端缺栏不得清空先发守备位");
+    }
+
+    @Test
     @DisplayName("saveLive：载荷缺首个守位时保留既有值（旧客户端不回退历史）")
     void saveLive_missingFirstPosition_preservesExisting() {
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
@@ -344,6 +413,37 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(0), pitcher.getPitchBb());
         assertEquals(Integer.valueOf(0), pitcher.getPitchIbb());
         assertEquals(Integer.valueOf(0), pitcher.getPitchHbp());
+    }
+
+    @Test
+    @DisplayName("守备补记：进行中的比赛不进入补记服务")
+    void createFieldingAdjustment_rejectsLiveGame() {
+        game.setStatus("live");
+        FieldingAdjustmentCreateRequest request = fieldingAdjustmentRequest();
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> gameService.createFieldingAdjustment(Long.valueOf(GAME_ID), request));
+
+        assertEquals(400, error.getCode());
+        verify(fieldingAdjustmentService, never()).create(any(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("守备补记：已完赛比赛交给补记服务处理")
+    void createFieldingAdjustment_delegatesForFinalGame() {
+        game.setStatus("final");
+
+        gameService.createFieldingAdjustment(Long.valueOf(GAME_ID), fieldingAdjustmentRequest());
+
+        verify(fieldingAdjustmentService).create(any(Game.class), anyLong(), any());
+    }
+
+    private static FieldingAdjustmentCreateRequest fieldingAdjustmentRequest() {
+        FieldingAdjustmentCreateRequest request = new FieldingAdjustmentCreateRequest();
+        request.setSourceEventId("play-1");
+        request.setPlayerId(Long.valueOf(PLAYER_ID));
+        request.setPosition("CF");
+        return request;
     }
 
     private GameSaveLiveDTO dtoWithEr(Integer er) {

@@ -47,7 +47,7 @@ onMounted(() => {
 const logoUrl = computed(() => (config.config && config.config.logoUrl ? config.resolveAssetUrl(config.config.logoUrl) : ''));
 const footerText = computed(() => (config.config && config.config.showFooterPortal !== false ? config.footerTextPortal : '') || '');
 
-// 门户目标按命名路由解析（href 自动携带部署 base：dev=/bs-ball/、线上=/bs-ball-next/）；
+// 门户目标按命名路由解析（href 自动携带部署 base：dev=/、线上=/bs-ball/）；
 // 不可硬编码 '/租户码/'：剥离 base 后即根路由 '/'，会被 redirect /welcome 拦截（原地打转）或落到旧版
 const portalHref = router.resolve({ name: 'PortalHome', params: { tenantCode: DEFAULT_TENANT_CODE } }).href;
 

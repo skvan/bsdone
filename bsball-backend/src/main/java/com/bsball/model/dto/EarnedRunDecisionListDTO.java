@@ -19,4 +19,10 @@ public record EarnedRunDecisionListDTO(
         String unearnedReason,
         String runnerOrigin,
         Long overriddenBy,
-        LocalDateTime overriddenAt) {}
+        LocalDateTime overriddenAt,
+        Long effectivePitcherId,
+        String effectivePitcherName,
+        Long adjustmentId,
+        String adjustmentAction,
+        String adjustmentReason,
+        Boolean voided) {}

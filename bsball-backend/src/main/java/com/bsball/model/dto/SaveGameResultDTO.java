@@ -19,6 +19,8 @@ import lombok.Generated;
 public class SaveGameResultDTO {
     private GamePart game;
     private List<StatPart> stats;
+    /** 本次保存要显式删除的既有统计行 id；payload 中未出现的行不再自动删除。 */
+    private List<Long> removedStatIds;
 
     @Generated
     public SaveGameResultDTO() {
@@ -35,6 +37,11 @@ public class SaveGameResultDTO {
     }
 
     @Generated
+    public List<Long> getRemovedStatIds() {
+        return this.removedStatIds;
+    }
+
+    @Generated
     public void setGame(GamePart game) {
         this.game = game;
     }
@@ -42,6 +49,11 @@ public class SaveGameResultDTO {
     @Generated
     public void setStats(List<StatPart> stats) {
         this.stats = stats;
+    }
+
+    @Generated
+    public void setRemovedStatIds(List<Long> removedStatIds) {
+        this.removedStatIds = removedStatIds;
     }
 
     @Generated
@@ -63,7 +75,14 @@ public class SaveGameResultDTO {
         }
         List this$stats = this.getStats();
         List other$stats = other.getStats();
-        return !(this$stats == null ? other$stats != null : !((Object)this$stats).equals(other$stats));
+        if (this$stats == null ? other$stats != null : !this$stats.equals(other$stats)) {
+            return false;
+        }
+        List this$removedStatIds = this.getRemovedStatIds();
+        List other$removedStatIds = other.getRemovedStatIds();
+        return !(this$removedStatIds == null
+                ? other$removedStatIds != null
+                : !this$removedStatIds.equals(other$removedStatIds));
     }
 
     @Generated
@@ -79,12 +98,16 @@ public class SaveGameResultDTO {
         result = result * 59 + ($game == null ? 43 : $game.hashCode());
         List $stats = this.getStats();
         result = result * 59 + ($stats == null ? 43 : ((Object)$stats).hashCode());
+        List $removedStatIds = this.getRemovedStatIds();
+        result = result * 59 + ($removedStatIds == null ? 43 : ((Object)$removedStatIds).hashCode());
         return result;
     }
 
     @Generated
     public String toString() {
-        return "SaveGameResultDTO(game=" + String.valueOf(this.getGame()) + ", stats=" + String.valueOf(this.getStats()) + ")";
+        return "SaveGameResultDTO(game=" + String.valueOf(this.getGame())
+                + ", stats=" + String.valueOf(this.getStats())
+                + ", removedStatIds=" + String.valueOf(this.getRemovedStatIds()) + ")";
     }
 
     public static class GamePart {
@@ -801,6 +824,9 @@ public class SaveGameResultDTO {
         private Integer pitchSh;
         private Integer pitchSf;
         private Integer pitchR;
+        /** 非自责分／待判定失分：导入（legacy）场次用它表达失分分解；旧客户端不送即为缺栏。 */
+        private Integer unearnedR;
+        private Integer pendingR;
         private Integer pitchPa;
         private Integer pitchBf;
         @JsonAlias(value={"pitAb"})
@@ -831,6 +857,8 @@ public class SaveGameResultDTO {
         private Integer pb;
         private Integer catcherSb;
         private Integer catcherCs;
+        /** 结果页显式修改过投手 R/ER：保存为人工覆写，而非被引擎值保留逻辑忽略。 */
+        private Boolean manualPitcherRunOverride;
 
         @Generated
         public StatPart() {
@@ -1039,6 +1067,16 @@ public class SaveGameResultDTO {
         @Generated
         public Integer getPitchR() {
             return this.pitchR;
+        }
+
+        @Generated
+        public Integer getUnearnedR() {
+            return this.unearnedR;
+        }
+
+        @Generated
+        public Integer getPendingR() {
+            return this.pendingR;
         }
 
         @Generated
@@ -1387,6 +1425,16 @@ public class SaveGameResultDTO {
         }
 
         @Generated
+        public void setUnearnedR(Integer unearnedR) {
+            this.unearnedR = unearnedR;
+        }
+
+        @Generated
+        public void setPendingR(Integer pendingR) {
+            this.pendingR = pendingR;
+        }
+
+        @Generated
         public void setPitchPa(Integer pitchPa) {
             this.pitchPa = pitchPa;
         }
@@ -1524,6 +1572,14 @@ public class SaveGameResultDTO {
         @Generated
         public void setCatcherCs(Integer catcherCs) {
             this.catcherCs = catcherCs;
+        }
+
+        public Boolean getManualPitcherRunOverride() {
+            return manualPitcherRunOverride;
+        }
+
+        public void setManualPitcherRunOverride(Boolean manualPitcherRunOverride) {
+            this.manualPitcherRunOverride = manualPitcherRunOverride;
         }
 
         @Generated

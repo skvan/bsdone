@@ -127,12 +127,12 @@
 - **安全网**：部署包含安全断言（环境变量绑定 / 端口 / 库名）、自动备份、120 秒健康检查与**失败自动回滚**、生产零影响对照；
 - 结果与取证：Actions 运行页的 Step Summary（commit、双文件 MD5、health、备份路径）。
 
-### 生产环境部署（手动，2026-09-26 起；2026-10-08 起双轨发布 + 版本号自动刷写）
+### 生产环境部署（手动，2026-09-26 起；2026-11-05 起单轨 `/bs-ball/` + 版本号自动刷写）
 
 - **仅手动触发**：合并到 `main` **不会自动上线**；需要发布时打开仓库 **Actions** 页 →「Deploy Production (manual)」→ **Run workflow**（分支选 `main`）→ 输入**必填发布版本号**（替代原 `DEPLOY` 确认词，兼作防误触门槛）；
-- **一次部署同时上线后端与前端（双轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验）；前端先用 `apply-release-version.mjs` 把发布版本号刷写进旧版产物（页脚 / `APP_VERSION` 注释 / `bs-ball/version.json` / `bs-ball/assets/*.js` 及 `.gz`），再实时构建重建版（`vite build --base=/bs-ball-next/`）并组装**双轨包**（旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`）上传至服务器 staging，随部署脚本 STEP 4 一并切换（不必再手工执行 `upload-frontend-prod.ps1`）；
-- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/bs-ball`、`/bs-ball-next/`、`/premier12/`）失败自动回滚；
-- **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，其版本号由部署流程按输入版本自动刷写（旧版产物刷写 + 重建版构建注入），前端随部署切换后生效（仅重启后端不会改变页脚版本号）。
+- **一次部署同时上线后端与前端（单轨）**：流程自动构建后端 jar（版本号经 `-Dapp.release.version` 注入并校验），实时构建新版前端（`vite build`，基址 `/bs-ball/`，版本号经 `VITE_APP_VERSION` 注入）并组装 **单轨包**（仅新版 `/bs-ball/`）上传至服务器 staging，随部署脚本 STEP 4 一并切换；
+- **安全网**：环境变量 / 外部配置安全断言，旧 jar 与旧前端自动备份，健康检查与前端冒烟（`/`、`/portal.html`、`/bs-ball/`、`/bs-ball/bs-ball`、`/bs-ball/welcome`、`/premier12/`）失败自动回滚；
+- **版本号提示**：页脚与 `bs-ball/version.json` 属于前端产物，版本号由部署流程通过 `VITE_APP_VERSION` 注入构建，并写入打包生成的 `version.json`；仅重启后端不会改变页脚版本号。
 
 ---
 
@@ -181,25 +181,23 @@
 
 ---
 
-## 八、前端重建专项（2026-09 起）
+## 八、前端工程（2026-11-05 起单轨）
 
-前端源码缺失，正在以「编译产物为规格」分批次重建（B0–B5），相关规则：
+前端源码位于 `bsball-frontend/`，已完成重建并以 `/bs-ball/` 单轨运行，相关规则：
 
 | 项 | 说明 |
 |----|------|
 | 目录 | 前端源码位于 `bsball-frontend/`（Vite + Vue 3 + Element Plus） |
-| 分支 | 每批一个功能分支：`feature/frontend-rebuild-b{批次号}`，从 `v2.3/dev` 切出，PR 合并回 `v2.3/dev` |
-| 开发 | `npm run dev`（3000，代理本地后端 8080）；旧编译版对照：`npm run preview:legacy`（3001） |
+| 分支 | 功能分支从 `v2.4/dev` 切出，PR 合并回 `v2.4/dev` |
+| 开发 | `npm run dev`（3000，代理本地后端 8080） |
 | 打包 | `npm run package` → `webapps-dev.tar.gz`（与现有部署包约定一致；禁止在服务器构建） |
-| 验收 | 每批必须与旧编译版对照（截屏/DOM/请求三比对）+ 测试环境验收，通过后再合并 |
-| 发布 | 双轨发布：**生产与测试均并行** 旧版 `/bs-ball/` + 重建版 `/bs-ball-next/`（域名经 `portal.html` 直通新版）；**旧版入口已封锁（2026-10-12，H60）**：`/bs-ball/*` 与 `/index.html` 改为直通页映射至新版对应路径，新版「切回旧版」按钮已移除，旧版产物仅保留供部署级回滚；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar 并刷写前端产物）；部署流水线已集成重建版构建与双轨打包；冒烟（含 `/bs-ball-next/`）失败可秒级回滚；未迁移页面显示占位 |
+| 验收 | 以新工程为唯一源码；改动需通过单测、E2E 与测试环境验收后合并 |
+| 发布 | 单轨发布：**生产与测试均部署于 `/bs-ball/`**（域名经 `portal.html` 直通新版）；`/bs-ball-next/` 旧路径已移除；发布走「Deploy Production (manual)」（**Run 前必填发布版本号**，替代原 DEPLOY 确认词；版本号经 `-Dapp.release.version` 注入后端 jar，并经 `VITE_APP_VERSION` 注入前端构建）；部署流水线已集成新版构建与单轨打包；冒烟（`/bs-ball/`、`/bs-ball/welcome` 等）失败可秒级回滚；未迁移页面显示占位 |
 | 进度 | 批次计划与验收记录由负责人维护（本地文档区 `docs/`，不入库） |
 
-### 与并行开发的共存规则（强制）
+### 前端改动规则（单轨，强制）
 
-1. **双轨模型**：重建轨道（`bsball-frontend/`）与在线维护轨道（`bsball_project/webapps/` 编译产物热修）并行；两轨在文件上正交，互不改写。
-2. **前端改动落点**：未迁移页面的前端改动 = ①编译产物热修（立即上线）＋②登记并入重建；已迁移页面的改动只进新工程；静态页（`webapps/index.html`、`portal.html`）不受重建影响。
-3. **热修强制登记**：凡修改 `bsball_project/webapps/` 的热修，必须在同一 PR 内向 `docs/ops/frontend-hotfix-log.md` 追加登记（PR 模板已含勾选项）。
-4. **热修必须并入重建**：每批开工（SOP 第 0 步）核对登记表与本批相关条目；**生产切换前全量核对，未并入不允许切换**。
-5. **契约以当前为准**：重建以后端当前代码与当前编译产物为规格基准；每批开工前刷新提取契约与镜像核验。
-6. **切换后**：编译产物热修轨道废止，所有前端改动统一走新工程。
+1. **单一源码**：前端改动统一修改 `bsball-frontend/src`；`bsball_project/webapps/bs-ball/` 只保留新版运行时静态资源（icons、geo、team-logos、carousel 等），不再存放或热修旧编译产物。
+2. **构建发布**：构建与打包使用 `npm run build` / `npm run package`；基址固定 `/bs-ball/`，禁止在服务器构建。
+3. **旧路径退役**：`/bs-ball-next/` 不再保留；根 `webapps/index.html`、`portal.html` 仅作入口直通页。
+4. **契约以当前为准**：重建以后端当前代码为规格基准；每批开工前刷新提取契约与镜像核验。

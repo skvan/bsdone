@@ -8,6 +8,10 @@ import {
   battingAppearances,
   countActivePitchers,
   canCancelDh,
+  originalLineupSlot,
+  validateReentrySlot,
+  effectiveUnavailableIds,
+  findReentryInTransaction,
 } from '../src/utils/liveSubstitutionMode.js';
 
 const player = (id, name, position) => ({ id, name, position, number: String(id) });
@@ -235,4 +239,94 @@ test('净状态：P↔野手互换（旧投手仍在打序）不把旧投手列�
   const net = applyNetTeamState(before, after, diff);
   assert.ok(!net.unavailable.includes(1), '仍在打序的旧投手不能进不可再上');
   assert.ok(!net.outPositions.has(1));
+});
+
+test('净状态：DH被代打但仍是守备投手，旧DH不进不可再上', () => {
+  const before = team([player(5, '大谷', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const after = team([player(9, '代打', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const diff = diffTeamState(before, after);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(net.unavailable.includes(9) === false, '新代打不能直接进不可再上');
+  assert.ok(!net.unavailable.includes(5), '仍在投球的旧DH不能进不可再上');
+});
+
+test('净状态：DH被代打且不再投球，旧DH进不可再上', () => {
+  const before = team([player(5, '大谷', 'DH')], [], { fpId: 5, fpRow: player(5, '大谷', 'P') });
+  const after = team([player(9, '代打', 'DH')], [], { fpId: 10, fpRow: player(10, '新投', 'P') });
+  const diff = diffTeamState(before, after);
+  const net = applyNetTeamState(before, after, diff);
+  assert.ok(net.unavailable.includes(5), '既不投球也不打DH时才进不可再上');
+});
+
+test('垒球再上场：原槽位先发优先、换人史兜底、纯板凳 null（#479）', () => {
+  const state = { starterIds: [null, 5, null], slotHistory: [[], [], [7]] };
+  assert.equal(originalLineupSlot(state, 5), 1);
+  assert.equal(originalLineupSlot(state, 7), 2);
+  assert.equal(originalLineupSlot(state, 99), null);
+  assert.equal(originalLineupSlot(state, null), null);
+});
+
+test('垒球再上场：同槽通过，错槽/无法定位阻止，纯板凳放行（#479）', () => {
+  const state = { starterIds: [5, 6], slotHistory: [[], [], [7]] };
+  assert.deepEqual(validateReentrySlot({ team: state, playerId: 5, targetSlot: 0 }), { ok: true, error: '' });
+  const wrong = validateReentrySlot({ team: state, playerId: 5, targetSlot: 2 });
+  assert.equal(wrong.ok, false);
+  assert.match(wrong.error, /第1棒/);
+  const unknown = validateReentrySlot({ team: state, playerId: 7, targetSlot: -1 });
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.error, /无法确认/);
+  assert.deepEqual(validateReentrySlot({ team: state, playerId: 99, targetSlot: 2 }), { ok: true, error: '' });
+});
+
+test('垒球再上场开关关闭：换下球员进不可再上；开启则不进制（#479）', () => {
+  const before = team([player(1, '甲', 'SS'), player(2, '乙', 'C')], [player(9, '替补', '')]);
+  const after = team([player(9, '替补', 'SS'), player(2, '乙', 'C')]);
+  const diff = diffTeamState(before, after);
+  const closed = applyNetTeamState(before, after, diff, { sport: 'SOFTBALL', reentryAllowed: false });
+  assert.ok(closed.unavailable.includes(1));
+  const open = applyNetTeamState(before, after, diff, { sport: 'SOFTBALL', reentryAllowed: true });
+  assert.ok(!open.unavailable.includes(1));
+});
+
+test('垒球再上场：targetSlot 为空/NaN 视为无法定位（#479）', () => {
+  const state = { starterIds: [5] };
+  assert.equal(validateReentrySlot({ team: state, playerId: 5, targetSlot: null }).ok, false);
+  assert.equal(validateReentrySlot({ team: state, playerId: 5, targetSlot: undefined }).ok, false);
+  assert.equal(validateReentrySlot({ team: state, playerId: 5, targetSlot: '' }).ok, false);
+});
+
+test('有效不可再上：关闭态回填板凳前打序球员，开启态只认显式名单（#479）', () => {
+  const state = { unavailable: [9], bench: [{ id: 1 }, { id: 9 }, { id: 5 }], starterIds: [1, null], slotHistory: [[], [2]] };
+  assert.deepEqual(effectiveUnavailableIds({ ...state, reentryAllowed: false }), [9, 1]);
+  assert.deepEqual(effectiveUnavailableIds({ ...state, reentryAllowed: true }), [9]);
+});
+
+test('同事务换下再上：关闭态拦截，开启态放行（#479）', () => {
+  const diff = {
+    teamId: 7,
+    substitutions: [
+      { slot: 3, outPlayerId: 1, inPlayerId: 2 },
+      { slot: 5, outPlayerId: 3, inPlayerId: 1 },
+    ],
+    pitchingChange: null,
+  };
+  assert.deepEqual(findReentryInTransaction([diff], { reentryAllowed: false }), { teamId: 7, inPlayerId: 1, slot: 5 });
+  assert.equal(findReentryInTransaction([diff], { reentryAllowed: true }), null);
+  const pitchDiff = {
+    teamId: 7,
+    substitutions: [{ slot: 2, outPlayerId: 4, inPlayerId: 5 }],
+    pitchingChange: { outPlayerId: 6, inPlayerId: 4 },
+  };
+  assert.deepEqual(findReentryInTransaction([pitchDiff], { reentryAllowed: false }), { teamId: 7, inPlayerId: 4, slot: null });
+});
+
+test('净状态：关闭态回填历史遗漏的板凳前打序球员（#479）', () => {
+  const starterIds = [1, null, null, null, null, null, null, null, null, null, null, null];
+  const before = team([player(2, '乙', 'SS')], [player(1, '甲', 'SS')], { starterIds });
+  const after = team([player(9, '替补', 'SS')], [player(1, '甲', 'SS')], { starterIds });
+  const diff = diffTeamState(before, after);
+  const closed = applyNetTeamState(before, after, diff, { sport: 'SOFTBALL', reentryAllowed: false });
+  assert.ok(closed.unavailable.includes(1), '前先发在板凳上应回填不可再上');
+  const open = applyNetTeamState(before, after, diff, { sport: 'SOFTBALL', reentryAllowed: true });
+  assert.ok(!open.unavailable.includes(1));
 });

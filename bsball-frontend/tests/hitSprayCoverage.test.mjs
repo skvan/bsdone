@@ -19,7 +19,45 @@ test('轨迹参数表与配色已改为共享模块导入，内联表已移除',
 test('推送逻辑已提取为 pushHitSpray，bt 主链经 s 包装调用', () => {
   assert.match(source, /function pushHitSpray\(resultCode,rbi,spray\)\{/);
   assert.match(source, /const s=\(b,w=0\)=>pushHitSpray\(b,w,a\);/);
-  assert.match(source, /import \{ buildHitSprayRecord as LgHitSprayRecord \} from '\.\.\/\.\.\/utils\/hitSprayRecord';/);
+  assert.match(source, /buildHitSprayRecord as LgHitSprayRecord/);
+});
+
+test('落点重复上传修复：rid 入队、送出后剔除、撤销/重做/重进均去重（2026-11-09）', () => {
+  // 工具函数全部经共享模块引入
+  for (const alias of [
+    'newSprayRid as LgNewSprayRid',
+    'pruneSentSprayRecords as LgPruneSentSpray',
+    'restoreFailedSprayBatch as LgRestoreFailedSpray',
+    'toHitSprayPayload as LgSprayPayload',
+  ]) {
+    assert.ok(source.includes(alias), `应引入 ${alias}`);
+  }
+  // 入队时生成客户端唯一键
+  assert.match(source, /record&&\(record\.rid=LgNewSprayRid\(\),l\.hitSprayQueue\.push\(record\)\)/);
+  // 送出时保留 rid，服务端按 (gameId, rid) 幂等去重
+  assert.match(source, /await Xo\.saveBatch\(batch\.map\(LgSprayPayload\)\)/);
+  // 新场次开始时清空已送出 rid，避免跨场累计
+  assert.match(source, /sentHitSprayRids\.clear\(\)/);
+  // 送出成功后记 rid 并回洗撤销/重做快照；发送期间被撤销放回 live queue 的同一批也要剔除
+  assert.match(source, /record\?\.rid&&sentHitSprayRids\.add\(record\.rid\)/);
+  assert.ok(
+    (source.match(/l\.hitSprayQueue=LgPruneSentSpray\(l\.hitSprayQueue,sentHitSprayRids\)/g) ?? []).length >= 2,
+    'co() 入口与成功后都应剔除 live queue 中已送出的记录',
+  );
+  assert.match(source, /function pruneSentSpraySnapshots\(\)\{/);
+  // 发送失败回灌按 rid 去重
+  assert.match(source, /l\.hitSprayQueue=LgRestoreFailedSpray\(batch,l\.hitSprayQueue\)/);
+  // 撤销、重做、applyHistoryEntry 还原队列时都要剔除已送出记录
+  assert.ok(
+    (source.match(/l\.hitSprayQueue=LgPruneSentSpray\(\[\.\.\.e\.hitSprayQueue\],sentHitSprayRids\)/g) ?? []).length >= 2,
+    '撤销与重做两条路径都应剔除已送出记录',
+  );
+  assert.match(source, /O\.hitSprayQueue=LgPruneSentSpray\(structuredClone\(G\.hitSprayQueue\),sentHitSprayRids\)/);
+  // 重进现场/从云端恢复：rid 集合随快照持久化并回灌
+  assert.match(source, /spraySentRids:\[\.\.\.sentHitSprayRids\]\.slice\(-500\)/);
+  assert.match(source, /e\.spraySentRids\.forEach\(rid=>typeof rid=="string"&&sentHitSprayRids\.add\(rid\)\)/);
+  // 修复前失败分支引用了未定义的 records，会把 undefined 塞回队列
+  assert.doesNotMatch(source, /l\.hitSprayQueue\.unshift\(\.\.\.records\)/, '失败回滚应使用 batch');
 });
 
 test('bt 主链各结果分支均入队（含此前缺失的 7 类）', () => {

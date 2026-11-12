@@ -32,8 +32,11 @@
 .live-lineup-rail__num[data-v-78b7b6a8]{flex:0 0 36px;color:var(--el-text-color-secondary);font-variant-numeric:tabular-nums}
 .live-lineup-rail__name[data-v-78b7b6a8]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .live-lineup-rail__item--current[data-v-78b7b6a8]{background:var(--el-color-primary-light-9);border-left-color:var(--el-color-primary);font-weight:700;color:var(--el-text-color-primary)}
+.live-lineup-rail__item--drop{background:var(--el-color-primary-light-8);outline:2px solid var(--el-color-primary);outline-offset:-2px}
 .live-lineup-rail__item--current .live-lineup-rail__order[data-v-78b7b6a8],.live-lineup-rail__item--current .live-lineup-rail__num[data-v-78b7b6a8]{color:var(--el-text-color-primary)}
 @media (width<=1279px){.live-lineup-rail[data-v-78b7b6a8]{display:none}}
+/* iPad 固定打线栏默认隐藏，仅换人模式 768-1279px 显示（见下方独立媒体查询） */
+.live-lineup-rail--fixed{display:none}
 
 /* ===== #206 实时录入 · 拖拽得分原因「有打点/不计打点」文字强调（Issue #206，2026-10-03） ===== */
 .rdm__cn-emph[data-v-78b7b6a8]{font-weight:800;color:var(--el-color-primary)}
@@ -82,7 +85,28 @@
 .hr-fireworks-layer,.hr-drag-preview{pointer-events:none}
 
 /* ===== #359 实时录入全屏 · 下方 Play-by-Play（2026-10-25） ===== */
-body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important}
+/* 日志栏四向吸附：shell 用 grid 承载 主内容 / 分界线 / 日志，--pbp-size 由分界线写入 */
+.live-pbp-shell[data-v-78b7b6a8]{--pbp-size:220px;display:grid;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
+.live-pbp-shell[data-v-78b7b6a8]>.main-content[data-v-78b7b6a8]{grid-area:main;min-width:0;min-height:0;overflow:hidden}
+.live-pbp-shell[data-v-78b7b6a8]>.live-pbp-splitter{grid-area:bar}
+.live-pbp-shell[data-v-78b7b6a8]>.lg-pbp[data-v-78b7b6a8]{grid-area:pbp;min-width:0;min-height:0}
+.live-pbp-shell[data-dock=bottom][data-v-78b7b6a8]{grid-template-areas:"main" "bar" "pbp";grid-template-rows:minmax(0,1fr) 12px var(--pbp-size);grid-template-columns:minmax(0,1fr)}
+.live-pbp-shell[data-dock=top][data-v-78b7b6a8]{grid-template-areas:"pbp" "bar" "main";grid-template-rows:var(--pbp-size) 12px minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
+.live-pbp-shell[data-dock=left][data-v-78b7b6a8]{grid-template-areas:"pbp bar main";grid-template-rows:minmax(0,1fr);grid-template-columns:var(--pbp-size) 12px minmax(0,1fr)}
+.live-pbp-shell[data-dock=right][data-v-78b7b6a8]{grid-template-areas:"main bar pbp";grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) 12px var(--pbp-size)}
+/* 非全屏时日志不渲染，shell 退化为普通容器，避免残留空白轨道 */
+.live-pbp-shell[data-v-78b7b6a8]:has(>.main-content:only-child){display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.live-pbp-shell[data-v-78b7b6a8]:has(>.main-content:only-child)>.main-content[data-v-78b7b6a8]{flex:1 1 auto}
+.live-pbp-splitter{display:flex;align-items:center;justify-content:center;flex:0 0 12px;background:var(--el-fill-color-light);cursor:row-resize;touch-action:none;user-select:none;-webkit-user-select:none;outline:none}
+.live-pbp-splitter:hover,.live-pbp-splitter:focus-visible{background:var(--el-color-primary-light-9)}
+.live-pbp-splitter:focus-visible{box-shadow:inset 0 0 0 2px var(--el-color-primary)}
+.live-pbp-splitter__grip{width:36px;height:4px;border-radius:2px;background:var(--el-border-color)}
+.live-pbp-shell[data-dock=left]>.live-pbp-splitter,.live-pbp-shell[data-dock=right]>.live-pbp-splitter{cursor:col-resize}
+.live-pbp-shell[data-dock=left]>.live-pbp-splitter .live-pbp-splitter__grip,.live-pbp-shell[data-dock=right]>.live-pbp-splitter .live-pbp-splitter__grip{width:4px;height:36px}
+/* 上方吸附时给全屏右上角「退出全屏」留出安全区，避免遮挡吸附按钮 */
+.live-pbp-shell[data-dock=top]>.lg-pbp .lg-pbp__head{padding-right:96px}
+body.lg-pbp-dock-resizing{user-select:none!important;cursor:row-resize!important}
+body.lg-pbp-dock-resizing--col{user-select:none!important;cursor:col-resize!important}
 .card-body-wrap.card-body-fullscreen[data-v-78b7b6a8]{overflow:hidden}
 .card-body-wrap.card-body-fullscreen>.live-content[data-v-78b7b6a8]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .card-body-fullscreen .main-content--entry-only[data-v-78b7b6a8]{display:flex;flex-direction:column;flex-wrap:nowrap;flex:1 1 auto;min-height:0;align-items:stretch;gap:0}
@@ -97,6 +121,12 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 
 /* ===== 换人事务模式（#444 后续） ===== */
 .live-sub-mode-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #e6a23c;background:#fdf6ec;color:#8a5a00;border-radius:6px;font-size:13px;line-height:1.4;position:relative;z-index:6}
+/* #478 扩展：守备轮转速记栏 */
+.live-sub-rotation{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto}
+.live-sub-rotation__input{box-sizing:border-box;width:132px;height:28px;padding:0 8px;border:1px solid var(--el-border-color);border-radius:6px;background:var(--el-bg-color);color:var(--el-text-color-primary);font-size:13px;line-height:26px;outline:none}
+.live-sub-rotation__input:focus{border-color:var(--el-color-primary);box-shadow:0 0 0 1px color-mix(in srgb, var(--el-color-primary) 30%, transparent)}
+.live-sub-rotation__input::placeholder{color:var(--el-text-color-placeholder)}
+@media (width<=1279px){.live-sub-rotation__input{width:116px;height:32px;font-size:14px;line-height:30px}}
 .live-sub-mode-banner>span{flex:1 1 260px;min-width:220px}
 .live-sub-dh-card{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px dashed #d48806;background:#fff;color:#8a5a00;border-radius:6px;font-size:12px;line-height:1.3;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 .live-sub-dh-card:active{cursor:grabbing}
@@ -117,6 +147,26 @@ body.lg-pbp-resize-active{user-select:none!important;cursor:row-resize!important
 .runner-draggable-group.live-sub-swap-out .runner-token-circle,.batter-at-plate-group.live-sub-swap-out .batter-token-circle{fill:#e74c3c;stroke:#fff;stroke-width:3;transform:scale(1.25);transform-box:fill-box;transform-origin:center}
 .runner-draggable-group.live-sub-swap-out .runner-token-num,.batter-at-plate-group.live-sub-swap-out .runner-token-num{fill:#fff}
 
+/* ===== #478 第 8 项：换人模式小屏替补席 ===== */
+.live-sub-bench-toggle,.live-sub-bench-pill{display:none}
+@media (width<=1279px){
+  .live-sub-mode-banner .live-sub-bench-toggle{display:inline-flex}
+  .live-sub-bench-pill{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:60;display:inline-flex;align-items:center;padding:10px 16px;border:0;border-radius:999px;background:var(--el-color-primary);color:#fff;font-size:14px;font-weight:600;box-shadow:0 4px 14px #00000038;cursor:pointer}
+  .live-content--sub-mode .live-bench-panel__list{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+  .live-content--sub-mode .live-bench-panel__item{flex:0 0 auto}
+  .live-content--sub-mode .live-bench-panel .live-bench-card{width:auto;min-width:140px;min-height:44px;font-size:14px;touch-action:pan-x}
+  .live-content--sub-mode .live-bench-left-col,
+  .live-content--sub-mode .live-bench-panel--defense{display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;width:auto;max-height:32vh;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:var(--el-bg-color);border-top:1px solid var(--el-border-color-lighter);border-radius:14px 14px 0 0;box-shadow:0 -8px 24px #0000002e;box-sizing:border-box;overflow-y:auto}
+  .live-content--sub-mode .live-bench-left-col{flex-direction:column;gap:6px}
+  .live-content--sub-mode .live-bench-left-col .live-lineup-rail{display:none}
+  .live-content--sub-mode.live-content--sub-bench-open.live-content--sub-bench-offense .live-bench-left-col{display:flex}
+  .live-content--sub-mode.live-content--sub-bench-open:not(.live-content--sub-bench-offense) .live-bench-panel--defense{display:flex}
+}
+/* ===== iPad：换人模式打线栏长驻，支持拖拽/点选落点 ===== */
+@media (min-width:768px) and (max-width:1279px){
+  .live-content--sub-mode{--live-sub-rail-top:250px}
+  .live-content--sub-mode .live-lineup-rail--fixed{display:block;position:fixed;left:10px;top:calc(env(safe-area-inset-top) + var(--live-sub-rail-top,250px));bottom:auto;width:170px;max-height:calc(100vh - 280px);z-index:55;overflow-y:auto}
+}
 /* ===== #478：拖拽场员跨画布时保持可见（场上卡片移出 SVG 会被裁切；小屏隐藏替补席但浮层仍需显示） ===== */
 .defender-hit.field-player-hit--ghost{opacity:0}
 .live-bench-ghost--fielder{background:#fdecea;border-color:#e74c3c;color:#c0392b;font-weight:600;transform:translate(-50%,-150%) scale(1.08);box-shadow:0 6px 18px rgba(231,76,60,.28)}

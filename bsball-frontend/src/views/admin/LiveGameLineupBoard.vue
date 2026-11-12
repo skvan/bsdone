@@ -79,6 +79,32 @@
       <el-radio-button value="home">{{ homeTeamName }}（主）</el-radio-button>
     </el-radio-group>
 
+    <div v-if="teamSubmissionBanner" class="team-submission-banner">
+      <span>{{ teamSubmissionBanner.text }}</span>
+      <el-button
+        v-if="teamSubmissionBanner.pending"
+        size="small"
+        type="primary"
+        plain
+        @click="loadTeamSubmission(activeTeam)"
+      >
+        载入球队阵容
+      </el-button>
+    </div>
+
+    <div v-if="ohtaniRule" class="ohtani-rule-bar">
+      <el-button
+        size="small"
+        type="primary"
+        plain
+        :disabled="ohtaniButtonDisabled"
+        @click="onToggleOhtani"
+      >
+        {{ ohtaniButtonLabel }}
+      </el-button>
+      <span class="ohtani-rule-bar__hint">{{ ohtaniHint }}</span>
+    </div>
+
     <div v-if="pending" class="lineup-pending-hint">
       待放置：{{ pending.player.name }}｜点卡槽落位；再点卡片或空白处取消
     </div>
@@ -134,7 +160,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
-import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi, teamLineupApi } from '../../api/business';
 import { fetchResult } from '../../api/request';
 import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
 import { isBusinessError } from '../../utils/apiError';
@@ -147,6 +173,15 @@ import { slotsForMode } from '../../utils/lineupFieldPositions';
 import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules';
 import { visibleLineupError } from '../../utils/lineupValidationMessage';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
+import { buildStartingBenchRows, buildStartingLineupRows, buildStartingPitcherRow } from '../../utils/lineupStartingPosition';
+import {
+  formatLineupDateTime,
+  hasTeamLineupData,
+  parseTeamLineupDraft,
+  snapshotSideHasData,
+  submissionIsNewer,
+  toBoardDraft
+} from '../../utils/teamLineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
@@ -174,6 +209,7 @@ const saving = ref(false);
 const mode = ref('BASEBALL');
 const eventName = ref('');
 const extraBatter = ref(false);     // 赛事级「额外打击者（EP）」开关；缺省/加载失败保持 false（fail-closed）
+const ohtaniRule = ref(false);      // 赛事级「大谷规则（DH 兼先发投手）」；缺省/加载失败保持 false（fail-closed）
 const game = ref(null);
 const currentGameId = ref(null);
 const gameStatus = ref('');
@@ -185,6 +221,10 @@ const activeTeam = ref('away');
 const pending = ref(null);          // 点选点放：{ player }
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
+const teamSubmissions = ref({ home: null, away: null });       // 办赛方读取到的球队赛前提交
+const pendingTeamSubmissions = ref({ home: null, away: null }); // 已有编辑、等待办赛方手动载入的提交
+const loadedSubmissionAt = ref({ home: null, away: null });     // 已载入的提交时间（写入快照，避免重复提示）
+const autoLoadedSubmission = ref({ home: false, away: false }); // 本次进入是否自动载入
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
@@ -195,12 +235,52 @@ const rosterHint = computed(() => {
 
 const awayBoard = useLineupBoard(mode, computed(() => setupForm.value.awayTeamId ?? null), {
   extraBatter,
+  ohtaniRule,
 });
 const homeBoard = useLineupBoard(mode, computed(() => setupForm.value.homeTeamId ?? null), {
   extraBatter,
+  ohtaniRule,
 });
 const boardOf = (team) => (team === 'away' ? awayBoard : homeBoard);
 const board = computed(() => boardOf(activeTeam.value));
+const ohtaniAction = computed(() => {
+  const b = board.value;
+  if (!ohtaniRule.value) return 'none';
+  if (b.hasDhPitcher.value && !b.hasP.value) return 'cancel-dh-pitcher';
+  if (b.hasP.value && !b.hasDh.value) return 'pitcher-to-dh';
+  if (!b.hasDh.value && b.fieldingPitcherId.value != null) return 'pitcher-to-dh';
+  if (b.hasDh.value && !b.hasP.value) return 'dh-to-pitcher';
+  return 'none';
+});
+const ohtaniButtonLabel = computed(() => {
+  if (ohtaniAction.value === 'cancel-dh-pitcher') return '取消兼投';
+  if (ohtaniAction.value === 'pitcher-to-dh') return '兼DH';
+  return '设为兼投';
+});
+const ohtaniButtonDisabled = computed(() => ohtaniAction.value === 'none');
+const ohtaniHint = computed(() => {
+  if (!ohtaniRule.value) return '';
+  const b = board.value;
+  if (b.hasDhPitcher.value && !b.hasP.value) {
+    return '大谷规则：DH 可兼先发投手；换投后保留 DH，不可再移防。';
+  }
+  if (b.hasP.value && b.hasDh.value) return '大谷规则：打线同时有投手位和 DH，请先调整';
+  if (b.hasP.value) return '大谷规则：点「兼DH」把当前投手设为 DH 兼投，自动填充 DH 槽';
+  if (!b.hasDh.value && b.fieldingPitcherId.value != null) {
+    return '大谷规则：点「兼DH」把当前投手设为 DH 兼投';
+  }
+  if (b.hasDh.value) return '大谷规则：点「设为兼投」把 DH 设为先发投手';
+  return '大谷规则：先把球员放到 DH 槽或投手丘，再点对应按钮';
+});
+function onToggleOhtani() {
+  const action = ohtaniAction.value;
+  if (action === 'cancel-dh-pitcher' || action === 'dh-to-pitcher') {
+    board.value.toggleDhPitcher();
+  } else if (action === 'pitcher-to-dh') {
+    board.value.setPitcherAsDh();
+  }
+  showNotice(board.value);
+}
 
 const teamsReady = computed(() =>
   setupForm.value.homeTeamId != null &&
@@ -216,6 +296,21 @@ const awayTeamName = computed(() => teams.value.find((t) => t.id === setupForm.v
 const errorIndices = computed(() => board.value.validation.value.errorRowIndices ?? []);
 const lineupErrorMsg = computed(() => visibleLineupError(board.value.validation.value.msg));
 
+// 球队端赛前阵容提示：空侧自动带出；已有编辑时只提示，由办赛方手动载入
+const teamSubmissionBanner = computed(() => {
+  const submission = teamSubmissions.value[activeTeam.value];
+  if (!submission) return null;
+  const sideLabel = activeTeam.value === 'home' ? '主队' : '客队';
+  const at = formatLineupDateTime(submission.updatedAt, '时间未知');
+  if (pendingTeamSubmissions.value[activeTeam.value]) {
+    return { pending: true, text: `${sideLabel}已保存赛前阵容（${at}），当前页面已有编辑` };
+  }
+  if (autoLoadedSubmission.value[activeTeam.value]) {
+    return { pending: false, text: `已载入${sideLabel}赛前阵容（${at}）` };
+  }
+  return null;
+});
+
 // R1：球场卡槽视图（9 守备位 + DH）
 const fieldSlotViews = computed(() => {
   const b = board.value;
@@ -230,12 +325,17 @@ const fieldSlotViews = computed(() => {
     const row = rowIndex >= 0 ? rows[rowIndex] : null;
     let player = row;
     let badge = '';
-    // P 槽为空但已指定仅守备投手 → 悬停显示
-    if (!player && code === 'P' && b.fieldingPitcherId.value != null) {
+    let orderRow = row;  // 棒次来源行：通常即 row；大谷规则下 P 槽改用 DH 行
+    // P 槽为空但已指定投手 → 悬停显示；大谷规则下该球员可能同时是打线中的 DH（同一球员两处展示）
+    if (!row && code === 'P' && b.fieldingPitcherId.value != null) {
+      const dhPitcherRow = rows.find(
+        (r) => !isPlaceholder(r) && posOf(r) === 'DH' && String(r.id) === String(b.fieldingPitcherId.value)
+      );
       player = b.roster.value.find((p) => String(p.id) === String(b.fieldingPitcherId.value)) ?? null;
-      if (player) badge = '仅守备';
+      if (player) badge = dhPitcherRow ? 'DH兼投' : '仅守备';
+      if (dhPitcherRow) orderRow = dhPitcherRow;
     }
-    const orderIndex = row ? filledRows.findIndex((r) => String(r.id) === String(row.id)) + 1 : 0;
+    const orderIndex = orderRow ? filledRows.findIndex((r) => String(r.id) === String(orderRow.id)) + 1 : 0;
     const error = rowIndex >= 0 && errIdx.includes(rowIndex);
     const selfPending = !!player && String(player.id) === pickedId;
     return { code, player: player ?? null, orderIndex, badge, error, pending: pendingAccepts(code), selfPending };
@@ -448,6 +548,97 @@ function warnEmptyPool(label, pool) {
   }
 }
 
+/** 拉取本场双方球队提交（失败降级为空，不阻断阵容页）。 */
+async function loadTeamSubmissions(gameIdValue) {
+  const empty = { home: null, away: null };
+  if (!gameIdValue) return empty;
+  const { data, error } = await teamLineupApi.listSubmissions(gameIdValue);
+  if (error || !Array.isArray(data)) {
+    if (error) console.warn('[LiveGameLineup] 球队赛前阵容加载失败', error);
+    teamSubmissions.value = empty;
+    return empty;
+  }
+  const bySide = { home: null, away: null };
+  for (const submission of data) {
+    if (submission?.side === 'home' || submission?.side === 'away') {
+      bySide[submission.side] = submission;
+    }
+  }
+  teamSubmissions.value = bySide;
+  return bySide;
+}
+
+/**
+ * 每侧选源：快照已有实际阵容 → 用快照；空侧 → 自动用球队提交；
+ * 快照有编辑且球队提交比“已载入版本”新 → 仅记录为待载入，不覆盖。
+ */
+function resolveSideDraft(side, snapshot, submission) {
+  const submissionDraft = submission ? parseTeamLineupDraft(submission.lineupJson) : null;
+  const hasSnapshotSide = snapshotSideHasData(snapshot, side);
+  const hasSubmission = hasTeamLineupData(submissionDraft);
+  if (hasSubmission && !hasSnapshotSide) {
+    autoLoadedSubmission.value[side] = true;
+    loadedSubmissionAt.value[side] = submission.updatedAt ?? null;
+    pendingTeamSubmissions.value[side] = null;
+    return toBoardDraft(submissionDraft);
+  }
+  if (hasSubmission && hasSnapshotSide) {
+    const loadedAt = snapshot?.teamLineupLoadedAt?.[side] ?? null;
+    if (submissionIsNewer(submission.updatedAt, loadedAt)) {
+      pendingTeamSubmissions.value[side] = submission;
+    } else {
+      loadedSubmissionAt.value[side] = loadedAt;
+    }
+  }
+  if (!snapshot && !hasSubmission) return null;
+  return {
+    rows: snapshot?.[`${side}Lineup`] ?? [],
+    bench: snapshot?.[`${side}Bench`] ?? [],
+    fieldingPitcherId: snapshot?.[`${side}FieldingPitcherId`] ?? null,
+    lastDhAddedFromPoolId: snapshot?.[`${side}LastDhAddedFromPoolId`] ?? null
+  };
+}
+
+function applySideDraft(side, source, pool) {
+  if (!source) return;
+  const filtered = filterOutOfRoster(source.rows, source.bench, pool);
+  const removedNames = (filtered.removed ?? []).map((x) => x.name || x.id).filter((x) => x != null);
+  if (removedNames.length) {
+    ElMessage.warning(`已从阵容中移除未报名球员：${removedNames.join('、')}`);
+  }
+  const target = side === 'home' ? homeBoard : awayBoard;
+  target.loadDraft({
+    rows: filtered.keptRows,
+    bench: filtered.keptBench,
+    fieldingPitcherId: pickPoolId(source.fieldingPitcherId, pool),
+    lastDhAddedFromPoolId: pickPoolId(source.lastDhAddedFromPoolId, pool)
+  });
+}
+
+/** 办赛方手动载入球队提交（覆盖该侧当前阵容）。 */
+async function loadTeamSubmission(side) {
+  const submission = pendingTeamSubmissions.value[side];
+  if (!submission) return;
+  try {
+    await ElMessageBox.confirm(
+      '将用球队提交的赛前阵容覆盖当前该队阵容，是否继续？',
+      '载入球队赛前阵容'
+    );
+  } catch {
+    return;
+  }
+  const draft = parseTeamLineupDraft(submission.lineupJson);
+  if (!draft || !hasTeamLineupData(draft)) {
+    ElMessage.warning('球队提交的阵容数据为空或格式不正确');
+    return;
+  }
+  applySideDraft(side, toBoardDraft(draft), rosterPools.value[side]);
+  loadedSubmissionAt.value[side] = submission.updatedAt ?? null;
+  pendingTeamSubmissions.value[side] = null;
+  autoLoadedSubmission.value[side] = true;
+  ElMessage.success('已载入球队赛前阵容');
+}
+
 // 旧件 qi()：保存比赛记录时的字段集合（顺序与默认值逐条对齐）
 function gamePayload(g) {
   const e = g ?? {};
@@ -512,6 +703,7 @@ function draftPayload(gid) {
     awayLastDhAddedFromPoolId: awayBoard.lastDhAddedFromPoolId.value,
     homeUnavailablePlayerIds: unavailable.value.home,
     awayUnavailablePlayerIds: unavailable.value.away,
+    teamLineupLoadedAt: loadedSubmissionAt.value
   });
 }
 
@@ -553,6 +745,10 @@ async function loadGame(id) {
     const t = resolveLineupResumeInit(e, n);
     game.value = e;
     currentGameId.value = id;
+    teamSubmissions.value = { home: null, away: null };
+    pendingTeamSubmissions.value = { home: null, away: null };
+    loadedSubmissionAt.value = { home: null, away: null };
+    autoLoadedSubmission.value = { home: false, away: false };
     setupForm.value.homeTeamId = t.homeTeamId ?? undefined;
     setupForm.value.awayTeamId = t.awayTeamId ?? undefined;
     setupForm.value.venue = t.venue ?? '';
@@ -560,28 +756,12 @@ async function loadGame(id) {
     if (t.gameTime) gameTime.value = splitGameTime(t.gameTime).gameTime;
     if (teamsReady.value) {
       await loadRosters();
+      const submissions = await loadTeamSubmissions(id);
+      const homeSource = resolveSideDraft('home', n, submissions.home);
+      const awaySource = resolveSideDraft('away', n, submissions.away);
+      applySideDraft('home', homeSource, rosterPools.value.home);
+      applySideDraft('away', awaySource, rosterPools.value.away);
       if (n) {
-        // 电子秩序册（Issue #310）：载入存量草稿时剔除名单外球员并提示
-        const homeFiltered = filterOutOfRoster(n.homeLineup, n.homeBench, rosterPools.value.home);
-        const awayFiltered = filterOutOfRoster(n.awayLineup, n.awayBench, rosterPools.value.away);
-        const removedNames = [...homeFiltered.removed, ...awayFiltered.removed]
-          .map((x) => x.name || x.id)
-          .filter((x) => x != null);
-        if (removedNames.length) {
-          ElMessage.warning(`已从阵容中移除未报名球员：${removedNames.join('、')}`);
-        }
-        homeBoard.loadDraft({
-          rows: homeFiltered.keptRows,
-          bench: homeFiltered.keptBench,
-          fieldingPitcherId: pickPoolId(n.homeFieldingPitcherId, rosterPools.value.home),
-          lastDhAddedFromPoolId: pickPoolId(n.homeLastDhAddedFromPoolId, rosterPools.value.home),
-        });
-        awayBoard.loadDraft({
-          rows: awayFiltered.keptRows,
-          bench: awayFiltered.keptBench,
-          fieldingPitcherId: pickPoolId(n.awayFieldingPitcherId, rosterPools.value.away),
-          lastDhAddedFromPoolId: pickPoolId(n.awayLastDhAddedFromPoolId, rosterPools.value.away),
-        });
         unavailable.value.home = Array.isArray(n.homeUnavailablePlayerIds) ? n.homeUnavailablePlayerIds : [];
         unavailable.value.away = Array.isArray(n.awayUnavailablePlayerIds) ? n.awayUnavailablePlayerIds : [];
       }
@@ -710,10 +890,18 @@ async function startEntry() {
         gameTime: cu.gameTime,
         gameday: cu.gameday,
       },
-      homeLineup: homeBoard.rows.value,
-      awayLineup: awayBoard.rows.value,
-      homeBench: homeBoard.bench.value,
-      awayBench: awayBoard.bench.value,
+      homeLineup: buildStartingLineupRows(homeBoard.rows.value),
+      awayLineup: buildStartingLineupRows(awayBoard.rows.value),
+      homeBench: buildStartingBenchRows(homeBoard.bench.value, homeBoard.fieldingPitcherId.value),
+      awayBench: buildStartingBenchRows(awayBoard.bench.value, awayBoard.fieldingPitcherId.value),
+      homeFieldingPitcherRow: buildStartingPitcherRow(
+        homeBoard.rows.value, homeBoard.bench.value, homeBoard.roster.value,
+        homeBoard.fieldingPitcherId.value, setupForm.value.homeTeamId
+      ),
+      awayFieldingPitcherRow: buildStartingPitcherRow(
+        awayBoard.rows.value, awayBoard.bench.value, awayBoard.roster.value,
+        awayBoard.fieldingPitcherId.value, setupForm.value.awayTeamId
+      ),
       awayFieldingPitcherId: awayBoard.fieldingPitcherId.value,
       homeFieldingPitcherId: homeBoard.fieldingPitcherId.value,
       awayLastDhAddedFromPoolId: awayBoard.lastDhAddedFromPoolId.value,
@@ -833,6 +1021,7 @@ onMounted(async () => {
     mode.value = e?.gameMode ?? 'BASEBALL';
     // 联赛级特殊规则：缺字段/加载失败保持 false（fail-closed），仅显式 true 才开启
     extraBatter.value = e?.specialRules?.extraBatter === true;
+    ohtaniRule.value = e?.specialRules?.ohtaniRule === true;
     const [teamList, stadiumList] = await Promise.all([
       eventRegistrationApi.gameTeamOptions(eventId.value),
       fetchAllStadiums().catch(() => []),
@@ -868,3 +1057,32 @@ onBeforeUnmount(() => {
   unbind();
 });
 </script>
+
+<style scoped>
+.team-submission-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  border: 1px solid #d9e8ff;
+  border-radius: 8px;
+  background: #f4f8ff;
+  color: #4a5b6f;
+  font-size: 13px;
+}
+
+.ohtani-rule-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 4px;
+}
+.ohtani-rule-bar__hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+</style>

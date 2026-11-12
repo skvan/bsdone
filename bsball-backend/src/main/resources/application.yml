@@ -106,7 +106,7 @@ app:
   wechat:
     app-id: ${WECHAT_APP_ID:}
     app-secret: ${WECHAT_APP_SECRET:}
-    allowed-hosts: ${WECHAT_ALLOWED_HOSTS:www.bsdone.com}
+    allowed-hosts: ${WECHAT_ALLOWED_HOSTS:bsdone.com,www.bsdone.com}
   upload:
     # 本地上传根目录（相对 workspace 或绝对路径）
     dir: ${APP_UPLOAD_DIR:uploads}
