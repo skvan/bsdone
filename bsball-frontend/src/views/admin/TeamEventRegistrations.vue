@@ -31,7 +31,7 @@
             <span v-else class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('orderBook.colActions')" min-width="280" :fixed="opFixed">
+        <el-table-column :label="t('orderBook.colActions')" min-width="340" :fixed="opFixed">
           <template #default="{ row }">
             <el-button v-if="canManage && row.status === 'invited'" link type="primary" @click="confirmJoin(row)">
               {{ t('orderBook.confirmJoin') }}
@@ -49,6 +49,9 @@
               {{ t('orderBook.editRoster') }}
             </el-button>
             <el-button link type="primary" @click="openRoster(row, 'view')">{{ t('orderBook.viewRoster') }}</el-button>
+            <el-button v-if="canManage && row.status === 'confirmed'" link type="success" @click="openLineupGames(row)">
+              赛前阵容
+            </el-button>
             <el-tooltip
               v-if="canManage && row.status === 'confirmed'"
               :disabled="row.canWithdraw === true"
@@ -178,6 +181,13 @@ async function loadTeamName() {
 
 function goBack() {
   router.push({ name: 'AdminTeams' });
+}
+
+function openLineupGames(row) {
+  router.push({
+    name: 'AdminTeamLineupGames',
+    params: { id: teamId.value, eventId: String(row.eventId) }
+  });
 }
 
 async function confirmJoin(row) {

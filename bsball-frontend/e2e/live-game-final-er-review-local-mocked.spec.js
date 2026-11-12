@@ -1,0 +1,227 @@
+import { test, expect } from '@playwright/test';
+
+// 比赛已结束（final）且有现场快照时，应允许进入实时录入页做赛后复核，而不是直接跳回赛程。
+const zeroBatting = () => ({
+  ab: 0, r: 0, h: 0, rbi: 0, bb: 0, hbp: 0, so: 0, so_swing: 0, so_looking: 0,
+  sf: 0, sh: 0, sb: 0, cs: 0, doubles: 0, triples: 0, hr: 0, insideParkHr: 0, gdp: 0, ibb: 0, io: 0,
+});
+const zeroPitching = () => ({
+  ip: 0, np: 0, pitchH: 0, pitchBbHp: 0, pitchSo: 0, pitchHr: 0, pitchInsideParkHr: 0,
+  wp: 0, bk: 0, pitchPa: 0, pitchBf: 0, pitchBb: 0, pitchIbb: 0, pitchHbp: 0, pitchIo: 0,
+  go: 0, fo: 0, er: 0,
+});
+const zeroFielding = () => ({ po: 0, a: 0, e: 0, pb: 0 });
+
+function player(id, name, position, teamId) {
+  return {
+    id, name, number: String(id), teamId, position, positions: [position],
+    stats: { batting: zeroBatting(), pitching: zeroPitching(), fielding: zeroFielding() },
+  };
+}
+
+function buildSnapshot() {
+  const homeLineup = [
+    player(101, '主投手', 'P', 1), player(102, '主捕手', 'C', 1),
+    player(103, '主一垒', '1B', 1), player(104, '主二垒', '2B', 1),
+    player(105, '主三垒', '3B', 1), player(106, '主游击', 'SS', 1),
+    player(107, '主左外', 'LF', 1), player(108, '主中外', 'CF', 1),
+    player(109, '主右外', 'RF', 1),
+  ];
+  const awayLineup = [
+    player(21, '客投手', 'P', 2), player(22, '客捕手', 'C', 2),
+    player(23, '客一垒', '1B', 2), player(24, '客二垒', '2B', 2),
+    player(25, '客三垒', '3B', 2), player(26, '客游击', 'SS', 2),
+    player(27, '客左外', 'LF', 2), player(28, '客中外', 'CF', 2),
+    player(29, '客右外', 'RF', 2),
+  ];
+  const homeIds = homeLineup.map((p) => p.id);
+  const awayIds = awayLineup.map((p) => p.id);
+  return {
+    v: 1, savedAt: 1, gameId: 10, gameMode: 'BASEBALL', gameStarted: true,
+    setupForm: { homeTeamId: 1, awayTeamId: 2, venue: '' },
+    homeLineup, awayLineup,
+    homeBench: [player(110, '主替补', '', 1)], awayBench: [player(30, '客替补', '', 2)],
+    homeFieldingPitcherId: 101, awayFieldingPitcherId: 21,
+    homeFieldingPitcherRow: null, awayFieldingPitcherRow: null,
+    awayLastDhAddedFromPoolId: null, homeLastDhAddedFromPoolId: null,
+    awayUnavailablePlayerIds: [], homeUnavailablePlayerIds: [],
+    awayLineupStarterIds: [...awayIds, null, null, null],
+    homeLineupStarterIds: [...homeIds, null, null, null],
+    awaySlotSubHistory: Array.from({ length: 12 }, () => []),
+    homeSlotSubHistory: Array.from({ length: 12 }, () => []),
+    teamsData: { away: { score: 0, innings: [0] }, home: { score: 0, innings: [0] } },
+    eventLog: [], atBatSummaries: [], playEvents: [], playerStatsById: {},
+    gameState: {
+      inning: 1, isTop: true, outs: 0, halfInningOuts: [], balls: 0, strikes: 0,
+      batterIndex: { away: 0, home: 0 }, runners: { 1: null, 2: null, 3: null },
+      flow: null, isGameEnd: true, hasPitchThisAB: false, needNextBatter: false,
+    },
+  };
+}
+
+async function setup(page, { staleSnapshot = null } = {}) {
+  const snapshot = buildSnapshot();
+  const players = [...snapshot.homeLineup, ...snapshot.awayLineup, snapshot.homeBench[0], snapshot.awayBench[0]];
+  let pitcherOverride = null;
+  const pitcher101 = () => ({
+    playerId: 101,
+    playerName: '主投手',
+    teamId: 1,
+    runsAllowed: pitcherOverride?.runsAllowed ?? 3,
+    earnedRuns: pitcherOverride?.earnedRuns ?? 2,
+    unearnedRuns: Math.max(0, (pitcherOverride?.runsAllowed ?? 3) - (pitcherOverride?.earnedRuns ?? 2)),
+    pendingRuns: 0,
+    engineRunsAllowed: 3,
+    engineEarnedRuns: 2,
+    overrideId: pitcherOverride ? 9 : null,
+    overrideNote: pitcherOverride?.note ?? null,
+  });
+  const pitcher21 = () => ({
+    playerId: 21,
+    playerName: '客投手',
+    teamId: 2,
+    runsAllowed: 4,
+    earnedRuns: 3,
+    unearnedRuns: 1,
+    pendingRuns: 0,
+    engineRunsAllowed: 4,
+    engineEarnedRuns: 3,
+    overrideId: null,
+    overrideNote: null,
+  });
+
+  await page.addInitScript((stale) => {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('bs-ball-live-'))
+      .forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem('admin_token::bs-ball', 'local-e2e-token');
+    localStorage.setItem('admin_user::bs-ball', JSON.stringify({
+      id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e',
+    }));
+    if (stale) {
+      localStorage.setItem(stale.key, JSON.stringify(stale.value));
+    }
+  }, staleSnapshot);
+
+  await page.route('**/bsball-server/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace('/bsball-server', '');
+    let data = [];
+    if (path === '/event/1') data = { id: 1, name: 'Final Review E2E' };
+    else if (path === '/team/select-options') data = [
+      { id: 1, name: 'Home', tenantId: 1 }, { id: 2, name: 'Away', tenantId: 1 },
+    ];
+    else if (path === '/game/10' && request.method() === 'GET') data = {
+      id: 10, eventId: 1, homeTeamId: 1, awayTeamId: 2, status: 'final',
+      gameMode: 'BASEBALL', inning: 1, topBottom: 'top',
+      homeScore: 0, awayScore: 0, hasLiveSnapshot: true, engineManaged: true,
+    };
+    else if (path === '/game/10/stats') data = { list: [], total: 0 };
+    else if (path === '/game/10/live-snapshot') data = { snapshotJson: JSON.stringify(snapshot) };
+    else if (path === '/game/10/earned-runs/decisions') data = [];
+    else if (path === '/game/10/earned-runs/pitchers' && request.method() === 'GET') {
+      data = [pitcher101(), pitcher21()];
+    } else if (path === '/game/10/earned-runs/pitchers/101/override'
+        && request.method() === 'PUT') {
+      const body = request.postDataJSON();
+      pitcherOverride = {
+        runsAllowed: body?.runsAllowed ?? 3,
+        earnedRuns: body?.earnedRuns ?? 2,
+        note: body?.note ?? null,
+      };
+      data = pitcher101();
+    } else if (path === '/game/10/earned-runs/overrides/9/revoke'
+        && request.method() === 'POST') {
+      pitcherOverride = null;
+      data = pitcher101();
+    } else if (path === '/game/10/fielding-adjustments') data = [];
+    else if (/^\/event\/1\/teams\/[12]\/roster-players$/.test(path)) {
+      const teamId = Number(path.split('/')[4]);
+      data = { restricted: false, players: players.filter((p) => p.teamId === teamId) };
+    } else if (path === '/player/list') {
+      const teamId = Number(url.searchParams.get('teamId') ?? 1);
+      const list = players.filter((p) => p.teamId === teamId);
+      data = { list, total: list.length };
+    } else if (path === '/stadium/list') data = { list: [], total: 0 };
+    else if (/^\/team\/[12]$/.test(path)) {
+      const id = Number(path.split('/').at(-1));
+      data = { id, name: id === 1 ? 'Home' : 'Away' };
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ code: 200, data }) });
+  });
+
+  await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
+}
+
+test('final 比赛有快照：允许进入录入页并打开 ER 复核', async ({ page }) => {
+  await setup(page);
+
+  await expect(page).toHaveURL(/\/games\/10\/live$/);
+  await expect(page.getByRole('button', { name: '坏球' }).first()).toBeDisabled();
+  await expect(page.locator('button:visible').filter({ hasText: '保存比赛' }).first()).toBeDisabled();
+  const erButton = page.locator('button:visible').filter({ hasText: 'ER 复核' }).first();
+  await expect(erButton).toBeVisible();
+  await erButton.click();
+
+  const drawer = page.locator('.el-drawer:visible').filter({ hasText: '比赛复核' });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText('比赛已结束 · 赛后复核')).toBeVisible();
+  await expect(drawer.getByText('暂无判定记录')).toBeVisible();
+});
+
+test('final 比赛：赛后复核可覆写投手 R/ER 并撤销', async ({ page }) => {
+  await setup(page);
+
+  await expect(page).toHaveURL(/\/games\/10\/live$/);
+  const erButton = page.locator('button:visible').filter({ hasText: 'ER 复核' }).first();
+  await erButton.click();
+  const drawer = page.locator('.el-drawer:visible').filter({ hasText: '比赛复核' });
+  await expect(drawer).toBeVisible();
+
+  await drawer.getByRole('tab', { name: '投手 R/ER' }).click();
+  const row101 = drawer.locator('.el-table__row').filter({ hasText: '主投手' });
+  await expect(row101).toBeVisible();
+  await expect(row101).toContainText('3');
+  await expect(row101).toContainText('2');
+
+  await row101.getByRole('button', { name: '覆写' }).click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '覆写投手 R/ER' });
+  await expect(dialog).toBeVisible();
+  const inputs = dialog.locator('.el-input-number input');
+  await inputs.nth(0).fill('5');
+  await inputs.nth(0).blur();
+  await inputs.nth(1).fill('4');
+  await inputs.nth(1).blur();
+  await expect(dialog.locator('.el-form-item').filter({ hasText: '非自责' })).toContainText('1');
+
+  await dialog.getByRole('button', { name: '保存覆写' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row101.getByText('人工覆写')).toBeVisible();
+
+  await row101.getByRole('button', { name: '撤销' }).click();
+  const confirm = page.locator('.el-message-box:visible');
+  await expect(confirm).toContainText('恢复引擎值 R 3 / ER 2');
+  await confirm.getByRole('button', { name: '确认撤销' }).click();
+  await expect(row101.getByText('引擎')).toBeVisible();
+  await expect(row101).toContainText('3');
+});
+
+test('final 复核忽略本地旧现场，保存比赛按钮禁用', async ({ page }) => {
+  const stale = buildSnapshot();
+  stale.savedAt = 999999;
+  stale.homeLineup[0].name = 'STALE_PLAYER';
+  stale.gameState.inning = 5;
+  stale.teamsData.home.score = 9;
+  stale.teamsData.away.score = 9;
+  await setup(page, {
+    staleSnapshot: { key: 'bs-ball-live-watch-local-1-10', value: stale },
+  });
+
+  await expect(page).toHaveURL(/\/games\/10\/live$/);
+  await expect(page.getByText('主投手').first()).toBeVisible();
+  await expect(page.getByText('STALE_PLAYER')).toHaveCount(0);
+  await expect(page.locator('button:visible').filter({ hasText: '保存比赛' }).first()).toBeDisabled();
+});

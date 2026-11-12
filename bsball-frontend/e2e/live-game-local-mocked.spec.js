@@ -136,6 +136,12 @@ for (const { gameMode, walk } of scenarios) {
     await expect.poll(() => savedSnapshots.length).toBeGreaterThan(1);
     expect(savedLiveBody.game).toMatchObject({ inning: 1, topBottom: 'top' });
     expect(Array.isArray(savedLiveBody.stats)).toBe(true);
+    // Issue #566：先发球员的守备 GS 必须随 save-live 落库（结果页/个人 GS 聚合读该字段）
+    for (const playerId of [101, 201]) {
+      const starterBatterRow = savedLiveBody.stats.find((row) => row.playerId === playerId && !row.isPitcher);
+      expect(starterBatterRow, `starter ${playerId} batter row`).toBeTruthy();
+      expect(starterBatterRow.fieldingGs).toBe(1);
+    }
 
     const snapshot = JSON.parse(savedSnapshots.at(-1));
     expect(snapshot.eventLog.length).toBeGreaterThan(0);

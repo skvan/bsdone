@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- 旧官网页直通（H60）：/index.html 入口封锁 —— 不加载旧版官网内容，直达新版系统介绍页 /bs-ball-next/intro。
-       JS 在 head 同步执行 location.replace；meta refresh 仅作禁用脚本时的兜底。
-       保留 APP_VERSION/页脚版本锚点供部署版本注入（apply-release-version 的 perFile 严格断言依赖两者）。 -->
-  <script>location.replace('/bs-ball-next/intro');</script>
-  <meta http-equiv="refresh" content="0; url=/bs-ball-next/intro" />
+  <!-- 旧官网页直通（H60）：/index.html 入口封锁 —— 不加载旧版官网内容，直达新版系统介绍页 /bs-ball/intro。
+       JS 在 head 同步执行 location.replace；meta refresh 仅作禁用脚本时的兜底。 -->
+  <script>location.replace('/bs-ball/intro');</script>
+  <meta http-equiv="refresh" content="0; url=/bs-ball/intro" />
   <title>BSD · 棒垒球数据平台</title>
   <link rel="icon" type="image/png" href="https://bsdone.com/static/logo/logo2.png" />
   <style>
@@ -26,15 +25,11 @@
     .mark { font-size: 30px; font-weight: 700; letter-spacing: 6px; color: #fff; }
     .tip { margin: 0; font-size: 14px; letter-spacing: 1px; }
     a { color: #c9a227; }
-    .footer { position: fixed; bottom: 14px; font-size: 12px; color: rgba(255, 255, 255, .45); }
   </style>
 </head>
 <body>
   <div class="mark">BSD</div>
   <p class="tip">正在进入系统介绍页…</p>
-  <p class="tip">如未自动跳转，请<a href="/bs-ball-next/intro">点击此处</a></p>
-
-  <!-- APP_VERSION: v2.1.0 -->
-  <div class="footer">© 2026 BSD · Baseball & Softball Database · v2.1.0</div>
+  <p class="tip">如未自动跳转，请<a href="/bs-ball/intro">点击此处</a></p>
 </body>
 </html>

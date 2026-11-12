@@ -10,6 +10,7 @@
 package com.bsball.repository;
 
 import com.bsball.model.entity.HitSpray;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -22,5 +23,7 @@ extends JpaRepository<HitSpray, Long> {
     public List<HitSpray> findByPlayerIdAndGameIdOrderByCreatedAtAsc(Long var1, Long var2);
 
     public List<HitSpray> findByTeamIdAndGameIdOrderByCreatedAtAsc(Long var1, Long var2);
+
+    public List<HitSpray> findByGameIdAndRidIn(Long gameId, Collection<String> rids);
 }
 

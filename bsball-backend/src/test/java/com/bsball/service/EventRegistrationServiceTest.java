@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,11 +33,14 @@ import com.bsball.model.entity.Team;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.EventRosterPlayerRepository;
 import com.bsball.repository.EventTeamRepository;
+import com.bsball.repository.GameLineupSubmissionRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +84,8 @@ class EventRegistrationServiceTest {
     @Mock
     private GameRepository gameRepository;
     @Mock
+    private GameLineupSubmissionRepository gameLineupSubmissionRepository;
+    @Mock
     private PlayerService playerService;
     @Mock
     private ResourceGuard resourceGuard;
@@ -92,7 +98,8 @@ class EventRegistrationServiceTest {
     void setUp() {
         service = new EventRegistrationService(eventRepository, teamRepository, playerRepository,
                 playerTeamRepository, eventTeamRepository, eventRosterPlayerRepository,
-                gamePlayerStatRepository, gameRepository, playerService, resourceGuard, tenantQueryPolicyService);
+                gamePlayerStatRepository, gameRepository, gameLineupSubmissionRepository,
+                playerService, resourceGuard, tenantQueryPolicyService);
     }
 
     @AfterEach
@@ -524,6 +531,8 @@ class EventRegistrationServiceTest {
         verify(eventTeamRepository).save(confirmed);
         verify(eventRosterPlayerRepository).save(r1);
         verify(eventRosterPlayerRepository).save(r2);
+        verify(gameLineupSubmissionRepository).softDeleteByEventIdAndTeamId(
+                eq(EVENT_ID), eq(TEAM_ID), any(LocalDateTime.class), eq(UID));
         verify(resourceGuard).assertCanManageEvent(EVENT_ID);
     }
 
@@ -849,6 +858,23 @@ class EventRegistrationServiceTest {
 
         verify(eventRosterPlayerRepository, never())
                 .findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("门①：球队端赛前阵容校验 lineup/bench/守备投手/DH 池")
+    void assertTeamLineupInRoster_checksOwnPayload() throws Exception {
+        when(eventTeamRepository.existsByEventIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(true);
+        when(eventRosterPlayerRepository.findByEventIdAndTeamIdAndDeletedAtIsNullOrderBySortAscIdAsc(EVENT_ID, TEAM_ID))
+                .thenReturn(List.of(rosterRow(11L, 5L, 0), rosterRow(12L, 6L, 1), rosterRow(13L, 7L, 2)));
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode valid = mapper.readTree(
+                "{\"lineup\":[{\"id\":5}],\"bench\":[{\"id\":6}],\"fieldingPitcherId\":7}");
+        JsonNode invalid = mapper.readTree("{\"lineup\":[{\"id\":8}]}");
+
+        service.assertTeamLineupInRoster(EVENT_ID, TEAM_ID, valid);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.assertTeamLineupInRoster(EVENT_ID, TEAM_ID, invalid));
+        assertEquals(400, ex.getCode());
     }
 
     @Test

@@ -11,6 +11,7 @@ const detail = read('../src/components/admin/GameDetailContent.js');
 const player = read('../src/components/admin/PlayerDetailContent.js');
 const statsCols = read('../src/stores/statsColumns.js');
 const storage = read('../src/utils/gameDetailFieldSettingsStorage.js');
+const fieldingTable = read('../src/components/admin/GameFieldingTable.vue');
 const defaults = read('../src/utils/gamePlayerStat.js');
 const tableMeta = read('../src/composables/useStatsTableMeta.js');
 
@@ -32,6 +33,25 @@ test('管理端守备页签与字段组件已挂载', () => {
   assert.ok(games.includes('label:"守备数据"'), '缺少守备数据页签');
   assert.ok(games.includes('fieldingStatsAway'), '缺少客队守备 statsFor');
   assert.ok(games.includes('fieldingStatsHome'), '缺少主队守备 statsFor');
+});
+
+test('结果录入守备表合并逐位置数据并纳入投手/DH取消球员', () => {
+  for (const needle of [
+    'il.listFieldingPositions(pe.value)',
+    'fieldingPositionRows',
+    'function mergeFieldingRows',
+    'target._fieldPosition',
+    'resultFieldingRows(le.value)',
+    'resultFieldingRows(te.value)',
+    '!t._fieldingOnly',
+    'fo=le.value.filter(f=>f._fieldingOnly)',
+    'fo=te.value.filter(f=>f._fieldingOnly)',
+    'stats.battingOrder==null&&stats.listOrder==null',
+    'row._fieldingOnly=!0'
+  ]) {
+    assert.ok(games.includes(needle), `结果录入守备表缺少 ${needle}`);
+  }
+  assert.ok(fieldingTable.includes('row._fieldPosition || row.position'), '守备表 POS 未使用合并后的守位');
 });
 
 test('管理端保存/导入导出包含新字段', () => {

@@ -134,6 +134,10 @@ public class UserClubhouseConfigService {
         return false;
     }
 
+    /** 已下线的模块：旧配置里保留的 key 读取/保存时静默丢弃，不报 400。 */
+    private static final java.util.Set<String> RETIRED_MODULE_KEYS = java.util.Set.of("about");
+
+
     private List<Map<String, Object>> normalizeModules(Object raw, boolean boardMode) {
         if (!(raw instanceof List<?> list) || list.isEmpty()) {
             return ClubhouseModuleCatalog.defaultModules();
@@ -142,7 +146,11 @@ public class UserClubhouseConfigService {
         Set<String> seen = new HashSet<>();
         for (Object item : list) {
             Map<String, Object> row = asMap(item);
-            ClubhouseModuleCatalog.ModuleDef def = ClubhouseModuleCatalog.find(asText(row.get("key")));
+            String moduleKey = asText(row.get("key"));
+            if (RETIRED_MODULE_KEYS.contains(moduleKey)) {
+                continue;
+            }
+            ClubhouseModuleCatalog.ModuleDef def = ClubhouseModuleCatalog.find(moduleKey);
             if (def == null) {
                 throw new BusinessException(400, "不支持的驾驶舱模块");
             }

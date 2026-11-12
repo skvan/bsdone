@@ -97,7 +97,7 @@ public class EventService {
             throw new BusinessException(403, "\u65e0\u6743\u67e5\u770b\u8be5\u8d5b\u4e8b");
         }
         // 赛事级特殊规则（Issue #275，2026-10-24 口径调整）：随详情响应附带生效值与可用标识。
-        // 联赛能力关闭时，已配置规则的赛事仍保留规则；无规则赛事按默认值（extraBatter=false、forceHalf=true）装配。
+        // 联赛能力关闭时，已配置规则的赛事仍保留规则；无规则赛事按默认值（extraBatter=false、forceHalf=true、ohtaniRule=false、softballReentry=false）装配。
         boolean hasEventRules = this.eventSpecialRuleService.hasRules(entity.getId());
         Map<String, Boolean> eventRules = hasEventRules
                 ? this.eventSpecialRuleService.getEffective(entity.getId())
@@ -107,6 +107,8 @@ public class EventService {
         specialRules.put("hasEventRules", hasEventRules);
         specialRules.put("extraBatter", Boolean.TRUE.equals(eventRules.get("extraBatter")));
         specialRules.put("forceHalf", !Boolean.FALSE.equals(eventRules.get("forceHalf")));
+        specialRules.put("ohtaniRule", Boolean.TRUE.equals(eventRules.get("ohtaniRule")));
+        specialRules.put("softballReentry", Boolean.TRUE.equals(eventRules.get("softballReentry")));
         entity.setSpecialRules(specialRules);
         return entity;
     }

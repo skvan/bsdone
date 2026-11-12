@@ -56,7 +56,8 @@ test('buildLineupDraft：v:1 草稿标记 gameStarted:false 且字段透传', ()
     homeLastDhAddedFromPoolId: null,
     awayLastDhAddedFromPoolId: null,
     homeUnavailablePlayerIds: [9],
-    awayUnavailablePlayerIds: []
+    awayUnavailablePlayerIds: [],
+    teamLineupLoadedAt: { home: '2026-11-11T18:20:00', away: null }
   });
   assert.equal(draft.v, 1);
   assert.equal(draft.gameStarted, false);
@@ -72,6 +73,7 @@ test('buildLineupDraft：v:1 草稿标记 gameStarted:false 且字段透传', ()
   assert.equal(draft.homeLineup, lineups);
   assert.deepEqual(draft.homeUnavailablePlayerIds, [9]);
   assert.equal(draft.awayFieldingPitcherId, null);
+  assert.deepEqual(draft.teamLineupLoadedAt, { home: '2026-11-11T18:20:00', away: null });
 });
 
 test('parseLineupDraft：非 v:1 / 非法 JSON / 空串一律 null，合法草稿可往返', () => {

@@ -14,6 +14,15 @@
         </if>
     </sql>
 
+    <sql id="eventIdsFilter">
+        <if test="eventIds != null and eventIds.size() > 0">
+            AND g.event_id IN
+            <foreach collection="eventIds" item="eid" open="(" separator="," close=")">
+                #{eid}
+            </foreach>
+        </if>
+    </sql>
+
     <!-- PostgreSQL: 单字母后缀列名无下划线 -->
     <sql id="pitchHCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchh</when><otherwise>s.pitch_h</otherwise></choose></sql>
     <sql id="pitchRCol"><choose><when test="_databaseId == 'PostgreSQL'">s.pitchr</when><otherwise>s.pitch_r</otherwise></choose></sql>
@@ -200,8 +209,8 @@
           AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
-    <!-- 球队维度统计：固定按代表球队过滤；eventId 为空表示该队生涯，非空表示该队在该赛事（不能拿赛事合计代替） -->
-    <select id="selectBattingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Batting">
+    <!-- 球队/赛事集合维度统计：teamId、eventIds 为空表示不限制该维度；按球队过滤时不能拿赛事合计代替 -->
+    <select id="selectBattingStatsByScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Batting">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
             COALESCE(SUM(s.pa), 0) AS pa,
@@ -230,16 +239,16 @@
         INNER JOIN bs_event e ON g.event_id = e.id
         WHERE s.player_id = #{playerId}
           AND e.tenant_id = #{tenantId}
-          AND s.team_id = #{teamId}
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
           AND g.deleted_at IS NULL
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="eventIdsFilter"/>
         <include refid="battingRowWhereCareerLeaders"/>
     </select>
 
-    <select id="selectPitchingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
+    <select id="selectPitchingStatsByScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Pitching">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
             (CASE WHEN COALESCE(SUM(<include refid="outsRecordedPerRow"/>), 0) &lt;= 0 THEN 0
@@ -284,17 +293,17 @@
         INNER JOIN bs_event e ON g.event_id = e.id
         WHERE s.player_id = #{playerId}
           AND e.tenant_id = #{tenantId}
-          AND s.team_id = #{teamId}
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
           AND g.deleted_at IS NULL
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="eventIdsFilter"/>
           AND s.is_pitcher = 1
           AND s.ip IS NOT NULL AND s.ip > 0
     </select>
 
-    <select id="selectFieldingStatsByTeamScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
+    <select id="selectFieldingStatsByScope" resultType="com.bsball.model.dto.PlayerStatsDTO$Fielding">
         SELECT
             COUNT(DISTINCT s.game_id) AS gp,
             (CASE WHEN COALESCE(SUM(<include refid="defInnToOutsFromCol"/>), 0) &lt;= 0 THEN 0
@@ -313,12 +322,12 @@
         INNER JOIN bs_event e ON g.event_id = e.id
         WHERE s.player_id = #{playerId}
           AND e.tenant_id = #{tenantId}
-          AND s.team_id = #{teamId}
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
           AND g.deleted_at IS NULL
           AND e.deleted_at IS NULL
           AND COALESCE(g.include_stats_in_ranking, true) = true
         <include refid="gameModeFilter"/>
-        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="eventIdsFilter"/>
           AND <include refid="fieldingCountedPlayerRow"/>
     </select>
 
@@ -481,6 +490,7 @@
     <select id="selectPlayerEventSummaries" resultType="com.bsball.model.dto.PlayerEventSummaryDTO">
         SELECT e.id AS eventId, e.name AS eventName, e.status AS status,
                e.start_date AS startDate, e.end_date AS endDate, e.game_mode AS gameMode,
+               e.league_id AS leagueId, l.name AS leagueName,
                STRING_AGG(ts.team_id::text, ',' ORDER BY ts.team_id) AS teamIds,
                STRING_AGG(ts.team_name, ', ' ORDER BY ts.team_id) AS teamNames,
                MAX(ts.last_gameday) AS lastGameday,
@@ -500,11 +510,31 @@
             GROUP BY g.event_id, s.team_id
         ) ts
         INNER JOIN bs_event e ON e.id = ts.event_id
+        LEFT JOIN bs_league l ON l.id = e.league_id AND l.deleted_at IS NULL
         WHERE e.tenant_id = #{tenantId}
           AND e.deleted_at IS NULL
         <include refid="gameModeFilter"/>
-        GROUP BY e.id, e.name, e.status, e.start_date, e.end_date, e.game_mode
+        GROUP BY e.id, e.name, e.status, e.start_date, e.end_date, e.game_mode, e.league_id, l.name
         ORDER BY MAX(ts.last_gameday) DESC NULLS LAST, e.name ASC
+    </select>
+
+    <!-- 驾驶舱打击落点：球员在范围（球队/赛事集合/运动类型、计入排行的比赛）内的落点记录，按比赛日正序 -->
+    <select id="selectPlayerHitSprays" resultType="com.bsball.model.dto.HitSprayPointRow">
+        SELECT s.game_id AS gameId, s.result_code AS resultCode, s.bip_code AS bipCode,
+               s.sprayx AS sprayX, s.sprayy AS sprayY, s.spray_zone AS sprayZone, s.spray_depth AS sprayDepth
+        FROM bs_hit_spray s
+        INNER JOIN bs_game g ON g.id = s.game_id
+        INNER JOIN bs_event e ON e.id = g.event_id
+        WHERE s.player_id = #{playerId}
+          AND s.deleted_at IS NULL
+          AND g.deleted_at IS NULL
+          AND e.deleted_at IS NULL
+          AND e.tenant_id = #{tenantId}
+          AND COALESCE(g.include_stats_in_ranking, true) = true
+        <if test="teamId != null">AND s.team_id = #{teamId}</if>
+        <include refid="eventIdsFilter"/>
+        <include refid="gameModeFilter"/>
+        ORDER BY g.gameday ASC NULLS FIRST, s.created_at ASC
     </select>
 
     <!-- 比赛日志公共列与基础过滤：每场一行，含 game 与 stat 列 -->
@@ -559,11 +589,11 @@
         <include refid="gameLogOrderAndLimit"/>
     </select>
 
-    <!-- 驾驶舱范围日志：teamId/eventId 可选，先过滤再取最近 limit 场，避免先截断再过滤 -->
+    <!-- 驾驶舱范围日志：teamId/eventIds 可选，先过滤再取最近 limit 场，避免先截断再过滤 -->
     <select id="selectGameLogForScope" resultType="map">
         <include refid="gameLogSelectBody"/>
         <if test="teamId != null">AND s.team_id = #{teamId}</if>
-        <if test="eventId != null">AND g.event_id = #{eventId}</if>
+        <include refid="eventIdsFilter"/>
         <include refid="gameLogOrderAndLimit"/>
     </select>
 

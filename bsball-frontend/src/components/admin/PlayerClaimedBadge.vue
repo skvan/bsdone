@@ -6,17 +6,7 @@
     title="该球员档案已被本人认领"
   >
     <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <g fill="currentColor">
-        <circle cx="8" cy="8" r="4.55" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(45 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(90 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(135 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(180 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(225 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(270 8 8)" />
-        <rect x="7.15" y="0.8" width="1.7" height="2.5" rx="0.5" transform="rotate(315 8 8)" />
-      </g>
+      <circle cx="8" cy="8" r="8" fill="currentColor" />
       <path
         d="M5.35 8.15 7.05 9.85 10.65 6.25"
         fill="none"

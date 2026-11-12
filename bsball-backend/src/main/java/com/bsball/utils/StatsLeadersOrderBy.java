@@ -58,6 +58,23 @@ public final class StatsLeadersOrderBy {
         return primary + ", q.gp DESC, q.playerid ASC";
     }
 
+    public static String fieldingPositions(String sortProp, String sortOrder) {
+        String p = sortProp == null ? "inn" : sortProp.trim();
+        String d = StatsLeadersOrderBy.dir((String)sortOrder);
+        if (!FIELDING.contains(p)) {
+            p = "inn";
+            d = "DESC";
+        }
+        String col = switch (p) {
+            case "inn" -> "outs";
+            case "tcPct" -> "tcpct";
+            case "catcherCs" -> "catchercs";
+            case "catcherSb" -> "catchersb";
+            default -> p;
+        };
+        return "q." + col + " " + d + ", q.gp DESC, q.playerid ASC, q.position ASC, q.teamid ASC";
+    }
+
     public static String fielding(String sortProp, String sortOrder) {
         String p;
         String d = StatsLeadersOrderBy.dir((String)sortOrder);

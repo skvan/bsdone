@@ -97,71 +97,92 @@ class StatsServiceScopeTest {
     @Test
     @DisplayName("球队+赛事统计使用球队过滤，不拿赛事合计代替")
     void teamEventStatsUseTeamFilter() {
-        when(playerStatsMapper.selectBattingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+        when(playerStatsMapper.selectBattingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL"))
                 .thenReturn(batting());
-        when(playerStatsMapper.selectPitchingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+        when(playerStatsMapper.selectPitchingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL"))
                 .thenReturn(pitching());
-        when(playerStatsMapper.selectFieldingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL"))
+        when(playerStatsMapper.selectFieldingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL"))
                 .thenReturn(fielding());
 
         Map<String, Object> stats = statsService.getPlayerStatsByTeam(10L, 2L, 3L, "BASEBALL");
 
-        verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
-        verify(playerStatsMapper).selectPitchingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
-        verify(playerStatsMapper).selectFieldingStatsByTeamScope(10L, 1L, 2L, 3L, "BASEBALL");
+        verify(playerStatsMapper).selectBattingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL");
+        verify(playerStatsMapper).selectPitchingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL");
+        verify(playerStatsMapper).selectFieldingStatsByScope(10L, 1L, 2L, List.of(3L), "BASEBALL");
         assertTeamStatsFormatted(stats);
     }
 
     @Test
-    @DisplayName("球队生涯统计 eventId 传空，只按球队过滤")
-    void teamCareerStatsPassNullEventId() {
-        when(playerStatsMapper.selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+    @DisplayName("球队生涯统计赛事集合传空，只按球队过滤")
+    void teamCareerStatsPassEmptyEventSet() {
+        when(playerStatsMapper.selectBattingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL"))
                 .thenReturn(batting());
-        when(playerStatsMapper.selectPitchingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+        when(playerStatsMapper.selectPitchingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL"))
                 .thenReturn(pitching());
-        when(playerStatsMapper.selectFieldingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL"))
+        when(playerStatsMapper.selectFieldingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL"))
                 .thenReturn(fielding());
 
         Map<String, Object> stats = statsService.getPlayerStatsByTeam(10L, 2L, null, "BASEBALL");
 
-        verify(playerStatsMapper).selectBattingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
-        verify(playerStatsMapper).selectPitchingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
-        verify(playerStatsMapper).selectFieldingStatsByTeamScope(10L, 1L, 2L, null, "BASEBALL");
+        verify(playerStatsMapper).selectBattingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL");
+        verify(playerStatsMapper).selectPitchingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL");
+        verify(playerStatsMapper).selectFieldingStatsByScope(10L, 1L, 2L, List.of(), "BASEBALL");
         assertTeamStatsFormatted(stats);
     }
 
     @Test
-    @DisplayName("战报先按球队/赛事过滤再取最近 3 场")
+    @DisplayName("联盟范围跨多个赛事汇总，且不限制球队")
+    void multiEventStatsUseEventSet() {
+        when(playerStatsMapper.selectBattingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL"))
+                .thenReturn(batting());
+        when(playerStatsMapper.selectPitchingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL"))
+                .thenReturn(pitching());
+        when(playerStatsMapper.selectFieldingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL"))
+                .thenReturn(fielding());
+
+        Map<String, Object> stats = statsService.getPlayerStatsByScope(10L, null, List.of(3L, 4L), "BASEBALL");
+
+        verify(playerStatsMapper).selectBattingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL");
+        verify(playerStatsMapper).selectPitchingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL");
+        verify(playerStatsMapper).selectFieldingStatsByScope(10L, 1L, null, List.of(3L, 4L), "BASEBALL");
+        assertTeamStatsFormatted(stats);
+    }
+
+    @Test
+    @DisplayName("战报先按球队/赛事集合过滤再取最近 3 场")
     void recentGamesFilterBeforeLimit() {
-        when(playerStatsMapper.selectGameLogForScope(10L, 1L, 2L, 3L, 3, "BASEBALL", false))
+        when(playerStatsMapper.selectGameLogForScope(10L, 1L, 2L, List.of(3L), 3, "BASEBALL", false))
                 .thenReturn(List.of(gameLogRow(101L, 3L, 2L, "2026-10-20")));
 
-        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(10L, 2L, 3L, 3, "BASEBALL", false);
+        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(
+                10L, 2L, List.of(3L), 3, "BASEBALL", false);
 
         assertEquals(1, rows.size());
         assertEquals(101L, rows.get(0).getGameId());
         assertEquals(3L, rows.get(0).getEventId());
         assertEquals(2L, rows.get(0).getTeamId());
-        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, 2L, 3L, 3, "BASEBALL", false);
+        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, 2L, List.of(3L), 3, "BASEBALL", false);
     }
 
     @Test
     @DisplayName("生涯范围不传球队/赛事，按排行口径取最近 12 场")
     void careerScopePassesNullFilters() {
-        when(playerStatsMapper.selectGameLogForScope(10L, 1L, null, null, 12, "BASEBALL", true))
+        when(playerStatsMapper.selectGameLogForScope(10L, 1L, null, List.of(), 12, "BASEBALL", true))
                 .thenReturn(List.of(gameLogRow(102L, 11L, 1L, "2026-10-18")));
 
-        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(10L, null, null, 12, "BASEBALL", true);
+        List<PlayerGameLogEntryDTO> rows = statsService.getPlayerGameLogForScope(
+                10L, null, List.of(), 12, "BASEBALL", true);
 
         assertEquals(1, rows.size());
         assertEquals(102L, rows.get(0).getGameId());
-        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, null, null, 12, "BASEBALL", true);
+        verify(playerStatsMapper).selectGameLogForScope(10L, 1L, null, List.of(), 12, "BASEBALL", true);
     }
 
     @Test
     @DisplayName("非正数 limit 不查库直接返回空")
     void nonPositiveLimitSkipsQuery() {
-        assertTrue(statsService.getPlayerGameLogForScope(10L, 2L, 3L, 0, "BASEBALL", false).isEmpty());
+        assertTrue(statsService.getPlayerGameLogForScope(
+                10L, 2L, List.of(3L), 0, "BASEBALL", false).isEmpty());
         verifyNoInteractions(playerStatsMapper);
     }
 

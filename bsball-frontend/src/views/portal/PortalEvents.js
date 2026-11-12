@@ -20,6 +20,7 @@ import { ScheduleViewToggle as bt } from '../../components/portal/PortalSchedule
 import { buildScheduleSheet as Gt } from '../../components/portal/PortalScheduleFilterBar.js';
 import { useScheduleViewMode as Tt } from '../../components/portal/PortalScheduleFilterBar.js';
 import { default as xt } from '../../components/portal/PortalScheduleFilterBar.js';
+import EventRosterDownloadButton from '../../components/portal/EventRosterDownloadButton.vue';
 import { useEventGames as Ct } from '../../composables/useEventGames';
 import { computeEventGroups as Nt } from '../../composables/useEventGames';
 import { getEventYear as Ft } from '../../composables/useEventGames';
@@ -564,10 +565,7 @@ var Vt={
       }
       ,{
         actions:g(()=>[(l(d)==="list"||l(d)==="default")&&n.games.length>0?(o(),c("div",{
-          key:0,class:"event-header-pdf-wrap",onClick:t[6]||(t[6]=Ke(()=>{
-            
-          }
-          ,["stop"]))
+          key:0,class:"event-header-pdf-wrap",onKeydown:Ke(()=>{},["stop"]),onClick:t[6]||(t[6]=Ke(()=>{},["stop"]))
         }
         ,[i(p,{
           type:"primary",link:"",class:Ee(["event-header-pdf-btn",{
@@ -581,7 +579,10 @@ var Vt={
           }
           ),l(Z)?M("",!0):(o(),c("span",qt,C(l(r)("events.downloadSchedulePdf")),1))]),_:1
         }
-        ,8,["class","loading","aria-label","onClick"])])):M("",!0)]),_:2
+        ,8,["class","loading","aria-label","onClick"]),i(EventRosterDownloadButton,{
+          eventId:n.id,eventName:n.name,eventSeason:n.season,iconOnly:l(Z)
+        }
+        )])):M("",!0)]),_:2
       }
       ,1032,["title","status-label","status-type","date-text","open","stuck","sticky-data-id","aria-label","onToggle","onSpace"]),at(E("div",$t,[n.games.length===0?(o(),c("div",Ht,[E("div",Ot,C(l(r)("events.noGames")),1)])):l(d)==="list"?(o(),H(kt,{
         key:1,games:n.games,"team-name":K,"game-link":ge,"table-title":l(r)("events.scheduleTable")
