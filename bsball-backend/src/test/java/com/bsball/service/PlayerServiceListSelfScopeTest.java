@@ -119,19 +119,24 @@ class PlayerServiceListSelfScopeTest {
     }
 
     @Test
-    @DisplayName("受限且无球队范围时，球员列表不短路，仍查询认领档案")
+    @DisplayName("受限且无球队范围时，球员列表不短路，仍查询并返回认领档案")
     void listKeepsRunningForSelfClaimedPlayer() {
         when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
         EffectiveScope scope = mock(EffectiveScope.class);
         when(accountScopeService.resolveCurrent()).thenReturn(scope);
         when(scopeQuerySupport.visibleTeamIds(scope, TENANT)).thenReturn(List.of());
+        Player claimed = player(PLAYER_ID, USER);
         when(playerRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(USER, TENANT))
-                .thenReturn(List.of(player(PLAYER_ID, USER)));
-        when(playerRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+                .thenReturn(List.of(claimed));
+        when(playerRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(claimed)));
 
-        service.list(1, 20, null, null, null, null, null, null, null, null, null, null, null, null);
+        var result = service.list(1, 20, null, null, null, null, null, null, null, null, null, null, null, null);
 
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getList().size());
+        assertSame(claimed, result.getList().get(0));
         verify(playerRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 

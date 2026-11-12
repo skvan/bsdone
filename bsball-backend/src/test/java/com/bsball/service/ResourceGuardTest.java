@@ -426,14 +426,17 @@ class ResourceGuardTest {
     }
 
     @Test
-    @DisplayName("编辑档案守卫：ROSTER 认领本人 → 放行（不查经历球队）")
-    void editPlayer_roster_ownClaimedProfile_passes() {
+    @DisplayName("编辑档案守卫：ROSTER 认领本人仍 403（本人编辑走 SELF 通道）")
+    void editPlayer_roster_ownClaimedProfile_forbidden() {
         when(accountScopeService.resolveCurrent())
                 .thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of()));
         when(playerRepository.findById(5L)).thenReturn(Optional.of(player(5L, 7L)));
         CurrentUserHolder.set(7L, 2L);
 
-        assertDoesNotThrow(() -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> guard.assertCanEditPlayerProfile(5L, PlayerEditChannel.ROSTER));
+        assertEquals(403, ex.getCode());
+        assertEquals("球队/联盟不可直接修改已认领球员信息", ex.getMessage());
         verifyNoInteractions(playerTeamService);
     }
 
