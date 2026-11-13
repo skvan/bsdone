@@ -13257,7 +13257,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ,8,["modelValue","close-on-click-modal"]),(h(),Oe(gi,{
         to:"body"
       }
-      ,[Vn(n("div",{class:["rdm",{"rdm--en":isEnglishUi.value}]},[n("div",{
+      ,[Vn(n("div",{class:isEnglishUi.value?"rdm rdm--en":"rdm"},[n("div",{
         class:"rdm__backdrop",onClick:Hi
       }
       ),n("div",{
@@ -13318,7 +13318,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         to:"body"
       }
       ,[Vn(n("div",{
-        class:re(["rdm",{"rdm--en":isEnglishUi.value}])
+        class:isEnglishUi.value?"rdm rdm--en":"rdm"
       }
       ,[n("div",{
         class:"rdm__backdrop",onClick:Fl

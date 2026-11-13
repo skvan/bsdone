@@ -87,8 +87,11 @@ test('主渲染树不再硬编码顶栏/纠偏/换人模式中文', () => {
 });
 
 test('英文模式下的跑者进垒菜单只显示英文条目，标题与提问同步英文', () => {
-  assert.ok(liveGame.includes('"rdm--en":isEnglishUi.value'), '跑者进垒菜单未标记英文模式');
-  assert.ok(liveGame.includes('class:re(["rdm",{"rdm--en":isEnglishUi.value}])'), '出局原因菜单未标记英文模式');
+  assert.equal(
+    (liveGame.match(/isEnglishUi\.value\?"rdm rdm--en":"rdm"/g) ?? []).length,
+    2,
+    '两个原因菜单都未标记英文模式'
+  );
   assert.ok(css.includes('.rdm--en .rdm__cn{display:none}'), '英文模式未隐藏中文条目');
   for (const key of ['rdm.routeStay', 'rdm.safeAdvance', 'rdm.outAdvance']) {
     assert.ok(liveGame.includes(`liveGame.${key}`), `跑者进垒菜单未接入 ${key}`);
