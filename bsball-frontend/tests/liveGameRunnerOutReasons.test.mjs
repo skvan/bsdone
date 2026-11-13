@@ -130,7 +130,7 @@ test('出局菜单不再受投球门禁，CI 跑者菜单同样提供盗垒失�
   assert.ok(!kdCode.includes('out_last'), 'Kd 不再提供离垒过远');
 });
 
-test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', () => {
+test('盗垒失败进入传球链：捕手首发校验 + 跑者CS≥1、捕手CCS需有A', () => {
   const kpBlock = sliceBetween('function kp(e){', 'function Pt(){');
   assert.match(kpBlock, /if\(ge\.value=null,e\.id==="out_steal_fail"\)\{/);
   assert.ok(kpBlock.includes('de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`)'), '盗垒失败历史动作名含触杀出局，撤销动画可识别');
@@ -139,9 +139,20 @@ test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', ()
   assert.match(acBlock, /t\.stealFail&&t\.steps\.length===0&&e!=="C"/);
   assert.match(acBlock, /t\.stealFail&&t\.steps\.length>0&&t\.steps\[t\.steps\.length-1\]===e/, '连续重复点击同一守位不重复入链');
   const settleBlock = sliceBetween('function settleRunnerOut(e){', 'function ac(e){');
-  assert.match(settleBlock, /isCs=!!e\.stealFail&&C1\[0\]==="C"&&C1\.length===2/);
-  assert.match(settleBlock, /isCs&&\(a\.stats\.batting\.cs=\(a\.stats\.batting\.cs\?\?0\)\+1,paceCatcherStat\("catcherCs"\)\)/);
+  assert.match(settleBlock, /isCs=!!e\.stealFail&&C1\[0\]==="C"&&C1\.length>=1/);
+  assert.match(settleBlock, /catcherCsCredit=isCs&&C1\.length>=2&&C1\[C1\.length-1\]!=="C"/);
+  assert.match(settleBlock, /catcherCsCredit&&paceCatcherStat\("catcherCs"\)/);
   assert.match(settleBlock, /reasonCn=isCs\?"盗垒死 \(CS\)"/);
+});
+
+test('Issue 656：球数>0 的向前进垒菜单也提供「传杀过程中进垒」', () => {
+  const gdBlock = sliceBetween('function Gd(', 'function Vd(');
+  assert.equal((gdBlock.match(/id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"/g) ?? []).length, 2, '1→2 与 2→3 均提供 on throw');
+  assert.ok(gdBlock.includes('id:"safe_on_throw",en:"On Throw",cn:"传杀过程中得分"'), '3→4 提供 on throw');
+});
+
+test('Issue 656：legacy CS 路由同样只在捕手有助杀时记 CCS', () => {
+  assert.ok(source.includes('e!=="C"&&paceCatcherStat("catcherCs")'), '仅 C 触杀不记 catcherCs');
 });
 
 test('触杀/封杀选项进入传球链：分别路由 RUNNER_OUT_TAG / RUNNER_OUT_FORCE', () => {
