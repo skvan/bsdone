@@ -23,7 +23,7 @@ test('Qr()：playEvent 组装前消费台账并在推入后同步重建（防决
 });
 
 test('wp() 回本垒分支统一经 ls 记账并按推进原因判定来源', () => {
-  const body = pick('function wp(e,t,a,s,r,rbiNote){', 'function fr(e){');
+  const body = pick('function wp(e,t,a,s,r,rbiNote){', 'function Sp(e){');
   assert.match(body, /,g=advanceOrigin\(r\)/, '推进原因统一换算为得分来源');
   assert.match(body, /a===4\?\(ls\(1,\{runner:e,pitcher:p,origin:g\}\)/,
     '回本垒分支须走 ls 并带上归一后的来源');

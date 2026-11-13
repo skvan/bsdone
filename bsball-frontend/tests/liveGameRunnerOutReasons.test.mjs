@@ -77,7 +77,9 @@ test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp',
   assert.ok(source.includes('l.playOut=P?.playOut??null'), '载入现场恢复 playOut');
   assert.ok(source.includes('l.playOut=null'), '新投球/新打者/撤销/半局/重置清空 play 上下文');
   assert.ok(source.includes('O.playOut=null'), '整场重置清空 playOut');
-  assert.ok(source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局自动推进被迫进垒跑者');
+  assert.match(source, /groundPlan=resolveGroundOutForceAdvance\(\{runners:l\.runners\}\)/, '地滚出局按强迫链生成推进计划');
+  assert.match(source, /applyForcePlanMoves\(groundPlan,/, '地滚出局只落位强迫链跑者');
+  assert.match(source, /startForceQueue\(groundPlan,/, '满垒三垒跑者进入安全/出局确认');
 });
 
 test('同一 play 第二出局类型门禁：三振后只允许盗垒死补 DP', () => {
@@ -100,10 +102,10 @@ test('同一 play 第二出局类型门禁：三振后只允许盗垒死补 DP',
 });
 
 test('本垒出局原因封杀仅在被迫进垒时出现', () => {
-  assert.ok(source.includes('hasBehindOccupied:b.hasBehindOccupied'), '安打/推进队列保存被迫进垒标记');
-  assert.ok(source.includes('hasBehindOccupied:g.hasBehindOccupied'), '野选队列保存被迫进垒标记');
-  assert.match(source, /l\.forceHomeRunnerId=forceHome\?\(forceHome\.runner\.id\?\?forceHome\.runner\.name\?\?null\):null/, '安打/野选队列记录被迫进垒跑者');
-  assert.match(source, /homeForceOutVisible=\$\(\(\)=>\{[\s\S]*?String\(t\)===String\(l\.forceHomeRunnerId\)/, '封杀门禁按被迫进垒跑者计算');
+  assert.ok(source.includes('hasBehindOccupied:!0'), '强迫推进队列全部标记为被迫进垒');
+  assert.ok(source.includes('const forced=r.filter(g=>g.hasBehindOccupied)'), '野选队列只保留被迫进垒跑者');
+  assert.match(source, /l\.forceHomeRunnerId=plan\.homeRunners\[0\]\.runner\.id\?\?plan\.homeRunners\[0\]\.runner\.name\?\?null/, '强迫推进队列记录首位被迫进垒跑者');
+  assert.match(source, /homeForceOutVisible=\$\(\(\)=>!!Di\.value\?\.hasBehindOccupied\)/, '封杀门禁按当前跑者的被迫进垒标记计算');
   assert.ok(source.includes('l.forceHomeRunnerId=null'), '走路/取消队列清空被迫进垒标记');
   assert.match(source, /homeOutReasonItems=\$\(\(\)=>\[[\s\S]*?homeForceOutVisible\.value\?\[\{key:"force",cn:"封杀出局",en:"Force Out"\}\]:\[\][\s\S]*?\{key:"tag"/, '本垒出局原因项按被迫进垒动态生成');
   assert.match(source, /et\(homeOutReasonItems\.value,d=>n\("button"/, '原因面板按动态项渲染');

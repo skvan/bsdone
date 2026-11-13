@@ -63,14 +63,13 @@ test('雙殺特例不適用無一壘跑者、兩出局、無出局或已完成�
 test('LiveGame 要求記分員判定錯誤得分，並將 RBI 判定隨得分跑者保存', () => {
   assert.match(liveGame, /失誤得分 RBI 判定/);
   assert.ok(!liveGame.includes('askErrorRunRbiDecision(l.runners[3]).then('), 'E 预弹窗答案会被 dp 重问或跳过，已移除');
-  assert.match(liveGame, /await askErrorRunRbiDecision\(r\[3\]\)/);
+  assert.match(liveGame, /await askErrorRunRbiDecision\(plan\.homeRunners\[0\]\.runner\)/);
   assert.match(liveGame, /pushHitSpray\(dpException\?"FC":e\.playType,0,e\.opts\)/);
   assert.match(liveGame, /async function fcApply/);
-  assert.match(liveGame, /const runDecision=l\.runners\[3\]\?await askErrorRunRbiDecision/);
-  assert.match(liveGame, /askErrorRunRbiDecision\(l\.runners\[3\]\)/);
-  assert.match(liveGame, /function Ql\(e,r=!0,runDecision=null\)/);
-  assert.match(liveGame, /wouldScoreWithoutError:t\.wouldScoreWithoutError\?\?null,rbiCredit:typeof t\.rbiCredit/);
-  assert.match(liveGame, /runCause:t\.runCause\?\?null/);
+  assert.match(liveGame, /askErrorRunRbiDecision\(safeHome\.runner\)/);
+  assert.match(liveGame, /function startForceQueue\(plan,onApply\)/);
+  assert.match(liveGame, /wouldScoreWithoutError,rbiCredit:rbi,rbiReason/);
+  assert.match(liveGame, /decideRbiForRun\(\{runCause,wouldScoreWithoutError,manualRbi:ctx\.manualRbi\}\)/);
 });
 
 test('雙殺傳球失誤特例記一出局、取消 E 並將結果保存為 FC', () => {
@@ -80,9 +79,11 @@ test('雙殺傳球失誤特例記一出局、取消 E 並將結果保存為 FC',
   assert.match(liveGame, /doublePlayThrowingErrorException:!0/);
 });
 
-test('SF/SH 得分依正常防守裁量 RBI，並將裁量附加至得分事件', () => {
-  assert.match(liveGame, /牺牲打得分 RBI 判定/);
-  assert.match(liveGame, /wouldScoreWithoutError:sacrificeRunDecision\.wouldScoreWithoutError/);
-  assert.match(liveGame, /bo\(r,sacrificeRunDecision\)/);
-  assert.match(liveGame, /wouldScoreWithoutError:e\?\.wouldScoreWithoutError\?\?null/);
+test('SF/SH 不再自动结算得分；推进原因由拖拽选择，牺牲高飞得分才记 RBI', () => {
+  assert.ok(!liveGame.includes('牺牲打得分 RBI 判定'), 'SF/SH 不再预弹 RBI 判定');
+  assert.ok(!liveGame.includes('bo(r,sacrificeRunDecision)'), 'SH 不再自动推进跑者');
+  assert.match(liveGame, /id:"safe_sac_fly"/, '拖拽原因提供牺牲高飞推进');
+  assert.match(liveGame, /id:"safe_sac_bunt"/, '拖拽原因提供牺牲触击推进');
+  assert.match(liveGame, /e\.id==="safe_sac_fly"&&r===4&&\(rbiWho=creditLastBatterRbi\(\)\)/, '牺牲高飞得分时由拖拽原因记 RBI');
+  assert.match(liveGame, /e==="SF"\)\{[\s\S]*?s\("SF",0\)/, 'SF 只记录打者出局与落点');
 });

@@ -235,6 +235,25 @@ class GameServiceSaveLiveTest {
     }
 
     @Test
+    @DisplayName("saveLive：载荷缺牵制企图栏时保留既有值")
+    void saveLive_missingPickoffAttempts_preservesExisting() {
+        when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
+                .thenReturn(Boolean.FALSE);
+        pitcher.setPickoffAttempts(Integer.valueOf(5));
+
+        GameSaveLiveDTO.GamePlayerStatPart part = new GameSaveLiveDTO.GamePlayerStatPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setIsPitcher(Integer.valueOf(1));
+        GameSaveLiveDTO dto = new GameSaveLiveDTO();
+        dto.setStats(List.of(part));
+
+        gameService.saveLive(Long.valueOf(GAME_ID), dto);
+
+        assertEquals(Integer.valueOf(5), pitcher.getPickoffAttempts());
+    }
+
+    @Test
     @DisplayName("saveLive：纸质表单新增字段全部落库")
     void saveLive_paperFormFields_written() {
         when(earnedRunReconstructionService.hasEngineData(Long.valueOf(GAME_ID)))
@@ -255,6 +274,7 @@ class GameServiceSaveLiveTest {
         part.setPitchIbb(Integer.valueOf(2));
         part.setPitchHbp(Integer.valueOf(1));
         part.setPitchIo(Integer.valueOf(1));
+        part.setPickoffAttempts(Integer.valueOf(3));
         part.setGo(Integer.valueOf(4));
         part.setFo(Integer.valueOf(5));
         part.setGs(Integer.valueOf(1));
@@ -281,6 +301,7 @@ class GameServiceSaveLiveTest {
         assertEquals(Integer.valueOf(2), pitcher.getPitchIbb());
         assertEquals(Integer.valueOf(1), pitcher.getPitchHbp());
         assertEquals(Integer.valueOf(1), pitcher.getPitchIo());
+        assertEquals(Integer.valueOf(3), pitcher.getPickoffAttempts());
         assertEquals(Integer.valueOf(4), pitcher.getGo());
         assertEquals(Integer.valueOf(5), pitcher.getFo());
         assertEquals(Integer.valueOf(1), pitcher.getGs());

@@ -68,8 +68,8 @@ test('bt 主链各结果分支均入队（含此前缺失的 7 类）', () => {
   assert.match(source, /s\(g,0\)/, 'G/F/L/TAG 出局经变量 g 入队');
   // 本次补齐
   assert.match(source, /s\("IPHR",b\)/, 'IPHR（场内全垒打）应入队');
-  assert.match(source, /s\("SF",sfRbi\?1:0\)/, 'SF（高飞牺牲）应入队且打点取实际值');
-  assert.match(source, /s\("SH",sacrificeRunDecision\.creditRbi\?1:0\)/, 'SH（牺牲触击）按正常防守判定入队');
+  assert.match(source, /s\("SF",0\)/, 'SF（高飞牺牲）入队；跑者得分与 RBI 改由拖拽原因记账');
+  assert.match(source, /s\("SH",0\)/, 'SH（牺牲触击）入队；跑者推进与打点改由拖拽原因记账');
   assert.match(source, /s\("E",0\)/, 'E（失误上垒）主链应入队');
   assert.match(source, /s\("DP",0\)/, 'DP（双杀）主链应入队');
   assert.match(source, /s\("TP",0\)/, 'TP（三杀）主链应入队，结果码为 TP');

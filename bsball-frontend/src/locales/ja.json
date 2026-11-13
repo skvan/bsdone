@@ -1396,7 +1396,8 @@
       "pitchBb": "Walks (incl. IBB)",
       "pitchIbb": "Intentional walks",
       "pitchHbp": "Hit by pitch",
-      "pitchIo": "Obstruction allowed"
+      "pitchIo": "Obstruction allowed",
+      "pickoffAttempts": "牽制企図"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1454,6 +1455,7 @@
       "pitchBbHp": "与四球・敬遠・死球の合計",
       "wp": "暴投",
       "bk": "ボーク",
+      "pickoffAttempts": "牽制企図（投手が走者へ牽制球を投げた回数。未遂・アウト・悪送球を含む／非公式記録）",
       "inn": "守備イニング",
       "tc": "守備機会",
       "po": "刺殺",

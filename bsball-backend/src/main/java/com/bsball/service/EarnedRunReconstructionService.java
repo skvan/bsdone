@@ -160,6 +160,7 @@ public class EarnedRunReconstructionService {
             new IntStatField(GamePlayerStat::getPitchIbb, GamePlayerStat::setPitchIbb),
             new IntStatField(GamePlayerStat::getPitchHbp, GamePlayerStat::setPitchHbp),
             new IntStatField(GamePlayerStat::getPitchIo, GamePlayerStat::setPitchIo),
+            new IntStatField(GamePlayerStat::getPickoffAttempts, GamePlayerStat::setPickoffAttempts),
             new IntStatField(GamePlayerStat::getWp, GamePlayerStat::setWp),
             new IntStatField(GamePlayerStat::getBk, GamePlayerStat::setBk),
             new IntStatField(GamePlayerStat::getGo, GamePlayerStat::setGo),
