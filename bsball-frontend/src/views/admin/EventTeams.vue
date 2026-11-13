@@ -22,6 +22,20 @@
             </div>
           </template>
         </el-table-column>
+        <el-table-column v-if="isGroupFormat" :label="t('orderBook.colGroup')" width="130">
+          <template #default="{ row }">
+            <el-select
+              :model-value="row.groupCode || ''"
+              size="small"
+              clearable
+              :disabled="!canManage || row.status !== 'confirmed'"
+              :placeholder="t('orderBook.groupUnassigned')"
+              @change="(value) => changeGroup(row, value)"
+            >
+              <el-option v-for="group in groupOptions" :key="group" :label="`${group} 组`" :value="group" />
+            </el-select>
+          </template>
+        </el-table-column>
         <el-table-column :label="t('orderBook.colStatus')" width="110">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="light">{{ displayStatus(row.status, t) }}</el-tag>
@@ -108,6 +122,12 @@ const listTableAttrs = useListTableAttrs();
 const opFixed = useFixedOperationColumn();
 
 const eventName = ref('');
+const eventFormat = ref('');
+const eventGroupCount = ref(2);
+const isGroupFormat = computed(() => eventFormat.value === 'GROUP_KNOCKOUT');
+const groupOptions = computed(() =>
+  Array.from({ length: eventGroupCount.value }, (_, index) => String.fromCharCode(65 + index))
+);
 const loading = ref(false);
 const rows = ref([]);
 const allTeamOptions = ref([]);
@@ -146,6 +166,19 @@ async function load() {
 async function loadEventName() {
   const ev = await eventApi.get(eventId.value);
   eventName.value = ev?.name ?? '';
+  eventFormat.value = ev?.formatType ?? '';
+  const groupCount = Number(ev?.groupCount);
+  eventGroupCount.value = Number.isFinite(groupCount) && groupCount > 0 ? groupCount : 2;
+}
+
+async function changeGroup(row, groupCode) {
+  try {
+    await eventRegistrationApi.updateGroup(eventId.value, row.teamId, groupCode || null);
+    ElMessage.success(t('orderBook.groupUpdated'));
+    await load();
+  } catch (e) {
+    ElMessage.error(e?.message ?? t('orderBook.groupUpdateFailed'));
+  }
 }
 
 function goBack() {

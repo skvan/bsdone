@@ -33,6 +33,10 @@ extends BaseEntity {
     @Comment(value = "状态：invited/confirmed/declined")
     @Column(nullable = false, length = 16)
     private String status = STATUS_INVITED;
+    @Size(max = 16)
+    @Column(length = 16)
+    @Comment(value = "小组组别，如 A/B（小组赛制使用）")
+    private String groupCode;
     @Comment(value = "邀请人")
     private Long invitedBy;
     @Comment(value = "邀请时间")
@@ -68,6 +72,10 @@ extends BaseEntity {
 
     public String getStatus() {
         return this.status;
+    }
+
+    public String getGroupCode() {
+        return this.groupCode;
     }
 
     public Long getInvitedBy() {
@@ -120,6 +128,10 @@ extends BaseEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public void setGroupCode(String groupCode) {
+        this.groupCode = groupCode;
     }
 
     public void setInvitedBy(Long invitedBy) {

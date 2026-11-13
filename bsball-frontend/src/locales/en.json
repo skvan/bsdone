@@ -1031,7 +1031,8 @@
     "missingDateHint": "{n} game(s) have no game date or start time and will not appear in the calendar; they remain available under \"{group}\" in the list.",
     "specialResult": "Special Result",
     "expandScheduleAria": "Expand schedule for {name}",
-    "collapseScheduleAria": "Collapse schedule for {name}"
+    "collapseScheduleAria": "Collapse schedule for {name}",
+    "standings": "Standings"
   },
   "eventGames": {
     "title": "Schedule & Results",
@@ -1050,6 +1051,50 @@
       "postponed": "Postponed",
       "cancelled": "Cancelled"
     }
+  },
+  "portalEventDetail": {
+    "back": "Back to Events",
+    "schedule": "Schedule & Results",
+    "standings": "Standings",
+    "bracket": "Bracket",
+    "scheduleTable": "Schedule & Results",
+    "noGames": "No games yet",
+    "noStandings": "No standings yet",
+    "noBracket": "Knockout stage has not started",
+    "notFound": "Event not found or deleted",
+    "standingsTitle": "Standings",
+    "single": "Single round robin",
+    "double": "Double round robin",
+    "knockout": "Single elimination",
+    "groupKnockout": "Group stage + knockout",
+    "pointsRule": "Win {win} pts · Draw {draw} pts · Loss {loss} pts",
+    "winScore": "Winning score",
+    "lossScore": "Losing score",
+    "tieScore": "Tie",
+    "rank": "Rank",
+    "team": "Team",
+    "pointsData": "Points",
+    "resultsData": "Results (row team left · column team right)",
+    "played": "GP",
+    "points": "PTS",
+    "winPct": "PCT",
+    "gamesBehind": "GB",
+    "runsFor": "RS",
+    "runsAgainst": "RA",
+    "runDiff": "DIFF",
+    "qualified": "Qualified",
+    "sameTeam": "Same team",
+    "matrixNote": "Rows and columns are ordered by current standings; the diagonal is the same team and is crossed out. Score colors: green = winner, red = loser, black = tie.",
+    "groupSubtitle": "Group stage · Top {n} advance",
+    "roundRobinSubtitle": "Points and results combined · Win % = W / (W + L)",
+    "group": "Group {code}",
+    "unassignedGroup": "Unassigned",
+    "tbd": "TBD",
+    "champion": "Champion",
+    "thirdPlace": "Third-place match",
+    "bracketSubtitle": "Single elimination · Lines show the path to advance",
+    "scrollHint": "Scroll horizontally to view the full bracket",
+    "warnings": "Data notes"
   },
   "gameShare": {
     "entry": "Share Game",
@@ -2197,7 +2242,11 @@
     "listNoActive": "No active players to show",
     "operationFailed": "Operation failed",
     "emptyRegistrations": "No event registrations yet",
-    "softball": "Softball"
+    "softball": "Softball",
+    "colGroup": "Group",
+    "groupUnassigned": "Unassigned",
+    "groupUpdated": "Group updated",
+    "groupUpdateFailed": "Failed to update group"
   },
   "invitePlayer": {
     "title": "Invite Player",

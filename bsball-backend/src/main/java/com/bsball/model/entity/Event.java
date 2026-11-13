@@ -57,6 +57,23 @@ extends BaseEntity {
     @Column(nullable=false)
     @Comment(value="平台资产归还标记：TRUE=已归还系统租户/平台回收（历史数据处置权，仅超管可最终销毁）")
     private Boolean platformOwned = Boolean.FALSE;
+    @Column(length=32)
+    @Comment(value="赛制：SINGLE_ROUND_ROBIN/DOUBLE_ROUND_ROBIN/KNOCKOUT/GROUP_KNOCKOUT")
+    private String formatType;
+    @Comment(value="积分制：胜场积分")
+    private Integer pointsWin;
+    @Comment(value="积分制：平局积分")
+    private Integer pointsDraw;
+    @Comment(value="积分制：负场积分")
+    private Integer pointsLoss;
+    @Comment(value="小组赛小组数（GROUP_KNOCKOUT）")
+    private Integer groupCount;
+    @Comment(value="小组赛每组晋级数（GROUP_KNOCKOUT）")
+    private Integer advancePerGroup;
+    @Comment(value="淘汰赛是否设置三四名决赛")
+    private Boolean thirdPlace;
+    @Comment(value="单败淘汰签表规模（KNOCKOUT）")
+    private Integer bracketSize;
 
     /**
      * 非持久化：赛事级特殊规则与联赛收费能力标识（Issue #275，2026-10-24 口径）。
@@ -127,6 +144,38 @@ extends BaseEntity {
         return this.platformOwned;
     }
 
+    public String getFormatType() {
+        return this.formatType;
+    }
+
+    public Integer getPointsWin() {
+        return this.pointsWin;
+    }
+
+    public Integer getPointsDraw() {
+        return this.pointsDraw;
+    }
+
+    public Integer getPointsLoss() {
+        return this.pointsLoss;
+    }
+
+    public Integer getGroupCount() {
+        return this.groupCount;
+    }
+
+    public Integer getAdvancePerGroup() {
+        return this.advancePerGroup;
+    }
+
+    public Boolean getThirdPlace() {
+        return this.thirdPlace;
+    }
+
+    public Integer getBracketSize() {
+        return this.bracketSize;
+    }
+
     @Generated
     public void setTenantId(Long tenantId) {
         this.tenantId = tenantId;
@@ -188,6 +237,38 @@ extends BaseEntity {
     @Generated
     public void setPlatformOwned(Boolean platformOwned) {
         this.platformOwned = platformOwned;
+    }
+
+    public void setFormatType(String formatType) {
+        this.formatType = formatType;
+    }
+
+    public void setPointsWin(Integer pointsWin) {
+        this.pointsWin = pointsWin;
+    }
+
+    public void setPointsDraw(Integer pointsDraw) {
+        this.pointsDraw = pointsDraw;
+    }
+
+    public void setPointsLoss(Integer pointsLoss) {
+        this.pointsLoss = pointsLoss;
+    }
+
+    public void setGroupCount(Integer groupCount) {
+        this.groupCount = groupCount;
+    }
+
+    public void setAdvancePerGroup(Integer advancePerGroup) {
+        this.advancePerGroup = advancePerGroup;
+    }
+
+    public void setThirdPlace(Boolean thirdPlace) {
+        this.thirdPlace = thirdPlace;
+    }
+
+    public void setBracketSize(Integer bracketSize) {
+        this.bracketSize = bracketSize;
     }
 
     /** 赛事级特殊规则与能力标识（瞬态；null 表示未装配）。 */

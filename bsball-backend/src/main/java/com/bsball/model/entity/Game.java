@@ -136,6 +136,16 @@ extends BaseEntity {
     private Boolean includeStatsInRanking = true;
     @Comment(value="\u6bd4\u8d5b\u6a21\u5f0f: BASEBALL \u68d2\u7403 / SOFTBALL \u5792\u7403")
     private String gameMode = "BASEBALL";
+    @Column(length=32)
+    @Comment(value="\u8d5b\u5236\u9636\u6bb5\uff1aGROUP/R16/QF/SF/FINAL/THIRD_PLACE")
+    private String stageCode;
+    @Column(length=16)
+    @Comment(value="\u5c0f\u7ec4\u7ec4\u522b\uff0c\u5982 A/B")
+    private String groupCode;
+    @Comment(value="\u8f6e\u6b21\uff1a\u53cc\u5faa\u73af\u56de\u5408/\u5c0f\u7ec4\u8d5b\u8f6e\u6b21")
+    private Integer roundNo;
+    @Comment(value="\u6dd8\u6c70\u8d5b\u540c\u8f6e\u6b21\u5185\u7684\u5bf9\u9635\u4f4d")
+    private Integer bracketSlot;
 
     @JsonProperty
     public void setHomeScoreByInning(Object raw) {
@@ -367,6 +377,22 @@ extends BaseEntity {
         return this.gameMode;
     }
 
+    public String getStageCode() {
+        return this.stageCode;
+    }
+
+    public String getGroupCode() {
+        return this.groupCode;
+    }
+
+    public Integer getRoundNo() {
+        return this.roundNo;
+    }
+
+    public Integer getBracketSlot() {
+        return this.bracketSlot;
+    }
+
     @Generated
     public void setEventId(Long eventId) {
         this.eventId = eventId;
@@ -555,6 +581,22 @@ extends BaseEntity {
     @Generated
     public void setGameMode(String gameMode) {
         this.gameMode = gameMode;
+    }
+
+    public void setStageCode(String stageCode) {
+        this.stageCode = stageCode;
+    }
+
+    public void setGroupCode(String groupCode) {
+        this.groupCode = groupCode;
+    }
+
+    public void setRoundNo(Integer roundNo) {
+        this.roundNo = roundNo;
+    }
+
+    public void setBracketSlot(Integer bracketSlot) {
+        this.bracketSlot = bracketSlot;
     }
 
     @Generated

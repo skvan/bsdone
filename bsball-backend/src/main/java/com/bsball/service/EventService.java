@@ -37,8 +37,10 @@ import com.bsball.service.query.ScopeQuerySupport;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import lombok.Generated;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +51,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EventService {
+    private static final String FORMAT_SINGLE_ROUND_ROBIN = "SINGLE_ROUND_ROBIN";
+    private static final Set<String> TOURNAMENT_FORMATS = Set.of(
+            FORMAT_SINGLE_ROUND_ROBIN, "DOUBLE_ROUND_ROBIN", "KNOCKOUT", "GROUP_KNOCKOUT");
+    private static final Set<Integer> BRACKET_SIZES = Set.of(2, 4, 8, 16, 32);
+
     private final EventRepository eventRepository;
     private final LeagueRepository leagueRepository;
     private final AccountScopeService accountScopeService;
@@ -116,6 +123,7 @@ public class EventService {
     @Transactional(rollbackFor={Exception.class})
     public Event create(Event entity) {
         long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.normalizeTournamentConfig(entity);
         if (entity.getRequireRoster() == null) {
             // 报名制（Issue #318 决策 11）：新建默认 true；显式 null 归一化，防撞 not null 约束
             entity.setRequireRoster(Boolean.TRUE);
@@ -174,6 +182,7 @@ public class EventService {
         // 报名制标记创建时定型（决策 11：不提供 UI 开关）：编辑一律沿用旧值，
         // 防请求体缺省值（实体默认 TRUE）把存量赛事静默翻成报名制。
         entity.setRequireRoster(existing.getRequireRoster());
+        this.mergeTournamentConfig(entity, existing);
         Map<String, Boolean> rules = entity.getSpecialRules();
         boolean writeRules = rules != null && !rules.isEmpty();
         if (writeRules && !this.eventSpecialRuleService.hasRules(id)) {
@@ -206,6 +215,92 @@ public class EventService {
         existing.setDeletedAt(LocalDateTime.now());
         existing.setDeletedBy(CurrentUserHolder.get());
         this.eventRepository.save(existing);
+    }
+
+    /**
+     * 赛制与积分制默认值归一化（新建赛事）。
+     * 存量客户端可只传部分字段；null 一律落到默认值，非法值直接 400。
+     */
+    private void normalizeTournamentConfig(Event entity) {
+        entity.setFormatType(this.normalizeFormatType(entity.getFormatType()));
+        entity.setPointsWin(this.normalizePoints(entity.getPointsWin(), 2, "胜场积分"));
+        entity.setPointsDraw(this.normalizePoints(entity.getPointsDraw(), 1, "平局积分"));
+        entity.setPointsLoss(this.normalizePoints(entity.getPointsLoss(), 0, "负场积分"));
+        entity.setGroupCount(this.normalizeGroupCount(entity.getGroupCount()));
+        entity.setAdvancePerGroup(this.normalizeAdvancePerGroup(entity.getAdvancePerGroup()));
+        entity.setThirdPlace(entity.getThirdPlace() == null ? Boolean.TRUE : entity.getThirdPlace());
+        entity.setBracketSize(this.normalizeBracketSize(entity.getBracketSize()));
+    }
+
+    /** 编辑赛事时缺省字段沿用存量值，避免旧客户端把赛制配置重置为默认。 */
+    private void mergeTournamentConfig(Event entity, Event existing) {
+        if (entity.getFormatType() == null) {
+            entity.setFormatType(existing.getFormatType());
+        }
+        if (entity.getPointsWin() == null) {
+            entity.setPointsWin(existing.getPointsWin());
+        }
+        if (entity.getPointsDraw() == null) {
+            entity.setPointsDraw(existing.getPointsDraw());
+        }
+        if (entity.getPointsLoss() == null) {
+            entity.setPointsLoss(existing.getPointsLoss());
+        }
+        if (entity.getGroupCount() == null) {
+            entity.setGroupCount(existing.getGroupCount());
+        }
+        if (entity.getAdvancePerGroup() == null) {
+            entity.setAdvancePerGroup(existing.getAdvancePerGroup());
+        }
+        if (entity.getThirdPlace() == null) {
+            entity.setThirdPlace(existing.getThirdPlace());
+        }
+        if (entity.getBracketSize() == null) {
+            entity.setBracketSize(existing.getBracketSize());
+        }
+        this.normalizeTournamentConfig(entity);
+    }
+
+    private String normalizeFormatType(String value) {
+        String normalized = value == null || value.isBlank()
+                ? FORMAT_SINGLE_ROUND_ROBIN
+                : value.trim().toUpperCase(Locale.ROOT);
+        if (!TOURNAMENT_FORMATS.contains(normalized)) {
+            throw new BusinessException(400, "不支持的赛制：" + value);
+        }
+        return normalized;
+    }
+
+    private int normalizePoints(Integer value, int fallback, String label) {
+        int points = value == null ? fallback : value;
+        if (points < 0 || points > 99) {
+            throw new BusinessException(400, label + "必须在 0-99 之间");
+        }
+        return points;
+    }
+
+    private int normalizeGroupCount(Integer value) {
+        int count = value == null ? 2 : value;
+        if (count < 1 || count > 8) {
+            throw new BusinessException(400, "小组数必须在 1-8 之间");
+        }
+        return count;
+    }
+
+    private int normalizeAdvancePerGroup(Integer value) {
+        int count = value == null ? 2 : value;
+        if (count < 1 || count > 4) {
+            throw new BusinessException(400, "每组晋级数必须在 1-4 之间");
+        }
+        return count;
+    }
+
+    private int normalizeBracketSize(Integer value) {
+        int size = value == null ? 8 : value;
+        if (!BRACKET_SIZES.contains(size)) {
+            throw new BusinessException(400, "签表规模必须是 2/4/8/16/32");
+        }
+        return size;
     }
 
     private Pageable buildPageable(Integer page, Integer pageSize, String sortProp, String sortOrder) {

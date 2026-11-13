@@ -59,6 +59,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -82,6 +83,9 @@ public class GameService {
     private static final Logger log = LoggerFactory.getLogger(GameService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Set<String> ALLOWED_SUBSTITUTION_TYPES = Set.of("SUBSTITUTION", "POSITION_CHANGE", "PITCHING_CHANGE", "DH_CANCEL");
+    private static final Set<String> BRACKET_STAGE_CODES = Set.of("R16", "QF", "SF", "FINAL", "THIRD_PLACE");
+    private static final String STAGE_GROUP = "GROUP";
+    private static final String FORMAT_SINGLE_ROUND_ROBIN = "SINGLE_ROUND_ROBIN";
     private final GameRepository gameRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameSubstitutionEventRepository gameSubstitutionEventRepository;
@@ -223,6 +227,7 @@ public class GameService {
         this.resourceGuard.assertCanManageLeague(ev.getLeagueId());
         // 报名制门槛（Issue #318 决策 11）：新建赛事须至少两支已完成报名（确认+锁定名单）的球队方可排赛
         this.eventRegistrationService.assertGameTeamsEligible(entity.getEventId(), entity.getHomeTeamId(), entity.getAwayTeamId());
+        this.normalizeTournamentFields(entity, ev);
         entity.setTenantId(Long.valueOf(tid));
         if (entity.getStadiumId() != null) {
             this.assertStadiumBelongsToTenant(entity.getStadiumId(), tid);
@@ -252,6 +257,19 @@ public class GameService {
         this.eventRegistrationService.assertGameTeamsEligible(eid,
                 entity.getHomeTeamId() != null ? entity.getHomeTeamId() : existing.getHomeTeamId(),
                 entity.getAwayTeamId() != null ? entity.getAwayTeamId() : existing.getAwayTeamId());
+        if (entity.getStageCode() == null) {
+            entity.setStageCode(existing.getStageCode());
+        }
+        if (entity.getGroupCode() == null) {
+            entity.setGroupCode(existing.getGroupCode());
+        }
+        if (entity.getRoundNo() == null) {
+            entity.setRoundNo(existing.getRoundNo());
+        }
+        if (entity.getBracketSlot() == null) {
+            entity.setBracketSlot(existing.getBracketSlot());
+        }
+        this.normalizeTournamentFields(entity, ev);
         entity.setId(id);
         entity.setCreatedAt(existing.getCreatedAt());
         entity.setTenantId(Long.valueOf(tid));
@@ -259,6 +277,65 @@ public class GameService {
             this.assertStadiumBelongsToTenant(entity.getStadiumId(), tid);
         }
         return (Game)this.gameRepository.save(entity);
+    }
+
+    /**
+     * 比赛赛制阶段字段归一化与校验（Issue #665）：
+     * 单/双循环不使用阶段字段；单败淘汰只允许淘汰赛阶段；小组+淘汰赛区分 GROUP 与淘汰赛阶段。
+     */
+    private void normalizeTournamentFields(Game game, Event event) {
+        String format = event.getFormatType() == null
+                ? FORMAT_SINGLE_ROUND_ROBIN
+                : event.getFormatType().trim().toUpperCase(Locale.ROOT);
+        String stage = this.normalizeStageCode(game.getStageCode());
+        String group = this.normalizeGroupCode(game.getGroupCode());
+        if (stage != null && !STAGE_GROUP.equals(stage) && !BRACKET_STAGE_CODES.contains(stage)) {
+            throw new BusinessException(400, "未知的赛制阶段：" + game.getStageCode());
+        }
+        boolean bracketStage = stage != null && BRACKET_STAGE_CODES.contains(stage);
+        if ("KNOCKOUT".equals(format)) {
+            if (STAGE_GROUP.equals(stage)) {
+                throw new BusinessException(400, "单败淘汰赛事不能设置小组赛阶段");
+            }
+            group = null;
+        } else if ("GROUP_KNOCKOUT".equals(format)) {
+            if (bracketStage && group != null) {
+                throw new BusinessException(400, "淘汰赛阶段不能设置小组组别");
+            }
+        } else {
+            stage = null;
+            group = null;
+        }
+        if (game.getRoundNo() != null && game.getRoundNo() < 1) {
+            throw new BusinessException(400, "轮次必须大于 0");
+        }
+        if (game.getBracketSlot() != null && game.getBracketSlot() < 1) {
+            throw new BusinessException(400, "对阵位必须大于 0");
+        }
+        game.setStageCode(stage);
+        game.setGroupCode(group);
+    }
+
+    private String normalizeStageCode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        if (normalized.length() > 32) {
+            throw new BusinessException(400, "赛制阶段不能超过 32 个字符");
+        }
+        return normalized;
+    }
+
+    private String normalizeGroupCode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        if (normalized.length() > 16) {
+            throw new BusinessException(400, "组别不能超过 16 个字符");
+        }
+        return normalized;
     }
 
     private void assertStadiumBelongsToTenant(Long stadiumId, long tenantId) {
@@ -1257,6 +1334,18 @@ public class GameService {
             if (g.getGameTag() != null) {
                 game.setGameTag(g.getGameTag());
             }
+            if (g.getStageCode() != null) {
+                game.setStageCode(g.getStageCode());
+            }
+            if (g.getGroupCode() != null) {
+                game.setGroupCode(g.getGroupCode());
+            }
+            if (g.getRoundNo() != null) {
+                game.setRoundNo(g.getRoundNo());
+            }
+            if (g.getBracketSlot() != null) {
+                game.setBracketSlot(g.getBracketSlot());
+            }
             if (g.getWeatherSummary() != null) {
                 game.setWeatherSummary(g.getWeatherSummary());
             }
@@ -1278,6 +1367,7 @@ public class GameService {
             Event evSync = this.eventRepository.findById(game.getEventId()).orElse(null);
             if (evSync != null) {
                 game.setTenantId(evSync.getTenantId());
+                this.normalizeTournamentFields(game, evSync);
             }
             this.gameRepository.save(game);
         }
