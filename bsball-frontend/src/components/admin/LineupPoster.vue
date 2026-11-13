@@ -1,7 +1,13 @@
 <template>
   <div class="lineup-poster-shell">
     <div ref="posterRef" class="lineup-poster" :class="{ 'lineup-poster--compact': battingRows.length > 9 }">
-      <img v-if="watermarkUrl" class="lineup-poster__bg-logo" :src="watermarkUrl" alt="" />
+      <img
+        v-if="teamMarkUrl || watermarkUrl"
+        class="lineup-poster__bg-logo"
+        :class="{ 'is-keyed': !watermarkSilhouetteUrl && (teamMarkUrl || watermarkKeyed) }"
+        :src="watermarkSilhouetteUrl || teamMarkUrl || watermarkUrl"
+        alt=""
+      />
       <div v-else class="lineup-poster__bg-fallback">{{ teamInitial }}</div>
       <div class="lineup-poster__ring"></div>
       <div class="lineup-poster__vignette"></div>
@@ -15,7 +21,7 @@
 
         <div class="lineup-poster__header">
           <div class="lineup-poster__logo-card">
-            <img v-if="teamLogoRaw" :src="teamLogoRaw" alt="" />
+            <img v-if="teamMarkUrl || teamLogoRaw" :src="teamMarkUrl || watermarkUrl || teamLogoRaw" alt="" />
             <span v-else>{{ teamInitial }}</span>
           </div>
           <div class="lineup-poster__team-block">
@@ -106,11 +112,18 @@ const appConfig = useAppConfigStore();
 const posterRef = ref(null);
 const qrUrl = ref('');
 const watermarkUrl = ref('');
+const watermarkKeyed = ref(false);
+const watermarkSilhouetteUrl = ref('');
 
 const POSITION_LABELS = {
   P: '投手', C: '捕手', '1B': '一垒手', '2B': '二垒手', '3B': '三垒手',
   SS: '游击手', LF: '左外野', CF: '中外野', RF: '右外野',
   DH: '指定打击', PH: '代打', PR: '代跑', XF: '自由人', XF1: '自由人①', XF2: '自由人②', EP: '额外打击者'
+};
+
+// 与球星卡一致：野钻上传件为红底位图，统一使用重绘的黑白矢量队标（海报用透明 PNG，html2canvas 可稳定导出）
+const TEAM_MARKS = {
+  '野钻': new URL('../portal/wild-diamond-mark.png', import.meta.url).href
 };
 
 function playerName(player, fallbackId) {
@@ -120,6 +133,11 @@ function playerName(player, fallbackId) {
 const teamName = computed(() => props.context?.teamName || '本队');
 const teamInitial = computed(() => (teamName.value || '?').slice(0, 1));
 const teamLogoRaw = computed(() => resolveAssetUrl(props.context?.teamLogo));
+const teamMarkUrl = computed(() => {
+  const names = String(teamName.value || '').split(' / ').map((name) => name.trim());
+  const markTeam = names.find((name) => TEAM_MARKS[name]);
+  return markTeam ? TEAM_MARKS[markTeam] : '';
+});
 const platformLogo = computed(() =>
   appConfig.resolveAssetUrl(appConfig.adminLogoUrl || appConfig.logoUrl || '/bs-ball-logo.png')
 );
@@ -157,17 +175,57 @@ const shareUrl = computed(() => {
 });
 
 let logoTask = Promise.resolve();
-watch(teamLogoRaw, (url) => {
+
+/** html2canvas 不解析 CSS filter，白色剪影必须预渲染成图片再插入海报。 */
+async function toWhiteSilhouette(url) {
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = new URL(url, window.location.origin).href;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) return '';
+  context.drawImage(image, 0, 0);
+  context.globalCompositeOperation = 'source-in';
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+
+watch([teamLogoRaw, teamMarkUrl], ([url, mark]) => {
   logoTask = (async () => {
-    if (!url) {
+    watermarkSilhouetteUrl.value = '';
+    if (!url && !mark) {
       watermarkUrl.value = '';
+      watermarkKeyed.value = false;
+      return;
+    }
+    if (mark) {
+      watermarkUrl.value = mark;
+      watermarkKeyed.value = false;
+      try {
+        watermarkSilhouetteUrl.value = await toWhiteSilhouette(mark);
+      } catch {
+        // 剪影失败时退回 CSS filter 兜底
+      }
       return;
     }
     try {
       const result = await keyTeamLogo(url);
       watermarkUrl.value = result?.url || url;
+      watermarkKeyed.value = result?.keyed === true;
+      if (watermarkKeyed.value) {
+        try {
+          watermarkSilhouetteUrl.value = await toWhiteSilhouette(watermarkUrl.value);
+        } catch {
+          // 剪影失败时退回 CSS filter 兜底
+        }
+      }
     } catch {
       watermarkUrl.value = url;
+      watermarkKeyed.value = false;
     }
   })();
 }, { immediate: true });
@@ -243,6 +301,10 @@ defineExpose({ generate });
   opacity: .16;
   filter: blur(.5px) saturate(.85);
   pointer-events: none;
+}
+.lineup-poster__bg-logo.is-keyed {
+  opacity: .18;
+  filter: brightness(0) invert(1) blur(.4px);
 }
 .lineup-poster__bg-fallback {
   position: absolute;
