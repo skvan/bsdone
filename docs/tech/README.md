@@ -22,6 +22,7 @@
 - [总览](API接口参考/API接口参考.md)
 - [认证授权 API](API接口参考/认证授权API.md)
 - [比赛管理 API](API接口参考/比赛管理API.md)
+- [赛事积分榜与对阵 API](API接口参考/赛事积分榜与对阵API.md)
 - [球队球员 API](API接口参考/球队球员API.md)
 - [媒体内容 API](API接口参考/媒体内容API.md)
 - [系统管理 API](API接口参考/系统管理API.md)

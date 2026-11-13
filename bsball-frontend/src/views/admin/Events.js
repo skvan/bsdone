@@ -13,6 +13,7 @@ import { eventApi as E } from '../../api/business';
 import Qe from '../../components/admin/AdminListScaffold.js';
 import je from '../../components/admin/AdminPagination.js';
 import EventSpecialRuleFields from '../../components/admin/EventSpecialRuleFields.vue';
+import EventFormatFields from '../../components/admin/EventFormatFields.vue';
 import { useFixedOperationColumn as Je } from '../../composables/useListTable';
 import { useListTableAttrs as We } from '../../composables/useListTable';
 import { useModalClose as Xe } from '../../composables/useModalClose';
@@ -50,7 +51,7 @@ var tt={
       ]
     }
     ,U=qe(),z=c([]),P=c([]),L=c(!1),w=c(!1),D=c(null),o=I({
-      name:"",leagueId:null,season:"",startDate:"",endDate:"",status:"draft",gameMode:"BASEBALL",description:"",specialRules:{extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1}
+      name:"",leagueId:null,season:"",startDate:"",endDate:"",status:"draft",gameMode:"BASEBALL",description:"",formatConfig:{formatType:"SINGLE_ROUND_ROBIN",pointsWin:2,pointsDraw:1,pointsLoss:0,groupCount:2,advancePerGroup:2,thirdPlace:!0,bracketSize:8},specialRules:{extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1}
     }
     ),C=I({
       keyword:""
@@ -63,6 +64,9 @@ var tt={
     ,specialRulesHint=Se(()=>o.leagueId==null?"赛事未关联联盟，无法使用特殊规则":"该联盟未开放特殊规则能力，请联系租户管理员；已配置规则的赛事仍保留");
     function updateSpecialRules(n){
       o.specialRules=n
+    }
+    function updateFormatConfig(n){
+      o.formatConfig=n
     }
     async function onLeagueChange(n){
       if(n==null){
@@ -96,7 +100,7 @@ var tt={
       [n||"draft"]||"info"
     }
     async function O(n){
-      D.value=n?.id??null,o.name=n?.name??"",o.leagueId=n?.leagueId??null,o.season=n?.season??"",o.startDate=n?.startDate??"",o.endDate=n?.endDate??"",o.status=n?.status??"draft",o.gameMode=n?.gameMode??"BASEBALL",o.description=n?.description??"",o.specialRules={extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1},hasEventRules.value=!1,leagueCapabilityEnabled.value=!1;
+      D.value=n?.id??null,o.name=n?.name??"",o.leagueId=n?.leagueId??null,o.season=n?.season??"",o.startDate=n?.startDate??"",o.endDate=n?.endDate??"",o.status=n?.status??"draft",o.gameMode=n?.gameMode??"BASEBALL",o.description=n?.description??"",o.formatConfig={formatType:n?.formatType??"SINGLE_ROUND_ROBIN",pointsWin:n?.pointsWin??2,pointsDraw:n?.pointsDraw??1,pointsLoss:n?.pointsLoss??0,groupCount:n?.groupCount??2,advancePerGroup:n?.advancePerGroup??2,thirdPlace:n?.thirdPlace!==!1,bracketSize:n?.bracketSize??8},o.specialRules={extraBatter:!1,forceHalf:!0,ohtaniRule:!1,softballReentry:!1},hasEventRules.value=!1,leagueCapabilityEnabled.value=!1;
       if(n?.id)try{
         const e=await E.get(n.id),t=e?.specialRules;
         if(t){
@@ -112,7 +116,7 @@ var tt={
       await K(async()=>{
         if(S.value)try{
           await S.value.validate();
-          const n={...o};
+          const n={...o,...o.formatConfig};delete n.formatConfig;
           if(D.value&&specialRulesAvailable.value)n.specialRules={extraBatter:o.specialRules.extraBatter===!0,forceHalf:o.specialRules.forceHalf!==!1,ohtaniRule:o.specialRules.ohtaniRule===!0,...(o.gameMode==="SOFTBALL"?{softballReentry:o.specialRules.softballReentry===!0}:{})};
           else delete n.specialRules;
           D.value?(await E.update(D.value,n),V.success("修改成功")):(await E.create(n),V.success("新增成功")),w.value=!1,v()
@@ -397,7 +401,7 @@ var tt={
         ,8,["fill-mode"])]),_:1
       }
       ),t(be,{
-        modelValue:w.value,"onUpdate:modelValue":e[13]||(e[13]=l=>w.value=l),title:D.value?"编辑赛事":"发布赛事",width:"520","close-on-click-modal":d(ee)
+        modelValue:w.value,"onUpdate:modelValue":e[13]||(e[13]=l=>w.value=l),title:D.value?"编辑赛事":"发布赛事",width:"700","close-on-click-modal":d(ee)
       }
       ,{
         footer:a(()=>[t(f,{
@@ -529,6 +533,9 @@ var tt={
               modelValue:o.description,"onUpdate:modelValue":e[11]||(e[11]=l=>o.description=l),type:"textarea",rows:3,placeholder:"最多2000字",maxlength:"2000","show-word-limit":""
             }
             ,null,8,["modelValue"])]),_:1
+          }
+          ),t(EventFormatFields,{
+            key:"event-format",modelValue:o.formatConfig,"onUpdate:modelValue":updateFormatConfig
           }
           ),d(D)?(p(),g(EventSpecialRuleFields,{
             key:0,modelValue:o.specialRules,available:d(specialRulesAvailable),hint:d(specialRulesHint),gameMode:o.gameMode,"onUpdate:modelValue":updateSpecialRules

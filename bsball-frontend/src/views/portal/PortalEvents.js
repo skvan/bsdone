@@ -21,6 +21,7 @@ import { buildScheduleSheet as Gt } from '../../components/portal/PortalSchedule
 import { useScheduleViewMode as Tt } from '../../components/portal/PortalScheduleFilterBar.js';
 import { default as xt } from '../../components/portal/PortalScheduleFilterBar.js';
 import EventRosterDownloadButton from '../../components/portal/EventRosterDownloadButton.vue';
+import EventTournamentLinkButton from '../../components/portal/EventTournamentLinkButton.vue';
 import { useEventGames as Ct } from '../../composables/useEventGames';
 import { computeEventGroups as Nt } from '../../composables/useEventGames';
 import { getEventYear as Ft } from '../../composables/useEventGames';
@@ -581,6 +582,9 @@ var Vt={
         }
         ,8,["class","loading","aria-label","onClick"]),i(EventRosterDownloadButton,{
           eventId:n.id,eventName:n.name,eventSeason:n.season,iconOnly:l(Z)
+        }
+        ),i(EventTournamentLinkButton,{
+          eventId:n.id,iconOnly:l(Z)
         }
         )])):M("",!0)]),_:2
       }

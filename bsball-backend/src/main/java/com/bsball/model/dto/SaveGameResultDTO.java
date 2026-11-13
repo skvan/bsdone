@@ -138,6 +138,10 @@ public class SaveGameResultDTO {
         private String umpire3b;
         private String recorders;
         private String gameTag;
+        private String stageCode;
+        private String groupCode;
+        private Integer roundNo;
+        private Integer bracketSlot;
         private String weatherSummary;
         private Double weatherTempC;
         private String weatherWind;
@@ -284,6 +288,22 @@ public class SaveGameResultDTO {
         @Generated
         public String getGameTag() {
             return this.gameTag;
+        }
+
+        public String getStageCode() {
+            return this.stageCode;
+        }
+
+        public String getGroupCode() {
+            return this.groupCode;
+        }
+
+        public Integer getRoundNo() {
+            return this.roundNo;
+        }
+
+        public Integer getBracketSlot() {
+            return this.bracketSlot;
         }
 
         @Generated
@@ -459,6 +479,22 @@ public class SaveGameResultDTO {
         @Generated
         public void setGameTag(String gameTag) {
             this.gameTag = gameTag;
+        }
+
+        public void setStageCode(String stageCode) {
+            this.stageCode = stageCode;
+        }
+
+        public void setGroupCode(String groupCode) {
+            this.groupCode = groupCode;
+        }
+
+        public void setRoundNo(Integer roundNo) {
+            this.roundNo = roundNo;
+        }
+
+        public void setBracketSlot(Integer bracketSlot) {
+            this.bracketSlot = bracketSlot;
         }
 
         @Generated

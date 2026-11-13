@@ -63,6 +63,8 @@ G-->>C : 200 OK
 ## 详细组件分析
 
 ### 赛事管理（Event）
+> Issue #665（2026-11-13）：create/update 请求新增 `formatType`、`pointsWin`、`pointsDraw`、`pointsLoss`、`groupCount`、`advancePerGroup`、`thirdPlace`、`bracketSize` 字段，用于赛制、积分制与小组/淘汰赛配置；默认单循环 + 2-1-0。详见 [赛事积分榜与对阵 API](赛事积分榜与对阵API.md)。
+
 - 功能：赛事的增删改查、按联赛与租户过滤、导入比赛结果
 - 权限：基于租户与联赛的数据范围控制
 - 状态：默认draft，可按需推进
@@ -85,6 +87,8 @@ class Event {
 ```
 
 ### 比赛管理（Game）
+> Issue #665（2026-11-13）：create/update 与 `GameResponseDTO` 新增 `stageCode`、`groupCode`、`roundNo`、`bracketSlot` 字段，用于积分榜与淘汰赛对阵；单/双循环赛事会清空阶段/组别。详见 [赛事积分榜与对阵 API](赛事积分榜与对阵API.md)。
+
 - 功能：创建、更新、删除、列表查询、获取/保存实时快照、比分更新、结果保存、球员统计CRUD
 - 状态：status默认scheduled，支持实时更新；inning/topBottom表示当前局与上下半局
 - 实时：liveSnapshotJson用于前端轮询或推送展示实时比分
