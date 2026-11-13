@@ -116,7 +116,7 @@ test('LiveGame 的得分与撤销接线到边界台账', () => {
 
 test('代跑与上垒路径继承或记录责任投手', () => {
   assert.match(liveGame, /origin:prevRunner\?\.origin,responsiblePitcherId:prevRunner\?\.responsiblePitcherId/);
-  assert.match(liveGame, /o\.origin=l\.runCause==="ERROR"\?"ERROR":"NORMAL",o\.responsiblePitcherId=Number\(l\.pitcher\?\.id\)/);
+  assert.match(liveGame, /batter\.origin=ctx\.origin\?\?\(ctx\.runCause==="ERROR"\?"ERROR":"NORMAL"\),batter\.responsiblePitcherId=Number\(pitcher\?\.id\)/);
   assert.match(liveGame, /l\.responsiblePitcherId=Number\(f\.pitcher\?\.id\)/);
   assert.match(liveGame, /responsiblePitcherId=Number\(Se\.value\?\.id\)>0/);
   assert.match(liveGame, /toScoringRunner\(entry,w\.pitcherPlayerId\)/,

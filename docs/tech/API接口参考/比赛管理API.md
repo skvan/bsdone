@@ -274,6 +274,7 @@ EventService --> EventRepository
   - 作用：更新比赛实时比分与部分统计
   - ER 单一写方：若该场已有 `bs_earned_run_play`，请求里的 `er` 被忽略；`pitchR/ER/UER/PENDING` 只由 ER 引擎写。无引擎数据的 legacy 场次仍接受 `er`
   - 纸质表单字段（Issue #347）：打者新增 `io`；投手新增 `pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`，并接收 `pitchBb/pitchIbb/pitchHbp` 分项。`bb`/`pitchBb` 含 IBB；`bbHp=bb+hbp`，`pitchBbHp=pitchBb+pitchHbp`
+  - 牵制企图（Issue #668，V20261112100000）：投手统计新增 `pickoffAttempts`，记录投手在两次投球之间向垒上牵制投球的次数；同垒牵制的未果/出局/暴传均计 1，捕手牵制不计。非 WBSC 官方基础统计；缺栏时保留库中原值，显式 0 清零
   - 盒子比分守备表（关联 #446）：`stats` 新增 `firstPosition`（本场首次上场防守的守位，后续换位不覆盖；DH/PH/EP 为空；旧客户端缺栏保留库中原值）。仅在实际守备/换守备落位时写入，代打/代跑未防守前不继承被换下者守位
   - 逐位置守备（2026-10-29，P1/P3）：可选 `fieldingPositions` 数组，元素 `teamId/playerId/position/outs/po/a/e/dp/pb/catcherCs/catcherSb/fieldingGs`（`outs` 为守备出局数，3 outs=1 局；`po/a/e` 为该位置接杀/助杀/失误数；`dp/pb/catcherCs/catcherSb` 为该位置双杀/捕逸/盗垒阻杀/被盗垒数；缺省 0，范围 0..999）。出现该键即视为该场全量替换 `bs_game_fielding_pos_stat`，并按球员 `sum(outs)` 回写 `def_inn`（10 outs→3.1）；`DH/PH/EP` 不接受；缺省不触碰
   - 赛后守备补记（Issue #554）：已完赛保存前先按完整快照复核源 Play，失效补记先扣回；随后按该场仍 `APPROVED` 的 `bs_game_fielding_adjustment` 重新 +1，避免保存把补记的 A/TC 冲掉；仅重放本次 `stats` 实际写入的统计行，部分载荷遗漏的行保留原值。实时录入正常快照路径提交基础统计，故不会重复累计；无快照 `Do()` 重建路径的统计来自 `/stats`（已含补记），前端会带 `statsIncludeFieldingAdjustments=true`，服务端跳过回放
@@ -310,7 +311,7 @@ EventService --> EventRepository
 - GET /game/{id}/earned-runs/pitchers
   - 作用：赛后复核列出本场投手的 R/ER/UER/PENDING 合计及生效中的人工覆写，供「比赛复核 → 投手 R/ER」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能复核投手 R/ER」
-  - 响应：`List<PitcherRunTotalsDTO>`；字段含 `playerId/playerName/teamId/runsAllowed/earnedRuns/unearnedRuns/pendingRuns/engineRunsAllowed/engineEarnedRuns/overrideId/overrideNote/overriddenBy/overriddenAt`
+  - 响应：`List<PitcherRunTotalsDTO>`；字段含 `playerId/playerName/teamId/pitcherOrder/runsAllowed/earnedRuns/unearnedRuns/pendingRuns/engineRunsAllowed/engineEarnedRuns/overrideId/overrideNote/overriddenBy/overriddenAt`；`pitcherOrder` 为登板序（仅统计行存在时有值，用于前端按投手上场顺序排列）
   - 口径：引擎值按该场全量判定计算；有生效覆写时 `runsAllowed/earnedRuns` 取人工值，`unearnedRuns=R−ER`、`pendingRuns=0`；`engineRunsAllowed/engineEarnedRuns` 始终保留引擎值，供撤销预览
 - PUT /game/{id}/earned-runs/pitchers/{playerId}/override
   - 作用：保存指定投手的 R/ER 人工覆写（绝对值）
@@ -406,6 +407,7 @@ EventService --> EventRepository
   - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
   - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定现在包含 `pitchPa`（PA 已开放为可编辑列并与 BF 同步）
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
+  - 牵制企图（Issue #668）：`StatPart` 新增 `pickoffAttempts`；缺栏保留库中原值，显式 0 清零。结果页可手工修正该列，统计口径见 `数据模型设计/统计实体.md`
   - 注：`gameNumber`（场次）与 `venue`（场地）为整字段覆盖——请求体传 null 或省略即视为清空（用于前台不显示场次/场地，issue #28）；其余比分/统计字段仍为增量更新
   - 参考：`GameApi.java:113-117`
 - DELETE /game/delete/{id}

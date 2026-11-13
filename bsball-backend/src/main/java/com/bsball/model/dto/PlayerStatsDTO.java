@@ -819,6 +819,7 @@ public class PlayerStatsDTO {
         private int pitchIbb;
         private int pitchHbp;
         private int pitchIo;
+        private int pickoffAttempts;
         private int wp;
         private int bk;
         private int pitchR;
@@ -1378,6 +1379,16 @@ public class PlayerStatsDTO {
         @Generated
         public void setPitchIo(int pitchIo) {
             this.pitchIo = pitchIo;
+        }
+
+        @Generated
+        public int getPickoffAttempts() {
+            return this.pickoffAttempts;
+        }
+
+        @Generated
+        public void setPickoffAttempts(int pickoffAttempts) {
+            this.pickoffAttempts = pickoffAttempts;
         }
 
         @Generated

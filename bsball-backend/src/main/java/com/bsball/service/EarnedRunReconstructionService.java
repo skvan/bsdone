@@ -160,6 +160,7 @@ public class EarnedRunReconstructionService {
             new IntStatField(GamePlayerStat::getPitchIbb, GamePlayerStat::setPitchIbb),
             new IntStatField(GamePlayerStat::getPitchHbp, GamePlayerStat::setPitchHbp),
             new IntStatField(GamePlayerStat::getPitchIo, GamePlayerStat::setPitchIo),
+            new IntStatField(GamePlayerStat::getPickoffAttempts, GamePlayerStat::setPickoffAttempts),
             new IntStatField(GamePlayerStat::getWp, GamePlayerStat::setWp),
             new IntStatField(GamePlayerStat::getBk, GamePlayerStat::setBk),
             new IntStatField(GamePlayerStat::getGo, GamePlayerStat::setGo),
@@ -1475,10 +1476,13 @@ public class EarnedRunReconstructionService {
             overriddenAt = override.getUpdatedAt() != null
                     ? override.getUpdatedAt() : override.getCreatedAt();
         }
+        Long teamId = stat != null && stat.getTeamId() != null
+                ? stat.getTeamId() : (player != null ? player.getTeamId() : null);
         return new PitcherRunTotalsDTO(
                 playerId,
                 player != null ? player.getName() : null,
-                stat != null ? stat.getTeamId() : null,
+                teamId,
+                stat != null ? stat.getPitcherOrder() : null,
                 runs,
                 earned,
                 unearned,

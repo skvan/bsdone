@@ -7,6 +7,7 @@ public record PitcherRunTotalsDTO(
         Long playerId,
         String playerName,
         Long teamId,
+        Integer pitcherOrder,
         Integer runsAllowed,
         Integer earnedRuns,
         Integer unearnedRuns,

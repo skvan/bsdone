@@ -65,6 +65,7 @@ export const DEFAULT_PITCHER_FIELDS = [
   { key: 'pitchIbb', label: 'IBB', visible: true },
   { key: 'pitchHbp', label: 'HBP', visible: true },
   { key: 'pitchIo', label: 'IO', visible: true },
+  { key: 'pickoffAttempts', label: 'POA', visible: true },
   { key: 'wp', label: 'WP', visible: false },
   { key: 'bk', label: 'BK', visible: false },
   { key: 'go', label: 'GO', visible: false },
