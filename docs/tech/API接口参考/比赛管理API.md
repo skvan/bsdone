@@ -311,7 +311,7 @@ EventService --> EventRepository
 - GET /game/{id}/earned-runs/pitchers
   - 作用：赛后复核列出本场投手的 R/ER/UER/PENDING 合计及生效中的人工覆写，供「比赛复核 → 投手 R/ER」页签使用
   - 前置：仅 `status=final` 的比赛可调用；否则 400「比赛结束后才能复核投手 R/ER」
-  - 响应：`List<PitcherRunTotalsDTO>`；字段含 `playerId/playerName/teamId/runsAllowed/earnedRuns/unearnedRuns/pendingRuns/engineRunsAllowed/engineEarnedRuns/overrideId/overrideNote/overriddenBy/overriddenAt`
+  - 响应：`List<PitcherRunTotalsDTO>`；字段含 `playerId/playerName/teamId/pitcherOrder/runsAllowed/earnedRuns/unearnedRuns/pendingRuns/engineRunsAllowed/engineEarnedRuns/overrideId/overrideNote/overriddenBy/overriddenAt`；`pitcherOrder` 为登板序（仅统计行存在时有值，用于前端按投手上场顺序排列）
   - 口径：引擎值按该场全量判定计算；有生效覆写时 `runsAllowed/earnedRuns` 取人工值，`unearnedRuns=R−ER`、`pendingRuns=0`；`engineRunsAllowed/engineEarnedRuns` 始终保留引擎值，供撤销预览
 - PUT /game/{id}/earned-runs/pitchers/{playerId}/override
   - 作用：保存指定投手的 R/ER 人工覆写（绝对值）

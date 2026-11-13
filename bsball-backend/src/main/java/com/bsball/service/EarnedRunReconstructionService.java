@@ -1476,10 +1476,13 @@ public class EarnedRunReconstructionService {
             overriddenAt = override.getUpdatedAt() != null
                     ? override.getUpdatedAt() : override.getCreatedAt();
         }
+        Long teamId = stat != null && stat.getTeamId() != null
+                ? stat.getTeamId() : (player != null ? player.getTeamId() : null);
         return new PitcherRunTotalsDTO(
                 playerId,
                 player != null ? player.getName() : null,
-                stat != null ? stat.getTeamId() : null,
+                teamId,
+                stat != null ? stat.getPitcherOrder() : null,
                 runs,
                 earned,
                 unearned,
