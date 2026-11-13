@@ -464,6 +464,11 @@
         "fullName": "盗塁許容",
         "definition": "捕手が許した盗塁数",
         "shortLabel": "SB"
+      },
+      "gsFielding": {
+        "fullName": "守備先発試合",
+        "definition": "選手がこの守備位置で先発出場した試合数",
+        "shortLabel": "GS"
       }
     }
   },
@@ -778,7 +783,11 @@
     "stadiumDetail": "球場",
     "announcementDoc": "お知らせ",
     "notFound": "見つかりません",
-    "serviceUnavailable": "サービス利用不可"
+    "serviceUnavailable": "サービス利用不可",
+    "leagues": "リーグ",
+    "clubhouse": "マイホーム",
+    "intro": "システム紹介",
+    "welcome": "ようこそ"
   },
   "stadiumDetail": {
     "notFound": "球場が見つからないか、削除されています。",
@@ -923,7 +932,33 @@
       "colWinner": "受賞者",
       "colTeam": "チーム",
       "colPosition": "守備位置",
-      "colValue": "数値"
+      "colValue": "数値",
+      "pending": "未定"
+    },
+    "award": {
+      "hits": "最多安打",
+      "avg": "首位打者",
+      "rbi": "打点王",
+      "sb": "盗塁王",
+      "hr": "本塁打王",
+      "w": "最多勝",
+      "so": "最多奪三振",
+      "era": "最優秀防御率",
+      "reliever": "最優秀救援投手",
+      "holder": "最優秀中継ぎ投手",
+      "p": "投手",
+      "c": "捕手",
+      "1b": "一塁手",
+      "2b": "二塁手",
+      "3b": "三塁手",
+      "ss": "遊撃手",
+      "of": "外野手",
+      "dh": "指名打者",
+      "mvp": "シーズンMVP",
+      "improved": "最優秀躍進選手",
+      "rookie": "最優秀新人",
+      "manager": "最優秀監督",
+      "comeback": "カムバック賞"
     }
   },
   "events": {
@@ -961,7 +996,11 @@
       "published": "Published",
       "ended": "Ended",
       "ongoing": "Ongoing"
-    }
+    },
+    "missingDateHint": "{n} 試合に試合日または開始時刻が未入力のため、カレンダーには表示されません。一覧の「{group}」から確認できます。",
+    "specialResult": "特別な結果",
+    "expandScheduleAria": "「{name}」の日程を展開",
+    "collapseScheduleAria": "「{name}」の日程を折りたたむ"
   },
   "eventGames": {
     "title": "日程と結果",
@@ -1056,7 +1095,14 @@
         "pitchSf": "被犠飛（Sacrifice Flies Allowed）",
         "pitchIo": "被妨害出塁（Obstruction Allowed）"
       }
-    }
+    },
+    "batters": "打者",
+    "pitchers": "投手",
+    "totals": "合計",
+    "fieldingTableTitle": "守備",
+    "fieldingPlayer": "選手",
+    "expandFieldingAria": "{name} の守備位置別データを展開",
+    "collapseFieldingAria": "{name} の守備位置別データを折りたたむ"
   },
   "news": {
     "title": "ニュース",
@@ -1167,6 +1213,7 @@
       "ibb": "IBB",
       "hbp": "HBP",
       "so": "SO",
+      "pitchSo": "SO",
       "wp": "WP",
       "bk": "BK",
       "r": "R",
@@ -1248,6 +1295,7 @@
       "ibb": "IBB",
       "hbp": "HBP",
       "so": "SO",
+      "pitchSo": "SO",
       "wp": "WP",
       "bk": "BK",
       "r": "R",
@@ -1758,7 +1806,8 @@
       "education": "Education",
       "joinDate": "Joined",
       "debut": "Pro debut"
-    }
+    },
+    "avatarAlt": "選手アバター"
   },
   "teamDetail": {
     "roster": "ロースター",
@@ -2106,5 +2155,18 @@
     "revokeFailed": "取消に失敗しました",
     "genericHint": "本チームに未在籍の選手のみ表示します。未紐付け選手は直接加入し（現在の所属チームは保持）、紐付け済み選手には共通リンクを発行します（本人確認後に入団）。",
     "loadFailed": "読み込みに失敗しました"
+  },
+  "notice": {
+    "contentNotFound": "コンテンツが見つかりません",
+    "parseFailed": "コンテンツの解析に失敗しました",
+    "emptyBody": "本文がありません",
+    "originalLink": "元のリンク",
+    "attachment": "添付ファイル",
+    "retry": "再試行",
+    "notFound": "お知らせが見つからないか削除されています"
+  },
+  "team": {
+    "textLogoAlt": "{name} テキストロゴ",
+    "logoInitialFallback": "球"
   }
 }

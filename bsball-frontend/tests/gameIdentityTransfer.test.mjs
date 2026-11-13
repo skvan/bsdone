@@ -14,18 +14,18 @@ const migration = read('../../bsball-backend/src/main/resources/db/migration/pos
 
 test('结果页新增身份转记页签并接入面板', () => {
   assert.ok(games.includes('GameIdentityTransferPanel'), '未导入身份转记面板');
-  assert.ok(games.includes('label:"身份转记",name:"identityTransfer"'), '缺少身份转记页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabIdentity'),name:"identityTransfer"`), '缺少身份转记页签');
 });
 
 test('身份转记面板覆盖目标、范围、预览与单独删除', () => {
-  assert.ok(panel.includes('整名球员身份转记'), '缺少功能说明');
-  assert.ok(panel.includes('目标球员'), '缺少目标球员');
-  assert.ok(panel.includes('ER 判定'), '缺少 ER 判定范围');
+  assert.ok(panel.includes('liveGame.revision.identityTitle'), '缺少功能说明');
+  assert.ok(panel.includes('liveGame.revision.targetPlayer'), '缺少目标球员');
+  assert.ok(panel.includes('liveGame.revision.scopeEr'), '缺少 ER 判定范围');
   assert.ok(panel.includes('LIVE_RECORDS'), '缺少现场记录范围');
-  assert.ok(panel.includes('现场记录引用'), '缺少现场记录引用数');
-  assert.ok(panel.includes('守备补记'), '缺少守备补记数');
-  assert.ok(panel.includes('预览转记'), '缺少预览');
-  assert.ok(panel.includes('是否删除源数据'), '缺少单独删除确认');
+  assert.ok(panel.includes('liveGame.revision.liveReference'), '缺少现场记录引用数');
+  assert.ok(panel.includes('liveGame.revision.fieldingCredits'), '缺少守备补记数');
+  assert.ok(panel.includes('liveGame.revision.previewBtn'), '缺少预览');
+  assert.ok(panel.includes('liveGame.revision.transferredTo'), '缺少单独删除确认');
   assert.ok(panel.includes('transferIdentity'), '未调用转记接口');
   assert.ok(panel.includes('deleteIdentityTransferSource'), '未调用删除源数据接口');
 });

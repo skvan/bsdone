@@ -3,7 +3,7 @@
     <div class="pcard-inner" :style="{ transform: `scale(${scale})` }">
       <div class="pcard-frame">
         <div class="pcard-face">
-          <img v-if="player.avatar" class="pcard-photo" :src="avatarUrl" :alt="player.name || '球员头像'" />
+          <img v-if="player.avatar" class="pcard-photo" :src="avatarUrl" :alt="player.name || t('player.avatarAlt')" />
           <span v-else class="pcard-photo-fallback">{{ (player.name || '?').slice(0, 1) }}</span>
           <div class="pcard-tone"></div>
           <div class="pcard-shade"></div>
@@ -33,6 +33,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { resolveAssetUrl } from '../../api/request';
 import { keyTeamLogo } from './logoBackgroundKey.js';
 import {
@@ -43,6 +44,8 @@ import {
   gradeSheenGradient,
   gradeSparkSpots
 } from './clubhouseCardGrade.js';
+
+const { t } = useI18n();
 
 const props = defineProps({
   player: { type: Object, default: () => ({}) },

@@ -1,8 +1,31 @@
 <template>
-  <section class="lg-pbp" :class="{ 'lg-pbp--side': isHorizontal }" aria-label="Play by Play 实时动态">
+  <section
+    class="lg-pbp"
+    :class="{ 'lg-pbp--side': isHorizontal }"
+    :style="isHorizontal ? null : { height: `${height}px` }"
+    :aria-label="lt('liveGame.pbp.aria')"
+  >
+    <div
+      v-if="!isHorizontal"
+      class="lg-pbp__resize"
+      role="separator"
+      aria-orientation="horizontal"
+      :aria-valuemin="PBP_MIN_HEIGHT"
+      :aria-valuemax="maxHeight"
+      :aria-valuenow="height"
+      :aria-label="lt('liveGame.pbp.resizeAria')"
+      :title="lt('liveGame.pbp.resizeTitle')"
+      tabindex="0"
+      @pointerdown="startResize"
+      @keydown="handleKeydown"
+      @dblclick="resetHeight"
+    >
+      <span class="lg-pbp__grip" aria-hidden="true"></span>
+    </div>
+
     <header class="lg-pbp__head">
       <span class="lg-pbp__title">PLAY BY PLAY</span>
-      <span class="lg-pbp__hint">实时动态 · 最新在上</span>
+      <span class="lg-pbp__hint">{{ lt('liveGame.pbp.hint') }}</span>
       <div class="lg-pbp__dock">
         <span class="lg-pbp__dock-label">吸附</span>
         <div class="lg-pbp__dock-switch" role="group" aria-label="日志吸附位置">
@@ -23,12 +46,12 @@
             </svg>
           </button>
         </div>
-        <span class="lg-pbp__count" :title="`最多显示最近 ${PBP_LOG_LIMIT} 条`">{{ entries.length }} 条</span>
+        <span class="lg-pbp__count" :title="lt('liveGame.pbp.countTitle', { limit: PBP_LOG_LIMIT })">{{ lt('liveGame.pbp.count', { count: entries.length }) }}</span>
       </div>
     </header>
     <p class="lg-pbp__sr" aria-live="polite" aria-atomic="true">{{ latestAnnouncement }}</p>
 
-    <div class="lg-pbp__list" aria-label="实时比赛日志" tabindex="0">
+    <div class="lg-pbp__list" :aria-label="lt('liveGame.pbp.listAria')" tabindex="0">
       <article
         v-for="(entry, index) in entries"
         :key="entry.key"
@@ -46,15 +69,25 @@
           <p v-for="(line, lineIndex) in entry.lines" :key="lineIndex" class="lg-pbp__sub">{{ line }}</p>
         </div>
       </article>
-      <p v-if="!entries.length" class="lg-pbp__empty">暂无比赛日志</p>
+      <p v-if="!entries.length" class="lg-pbp__empty">{{ lt('liveGame.pbp.empty') }}</p>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { buildPbpEntries, PBP_LOG_LIMIT } from '../../utils/liveGamePbp.js';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useLiveGameText } from '../../composables/useLiveGameText';
+import {
+  buildPbpEntries,
+  clampPbpHeight,
+  PBP_DEFAULT_RATIO,
+  PBP_LOG_LIMIT,
+  PBP_MIN_HEIGHT,
+  PBP_STORAGE_KEY
+} from '../../utils/liveGamePbp.js';
 import { isHorizontalDock } from '../../utils/liveGamePbpDock.js';
+
+const { text: lt } = useLiveGameText();
 
 const props = defineProps({
   logs: { type: Array, default: () => [] },
@@ -80,6 +113,105 @@ const isHorizontal = computed(() => isHorizontalDock(props.dock));
 const visibleDocks = computed(() => (
   props.allowHorizontal ? DOCK_ITEMS : DOCK_ITEMS.filter((item) => !isHorizontalDock(item.key))
 ));
+
+const height = ref(initialHeight());
+const maxHeight = ref(viewportMax());
+let stopDrag = null;
+
+function viewportHeight() {
+  return typeof window === 'undefined' ? 0 : window.innerHeight;
+}
+
+function viewportMax() {
+  // 传极大值复用 clamp 的上限计算，避免重复「屏占比」公式
+  return clampPbpHeight(Number.MAX_SAFE_INTEGER, viewportHeight());
+}
+
+function readRatio() {
+  try {
+    const stored = Number(window.localStorage.getItem(PBP_STORAGE_KEY));
+    return Number.isFinite(stored) && stored > 0 ? stored : PBP_DEFAULT_RATIO;
+  } catch {
+    return PBP_DEFAULT_RATIO;
+  }
+}
+
+function initialHeight() {
+  const viewport = viewportHeight();
+  return clampPbpHeight(viewport * readRatio(), viewport);
+}
+
+function persist() {
+  try {
+    const viewport = viewportHeight();
+    if (!viewport) return;
+    window.localStorage.setItem(PBP_STORAGE_KEY, String(height.value / viewport));
+  } catch {
+    // 隐私模式等场景下无法写入，保持本次会话内的调整即可
+  }
+}
+
+function resetHeight() {
+  const viewport = viewportHeight();
+  height.value = clampPbpHeight(viewport * PBP_DEFAULT_RATIO, viewport);
+  persist();
+}
+
+function syncViewport() {
+  maxHeight.value = viewportMax();
+  height.value = clampPbpHeight(height.value, viewportHeight());
+}
+
+function stopResizing() {
+  document.body.classList.remove('lg-pbp-resize-active');
+  if (stopDrag) {
+    stopDrag();
+    stopDrag = null;
+  }
+  persist();
+}
+
+function startResize(event) {
+  if (stopDrag || event.button !== 0) return;
+  event.preventDefault();
+  const startY = event.clientY;
+  const startHeight = height.value;
+  const move = (moveEvent) => {
+    height.value = clampPbpHeight(startHeight + (startY - moveEvent.clientY), viewportHeight());
+  };
+  stopDrag = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', stopResizing);
+    window.removeEventListener('pointercancel', stopResizing);
+  };
+  document.body.classList.add('lg-pbp-resize-active');
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', stopResizing);
+  window.addEventListener('pointercancel', stopResizing);
+}
+
+function handleKeydown(event) {
+  if (!['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
+  event.preventDefault();
+  if (event.key === 'Home') {
+    resetHeight();
+    return;
+  }
+  const step = event.shiftKey ? 48 : 16;
+  const delta = event.key === 'ArrowUp' ? step : -step;
+  height.value = clampPbpHeight(height.value + delta, viewportHeight());
+  persist();
+}
+
+onMounted(() => {
+  syncViewport();
+  window.addEventListener('resize', syncViewport);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewport);
+  stopResizing();
+});
 </script>
 
 <style scoped>
@@ -95,6 +227,43 @@ const visibleDocks = computed(() => (
   box-sizing: border-box;
   background: var(--el-bg-color);
   overflow: hidden;
+}
+
+.lg-pbp:not(.lg-pbp--side) {
+  flex: 0 0 auto;
+  min-height: 120px;
+  margin-top: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.lg-pbp__resize {
+  flex: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+  background: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.lg-pbp__resize:hover,
+.lg-pbp__resize:focus-visible {
+  background: var(--el-color-primary-light-9);
+}
+
+.lg-pbp__resize:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
+}
+
+.lg-pbp__grip {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--el-border-color);
 }
 
 .lg-pbp__head {

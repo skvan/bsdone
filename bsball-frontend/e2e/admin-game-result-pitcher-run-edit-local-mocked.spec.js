@@ -101,8 +101,8 @@ const homeStats = makeStats(HOME_ID, homePlayers, 4000);
   target.fo = 0;
 }
 
-async function setup(page) {
-  await page.addInitScript(() => {
+async function setup(page, locale = 'zh-CN') {
+  await page.addInitScript((loc) => {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('bs-ball-live-'))
       .forEach((key) => localStorage.removeItem(key));
@@ -110,7 +110,8 @@ async function setup(page) {
     localStorage.setItem('admin_user::bs-ball', JSON.stringify({
       id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e'
     }));
-  });
+    localStorage.setItem('bs-ball-locale', loc);
+  }, locale);
 
   let sourceDeleted = false;
   let decisionReassigned = false;
@@ -728,6 +729,30 @@ test('身份转记：预览同队球员并单独删除源数据', async ({ page 
   ));
   await box.getByRole('button', { name: '删除源数据' }).click();
   await deleteRequest;
+});
+
+test('English revision panels: ledger, audit and identity transfer', async ({ page }) => {
+  await setup(page, 'en');
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+
+  await page.getByRole('tab', { name: 'Adjustment Ledger' }).click();
+  await expect(page.getByText('Manual Adjustment Ledger · Field-level Audit')).toBeVisible();
+  await expect(page.getByText('Field', { exact: true })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Revision Audit' }).click();
+  await expect(page.getByText('Live records as baseline · manual revisions as final values')).toBeVisible();
+  await expect(page.locator('.revision-audit').getByText('Refresh', { exact: true })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Identity Transfer' }).click();
+  await expect(page.getByText('Whole-player identity transfer')).toBeVisible();
+  await expect(page.getByText('Source Player', { exact: true })).toBeVisible();
+  await expect(page.getByText('Target Player', { exact: true })).toBeVisible();
+  await expect(page.getByText('Transfer Scope', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview Transfer' })).toBeVisible();
+  const panel = page.locator('.identity-transfer');
+  for (const zh of ['整名球员身份转记', '源球员', '目标球员', '转记范围', '预览转记']) {
+    expect(await panel.innerText()).not.toContain(zh);
+  }
 });
 
 test('final 引擎场次：投手 R/ER 按球队分组、按登板序排列', async ({ page }) => {

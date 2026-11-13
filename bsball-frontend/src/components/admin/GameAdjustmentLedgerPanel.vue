@@ -5,49 +5,49 @@
       type="info"
       :closable="false"
       show-icon
-      title="比赛结束后才能查看修订台账"
+      :title="lt('liveGame.revision.ledgerFinalGate')"
     />
     <template v-else>
       <div class="adjustment-ledger__head">
-        <span>人工修订台账 · 字段级留痕</span>
+        <span>{{ lt('liveGame.revision.ledgerTitle') }}</span>
         <span class="adjustment-ledger__actions">
-          共 {{ rows.length }} 条
-          <el-button link type="primary" size="small" @click="load">刷新</el-button>
+          {{ lt('liveGame.revision.count', { count: rows.length }) }}
+          <el-button link type="primary" size="small" @click="load">{{ lt('liveGame.revision.refresh') }}</el-button>
         </span>
       </div>
       <el-alert v-if="loadError" type="error" :closable="false" show-icon :title="loadError" />
-      <el-empty v-if="!loading && !loadError && rows.length === 0" description="暂无字段级修订记录" />
+      <el-empty v-if="!loading && !loadError && rows.length === 0" :description="lt('liveGame.revision.ledgerEmpty')" />
       <el-table v-else :data="rows" size="small" border stripe max-height="520">
-        <el-table-column label="时间" width="150">
+        <el-table-column :label="lt('liveGame.revision.time')" width="150">
           <template #default="{ row }">{{ formatTime(row.operatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="球员" min-width="110">
+        <el-table-column :label="lt('liveGame.revision.player')" min-width="110">
           <template #default="{ row }">{{ row.playerName || `#${row.playerId}` }}</template>
         </el-table-column>
-        <el-table-column label="类型" width="110" align="center">
+        <el-table-column :label="lt('liveGame.revision.type')" width="110" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain" :type="scopeTagType(row.scope)">
               {{ scopeLabel(row.scope) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="身份" width="66" align="center">
-          <template #default="{ row }">{{ row.isPitcher === 1 ? '投手' : '打者' }}</template>
+        <el-table-column :label="lt('liveGame.revision.identity')" width="66" align="center">
+          <template #default="{ row }">{{ row.isPitcher === 1 ? lt('liveGame.revision.pitcher') : lt('liveGame.revision.batter') }}</template>
         </el-table-column>
-        <el-table-column label="字段" width="110" align="center">
+        <el-table-column :label="lt('liveGame.revision.field')" width="110" align="center">
           <template #default="{ row }">{{ row.fieldLabel || row.fieldKey || '—' }}</template>
         </el-table-column>
-        <el-table-column label="修改" min-width="150" align="center">
+        <el-table-column :label="lt('liveGame.revision.change')" min-width="150" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">
               {{ row.beforeValue ?? '0' }} → {{ row.afterValue ?? '0' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作人" width="86" align="center">
+        <el-table-column :label="lt('liveGame.revision.operator')" width="86" align="center">
           <template #default="{ row }">{{ row.operatorId ? `#${row.operatorId}` : '—' }}</template>
         </el-table-column>
-        <el-table-column label="备注" min-width="120" show-overflow-tooltip>
+        <el-table-column :label="lt('liveGame.revision.note')" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">{{ row.reason || '—' }}</template>
         </el-table-column>
       </el-table>
@@ -59,7 +59,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { gameApi } from '../../api/business';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 
+const { text: lt } = useLiveGameText();
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
   gameStatus: { type: String, default: '' },
@@ -70,6 +72,15 @@ const rows = ref([]);
 const loading = ref(false);
 const loadError = ref('');
 const isFinal = computed(() => String(props.gameStatus || '').toLowerCase() === 'final');
+
+const SCOPE_LABEL_KEYS = {
+  PLAYER_STAT: 'liveGame.revision.scopePlayerStat',
+  ER_DECISION: 'liveGame.revision.scopeErDecision',
+  PITCHER_RUN_OVERRIDE: 'liveGame.revision.scopePitcherOverride',
+  FIELDING_A: 'liveGame.revision.scopeFielding',
+  PITCHER_TRANSFER: 'liveGame.revision.scopePitcherTransfer',
+  IDENTITY_TRANSFER: 'liveGame.revision.scopeIdentityTransfer'
+};
 
 async function load() {
   if (!props.gameId || !isFinal.value) {
@@ -83,14 +94,14 @@ async function load() {
     if (result?.error) {
       rows.value = [];
       loadError.value = result.error;
-      ElMessage.error('加载修订台账失败');
+      ElMessage.error(lt('liveGame.revision.loadLedgerFailed'));
       return;
     }
     rows.value = Array.isArray(result?.data) ? result.data : [];
   } catch (e) {
     rows.value = [];
-    loadError.value = e?.message ?? '加载失败';
-    ElMessage.error('加载修订台账失败');
+    loadError.value = e?.message ?? lt('liveGame.revision.loadFailed');
+    ElMessage.error(lt('liveGame.revision.loadLedgerFailed'));
   } finally {
     loading.value = false;
   }
@@ -100,15 +111,8 @@ onMounted(load);
 watch(() => [props.gameId, props.gameStatus, props.refreshKey], load);
 
 function scopeLabel(scope) {
-  const labels = {
-    PLAYER_STAT: '结果字段',
-    ER_DECISION: 'ER 判定',
-    PITCHER_RUN_OVERRIDE: 'R/ER 覆写',
-    FIELDING_A: '守备补记',
-    PITCHER_TRANSFER: '投手转记',
-    IDENTITY_TRANSFER: '身份转记'
-  };
-  return labels[scope] ?? scope ?? '—';
+  const labelKey = SCOPE_LABEL_KEYS[scope];
+  return labelKey ? lt(labelKey) : (scope ?? '—');
 }
 
 function scopeTagType(scope) {

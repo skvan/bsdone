@@ -33,6 +33,8 @@ import { buildCascadeToggleHandler as kt } from '../../components/portal/statsEv
 import { makeStatsPlayerKey as J } from '../../components/portal/statsEventCascade.js';
 import { collectCascadeKeys as Tt } from '../../components/portal/statsEventCascade.js';
 import { resolveCascadeRows as Ka } from '../../components/portal/statsEventCascade.js';
+import { statsHeaderKey as shk } from '../../stores/statsHeaderKeys';
+import { statsColumnWidth as shw } from '../../stores/statsHeaderKeys';
 import { createCascadeState as I } from '../../components/portal/statsEventCascade.js';
 import { filterCascadeRows as Qa } from '../../components/portal/statsEventCascade.js';
 import PortalFieldingPositions from './PortalFieldingPositions.vue';
@@ -1100,7 +1102,7 @@ var En={
           )]),_:1
         }
         ,8,["index"]),s(P,{
-          label:"球队","min-width":ft.value,fixed:"left",align:"left","class-name":"col-team"
+          label:i(o)("stats.col.team"),"min-width":ft.value,fixed:"left",align:"left","class-name":"col-team"
         }
         ,{
           header:r(()=>[s(I,{
@@ -1298,13 +1300,13 @@ var En={
           ,1032,["to"])):(d(),A("span",Xn,k(a.teamName),1))])]),_:1
         }
         ,8,["min-width"]),(d(!0),A(we,null,ze(i(Ja),a=>(d(),x(P,{
-          key:"tp-"+a.key,prop:a.prop,"min-width":a.width,align:"center","class-name":"col-sort-metric",sortable:"custom"
+          key:"tp-"+a.key,prop:a.prop,"min-width":shw(a.key,a.width),align:"center","class-name":"col-sort-metric",sortable:"custom"
         }
         ,{
           header:r(()=>[s(I,{
-            "col-key":a.colKey
+            "col-key":a.colKey,"header-key":shk(a.key,a.colKey)
           }
-          ,null,8,["col-key"])]),_:2
+          ,null,8,["col-key","header-key"])]),_:2
         }
         ,1032,["prop","min-width"]))),128))]),_:1
       }
@@ -1367,13 +1369,13 @@ var En={
           ,1032,["to"])):(d(),A("span",li,k(a.teamName),1))])]),_:1
         }
         ,8,["min-width"]),(d(!0),A(we,null,ze(i(Xa),a=>(d(),x(P,{
-          key:"tb-"+a.key,prop:a.prop,"min-width":a.width,align:"center","class-name":"col-sort-metric",sortable:"custom"
+          key:"tb-"+a.key,prop:a.prop,"min-width":shw(a.key,a.width),align:"center","class-name":"col-sort-metric",sortable:"custom"
         }
         ,{
           header:r(()=>[s(I,{
-            "col-key":a.colKey
+            "col-key":a.colKey,"header-key":shk(a.key,a.colKey)
           }
-          ,null,8,["col-key"])]),_:2
+          ,null,8,["col-key","header-key"])]),_:2
         }
         ,1032,["prop","min-width"]))),128))]),_:1
       }
@@ -1436,13 +1438,13 @@ var En={
           ,1032,["to"])):(d(),A("span",ri,k(a.teamName),1))])]),_:1
         }
         ,8,["min-width"]),(d(!0),A(we,null,ze(i(Za),a=>(d(),x(P,{
-          key:"tf-"+a.key,prop:a.prop,"min-width":a.width,align:"center","class-name":"col-sort-metric",sortable:"custom"
+          key:"tf-"+a.key,prop:a.prop,"min-width":shw(a.key,a.width),align:"center","class-name":"col-sort-metric",sortable:"custom"
         }
         ,{
           header:r(()=>[s(I,{
-            "col-key":a.colKey
+            "col-key":a.colKey,"header-key":shk(a.key,a.colKey)
           }
-          ,null,8,["col-key"])]),_:2
+          ,null,8,["col-key","header-key"])]),_:2
         }
         ,1032,["prop","min-width"]))),128))]),_:1
       }

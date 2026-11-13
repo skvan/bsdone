@@ -7,133 +7,133 @@
     "term": {
       "pa": {
         "fullName": "打席",
-        "definition": "球员完成打席的次数",
-        "shortLabel": "打席"
+        "definition": "球員完成打席的次數",
+        "shortLabel": "PA"
       },
       "gp": {
-        "fullName": "出场场次",
-        "definition": "球员出赛（上场）过的比赛场次",
-        "shortLabel": "場次"
+        "fullName": "出場場次",
+        "definition": "球員出賽（上場）過的比賽場次",
+        "shortLabel": "GP"
       },
       "g": {
-        "fullName": "出场",
-        "definition": "投手至少投出一球即记为出场一场",
+        "fullName": "出場",
+        "definition": "投手至少投出一球即記為出場一場",
         "shortLabel": "出賽"
       },
       "ab": {
-        "fullName": "打数",
-        "definition": "不包含保送、触身球、牺牲打、妨碍上垒等结果的打席次数",
-        "shortLabel": "打數"
+        "fullName": "打數",
+        "definition": "不包含保送、觸身球、犧牲打、妨礙上壘等結果的打席次數",
+        "shortLabel": "AB"
       },
       "oneB": {
-        "fullName": "一垒安打",
-        "definition": "打者凭安打安全上到一垒",
-        "shortLabel": "一安"
+        "fullName": "一壘安打",
+        "definition": "打者憑安打安全上到一壘",
+        "shortLabel": "1B"
       },
       "r": {
         "fullName": "得分",
-        "definition": "跑者安全返回本垒并完成得分",
-        "shortLabel": "得分"
+        "definition": "跑者安全返回本壘並完成得分",
+        "shortLabel": "R"
       },
       "h": {
         "fullName": "安打",
-        "definition": "打者击出界内球并安全上垒，且非失误或野手选择所致",
-        "shortLabel": "安打"
+        "definition": "打者擊出界內球並安全上壘，且非失誤或野手選擇所致",
+        "shortLabel": "H"
       },
       "pitchH": {
         "fullName": "被安打",
-        "definition": "投手被击出的安打数",
-        "shortLabel": "被安打"
+        "definition": "投手被擊出的安打數",
+        "shortLabel": "H"
       },
       "twoB": {
-        "fullName": "二垒安打",
-        "definition": "打者凭安打安全上到二垒",
-        "shortLabel": "二安"
+        "fullName": "二壘安打",
+        "definition": "打者憑安打安全上到二壘",
+        "shortLabel": "2B"
       },
       "threeB": {
-        "fullName": "三垒安打",
-        "definition": "打者凭安打安全上到三垒",
-        "shortLabel": "三安"
+        "fullName": "三壘安打",
+        "definition": "打者憑安打安全上到三壘",
+        "shortLabel": "3B"
       },
       "hr": {
-        "fullName": "全垒打",
-        "definition": "打者击球后依序通过一二三垒并回本垒得分，过程中未被刺杀且非因守备失误受益",
-        "shortLabel": "全壘打"
+        "fullName": "全壘打",
+        "definition": "打者擊球後依序通過一二三壘並回本壘得分，過程中未被刺殺且非因守備失誤受益",
+        "shortLabel": "HR"
       },
       "iphr": {
         "fullName": "場內全壘打",
         "definition": "球未飛越全壘打牆仍跑回本壘得分",
-        "shortLabel": "場內全壘打"
+        "shortLabel": "IPHR"
       },
       "pitchHr": {
-        "fullName": "被全垒打",
-        "definition": "投手被击出的全垒打数",
-        "shortLabel": "被全壘打"
+        "fullName": "被全壘打",
+        "definition": "投手被擊出的全壘打數",
+        "shortLabel": "HR"
       },
       "pitchInsideParkHr": {
         "fullName": "被場內全壘打",
         "definition": "投手被擊出的場內全壘打次數",
-        "shortLabel": "被場內全壘打"
+        "shortLabel": "IPHR"
       },
       "rbi": {
-        "fullName": "打点",
-        "definition": "因打者该次打席行为而带回的得分",
-        "shortLabel": "打點"
+        "fullName": "打點",
+        "definition": "因打者該次打席行為而帶回的得分",
+        "shortLabel": "RBI"
       },
       "bb": {
-        "fullName": "保送",
-        "definition": "投手四坏球或故意保送，打者被判上一垒",
-        "shortLabel": "保送"
+        "fullName": "四壞球",
+        "definition": "投手四壞球或故意保送，打者被判上一壘",
+        "shortLabel": "BB"
       },
       "pitchBb": {
-        "fullName": "投手保送",
-        "definition": "投手给予打者的保送次数",
-        "shortLabel": "保送"
+        "fullName": "四壞球",
+        "definition": "投手給予打者的保送次數",
+        "shortLabel": "BB"
       },
       "ibb": {
-        "fullName": "故意四坏",
-        "definition": "打者被故意保送的次数",
-        "shortLabel": "故四"
+        "fullName": "故意四壞球",
+        "definition": "打者被故意保送的次數",
+        "shortLabel": "IBB"
       },
       "hbp": {
-        "fullName": "触身球",
-        "definition": "打者未尝试击球时被投球击中，并被裁定上一垒",
-        "shortLabel": "觸身"
+        "fullName": "觸身球",
+        "definition": "打者未嘗試擊球時被投球擊中，並被裁定上一壘",
+        "shortLabel": "HBP"
       },
       "so": {
         "fullName": "三振",
-        "definition": "打者在一个打席中被判三次好球而出局",
-        "shortLabel": "三振"
+        "definition": "打者在一個打席中被判三次好球而出局",
+        "shortLabel": "SO"
       },
       "pitchSo": {
-        "fullName": "夺三振",
-        "definition": "投手让打者累积三好球（挥空或目送）而出局",
-        "shortLabel": "奪三振"
+        "fullName": "奪三振",
+        "definition": "投手讓打者累積三好球（揮空或目送）而出局",
+        "shortLabel": "SO"
       },
       "w": {
-        "fullName": "胜投",
-        "definition": "球队取得并保持领先时对应的投手可记胜投（依官方记分规则裁定）",
-        "shortLabel": "勝場"
+        "fullName": "勝投",
+        "definition": "球隊取得並保持領先時對應的投手可記勝投（依官方記分規則裁定）",
+        "shortLabel": "W"
       },
       "l": {
-        "fullName": "败投",
-        "definition": "球队失去且未再夺回领先时对应投手记为败投",
-        "shortLabel": "敗場"
+        "fullName": "敗投",
+        "definition": "球隊失去且未再奪回領先時對應投手記為敗投",
+        "shortLabel": "L"
       },
       "gs": {
-        "fullName": "先发场次",
-        "definition": "该投手作为球队首位登板投手的场次",
-        "shortLabel": "先發"
+        "fullName": "先發場次",
+        "definition": "該投手作為球隊首位登板投手的場次",
+        "shortLabel": "GS"
       },
       "cg": {
         "fullName": "完投",
-        "definition": "先发投手从开局投到比赛结束且中途未被替换",
-        "shortLabel": "完投"
+        "definition": "先發投手從開局投到比賽結束且中途未被替換",
+        "shortLabel": "CG"
       },
       "pg": {
         "fullName": "完封",
         "definition": "投手完投且未失分",
-        "shortLabel": "PG"
+        "shortLabel": "SHO"
       },
       "sho": {
         "fullName": "完封",
@@ -142,182 +142,182 @@
       },
       "sv": {
         "fullName": "救援成功",
-        "definition": "后援投手在符合救援条件下守住胜利所记的成绩",
-        "shortLabel": "救援成功"
+        "definition": "後援投手在符合救援條件下守住勝利所記的成績",
+        "shortLabel": "SV"
       },
       "svo": {
-        "fullName": "救援机会",
-        "definition": "投手登板时具备可获得救援成功条件的次数",
-        "shortLabel": "救援機會"
+        "fullName": "救援機會",
+        "definition": "投手登板時具備可獲得救援成功條件的次數",
+        "shortLabel": "SVO"
       },
       "ip": {
-        "fullName": "投球局数",
-        "definition": "投手在场时制造出局数除以 3；.1 代表 1/3 局，.2 代表 2/3 局",
-        "shortLabel": "投球局數"
+        "fullName": "投球局數",
+        "definition": "投手在場時製造出局數除以 3；.1 代表 1/3 局，.2 代表 2/3 局",
+        "shortLabel": "IP"
       },
       "tbf": {
-        "fullName": "面对打者总数",
-        "definition": "投手面对打者的总人次",
+        "fullName": "面對打者總數",
+        "definition": "投手面對打者的總人次",
         "shortLabel": "TBF"
       },
       "bf": {
-        "fullName": "面对打者",
-        "definition": "投手面对打者的总人次",
+        "fullName": "面對打者",
+        "definition": "投手面對打者的總人次",
         "shortLabel": "BF"
       },
       "pitchBf": {
-        "fullName": "面对打者",
-        "definition": "投手面对打者的总人次",
-        "shortLabel": "打席"
+        "fullName": "面對打者",
+        "definition": "投手面對打者的總人次",
+        "shortLabel": "BF"
       },
       "np": {
-        "fullName": "投球数",
-        "definition": "投手投出的总球数",
-        "shortLabel": "投球數"
+        "fullName": "投球數",
+        "definition": "投手投出的總球數",
+        "shortLabel": "NP"
       },
       "pIp": {
-        "fullName": "每局用球数",
-        "definition": "投手每局平均投球数",
+        "fullName": "每局用球數",
+        "definition": "投手每局平均投球數",
         "shortLabel": "PIP"
       },
       "qs": {
-        "fullName": "优质先发",
-        "definition": "先发投手投满至少 6 局且自责分不超过 3 分",
+        "fullName": "優質先發",
+        "definition": "先發投手投滿至少 6 局且自責分不超過 3 分",
         "shortLabel": "QS"
       },
       "gf": {
-        "fullName": "终结出赛",
-        "definition": "投手作为球队该场最后登板投手（且非先发）时记一场",
+        "fullName": "終結出賽",
+        "definition": "投手作為球隊該場最後登板投手（且非先發）時記一場",
         "shortLabel": "GF"
       },
       "pitchR": {
         "fullName": "失分",
-        "definition": "投手失分总数（含自责与非自责）",
-        "shortLabel": "失分"
+        "definition": "投手失分總數（含自責與非自責）",
+        "shortLabel": "R"
       },
       "er": {
-        "fullName": "自责分",
-        "definition": "投手应负责任的失分",
-        "shortLabel": "自責"
+        "fullName": "自責分",
+        "definition": "投手應負責任的失分",
+        "shortLabel": "ER"
       },
       "era": {
-        "fullName": "自责分率",
-        "definition": "投手每九局平均自责分",
-        "shortLabel": "自責分率"
+        "fullName": "防禦率",
+        "definition": "投手每九局平均自責分",
+        "shortLabel": "ERA"
       },
       "whip": {
-        "fullName": "每局被上垒率",
-        "definition": "每投一局平均被保送与被安打总和",
-        "shortLabel": "每局被上壘率"
+        "fullName": "每局被上壘率",
+        "definition": "每投一局平均被保送與被安打總和",
+        "shortLabel": "WHIP"
       },
       "so9": {
         "fullName": "每九局三振",
-        "definition": "投手每九局平均三振数",
+        "definition": "投手每九局平均三振數",
         "shortLabel": "K9值"
       },
       "bb9": {
         "fullName": "每九局保送",
-        "definition": "投手每九局平均保送数",
+        "definition": "投手每九局平均保送數",
         "shortLabel": "B9值"
       },
       "h9": {
         "fullName": "每九局被安打",
-        "definition": "投手每九局平均被安打数",
+        "definition": "投手每九局平均被安打數",
         "shortLabel": "H9值"
       },
       "kBb": {
         "fullName": "三振保送比",
-        "definition": "投手三振次数与保送次数的比值",
-        "shortLabel": "保送三振比"
+        "definition": "投手三振次數與保送次數的比值",
+        "shortLabel": "K/BB"
       },
       "avgAgainst": {
-        "fullName": "被打击率",
-        "definition": "对手面对该投手时的打击率",
+        "fullName": "被打擊率",
+        "definition": "對手面對該投手時的打擊率",
         "shortLabel": "被打擊率"
       },
       "sbAllowed": {
-        "fullName": "被盗垒",
-        "definition": "投手在场时被跑者盗垒成功的总次数",
-        "shortLabel": "SBALLOWED"
+        "fullName": "被盜壘",
+        "definition": "投手在場時被跑者盜壘成功的總次數",
+        "shortLabel": "SB"
       },
       "csAllowed": {
-        "fullName": "盗垒刺杀",
-        "definition": "投手在场时对方跑者盗垒被刺杀总次数",
-        "shortLabel": "CSALLOWED"
+        "fullName": "盜壘阻殺",
+        "definition": "投手在場時對方跑者盜壘被刺殺總次數",
+        "shortLabel": "CS"
       },
       "pk": {
-        "fullName": "牵制出局",
-        "definition": "投手牵制传球配合守备员将离垒跑者刺杀出局",
+        "fullName": "牽制出局",
+        "definition": "投手牽制傳球配合守備員將離壘跑者刺殺出局",
         "shortLabel": "PK"
       },
       "sh": {
-        "fullName": "牺牲触击",
-        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "fullName": "犧牲觸擊",
+        "definition": "打者以觸擊推進一名或多名跑者至少一壘",
         "shortLabel": "SH"
       },
       "sac": {
-        "fullName": "牺牲触击",
-        "definition": "打者以触击推进一名或多名跑者至少一垒",
+        "fullName": "犧牲觸擊",
+        "definition": "打者以觸擊推進一名或多名跑者至少一壘",
         "shortLabel": "SAC"
       },
       "sf": {
-        "fullName": "高飞牺牲打",
-        "definition": "打者击出被接杀的高飞球并使跑者得分",
+        "fullName": "犧牲飛球",
+        "definition": "打者擊出被接殺的高飛球並使跑者得分",
         "shortLabel": "SF"
       },
       "gdp": {
-        "fullName": "滚地造成双杀",
-        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "fullName": "雙殺打",
+        "definition": "打者擊出滾地球並導致守方完成雙殺（或多重出局）",
         "shortLabel": "GDP"
       },
       "gidp": {
-        "fullName": "滚地造成双杀",
-        "definition": "打者击出滚地球并导致守方完成双杀（或多重出局）",
+        "fullName": "雙殺打",
+        "definition": "打者擊出滾地球並導致守方完成雙殺（或多重出局）",
         "shortLabel": "GIDP"
       },
       "goFo": {
-        "fullName": "滚地出局 / 飞球出局比",
-        "definition": "打者滚地出局与飞球出局的比值",
-        "shortLabel": "GOFO"
+        "fullName": "滾飛比",
+        "definition": "打者滾地出局與飛球出局的比值",
+        "shortLabel": "GO/FO"
       },
       "goAo": {
-        "fullName": "滚地出局 / 飞球出局比",
-        "definition": "打者滚地出局与飞球出局的比值",
-        "shortLabel": "滾飛出局比"
+        "fullName": "滾飛比",
+        "definition": "打者滾地出局與飛球出局的比值",
+        "shortLabel": "GO/AO"
       },
       "xbh": {
-        "fullName": "长打数",
-        "definition": "除一垒安打外的安打总数",
-        "shortLabel": "長打數"
+        "fullName": "長打數",
+        "definition": "除一壘安打外的安打總數",
+        "shortLabel": "XBH"
       },
       "tb": {
-        "fullName": "垒打数",
-        "definition": "打者通过安打累计获得的总垒包数",
-        "shortLabel": "壘打數"
+        "fullName": "壘打數",
+        "definition": "打者透過安打累計獲得的總壘包數",
+        "shortLabel": "TB"
       },
       "babip": {
-        "fullName": "场内球打击率",
-        "definition": "仅统计进入场内的击球结果，排除全垒打与三振后的打击率指标",
+        "fullName": "場內球打擊率",
+        "definition": "僅統計進入場內的擊球結果，排除全壘打與三振後的打擊率指標",
         "shortLabel": "BABIP"
       },
       "iso": {
-        "fullName": "纯长打率",
-        "definition": "衡量打者每打数产生额外垒包能力的长打火力指标",
+        "fullName": "純長打率",
+        "definition": "衡量打者每打數產生額外壘包能力的長打火力指標",
         "shortLabel": "ISO"
       },
       "abHr": {
-        "fullName": "每轰打数",
-        "definition": "打者平均每击出一支全垒打所需的打数",
+        "fullName": "每全壘打打數",
+        "definition": "打者平均每擊出一支全壘打所需的打數",
         "shortLabel": "ABHR"
       },
       "bbK": {
         "fullName": "保送/三振比",
-        "definition": "打者保送次数与三振次数的比值",
+        "definition": "打者保送次數與三振次數的比值",
         "shortLabel": "BBK"
       },
       "bbPct": {
         "fullName": "保送率",
-        "definition": "打者在打席中获得保送的比例",
+        "definition": "打者在打席中獲得保送的比例",
         "shortLabel": "BB%"
       },
       "kPct": {
@@ -326,127 +326,127 @@
         "shortLabel": "K%"
       },
       "fip": {
-        "fullName": "独立防御率",
-        "definition": "以投手可较稳定主导的结果（全垒打、保送、触身、三振）估算失分能力",
+        "fullName": "獨立防禦率",
+        "definition": "以投手可較穩定主導的結果（全壘打、保送、觸身、三振）估算失分能力",
         "shortLabel": "FIP"
       },
       "eraPlus": {
-        "fullName": "调整后防御率",
-        "definition": "校正联盟与球场环境后的防御率指标，100 为联盟平均",
+        "fullName": "調整後防禦率",
+        "definition": "校正聯盟與球場環境後的防禦率指標，100 為聯盟平均",
         "shortLabel": "ERA+"
       },
       "inn": {
-        "fullName": "守备局数",
-        "definition": "球员在对应守位完成防守的总局数",
-        "shortLabel": "守備局數"
+        "fullName": "守備局數",
+        "definition": "球員在對應守位完成防守的總局數",
+        "shortLabel": "INN"
       },
       "tc": {
-        "fullName": "守备机会",
-        "definition": "总守备机会数（接杀 + 助杀 + 失误）",
-        "shortLabel": "守備機會"
+        "fullName": "守備機會",
+        "definition": "總守備機會數（接殺 + 助殺 + 失誤）",
+        "shortLabel": "TC"
       },
       "po": {
-        "fullName": "接杀",
-        "definition": "守备员直接完成出局时记一接杀",
-        "shortLabel": "接殺"
+        "fullName": "接殺",
+        "definition": "守備員直接完成出局時記一接殺",
+        "shortLabel": "PO"
       },
       "a": {
-        "fullName": "助杀",
-        "definition": "守备员传球或处理球并协助完成出局时记一助杀",
-        "shortLabel": "助殺"
+        "fullName": "助殺",
+        "definition": "守備員傳球或處理球並協助完成出局時記一助殺",
+        "shortLabel": "A"
       },
       "e": {
-        "fullName": "失误",
-        "definition": "守备员处理球失当，导致打者或跑者额外推进时记失误",
-        "shortLabel": "失誤"
+        "fullName": "失誤",
+        "definition": "守備員處理球失當，導致打者或跑者額外推進時記失誤",
+        "shortLabel": "E"
       },
       "dp": {
-        "fullName": "双杀",
-        "definition": "守备方在同一连贯守备中完成两人出局",
-        "shortLabel": "雙殺"
+        "fullName": "雙殺",
+        "definition": "守備方在同一連貫守備中完成兩人出局",
+        "shortLabel": "DP"
       },
       "pb": {
         "fullName": "捕逸",
         "definition": "應可由捕手以一般守備處理的合法投球漏接，並造成打者或跑者推進",
-        "shortLabel": "捕逸"
+        "shortLabel": "PB"
       },
       "catcherCs": {
         "fullName": "盜壘阻殺",
         "definition": "捕手對企圖盜壘的跑者完成刺殺出局的次數",
-        "shortLabel": "阻殺"
+        "shortLabel": "CS"
       },
       "tcPct": {
-        "fullName": "守备率",
-        "definition": "守备员在守备机会中不发生失误的比率",
-        "shortLabel": "守備率"
+        "fullName": "守備率",
+        "definition": "守備員在守備機會中不發生失誤的比率",
+        "shortLabel": "FPCT"
       },
       "sb": {
-        "fullName": "盗垒",
-        "definition": "跑者在非安打、失误等情形下，自行成功推进一个垒包",
-        "shortLabel": "盜壘"
+        "fullName": "盜壘",
+        "definition": "跑者在非安打、失誤等情形下，自行成功推進一個壘包",
+        "shortLabel": "SB"
       },
       "cs": {
-        "fullName": "盗垒失败",
-        "definition": "跑者尝试盗垒时在到达下一垒前被刺杀出局",
-        "shortLabel": "盜失"
+        "fullName": "盜壘失敗",
+        "definition": "跑者嘗試盜壘時在到達下一壘前被刺殺出局",
+        "shortLabel": "CS"
       },
       "avg": {
-        "fullName": "打击率",
-        "definition": "每打数获得安打的比率",
-        "shortLabel": "打擊率"
+        "fullName": "打擊率",
+        "definition": "每打數獲得安打的比率",
+        "shortLabel": "AVG"
       },
       "obp": {
-        "fullName": "上垒率",
-        "definition": "打者在打席中成功上垒的比率",
-        "shortLabel": "上壘率"
+        "fullName": "上壘率",
+        "definition": "打者在打席中成功上壘的比率",
+        "shortLabel": "OBP"
       },
       "slg": {
-        "fullName": "长打率",
-        "definition": "每打数可获得的平均垒打数",
-        "shortLabel": "長打率"
+        "fullName": "長打率",
+        "definition": "每打數可獲得的平均壘打數",
+        "shortLabel": "SLG"
       },
       "ops": {
-        "fullName": "攻击指数",
-        "definition": "上垒率与长打率之和",
-        "shortLabel": "攻擊指數"
+        "fullName": "攻擊指數",
+        "definition": "上壘率與長打率之和",
+        "shortLabel": "OPS"
       },
       "opsPlus": {
-        "fullName": "调整后 OPS",
-        "definition": "校正联盟与球场环境后的 OPS 指标，100 为联盟平均",
+        "fullName": "調整後 OPS",
+        "definition": "校正聯盟與球場環境後的 OPS 指標，100 為聯盟平均",
         "shortLabel": "OPS+"
       },
       "bipPct": {
-        "fullName": "场内球比例",
-        "definition": "打席结果为场内击球（非三振、保送、触身等）的比例",
+        "fullName": "場內球比例",
+        "definition": "打席結果為場內擊球（非三振、保送、觸身等）的比例",
         "shortLabel": "BIP%"
       },
       "io": {
-        "fullName": "妨阻上壘",
+        "fullName": "妨礙上壘",
         "definition": "打者因守方妨礙或阻擋而獲判上一壘；計入打席，不計打數",
         "shortLabel": "IO"
       },
       "pitchDoubles": {
-        "fullName": "被二壘打",
+        "fullName": "被二壘安打",
         "definition": "投手被對方擊出的二壘安打數",
         "shortLabel": "2B"
       },
       "pitchTriples": {
-        "fullName": "被三壘打",
+        "fullName": "被三壘安打",
         "definition": "投手被對方擊出的三壘安打數",
         "shortLabel": "3B"
       },
       "pitchSh": {
         "fullName": "被犧牲觸擊",
-        "definition": "投手被對方以犧牲觸擊推進出局",
+        "definition": "投手讓對方以犧牲觸擊推進跑者（打者出局）的次數",
         "shortLabel": "SH"
       },
       "pitchSf": {
-        "fullName": "被犧牲高飛",
-        "definition": "投手被對方以高飛犧牲打送回跑者",
+        "fullName": "被犧牲飛球",
+        "definition": "投手讓對方以犧牲飛球送回跑者的次數",
         "shortLabel": "SF"
       },
       "pitchIo": {
-        "fullName": "被妨阻上壘",
+        "fullName": "被妨礙上壘",
         "definition": "投手因其守方妨礙或阻擋導致打者上壘",
         "shortLabel": "IO"
       },
@@ -456,14 +456,44 @@
         "shortLabel": "UER"
       },
       "pendingR": {
-        "fullName": "待定分",
+        "fullName": "待判定失分",
         "definition": "自責分判定尚未完成的失分",
         "shortLabel": "PEND"
       },
       "catcherSb": {
-        "fullName": "被盜壘成功",
+        "fullName": "被盜壘",
         "definition": "捕手在場時對方成功盜壘的次數",
         "shortLabel": "SB"
+      },
+      "hld": {
+        "fullName": "中繼成功",
+        "definition": "後援投手在符合中繼條件下守住領先所記的成績",
+        "shortLabel": "HLD"
+      },
+      "wp": {
+        "fullName": "暴投",
+        "definition": "投手投出的球偏離本壘，使跑者得以推進的暴投次數",
+        "shortLabel": "WP"
+      },
+      "bk": {
+        "fullName": "投手犯規",
+        "definition": "投手在投球過程中違反規則被判的投手犯規次數",
+        "shortLabel": "BK"
+      },
+      "gsFielding": {
+        "fullName": "守備先發場次",
+        "definition": "該球員以該守位先發的場次",
+        "shortLabel": "GS"
+      },
+      "pitchAb": {
+        "fullName": "自由打數",
+        "definition": "面對打者人次扣除四壞與觸身（BB 含 IBB）",
+        "shortLabel": "AB"
+      },
+      "bbHp": {
+        "fullName": "四壞+觸身",
+        "definition": "四壞球與觸身球上壘合計（BB 含 IBB）",
+        "shortLabel": "BB+HBP"
       }
     }
   },
@@ -515,7 +545,9 @@
     "prevSlide": "上一張",
     "nextSlide": "下一張",
     "slideIndex": "第 {n} 屏",
-    "feedback": "意見回饋"
+    "feedback": "意見回饋",
+    "portalLoginEntry": "登入 / 註冊",
+    "accountProfile": "個人資料"
   },
   "portalFeedback": {
     "drawerTitle": "意見回饋",
@@ -783,7 +815,16 @@
     "stadiumDetail": "球場介紹",
     "announcementDoc": "公告詳情",
     "notFound": "頁面不存在",
-    "serviceUnavailable": "服務暫不可用"
+    "serviceUnavailable": "服務暫不可用",
+    "register": "註冊帳號",
+    "accountLogin": "帳號登入",
+    "accountProfile": "個人資料",
+    "forgotPassword": "找回密碼",
+    "playerClaimInvite": "球員認領",
+    "leagues": "聯盟",
+    "clubhouse": "我的主場",
+    "intro": "系統介紹",
+    "welcome": "歡迎"
   },
   "stadiumDetail": {
     "notFound": "球場不存在或已刪除",
@@ -928,7 +969,33 @@
       "colWinner": "得主",
       "colTeam": "球隊",
       "colPosition": "守位",
-      "colValue": "數據"
+      "colValue": "數據",
+      "pending": "待公布"
+    },
+    "award": {
+      "hits": "安打王",
+      "avg": "打擊王",
+      "rbi": "打點王",
+      "sb": "盜壘王",
+      "hr": "全壘打王",
+      "w": "勝投王",
+      "so": "奪三振王",
+      "era": "防禦率王",
+      "reliever": "最佳救援投手",
+      "holder": "最佳中繼投手",
+      "p": "投手",
+      "c": "捕手",
+      "1b": "一壘手",
+      "2b": "二壘手",
+      "3b": "三壘手",
+      "ss": "游擊手",
+      "of": "外野手",
+      "dh": "指定打擊",
+      "mvp": "年度MVP",
+      "improved": "最佳進步獎",
+      "rookie": "年度新人獎",
+      "manager": "年度最佳總教練",
+      "comeback": "東山再起獎"
     }
   },
   "events": {
@@ -966,7 +1033,11 @@
       "published": "已發布",
       "ended": "已結束",
       "ongoing": "進行中"
-    }
+    },
+    "missingDateHint": "有 {n} 場比賽未填寫比賽日或開始時間，月曆中不會顯示，仍可在列表「{group}」分組中查看。",
+    "specialResult": "特殊情況",
+    "expandScheduleAria": "展開「{name}」賽程",
+    "collapseScheduleAria": "收合「{name}」賽程"
   },
   "eventGames": {
     "title": "賽程與結果",
@@ -1062,7 +1133,7 @@
         "pitchSo": "奪三振（Strikeouts）",
         "pitchHr": "被牆外全壘打（Home Runs Allowed）",
         "pitchInsideParkHr": "被場內全壘打（Inside-the-park HR）",
-        "pitAb": "對手打數（BF−BB−HBP；BB 含 IBB）",
+        "pitAb": "自由打數（BF−BB−HBP；BB 含 IBB）",
         "pitE": "該投手本場打者數據的失誤",
         "np": "投球數",
         "pitchPa": "面對打席（PA）",
@@ -1081,15 +1152,23 @@
         "svo": "救援機會",
         "hld": "中繼成功",
         "cg": "是否本場完投（不是為 0，是為 1）",
-        "pg": "是否本場為完美比賽（不是為 0，是為 1）",
+        "pg": "是否本場完封（不是為 0，是為 1）",
         "era": "自責分率（ER×9/IP）",
         "pitchDoubles": "被二壘打（Doubles Allowed）",
         "pitchTriples": "被三壘打（Triples Allowed）",
         "pitchSh": "被犧牲觸擊（Sacrifice Bunts Allowed）",
         "pitchSf": "被犧牲高飛（Sacrifice Flies Allowed）",
-        "pitchIo": "被妨阻上壘（Obstruction Allowed）"
+        "pitchIo": "被妨阻上壘（Obstruction Allowed）",
+        "whip": "每局被上壘率（(H+BB)/IP）"
       }
-    }
+    },
+    "batters": "打者",
+    "pitchers": "投手",
+    "totals": "合計",
+    "fieldingTableTitle": "守備",
+    "fieldingPlayer": "球員",
+    "expandFieldingAria": "展開 {name} 的逐位置守備資料",
+    "collapseFieldingAria": "收合 {name} 的逐位置守備資料"
   },
   "news": {
     "title": "資訊公告",
@@ -1177,52 +1256,52 @@
       "winRate": "勝率",
       "points": "積分",
       "gp": "場次",
-      "gs": "先發",
+      "gs": "先發場次",
       "svo": "救援機會",
       "cg": "完投",
-      "pg": "完美比賽",
-      "w": "勝場",
-      "l": "敗場",
+      "pg": "完封",
+      "w": "勝投",
+      "l": "敗投",
       "sv": "救援成功",
       "hld": "中繼成功",
       "ip": "投球局數",
       "whip": "每局被上壘率",
-      "era": "自責分率",
+      "era": "防禦率",
       "pa": "打席",
-      "pitchBf": "打席",
+      "pitchBf": "面對打者",
       "np": "投球數",
       "ab": "打數",
       "h": "安打",
       "hr": "全壘打",
       "iphr": "場內全壘打",
       "pitchInsideParkHr": "被場內全壘打",
-      "bb": "保送",
-      "ibb": "故意四壞",
-      "hbp": "死球",
+      "bb": "四壞球",
+      "ibb": "故意四壞球",
+      "hbp": "觸身球",
       "so": "三振",
       "wp": "暴投",
       "bk": "投手犯規",
       "r": "得分",
       "er": "自責分",
       "unearnedR": "非自責分",
-      "pendingR": "待定分",
-      "go": "地滾出局",
-      "fo": "高飛球出局",
-      "goFo": "滾飛出局比",
+      "pendingR": "待判定失分",
+      "go": "滾地球出局",
+      "fo": "飛球出局",
+      "goFo": "滾飛比",
       "rbi": "打點",
-      "oneB": "一安",
-      "twoB": "二安",
-      "threeB": "三安",
+      "oneB": "一壘安打",
+      "twoB": "二壘安打",
+      "threeB": "三壘安打",
       "tb": "壘打數",
       "sb": "盜壘",
       "obp": "上壘率",
       "slg": "長打率",
       "avg": "打擊率",
       "gdp": "雙殺打",
-      "sh": "犧短",
-      "sf": "犧飛",
-      "cs": "盜失",
-      "sbPct": "偷壘成功率",
+      "sh": "犧牲觸擊",
+      "sf": "犧牲飛球",
+      "cs": "盜壘失敗",
+      "sbPct": "盜壘成功率",
       "ops": "攻擊指數",
       "ssi": "銀棒數",
       "pos": "位置",
@@ -1236,12 +1315,22 @@
       "catcherCs": "盜壘阻殺",
       "tcPct": "守備率",
       "catcherSb": "被盜壘",
-      "io": "妨阻上壘",
-      "pitchDoubles": "被二壘打",
-      "pitchTriples": "被三壘打",
-      "pitchSh": "被犧短",
-      "pitchSf": "被犧飛",
-      "pitchIo": "被妨阻上壘"
+      "io": "妨礙上壘",
+      "pitchDoubles": "被二壘安打",
+      "pitchTriples": "被三壘安打",
+      "pitchSh": "被犧牲觸擊",
+      "pitchSf": "被犧牲飛球",
+      "pitchIo": "被妨礙上壘",
+      "pitchH": "被安打",
+      "pitchR": "失分",
+      "pitchHr": "被全壘打",
+      "pitchHbp": "觸身球",
+      "pitchBb": "四壞球",
+      "pitchIbb": "故意四壞球",
+      "pitchSo": "奪三振",
+      "gsFielding": "先發場次",
+      "pitchAb": "自由打數",
+      "bbHp": "四壞+觸身"
     },
     "colEn": {
       "rank": "Rank",
@@ -1261,7 +1350,7 @@
       "gs": "GS",
       "svo": "SVO",
       "cg": "CG",
-      "pg": "PG",
+      "pg": "SHO",
       "w": "W",
       "l": "L",
       "sv": "SV",
@@ -1286,7 +1375,7 @@
       "r": "R",
       "er": "ER",
       "unearnedR": "UER",
-      "pendingR": "PENDING",
+      "pendingR": "PEND",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1315,14 +1404,24 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "TC%",
+      "tcPct": "FPCT",
       "catcherSb": "SB",
       "io": "IO",
       "pitchDoubles": "2B",
       "pitchTriples": "3B",
       "pitchSh": "SH",
       "pitchSf": "SF",
-      "pitchIo": "IO"
+      "pitchIo": "IO",
+      "pitchH": "H",
+      "pitchR": "R",
+      "pitchHr": "HR",
+      "pitchHbp": "HBP",
+      "pitchBb": "BB",
+      "pitchIbb": "IBB",
+      "pitchSo": "SO",
+      "gsFielding": "GS",
+      "pitchAb": "AB",
+      "bbHp": "BB+HBP"
     }
   },
   "player": {
@@ -1797,7 +1896,8 @@
       "education": "學歷",
       "joinDate": "加入日期",
       "debut": "職業首秀"
-    }
+    },
+    "avatarAlt": "球員頭像"
   },
   "teamDetail": {
     "roster": "陣容",
@@ -1906,7 +2006,7 @@
         "pitchSo": "三振",
         "pitchHr": "被全壘打",
         "pitchInsideParkHr": "被場內全壘打",
-        "pitAb": "面對打者的簡化打數相關指標（約 BF−BB−IBB−HBP）",
+        "pitAb": "自由打數（約 BF−BB−IBB−HBP）",
         "pitE": "同場該員守備失誤數（與統計源一致）",
         "np": "投球數",
         "pitchPa": "對局打席",
@@ -1925,8 +2025,9 @@
         "svo": "救援機會",
         "hld": "中繼成功",
         "cg": "完投",
-        "pg": "完全比賽",
-        "era": "防禦率"
+        "pg": "完封",
+        "era": "防禦率",
+        "whip": "每局被上壘率（WHIP）"
       }
     },
     "resetDefault": "恢復預設",
@@ -1977,7 +2078,8 @@
     "pageTitle": "後台登入 - {site}",
     "reasonExpired": "登入已過期，請重新登入",
     "reasonInvalidToken": "登入資訊無效，請重新登入",
-    "reasonNeedLogin": "請先登入"
+    "reasonNeedLogin": "請先登入",
+    "captchaAutoFetchIn": "{n}s 後自動取得驗證碼…"
   },
   "captcha": {
     "colors": {
@@ -2145,5 +2247,1049 @@
     "revokeFailed": "撤銷失敗",
     "genericHint": "清單僅顯示未在本隊的球員；未認領球員點擊「邀請入隊」將直接加入（保留其現有球隊），已認領球員產生通用連結（本人確認後入隊）。",
     "loadFailed": "載入失敗"
+  },
+  "clubhouse": {
+    "header": {
+      "breadcrumbPortal": "門戶",
+      "subtitle": "球員個人主頁 · 已關聯球員資料",
+      "editLayout": "編輯布局",
+      "backToPortal": "返回門戶",
+      "claimedBadge": "已關聯球員資料",
+      "emptyIntro": "這位球員還沒有填寫簡介。",
+      "viewPublicProfile": "查看公開主頁",
+      "teamHome": "球隊主頁",
+      "noTeam": "未加入球隊",
+      "allTeamsCrest": "全",
+      "crossTeam": "跨全部代表球隊",
+      "notJoinedTeam": "尚未加入球隊",
+      "position": "守備位置",
+      "throwBat": "投打",
+      "heightWeight": "身高 / 體重",
+      "birthPlace": "出生地",
+      "handLeft": "左",
+      "handRight": "右",
+      "handBoth": "左右",
+      "throwBatValue": "{throwHand}投{batHand}打"
+    },
+    "scope": {
+      "title": "資料範圍",
+      "gameMode": "運動類型",
+      "allLeagues": "全部聯盟",
+      "representingTeams": "代表 {n} 支球隊",
+      "allLeagueEvents": "本聯盟全部賽事",
+      "leagueFallback": "聯盟{id}",
+      "allEvents": "全部賽事",
+      "noGames": "暫無比賽"
+    },
+    "layoutEdit": {
+      "title": "布局編輯",
+      "dropToSwap": "鬆開與「{name}」交換位置",
+      "contentLimit": "內容下限 {height}px",
+      "hint": "拖動模組調整位置；拖到另一模組上可交換；拖動八個小方塊縮放；點擊空白處取消選取",
+      "resetSize": "重設尺寸",
+      "saving": "儲存中…",
+      "saved": "已儲存",
+      "done": "完成",
+      "releaseToSwap": "鬆手交換",
+      "resizeNw": "左上縮放",
+      "resizeN": "向上縮放",
+      "resizeNe": "右上縮放",
+      "resizeW": "向左縮放",
+      "resizeE": "向右縮放",
+      "resizeSw": "左下縮放",
+      "resizeS": "向下縮放",
+      "resizeSe": "右下縮放"
+    },
+    "modules": {
+      "ranks": {
+        "label": "隊內座標",
+        "placeholderHint": "選擇球隊後顯示；此位置會保留",
+        "switchScope": "切換",
+        "playerCount": "{n} 人",
+        "noteLabel": "口徑",
+        "rankInTeam": "隊內第 {n}",
+        "noRank": "暫無排名",
+        "noMetric": "暫無該資料",
+        "scopeSameEvent": "同隊同賽事",
+        "scopeSameLeague": "同隊同聯盟",
+        "scopeTeamCareer": "球隊跨賽事生涯",
+        "note": "{scope} · 無最低打席門檻 · 全壘打不進入排名"
+      },
+      "evaluation": {
+        "label": "整體評價",
+        "compare": "對比 · {scope}",
+        "overallScore": "綜合評分",
+        "noScore": "暫無評分",
+        "strength": "強項",
+        "improve": "提升",
+        "empty": "暫無評價資料",
+        "defaultComparison": "全租戶生涯",
+        "rolePositionPlayer": "野手",
+        "rolePitcher": "投手",
+        "roleTwoWay": "二刀流",
+        "rolePlayer": "球員"
+      },
+      "spray": {
+        "label": "打擊落點"
+      },
+      "milestones": {
+        "label": "生涯里程碑"
+      },
+      "performance": {
+        "label": "資料表現"
+      },
+      "schedule": {
+        "label": "接下來的比賽"
+      },
+      "recentGames": {
+        "label": "最近戰報"
+      },
+      "teams": {
+        "label": "代表球隊"
+      },
+      "quickLinks": {
+        "label": "快捷入口"
+      }
+    },
+    "settings": {
+      "title": "資料設定",
+      "modulesTitle": "模組布局",
+      "modulesHint": "拖動左側把手排序，也可用上下按鈕微調；順序用於手機/緊湊模式。桌面位置與大小請在頁面「編輯布局」中拖動調整。",
+      "ranksOnlyWithTeam": "僅在選擇球隊後顯示",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "toggleModuleAria": "顯示{name}",
+      "enabledCount": "已啟用 {enabled} / {total}",
+      "milestonesTitle": "生涯里程碑 · 最多 {max} 項",
+      "milestonesHint": "選擇要展示的累計指標；時間線會展示已選指標最近達成的里程碑。",
+      "selectedCount": "已選 {selected} / {max}",
+      "performanceTitle": "表現圖",
+      "performanceHint": "選擇要展示的指標與圖表類型；不可用的指標會置灰。",
+      "metric": "指標",
+      "chartType": "圖表類型",
+      "ranksTitle": "隊內排名 · 四個指標",
+      "ranksHint": "排名按目前代表球隊的同隊同賽事或球隊跨賽事生涯計算；未選擇球隊時模組不顯示。預設不提供全壘打。",
+      "rankSlot": "排名位 {n}",
+      "resetDefaults": "恢復預設",
+      "save": "儲存",
+      "vizKpi": "大數字",
+      "vizLine": "折線圖",
+      "vizBar": "柱狀圖",
+      "vizDonut": "環形圖"
+    },
+    "empty": {
+      "allHiddenTitle": "所有內容模組已隱藏",
+      "allHiddenBody": "可以隨時在資料設定裡重新開啟需要的內容。",
+      "scopeEmptyTitle": "目前範圍暫無展示模組",
+      "scopeEmptyBody": "選擇球隊或在資料設定中啟用其他模組。",
+      "goSettings": "去設定",
+      "loadFailed": "駕駛艙載入失敗",
+      "reload": "重新載入",
+      "unclaimed": "尚未關聯球員資料"
+    },
+    "card": {
+      "zoomOpenAria": "放大查看球星卡",
+      "zoomDialogAria": "球星卡放大查看",
+      "closeZoomAria": "關閉放大",
+      "radarAria": "{title}雷達圖，{axes}",
+      "radarAxis": "{label}{value}，百分位{percentile}",
+      "radarAxisSeparator": "；"
+    },
+    "spray": {
+      "modeAria": "落點顯示模式",
+      "heatmap": "熱力圖",
+      "animation": "落點動畫",
+      "replay": "重播",
+      "loading": "正在載入打擊落點…",
+      "loadFailed": "打擊落點載入失敗",
+      "empty": "目前範圍還沒有記錄擊球落點。",
+      "chartAria": "打擊落點分區",
+      "zoneStats": "區域統計",
+      "typeStats": "球種統計",
+      "hits": "安打",
+      "homeRuns": "全壘打",
+      "outs": "出局",
+      "hitsCount": "安打 {n}",
+      "recordedBalls": "記錄 {n} 球",
+      "gamesCount": "{n} 場"
+    },
+    "milestones": {
+      "reached": "已達成 {n} 項",
+      "nextStop": "下一站 {target}",
+      "loading": "正在載入生涯里程碑…",
+      "loadFailed": "里程碑載入失敗",
+      "remaining": "還差 {remaining} {unit}",
+      "maxReached": "已達最高里程碑",
+      "recentTitle": "最近里程碑",
+      "recentSummary": "最近 {shown} 項 / 共 {total} 項",
+      "timelineAria": "最近里程碑時間線",
+      "empty": "還沒有達成里程碑，繼續保持。",
+      "note": "統計自系統記錄 · 僅計入排行的比賽",
+      "unavailable": "暫無生涯累計資料。",
+      "statusLoading": "載入中",
+      "statusUnavailable": "暫不可用",
+      "waitingData": "等待資料",
+      "noDate": "日期未記錄"
+    },
+    "performance": {
+      "defaultLabel": "資料",
+      "hitsLabel": "安打",
+      "trendAria": "{metric}走勢",
+      "chartNote": "近 {n} 場 · 按比賽日排序",
+      "empty": "所選範圍暫無比賽資料。"
+    },
+    "schedule": {
+      "allEvents": "全部賽程",
+      "currentEvent": "目前賽事",
+      "currentLeague": "目前聯盟",
+      "noUpcomingForEvent": "目前賽事近期暫無未開賽比賽",
+      "leagueEventCount": "共 {n} 項賽事",
+      "venueTbd": "場地待定",
+      "gameDetail": "賽事詳情",
+      "statusScheduled": "賽程中",
+      "crossTeamCareer": "跨球隊生涯",
+      "emptyEvent": "該賽事暫無未開賽的比賽。",
+      "emptyLeague": "該聯盟暫無未開賽的比賽。",
+      "emptyTeam": "該球隊暫無未開賽的比賽。",
+      "empty": "暫無未開賽的比賽。"
+    },
+    "recentGames": {
+      "allGames": "比賽記錄",
+      "final": "最終",
+      "ourTeam": "我方",
+      "opponent": "對手",
+      "emptyEvent": "該賽事暫無比賽記錄。",
+      "emptyLeague": "該聯盟暫無比賽記錄。",
+      "emptyTeam": "該球隊暫無比賽記錄。",
+      "empty": "暫無比賽記錄。",
+      "battingLine": "{ab}打數 {h}安打",
+      "rbiLine": "{n}打點",
+      "sbLine": "{n}盜壘",
+      "pitchingLine": "{ip}局 · {so}三振 · {er}自責分",
+      "noIndividualStats": "本場暫無個人資料"
+    },
+    "teams": {
+      "pointsNote": "球隊積分按各隊主賽事顯示",
+      "noEvents": "暫無已確認賽事",
+      "noRecord": "暫無戰績"
+    },
+    "quickLinks": {
+      "publicProfile": "公開球員主頁",
+      "claims": "我的認領與資料"
+    },
+    "countdown": {
+      "today": "今天",
+      "tomorrow": "明天",
+      "days": "還有 {n} 天"
+    },
+    "weekday": {
+      "sun": "週日",
+      "mon": "週一",
+      "tue": "週二",
+      "wed": "週三",
+      "thu": "週四",
+      "fri": "週五",
+      "sat": "週六"
+    },
+    "toast": {
+      "layoutSaveFailed": "布局儲存失敗",
+      "resetSizeConflict": "預設尺寸會與其他模組重疊，請先調整位置",
+      "rankDuplicates": "四個排名位需要選擇不同指標",
+      "milestonesRequired": "生涯里程碑至少選擇 1 個指標",
+      "settingsSaved": "資料設定已儲存",
+      "saveFailed": "儲存失敗",
+      "resetDone": "已恢復預設",
+      "resetFailed": "恢復失敗",
+      "unclaimed": "目前帳號未關聯球員資料，已返回門戶"
+    },
+    "confirm": {
+      "resetTitle": "恢復預設",
+      "resetMessage": "恢復預設資料設定？目前選擇將被覆蓋。",
+      "resetConfirm": "恢復"
+    },
+    "common": {
+      "notFilled": "未填寫"
+    }
+  },
+  "notice": {
+    "contentNotFound": "內容不存在",
+    "parseFailed": "內容解析失敗",
+    "emptyBody": "暫無正文",
+    "originalLink": "原文連結",
+    "attachment": "附件",
+    "retry": "重試",
+    "notFound": "公告不存在或已刪除"
+  },
+  "team": {
+    "textLogoAlt": "{name} 文字標誌",
+    "logoInitialFallback": "球"
+  },
+  "liveGame": {
+    "top": {
+      "title": "即時比賽錄入",
+      "undo": "↩ 復原",
+      "redo": "↪ 重做",
+      "editLineup": "編輯陣容",
+      "editLineupFinal": "比賽已結束，複核模式不支援修改陣容",
+      "editLineupStarted": "第一個 Play 已開始，不能再修改陣容",
+      "editLineupHint": "返回先發陣容頁面修改陣容",
+      "fieldSettings": "場上設定",
+      "pitchIconsTitle": "投球選單選項圖示",
+      "pitchIconsDesc": "Pitch 浮層每列左側的圖示（B/K/HBP 等）",
+      "fixMenu": "壘況糾偏、得分糾偏",
+      "stateFix": "局面糾偏",
+      "stateFixHint": "修正一二三壘跑者；扣回誤記的本壘得分（局分/總分），可選同步扣 RBI 與跑者得分(R)。",
+      "fixRunners": "壘況糾偏",
+      "fixRunnersTitle": "手動指定一、二、三壘跑者，糾正與真實局面不符的壘況",
+      "fixScore": "得分糾偏",
+      "fixScoreTitle": "從指定局次扣回分數，可選同步扣 RBI / 跑者得分(R)",
+      "forceHalf": "強制換局",
+      "forceHalfTitle": "特殊換局規則：一鍵結束本半局並攻守交換（打者順序保持不變）",
+      "spray": "擊球落點分佈",
+      "erReview": "ER 複核",
+      "watchFloat": "浮窗開啟觀賽介面",
+      "watchTab": "新分頁開啟觀賽頁面",
+      "watch": "即時觀賽",
+      "fullscreen": "全螢幕顯示",
+      "exitFullscreen": "退出全螢幕",
+      "subModeFinal": "比賽已結束，複核模式不支援換人",
+      "subMode": "換人模式",
+      "endSubMode": "結束換人",
+      "saveFinal": "賽後複核模式請使用複核抽屜儲存",
+      "save": "儲存比賽",
+      "restoreCloud": "從雲端恢復錄入現場",
+      "restoring": "讀取中...",
+      "endGame": "結束比賽（標記賽果為已結束並儲存）",
+      "more": "更多"
+    },
+    "sub": {
+      "banner": "換人模式進行中：記球已暫停；調整完成後點「結束換人」提交，或取消恢復。DH 卡片拖離槽位可取消 DH。",
+      "rotationAria": "守備輪轉速記",
+      "rotationPlaceholder": "守備輪轉 如 1341",
+      "rotate": "輪轉",
+      "dhDragTitle": "{team} DH {player}：拖離卡片取消",
+      "dragOut": "拖離取消",
+      "defenseBench": "防守替補",
+      "offenseBench": "進攻替補",
+      "cancelMode": "取消換人模式",
+      "bench": "替補席",
+      "exitFullscreen": "退出全螢幕",
+      "appendNew": "追加新球員",
+      "leaveEmpty": "留空",
+      "leaveEmptyHint": "可稍後補位",
+      "modeBusy": "換人模式進行中，請先結束或取消換人模式",
+      "needMode": "換人需先進入「換人模式」：請點頂部「換人模式」後再操作",
+      "busyWait": "正在提交換人，請稍候",
+      "lastFailed": "上次提交換人失敗，請先重試「結束換人」或取消換人模式",
+      "benchEmpty": "替補席已空",
+      "rosterIncomplete": "該隊資訊不完整，無法載入球員名單",
+      "noPlayers": "該隊暫無可用球員名單",
+      "ohtaniSwapBlocked": "大谷規則下，投手兼DH不能與野手互換守位；請先換投，再按取消DH流程處理",
+      "pitcherFielderSwap": "投手與野手互換會取消DH，請先進入「換人模式」後再操作",
+      "setRunnerBlocked": "換人模式進行中，請先結束或取消換人模式後再設定跑者",
+      "noDh": "當前打線沒有 DH",
+      "noPitcher": "找不到當前守備投手，無法取消 DH",
+      "pitcherInOrder": "當前投手已在打序中",
+      "cannotConfirmSwap": "無法確認投手、野手或 DH，請取消換人模式後重試",
+      "swapFailed": "交換守備位置失敗，請取消換人模式後重試",
+      "onlyFieldingSide": "只能調整當前守備方的守位",
+      "ohtaniNoMove": "大谷規則下，DH兼投不能移防",
+      "selectPosition": "請選擇守備位置",
+      "dhChanged": "DH 狀態已變化，請重試",
+      "lineupHasPitcher": "打線已有投手位，不能直接取消DH；請先調整陣容",
+      "targetEmpty": "目標守備位無人",
+      "playerUnavailable": "該球員已換下，不可再上場",
+      "reentryBlockedInTransaction": "同一換人事務中，換下球員不可再以其他槽位上場；請結束本次換人後重新操作",
+      "dhCancelPitcherInOrder": "當前投手已在打序中，無法取消 DH；可將 DH 拖到守備位交換位置",
+      "reentrySlotUnknown": "無法確認該球員的原打序槽位，請從其原打序位置換人",
+      "reentrySlot": "壘球再上場必須回到原打序（第{slot}棒）",
+      "dhBlockedOhtani": "大谷規則下，投手兼DH不能用 DH 卡取消或移防；請先換投，再按取消DH流程處理",
+      "dhBlockedFormerDh": "大谷規則下，已換投下場的 DH 不能移防或取消",
+      "noChanges": "沒有陣容變化，已退出換人模式",
+      "lineupIncomplete": "陣容不完整，請先補全守位",
+      "submitted": "換人已提交（按兩次點擊間的淨變化記錄）",
+      "submitFailed": "換人提交失敗，請重試或取消換人模式",
+      "confirmSubstitution": "確認換人",
+      "submitSubstitution": "提交換人",
+      "keepAdjusting": "繼續調整",
+      "confirmCancelDhRule": "取消DH規則提醒",
+      "stillCancel": "仍然取消",
+      "back": "返回",
+      "confirmCancelDhSwap": "取消DH並換位",
+      "confirmCancelDhSwapOk": "確認取消DH並換位",
+      "confirmCancelDhPitch": "取消DH並換投",
+      "confirmCancelDhPitchOk": "確認取消DH並換投",
+      "confirmCancelDhDefense": "取消DH並移防",
+      "confirmCancelDhDefenseOk": "確認取消DH並移防",
+      "confirmRotation": "守備輪轉並取消DH",
+      "confirmRotationOk": "確認輪轉並取消DH",
+      "summaryTeamPrefix": "【{team}】",
+      "summarySlot": "{prefix}第{slot}棒 {out} → {in}{dh}",
+      "summaryPosition": "{prefix}守位調整：{name} {from} → {to}",
+      "summaryPitching": "{prefix}投手更換：{from} → {to}",
+      "summaryEmpty": "空位",
+      "summaryDhCancel": "（取消DH）",
+      "dhRuleNoDh": "當前打線沒有 DH。",
+      "dhRuleNoStarter": "無法確認先發 DH，請核對陣容後再取消 DH。",
+      "dhRuleNotBatted": "規則要求先發 DH 至少完成一次打擊（對方換投除外）。先發 DH {name} 尚未打擊，當前取消 DH 可能不合規，請確認對方已換投或已滿足條件。",
+      "cancelDhHeader": "此操作將取消 DH：",
+      "dhSwapOut": "· {dh}（DH）退場，不可再上",
+      "pitcherEntersLineup": "· 投手 {pitcher} 進入打線，接替第{n}棒 DH",
+      "swapFieldPositions": "· 隨後 {pitcher} 與 {fielder} 交換守備位置（P ↔ {pos}）",
+      "ruleWarning": "規則提醒：{warning}",
+      "dhToPitcher": "· {dh}（DH）轉為投手 P，繼續在第{n}棒打擊",
+      "originalPitcherOut": "· 原投手 {pitcher} 退場",
+      "loseDh": "· 球隊失去 DH，後續投手須在該棒次打擊",
+      "dhToField": "· {dh}（DH）轉為 {pos}，繼續在第{n}棒打擊",
+      "fielderOut": "· {fielder} 退場",
+      "pitcherEntersOrder": "· 投手 {pitcher} 進入第{n}棒打序",
+      "rotationCancelDh": "本次輪轉包含投手（1號位），將取消 DH：",
+      "rotationDhOut": "· {dh}（DH）退場，不可再上",
+      "rotationPitcherLineup": "· 投手 {pitcher} 進入打線",
+      "rotationLine": "· 輪轉：{rotation}",
+      "rotationInputRequired": "請輸入守備輪轉，如 1341（首尾相同形成閉環）",
+      "rotationDigitsOnly": "只能輸入 1-9 的守位數字，如 1341",
+      "rotationMin3": "輪轉至少需要 3 位數字，如 121 = 1 與 2 互換",
+      "rotationClosed": "首尾數字必須相同，形成閉環，如 1341",
+      "rotationUnique": "同一位置在輪轉中只能出現一次（收尾閉環除外）",
+      "rotationInvalid": "輪轉格式無效，請重新輸入",
+      "rotationUniqueShort": "同一位置在輪轉中只能出現一次",
+      "rotationMissing": "以下位置目前沒有守備員：{positions}",
+      "rotationDuplicated": "陣容中以下位置有多名球員，請先修正陣容：{positions}",
+      "rotationFailed": "守備輪轉失敗：球員不在目前打線中，請取消換人模式後重試",
+      "rotationHasPitcher": "目前打線已有投手（1號位），請先修正陣容後再輪轉",
+      "appendBlocked": "換人模式進行中，請先結束或取消換人模式後再追加球員",
+      "alreadyOnField": "該球員已在場上，無法追加",
+      "playerNotFound": "未找到該球員",
+      "alreadyOnBench": "該球員已在板凳中",
+      "gameNotStarted": "比賽未開始",
+      "gameEnded": "比賽已結束",
+      "modeEnabled": "換人模式已開啟：記球已暫停；調整完成後點「結束換人」提交，或點「取消換人模式」恢復",
+      "modeDisabled": "已取消換人模式，陣容恢復到進入前",
+      "snapshotWarning": "現場快照未能同步到伺服器：下次從其它裝置或清空快取後進入，可能只能按已儲存統計重建，換人在場狀態會遺失",
+      "pinchHit": "代打",
+      "substitute": "換人",
+      "disabledMode": "請先結束或取消換人模式",
+      "disabledFlow": "請先結束當前場上流程或點「取消流程」，再手動糾偏",
+      "disabledScoreConfirm": "請先完成或關閉本壘得分確認（安全/出局等），再使用糾偏",
+      "disabledSubOverlay": "請先關閉換人浮層",
+      "disabledInningConfirm": "請先完成半局攻守交換確認",
+      "disabledCurrentFlow": "請先完成或取消當前場上裁定流程",
+      "disabledRunConfirm": "請先完成本壘得分確認（安全/出局等）",
+      "disabledRunnerConfirm": "請先完成或取消當前跑壘確認",
+      "disabledNeedHalf": "請先確認半局結束（三出局後的攻守交換）",
+      "loadRosterFailed": "載入球員名單失敗",
+      "playerRestored": "已恢復 {name}：可從替補席再次上場",
+      "playerAddedBench": "已追加至替補席：{name}",
+      "rotationApplied": "守備輪轉已套用：{rotation}",
+      "currentPitcher": "當前投手"
+    },
+    "flow": {
+      "swingK": "揮空三振",
+      "lookingK": "目送三振",
+      "foulK": "界外三振",
+      "foulTipCaught": "擦棒被捕",
+      "droppedK": "漏接三振",
+      "complete": "完成記錄",
+      "multiErrorOff": "再記一名失誤",
+      "multiErrorOn": "切回單選",
+      "editOuts": "修改出局",
+      "skip": "跳過",
+      "confirmHalf": "確認半局結束 / 攻守交換"
+    },
+    "common": {
+      "cancel": "取消",
+      "close": "關閉",
+      "apply": "套用",
+      "back": "返回",
+      "listSeparator": "、",
+      "positionFormat": "{digit}號位（{label}）"
+    },
+    "team": {
+      "away": "客隊",
+      "home": "主隊",
+      "awayShort": "客",
+      "homeShort": "主"
+    },
+    "field": {
+      "safe": "安全",
+      "out": "出局",
+      "noAdvance": "不進壘",
+      "currentLineup": "當前進攻方打線",
+      "lineup": "打線",
+      "ball": "壞球",
+      "ballTitle": "壞球 Ball",
+      "strike": "好球",
+      "strikeTitle": "好球 Called Strike",
+      "swing": "揮空",
+      "swingTitle": "揮空（計好球）Swing & Miss",
+      "foul": "界外球",
+      "foulTitle": "界外球 Foul Ball",
+      "bip": "界內球",
+      "bipTitle": "界內擊球：與點擊投手(P) 開啟的選單相同（滾地球/飛球等細分與直接結果）",
+      "hrLanding": "HR落點"
+    },
+    "verify": {
+      "busy": "正在校驗比賽現場，若未完成先發陣容將自動跳轉…"
+    },
+    "inning": {
+      "accept": "接受並交換攻守",
+      "summary": "本半局 {runs} 分；本場累計 {hits} 安打，對方失誤 {oppE}",
+      "pitcherNp": "防守投手 {name} 本半局已累計 {np} 球（NP）",
+      "upNext": "即將登場打序（前三名）",
+      "endTop": "第 {inning} 局上半結束",
+      "endBottom": "第 {inning} 局結束",
+      "nextHalfHome": "{team} 將進攻下半",
+      "nextInningAway": "下一局為第 {inning} 局上半，{team} 先攻"
+    },
+    "bench": {
+      "addTitle": "追加板凳球員",
+      "add": "確認追加",
+      "search": "輸入姓名檢索"
+    },
+    "rdm": {
+      "title": "跑者進壘",
+      "selectResult": "請選擇本次進壘結果（先選安全或出局，再選具體原因）",
+      "outReasonTitle": "出局原因選擇",
+      "outReason": "出局原因",
+      "runnerOutHome": "請選擇跑壘員 #{number} {name} 在本壘出局的原因：",
+      "routeStay": "留在{base}",
+      "routeToHome": "{from} → 本壘",
+      "routeTo": "{from} → {to}",
+      "safeStay": "跑者留在{base}時，如何記為安全？",
+      "safeToHome": "跑者從{from}進本壘時，如何記為安全？",
+      "safeBack": "跑者從{from}回到{to}時，如何記為安全？",
+      "safeAdvance": "跑者如何安全從{from}進到{to}？",
+      "outStay": "跑者留在{base}時，如何記出局？",
+      "outToHome": "跑者從{from}進本壘時，如何記出局？",
+      "outBack": "跑者從{from}回到{to}時，如何記出局？",
+      "outAdvance": "跑者從{from}進{to}時，如何記出局？"
+    },
+    "fixRunners": {
+      "title": "壘況糾偏",
+      "hint": "當系統按規則「整體推進」安打/WP/PB/BK 等與真實局面不符時，可在此指定歸屬打席，並直接指定一、二、三壘與本壘得分跑者。若需扣回誤記的本壘得分，請在場地上方「設定」旁的交換圖示選單中選「得分糾偏」。",
+      "assignPa": "歸屬打席",
+      "currentPa": "當前打席（第 {order} 棒）",
+      "previousPa": "上一打席（第 {order} 棒）",
+      "noScoringRunner": "無得分跑者",
+      "noRunner": "無跑者",
+      "advance": "進壘",
+      "homeBase": "本壘"
+    },
+    "fixScore": {
+      "title": "得分糾偏（本壘回退）",
+      "hint": "從所選隊伍的指定局局分列扣回分數，並同步減少總局分。若當時誤加了打點或跑者得分，可在下方各選一名球員並指定扣減量（不超過本次扣回分數與該球員目前統計）。",
+      "team": "隊伍",
+      "awayPrefix": "客 {name}",
+      "homePrefix": "主 {name}",
+      "inning": "局",
+      "inningRuns": "該局已記 {runs} 分",
+      "deduct": "扣回",
+      "maxRuns": "最多 {max} 分（不超出該局與總局分）",
+      "rbi": "扣RBI",
+      "noRbi": "不扣打點",
+      "runs": "扣得分(R)",
+      "noRuns": "不扣跑者得分"
+    },
+    "watchFloat": {
+      "title": "即時觀賽",
+      "restore": "還原",
+      "maximize": "最大化",
+      "close": "關閉",
+      "resizeAria": "拖曳調整觀賽浮窗大小"
+    },
+    "heatmap": {
+      "totalHits": "總擊球數：",
+      "hitRate": "安打率：",
+      "noData": "暫無數據",
+      "empty": "還沒有擊球落點記錄",
+      "legendTitle": "圖例",
+      "legendHit": "安打（H1/H2/H3/HR）",
+      "legendOut": "出局/接殺",
+      "legendError": "失誤"
+    },
+    "benchPanel": {
+      "empty": "板凳席無可用球員（已換下球員不可再上場）",
+      "emptySoftball": "板凳席無可用球員",
+      "offense": "進攻方替補席",
+      "defense": "防守方替補席",
+      "sub": "替補",
+      "used": "已換下，不可再上場"
+    },
+    "pbp": {
+      "aria": "Play by Play 即時動態",
+      "resizeAria": "調整即時動態高度",
+      "resizeTitle": "拖曳調整高度，雙擊復原",
+      "hint": "即時動態 · 最新在上",
+      "count": "{count} 條",
+      "countTitle": "最多顯示最近 {limit} 條",
+      "listAria": "即時比賽日誌",
+      "empty": "暫無比賽日誌"
+    },
+    "scoreboard": {
+      "aria": "即時記分牌",
+      "batter": "打者",
+      "pitcher": "投手",
+      "order": "{n}棒",
+      "inning": "{inning}局",
+      "inningAria": "第{inning}局{half}",
+      "top": "上半局",
+      "bottom": "下半局",
+      "strikesAria": "好球 {n}",
+      "ballsAria": "壞球 {n}",
+      "outsAria": "出局 {n}",
+      "basesEmpty": "壘包：無人",
+      "basesOccupied": "壘包：{bases}有人",
+      "base1": "一壘",
+      "base2": "二壘",
+      "base3": "三壘"
+    },
+    "leave": {
+      "title": "離開確認",
+      "message": "目前有進行中的即時錄入。可直接離開（未寫入「儲存比賽」的進度可能遺失），或先儲存再離開。直接離開儲存現場快照（輕量版）最多等待 10 秒；未等待完成即離開的，下次恢復現場僅保留最近 20 步復原歷史。",
+      "stay": "留下",
+      "direct": "直接離開",
+      "directLoading": "正在儲存現場…",
+      "save": "儲存離開"
+    },
+    "forceHalf": {
+      "confirmTitle": "強制換局",
+      "confirmMessage": "將直接結束本半局並攻守交換：清空壘上與出局數，當前打者的打席不計入統計，下一半局再進攻時仍由此打者開始（特殊換局規則）。是否繼續？",
+      "confirmOk": "確定換局",
+      "done": "強制換局完成：進入下一半局（打者順序保持不變）",
+      "blockedScore": "請先完成或關閉本壘得分確認，再執行強制換局",
+      "blockedThreeOuts": "本半局已滿三出局，請使用「確認半局結束 / 攻守交換」"
+    },
+    "save": {
+      "success": "儲存成功",
+      "failed": "儲存失敗",
+      "reviewOnly": "賽後複核模式請使用複核抽屜儲存，錄入現場不會寫回",
+      "subModeBlocked": "換人模式進行中，請先點「結束換人」提交或取消換人模式"
+    },
+    "endGame": {
+      "confirmTitle": "結束比賽",
+      "confirmMessage": "確定結束比賽？",
+      "confirmOk": "確定",
+      "blockedSubMode": "換人模式進行中，請先結束或取消換人模式"
+    },
+    "restore": {
+      "confirmTitle": "從雲端恢復錄入現場",
+      "confirmMessage": "將用雲端資料覆蓋目前錄入頁面（本機未儲存的修改會遺失）。是否繼續？",
+      "confirmContinue": "繼續",
+      "snapshotRestored": "已從雲端錄入快照恢復現場",
+      "cannotContinue": "該比賽無法繼續錄入",
+      "noRecoverableData": "該場暫無可恢復的錄入資料，請先確認先發陣容",
+      "cacheRestored": "已從本機快取恢復錄入現場（含未儲存到伺服器的進度）",
+      "serverRestored": "已從伺服器恢復錄入現場",
+      "gameFinal": "比賽已結束，可進行賽後複核",
+      "resumed": "已恢復比賽，繼續錄入"
+    },
+    "lineup": {
+      "title": "確認先發陣容",
+      "applyTemplate": "套用陣容範本",
+      "save": "儲存",
+      "saveExit": "儲存並退出",
+      "startEntry": "開始錄入",
+      "mode": "比賽模式",
+      "baseball": "棒球",
+      "softball": "壘球",
+      "venue": "場地",
+      "venuePlaceholder": "選擇球場",
+      "awayTeam": "客隊",
+      "awayPlaceholder": "選擇客隊",
+      "homeTeam": "主隊",
+      "homePlaceholder": "選擇主隊",
+      "gameTime": "比賽時間",
+      "gameTimePlaceholder": "選擇比賽時間",
+      "awaySuffix": "（客）",
+      "homeSuffix": "（主）",
+      "cancelDhPitch": "取消兼投",
+      "setDhPitch": "設為兼投",
+      "pitcherToDh": "兼DH",
+      "pendingHint": "待放置：{player}｜點卡槽落位；再點卡片或空白處取消",
+      "templateDialogTitle": "套用陣容範本",
+      "templatePlaceholder": "選擇陣容範本",
+      "apply": "套用",
+      "rosterSoftballExtra": "陣容確認（壘球：10-11 人）",
+      "rosterSoftball": "陣容確認（壘球：10 人）",
+      "rosterBaseballExtra": "陣容確認（棒球：9-12 人，含 EP 額外打擊者）",
+      "rosterBaseball": "陣容確認（棒球：9 人）",
+      "ohtaniNoDh": "大谷規則：先把球員放到 DH 槽，再點「設為兼投」",
+      "ohtaniHasP": "大谷規則：打線已有投手位，不能設定 DH 兼投",
+      "ohtaniOk": "大谷規則：DH 可兼先發投手；換投後保留 DH，不可再移防。",
+      "ohtaniPitcherToDhHint": "大谷規則：點「兼DH」把目前投手設為 DH 兼投",
+      "ohtaniSetDhPitchHint": "大谷規則：點「設為兼投」把 DH 設為先發投手",
+      "badgeTwoWay": "DH兼投",
+      "badgeFieldOnly": "僅守備",
+      "historySuffix": "（歷史）",
+      "rosterFallback": "未能載入賽事秩序冊名單，已回退本隊全名冊（儲存時仍將校驗）",
+      "poolEmpty": "{label}尚未在本賽事報名或提交名單，暫無可選球員",
+      "gameMissing": "比賽不存在或已刪除",
+      "gameFinal": "該比賽已結束，無法編輯先發陣容",
+      "gameLive": "該比賽已開始錄入，請從列表點「繼續錄入」進入錄入頁",
+      "removedUnregistered": "已從陣容中移除未報名球員：{names}",
+      "loadLineupFailed": "載入已儲存陣容失敗",
+      "selectTeams": "請先選擇主客隊",
+      "sameTeams": "主隊與客隊不能相同",
+      "saveFailed": "儲存失敗",
+      "savedContinue": "已儲存，可在賽程/結果頁繼續錄入",
+      "createGameFailed": "建立比賽失敗",
+      "lineupInvalid": "陣容校驗未通過，請修正後重試",
+      "initialSyncFailed": "初始陣容未同步到伺服器，切換頁面後可能需要重排陣容",
+      "savedEntering": "陣容與對戰資訊已儲存，正在進入錄入…",
+      "saveLineupFailed": "儲存陣容失敗",
+      "templateNone": "該球隊暫無陣容範本，請先在「陣容範本」選單中建立",
+      "templateListFailed": "載入範本列表失敗",
+      "templateEmpty": "範本資料為空",
+      "templateConfirm": "將用該範本覆蓋當前球隊的先發陣容與替補名單，是否繼續？",
+      "templateConfirmTitle": "套用陣容範本",
+      "templateRemoved": "範本中有 {count} 名球員不在本賽事報名名單中，已留空或移除，請重新選擇",
+      "templateLoadFailed": "載入範本失敗",
+      "loadFailed": "載入失敗",
+      "position": {
+        "C": "捕手",
+        "P": "投手",
+        "1B": "一壘手",
+        "2B": "二壘手",
+        "3B": "三壘手",
+        "SS": "游擊",
+        "LF": "左外野手",
+        "CF": "中外野手",
+        "RF": "右外野手",
+        "DH": "指定打擊",
+        "XF": "自由人"
+      },
+      "battingOrder": {
+        "title": "打線順序",
+        "count": "{filled} / {max} 人",
+        "empty": "把球員拖到球場上，或直接拖進這裡（不占守備位）",
+        "handle": "按住拖動排序",
+        "order": "{n}棒"
+      },
+      "pool": {
+        "title": "可用球員",
+        "empty": "該隊名冊已全部安排",
+        "bench": "替補名單",
+        "batchAdd": "批次新增",
+        "benchEmpty": "拖到此處加入替補，或使用「批次新增」",
+        "batchTitle": "批次新增替補",
+        "batchPlaceholder": "從名冊多選替補",
+        "batchAll": "全選",
+        "batchSelected": "已選 {selected} / {total}",
+        "batchEmpty": "名冊中沒有可加入替補的球員",
+        "cancel": "取消",
+        "confirm": "確定"
+      },
+      "notice": {
+        "dhPitcherOut": "已按 DH 制把投手移出打線；如需 10 人打擊，請把投手拖回打線",
+        "ohtaniUseButtonDh": "大谷規則下請用「設為兼投」按鈕設定 DH 兼投",
+        "ohtaniUseButtonP": "大谷規則下請用「設為兼投」按鈕；直接拖到投手位會變成打擊投手並失去 DH",
+        "twoWayCancelled": "已取消兼投",
+        "twoWayCancelledNeedDh": "已取消兼投；DH 槽需補人",
+        "ohtaniOff": "該賽事未開啟大谷規則",
+        "putDhFirst": "請先在 DH 槽放入球員",
+        "lineupHasPitcher": "打線已有投手位，無法設定 DH 兼投",
+        "twoWayCancelledKeepDh": "已取消兼投；DH 保留",
+        "twoWayRegistered": "已按大谷規則登記：該球員同時為 DH 與先發投手",
+        "maxBattingExtra": "先發打線最多 {max} 人",
+        "epNotOpen": "該聯賽未開放 EP 制（額外打擊者），請聯絡管理員（上限 {max} 人）",
+        "dhOccupiedSoftball": "DH 已有人；壘球現口徑最多 {max} 人打擊（含 1 名 DH）",
+        "epNotOpenInline": "該聯賽未開放 EP 制（額外打擊者），請聯絡管理員"
+      }
+    },
+    "review": {
+      "drawerTitle": "比賽複核",
+      "statusFinal": "比賽已結束 · 賽後複核",
+      "statusLive": "比賽進行中",
+      "hintFinal": "ER 複核與守備補記均可操作",
+      "hintLive": "守備補記需比賽結束後操作",
+      "tabEr": "ER 複核",
+      "tabFielding": "守備補記",
+      "erHintFinal": "自責分判定與投手 R/ER 均可複核",
+      "erHintLive": "比賽結束後才能手動覆寫投手 R/ER",
+      "tabDecisions": "自責分判定",
+      "tabPitchers": "投手 R/ER",
+      "team": "球隊",
+      "emptyDecisions": "暫無判定記錄（需先完成重建）。",
+      "inning": "局",
+      "halfTop": "上",
+      "halfBottom": "下",
+      "runner": "跑者",
+      "responsiblePitcher": "責任投手",
+      "voided": "已作廢",
+      "manualReassign": "人工改派",
+      "original": "原：{name}",
+      "decision": "判定",
+      "reason": "原因",
+      "override": "覆寫",
+      "overriddenTitle": "已人工覆寫",
+      "actions": "操作",
+      "restore": "恢復",
+      "overrideBtn": "覆寫",
+      "reassignBtn": "改派",
+      "voidBtn": "作廢",
+      "pitcherOverriddenHint": "該投手已人工覆寫 R/ER，請先復原",
+      "notFinalReassign": "比賽結束後才能改派判定",
+      "notFinalVoid": "比賽結束後才能作廢判定",
+      "pitcherHintLive": "比賽結束後才能手動覆寫投手 R/ER。",
+      "pitcherHint": "R/ER 以引擎判定為基準；手動覆寫後以覆寫值為準，可隨時復原恢復引擎值。表格按球隊分組、登板順序排列，底色區分兩隊。",
+      "noPitchers": "本場暫無可覆寫的投手。",
+      "pitcher": "投手",
+      "unearned": "非自責",
+      "status": "狀態",
+      "manualOverride": "人工覆寫",
+      "engine": "引擎",
+      "undo": "復原",
+      "pitcherFootnote": "R = 責任失分（含非自責）；ER = 自責分；非自責自動按 R − ER 計算。覆寫只影響該投手的 R/ER 合計，不改動逐分判定。",
+      "reassignTitle": "改派判定",
+      "voidTitle": "作廢判定",
+      "currentPitcher": "當前投手",
+      "reassignTo": "改派到",
+      "selectPitcher": "選擇同隊投手",
+      "reasonLabel": "原因",
+      "reasonPlaceholder": "可空，例如：16 號誤錄，應為 21 號",
+      "voidHint": "作廢後該得分不再計入任何投手 R/ER；原始判定保留，可隨時恢復。",
+      "confirmReassign": "確認改派",
+      "confirmVoid": "確認作廢",
+      "overrideTitle": "覆寫判定",
+      "currentDecision": "當前判定",
+      "newDecision": "新判定",
+      "earned": "自責",
+      "unearnedOption": "非自責",
+      "unearnedReason": "非自責原因",
+      "selectPlaceholder": "請選擇",
+      "confirmOverride": "確認覆寫",
+      "pitcherOverrideTitle": "覆寫投手 R/ER",
+      "currentValue": "當前值",
+      "engineValue": "（引擎 R {r} / ER {er}）",
+      "newR": "新的 R",
+      "newER": "新的 ER",
+      "derivedUnearned": "非自責",
+      "note": "備註",
+      "optional": "可選",
+      "pitcherSaveHint": "儲存後該投手 R/ER 以人工值為準；若之後重建半局或修改判定，該投手覆寫會失效並需重新複核。",
+      "saveOverride": "儲存覆寫",
+      "reasonErrorReached": "失誤上壘",
+      "reasonErrorExtended": "失誤延長半局",
+      "reasonPassedBall": "捕逸",
+      "reasonInterference": "妨礙行為",
+      "reasonTieBreak": "突破僵局跑者",
+      "reasonManual": "人工覆寫",
+      "numberPrefix": "{n}號 ",
+      "loadPitchersFailed": "載入投手 R/ER 失敗",
+      "loadDecisionsFailed": "載入判定失敗",
+      "selectUnearnedReason": "請選擇非自責原因",
+      "overrideSuccess": "覆寫成功",
+      "overrideFailed": "覆寫失敗: {msg}",
+      "rErInteger": "R/ER 需為 0-99 的整數",
+      "erNotGreater": "ER 不能大於 R",
+      "overrideSaved": "覆寫已儲存",
+      "saveFailed": "儲存失敗: {msg}",
+      "undoConfirm": "將復原 {name} 的人工覆寫，恢復引擎值 R {r} / ER {er}。",
+      "undoTitle": "復原人工覆寫",
+      "undoConfirmBtn": "確認復原",
+      "undoSuccess": "已復原，恢復引擎值",
+      "undoFailed": "復原失敗: {msg}",
+      "selectReassignPitcher": "請選擇改派目標投手",
+      "reassignSaved": "改派已儲存",
+      "voidSaved": "判定已作廢",
+      "saveError": "儲存失敗",
+      "restoreConfirm": "恢復 {name} 的判定為引擎責任投手？",
+      "restoreTitle": "恢復判定",
+      "restoreConfirmBtn": "確認恢復",
+      "restoreSuccess": "已恢復引擎責任投手",
+      "restoreFailed": "復原失敗",
+      "decisionEarned": "自責",
+      "decisionUnearned": "非自責",
+      "decisionPending": "待定",
+      "fieldingBlockedTitle": "比賽結束後才能補記守備助殺",
+      "fieldingBlockedDesc": "進行中的比賽請先結束並儲存賽果；賽後複核只處理失誤導致未完成的出局。",
+      "fieldingFinalTitle": "賽後複核",
+      "fieldingFinalDesc": "補記立即生效；源 Play 已不在當前快照時會自動失效並扣回。",
+      "pendingErrorPlays": "待複核的失誤 Play",
+      "noErrorPlays": "本場沒有帶失誤的 Play",
+      "outsBefore": "{n}出局",
+      "credited": "已處理：",
+      "creditsTitle": "補記記錄",
+      "noCredits": "暫無補記記錄",
+      "fielder": "守備員",
+      "position": "位置",
+      "credit": "補記",
+      "creditAssist": "補記助殺",
+      "selectFielder": "選擇補記助殺的守備員",
+      "positionLabel": "守位",
+      "selectPosition": "選擇守位",
+      "notePlaceholder": "可空，例如：外野傳本壘，捕手接球失誤",
+      "effectLine": "位置 {pos} A +1、TC +1；全隊 A +1。",
+      "effectHint": "確認後立即生效；不會改變 R/ER。",
+      "confirmCredit": "確認補記",
+      "loadFieldingFailed": "載入守備補記失敗",
+      "loadCandidatesFailed": "載入補記候選失敗",
+      "loadFailed": "載入失敗",
+      "selectCreditFielder": "請選擇補記助殺的守備員",
+      "selectPositionRequired": "請選擇守位",
+      "creditSaved": "補記已生效：{pos} A +1",
+      "creditFailed": "補記失敗",
+      "statusApproved": "已生效",
+      "statusRevoked": "已復原",
+      "statusInvalidated": "已失效",
+      "fieldingUndoConfirm": "復原 {name} 的這次補記？復原後將扣回 A/TC。",
+      "fieldingUndoTitle": "復原補記",
+      "fieldingUndoSuccess": "已復原補記，統計同步扣回",
+      "fieldingUndoFailed": "復原失敗",
+      "effectPlayerSuffix": "：A +1、TC +1；",
+      "basesEmpty": "壘上無人",
+      "basesFull": "滿壘",
+      "baseOccupied": "{base}有人",
+      "basesOccupied": "{bases}有人"
+    },
+    "revision": {
+      "ledgerFinalGate": "比賽結束後才能查看修訂台帳",
+      "ledgerTitle": "人工修訂台帳 · 欄位級留痕",
+      "count": "共 {count} 條",
+      "refresh": "重新整理",
+      "ledgerEmpty": "暫無欄位級修訂記錄",
+      "time": "時間",
+      "player": "球員",
+      "type": "類型",
+      "identity": "身份",
+      "field": "欄位",
+      "change": "修改",
+      "operator": "操作人",
+      "note": "備註",
+      "pitcher": "投手",
+      "batter": "打者",
+      "loadLedgerFailed": "載入修訂台帳失敗",
+      "loadFailed": "載入失敗",
+      "scopePlayerStat": "結果欄位",
+      "scopeErDecision": "ER 判定",
+      "scopePitcherOverride": "R/ER 覆寫",
+      "scopeFielding": "守備補記",
+      "scopePitcherTransfer": "投手轉記",
+      "scopeIdentityTransfer": "身份轉記",
+      "auditFinalGate": "比賽結束後才能查看修訂記錄",
+      "auditTitle": "即時記錄為基座 · 人工修訂為最終值",
+      "allTypes": "全部類型",
+      "auditEmpty": "暫無修訂記錄",
+      "summary": "摘要",
+      "status": "狀態",
+      "reasonNote": "原因/備註",
+      "auditTypeEr": "ER 判定",
+      "auditTypePitcher": "投手 R/ER",
+      "auditTypeFielding": "守備補記",
+      "auditTypePitcherTransfer": "投手轉記",
+      "auditTypeIdentity": "身份轉記",
+      "statusActive": "生效",
+      "statusSuperseded": "已替代",
+      "statusRevoked": "已撤銷",
+      "statusInvalidated": "已失效",
+      "statusApproved": "已生效",
+      "statusTransferred": "已轉記",
+      "statusDeleted": "已刪源資料",
+      "loadAuditFailed": "載入修訂記錄失敗",
+      "identityFinalGate": "比賽結束後才能進行身份轉記",
+      "identityTitle": "整名球員身份轉記",
+      "identityDesc": "把源球員的統計、逐位置守備與 ER 判定轉到同隊目標球員；轉記成功後再單獨確認是否刪除源資料。",
+      "sourcePlayer": "源球員",
+      "sourcePlaceholder": "選擇錄錯的球員",
+      "targetPlayer": "目標球員",
+      "targetPlaceholder": "選擇同隊正確球員",
+      "scopes": "轉記範圍",
+      "scopeStats": "統計",
+      "scopeFieldingPositions": "守備位置",
+      "scopeEr": "ER 判定",
+      "scopeLive": "現場記錄",
+      "scopeRequired": "至少選擇一個轉記範圍",
+      "liveConflict": "源/目標球員同時在同一陣容或替補名單，現場記錄範圍不可用；請先調整陣容",
+      "liveHint": "現場記錄將改寫 Play 事件與陣容中的球員歸屬，轉記前快照寫入審計",
+      "notePlaceholder": "可空，例如：16 號誤錄，應為 21 號",
+      "previewBtn": "預覽轉記",
+      "cannotTransfer": "無法轉記",
+      "source": "源",
+      "target": "目標",
+      "erCount": "{count} 條",
+      "fieldingPositions": "守備位置",
+      "sourceOverride": "源 R/ER 覆寫",
+      "targetOverride": "目標 R/ER 覆寫",
+      "yes": "有",
+      "no": "無",
+      "liveReference": "現場記錄引用",
+      "liveRefCount": "{count} 處",
+      "noLive": "無現場記錄",
+      "fieldingCredits": "守備補記",
+      "countUnit": "{count} 條",
+      "rowType": "列類型",
+      "pitcherRow": "投手列",
+      "batterRow": "打者列",
+      "sourceRow": "源列",
+      "targetRow": "目標列",
+      "newOrMove": "新建/移動源列",
+      "confirmTransfer": "確認轉記",
+      "pendingTitle": "轉記已完成，源資料尚未刪除",
+      "deleteSource": "刪除源資料",
+      "loadPlayersFailed": "載入球員失敗",
+      "previewFailed": "預覽失敗",
+      "transferredTo": "已轉記到 {target}。是否刪除源資料 {source}？",
+      "transferDone": "轉記完成",
+      "keepSource": "暫不刪除",
+      "transferredKeep": "已轉記，源資料保留",
+      "deleteAfterTransferFailed": "轉記已完成，但刪除源資料失敗",
+      "transferredDeleted": "已轉記並刪除源資料",
+      "transferFailed": "身份轉記失敗",
+      "sourceDeleted": "已刪除源資料",
+      "deleteSourceFailed": "刪除源資料失敗",
+      "blockerSeparator": "；",
+      "tabErReview": "ER 複核",
+      "tabFieldingAdjust": "守備補記 A",
+      "tabAudit": "修訂記錄",
+      "tabStatBase": "基座對比",
+      "tabLedger": "修訂台帳",
+      "tabIdentity": "身份轉記"
+    },
+    "watch": {
+      "dataSourceLocal": "資料源：本機即時",
+      "dataSourceServer": "資料源：伺服器快照",
+      "syncPush": "同步：即時推送",
+      "syncCache": "同步：本機快取",
+      "syncServer": "同步：伺服器拉取",
+      "switchTo": "切換至{target}",
+      "serverLive": "伺服器",
+      "localLive": "本機即時",
+      "synced": "已同步 {label}",
+      "waitLocal": "等待錄入頁本機即時推送。請保持錄入頁開啟並繼續操作。",
+      "noServerSnapshot": "暫無伺服器快照。請先在「即時比賽錄入」中開始比賽並儲存/同步後再開啟本頁。",
+      "liveInning": "即時：第 {inning} 局 {half} · B {balls} · S {strikes} · O {outs}",
+      "halfTopShort": "上半",
+      "halfBottomShort": "下半",
+      "halfTop": "上半局",
+      "halfBottom": "下半局",
+      "tabLogs": "日誌",
+      "tabPbp": "即時動態",
+      "logOnly": "僅日誌",
+      "logOnlyTitle": "此類條目仍保存在日誌中，但不出現在「即時動態」",
+      "noEvents": "暫無事件",
+      "inningTitle": "第 {inning} 局",
+      "eventCount": "{count} 事件",
+      "pitcherLine": "投手：{name}",
+      "unlabeledEvents": "未帶局標記的事件（舊資料或異常列）",
+      "countUnit": "{count} 條",
+      "scoreRecord": "得分記錄",
+      "noScores": "暫無得分",
+      "basesTitle": "三壘、二壘、一壘：空心為無人，實心為有人",
+      "basesAria": "壘包佔領示意：左為三壘、上為二壘、右為一壘",
+      "scoreTip": "當前全場累計比分（歷史局次回看時亦為即時總分，非該局結束時快照）",
+      "invalidGameId": "無效的比賽 ID",
+      "fetchFailed": "拉取快照失敗，請稍後重試",
+      "gameNotFound": "未找到比賽",
+      "loadFailed": "載入失敗",
+      "close": "關閉",
+      "backSchedule": "返回賽程",
+      "backEntry": "返回錄入",
+      "settings": "資料項調整",
+      "saveSuccess": "儲存成功",
+      "orderNo": "第{n}棒",
+      "playerFallback": "隊員",
+      "currentEvent": "當前賽事"
+    }
   }
 }

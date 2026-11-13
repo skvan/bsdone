@@ -9,3 +9,8 @@
 /* 进攻表：替补（无棒次）缩进在对应棒次下方，不再显示守位（#446 关联） */
 .box-table-batters[data-v-764190f8] tr.row-sub .td2{padding-left:14px}
 .box-table-batters[data-v-764190f8] tr.row-sub .td2::before{content:"└";margin-right:3px;color:var(--el-text-color-placeholder)}
+.gd-col-header[data-v-764190f8]{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2;max-width:100%;cursor:help}
+.gd-col-header__cn[data-v-764190f8]{font-size:12px;white-space:normal;word-break:break-word;text-align:center}
+.gd-col-header__en[data-v-764190f8]{font-size:11px;color:var(--el-text-color-secondary);flex-shrink:0}
+.box-table[data-v-764190f8] .el-table__header th.el-table__cell .cell{padding-left:4px;padding-right:4px}
+@media (width<=768px){.gd-col-header__cn[data-v-764190f8]{font-size:11px}.gd-col-header__en[data-v-764190f8]{font-size:10px}}

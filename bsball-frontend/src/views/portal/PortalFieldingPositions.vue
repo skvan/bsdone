@@ -18,17 +18,39 @@
       <el-table-column :label="t('stats.positionBoardPosition')" width="90" align="center">
         <template #default="{ row }">{{ formatPositionDisplay(row) || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="gp" :label="t('stats.positionBoardGp')" width="72" align="center" />
-      <el-table-column prop="gs" :label="t('stats.positionBoardGs')" width="72" align="center" />
-      <el-table-column prop="inn" :label="t('stats.positionBoardInn')" width="90" align="center" />
-      <el-table-column prop="po" :label="t('stats.colEn.po')" width="64" align="center" />
-      <el-table-column prop="a" :label="t('stats.colEn.a')" width="64" align="center" />
-      <el-table-column prop="e" :label="t('stats.colEn.e')" width="64" align="center" />
-      <el-table-column prop="dp" :label="t('stats.colEn.dp')" width="64" align="center" />
-      <el-table-column prop="pb" :label="t('stats.colEn.pb')" width="64" align="center" />
-      <el-table-column prop="catcherCs" :label="t('stats.colEn.catcherCs')" width="64" align="center" />
-      <el-table-column prop="catcherSb" :label="t('stats.colEn.catcherSb')" width="64" align="center" />
-      <el-table-column prop="tcPct" :label="t('stats.colEn.tcPct')" width="84" align="center" />
+      <el-table-column prop="gp" width="72" align="center">
+        <template #header><StatsColHeader col-key="gp" header-key="gp" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="gs" width="80" align="center">
+        <template #header><StatsColHeader col-key="gs" header-key="gsFielding" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="inn" width="80" align="center">
+        <template #header><StatsColHeader col-key="inn" header-key="inn" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="po" width="80" align="center">
+        <template #header><StatsColHeader col-key="po" header-key="po" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="a" width="80" align="center">
+        <template #header><StatsColHeader col-key="a" header-key="a" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="e" width="80" align="center">
+        <template #header><StatsColHeader col-key="e" header-key="e" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="dp" width="80" align="center">
+        <template #header><StatsColHeader col-key="dp" header-key="dp" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="pb" width="80" align="center">
+        <template #header><StatsColHeader col-key="pb" header-key="pb" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="catcherCs" width="80" align="center">
+        <template #header><StatsColHeader col-key="catcherCs" header-key="catcherCs" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="catcherSb" width="80" align="center">
+        <template #header><StatsColHeader col-key="catcherSb" header-key="catcherSb" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
+      <el-table-column prop="tcPct" width="90" align="center">
+        <template #header><StatsColHeader col-key="tcPct" header-key="tcPct" term-domain="fielding" term-subject="fielder" /></template>
+      </el-table-column>
     </el-table>
     <div class="portal-fp__pager">
       <el-pagination
@@ -50,6 +72,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { statsApi } from '../../api/business';
 import { formatPositionDisplay } from '../../utils/positionFormat';
+import { StatsColHeader } from '../../components/portal/statsEventCascade.js';
 
 const props = defineProps({
   years: { type: Array, default: () => [] },
@@ -142,5 +165,8 @@ onMounted(load);
 .portal-fp__pager {
   display: flex;
   justify-content: flex-end;
+}
+.portal-fp :deep(.stats-col-header) {
+  margin-inline: auto;
 }
 </style>

@@ -5,27 +5,27 @@
       type="info"
       :closable="false"
       show-icon
-      title="比赛结束后才能查看修订记录"
+      :title="lt('liveGame.revision.auditFinalGate')"
     />
     <template v-else>
       <div class="revision-audit__head">
-        <span>实时记录为基座 · 人工修订为最终值</span>
+        <span>{{ lt('liveGame.revision.auditTitle') }}</span>
         <span class="revision-audit__actions">
           <el-select v-model="filterType" size="small" style="width: 120px">
-            <el-option label="全部类型" value="" />
+            <el-option :label="lt('liveGame.revision.allTypes')" value="" />
             <el-option
               v-for="(option, key) in TYPE_OPTIONS"
               :key="key"
-              :label="option.label"
+              :label="lt(option.labelKey)"
               :value="key"
             />
           </el-select>
-          共 {{ filteredRows.length }} 条
-          <el-button link type="primary" size="small" @click="load">刷新</el-button>
+          {{ lt('liveGame.revision.count', { count: filteredRows.length }) }}
+          <el-button link type="primary" size="small" @click="load">{{ lt('liveGame.revision.refresh') }}</el-button>
         </span>
       </div>
       <el-alert v-if="loadError" type="error" :closable="false" show-icon :title="loadError" />
-      <el-empty v-if="!loading && filteredRows.length === 0" description="暂无修订记录" />
+      <el-empty v-if="!loading && filteredRows.length === 0" :description="lt('liveGame.revision.auditEmpty')" />
       <el-table
         v-else
         :data="filteredRows"
@@ -34,28 +34,28 @@
         stripe
         max-height="520"
       >
-        <el-table-column label="时间" width="150">
+        <el-table-column :label="lt('liveGame.revision.time')" width="150">
           <template #default="{ row }">{{ formatTime(row.operatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="类型" width="112" align="center">
+        <el-table-column :label="lt('liveGame.revision.type')" width="112" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain" :type="typeTagType(row.auditType)">
               {{ typeLabel(row.auditType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="摘要" prop="summary" min-width="230" show-overflow-tooltip />
-        <el-table-column label="状态" width="96" align="center">
+        <el-table-column :label="lt('liveGame.revision.summary')" prop="summary" min-width="230" show-overflow-tooltip />
+        <el-table-column :label="lt('liveGame.revision.status')" width="96" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain" :type="statusTagType(row.status)">
               {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作人" width="86" align="center">
+        <el-table-column :label="lt('liveGame.revision.operator')" width="86" align="center">
           <template #default="{ row }">{{ row.operatorId ? `#${row.operatorId}` : '—' }}</template>
         </el-table-column>
-        <el-table-column label="原因/备注" min-width="150" show-overflow-tooltip>
+        <el-table-column :label="lt('liveGame.revision.reasonNote')" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ row.reason || '—' }}</template>
         </el-table-column>
       </el-table>
@@ -67,7 +67,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { gameApi } from '../../api/business';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 
+const { text: lt } = useLiveGameText();
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
   gameStatus: { type: String, default: '' },
@@ -84,21 +86,21 @@ const filteredRows = computed(() => (
 ));
 
 const TYPE_OPTIONS = {
-  ER_DECISION: { label: 'ER 判定', type: 'warning' },
-  PITCHER_RUN_OVERRIDE: { label: '投手 R/ER', type: 'primary' },
-  FIELDING_ADJUSTMENT: { label: '守备补记', type: 'success' },
-  PITCHER_TRANSFER: { label: '投手转记', type: 'info' },
-  IDENTITY_TRANSFER: { label: '身份转记', type: 'info' }
+  ER_DECISION: { labelKey: 'liveGame.revision.auditTypeEr', type: 'warning' },
+  PITCHER_RUN_OVERRIDE: { labelKey: 'liveGame.revision.auditTypePitcher', type: 'primary' },
+  FIELDING_ADJUSTMENT: { labelKey: 'liveGame.revision.auditTypeFielding', type: 'success' },
+  PITCHER_TRANSFER: { labelKey: 'liveGame.revision.auditTypePitcherTransfer', type: 'info' },
+  IDENTITY_TRANSFER: { labelKey: 'liveGame.revision.auditTypeIdentity', type: 'info' }
 };
 
 const STATUS_OPTIONS = {
-  ACTIVE: { label: '生效', type: 'success' },
-  SUPERSEDED: { label: '已替代', type: 'warning' },
-  REVOKED: { label: '已撤销', type: 'info' },
-  INVALIDATED: { label: '已失效', type: 'danger' },
-  APPROVED: { label: '已生效', type: 'success' },
-  TRANSFERRED: { label: '已转记', type: 'success' },
-  DELETED: { label: '已删源数据', type: 'info' }
+  ACTIVE: { labelKey: 'liveGame.revision.statusActive', type: 'success' },
+  SUPERSEDED: { labelKey: 'liveGame.revision.statusSuperseded', type: 'warning' },
+  REVOKED: { labelKey: 'liveGame.revision.statusRevoked', type: 'info' },
+  INVALIDATED: { labelKey: 'liveGame.revision.statusInvalidated', type: 'danger' },
+  APPROVED: { labelKey: 'liveGame.revision.statusApproved', type: 'success' },
+  TRANSFERRED: { labelKey: 'liveGame.revision.statusTransferred', type: 'success' },
+  DELETED: { labelKey: 'liveGame.revision.statusDeleted', type: 'info' }
 };
 
 async function load() {
@@ -113,14 +115,14 @@ async function load() {
     if (result?.error) {
       rows.value = [];
       loadError.value = result.error;
-      ElMessage.error('加载修订记录失败');
+      ElMessage.error(lt('liveGame.revision.loadAuditFailed'));
       return;
     }
     rows.value = Array.isArray(result?.data) ? result.data : [];
   } catch (e) {
     rows.value = [];
-    loadError.value = e?.message ?? '加载失败';
-    ElMessage.error('加载修订记录失败');
+    loadError.value = e?.message ?? lt('liveGame.revision.loadFailed');
+    ElMessage.error(lt('liveGame.revision.loadAuditFailed'));
   } finally {
     loading.value = false;
   }
@@ -130,13 +132,15 @@ onMounted(load);
 watch(() => [props.gameId, props.gameStatus, props.refreshKey], load);
 
 function typeLabel(type) {
-  return TYPE_OPTIONS[type]?.label ?? type ?? '—';
+  const labelKey = TYPE_OPTIONS[type]?.labelKey;
+  return labelKey ? lt(labelKey) : (type ?? '—');
 }
 function typeTagType(type) {
   return TYPE_OPTIONS[type]?.type ?? 'info';
 }
 function statusLabel(status) {
-  return STATUS_OPTIONS[status]?.label ?? status ?? '—';
+  const labelKey = STATUS_OPTIONS[status]?.labelKey;
+  return labelKey ? lt(labelKey) : (status ?? '—');
 }
 function statusTagType(status) {
   return STATUS_OPTIONS[status]?.type ?? 'info';

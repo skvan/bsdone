@@ -34,6 +34,10 @@ test('PBP 浮层文案与事件映射统一使用 HBP', () => {
     'utf8'
   );
   assert.equal(liveGame.includes('B/K/HP'), false, 'PBP 浮层仍残留 B/K/HP');
-  assert.ok(liveGame.includes('B/K/HBP'), 'PBP 浮层未改为 B/K/HBP');
+  assert.ok(liveGame.includes('lgText("liveGame.top.pitchIconsDesc")'), 'PBP 浮层文案未走 i18n');
+  for (const locale of ['zh-CN', 'zh-TW', 'en']) {
+    const data = JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, locale + '.json'), 'utf8'));
+    assert.ok(data.liveGame.top.pitchIconsDesc.includes('B/K/HBP'), `${locale} 的 PBP 浮层文案未使用 B/K/HBP`);
+  }
   assert.match(liveGame, /"pitch:HBP":"hbp"/, 'PBP 事件映射未改为 hbp');
 });

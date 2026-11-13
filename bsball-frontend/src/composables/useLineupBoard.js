@@ -21,6 +21,10 @@ export function useLineupBoard(mode, teamId, opts = {}) {
   const fieldingPitcherId = ref(null);
   const lastDhAddedFromPoolId = ref(null);
   const notice = ref('');
+  const translate = typeof opts.text === 'function' ? opts.text : null;
+  function setNotice(key, fallback, params) {
+    notice.value = translate ? translate(key, params) : fallback;
+  }
 
   const baseCount = computed(() => (mode.value === 'SOFTBALL' ? 10 : 9));
   // 开关缺省/未传 = 关闭（fail-closed）；opts.extraBatter 为 Ref/computed<boolean>
@@ -193,7 +197,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       const n2 = [...rows.value];
       n2[idx] = makePlaceholderRow(teamId.value, idx);
       rows.value = n2;
-      notice.value = '已按 DH 制把投手移出打线；如需 10 人打击，请把投手拖回打线';
+      setNotice('liveGame.lineup.notice.dhPitcherOut', '已按 DH 制把投手移出打线；如需 10 人打击，请把投手拖回打线');
     }
   }
 
@@ -208,7 +212,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     if (target === 'DH' && ohtaniRuleOn.value && isFieldingPitcherId(player.id)) {
       const dh = slotRow(rows.value, 'DH');
       if (!dh || String(dh.id) !== String(player.id)) {
-        notice.value = '大谷规则下请用「设为兼投」按钮设置 DH 兼投';
+        setNotice('liveGame.lineup.notice.ohtaniUseButtonDh', '大谷规则下请用「设为兼投」按钮设置 DH 兼投');
         return;
       }
     }
@@ -227,7 +231,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     }
     // 大谷规则：DH 拖到 P 不执行兼投，避免误变成打击投手并失去 DH
     if (target === 'P' && inRows && ohtaniRuleOn.value && posOf(rows.value[i]) === 'DH' && !hasP.value) {
-      notice.value = '大谷规则下请用「设为兼投」按钮；直接拖到投手位会变成打击投手并失去 DH';
+      setNotice('liveGame.lineup.notice.ohtaniUseButtonP', '大谷规则下请用「设为兼投」按钮；直接拖到投手位会变成打击投手并失去 DH');
       return;
     }
     // 决策 15：拖人上投手丘且已有 DH → 仅守备（不进打线）
@@ -244,7 +248,9 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       // 大谷规则：兼投球员离开 DH → 自动取消兼投（先发投手身份清除）
       if (ohtaniRuleOn.value && posOf(cur) === 'DH' && isFieldingPitcherId(player.id)) {
         fieldingPitcherId.value = null;
-        notice.value = occ ? '已取消兼投' : '已取消兼投；DH 槽需补人';
+        occ
+          ? setNotice('liveGame.lineup.notice.twoWayCancelled', '已取消兼投')
+          : setNotice('liveGame.lineup.notice.twoWayCancelledNeedDh', '已取消兼投；DH 槽需补人');
       }
       const next = [...rows.value];
       if (!occ) {
@@ -277,9 +283,9 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     if (player == null || findRowIndex(rows.value, player.id) >= 0) return;
     const filled = rows.value.filter((r) => !isPlaceholder(r));
     if (filled.length >= maxCount.value) {
-      notice.value = extraBatterOn.value
-        ? `先发打线最多 ${maxCount.value} 人`
-        : `该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${maxCount.value} 人）`;
+      extraBatterOn.value
+        ? setNotice('liveGame.lineup.notice.maxBattingExtra', `先发打线最多 ${maxCount.value} 人`, { max: maxCount.value })
+        : setNotice('liveGame.lineup.notice.epNotOpen', `该联赛未开放 EP 制（额外打击者），请联系管理员（上限 ${maxCount.value} 人）`, { max: maxCount.value });
       return;
     }
     const isFieldingPitcher =
@@ -298,7 +304,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     const ohtaniBattingOnly = ohtaniNoDh && !ohtaniExtraHitter;
     // 垒球无 EP 制：已有 DH 时非投手不再新增（避免落出非法守备位 EP）
     if (!isFieldingPitcher && hasDh.value && mode.value === 'SOFTBALL') {
-      notice.value = `DH 已有人；垒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`;
+      setNotice('liveGame.lineup.notice.dhOccupiedSoftball', `DH 已有人；垒球现口径最多 ${maxCount.value} 人打击（含 1 名 DH）`, { max: maxCount.value });
       return;
     }
     let position = 'DH';
@@ -430,25 +436,25 @@ export function useLineupBoard(mode, teamId, opts = {}) {
   /** 大谷规则：点击「设为兼投」/「取消兼投」 */
   function toggleDhPitcher() {
     if (!ohtaniRuleOn.value) {
-      notice.value = '该赛事未开启大谷规则';
+      setNotice('liveGame.lineup.notice.ohtaniOff', '该赛事未开启大谷规则');
       return false;
     }
     const dh = slotRow(rows.value, 'DH');
     if (!dh) {
-      notice.value = '请先在 DH 槽放入球员';
+      setNotice('liveGame.lineup.notice.putDhFirst', '请先在 DH 槽放入球员');
       return false;
     }
     if (hasP.value) {
-      notice.value = '打线已有投手位，无法设置 DH 兼投';
+      setNotice('liveGame.lineup.notice.lineupHasPitcher', '打线已有投手位，无法设置 DH 兼投');
       return false;
     }
     if (isFieldingPitcherId(dh.id)) {
       fieldingPitcherId.value = null;
-      notice.value = '已取消兼投；DH 保留';
+      setNotice('liveGame.lineup.notice.twoWayCancelledKeepDh', '已取消兼投；DH 保留');
       return true;
     }
     fieldingPitcherId.value = dh.id;
-    notice.value = '已按大谷规则登记：该球员同时为 DH 与先发投手';
+    setNotice('liveGame.lineup.notice.twoWayRegistered', '已按大谷规则登记：该球员同时为 DH 与先发投手');
     return true;
   }
 
