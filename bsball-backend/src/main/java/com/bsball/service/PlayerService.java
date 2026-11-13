@@ -217,8 +217,8 @@ public class PlayerService {
                 preds.add(selfPlayerIds.isEmpty() ? teamScoped : cb.or(teamScoped, root.get("id").in(selfPlayerIds)));
             }
             if (teamId != null && teamId != 0L) {
-                Predicate teamSpecific = cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId));
-                preds.add(selfPlayerIds.isEmpty() ? teamSpecific : cb.or(teamSpecific, root.get("id").in(selfPlayerIds)));
+                // 显式球队筛选保持严格：认领白名单只在无球队筛选时并入，避免筛选 A 队出现 B 队球员
+                preds.add(cb.exists(this.currentTeamSubquery(cb, q, root, null, teamId)));
             } else if (freeAgentOnly) {
                 preds.add(cb.not(cb.exists(this.currentTeamSubquery(cb, q, root, null, null))));
             }

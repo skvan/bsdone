@@ -7,8 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,12 +19,19 @@ import com.bsball.core.CurrentUserHolder;
 import com.bsball.exception.BusinessException;
 import com.bsball.model.dto.EffectiveScope;
 import com.bsball.model.entity.Player;
+import com.bsball.model.entity.PlayerTeam;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.PlayerClaimRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -29,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -36,6 +47,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings({"rawtypes", "unchecked"})
 @DisplayName("球员管理：认领档案始终可见（不受球队范围限制）")
 class PlayerServiceListSelfScopeTest {
 
@@ -154,6 +166,45 @@ class PlayerServiceListSelfScopeTest {
 
         assertEquals(0, result.getTotal());
         verify(playerRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("显式球队筛选保持严格：其他球队的认领球员不并入")
+    void teamFilterDoesNotIncludeSelfClaimedPlayerFromOtherTeam() {
+        when(tenantQueryPolicyService.isGlobalQueryMode()).thenReturn(false);
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT);
+        EffectiveScope scope = mock(EffectiveScope.class);
+        when(accountScopeService.resolveCurrent()).thenReturn(scope);
+        when(scopeQuerySupport.visibleTeamIds(scope, TENANT)).thenReturn(List.of());
+        Player claimed = player(PLAYER_ID, USER);
+        when(playerRepository.findByUserIdAndTenantIdAndDeletedAtIsNull(USER, TENANT))
+                .thenReturn(List.of(claimed));
+        when(playerRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.list(1, 20, null, null, 9L, null, null, null, null, null, null, null, null, null);
+
+        ArgumentCaptor<Specification<Player>> captor = ArgumentCaptor.forClass(Specification.class);
+        verify(playerRepository).findAll(captor.capture(), any(Pageable.class));
+
+        CriteriaBuilder cb = mock(CriteriaBuilder.class);
+        CriteriaQuery<?> query = mock(CriteriaQuery.class);
+        Root<Player> root = mock(Root.class);
+        Subquery<Long> subquery = mock(Subquery.class);
+        Root<PlayerTeam> entry = mock(Root.class);
+        Path<Object> playerIdPath = mock(Path.class);
+        Path<Object> teamIdPath = mock(Path.class);
+        when(query.subquery(Long.class)).thenReturn(subquery);
+        when(subquery.from(PlayerTeam.class)).thenReturn(entry);
+        lenient().when(root.get("id")).thenReturn(playerIdPath);
+        lenient().when(entry.get("teamId")).thenReturn(teamIdPath);
+
+        captor.getValue().toPredicate(root, query, cb);
+
+        // 只允许「可见球队 OR 认领球员」这一处 or；球队筛选条件本身必须严格
+        verify(cb, times(1)).or(nullable(Expression.class), nullable(Expression.class));
+        // 可见范围子查询 + 显式球队子查询都要存在，防止球队条件被整体删掉
+        verify(cb, times(2)).exists(any(Subquery.class));
     }
 
     private Player player(Long id, Long userId) {
