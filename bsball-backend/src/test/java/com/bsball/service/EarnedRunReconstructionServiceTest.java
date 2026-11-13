@@ -829,6 +829,7 @@ class EarnedRunReconstructionServiceTest {
         source.setTeamId(1L);
         source.setNp(27);
         source.setPitchPa(11);
+        source.setPickoffAttempts(2);
         source.setFo(3);
         source.setIp(0d);
         GamePlayerStat target = pitcherStat(1L, 701L, 3, 3);
@@ -858,10 +859,12 @@ class EarnedRunReconstructionServiceTest {
 
         assertEquals(Integer.valueOf(27), target.getNp());
         assertEquals(Integer.valueOf(11), target.getPitchPa());
+        assertEquals(Integer.valueOf(2), target.getPickoffAttempts());
         assertEquals(Integer.valueOf(3), target.getFo());
         assertEquals(Double.valueOf(1.2d), target.getIp());
         assertEquals(Integer.valueOf(0), source.getNp());
         assertEquals(Integer.valueOf(0), source.getPitchPa());
+        assertEquals(Integer.valueOf(0), source.getPickoffAttempts());
         assertEquals(Integer.valueOf(0), source.getFo());
         assertEquals(Long.valueOf(55L), result.transferId());
         assertEquals("TRANSFERRED", result.status());

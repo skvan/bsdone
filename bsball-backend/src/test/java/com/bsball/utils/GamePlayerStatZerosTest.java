@@ -60,6 +60,7 @@ class GamePlayerStatZerosTest {
         assertNotZero(stat -> stat.setPitchR(Integer.valueOf(1)));
         assertNotZero(stat -> stat.setFieldingGs(Integer.valueOf(1)));
         assertNotZero(stat -> stat.setPitchDoubles(Integer.valueOf(1)));
+        assertNotZero(stat -> stat.setPickoffAttempts(Integer.valueOf(1)));
         assertNotZero(stat -> stat.setW(Integer.valueOf(1)));
     }
 

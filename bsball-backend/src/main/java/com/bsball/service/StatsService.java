@@ -533,6 +533,7 @@ public class StatsService {
         p.setPitchIbb(r.getPitchIbb());
         p.setPitchHbp(r.getPitchHbp());
         p.setPitchIo(r.getPitchIo());
+        p.setPickoffAttempts(r.getPickoffAttempts());
         p.setWp(r.getWp());
         p.setBk(r.getBk());
         p.setPitchR(r.getPitchR());
@@ -616,6 +617,7 @@ public class StatsService {
         p.setPitchIbb(StatsService.getInt(row, "pitchIbb"));
         p.setPitchHbp(StatsService.getInt(row, "pitchHbp"));
         p.setPitchIo(StatsService.getInt(row, "pitchIo"));
+        p.setPickoffAttempts(StatsService.getInt(row, "pickoffAttempts"));
         p.setWp(StatsService.getInt(row, "wp"));
         p.setBk(StatsService.getInt(row, "bk"));
         p.setPitchR(StatsService.getInt(row, "pitchR"));
@@ -755,6 +757,7 @@ public class StatsService {
         m.put("pitchIbb", p.getPitchIbb());
         m.put("pitchHbp", p.getPitchHbp());
         m.put("pitchIo", p.getPitchIo());
+        m.put("pickoffAttempts", p.getPickoffAttempts());
         m.put("wp", p.getWp());
         m.put("bk", p.getBk());
         m.put("pitchR", p.getPitchR());

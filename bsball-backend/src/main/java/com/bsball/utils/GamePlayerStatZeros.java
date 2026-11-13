@@ -87,6 +87,7 @@ public final class GamePlayerStatZeros {
             new Field("pitchIbb", "IBB(投手)", GamePlayerStat::getPitchIbb),
             new Field("pitchHbp", "HBP(投手)", GamePlayerStat::getPitchHbp),
             new Field("pitchIo", "IO(投手)", GamePlayerStat::getPitchIo),
+            new Field("pickoffAttempts", "牵制企图", GamePlayerStat::getPickoffAttempts),
             new Field("wp", "WP", GamePlayerStat::getWp),
             new Field("bk", "BK", GamePlayerStat::getBk),
             new Field("pitchR", "R(投手)", GamePlayerStat::getPitchR),
