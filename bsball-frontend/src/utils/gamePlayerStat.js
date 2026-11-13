@@ -23,7 +23,7 @@ function b(t){
   return t.pitchAb!=null&&!Number.isNaN(Number(t.pitchAb))?Math.max(0,Math.floor(Number(t.pitchAb))):s(t)
 }
 var u={
-  ip:0,pitchR:0,er:0,pitchH:0,pitchDoubles:0,pitchTriples:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchSh:0,pitchSf:0,pitchPa:0,pitchBf:0,pitAb:0,np:0,pitchBb:0,pitchIbb:0,pitchHbp:0,pitchIo:0,wp:0,bk:0,go:0,fo:0,gs:0,svo:0,cg:0,pg:0,w:0,l:0,sv:0,hld:0
+  ip:0,pitchR:0,er:0,pitchH:0,pitchDoubles:0,pitchTriples:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchSh:0,pitchSf:0,pitchPa:0,pitchBf:0,pitAb:0,np:0,pitchBb:0,pitchIbb:0,pitchHbp:0,pitchIo:0,pickoffAttempts:0,wp:0,bk:0,go:0,fo:0,gs:0,svo:0,cg:0,pg:0,w:0,l:0,sv:0,hld:0
 };
 function p(t){
   const r=t.isPitcher;

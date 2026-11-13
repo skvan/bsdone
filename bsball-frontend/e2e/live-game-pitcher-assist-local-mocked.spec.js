@@ -194,6 +194,123 @@ async function recordGroundOut13(page) {
   await expect(flowBar).toHaveCount(0);
 }
 
+async function walkBatter(page) {
+  for (let i = 0; i < 4; i++) {
+    await page.locator('button[title="坏球 Ball"]').click();
+    await page.waitForTimeout(120);
+  }
+  await page.waitForTimeout(800);
+}
+
+async function dragRunnerToBase(page, fromBase, toBase, half) {
+  const group = page.locator('.runners-group > .runner-draggable-group:visible').nth(fromBase - 1);
+  await expect(group.locator('.runner-token-g')).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('.runner-path-anim-token')).toHaveCount(0, { timeout: 20000 });
+  await group.scrollIntoViewIfNeeded();
+  const box = await group.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(300);
+  await page.mouse.move(box.x + box.width / 2 + 28, box.y + box.height / 2 + 28, { steps: 5 });
+  await page.waitForTimeout(150);
+  const rect = page.locator('rect.runner-drop-zone-rect:visible').nth(toBase - 1);
+  await expect(rect).toBeVisible({ timeout: 10000 });
+  const target = await rect.boundingBox();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height * (half === 'out' ? 0.78 : 0.22), { steps: 6 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  return page.locator('.rdm__panel', { hasText: '跑者进垒' });
+}
+
+async function pickMenu(page, text) {
+  await page.locator('.rdm__item').filter({ hasText: text }).first().click();
+  await page.waitForTimeout(300);
+}
+
+async function clickBase(page, base) {
+  const group = page.locator('.runners-group > .runner-draggable-group').nth(base - 1);
+  await group.scrollIntoViewIfNeeded();
+  const box = await group.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+}
+
+test('同垒牵制出局：投手记牵制企图与助杀，一垒手记接杀', async ({ page }) => {
+  const { savedLive, snapshots } = await setup(page);
+  await walkBatter(page);
+  const menu = await dragRunnerToBase(page, 1, 1, 'out');
+  await expect(menu.getByText('牵制出局')).toBeVisible();
+  await pickMenu(page, '牵制出局');
+  await page.locator('g.defender-hit[data-pos="1B"]:visible').first().click();
+  await page.waitForTimeout(400);
+
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+
+  const body = savedLive.at(-1);
+  const awayPitcher = (body.stats || []).find(
+    (row) => row.teamId === 2 && row.playerId === 220 && row.isPitcher === 1,
+  );
+  const awayFirstBase = (body.stats || []).find(
+    (row) => row.teamId === 2 && row.playerId === 202 && !row.isPitcher,
+  );
+  expect(awayPitcher).toMatchObject({ pickoffAttempts: 1, a: 1 });
+  expect(awayFirstBase).toMatchObject({ po: 1, a: 0 });
+
+  await expect.poll(() => snapshots.length).toBeGreaterThan(0);
+  const snapshot = JSON.parse(snapshots.at(-1));
+  expect(snapshot.playerStatsById['220'].pitching).toMatchObject({ pickoffAttempts: 1 });
+  expect(snapshot.playerStatsById['220'].fielding).toMatchObject({ a: 1 });
+  expect(snapshot.playerStatsById['202'].fielding).toMatchObject({ po: 1 });
+});
+
+test('同垒牵制未果：投手只记牵制企图，不记助杀', async ({ page }) => {
+  const { savedLive } = await setup(page);
+  await walkBatter(page);
+  const menu = await dragRunnerToBase(page, 1, 1, 'safe');
+  await expect(menu.getByText('投手牵制尝试')).toBeVisible();
+  await pickMenu(page, '投手牵制尝试');
+  const box = page.locator('.el-message-box');
+  await expect(box.getByRole('button', { name: '牵制未果（安全回垒）' })).toBeVisible();
+  await box.getByRole('button', { name: '牵制未果（安全回垒）' }).click();
+  await page.waitForTimeout(300);
+
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+
+  const awayPitcher = (savedLive.at(-1).stats || []).find(
+    (row) => row.teamId === 2 && row.playerId === 220 && row.isPitcher === 1,
+  );
+  expect(awayPitcher).toMatchObject({ pickoffAttempts: 1, a: 0, po: 0 });
+});
+
+test('同垒牵制暴传：投手记牵制企图与失误，不记助杀', async ({ page }) => {
+  const { savedLive } = await setup(page);
+  await walkBatter(page);
+  const menu = await dragRunnerToBase(page, 1, 1, 'safe');
+  await expect(menu.getByText('投手牵制尝试')).toBeVisible();
+  await pickMenu(page, '投手牵制尝试');
+  const box = page.locator('.el-message-box');
+  await expect(box.getByRole('button', { name: '暴传失误推进' })).toBeVisible();
+  await box.getByRole('button', { name: '暴传失误推进' }).click();
+  const flow = page.locator('.les-flow-card');
+  await expect(flow).toContainText('请点击失误责任守备员');
+  await page.locator('g.defender-hit[data-pos="P"]:visible').first().click();
+  await expect(flow).toContainText('选择目标垒');
+  await clickBase(page, 2);
+  await expect(flow).toHaveCount(0);
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：二垒有人');
+
+  await page.getByRole('button', { name: '保存比赛' }).click();
+  await expect.poll(() => savedLive.length).toBeGreaterThan(0);
+
+  const awayPitcher = (savedLive.at(-1).stats || []).find(
+    (row) => row.teamId === 2 && row.playerId === 220 && row.isPitcher === 1,
+  );
+  expect(awayPitcher).toMatchObject({ pickoffAttempts: 1, e: 1, a: 0, po: 0 });
+});
+
 test('滚地球 1-3：DH 仅守备投手记 A，一垒手记 PO', async ({ page }) => {
   const { savedLive, snapshots } = await setup(page);
   await recordGroundOut13(page);
