@@ -675,6 +675,9 @@ function Gd(u,f){
     id:"safe_di",en:"Defensive Indifference",cn:"守备大意 (DI)"
   }
   ,{
+    id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"
+  }
+  ,{
     id:"safe_wp",en:"Wild Pitch",cn:"暴投 (WP)"
   }
   ,{
@@ -696,6 +699,9 @@ function Gd(u,f){
     id:"safe_di",en:"Defensive Indifference",cn:"守备大意 (DI)"
   }
   ,{
+    id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"
+  }
+  ,{
     id:"safe_wp",en:"Wild Pitch",cn:"暴投 (WP)"
   }
   ,{
@@ -712,6 +718,9 @@ function Gd(u,f){
   }
   ]:u===3&&f===4?[{
     id:"safe_sb",en:"Stole Base",cn:"盗本垒成功"
+  }
+  ,{
+    id:"safe_on_throw",en:"On Throw",cn:"传杀过程中得分"
   }
   ,{
     id:"safe_wp",en:"Wild Pitch",cn:"暴投 (WP)"
@@ -7139,9 +7148,8 @@ var sg={
         const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
         if(e.stealFail){
           if(C2.length===0)return"盗垒失败：点击捕手（C）发起传球链";
-          if(C2.length===1)return`盗垒失败：${nu(C2)} — 再点接球触杀者（恰好一传记 CS），或直接「完成记录」按捕手触杀记（不记 CS）`;
-          if(C2.length===2)return`盗垒失败：${nu(C2)}（将记 CS）— 点「完成记录」收尾，或继续点选记录夹杀`;
-          return`盗垒失败：${nu(C2)}（多传夹杀，不记 CS）— 点「完成记录」收尾`
+          if(C2.length===1)return`盗垒失败：${nu(C2)} — 再点接球触杀者（记跑者 CS + 捕手 CCS）；或直接「完成记录」按捕手触杀记（跑者 CS、捕手 PO、不记 CCS）`;
+          return`盗垒失败：${nu(C2)}（将记跑者 CS）— 点「完成记录」收尾，或继续点选记录夹杀`
         }
         if(C2.length>=hu)return`${Y2}出局：${nu(C2)}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
         return C2.length===0?`点击${Y2}者`:`${Y2}出局：${nu(C2)}（已可完成）— 可继续点选记录夹杀多传（如 5-6-2），或点「完成记录」；开始下一动作也会自动收尾`
@@ -9952,8 +9960,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       setTimeout(()=>gt(),0)
     }
     function settleRunnerOut(e){
-      const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]),isCs=!!e.stealFail&&C1[0]==="C"&&C1.length===2,reasonCn=isCs?"盗垒死 (CS)":`${y}出局`;
-      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1,paceCatcherStat("catcherCs")),recordPlayOut(C1,e.stealFail?"steal":(p??"tag"));
+      const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]),isCs=!!e.stealFail&&C1[0]==="C"&&C1.length>=1,catcherCsCredit=isCs&&C1.length>=2&&C1[C1.length-1]!=="C",reasonCn=isCs?"盗垒死 (CS)":`${y}出局`;
+      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1),catcherCsCredit&&paceCatcherStat("catcherCs"),recordPlayOut(C1,e.stealFail?"steal":(p??"tag"));
       const b=C1.length>1?LgOut({reasonCn,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
       D(b),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(C1[C1.length-1]),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"
@@ -10140,7 +10148,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           J(`盗垒死 (CS) 时，刺杀者应为 ${r.map(m=>It[m]??m).join("、")}（跑垒员从${a.runnerBase===1?"一":a.runnerBase===2?"二":"三"}垒盗${s===2?"二":s===3?"三":"本"}垒）`,"warning");
           return
         }
-        l.runners[a.runnerBase]=null,yl(a.runner.id??a.runner.name??"?",a.runnerBase,s),l.halfInningOuts.push(Gt(a.runner,"盗垒死").trim()),l.outs++,Ipy(),a.runner.stats.batting.cs=(a.runner.stats.batting.cs??0)+1,paceCatcherStat("catcherCs");
+        l.runners[a.runnerBase]=null,yl(a.runner.id??a.runner.name??"?",a.runnerBase,s),l.halfInningOuts.push(Gt(a.runner,"盗垒死").trim()),l.outs++,Ipy(),a.runner.stats.batting.cs=(a.runner.stats.batting.cs??0)+1,e!=="C"&&paceCatcherStat("catcherCs");
         const p=resolveFieldingCreditTarget(e,Vt(e),Se.value);
         p?.stats?.fielding&&(p.stats.fielding.po=(p.stats.fielding.po??0)+1,accrueFieldingPlay(p.stats.fielding,e,{po:1}));
         const g=LgCs({fielderPos:It[e]??e,runner:a.runner,from:a.runnerBase??1,to:s,outsCum:1,total:l.outs});

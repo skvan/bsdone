@@ -91,6 +91,20 @@ test('单出局链记账：末位 PO，去重助杀且排除 PO 本人（5-2-5 /
   assert.deepEqual(computeSingleOutChainStats(null), []);
 });
 
+test('单出局链：盗垒死多传夹杀 C-5-4 / C-5-6 记捕手A、三垒手A、末位PO；仅C触杀为捕手PO', () => {
+  assert.deepEqual(computeSingleOutChainStats(['C', '3B', '2B']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '3B', po: 0, a: 1 },
+    { pos: '2B', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C', '3B', 'SS']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '3B', po: 0, a: 1 },
+    { pos: 'SS', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C']), [{ pos: 'C', po: 1, a: 0 }]);
+});
+
 test('链完成判定：TP 三人口径（2026-10-08 裁决）', () => {
   assert.equal(chainReadyForSettle('TP', ['SS', '2B', '1B'], 4), true);
   assert.equal(chainReadyForSettle('TP', ['3B', '3B', '2B', '1B'], 4), true);
