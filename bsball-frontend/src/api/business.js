@@ -216,7 +216,9 @@ export const eventApi = {
   create: (data) => post('/api/event/create', data),
   update: (id, data) => put(`/api/event/update/${id}`, data),
   delete: (id) => del(`/api/event/delete/${id}`),
-  importGameResult: (id, data) => post(`/api/event/${id}/import-game-result`, data)
+  importGameResult: (id, data) => post(`/api/event/${id}/import-game-result`, data),
+  // 赛事积分榜 + 淘汰赛对阵（Issue #665）
+  getTournament: (id) => getData(`/api/event/${id}/tournament`)
 };
 
 // 电子秩序册（Issue #310）：赛事参赛登记（办赛方侧）与球队报名（球队侧）
@@ -236,7 +238,9 @@ export const eventRegistrationApi = {
   decline: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/decline`, {}),
   // 撤销报名（球队侧自助退赛，Issue #310 延伸）：仅已确认且本队尚无已开赛比赛
   withdraw: (eventId, teamId) => post(`/api/event/${eventId}/teams/${teamId}/withdraw`, {}),
-  submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds })
+  submitRoster: (eventId, teamId, playerIds) => put(`/api/event/${eventId}/teams/${teamId}/roster`, { playerIds }),
+  // 小组赛分组（Issue #665）：groupCode 传 null 清除分组
+  updateGroup: (eventId, teamId, groupCode) => put(`/api/event/${eventId}/teams/${teamId}/group`, { groupCode })
 };
 
 // 赛前阵容提交（电子打序单）：球队侧列表/上下文/保存 + 办赛方读取

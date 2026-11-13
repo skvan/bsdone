@@ -4,6 +4,7 @@ import com.bsball.common.Result;
 import com.bsball.model.dto.EventRosterPlayerDto;
 import com.bsball.model.dto.EventRosterSubmitRequest;
 import com.bsball.model.dto.EventTeamDto;
+import com.bsball.model.dto.EventTeamGroupRequest;
 import com.bsball.model.dto.EventTeamInviteRequest;
 import com.bsball.model.dto.RosterPlayersDto;
 import com.bsball.model.dto.TeamOptionDto;
@@ -54,6 +55,15 @@ public class EventRegistrationApi {
     @GetMapping(value = {"/event/{eventId}/game-team-options"})
     public Result<List<TeamOptionDto>> gameTeamOptions(@PathVariable Long eventId) {
         return Result.ok(this.eventRegistrationService.gameTeamOptions(eventId));
+    }
+
+    /** 设置参赛球队的小组组别（Issue #665；传空值清除分组）。 */
+    @PutMapping(value = {"/event/{eventId}/teams/{teamId}/group"})
+    public Result<EventTeamDto> updateGroup(@PathVariable Long eventId,
+            @PathVariable Long teamId,
+            @RequestBody(required = false) EventTeamGroupRequest body) {
+        return Result.ok(this.eventRegistrationService.updateGroupCode(eventId, teamId,
+                body == null ? null : body.groupCode()));
     }
 
     /** 移除参赛（软删登记 + 名单；锁定后 403）。 */

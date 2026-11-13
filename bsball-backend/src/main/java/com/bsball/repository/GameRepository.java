@@ -65,5 +65,8 @@ JpaSpecificationExecutor<Game> {
             + "order by g.gameday asc, g.gameTime asc, g.id asc")
     public List<Game> findUpcomingForTeamInEvent(@Param(value="tenantId") Long tenantId,
             @Param(value="eventId") Long eventId, @Param(value="teamId") Long teamId);
+
+    /** 赛事积分榜/对阵图：该赛事全部未删比赛（Issue #665）。 */
+    public List<Game> findByEventIdAndDeletedAtIsNullOrderByIdAsc(Long eventId);
 }
 

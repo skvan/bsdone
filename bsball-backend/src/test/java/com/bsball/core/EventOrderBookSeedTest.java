@@ -111,12 +111,12 @@ class EventOrderBookSeedTest {
     }
 
     @Test
-    @DisplayName("API 注册幂等：两次调用仅插入 19 条（含赛事可邀请球队与排赛候选端点）")
+    @DisplayName("API 注册幂等：两次调用仅插入 21 条（含赛事可邀请球队、排赛候选与积分对阵端点）")
     void apiSeedIdempotent() throws Exception {
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(19, apiStore.size());
+        assertEquals(21, apiStore.size());
         invokeNoArg("ensureEventOrderBookApisIfNeeded");
-        assertEquals(19, apiStore.size(), "二次调用不得重复插入");
+        assertEquals(21, apiStore.size(), "二次调用不得重复插入");
         assertTrue(apiStore.stream().anyMatch(a -> "/event/:eventId/teams/invite".equals(a.getPath())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/event/:eventId/team-options".equals(a.getPath()) && "GET".equals(a.getMethod())));
@@ -137,6 +137,10 @@ class EventOrderBookSeedTest {
                 "/team/:teamId/player-claim-invite".equals(a.getPath()) && "POST".equals(a.getMethod())));
         assertTrue(apiStore.stream().anyMatch(a ->
                 "/team/:teamId/player-claim-invites/:id/revoke".equals(a.getPath()) && "POST".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/event/:eventId/tournament".equals(a.getPath()) && "GET".equals(a.getMethod())));
+        assertTrue(apiStore.stream().anyMatch(a ->
+                "/event/:eventId/teams/:teamId/group".equals(a.getPath()) && "PUT".equals(a.getMethod())));
     }
 
     @Test
@@ -154,7 +158,7 @@ class EventOrderBookSeedTest {
         assertEquals(1L, counts.getOrDefault("business:team:eventRegistration", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:invitePlayer", 0L).longValue());
         assertEquals(1L, counts.getOrDefault("business:team:inviteRevoke", 0L).longValue());
-        assertEquals(16, menuApiStore.size(), "四按钮合计绑定 16 个 API（6+6+2+2）");
+        assertEquals(17, menuApiStore.size(), "四按钮合计绑定 17 个 API（7+6+2+2）");
         Map<Long, String> pathById = apiStore.stream()
                 .collect(Collectors.toMap(SysApi::getId, a -> a.getMethod() + "|" + a.getPath()));
         Set<String> bound = menuApiStore.stream().map(l -> pathById.get(l.getApiId())).collect(Collectors.toSet());
@@ -162,6 +166,7 @@ class EventOrderBookSeedTest {
                 "GET|/event/:eventId/teams", "POST|/event/:eventId/teams/invite",
                 "POST|/event/:eventId/teams/:teamId/remove", "POST|/event/:eventId/teams/:teamId/lock",
                 "POST|/event/:eventId/teams/:teamId/unlock", "GET|/event/:eventId/teams/:teamId/roster",
+                "PUT|/event/:eventId/teams/:teamId/group",
                 "GET|/team/:teamId/event-registrations", "POST|/event/:eventId/teams/:teamId/confirm",
                 "POST|/event/:eventId/teams/:teamId/decline", "POST|/event/:eventId/teams/:teamId/withdraw",
                 "PUT|/event/:eventId/teams/:teamId/roster",
