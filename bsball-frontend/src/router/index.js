@@ -34,6 +34,7 @@ import News from '../views/portal/News.js';
 import NoticeDetail from '../views/portal/NoticeDetail.js';
 import AnnouncementDoc from '../views/portal/AnnouncementDoc.js';
 import PortalEvents from '../views/portal/PortalEvents.js';
+import PortalEventDetail from '../views/portal/PortalEventDetail.vue';
 import PortalLeagues from '../views/portal/PortalLeagues.js';
 import PortalLeagueDetail from '../views/portal/PortalLeagueDetail.js';
 import PortalTeams from '../views/portal/PortalTeams.js';
@@ -131,6 +132,7 @@ const routes = [
             { path: 'article', name: 'PortalArticleList', component: News },
         { path: 'article/:id', name: 'PortalArticleDetail', component: NoticeDetail },
         { path: 'events', name: 'PortalEvents', component: PortalEvents },
+        { path: 'events/:eventId', name: 'PortalEventDetail', component: PortalEventDetail },
         { path: 'leagues', name: 'PortalLeagues', component: PortalLeagues },
         { path: 'leagues/:id', name: 'PortalLeagueDetail', component: PortalLeagueDetail },
         { path: 'events/:eventId/games', name: 'PortalEventGamesRedirect', redirect: { name: 'PortalEvents' } },

@@ -107,6 +107,42 @@ class EventRegistrationServiceTest {
         CurrentUserHolder.clear();
     }
 
+    @Test
+    @DisplayName("设置球队分组：去空格并转大写，空值清除")
+    void updateGroupCode_normalizesAndClears() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        EventTeam reg = reg(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID)).thenReturn(Optional.of(reg));
+        when(eventTeamRepository.save(any(EventTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(TEAM_ID, TENANT_ID)));
+        when(eventRosterPlayerRepository.countByEventIdAndTeamIdAndDeletedAtIsNull(EVENT_ID, TEAM_ID))
+                .thenReturn(0L);
+
+        EventTeamDto dto = service.updateGroupCode(EVENT_ID, TEAM_ID, " a ");
+
+        assertEquals("A", reg.getGroupCode());
+        assertEquals("A", dto.groupCode());
+        verify(resourceGuard).assertCanManageEvent(EVENT_ID);
+
+        EventTeamDto cleared = service.updateGroupCode(EVENT_ID, TEAM_ID, " ");
+        assertNull(cleared.groupCode());
+    }
+
+    @Test
+    @DisplayName("设置球队分组：组别超长返回 400")
+    void updateGroupCode_tooLong_throws400() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event(EVENT_ID)));
+        when(eventTeamRepository.findForUpdate(EVENT_ID, TEAM_ID))
+                .thenReturn(Optional.of(reg(EventTeam.STATUS_CONFIRMED)));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.updateGroupCode(EVENT_ID, TEAM_ID, "ABCDEFGHIJKLMNOPQ"));
+
+        assertEquals(400, error.getCode());
+    }
+
     private static Event event(long id) {
         Event e = new Event();
         e.setId(Long.valueOf(id));

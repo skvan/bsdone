@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -212,6 +213,32 @@ public class EventRegistrationService {
             out.add(this.build(r, teams.get(r.getTeamId()), null, count, null));
         }
         return out;
+    }
+
+    /**
+     * 设置参赛球队的小组组别（小组赛制使用）；传空值表示清除分组。
+     *
+     * @param eventId 赛事 ID
+     * @param teamId 球队 ID
+     * @param groupCode 组别，如 A/B
+     * @return 更新后的参赛登记视图
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public EventTeamDto updateGroupCode(Long eventId, Long teamId, String groupCode) {
+        long tid = this.tenantQueryPolicyService.requiredTenantId();
+        this.resourceGuard.assertCanManageEvent(eventId);
+        this.requireEvent(eventId, tid);
+        EventTeam reg = this.requireRegistrationForUpdate(eventId, teamId, tid);
+        String normalized = groupCode == null ? null : groupCode.trim().toUpperCase(Locale.ROOT);
+        if (normalized != null && normalized.isEmpty()) {
+            normalized = null;
+        }
+        if (normalized != null && normalized.length() > 16) {
+            throw new BusinessException(400, "组别不能超过 16 个字符");
+        }
+        reg.setGroupCode(normalized);
+        this.eventTeamRepository.save(reg);
+        return this.toDto(reg);
     }
 
     /** 球队侧「我的赛事报名」列表（含赛事名/赛季/模式），按登记倒序；已软删赛事的登记不再展示。 */
@@ -704,6 +731,7 @@ public class EventRegistrationService {
                 team != null ? team.getName() : null,
                 team != null ? team.getLogo() : null,
                 reg.getStatus(),
+                reg.getGroupCode(),
                 reg.getRosterLocked(),
                 playerCount,
                 reg.getConfirmedAt(),

@@ -109,6 +109,14 @@ Event --|> BaseEntity : "继承"
 
 > 变更（Issue #275，2026-10-24 口径调整）：`specialRules` 为**瞬态字段**（`@Transient` + `@JsonInclude(NON_NULL)`，不落表）——赛事级规则与能力标识 `{specialRulesEnabled, hasEventRules, extraBatter, forceHalf, ohtaniRule}`。`GET /event/{id}` 由 EventService 按赛事既有规则和联赛收费能力装配：赛事已有规则时沿用（能力关闭也保留）；否则 `specialRulesEnabled` 为联赛能力，规则默认 extraBatter=false、forceHalf=true、ohtaniRule=false。`update` 请求可携带 `{extraBatter, forceHalf, ohtaniRule}`，在同一事务写入 `bs_event_special_rule`：已有规则赛事始终允许；无规则赛事要求联赛能力开启。`create` 携带规则时要求联赛能力开启。规则数据见 `核心业务实体/赛事特殊规则实体(EventSpecialRule).md`。
 
+> 变更（Issue #665，2026-11-13）：新增赛制与积分制字段，见迁移 `V20261113120000__event_tournament_format.sql`：
+> - `format_type`：`SINGLE_ROUND_ROBIN`（单循环，默认）/ `DOUBLE_ROUND_ROBIN`（双循环）/ `KNOCKOUT`（单败淘汰）/ `GROUP_KNOCKOUT`（小组赛+淘汰赛）；
+> - `points_win` / `points_draw` / `points_loss`：积分制，默认 2/1/0；创建积分型赛事时可选择 2-1-0 或 3-1-0；
+> - `group_count` / `advance_per_group`：小组数与每组晋级数；
+> - `third_place` / `bracket_size`：是否三四名、单败淘汰签表规模。
+>
+> 创建/更新赛事接口携带这些字段；`EventService` 负责默认值和合法性校验（支持赛制、积分 0-99、小组 1-8、晋级 1-4、签表 2/4/8/16/32）。编辑时缺省字段沿用存量值，避免旧客户端把配置重置。存量赛事由迁移回填为单循环 + 2-1-0，零配置即可生成积分榜。
+
 ### 接口层：EventApi
 - 列表查询：支持分页、排序参数
 - 详情获取：按 ID 获取，不存在或已删除返回 404

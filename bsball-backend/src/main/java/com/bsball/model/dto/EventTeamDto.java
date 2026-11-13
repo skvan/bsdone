@@ -14,6 +14,7 @@ public record EventTeamDto(
         String teamName,
         String teamLogo,
         String status,
+        String groupCode,
         Boolean rosterLocked,
         long playerCount,
         LocalDateTime confirmedAt,
