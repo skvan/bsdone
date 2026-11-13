@@ -307,7 +307,7 @@ var Ta={
           ab:0,r:0,h:0,rbi:0,bb:0,hbp:0,so:0,so_swing:0,so_looking:0,sf:0,sh:0,sb:0,cs:0,doubles:0,triples:0,hr:0
         }
         ,pitching:{
-          ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,wp:0,bk:0,pk:0
+          ip:0,np:0,pitchH:0,er:0,pitchR:0,unearnedR:0,pendingR:0,pitchBbHp:0,pitchSo:0,pitchHr:0,pitchInsideParkHr:0,pitchPa:0,pitchBf:0,pickoffAttempts:0,wp:0,bk:0,pk:0
         }
         ,fielding:{
           po:0,a:0,e:0,ip:0,fieldingGs:0,dp:0,pb:0,catcherSb:0,catcherCs:0
@@ -683,7 +683,7 @@ var Ta={
         }
         ,V=(g.ab??0)+(g.bb??0)+(g.hbp??0)+(g.sf??0)+(g.sh??0),C=B?.isPitcher??0;
         d.push({
-          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),firstPosition:String(s.firstPosition??""),startingPosition:String(s.startingPosition??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchDoubles:k.pitchDoubles,pitchTriples:k.pitchTriples,pitchBb:k.pitchBb,pitchIbb:k.pitchIbb,pitchHbp:k.pitchHbp,pitchBbHp:k.pitchBbHp??((k.pitchBb??0)+(k.pitchHbp??0)),pitchSh:k.pitchSh,pitchSf:k.pitchSf,pitchIo:k.pitchIo,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,go:k.go,fo:k.fo,gs:k.gs,svo:k.svo,cg:k.cg,pg:k.pg,w:k.w,l:k.l,sv:k.sv,hld:k.hld,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs,fieldingByPos:y.byPos??null
+          id:r--,gameId:e,teamId:o,playerId:Number(s.id),battingOrder:p,listOrder:v,pitcherOrder:B?.pitcherOrder,position:String(s.position??""),firstPosition:String(s.firstPosition??""),startingPosition:String(s.startingPosition??""),number:String(s.number??""),pa:V,ab:g.ab,r:g.r,h:g.h,bbHp:(g.bb??0)+(g.hbp??0),sb:g.sb,so:g.so,soSwing:g.so_swing,soLooking:g.so_looking,e:y.e,rbi:g.rbi,doubles:g.doubles,triples:g.triples,hr:g.hr,insideParkHr:g.insideParkHr,sh:g.sh,sf:g.sf,bb:g.bb,hbp:g.hbp,ibb:g.ibb,cs:g.cs,isPitcher:C,ip:k.ip,er:k.er,pitchR:k.pitchR,unearnedR:k.unearnedR,pendingR:k.pendingR,pitchH:k.pitchH,pitchDoubles:k.pitchDoubles,pitchTriples:k.pitchTriples,pitchBb:k.pitchBb,pitchIbb:k.pitchIbb,pitchHbp:k.pitchHbp,pitchBbHp:k.pitchBbHp??((k.pitchBb??0)+(k.pitchHbp??0)),pitchSh:k.pitchSh,pitchSf:k.pitchSf,pitchIo:k.pitchIo,pickoffAttempts:k.pickoffAttempts,pitchSo:k.pitchSo,pitchHr:k.pitchHr,pitchInsideParkHr:k.pitchInsideParkHr,pitchPa:k.pitchPa,pitchBf:k.pitchBf,np:k.np,wp:k.wp,bk:k.bk,go:k.go,fo:k.fo,gs:k.gs,svo:k.svo,cg:k.cg,pg:k.pg,w:k.w,l:k.l,sv:k.sv,hld:k.hld,po:y.po,a:y.a,tc:(y.po??0)+(y.a??0)+(y.e??0),fieldingGs:y.fieldingGs,defInn:y.ip??y.defInn,dp:y.dp,pb:y.pb,catcherSb:y.catcherSb,catcherCs:y.catcherCs,fieldingByPos:y.byPos??null
         }
         )
       }

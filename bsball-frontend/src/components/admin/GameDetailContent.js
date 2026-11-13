@@ -907,7 +907,7 @@ var Sl={
     }
     );
     const za={
-      singles:44,doubles:48,triples:48,hr:44,insideParkHr:56,shSf:72,bbHp:76,avg:54,obp:54,slg:54,ops:54,ip:50,era:72,whip:84,pitchBbHp:72,pitchHr:44,pitchInsideParkHr:56,np:52,pitchPa:52,pitchBf:52,pitchBb:52,pitchIbb:52,pitchHbp:48,svo:52
+      singles:44,doubles:48,triples:48,hr:44,insideParkHr:56,shSf:72,bbHp:76,avg:54,obp:54,slg:54,ops:54,ip:50,era:72,whip:84,pitchBbHp:72,pitchHr:44,pitchInsideParkHr:56,pickoffAttempts:64,np:52,pitchPa:52,pitchBf:52,pitchBb:52,pitchIbb:52,pitchHbp:48,svo:52
     };
     function Ua(e){
       const t=String(e??"").trim();
@@ -1085,13 +1085,13 @@ var Sl={
     }
     function ea(e){
       const t=Ra(e.reduce((w,kt)=>w+De(Number(kt.ip)||0),0));
-      let l=0,d=0,v=0,y=0,f=0,a=0,pd=0,pdt=0,psh=0,psf=0,pio=0,o=0,x=0,X=0,re=0,Z=0,We=0,me=0,$e=0,V=0,pe=0,_e=0,ha=0,va=0,ba=0,ga=0,ya=0,fa=0,pa=0,_a=0,ka=0,wa=0;
+      let l=0,d=0,v=0,y=0,f=0,a=0,pd=0,pdt=0,psh=0,psf=0,pio=0,pkoa=0,o=0,x=0,X=0,re=0,Z=0,We=0,me=0,$e=0,V=0,pe=0,_e=0,ha=0,va=0,ba=0,ga=0,ya=0,fa=0,pa=0,_a=0,ka=0,wa=0;
       for(const w of e){
         const kt=Qt(w);
-        l+=La(w),d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,pd+=Number(w.pitchDoubles)||0,pdt+=Number(w.pitchTriples)||0,psh+=Number(w.pitchSh)||0,psf+=Number(w.pitchSf)||0,pio+=Number(w.pitchIo)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,X+=Number(w.pitchInsideParkHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
+        l+=La(w),d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,pd+=Number(w.pitchDoubles)||0,pdt+=Number(w.pitchTriples)||0,psh+=Number(w.pitchSh)||0,psf+=Number(w.pitchSf)||0,pio+=Number(w.pitchIo)||0,pkoa+=Number(w.pickoffAttempts)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,X+=Number(w.pitchInsideParkHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
       }
       return{
-        _totals:!0,playerId:0,position:"",ip:t,pitchR:v,er:y,pitchH:f,pitchDoubles:pd,pitchTriples:pdt,pitchSh:psh,pitchSf:psf,pitchIo:pio,pitchBbHp:a,pitchSo:o,pitchHr:x,pitchInsideParkHr:X,pitAb:l,pitE:d,np:re,pitchPa:Z,pitchBf:We,pitchBb:me,pitchIbb:$e,pitchHbp:V,wp:pe,bk:_e,go:ha,fo:va,gs:ba,w:pa,l:_a,sv:ka,svo:ga,hld:wa,cg:ya,pg:fa
+        _totals:!0,playerId:0,position:"",ip:t,pitchR:v,er:y,pitchH:f,pitchDoubles:pd,pitchTriples:pdt,pitchSh:psh,pitchSf:psf,pitchIo:pio,pickoffAttempts:pkoa,pitchBbHp:a,pitchSo:o,pitchHr:x,pitchInsideParkHr:X,pitAb:l,pitE:d,np:re,pitchPa:Z,pitchBf:We,pitchBb:me,pitchIbb:$e,pitchHbp:V,wp:pe,bk:_e,go:ha,fo:va,gs:ba,w:pa,l:_a,sv:ka,svo:ga,hld:wa,cg:ya,pg:fa
       }
       
     }

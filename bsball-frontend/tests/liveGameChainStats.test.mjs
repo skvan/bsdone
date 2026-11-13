@@ -91,6 +91,20 @@ test('单出局链记账：末位 PO，去重助杀且排除 PO 本人（5-2-5 /
   assert.deepEqual(computeSingleOutChainStats(null), []);
 });
 
+test('单出局链：盗垒死多传夹杀 C-5-4 / C-5-6 记捕手A、三垒手A、末位PO；仅C触杀为捕手PO', () => {
+  assert.deepEqual(computeSingleOutChainStats(['C', '3B', '2B']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '3B', po: 0, a: 1 },
+    { pos: '2B', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C', '3B', 'SS']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '3B', po: 0, a: 1 },
+    { pos: 'SS', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C']), [{ pos: 'C', po: 1, a: 0 }]);
+});
+
 test('链完成判定：TP 三人口径（2026-10-08 裁决）', () => {
   assert.equal(chainReadyForSettle('TP', ['SS', '2B', '1B'], 4), true);
   assert.equal(chainReadyForSettle('TP', ['3B', '3B', '2B', '1B'], 4), true);
@@ -160,8 +174,8 @@ test('FC 自踩触杀贯通与单出局记账接入点（静态断言，防回�
   assert.match(src, /function Dn\(e\)\{\r?\n\s*for\(const r of LgSingleOutStats\(e\)\)\{/, 'Dn 改用单出局纯函数');
   assert.match(src, /resolveSingleOutChain as LgResolveOut/, '导入出局垒/方式判定');
   assert.match(src, /lastStepAction=e\.steps\?\.length\?e\.stepActions\?\.\[e\.steps\.length-1\]\?\?null:null/, 'settle 取最后一步自踩动作');
-  assert.match(src, /bt\(e\.type,a,Sr\(e\),void 0,\{lastStepAction\}\)/, 'settle 把自踩动作传给 bt');
-  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{/, 'bt 接收链路元数据');
+  assert.match(src, /bt\(e\.type,a,Sr\(e\),\{lastStepAction\}\)/, 'settle 把自踩动作传给 bt');
+  assert.match(src, /function bt\(e,t,a,meta\)\{/, 'bt 接收链路元数据');
   assert.match(src, /function fcApply\(fc_choice,r,t,a,meta\)\{/, 'fcApply 接收链路元数据');
   assert.match(src, /fcApply\(fc_choice,r,t,a,meta\)/, 'bt 把元数据传给 fcApply');
   assert.match(src, /fc_resolved=LgResolveOut\(\{[\s\S]{0,200}?chain:t,[\s\S]{0,120}?outFrom:fc_base,[\s\S]{0,120}?stepAction:meta\?\.lastStepAction/, 'fcApply 按自踩动作判定');

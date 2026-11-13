@@ -62,6 +62,9 @@ extends BaseEntity {
     private String sprayDepth;
     @Comment(value="\u8bb0\u5f55\u65f6\u95f4")
     private LocalDateTime recordedAt;
+    @Column(length=64)
+    @Comment(value="\u5ba2\u6237\u7aef\u5e42\u7b49\u952e\uff08\u524d\u7aef rid\uff09")
+    private String rid;
 
     @Generated
     public HitSpray() {
@@ -148,6 +151,11 @@ extends BaseEntity {
     }
 
     @Generated
+    public String getRid() {
+        return this.rid;
+    }
+
+    @Generated
     public void setGameId(Long gameId) {
         this.gameId = gameId;
     }
@@ -225,6 +233,11 @@ extends BaseEntity {
     @Generated
     public void setRecordedAt(LocalDateTime recordedAt) {
         this.recordedAt = recordedAt;
+    }
+
+    @Generated
+    public void setRid(String rid) {
+        this.rid = rid;
     }
 
     @Generated

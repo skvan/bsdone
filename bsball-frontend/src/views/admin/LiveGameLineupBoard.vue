@@ -79,6 +79,19 @@
       <el-radio-button value="home">{{ homeTeamName }}{{ lt('liveGame.lineup.homeSuffix') }}</el-radio-button>
     </el-radio-group>
 
+    <div v-if="teamSubmissionBanner" class="team-submission-banner">
+      <span>{{ teamSubmissionBanner.text }}</span>
+      <el-button
+        v-if="teamSubmissionBanner.pending"
+        size="small"
+        type="primary"
+        plain
+        @click="loadTeamSubmission(activeTeam)"
+      >
+        载入球队阵容
+      </el-button>
+    </div>
+
     <div v-if="ohtaniRule" class="ohtani-rule-bar">
       <el-button
         size="small"
@@ -147,7 +160,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, vLoading } from 'element-plus';
-import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi } from '../../api/business';
+import { eventApi, gameApi, gameStatsApi, eventRegistrationApi, fetchAllStadiums, fetchPlayersByTeam, fetchRosterPlayers, lineupTemplateApi, teamLineupApi } from '../../api/business';
 import { fetchResult } from '../../api/request';
 import { filterOutOfRoster, filterTemplateByPool, pickPoolId } from '../../utils/rosterPool';
 import { isBusinessError } from '../../utils/apiError';
@@ -161,6 +174,14 @@ import { isPlaceholder, findRowIndex, posOf } from '../../utils/lineupBoardRules
 import { visibleLineupError } from '../../utils/lineupValidationMessage';
 import { buildLineupDraft, parseLineupDraft, resolveLineupResumeInit, splitGameTime, toLocalGameTime } from '../../utils/lineupDraft';
 import { buildStartingBenchRows, buildStartingLineupRows, buildStartingPitcherRow } from '../../utils/lineupStartingPosition';
+import {
+  formatLineupDateTime,
+  hasTeamLineupData,
+  parseTeamLineupDraft,
+  snapshotSideHasData,
+  submissionIsNewer,
+  toBoardDraft
+} from '../../utils/teamLineupDraft';
 import { writeEntryBootstrap } from '../../utils/liveGameStorage';
 import LineupFieldBoard from '../../components/admin/LineupFieldBoard.vue';
 import LineupBattingOrder from '../../components/admin/LineupBattingOrder.vue';
@@ -202,6 +223,10 @@ const activeTeam = ref('away');
 const pending = ref(null);          // 点选点放：{ player }
 const templateDialog = ref({ visible: false, team: 'away', list: [], selected: null });
 const unavailable = ref({ home: [], away: [] });   // 快照透传，无 UI
+const teamSubmissions = ref({ home: null, away: null });       // 办赛方读取到的球队赛前提交
+const pendingTeamSubmissions = ref({ home: null, away: null }); // 已有编辑、等待办赛方手动载入的提交
+const loadedSubmissionAt = ref({ home: null, away: null });     // 已载入的提交时间（写入快照，避免重复提示）
+const autoLoadedSubmission = ref({ home: false, away: false }); // 本次进入是否自动载入
 const dragHover = ref(null);        // 拖拽中指针所在的可释放区域（null = 不在任何区域）
 const dragSource = ref(null);       // 本次拖起来源 { isRow, playerId }（onDragStart 记录、落点处置后清空）
 // 顶部规则提示：随联赛开关动态（关：棒球 9 / 垒球 10；开：棒球 9-12（含 EP）/ 垒球 10-11）
@@ -271,6 +296,21 @@ const errorIndices = computed(() => board.value.validation.value.errorRowIndices
 const lineupErrorMsg = computed(() => {
   const msg = visibleLineupError(board.value.validation.value.msg);
   return msg && isEnglish.value ? lt('liveGame.lineup.notice.epNotOpenInline') : msg;
+});
+
+// 球队端赛前阵容提示：空侧自动带出；已有编辑时只提示，由办赛方手动载入
+const teamSubmissionBanner = computed(() => {
+  const submission = teamSubmissions.value[activeTeam.value];
+  if (!submission) return null;
+  const sideLabel = activeTeam.value === 'home' ? '主队' : '客队';
+  const at = formatLineupDateTime(submission.updatedAt, '时间未知');
+  if (pendingTeamSubmissions.value[activeTeam.value]) {
+    return { pending: true, text: `${sideLabel}已保存赛前阵容（${at}），当前页面已有编辑` };
+  }
+  if (autoLoadedSubmission.value[activeTeam.value]) {
+    return { pending: false, text: `已载入${sideLabel}赛前阵容（${at}）` };
+  }
+  return null;
 });
 
 // R1：球场卡槽视图（9 守备位 + DH）
@@ -510,6 +550,97 @@ function warnEmptyPool(label, pool) {
   }
 }
 
+/** 拉取本场双方球队提交（失败降级为空，不阻断阵容页）。 */
+async function loadTeamSubmissions(gameIdValue) {
+  const empty = { home: null, away: null };
+  if (!gameIdValue) return empty;
+  const { data, error } = await teamLineupApi.listSubmissions(gameIdValue);
+  if (error || !Array.isArray(data)) {
+    if (error) console.warn('[LiveGameLineup] 球队赛前阵容加载失败', error);
+    teamSubmissions.value = empty;
+    return empty;
+  }
+  const bySide = { home: null, away: null };
+  for (const submission of data) {
+    if (submission?.side === 'home' || submission?.side === 'away') {
+      bySide[submission.side] = submission;
+    }
+  }
+  teamSubmissions.value = bySide;
+  return bySide;
+}
+
+/**
+ * 每侧选源：快照已有实际阵容 → 用快照；空侧 → 自动用球队提交；
+ * 快照有编辑且球队提交比“已载入版本”新 → 仅记录为待载入，不覆盖。
+ */
+function resolveSideDraft(side, snapshot, submission) {
+  const submissionDraft = submission ? parseTeamLineupDraft(submission.lineupJson) : null;
+  const hasSnapshotSide = snapshotSideHasData(snapshot, side);
+  const hasSubmission = hasTeamLineupData(submissionDraft);
+  if (hasSubmission && !hasSnapshotSide) {
+    autoLoadedSubmission.value[side] = true;
+    loadedSubmissionAt.value[side] = submission.updatedAt ?? null;
+    pendingTeamSubmissions.value[side] = null;
+    return toBoardDraft(submissionDraft);
+  }
+  if (hasSubmission && hasSnapshotSide) {
+    const loadedAt = snapshot?.teamLineupLoadedAt?.[side] ?? null;
+    if (submissionIsNewer(submission.updatedAt, loadedAt)) {
+      pendingTeamSubmissions.value[side] = submission;
+    } else {
+      loadedSubmissionAt.value[side] = loadedAt;
+    }
+  }
+  if (!snapshot && !hasSubmission) return null;
+  return {
+    rows: snapshot?.[`${side}Lineup`] ?? [],
+    bench: snapshot?.[`${side}Bench`] ?? [],
+    fieldingPitcherId: snapshot?.[`${side}FieldingPitcherId`] ?? null,
+    lastDhAddedFromPoolId: snapshot?.[`${side}LastDhAddedFromPoolId`] ?? null
+  };
+}
+
+function applySideDraft(side, source, pool) {
+  if (!source) return;
+  const filtered = filterOutOfRoster(source.rows, source.bench, pool);
+  const removedNames = (filtered.removed ?? []).map((x) => x.name || x.id).filter((x) => x != null);
+  if (removedNames.length) {
+    ElMessage.warning(`已从阵容中移除未报名球员：${removedNames.join('、')}`);
+  }
+  const target = side === 'home' ? homeBoard : awayBoard;
+  target.loadDraft({
+    rows: filtered.keptRows,
+    bench: filtered.keptBench,
+    fieldingPitcherId: pickPoolId(source.fieldingPitcherId, pool),
+    lastDhAddedFromPoolId: pickPoolId(source.lastDhAddedFromPoolId, pool)
+  });
+}
+
+/** 办赛方手动载入球队提交（覆盖该侧当前阵容）。 */
+async function loadTeamSubmission(side) {
+  const submission = pendingTeamSubmissions.value[side];
+  if (!submission) return;
+  try {
+    await ElMessageBox.confirm(
+      '将用球队提交的赛前阵容覆盖当前该队阵容，是否继续？',
+      '载入球队赛前阵容'
+    );
+  } catch {
+    return;
+  }
+  const draft = parseTeamLineupDraft(submission.lineupJson);
+  if (!draft || !hasTeamLineupData(draft)) {
+    ElMessage.warning('球队提交的阵容数据为空或格式不正确');
+    return;
+  }
+  applySideDraft(side, toBoardDraft(draft), rosterPools.value[side]);
+  loadedSubmissionAt.value[side] = submission.updatedAt ?? null;
+  pendingTeamSubmissions.value[side] = null;
+  autoLoadedSubmission.value[side] = true;
+  ElMessage.success('已载入球队赛前阵容');
+}
+
 // 旧件 qi()：保存比赛记录时的字段集合（顺序与默认值逐条对齐）
 function gamePayload(g) {
   const e = g ?? {};
@@ -574,6 +705,7 @@ function draftPayload(gid) {
     awayLastDhAddedFromPoolId: awayBoard.lastDhAddedFromPoolId.value,
     homeUnavailablePlayerIds: unavailable.value.home,
     awayUnavailablePlayerIds: unavailable.value.away,
+    teamLineupLoadedAt: loadedSubmissionAt.value
   });
 }
 
@@ -584,7 +716,7 @@ function hasRecordedGameStat(row) {
     'doubles', 'triples', 'hr', 'insideParkHr', 'gdp', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'io', 'cs',
     'ip', 'pitchH', 'pitchDoubles', 'pitchTriples',
     'pitchBbHp', 'pitchSo', 'pitchHr', 'pitchInsideParkHr', 'pitchSh', 'pitchSf', 'pitchPa',
-    'pitchBf', 'pitchAb', 'np', 'pitchBb', 'pitchIbb', 'pitchHbp', 'pitchIo', 'wp', 'bk',
+    'pitchBf', 'pitchAb', 'np', 'pitchBb', 'pitchIbb', 'pitchHbp', 'pitchIo', 'pickoffAttempts', 'wp', 'bk',
     'go', 'fo', 'tc', 'po', 'a', 'dp', 'pb', 'catcherSb', 'catcherCs'
   ].some((key) => Number(row?.[key] ?? 0) > 0);
 }
@@ -615,6 +747,10 @@ async function loadGame(id) {
     const t = resolveLineupResumeInit(e, n);
     game.value = e;
     currentGameId.value = id;
+    teamSubmissions.value = { home: null, away: null };
+    pendingTeamSubmissions.value = { home: null, away: null };
+    loadedSubmissionAt.value = { home: null, away: null };
+    autoLoadedSubmission.value = { home: false, away: false };
     setupForm.value.homeTeamId = t.homeTeamId ?? undefined;
     setupForm.value.awayTeamId = t.awayTeamId ?? undefined;
     setupForm.value.venue = t.venue ?? '';
@@ -622,6 +758,11 @@ async function loadGame(id) {
     if (t.gameTime) gameTime.value = splitGameTime(t.gameTime).gameTime;
     if (teamsReady.value) {
       await loadRosters();
+      const submissions = await loadTeamSubmissions(id);
+      const homeSource = resolveSideDraft('home', n, submissions.home);
+      const awaySource = resolveSideDraft('away', n, submissions.away);
+      applySideDraft('home', homeSource, rosterPools.value.home);
+      applySideDraft('away', awaySource, rosterPools.value.away);
       if (n) {
         // 电子秩序册（Issue #310）：载入存量草稿时剔除名单外球员并提示
         const homeFiltered = filterOutOfRoster(n.homeLineup, n.homeBench, rosterPools.value.home);
@@ -941,6 +1082,20 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.team-submission-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  border: 1px solid #d9e8ff;
+  border-radius: 8px;
+  background: #f4f8ff;
+  color: #4a5b6f;
+  font-size: 13px;
+}
+
 .ohtani-rule-bar {
   display: flex;
   align-items: center;

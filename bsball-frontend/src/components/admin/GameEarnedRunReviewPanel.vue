@@ -123,33 +123,47 @@
           </p>
           <el-table
             v-else
-            :data="pitcherRows"
+            ref="pitcherTableRef"
+            :data="pitcherTableRows"
             border
-            stripe
             size="small"
             max-height="calc(100vh - 300px)"
+            row-key="_rowKey"
+            :span-method="pitcherSpanMethod"
+            :row-class-name="pitcherRowClassName"
+            :cell-class-name="pitcherCellClassName"
           >
-            <el-table-column :label="lt('liveGame.review.pitcher')" min-width="120" show-overflow-tooltip>
+            <el-table-column :label="lt('liveGame.review.team')" width="68" align="center">
               <template #default="{ row }">
-                <span>{{ row.playerName || `#${row.playerId}` }}</span>
-                <el-tag
-                  v-if="teamLabel(row.playerId)"
-                  size="small"
-                  effect="plain"
-                  class="pitcher-team"
-                >{{ teamLabel(row.playerId) }}</el-tag>
+                <div v-if="row._teamRowspan" class="pitcher-team-cell">
+                  <span class="pitcher-team-cell__side">{{ row._teamLabel }}</span>
+                  <span v-if="row._teamName" class="pitcher-team-cell__name">{{ row._teamName }}</span>
+                </div>
               </template>
             </el-table-column>
-            <el-table-column label="R" width="52" align="center">
+            <el-table-column :label="lt('liveGame.review.pitcher')" min-width="96" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span>{{ row.playerName || `#${row.playerId}` }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column width="40" align="center">
+              <template #header>
+                <span title="投手上场先后顺序">登板</span>
+              </template>
+              <template #default="{ row }">
+                <span class="pitcher-order">{{ row.pitcherOrder ?? '—' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="R" width="44" align="center">
               <template #default="{ row }">{{ row.runsAllowed ?? 0 }}</template>
             </el-table-column>
-            <el-table-column label="ER" width="52" align="center">
+            <el-table-column label="ER" width="44" align="center">
               <template #default="{ row }">{{ row.earnedRuns ?? 0 }}</template>
             </el-table-column>
-            <el-table-column :label="lt('liveGame.review.unearned')" width="64" align="center">
+            <el-table-column :label="lt('liveGame.review.unearned')" width="52" align="center">
               <template #default="{ row }">{{ row.unearnedRuns ?? 0 }}</template>
             </el-table-column>
-            <el-table-column :label="lt('liveGame.review.status')" width="86" align="center">
+            <el-table-column :label="lt('liveGame.review.status')" width="74" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.overrideId" size="small" type="warning" effect="plain">
                   {{ lt('liveGame.review.manualOverride') }}
@@ -157,7 +171,7 @@
                 <span v-else class="pitcher-status">{{ lt('liveGame.review.engine') }}</span>
               </template>
             </el-table-column>
-            <el-table-column :label="lt('liveGame.review.actions')" width="76" align="center" fixed="right">
+            <el-table-column :label="lt('liveGame.review.actions')" width="60" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button
                   v-if="row.overrideId"
@@ -321,8 +335,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { gameApi } from '../../api/business';
+import { gameApi, teamApi } from '../../api/business';
 import { useLiveGameText } from '../../composables/useLiveGameText';
+import { buildPitcherRunTable } from '../../utils/pitcherRunGroups';
 
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
@@ -357,6 +372,9 @@ const loading = ref(false);
 const pitcherRows = ref([]);
 const pitcherLoading = ref(false);
 const pitcherLoaded = ref(false);
+const pitcherTableRef = ref(null);
+const gameInfo = ref(null);
+const teamNameById = ref(new Map());
 const pitcherEditVisible = ref(false);
 const pitcherEditRow = ref(null);
 const pitcherEditForm = ref({ runsAllowed: 0, earnedRuns: 0, note: '' });
@@ -387,23 +405,17 @@ const pitcherDerivedUnearned = computed(() => Math.max(
   (Number(pitcherEditForm.value.runsAllowed) || 0) - (Number(pitcherEditForm.value.earnedRuns) || 0)
 ));
 
-const teamLabelByPlayer = computed(() => {
-  const labels = new Map();
-  const homeShort = lt('liveGame.team.homeShort');
-  const awayShort = lt('liveGame.team.awayShort');
-  const mark = (list, label) => {
-    for (const player of Array.isArray(list) ? list : []) {
-      const id = player?.playerId ?? player?.id;
-      if (id != null) labels.set(String(id), label);
-    }
+const pitcherTableRows = computed(() => {
+  const labels = {
+    away: lt('liveGame.team.awayShort'),
+    home: lt('liveGame.team.homeShort'),
+    other: lt('liveGame.review.team')
   };
-  mark(props.homeLineup, homeShort);
-  mark(props.homeBench, homeShort);
-  mark(props.homeRoster, homeShort);
-  mark(props.awayLineup, awayShort);
-  mark(props.awayBench, awayShort);
-  mark(props.awayRoster, awayShort);
-  return labels;
+  return buildPitcherRunTable(pitcherRows.value, {
+    homeTeamId: gameInfo.value?.homeTeamId ?? null,
+    awayTeamId: gameInfo.value?.awayTeamId ?? null,
+    teamNameById: teamNameById.value
+  }).tableRows.map((row) => ({ ...row, _teamLabel: labels[row._teamSide] ?? row._teamLabel }));
 });
 
 const overriddenPitcherIds = computed(() => new Set(
@@ -412,13 +424,30 @@ const overriddenPitcherIds = computed(() => new Set(
     .map((row) => String(row.playerId))
 ));
 
-function teamLabel(playerId) {
-  return teamLabelByPlayer.value.get(String(playerId)) || '';
+function pitcherSpanMethod({ row, columnIndex }) {
+  if (columnIndex !== 0) return { rowspan: 1, colspan: 1 };
+  return row._teamRowspan > 0
+    ? { rowspan: row._teamRowspan, colspan: 1 }
+    : { rowspan: 0, colspan: 0 };
+}
+
+function pitcherRowClassName({ row }) {
+  const base = `pitcher-row--${row._teamSide}`;
+  return row._teamStart ? `${base} pitcher-row--team-start` : base;
+}
+
+function pitcherCellClassName({ row, columnIndex }) {
+  if (columnIndex !== 0) return '';
+  return `pitcher-team-cell-td pitcher-team-cell-td--${row._teamSide}`;
 }
 
 function isPitcherOverridden(playerId) {
   return playerId != null && overriddenPitcherIds.value.has(String(playerId));
 }
+
+watch(pitcherTableRows, () => {
+  pitcherTableRef.value?.doLayout();
+}, { flush: 'post' });
 
 async function loadPitcherTotals() {
   if (!props.gameId || !isFinal.value || pitcherLoading.value) return;
@@ -466,6 +495,7 @@ async function load() {
 onMounted(() => {
   load();
   loadGameStatus();
+  loadTeamNames();
 });
 
 watch(() => props.gameId, (value, oldValue) => {
@@ -483,12 +513,31 @@ watch(activeTab, (tab) => {
 
 async function loadGameStatus() {
   if (!props.gameId) return;
-  if (!props.gameStatus) {
+  try {
     const game = await gameApi.get(props.gameId);
-    remoteGameStatus.value = game?.status ?? '';
+    gameInfo.value = game ?? null;
+    if (!props.gameStatus) remoteGameStatus.value = game?.status ?? '';
+  } catch (e) {
+    gameInfo.value = null;
+    console.error('加载比赛信息失败', e);
   }
   if (isFinal.value && !pitcherLoaded.value) {
     loadPitcherTotals();
+  }
+}
+
+async function loadTeamNames() {
+  try {
+    const teams = await teamApi.selectOptions();
+    const map = new Map();
+    for (const team of Array.isArray(teams) ? teams : []) {
+      if (team?.id != null) {
+        map.set(String(team.id), team.shortName || team.name || '');
+      }
+    }
+    teamNameById.value = map;
+  } catch (e) {
+    console.error('加载球队名称失败', e);
   }
 }
 
@@ -718,6 +767,65 @@ function statusLabel(s) {
   color: var(--el-text-color-secondary);
   font-size: 11px;
   line-height: 1.6;
+}
+.pitcher-order {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pitcher-team-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  min-height: 44px;
+  padding: 4px 2px;
+  box-sizing: border-box;
+}
+.pitcher-team-cell__side {
+  color: var(--el-text-color-secondary);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.pitcher-team-cell__name {
+  color: var(--el-text-color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  word-break: break-word;
+}
+:deep(.el-table__body tr.pitcher-row--away > td.el-table__cell) {
+  background: #f5f9ff;
+}
+:deep(.el-table__body tr.pitcher-row--home > td.el-table__cell) {
+  background: #fdfaf3;
+}
+:deep(.el-table__body tr.pitcher-row--other > td.el-table__cell) {
+  background: #fafafa;
+}
+:deep(.el-table__body tr.pitcher-row--away:hover > td.el-table__cell) {
+  background: #edf5ff;
+}
+:deep(.el-table__body tr.pitcher-row--home:hover > td.el-table__cell) {
+  background: #fbf5e7;
+}
+:deep(.el-table__body tr.pitcher-row--team-start > td.el-table__cell) {
+  border-top: 2px solid #e4ebf4;
+}
+:deep(.el-table__cell.pitcher-team-cell-td--away) {
+  background: #e9f2fe !important;
+  border-left: 3px solid #6f9be8 !important;
+}
+:deep(.el-table__cell.pitcher-team-cell-td--home) {
+  background: #f7efdd !important;
+  border-left: 3px solid #c9a45b !important;
+}
+:deep(.el-table__cell.pitcher-team-cell-td--other) {
+  background: #f2f2f2 !important;
+  border-left: 3px solid #c0c4cc !important;
 }
 .pitcher-team {
   margin-left: 6px;

@@ -44,7 +44,9 @@ export function buildLineupDraft(input) {
     awayLastDhAddedFromPoolId: input.awayLastDhAddedFromPoolId,
     homeLastDhAddedFromPoolId: input.homeLastDhAddedFromPoolId,
     awayUnavailablePlayerIds: input.awayUnavailablePlayerIds,
-    homeUnavailablePlayerIds: input.homeUnavailablePlayerIds
+    homeUnavailablePlayerIds: input.homeUnavailablePlayerIds,
+    // 已载入的球队赛前阵容版本（按侧记录提交时间，避免每次进入重复提示）
+    teamLineupLoadedAt: input.teamLineupLoadedAt ?? null
   };
 }
 

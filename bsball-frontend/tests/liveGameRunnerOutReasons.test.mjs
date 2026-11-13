@@ -77,7 +77,9 @@ test('双杀守备统计：同一 play 第二个出局给参与守备员记 dp',
   assert.ok(source.includes('l.playOut=P?.playOut??null'), '载入现场恢复 playOut');
   assert.ok(source.includes('l.playOut=null'), '新投球/新打者/撤销/半局/重置清空 play 上下文');
   assert.ok(source.includes('O.playOut=null'), '整场重置清空 playOut');
-  assert.ok(source.includes('e==="G"&&l.runners[1]&&(!l.runners[2]'), '地滚出局自动推进被迫进垒跑者');
+  assert.match(source, /groundPlan=resolveGroundOutForceAdvance\(\{runners:l\.runners\}\)/, '地滚出局按强迫链生成推进计划');
+  assert.match(source, /applyForcePlanMoves\(groundPlan,/, '地滚出局只落位强迫链跑者');
+  assert.match(source, /startForceQueue\(groundPlan,/, '满垒三垒跑者进入安全/出局确认');
 });
 
 test('同一 play 第二出局类型门禁：三振后只允许盗垒死补 DP', () => {
@@ -100,10 +102,10 @@ test('同一 play 第二出局类型门禁：三振后只允许盗垒死补 DP',
 });
 
 test('本垒出局原因封杀仅在被迫进垒时出现', () => {
-  assert.ok(source.includes('hasBehindOccupied:b.hasBehindOccupied'), '安打/推进队列保存被迫进垒标记');
-  assert.ok(source.includes('hasBehindOccupied:g.hasBehindOccupied'), '野选队列保存被迫进垒标记');
-  assert.match(source, /l\.forceHomeRunnerId=forceHome\?\(forceHome\.runner\.id\?\?forceHome\.runner\.name\?\?null\):null/, '安打/野选队列记录被迫进垒跑者');
-  assert.match(source, /homeForceOutVisible=\$\(\(\)=>\{[\s\S]*?String\(t\)===String\(l\.forceHomeRunnerId\)/, '封杀门禁按被迫进垒跑者计算');
+  assert.ok(source.includes('hasBehindOccupied:!0'), '强迫推进队列全部标记为被迫进垒');
+  assert.ok(source.includes('const forced=r.filter(g=>g.hasBehindOccupied)'), '野选队列只保留被迫进垒跑者');
+  assert.match(source, /l\.forceHomeRunnerId=plan\.homeRunners\[0\]\.runner\.id\?\?plan\.homeRunners\[0\]\.runner\.name\?\?null/, '强迫推进队列记录首位被迫进垒跑者');
+  assert.match(source, /homeForceOutVisible=\$\(\(\)=>!!Di\.value\?\.hasBehindOccupied\)/, '封杀门禁按当前跑者的被迫进垒标记计算');
   assert.ok(source.includes('l.forceHomeRunnerId=null'), '走路/取消队列清空被迫进垒标记');
   assert.match(source, /homeOutReasonItems=\$\(\(\)=>\[[\s\S]*?homeForceOutVisible\.value\?\[\{key:"force",cn:"封杀出局",en:"Force Out"\}\]:\[\][\s\S]*?\{key:"tag"/, '本垒出局原因项按被迫进垒动态生成');
   assert.match(source, /et\(homeOutReasonItems\.value,d=>n\("button"/, '原因面板按动态项渲染');
@@ -128,7 +130,7 @@ test('出局菜单不再受投球门禁，CI 跑者菜单同样提供盗垒失�
   assert.ok(!kdCode.includes('out_last'), 'Kd 不再提供离垒过远');
 });
 
-test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', () => {
+test('盗垒失败进入传球链：捕手首发校验 + 跑者CS≥1、捕手CCS需有A', () => {
   const kpBlock = sliceBetween('function kp(e){', 'function Pt(){');
   assert.match(kpBlock, /if\(ge\.value=null,e\.id==="out_steal_fail"\)\{/);
   assert.ok(kpBlock.includes('de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`)'), '盗垒失败历史动作名含触杀出局，撤销动画可识别');
@@ -137,9 +139,20 @@ test('盗垒失败进入传球链：捕手首发校验 + 恰好一传记 CS', ()
   assert.match(acBlock, /t\.stealFail&&t\.steps\.length===0&&e!=="C"/);
   assert.match(acBlock, /t\.stealFail&&t\.steps\.length>0&&t\.steps\[t\.steps\.length-1\]===e/, '连续重复点击同一守位不重复入链');
   const settleBlock = sliceBetween('function settleRunnerOut(e){', 'function ac(e){');
-  assert.match(settleBlock, /isCs=!!e\.stealFail&&C1\[0\]==="C"&&C1\.length===2/);
-  assert.match(settleBlock, /isCs&&\(a\.stats\.batting\.cs=\(a\.stats\.batting\.cs\?\?0\)\+1,paceCatcherStat\("catcherCs"\)\)/);
+  assert.match(settleBlock, /isCs=!!e\.stealFail&&C1\[0\]==="C"&&C1\.length>=1/);
+  assert.match(settleBlock, /catcherCsCredit=isCs&&C1\.length>=2&&C1\[C1\.length-1\]!=="C"/);
+  assert.match(settleBlock, /catcherCsCredit&&paceCatcherStat\("catcherCs"\)/);
   assert.match(settleBlock, /reasonCn=isCs\?"盗垒死 \(CS\)"/);
+});
+
+test('Issue 656：球数>0 的向前进垒菜单也提供「传杀过程中进垒」', () => {
+  const gdBlock = sliceBetween('function Gd(', 'function Vd(');
+  assert.equal((gdBlock.match(/id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"/g) ?? []).length, 2, '1→2 与 2→3 均提供 on throw');
+  assert.ok(gdBlock.includes('id:"safe_on_throw",en:"On Throw",cn:"传杀过程中得分"'), '3→4 提供 on throw');
+});
+
+test('Issue 656：legacy CS 路由同样只在捕手有助杀时记 CCS', () => {
+  assert.ok(source.includes('e!=="C"&&paceCatcherStat("catcherCs")'), '仅 C 触杀不记 catcherCs');
 });
 
 test('触杀/封杀选项进入传球链：分别路由 RUNNER_OUT_TAG / RUNNER_OUT_FORCE', () => {

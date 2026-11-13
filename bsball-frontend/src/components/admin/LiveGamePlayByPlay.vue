@@ -1,6 +1,12 @@
 <template>
-  <section class="lg-pbp" :style="{ height: `${height}px` }" :aria-label="lt('liveGame.pbp.aria')">
+  <section
+    class="lg-pbp"
+    :class="{ 'lg-pbp--side': isHorizontal }"
+    :style="isHorizontal ? null : { height: `${height}px` }"
+    :aria-label="lt('liveGame.pbp.aria')"
+  >
     <div
+      v-if="!isHorizontal"
       class="lg-pbp__resize"
       role="separator"
       aria-orientation="horizontal"
@@ -20,7 +26,28 @@
     <header class="lg-pbp__head">
       <span class="lg-pbp__title">PLAY BY PLAY</span>
       <span class="lg-pbp__hint">{{ lt('liveGame.pbp.hint') }}</span>
-      <span class="lg-pbp__count" :title="lt('liveGame.pbp.countTitle', { limit: PBP_LOG_LIMIT })">{{ lt('liveGame.pbp.count', { count: entries.length }) }}</span>
+      <div class="lg-pbp__dock">
+        <span class="lg-pbp__dock-label">吸附</span>
+        <div class="lg-pbp__dock-switch" role="group" aria-label="日志吸附位置">
+          <button
+            v-for="item in visibleDocks"
+            :key="item.key"
+            type="button"
+            class="lg-pbp__dock-btn"
+            :class="{ 'is-active': dock === item.key }"
+            :title="item.title"
+            :aria-label="item.title"
+            :aria-pressed="dock === item.key"
+            @click="$emit('dock-change', item.key)"
+          >
+            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <rect x="2.4" y="2.4" width="13.2" height="13.2" rx="2.6" stroke="currentColor" stroke-width="1.2" />
+              <rect :x="item.bar.x" :y="item.bar.y" :width="item.bar.w" :height="item.bar.h" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+        <span class="lg-pbp__count" :title="lt('liveGame.pbp.countTitle', { limit: PBP_LOG_LIMIT })">{{ lt('liveGame.pbp.count', { count: entries.length }) }}</span>
+      </div>
     </header>
     <p class="lg-pbp__sr" aria-live="polite" aria-atomic="true">{{ latestAnnouncement }}</p>
 
@@ -58,19 +85,35 @@ import {
   PBP_MIN_HEIGHT,
   PBP_STORAGE_KEY
 } from '../../utils/liveGamePbp.js';
+import { isHorizontalDock } from '../../utils/liveGamePbpDock.js';
 
 const { text: lt } = useLiveGameText();
 
 const props = defineProps({
-  logs: { type: Array, default: () => [] }
+  logs: { type: Array, default: () => [] },
+  dock: { type: String, default: 'bottom' },
+  allowHorizontal: { type: Boolean, default: true }
 });
+defineEmits(['dock-change']);
+
+const DOCK_ITEMS = [
+  { key: 'top', title: '吸附到上方', bar: { x: 4.6, y: 4.6, w: 8.8, h: 3.1 } },
+  { key: 'bottom', title: '吸附到下方', bar: { x: 4.6, y: 10.3, w: 8.8, h: 3.1 } },
+  { key: 'left', title: '吸附到左侧', bar: { x: 4.6, y: 4.6, w: 3.1, h: 8.8 } },
+  { key: 'right', title: '吸附到右侧', bar: { x: 10.3, y: 4.6, w: 3.1, h: 8.8 } }
+];
 
 const entries = computed(() => buildPbpEntries(props.logs));
 const latestAnnouncement = computed(() => {
   const latest = entries.value[0];
   if (!latest) return '';
-  return `${latest.inning ? `${latest.inning} ` : ''}${latest.text}`;
+  return latest.inning ? `${latest.inning} ${latest.text}` : latest.text;
 });
+const isHorizontal = computed(() => isHorizontalDock(props.dock));
+const visibleDocks = computed(() => (
+  props.allowHorizontal ? DOCK_ITEMS : DOCK_ITEMS.filter((item) => !isHorizontalDock(item.key))
+));
+
 const height = ref(initialHeight());
 const maxHeight = ref(viewportMax());
 let stopDrag = null;
@@ -173,19 +216,26 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .lg-pbp {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   width: 100%;
+  height: 100%;
+  min-height: 0;
   position: relative;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  box-sizing: border-box;
+  background: var(--el-bg-color);
+  overflow: hidden;
+}
+
+.lg-pbp:not(.lg-pbp--side) {
+  flex: 0 0 auto;
   min-height: 120px;
   margin-top: 8px;
-  box-sizing: border-box;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
-  background: var(--el-bg-color);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
 }
 
 .lg-pbp__resize {
@@ -219,9 +269,11 @@ onBeforeUnmount(() => {
 .lg-pbp__head {
   flex: 0 0 auto;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 6px 12px 4px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .lg-pbp__title {
@@ -236,11 +288,78 @@ onBeforeUnmount(() => {
   font-size: 11px;
 }
 
-.lg-pbp__count {
+.lg-pbp__dock {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lg-pbp__dock-label {
+  color: var(--el-text-color-secondary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.lg-pbp__dock-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+}
+
+.lg-pbp__dock-btn {
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+}
+
+.lg-pbp__dock-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.lg-pbp__dock-btn:hover {
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color);
+}
+
+.lg-pbp__dock-btn.is-active {
+  color: #e3c78f;
+  background: #1d2636;
+  box-shadow: 0 2px 6px rgba(29, 38, 54, 0.24);
+}
+
+.lg-pbp__count {
   color: var(--el-text-color-secondary);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lg-pbp--side .lg-pbp__head {
+  align-items: flex-start;
+}
+
+.lg-pbp--side .lg-pbp__dock {
+  margin-left: 0;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.lg-pbp--side .lg-pbp__count {
+  margin-left: auto;
 }
 
 .lg-pbp__sr {
@@ -347,7 +466,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
   .lg-pbp__head {
-    padding: 5px 9px 3px;
+    padding: 5px 9px;
   }
 
   .lg-pbp__hint {

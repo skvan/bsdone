@@ -154,6 +154,13 @@ export function runCauseLabel(runCause, kind = "score") {
   return RUN_CAUSE_LABELS[runCause]?.[kind] ?? (kind === "play" ? "安打" : "安打得分");
 }
 
+/** 牺牲打事后补记的 PBP 尾注：SF/SH；其他 resultCode 返回空串 */
+export function sacrificeBackfillNote(resultCode) {
+  if (resultCode === "SF") return "补记高飞牺牲 (SF)";
+  if (resultCode === "SH") return "补记牺牲触击 (SH)";
+  return "";
+}
+
 /** C1/C2 安全进垒单行：{原因}：{jv垒}跑者 {名} (#N) {进X — 安全|回本垒得分|回到X|留在X}（rbiNote 可选：#224 打点注记「{打者}：{N}打点」，仅得分分支追加）*/
 export function advanceText({ reasonCn, runner, from, to, rbiNote }) {
   const label = runnerLabel(from, runner);
@@ -359,7 +366,7 @@ const PITCH_LABELS_EN = {
   walk: "Walk"
 };
 
-/** A 组投球行：{主体}: {文案}[ {计数}]；kind 语义见 PITCH_LABELS_CN（balk_ball 为「投手犯规（记坏球 X）」特例） */
+/** A 组投球行：{主体}: {文案}[ {计数}]；kind 语义见 PITCH_LABELS_CN（balk_ball 兼容历史日志，illegal_pitch_ball 为垒上无人的不合法投球） */
 export function pitchText({ who, kind, count }) {
   if (isEn()) {
     if (kind === "balk_ball") return `${who}: balk (ball ${count})`;
@@ -367,6 +374,7 @@ export function pitchText({ who, kind, count }) {
     return `${who}: ${PITCH_LABELS_EN[kind] ?? kind}${count ? ` ${count}` : ""}`;
   }
   if (kind === "balk_ball") return `${who}: 投手犯规（记坏球 ${count}）`;
+  if (kind === "illegal_pitch_ball") return `${who}: 不合法投球（记坏球 ${count}）`;
   if (kind === "foul_k") return `${who}: 击出界外球（两好球后界外三振）${count}`;
   return `${who}: ${PITCH_LABELS_CN[kind] ?? kind}${count ? ` ${count}` : ""}`;
 }

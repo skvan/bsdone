@@ -1522,7 +1522,8 @@
       "pitchBb": "Walks (incl. IBB)",
       "pitchIbb": "Intentional walks",
       "pitchHbp": "Hit by pitch",
-      "pitchIo": "Obstruction allowed"
+      "pitchIo": "Obstruction allowed",
+      "pickoffAttempts": "Pickoff attempts"
     },
     "careerFld": {
       "gp": "Games played",
@@ -1580,6 +1581,7 @@
       "pitchBbHp": "Walks, intentional walks, and hit by pitch",
       "wp": "Wild pitch",
       "bk": "Balk",
+      "pickoffAttempts": "Pickoff attempts by the pitcher (includes no-result, out, and throwing error; not an official stat)",
       "inn": "Innings in the field, same style as IP",
       "tc": "Total chances",
       "po": "Putouts",
@@ -2590,6 +2592,10 @@
       "lineupHasPitcher": "The lineup already has a pitcher; adjust the lineup before canceling the DH.",
       "targetEmpty": "The target field position is empty.",
       "playerUnavailable": "This player was substituted out and cannot re-enter.",
+      "reentryBlockedInTransaction": "A player substituted out cannot re-enter in another slot within the same substitution transaction; finish this transaction and try again.",
+      "dhCancelPitcherInOrder": "The current pitcher is already in the batting order, so the DH cannot be cancelled; drag the DH to a field position to swap.",
+      "reentrySlotUnknown": "Unable to determine this player's original batting slot; substitute from the original slot.",
+      "reentrySlot": "Softball re-entry must return to the original batting slot (slot {slot}).",
       "dhBlockedOhtani": "Under the Ohtani rule, a two-way DH/pitcher cannot be canceled or moved with the DH card. Change pitchers first, then follow the cancel-DH flow.",
       "dhBlockedFormerDh": "Under the Ohtani rule, a DH who has been replaced as pitcher cannot move to a field position or be canceled.",
       "noChanges": "No lineup changes; substitution mode exited.",
@@ -2797,6 +2803,7 @@
     },
     "benchPanel": {
       "empty": "No bench players available (substituted-out players cannot re-enter)",
+      "emptySoftball": "No bench players available",
       "offense": "Offensive Bench",
       "defense": "Defensive Bench",
       "sub": "Sub",
@@ -2960,6 +2967,9 @@
         "benchEmpty": "Drag here to add to the bench, or use Add Multiple",
         "batchTitle": "Add Bench Players",
         "batchPlaceholder": "Select bench players from the roster",
+        "batchAll": "Select all",
+        "batchSelected": "{selected} of {total} selected",
+        "batchEmpty": "No roster players available for the bench",
         "cancel": "Cancel",
         "confirm": "Confirm"
       },
@@ -2992,6 +3002,7 @@
       "erHintLive": "Pitcher R/ER can be overridden after the game is final",
       "tabDecisions": "Earned-Run Decisions",
       "tabPitchers": "Pitcher R/ER",
+      "team": "Team",
       "emptyDecisions": "No decisions yet (complete the rebuild first).",
       "inning": "Inn",
       "halfTop": "T",
@@ -3014,7 +3025,7 @@
       "notFinalReassign": "Decisions can be reassigned after the game is final",
       "notFinalVoid": "Decisions can be voided after the game is final",
       "pitcherHintLive": "Pitcher R/ER can be overridden after the game is final.",
-      "pitcherHint": "R/ER is based on the engine decision; manual overrides take precedence and can be undone at any time.",
+      "pitcherHint": "R/ER is based on the engine decision; manual overrides take precedence and can be undone at any time. The table is grouped by team and ordered by pitching appearance; colors distinguish the two teams.",
       "noPitchers": "No pitchers available to override in this game.",
       "pitcher": "Pitcher",
       "unearned": "Unearned",

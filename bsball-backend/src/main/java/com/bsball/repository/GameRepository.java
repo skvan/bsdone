@@ -57,5 +57,13 @@ JpaSpecificationExecutor<Game> {
     /** 批量口径（球队端列表 canWithdraw 标记）：本队在给定赛事中已开赛的赛事 ID 集（防逐行查询）。 */
     @Query(value="select distinct g.eventId from Game g where g.deletedAt is null and g.eventId in :eventIds and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) and g.status in ('live', 'final')")
     public List<Long> findStartedEventIdsByEventIdsAndTeamId(@Param(value="eventIds") Collection<Long> eventIds, @Param(value="teamId") Long teamId);
+
+    /** 球队端赛前阵容：该赛事下本队尚未开始的比赛（scheduled/postponed），按日期时间升序。 */
+    @Query(value="select g from Game g where g.deletedAt is null and g.tenantId = :tenantId and g.eventId = :eventId "
+            + "and (g.homeTeamId = :teamId or g.awayTeamId = :teamId) "
+            + "and coalesce(g.status, 'scheduled') in ('scheduled', 'postponed') "
+            + "order by g.gameday asc, g.gameTime asc, g.id asc")
+    public List<Game> findUpcomingForTeamInEvent(@Param(value="tenantId") Long tenantId,
+            @Param(value="eventId") Long eventId, @Param(value="teamId") Long teamId);
 }
 

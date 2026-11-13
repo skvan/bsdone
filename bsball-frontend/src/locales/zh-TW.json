@@ -1528,7 +1528,8 @@
       "pitchBb": "四壞（含IBB）",
       "pitchIbb": "故意四壞",
       "pitchHbp": "觸身",
-      "pitchIo": "被妨阻上壘"
+      "pitchIo": "被妨阻上壘",
+      "pickoffAttempts": "牽制企圖"
     },
     "careerFld": {
       "gp": "出場場次",
@@ -1586,6 +1587,7 @@
       "pitchBbHp": "四壞、故意與觸身球等合計",
       "wp": "暴投",
       "bk": "投手犯規",
+      "pickoffAttempts": "牽制企圖（投手向壘上牽制投球次數，含未果/出局/暴傳；非官方統計）",
       "inn": "守備局數，記法同投球局數",
       "tc": "守備機會",
       "po": "刺殺",
@@ -2597,6 +2599,10 @@
       "lineupHasPitcher": "打線已有投手位，不能直接取消DH；請先調整陣容",
       "targetEmpty": "目標守備位無人",
       "playerUnavailable": "該球員已換下，不可再上場",
+      "reentryBlockedInTransaction": "同一換人事務中，換下球員不可再以其他槽位上場；請結束本次換人後重新操作",
+      "dhCancelPitcherInOrder": "當前投手已在打序中，無法取消 DH；可將 DH 拖到守備位交換位置",
+      "reentrySlotUnknown": "無法確認該球員的原打序槽位，請從其原打序位置換人",
+      "reentrySlot": "壘球再上場必須回到原打序（第{slot}棒）",
       "dhBlockedOhtani": "大谷規則下，投手兼DH不能用 DH 卡取消或移防；請先換投，再按取消DH流程處理",
       "dhBlockedFormerDh": "大谷規則下，已換投下場的 DH 不能移防或取消",
       "noChanges": "沒有陣容變化，已退出換人模式",
@@ -2804,6 +2810,7 @@
     },
     "benchPanel": {
       "empty": "板凳席無可用球員（已換下球員不可再上場）",
+      "emptySoftball": "板凳席無可用球員",
       "offense": "進攻方替補席",
       "defense": "防守方替補席",
       "sub": "替補",
@@ -2967,6 +2974,9 @@
         "benchEmpty": "拖到此處加入替補，或使用「批次新增」",
         "batchTitle": "批次新增替補",
         "batchPlaceholder": "從名冊多選替補",
+        "batchAll": "全選",
+        "batchSelected": "已選 {selected} / {total}",
+        "batchEmpty": "名冊中沒有可加入替補的球員",
         "cancel": "取消",
         "confirm": "確定"
       },
@@ -2999,6 +3009,7 @@
       "erHintLive": "比賽結束後才能手動覆寫投手 R/ER",
       "tabDecisions": "自責分判定",
       "tabPitchers": "投手 R/ER",
+      "team": "球隊",
       "emptyDecisions": "暫無判定記錄（需先完成重建）。",
       "inning": "局",
       "halfTop": "上",
@@ -3021,7 +3032,7 @@
       "notFinalReassign": "比賽結束後才能改派判定",
       "notFinalVoid": "比賽結束後才能作廢判定",
       "pitcherHintLive": "比賽結束後才能手動覆寫投手 R/ER。",
-      "pitcherHint": "R/ER 以引擎判定為基準；手動覆寫後以覆寫值為準，可隨時復原恢復引擎值。",
+      "pitcherHint": "R/ER 以引擎判定為基準；手動覆寫後以覆寫值為準，可隨時復原恢復引擎值。表格按球隊分組、登板順序排列，底色區分兩隊。",
       "noPitchers": "本場暫無可覆寫的投手。",
       "pitcher": "投手",
       "unearned": "非自責",
