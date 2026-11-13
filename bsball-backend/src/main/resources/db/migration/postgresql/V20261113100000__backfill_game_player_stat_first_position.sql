@@ -4,14 +4,15 @@
 --
 -- 数据来源：bs_game_substitution_event（2026-10-27 起记录换人/换位/换投/DH取消）。
 -- 规则：取最早一条能确定守备位的事件：
---   SUBSTITUTION 换上 → in_position；换上投手/DH取消 → in_position 或 P；
+--   SUBSTITUTION 换上 → in_position；换上投手/DH取消 → StartingPosition（合法守位时）或 in_position 或 P；
 --   攻方半局换上的代打/代跑不取 in_position（继承的是被换下者守位，不是防守事实）；
 --   SUBSTITUTION 换下 → out_position；
 --   POSITION_CHANGE / PITCHING_CHANGE → out_position；
 --   由 DH/PH/EP 进场守备（out_position 不是守位）→ 该事件 in_position。
--- 同场有事件但事件未给出守位、且有守备证据的行 → 当前守位。
+-- 同场有事件但事件未给出守位、且有守备证据的行 → 优先 StartingPosition（合法守位时），否则当前守位。
+-- 先守备、后登板的球员以 StartingPosition 为准，避免首守位被写成 P；旧场次缺 StartingPosition 时仍按事件 in_position 或当前守位回退，无法可靠还原。
 -- 无事件的旧场次保持 NULL，由前端回退 position 展示；不臆造首个守位。
--- 投手并行行复制同场同球员的球员行（二刀流不落成 P）；纯投手无球员行时补 P。
+-- 投手并行行复制同场同球员的球员行（二刀流不落成 P）；纯投手无球员行时优先 StartingPosition（合法守位时），否则补 P。
 
 WITH event_position AS (
     SELECT s.id AS stat_id,
@@ -28,7 +29,12 @@ WITH event_position AS (
                        THEN e.in_position
                    WHEN e.in_player_id = s.player_id
                         AND e.change_type IN ('PITCHING_CHANGE', 'DH_CANCEL')
-                       THEN COALESCE(NULLIF(BTRIM(e.in_position), ''), 'P')
+                       THEN CASE
+                           WHEN UPPER(BTRIM(COALESCE(s.starting_position, '')))
+                                IN ('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF')
+                               THEN s.starting_position
+                           ELSE COALESCE(NULLIF(BTRIM(e.in_position), ''), 'P')
+                       END
                    WHEN e.out_player_id = s.player_id
                         AND e.in_player_id = s.player_id
                         AND UPPER(BTRIM(COALESCE(e.out_position, ''))) IN ('DH', 'PH', 'EP')
@@ -67,9 +73,14 @@ FROM first_fielding_event f
 WHERE s.id = f.stat_id
   AND s.first_position IS NULL;
 
--- 同场有事件但事件未给出守位：首个守位即当前守位（有守备证据才写）
+-- 同场有事件但事件未给出守位：优先 StartingPosition（合法守位时），否则取当前守位（有守备证据才写）
 UPDATE bs_game_player_stat s
-SET first_position = UPPER(BTRIM(s.position))
+SET first_position = CASE
+    WHEN UPPER(BTRIM(COALESCE(s.starting_position, '')))
+         IN ('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF')
+        THEN UPPER(BTRIM(s.starting_position))
+    ELSE UPPER(BTRIM(s.position))
+END
 WHERE s.deleted_at IS NULL
   AND s.first_position IS NULL
   AND COALESCE(s.is_pitcher, 0) = 0
@@ -103,9 +114,14 @@ WHERE p.deleted_at IS NULL
   AND b.first_position IS NOT NULL
   AND UPPER(BTRIM(b.first_position)) IN ('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF');
 
--- 纯投手行（无球员行）：首个守位为 P（仅限有投球/守备证据的行）
+-- 纯投手行（无球员行）：优先合法 StartingPosition，否则首个守位为 P（仅限有投球/守备证据的行）
 UPDATE bs_game_player_stat p
-SET first_position = 'P'
+SET first_position = CASE
+    WHEN UPPER(BTRIM(COALESCE(p.starting_position, '')))
+         IN ('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF')
+        THEN UPPER(BTRIM(p.starting_position))
+    ELSE 'P'
+END
 WHERE p.deleted_at IS NULL
   AND p.first_position IS NULL
   AND COALESCE(p.is_pitcher, 0) = 1

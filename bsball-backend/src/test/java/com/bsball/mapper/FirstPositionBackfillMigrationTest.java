@@ -2,6 +2,7 @@ package com.bsball.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
@@ -19,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class FirstPositionBackfillMigrationTest {
 
     private static final String MIGRATION =
-            "db/migration/postgresql/V20261112100000__backfill_game_player_stat_first_position.sql";
+            "db/migration/postgresql/V20261113100000__backfill_game_player_stat_first_position.sql";
     private static final Pattern STAT_UPDATE = Pattern.compile("(?s)UPDATE bs_game_player_stat.*?;");
     private static final String VALID_POSITIONS =
             "('P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF')";
@@ -54,8 +55,8 @@ class FirstPositionBackfillMigrationTest {
                 "未按全场事件顺序取最早一条");
         assertTrue(sql.contains("UPPER(BTRIM(s.position)) NOT IN ('DH', 'PH', 'EP')"),
                 "DH/PH/EP 不是守位");
-        assertEquals(3, countOccurrences(sql, "IN " + VALID_POSITIONS),
-                "事件守位、当前守位与并行行复制都必须限制为合法守位");
+        assertEquals(6, countOccurrences(sql, "IN " + VALID_POSITIONS),
+                "事件守位、StartingPosition 兜底（三处）、当前守位与并行行复制都必须限制为合法守位");
 
         int firstEvent = sql.indexOf("first_fielding_event AS (");
         int whitelist = sql.indexOf("WHERE pos IN " + VALID_POSITIONS);
@@ -63,8 +64,9 @@ class FirstPositionBackfillMigrationTest {
         assertTrue(firstEvent > 0 && whitelist > firstEvent && whitelist < firstUpdate,
                 "必须先过滤非法守位再取最早事件，否则会被代打上场的 PH 挡住");
 
-        int currentPosition = sql.indexOf("SET first_position = UPPER(BTRIM(s.position))");
+        int currentPosition = sql.indexOf("ELSE UPPER(BTRIM(s.position))");
         int gameEvents = sql.indexOf("SELECT 1 FROM bs_game_substitution_event e");
+        assertTrue(sql.contains("SET first_position = CASE"), "当前守位兜底未走 CASE 分支");
         assertTrue(currentPosition > 0 && gameEvents > currentPosition,
                 "当前守位兜底必须限定同场（同队）存在未删除事件");
         assertTrue(sql.contains("s.deleted_at IS NULL") && sql.contains("p.deleted_at IS NULL"),
@@ -79,13 +81,29 @@ class FirstPositionBackfillMigrationTest {
         assertTrue(sql.contains("COALESCE(b.is_pitcher, 0) = 0"), "并行行不得从另一投手行复制");
         assertTrue(sql.contains("b.player_id = p.player_id"), "并行行未按同场同球员复制");
         assertTrue(sql.contains("b.first_position IS NOT NULL"), "缺少复制来源非空判断");
-        assertTrue(sql.contains("first_position = 'P'"), "纯投手行未补 P");
+        assertTrue(sql.contains("ELSE 'P'"), "纯投手行未补 P");
         assertTrue(sql.contains("COALESCE(p.ip, 0) > 0"), "纯投手缺少投球证据门槛");
 
-        String purePitcher = sql.substring(sql.indexOf("first_position = 'P'"));
+        String purePitcher = sql.substring(sql.indexOf("UPDATE bs_game_player_stat p"));
+        assertTrue(purePitcher.contains("THEN UPPER(BTRIM(p.starting_position))"),
+                "纯投手行未优先使用 StartingPosition");
         assertTrue(purePitcher.contains("NOT EXISTS"), "纯投手补 P 缺少球员行去重（二刀流双计）");
         assertTrue(purePitcher.contains("COALESCE(b.is_pitcher, 0) = 0"),
                 "纯投手去重未按球员行判断");
+    }
+
+    @Test
+    @DisplayName("先守备后登板：StartingPosition 优先于换投事件的 P")
+    void startingPositionWinsOverPitchingChange() throws Exception {
+        String sql = read();
+        assertEquals(2, countOccurrences(sql, "UPPER(BTRIM(COALESCE(s.starting_position, '')))"),
+                "换投分支与当前守位回退都必须先判断 StartingPosition");
+        assertTrue(sql.contains("THEN s.starting_position"),
+                "换投分支未使用 StartingPosition 兜底");
+        assertTrue(sql.contains("THEN UPPER(BTRIM(s.starting_position))"),
+                "当前守位回退未使用 StartingPosition 兜底");
+        assertFalse(sql.replaceAll("\\s+", " ").contains("SET first_position = UPPER(BTRIM(s.position))"),
+                "存在 StartingPosition 时不得无条件取当前守位");
     }
 
     @Test
@@ -106,6 +124,7 @@ class FirstPositionBackfillMigrationTest {
 
     private static String read() throws Exception {
         try (InputStream in = Resources.getResourceAsStream(MIGRATION)) {
+            assertNotNull(in, "迁移文件不存在: " + MIGRATION);
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
