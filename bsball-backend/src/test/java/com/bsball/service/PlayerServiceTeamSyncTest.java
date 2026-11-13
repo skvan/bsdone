@@ -136,6 +136,8 @@ class PlayerServiceTeamSyncTest {
         existing.setTeamId(5L);
         existing.setName("张三");
         existing.setStatus("active");
+        existing.setUserId(7L);
+        existing.setCurrentJoinRecordId(9L);
         Player body = new Player();
         body.setName("张三");
         body.setTeamId(5L);
@@ -153,6 +155,9 @@ class PlayerServiceTeamSyncTest {
         Player result = service.update(1L, body);
 
         assertSame(body, result);
+        // 认领绑定与当前经历指针由服务端维护，不能被编辑表单覆盖清空
+        assertEquals(7L, body.getUserId());
+        assertEquals(9L, body.getCurrentJoinRecordId());
         verify(playerTeamService).applyMirror(body, plan);
         verify(playerTeamService).persistPlan(1L, plan);
         verify(personnelHistoryRecorder).afterPlayerUpdate(any(Player.class), any(Player.class));
