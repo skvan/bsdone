@@ -703,3 +703,37 @@ test('Issue #656：双盗垒 2B 跑者趁传上三垒，1B 跑者 CS 2-5-4', asy
   expect(snapshot.playerStatsById['105'].fielding).toMatchObject({ a: 1, po: 0 });
   expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
 });
+
+test('全屏模式回归：原因弹窗保持在视口中央', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await page.getByRole('button', { name: '全屏显示' }).click();
+  await expect(page.locator('.card-body-fullscreen')).toBeVisible();
+  const menu = await dragRunner(page, 1, 2, 'safe');
+  await expect(menu).toBeVisible();
+  const box = await menu.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  const centerY = box.y + box.height / 2;
+  expect(Math.abs(centerY - viewport.height / 2)).toBeLessThanOrEqual(32);
+});
+
+test('普通模式回归：原因弹窗保持在视口中央', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  const menu = await dragRunner(page, 1, 2, 'safe');
+  await expect(menu).toBeVisible();
+  const box = await menu.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  const centerY = box.y + box.height / 2;
+  expect(Math.abs(centerY - viewport.height / 2)).toBeLessThanOrEqual(32);
+});
