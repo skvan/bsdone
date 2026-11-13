@@ -160,8 +160,8 @@ test('FC 自踩触杀贯通与单出局记账接入点（静态断言，防回�
   assert.match(src, /function Dn\(e\)\{\r?\n\s*for\(const r of LgSingleOutStats\(e\)\)\{/, 'Dn 改用单出局纯函数');
   assert.match(src, /resolveSingleOutChain as LgResolveOut/, '导入出局垒/方式判定');
   assert.match(src, /lastStepAction=e\.steps\?\.length\?e\.stepActions\?\.\[e\.steps\.length-1\]\?\?null:null/, 'settle 取最后一步自踩动作');
-  assert.match(src, /bt\(e\.type,a,Sr\(e\),void 0,\{lastStepAction\}\)/, 'settle 把自踩动作传给 bt');
-  assert.match(src, /function bt\(e,t,a,rbiOverride,meta\)\{/, 'bt 接收链路元数据');
+  assert.match(src, /bt\(e\.type,a,Sr\(e\),\{lastStepAction\}\)/, 'settle 把自踩动作传给 bt');
+  assert.match(src, /function bt\(e,t,a,meta\)\{/, 'bt 接收链路元数据');
   assert.match(src, /function fcApply\(fc_choice,r,t,a,meta\)\{/, 'fcApply 接收链路元数据');
   assert.match(src, /fcApply\(fc_choice,r,t,a,meta\)/, 'bt 把元数据传给 fcApply');
   assert.match(src, /fc_resolved=LgResolveOut\(\{[\s\S]{0,200}?chain:t,[\s\S]{0,120}?outFrom:fc_base,[\s\S]{0,120}?stepAction:meta\?\.lastStepAction/, 'fcApply 按自踩动作判定');

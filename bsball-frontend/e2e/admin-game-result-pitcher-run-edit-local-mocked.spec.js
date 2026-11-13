@@ -729,3 +729,57 @@ test('身份转记：预览同队球员并单独删除源数据', async ({ page 
   await box.getByRole('button', { name: '删除源数据' }).click();
   await deleteRequest;
 });
+
+test('final 引擎场次：投手 R/ER 按球队分组、按登板序排列', async ({ page }) => {
+  await setup(page);
+  await page.route(`**/bsball-server/game/${GAME_ID}/earned-runs/pitchers`, (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      code: 200,
+      data: [
+        { playerId: 1100, playerName: 'Dan Conklin', teamId: AWAY_ID, pitcherOrder: 1,
+          runsAllowed: 3, earnedRuns: 3, unearnedRuns: 0, engineRunsAllowed: 3,
+          engineEarnedRuns: 3, overrideId: null },
+        { playerId: 1114, playerName: 'Choi hyun崔铉', teamId: AWAY_ID, pitcherOrder: 2,
+          runsAllowed: 3, earnedRuns: 3, unearnedRuns: 0, engineRunsAllowed: 3,
+          engineEarnedRuns: 3, overrideId: 7 },
+        { playerId: 1101, playerName: 'Kim uk jeong金昱廷', teamId: AWAY_ID, pitcherOrder: 4,
+          runsAllowed: 0, earnedRuns: 0, unearnedRuns: 0, engineRunsAllowed: 0,
+          engineEarnedRuns: 0, overrideId: null },
+        { playerId: 2100, playerName: '李铮', teamId: HOME_ID, pitcherOrder: 1,
+          runsAllowed: 8, earnedRuns: 8, unearnedRuns: 0, engineRunsAllowed: 8,
+          engineEarnedRuns: 8, overrideId: null },
+        { playerId: 2101, playerName: '刘永懿', teamId: HOME_ID, pitcherOrder: 2,
+          runsAllowed: 4, earnedRuns: 3, unearnedRuns: 1, engineRunsAllowed: 4,
+          engineEarnedRuns: 3, overrideId: null },
+        { playerId: 2102, playerName: '李岳朋', teamId: HOME_ID, pitcherOrder: 3,
+          runsAllowed: 6, earnedRuns: 3, unearnedRuns: 3, engineRunsAllowed: 6,
+          engineEarnedRuns: 3, overrideId: null }
+      ]
+    })
+  }));
+
+  await page.goto(`/bs-ball/bs-ball/admin/events/1/games/${GAME_ID}/edit`);
+  await page.getByRole('tab', { name: 'ER 复核' }).click();
+  await page.getByRole('tab', { name: '投手 R/ER' }).click();
+
+  const panel = page.locator('.pitcher-runs');
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('.el-table__header th')).toHaveText([
+    '球队', '投手', '登板', 'R', 'ER', '非自责', '状态', '操作'
+  ]);
+  await expect(panel.locator('.pitcher-team-cell')).toHaveCount(2);
+  await expect(panel.locator('.pitcher-team-cell').nth(0)).toContainText('客队');
+  await expect(panel.locator('.pitcher-team-cell').nth(1)).toContainText('主队');
+
+  const rows = panel.locator('.el-table__body tbody tr');
+  await expect(rows).toHaveCount(6);
+  await expect(rows.nth(0)).toContainText('Dan Conklin');
+  await expect(rows.nth(1)).toContainText('Choi hyun崔铉');
+  await expect(rows.nth(2)).toContainText('Kim uk jeong金昱廷');
+  await expect(rows.nth(3)).toContainText('李铮');
+  await expect(rows.nth(4)).toContainText('刘永懿');
+  await expect(rows.nth(5)).toContainText('李岳朋');
+  await expect(rows.nth(1).getByRole('button', { name: '撤销' })).toBeVisible();
+});

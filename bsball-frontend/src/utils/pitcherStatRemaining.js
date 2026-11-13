@@ -11,7 +11,7 @@ const STAT_FIELDS = [
   ['svo', 'SVO'], ['cg', 'CG'], ['pg', 'PG'], ['w', 'W'], ['l', 'L'], ['sv', 'SV'],
   ['hld', 'HLD'], ['pitchBf', 'BF'], ['pitchPa', 'PA'], ['pitAb', 'AB'], ['np', 'NP'],
   ['pitchBb', 'BB'], ['pitchIbb', 'IBB'], ['pitchHbp', 'HBP'], ['pitchIo', 'IO'],
-  ['wp', 'WP'], ['bk', 'BK'], ['pitchR', 'R'], ['go', 'GO'], ['fo', 'FO']
+  ['pickoffAttempts', 'POA'], ['wp', 'WP'], ['bk', 'BK'], ['pitchR', 'R'], ['go', 'GO'], ['fo', 'FO']
 ];
 
 const FIELDING_FIELDS = [

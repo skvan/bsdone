@@ -34,9 +34,9 @@ test('守备员点选后按漏接三振失误记账：E + 打者上一垒 + 来�
   const src = read('../src/views/admin/LiveGame.js');
   const body = slice(src, 'function dk3ReachOnError(e,t){', 'function jf(e){');
   assert.match(body, /creditFieldingError\(Vt\(t\)\)/, '未给所选守备员记 E');
-  assert.match(body, /l\.runners\[1\]=a/, '打者未上一垒');
-  assert.match(body, /a\.origin="ERROR"/, '打者上垒来源未标为 ERROR');
-  assert.match(body, /ti\(\{origin:"ERROR"\}\)/, '被迫进垒跑者未按失误来源推进');
+  assert.match(body, /resolveBatterForceAdvance\(\{batterBase:1,runners:l\.runners,batter:a\}\)/, '打者上一垒走强迫推进计划');
+  assert.match(body, /applyForcePlanMoves\(plan,\{runCause:"ERROR",origin:"ERROR"/, '打者上垒来源与推进原因标为 ERROR');
+  assert.match(body, /startForceQueue\(plan,/, '满垒被迫回本垒进入安全/出局确认');
   assert.match(body, /Je\("DK3_REACH_E",y\)/, '打席结果代码缺失');
   assert.match(body, /\(K\+E\)/, '日志未标注 K+E');
   assert.match(body, /stats\.batting\.so=/, '未给打者记三振');
