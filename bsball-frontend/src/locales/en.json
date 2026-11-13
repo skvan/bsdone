@@ -961,7 +961,8 @@
       "published": "Published",
       "ended": "Ended",
       "ongoing": "Ongoing"
-    }
+    },
+    "standings": "Standings"
   },
   "eventGames": {
     "title": "Schedule & Results",
@@ -980,6 +981,50 @@
       "postponed": "Postponed",
       "cancelled": "Cancelled"
     }
+  },
+  "portalEventDetail": {
+    "back": "Back to Events",
+    "schedule": "Schedule & Results",
+    "standings": "Standings",
+    "bracket": "Bracket",
+    "scheduleTable": "Schedule & Results",
+    "noGames": "No games yet",
+    "noStandings": "No standings yet",
+    "noBracket": "Knockout stage has not started",
+    "notFound": "Event not found or deleted",
+    "standingsTitle": "Standings",
+    "single": "Single round robin",
+    "double": "Double round robin",
+    "knockout": "Single elimination",
+    "groupKnockout": "Group stage + knockout",
+    "pointsRule": "Win {win} pts · Draw {draw} pts · Loss {loss} pts",
+    "winScore": "Winning score",
+    "lossScore": "Losing score",
+    "tieScore": "Tie",
+    "rank": "Rank",
+    "team": "Team",
+    "pointsData": "Points",
+    "resultsData": "Results (row team left · column team right)",
+    "played": "GP",
+    "points": "PTS",
+    "winPct": "PCT",
+    "gamesBehind": "GB",
+    "runsFor": "RS",
+    "runsAgainst": "RA",
+    "runDiff": "DIFF",
+    "qualified": "Qualified",
+    "sameTeam": "Same team",
+    "matrixNote": "Rows and columns are ordered by current standings; the diagonal is the same team and is crossed out. Score colors: green = winner, red = loser, black = tie.",
+    "groupSubtitle": "Group stage · Top {n} advance",
+    "roundRobinSubtitle": "Points and results combined · Win % = W / (W + L)",
+    "group": "Group {code}",
+    "unassignedGroup": "Unassigned",
+    "tbd": "TBD",
+    "champion": "Champion",
+    "thirdPlace": "Third-place match",
+    "bracketSubtitle": "Single elimination · Lines show the path to advance",
+    "scrollHint": "Scroll horizontally to view the full bracket",
+    "warnings": "Data notes"
   },
   "gameDetail": {
     "vs": "VS",
@@ -2063,7 +2108,11 @@
     "listNoActive": "No active players to show",
     "operationFailed": "Operation failed",
     "emptyRegistrations": "No event registrations yet",
-    "softball": "Softball"
+    "softball": "Softball",
+    "colGroup": "Group",
+    "groupUnassigned": "Unassigned",
+    "groupUpdated": "Group updated",
+    "groupUpdateFailed": "Failed to update group"
   },
   "invitePlayer": {
     "title": "Invite Player",
