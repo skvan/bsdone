@@ -54,7 +54,8 @@ test('实时录入：规则默认关闭，Ki/替补席/净状态统一走 reentr
   assert.ok(LIVE.includes('softballReentryOn.value=ev?.specialRules?.softballReentry===!0'), '事件加载应读取 softballReentry');
   assert.ok(LIVE.includes('function softballReentryAllowed(){'), '缺少 softballReentryAllowed()');
   assert.ok(LIVE.includes('if(N.value==="SOFTBALL"&&softballReentryOn.value)return;'), 'Ki 应按开关放行再上');
-  assert.ok(LIVE.includes('buildLiveBenchItems(benchRef.value,effectiveUnavailable(liveBenchTeamKey(side)),N.value,softballReentryAllowed())'), '替补席应按开关灰显');
+  assert.ok(LIVE.includes('buildLiveBenchItems(bench,effectiveUnavailable(teamKey),N.value,softballReentryAllowed())'), '替补席应按开关灰显');
+  assert.ok(LIVE.includes('filter(p=>pitcherId<=0||Number(p.id)!==pitcherId)'), '替补席应隐藏当前守备投手（#678）');
   assert.ok(/applyNetTeamState\(before\[side\],after\[side\],diffs\[index\],\{\s*sport:N\.value,reentryAllowed:softballReentryAllowed\(\)/.test(LIVE), '净状态应按开关落不可再上');
   assert.ok(LIVE.includes('if(N.value==="SOFTBALL"&&softballReentryOn.value)return t;'), '旧换人浮层替补/阵容过滤应按开关');
   assert.ok(SUB.includes("reentryAllowed = String(sport).toUpperCase() === 'SOFTBALL'"), '净状态应支持显式 reentryAllowed');
@@ -63,7 +64,7 @@ test('实时录入：规则默认关闭，Ki/替补席/净状态统一走 reentr
   assert.ok(SUB.includes('export function findReentryInTransaction'), '缺少同事务再上场拦截');
   assert.ok(LIVE.includes('function effectiveUnavailable(side){'), '缺少 effectiveUnavailable 页面接线');
   assert.ok(LIVE.includes('substitutionModeBefore.value?.[side]'), '模式内有效名单应取进入前状态（允许中间犹豫）');
-  assert.ok(LIVE.includes('effectiveUnavailable(liveBenchTeamKey(side))'), '替补席应使用有效不可再上名单');
+  assert.ok(LIVE.includes('effectiveUnavailable(teamKey)'), '替补席应使用有效不可再上名单');
   assert.ok(LIVE.includes('findReentryInTransaction(diffs,{reentryAllowed:softballReentryAllowed()})'), '结束时缺少同事务再上场拦截');
 });
 

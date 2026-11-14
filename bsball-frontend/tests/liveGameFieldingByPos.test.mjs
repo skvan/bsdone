@@ -119,6 +119,24 @@ test('载荷：零出局但有 E/DP 的位置保留行；旧快照缺字段按 0
   ]);
 });
 
+test('载荷：同一球员因替补行与守备投手行重复出现时合并为唯一行，数值逐字段取最大', () => {
+  // gameId=282：DH 制先发投手既在替补席又在投手行，两份 stats 独立但应只输出一行 P
+  const benchCopy = { id: 26, stats: { fielding: { byPos: { P: entry(4, 0, 0, 1) } } } };
+  const fpRowCopy = { id: 26, stats: { fielding: { byPos: { P: entry(6, 0, 0, 2) } } } };
+  assert.deepEqual(buildFieldingPositionRows(1, [benchCopy, fpRowCopy], [26]), [
+    { teamId: 1, playerId: 26, position: 'P', outs: 6, po: 0, a: 0, e: 2, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0, fieldingGs: true },
+  ]);
+});
+
+test('载荷：同一球员多份 byPos 合并时保留各自守位且不重复', () => {
+  const first = { id: 108, stats: { fielding: { byPos: { SS: entry(9, 3, 4) } } } };
+  const second = { id: 108, stats: { fielding: { byPos: { SS: entry(3, 1, 0), '2B': entry(2, 1) } } } };
+  assert.deepEqual(buildFieldingPositionRows(1, [first, second], [108]), [
+    { teamId: 1, playerId: 108, position: 'SS', outs: 9, po: 3, a: 4, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0, fieldingGs: true },
+    { teamId: 1, playerId: 108, position: '2B', outs: 2, po: 1, a: 0, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0, fieldingGs: false },
+  ]);
+});
+
 test('载荷：仅守备投手（fpId 不在打序）也标记 GS', () => {
   const players = [{ id: 1, stats: { fielding: { byPos: { P: entry(6, 1, 0) } } } }];
   const rows = buildFieldingPositionRows(1, players, [108, 1]);
