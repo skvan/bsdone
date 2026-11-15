@@ -12,6 +12,7 @@ import com.bsball.model.entity.Player;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.PlayerRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,16 +53,19 @@ public class GameFieldingAdjustmentService {
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameFieldingPosStatRepository gameFieldingPosStatRepository;
     private final PlayerRepository playerRepository;
+    private final GameSnapshotRepository gameSnapshotRepository;
 
     public GameFieldingAdjustmentService(
             GameFieldingAdjustmentRepository adjustmentRepository,
             GamePlayerStatRepository gamePlayerStatRepository,
             GameFieldingPosStatRepository gameFieldingPosStatRepository,
-            PlayerRepository playerRepository) {
+            PlayerRepository playerRepository,
+            GameSnapshotRepository gameSnapshotRepository) {
         this.adjustmentRepository = adjustmentRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
         this.playerRepository = playerRepository;
+        this.gameSnapshotRepository = gameSnapshotRepository;
     }
 
     /** 列出全场补记；完整快照中源 Play 丢失的有效补记会先失效并扣回统计。 */
@@ -527,7 +531,8 @@ public class GameFieldingAdjustmentService {
     }
 
     private Snapshot readSnapshot(Game game) {
-        String json = game.getLiveSnapshotJson();
+        String json = game.getId() == null ? null
+                : this.gameSnapshotRepository.findSnapshotJsonById(game.getId()).orElse(null);
         if (json == null || json.isBlank()) {
             return null;
         }

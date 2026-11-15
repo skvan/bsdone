@@ -143,7 +143,8 @@ class BatchOnboardingRuleTest {
                 accountScopeService, scopeQuerySupport, guard, tenantQueryPolicyService, earnedRunReconstructionService,
                 eventRegistrationService, gameFieldingPosStatRepository,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
-                org.mockito.Mockito.mock(GameRevisionAuditService.class));
+                org.mockito.Mockito.mock(GameRevisionAuditService.class),
+                org.mockito.Mockito.mock(com.bsball.repository.GameSnapshotRepository.class));
         eventService = new EventService(eventRepository, leagueRepository, accountScopeService, scopeQuerySupport,
                 guard, tenantQueryPolicyService, gameRepository, leagueSpecialRuleService,
                 org.mockito.Mockito.mock(EventSpecialRuleService.class));

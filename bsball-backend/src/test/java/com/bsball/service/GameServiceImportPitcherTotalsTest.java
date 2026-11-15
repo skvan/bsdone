@@ -80,7 +80,8 @@ class GameServiceImportPitcherTotalsTest {
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService,
                 gameFieldingPosStatRepository,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
-                org.mockito.Mockito.mock(GameRevisionAuditService.class));
+                org.mockito.Mockito.mock(GameRevisionAuditService.class),
+                org.mockito.Mockito.mock(com.bsball.repository.GameSnapshotRepository.class));
     }
 
     /** 只桩读上下文（租户+赛事）；拒绝类用例不会走到建赛写入，多余桩定会被 strict stubs 判失败。 */

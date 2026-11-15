@@ -23,6 +23,7 @@ import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ class GameRosterValidationTest {
 
     @Mock
     private GameRepository gameRepository;
+    @Mock
+    private GameSnapshotRepository gameSnapshotRepository;
     @Mock
     private GamePlayerStatRepository gamePlayerStatRepository;
     @Mock
@@ -84,7 +87,7 @@ class GameRosterValidationTest {
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
-                org.mockito.Mockito.mock(GameRevisionAuditService.class));
+                org.mockito.Mockito.mock(GameRevisionAuditService.class), gameSnapshotRepository);
         statService = new GamePlayerStatService(gamePlayerStatRepository, gameRepository,
                 eventRegistrationService, earnedRunReconstructionService,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class));
@@ -120,12 +123,13 @@ class GameRosterValidationTest {
         when(gameRepository.findById(GAME_ID)).thenReturn(Optional.of(g));
         stubWritableContext();
         String json = "{\"v\":1,\"homeLineup\":[{\"id\":5}]}";
+        when(gameSnapshotRepository.updateSnapshotJson(eq(GAME_ID), eq(json), any())).thenReturn(1);
 
         gameService.saveLineupSnapshot(GAME_ID, json);
 
         verify(eventRegistrationService).assertLineupSnapshotInRoster(EVENT_ID, HOME_ID, AWAY_ID, json);
-        assertEquals(json, g.getLiveSnapshotJson());
-        verify(gameRepository).save(g);
+        verify(gameSnapshotRepository).updateSnapshotJson(eq(GAME_ID), eq(json), any());
+        verify(gameRepository, never()).save(any(Game.class));
     }
 
     @Test
@@ -142,6 +146,7 @@ class GameRosterValidationTest {
 
         assertEquals(400, ex.getCode());
         verify(gameRepository, never()).save(any(Game.class));
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
     }
 
     @Test

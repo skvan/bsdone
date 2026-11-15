@@ -38,6 +38,7 @@ import com.bsball.model.entity.Stadium;
 import com.bsball.repository.EventRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.model.entity.GameFieldingPosStat;
@@ -99,6 +100,7 @@ public class GameService {
     private final EarnedRunReconstructionService earnedRunReconstructionService;
     private final GameFieldingAdjustmentService fieldingAdjustmentService;
     private final GameRevisionAuditService revisionAuditService;
+    private final GameSnapshotRepository gameSnapshotRepository;
     private final EventRegistrationService eventRegistrationService;
 
     public PageResult<Game> list(Integer page, Integer pageSize, String sortProp, String sortOrder, Long eventId, List<Long> eventIds, List<Integer> years, Long teamId) {
@@ -184,8 +186,11 @@ public class GameService {
     }
 
     public String getLiveSnapshot(Long gameId) {
-        Game g = this.get(gameId);
-        return g == null ? null : g.getLiveSnapshotJson();
+        // get() 负责存在性、租户与可见范围校验；快照正文按需单独读取，不随 Game 实体加载（Issue #686）。
+        if (this.get(gameId) == null) {
+            return null;
+        }
+        return this.gameSnapshotRepository.findSnapshotJsonById(gameId).orElse(null);
     }
 
     @Transactional
@@ -195,8 +200,10 @@ public class GameService {
             return;
         }
         this.assertGameWritable(g);
-        g.setLiveSnapshotJson(json);
-        this.gameRepository.save(g);
+        if (this.gameSnapshotRepository.updateSnapshotJson(
+                gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
+            log.warn("快照更新未命中比赛 id={}", gameId);
+        }
     }
 
     /**
@@ -214,8 +221,15 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
-        g.setLiveSnapshotJson(json);
-        this.gameRepository.save(g);
+        if (this.gameSnapshotRepository.updateSnapshotJson(
+                gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
+            log.warn("阵容快照更新未命中比赛 id={}", gameId);
+        }
+    }
+
+    /** 快照空白值统一存 NULL，配合 Game.hasLiveSnapshot 的“非空即存在”口径（Issue #686）。 */
+    private static String normalizeSnapshotJson(String json) {
+        return json == null || json.isBlank() ? null : json;
     }
 
     public Game create(Game entity) {
@@ -2039,7 +2053,7 @@ public class GameService {
     }
 
     @Generated
-    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository, GameFieldingAdjustmentService fieldingAdjustmentService, GameRevisionAuditService revisionAuditService) {
+    public GameService(GameRepository gameRepository, GamePlayerStatRepository gamePlayerStatRepository, GameSubstitutionEventRepository gameSubstitutionEventRepository, EventRepository eventRepository, StadiumRepository stadiumRepository, AccountScopeService accountScopeService, ScopeQuerySupport scopeQuerySupport, ResourceGuard resourceGuard, TenantQueryPolicyService tenantQueryPolicyService, EarnedRunReconstructionService earnedRunReconstructionService, EventRegistrationService eventRegistrationService, GameFieldingPosStatRepository gameFieldingPosStatRepository, GameFieldingAdjustmentService fieldingAdjustmentService, GameRevisionAuditService revisionAuditService, GameSnapshotRepository gameSnapshotRepository) {
         this.gameRepository = gameRepository;
         this.gamePlayerStatRepository = gamePlayerStatRepository;
         this.gameSubstitutionEventRepository = gameSubstitutionEventRepository;
@@ -2054,6 +2068,7 @@ public class GameService {
         this.gameFieldingPosStatRepository = gameFieldingPosStatRepository;
         this.fieldingAdjustmentService = fieldingAdjustmentService;
         this.revisionAuditService = revisionAuditService;
+        this.gameSnapshotRepository = gameSnapshotRepository;
     }
 }
 

@@ -119,7 +119,8 @@ class GameServiceSaveResultTest {
         gameService = new GameService(gameRepository, gamePlayerStatRepository, gameSubstitutionEventRepository, eventRepository,
                 stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
-                fieldingAdjustmentService, revisionAuditService);
+                fieldingAdjustmentService, revisionAuditService,
+                org.mockito.Mockito.mock(com.bsball.repository.GameSnapshotRepository.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();
