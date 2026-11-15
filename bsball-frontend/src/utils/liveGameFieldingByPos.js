@@ -83,42 +83,63 @@ export function isStartingPlayer(playerId, starterIds, starterFpId) {
   return Number(starterFpId) === id;
 }
 
-/** 生成 save-live 的 fieldingPositions（球员 × 位置）；先发的首个守位标 GS */
+const COUNT_FIELDS = ['outs', 'po', 'a', 'e', 'dp', 'pb', 'catcherCs', 'catcherSb'];
+
+function emptyByPosEntry() {
+  return { outs: 0, po: 0, a: 0, e: 0, dp: 0, pb: 0, catcherCs: 0, catcherSb: 0 };
+}
+
+/** 生成 save-live 的 fieldingPositions（球员 × 位置）；先发的首个守位标 GS。
+ *  同一球员可能在替补席与守备投手行各出现一次（#678），按球员归并 byPos，同守位逐字段取最大值。 */
 export function buildFieldingPositionRows(teamId, players, starterIds) {
-  const rows = [];
   const starters = new Set((Array.isArray(starterIds) ? starterIds : []).map((id) => Number(id)));
+  const order = [];
+  const byPlayer = new Map();
   for (const player of Array.isArray(players) ? players : []) {
     const playerId = Number(player?.id);
     if (!Number.isFinite(playerId) || playerId <= 0) continue;
     const byPos = player?.stats?.fielding?.byPos;
     if (!byPos || typeof byPos !== 'object') continue;
-    let firstPos = null;
+    let slot = byPlayer.get(playerId);
+    if (!slot) {
+      slot = { positions: new Map(), order: [] };
+      byPlayer.set(playerId, slot);
+      order.push(playerId);
+    }
     for (const [rawPos, rawEntry] of Object.entries(byPos)) {
       const position = normalizeFieldingPosition(rawPos);
       if (!isFieldingPosition(position)) continue;
-      if (firstPos == null) firstPos = position;
       const entry = rawEntry && typeof rawEntry === 'object' ? rawEntry : { outs: rawEntry };
-      const outs = countOf(entry.outs);
-      const po = countOf(entry.po);
-      const a = countOf(entry.a);
-      const e = countOf(entry.e);
-      const dp = countOf(entry.dp);
-      const pb = countOf(entry.pb);
-      const catcherCs = countOf(entry.catcherCs);
-      const catcherSb = countOf(entry.catcherSb);
-      if (outs + po + a + e + dp + pb + catcherCs + catcherSb === 0) continue;
+      let target = slot.positions.get(position);
+      if (!target) {
+        target = emptyByPosEntry();
+        slot.positions.set(position, target);
+        slot.order.push(position);
+      }
+      for (const field of COUNT_FIELDS) {
+        target[field] = Math.max(target[field], countOf(entry[field]));
+      }
+    }
+  }
+  const rows = [];
+  for (const playerId of order) {
+    const slot = byPlayer.get(playerId);
+    const firstPos = slot.order[0] ?? null;
+    for (const position of slot.order) {
+      const entry = slot.positions.get(position);
+      if (COUNT_FIELDS.every((field) => entry[field] === 0)) continue;
       rows.push({
         teamId: Number(teamId),
         playerId,
         position,
-        outs,
-        po,
-        a,
-        e,
-        dp,
-        pb,
-        catcherCs,
-        catcherSb,
+        outs: entry.outs,
+        po: entry.po,
+        a: entry.a,
+        e: entry.e,
+        dp: entry.dp,
+        pb: entry.pb,
+        catcherCs: entry.catcherCs,
+        catcherSb: entry.catcherSb,
         fieldingGs: starters.has(playerId) && position === firstPos,
       });
     }

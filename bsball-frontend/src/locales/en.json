@@ -61,7 +61,7 @@
         "shortLabel": "HR"
       },
       "iphr": {
-        "fullName": "Inside-the-Park Home Runs",
+        "fullName": "Inside-the-park home runs",
         "definition": "A batter scores by circling the bases on a batted ball that stays in play",
         "shortLabel": "IPHR"
       },
@@ -71,7 +71,7 @@
         "shortLabel": "HR"
       },
       "pitchInsideParkHr": {
-        "fullName": "Inside-the-Park Home Runs Allowed",
+        "fullName": "Inside-the-park home runs allowed",
         "definition": "Inside-the-park home runs credited against the pitcher",
         "shortLabel": "IPHR"
       },
@@ -96,7 +96,7 @@
         "shortLabel": "IBB"
       },
       "hbp": {
-        "fullName": "Hit by Pitch",
+        "fullName": "Hit-by-Pitch",
         "definition": "When a batter is struck by a pitched ball which he is not attempting to hit and is awarded first base",
         "shortLabel": "HBP"
       },
@@ -133,7 +133,7 @@
       "pg": {
         "fullName": "Shutouts",
         "definition": "When a pitcher throws a complete game and allows no runs",
-        "shortLabel": "SHO"
+        "shortLabel": "PG"
       },
       "sho": {
         "fullName": "Shutouts",
@@ -238,12 +238,12 @@
       "sbAllowed": {
         "fullName": "Stolen Bases Allowed",
         "definition": "Total stolen bases while a pitcher is on the mound",
-        "shortLabel": "SB"
+        "shortLabel": "SBALLOWED"
       },
       "csAllowed": {
         "fullName": "Caught Stealing",
         "definition": "Total runners caught stealing while a pitcher is on the mound",
-        "shortLabel": "CS"
+        "shortLabel": "CSALLOWED"
       },
       "pk": {
         "fullName": "Pickoffs",
@@ -266,22 +266,22 @@
         "shortLabel": "SF"
       },
       "gdp": {
-        "fullName": "Grounded Into Double Play",
+        "fullName": "Ground Into Double Play",
         "definition": "When a player hits a ground ball that results in more than one out",
         "shortLabel": "GDP"
       },
       "gidp": {
-        "fullName": "Grounded Into Double Play",
+        "fullName": "Ground Into Double Play",
         "definition": "When a player hits a ground ball that results in more than one out",
         "shortLabel": "GIDP"
       },
       "goFo": {
-        "fullName": "Groundout/Flyout Ratio",
+        "fullName": "Groundout to Air Out Ratio",
         "definition": "",
-        "shortLabel": "GO/FO"
+        "shortLabel": "GOFO"
       },
       "goAo": {
-        "fullName": "Groundout/Airout Ratio",
+        "fullName": "Groundout to Air Out Ratio",
         "definition": "",
         "shortLabel": "GO/AO"
       },
@@ -378,7 +378,7 @@
       "tcPct": {
         "fullName": "Fielding Percentage",
         "definition": "Rate at which a fielder records outs without an error.",
-        "shortLabel": "FPCT"
+        "shortLabel": "TC%"
       },
       "sb": {
         "fullName": "Stolen Bases",
@@ -421,47 +421,47 @@
         "shortLabel": "BIP%"
       },
       "io": {
-        "fullName": "Reached on Interference/Obstruction",
+        "fullName": "Reached on obstruction",
         "definition": "Batter awarded first base due to defensive obstruction or interference; counts as a plate appearance, not an at-bat",
         "shortLabel": "IO"
       },
       "pitchDoubles": {
-        "fullName": "Doubles Allowed",
+        "fullName": "Doubles allowed",
         "definition": "Doubles hit against the pitcher",
         "shortLabel": "2B"
       },
       "pitchTriples": {
-        "fullName": "Triples Allowed",
+        "fullName": "Triples allowed",
         "definition": "Triples hit against the pitcher",
         "shortLabel": "3B"
       },
       "pitchSh": {
-        "fullName": "Sacrifice Bunts Allowed",
+        "fullName": "Sacrifice bunts allowed",
         "definition": "Sacrifice bunts against the pitcher",
         "shortLabel": "SH"
       },
       "pitchSf": {
-        "fullName": "Sacrifice Flies Allowed",
+        "fullName": "Sacrifice flies allowed",
         "definition": "Sacrifice flies against the pitcher",
         "shortLabel": "SF"
       },
       "pitchIo": {
-        "fullName": "Obstruction Allowed",
+        "fullName": "Obstruction allowed",
         "definition": "Batter reaches base due to the pitcher’s defensive obstruction/interference",
         "shortLabel": "IO"
       },
       "unearnedR": {
-        "fullName": "Unearned Runs",
+        "fullName": "Unearned runs",
         "definition": "Runs scored due to errors or other non-pitcher responsibility",
         "shortLabel": "UER"
       },
       "pendingR": {
-        "fullName": "Pending Runs",
+        "fullName": "Pending runs",
         "definition": "Runs whose earned/unearned decision is not final",
         "shortLabel": "PEND"
       },
       "catcherSb": {
-        "fullName": "Stolen Bases Allowed",
+        "fullName": "Stolen bases allowed",
         "definition": "Stolen bases against the catcher",
         "shortLabel": "SB"
       },
@@ -1191,7 +1191,7 @@
         "svo": "Save opportunities.",
         "hld": "Hold.",
         "cg": "Complete game flag (0=no, 1=yes).",
-        "pg": "Shutout flag (0=no, 1=yes).",
+        "pg": "Perfect game flag (0=no, 1=yes).",
         "era": "Earned run average (ER×9/IP).",
         "pitchDoubles": "Doubles allowed",
         "pitchTriples": "Triples allowed",
@@ -1294,72 +1294,72 @@
       "recentRecord": "Last",
       "winRate": "Win%",
       "points": "Points",
-      "gp": "Games Played",
-      "gs": "Games Started",
-      "svo": "Save Opportunities",
-      "cg": "Complete Games",
-      "pg": "Shutouts",
-      "w": "Wins",
-      "l": "Losses",
-      "sv": "Saves",
-      "hld": "Holds",
-      "ip": "Innings Pitched",
-      "whip": "Walks and Hits Per Inning Pitched",
-      "era": "Earned Run Average",
-      "pa": "Plate Appearances",
-      "pitchBf": "Batters Faced",
+      "gp": "GP",
+      "gs": "GS",
+      "svo": "SVO",
+      "cg": "CG",
+      "pg": "PG",
+      "w": "W",
+      "l": "L",
+      "sv": "SV",
+      "hld": "HLD",
+      "ip": "IP",
+      "whip": "WHIP",
+      "era": "ERA",
+      "pa": "PA",
+      "pitchBf": "BF",
       "np": "NP",
-      "ab": "At Bats",
-      "h": "Hits",
-      "hr": "Home Runs",
-      "iphr": "Inside-the-Park Home Runs",
-      "pitchInsideParkHr": "Inside-the-Park Home Runs Allowed",
-      "bb": "Walks",
-      "ibb": "Intentional Walks",
-      "hbp": "Hit by Pitch",
-      "so": "Strikeouts",
-      "wp": "Wild Pitches",
-      "bk": "Balks",
-      "r": "Runs",
-      "er": "Earned Runs",
-      "unearnedR": "Unearned Runs",
-      "pendingR": "Pending Runs",
-      "go": "Groundouts",
-      "fo": "Flyouts",
-      "goFo": "Groundout/Flyout Ratio",
-      "rbi": "Runs Batted In",
-      "oneB": "Singles",
-      "twoB": "Doubles",
-      "threeB": "Triples",
-      "tb": "Total Bases",
-      "sb": "Stolen Bases",
-      "obp": "On-Base Percentage",
-      "slg": "Slugging Percentage",
-      "avg": "Batting Average",
-      "gdp": "Grounded Into Double Play",
-      "sh": "Sacrifice Bunts",
-      "sf": "Sacrifice Flies",
-      "cs": "Caught Stealing",
-      "sbPct": "Stolen Base Percentage",
-      "ops": "On-Base Plus Slugging",
+      "ab": "AB",
+      "h": "H",
+      "hr": "HR",
+      "iphr": "IPHR",
+      "pitchInsideParkHr": "IPHR",
+      "bb": "BB",
+      "ibb": "IBB",
+      "hbp": "HBP",
+      "so": "SO",
+      "wp": "WP",
+      "bk": "BK",
+      "r": "R",
+      "er": "ER",
+      "unearnedR": "UER",
+      "pendingR": "PENDING",
+      "go": "GO",
+      "fo": "FO",
+      "goFo": "GO/FO",
+      "rbi": "RBI",
+      "oneB": "1B",
+      "twoB": "2B",
+      "threeB": "3B",
+      "tb": "TB",
+      "sb": "SB",
+      "obp": "OBP",
+      "slg": "SLG",
+      "avg": "AVG",
+      "gdp": "GDP",
+      "sh": "SH",
+      "sf": "SF",
+      "cs": "CS",
+      "sbPct": "SB%",
+      "ops": "OPS",
       "ssi": "SSI",
       "pos": "POS",
-      "tc": "Total Chances",
-      "po": "Putouts",
-      "a": "Assists",
-      "e": "Errors",
-      "inn": "Innings (Fielding)",
-      "dp": "Double Plays",
-      "pb": "Passed Balls",
-      "catcherCs": "Caught Stealing (Catcher)",
-      "tcPct": "Fielding Percentage",
-      "catcherSb": "Stolen Bases Allowed",
-      "io": "Reached on Interference/Obstruction",
-      "pitchDoubles": "Doubles Allowed",
-      "pitchTriples": "Triples Allowed",
-      "pitchSh": "Sacrifice Bunts Allowed",
-      "pitchSf": "Sacrifice Flies Allowed",
-      "pitchIo": "Obstruction Allowed",
+      "tc": "TC",
+      "po": "PO",
+      "a": "A",
+      "e": "E",
+      "inn": "INN",
+      "dp": "DP",
+      "pb": "PB",
+      "catcherCs": "CS",
+      "tcPct": "TC%",
+      "catcherSb": "SB Allowed",
+      "io": "Reached on obstruction",
+      "pitchDoubles": "Doubles allowed",
+      "pitchTriples": "Triples allowed",
+      "pitchSh": "Sac bunts allowed",
+      "pitchSf": "Sac flies allowed",
+      "pitchIo": "Obstruction allowed",
       "pitchH": "Hits Allowed",
       "pitchR": "Runs Allowed",
       "pitchHr": "Home Runs Allowed",
@@ -1389,7 +1389,7 @@
       "gs": "GS",
       "svo": "SVO",
       "cg": "CG",
-      "pg": "SHO",
+      "pg": "PG",
       "w": "W",
       "l": "L",
       "sv": "SV",
@@ -1414,7 +1414,7 @@
       "r": "R",
       "er": "ER",
       "unearnedR": "UER",
-      "pendingR": "PEND",
+      "pendingR": "PENDING",
       "go": "GO",
       "fo": "FO",
       "goFo": "GO/FO",
@@ -1443,7 +1443,7 @@
       "dp": "DP",
       "pb": "PB",
       "catcherCs": "CS",
-      "tcPct": "FPCT",
+      "tcPct": "TC%",
       "catcherSb": "SB",
       "io": "IO",
       "pitchDoubles": "2B",
@@ -2044,7 +2044,7 @@
         "pitchSo": "Strikeouts",
         "pitchHr": "Home runs allowed",
         "pitchInsideParkHr": "Inside-the-park home runs (IPHR)",
-        "pitAb": "At bats against (approx. BF−BB−IBB−HBP)",
+        "pitAb": "Approx. batters faced minus walks/IBB/HBP",
         "pitE": "Fielding errors for this player in the game (if tracked)",
         "np": "Pitch count",
         "pitchPa": "Plate appearances against",
@@ -2063,7 +2063,7 @@
         "svo": "Save opportunities",
         "hld": "Holds",
         "cg": "Complete games",
-        "pg": "Shutouts",
+        "pg": "Perfect games",
         "era": "Earned run average",
         "whip": "Walks and hits allowed per inning pitched (WHIP)"
       }
