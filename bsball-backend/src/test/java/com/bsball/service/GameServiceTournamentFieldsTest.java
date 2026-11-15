@@ -57,7 +57,8 @@ class GameServiceTournamentFieldsTest {
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService,
                 gameFieldingPosStatRepository,
                 mock(GameFieldingAdjustmentService.class),
-                mock(GameRevisionAuditService.class));
+                mock(GameRevisionAuditService.class),
+                mock(com.bsball.repository.GameSnapshotRepository.class));
         event = new Event();
         event.setId(EVENT_ID);
         event.setTenantId(TENANT_ID);

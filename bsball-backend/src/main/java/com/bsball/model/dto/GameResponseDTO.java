@@ -120,8 +120,7 @@ public class GameResponseDTO {
         dto.setIncludeStatsInRanking(g.getIncludeStatsInRanking());
         dto.setCreatedAt(g.getCreatedAt());
         dto.setUpdatedAt(g.getUpdatedAt());
-        String snap = g.getLiveSnapshotJson();
-        dto.setHasLiveSnapshot(Boolean.valueOf(snap != null && !snap.isBlank()));
+        dto.setHasLiveSnapshot(Boolean.TRUE.equals(g.getHasLiveSnapshot()));
         dto.setEngineManaged(Boolean.FALSE);
         return dto;
     }

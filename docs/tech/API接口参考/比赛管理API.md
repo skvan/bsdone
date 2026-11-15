@@ -88,6 +88,7 @@ class Event {
 
 ### 比赛管理（Game）
 > Issue #665（2026-11-13）：create/update 与 `GameResponseDTO` 新增 `stageCode`、`groupCode`、`roundNo`、`bracketSlot` 字段，用于积分榜与淘汰赛对阵；单/双循环赛事会清空阶段/组别。详见 [赛事积分榜与对阵 API](赛事积分榜与对阵API.md)。
+> Issue #686（2026-11-15）：`Game` 实体不再映射 `liveSnapshotJson`（避免列表查询加载大字段），快照正文由同表轻量实体 `GameSnapshot` 按需读写；`GameResponseDTO` 仍返回 `hasLiveSnapshot`，`GET/POST /game/{id}/live-snapshot` 契约不变。
 
 - 功能：创建、更新、删除、列表查询、获取/保存实时快照、比分更新、结果保存、球员统计CRUD
 - 状态：status默认scheduled，支持实时更新；inning/topBottom表示当前局与上下半局
@@ -108,8 +109,8 @@ class Game {
 +Integer totalInnings
 +Integer inning
 +String topBottom
++Boolean hasLiveSnapshot
 +String status
-+String liveSnapshotJson
 +String gameTime
 +String gameday
 +String venue

@@ -24,6 +24,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 import lombok.Generated;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.Formula;
 
 /*
  * Exception performing whole class analysis ignored.
@@ -83,9 +84,14 @@ extends BaseEntity {
     private Integer inning;
     @Comment(value="\u4e0a\u4e0b\u534a\u5c40")
     private String topBottom;
-    @Column(columnDefinition="TEXT")
-    @Comment(value="\u5b9e\u65f6\u5f55\u5165\u5feb\u7167 JSON")
-    private String liveSnapshotJson;
+    /**
+     * 快照是否存在（2026-11-15 生产 OOM 修复，Issue #686）。
+     * 快照正文（平均 2.4MB/场）由同表轻量实体 {@link GameSnapshot} 单独读写，
+     * 本实体不再映射 live_snapshot_json，避免比赛列表分页把 TEXT 大字段读入堆内存。
+     * 这里只判 NULL：对 TEXT 求 length() 会触发 PostgreSQL detoast，列表查询仍会读全量快照。
+     */
+    @Formula("(live_snapshot_json is not null)")
+    private Boolean hasLiveSnapshot;
     @Comment(value="\u89c2\u4f17\u4eba\u6570\uff08\u53ef\u7a7a\uff09")
     private Integer spectatorCount;
     @Column(length=128)
@@ -293,8 +299,8 @@ extends BaseEntity {
     }
 
     @Generated
-    public String getLiveSnapshotJson() {
-        return this.liveSnapshotJson;
+    public Boolean getHasLiveSnapshot() {
+        return this.hasLiveSnapshot;
     }
 
     @Generated
@@ -499,11 +505,6 @@ extends BaseEntity {
     }
 
     @Generated
-    public void setLiveSnapshotJson(String liveSnapshotJson) {
-        this.liveSnapshotJson = liveSnapshotJson;
-    }
-
-    @Generated
     public void setSpectatorCount(Integer spectatorCount) {
         this.spectatorCount = spectatorCount;
     }
@@ -601,7 +602,7 @@ extends BaseEntity {
 
     @Generated
     public String toString() {
-        return "Game(eventId=" + this.getEventId() + ", tenantId=" + this.getTenantId() + ", homeTeamId=" + this.getHomeTeamId() + ", awayTeamId=" + this.getAwayTeamId() + ", homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + this.getHomeScoreByInning() + ", awayScoreByInning=" + this.getAwayScoreByInning() + ", totalInnings=" + this.getTotalInnings() + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", gameTime=" + this.getGameTime() + ", gameEndTime=" + this.getGameEndTime() + ", gameday=" + this.getGameday() + ", gameNumber=" + this.getGameNumber() + ", stadiumId=" + this.getStadiumId() + ", venue=" + this.getVenue() + ", status=" + this.getStatus() + ", inning=" + this.getInning() + ", topBottom=" + this.getTopBottom() + ", liveSnapshotJson=" + this.getLiveSnapshotJson() + ", spectatorCount=" + this.getSpectatorCount() + ", umpireHp=" + this.getUmpireHp() + ", umpire1b=" + this.getUmpire1b() + ", umpire2b=" + this.getUmpire2b() + ", umpire3b=" + this.getUmpire3b() + ", recorders=" + this.getRecorders() + ", gameTag=" + this.getGameTag() + ", weatherSummary=" + this.getWeatherSummary() + ", weatherTempC=" + this.getWeatherTempC() + ", weatherWind=" + this.getWeatherWind() + ", weatherRainProbPct=" + this.getWeatherRainProbPct() + ", remark=" + this.getRemark() + ", isSpecialResult=" + this.getIsSpecialResult() + ", showRemarkInCard=" + this.getShowRemarkInCard() + ", includeStatsInRanking=" + this.getIncludeStatsInRanking() + ", gameMode=" + this.getGameMode() + ")";
+        return "Game(eventId=" + this.getEventId() + ", tenantId=" + this.getTenantId() + ", homeTeamId=" + this.getHomeTeamId() + ", awayTeamId=" + this.getAwayTeamId() + ", homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + this.getHomeScoreByInning() + ", awayScoreByInning=" + this.getAwayScoreByInning() + ", totalInnings=" + this.getTotalInnings() + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", gameTime=" + this.getGameTime() + ", gameEndTime=" + this.getGameEndTime() + ", gameday=" + this.getGameday() + ", gameNumber=" + this.getGameNumber() + ", stadiumId=" + this.getStadiumId() + ", venue=" + this.getVenue() + ", status=" + this.getStatus() + ", inning=" + this.getInning() + ", topBottom=" + this.getTopBottom() + ", spectatorCount=" + this.getSpectatorCount() + ", umpireHp=" + this.getUmpireHp() + ", umpire1b=" + this.getUmpire1b() + ", umpire2b=" + this.getUmpire2b() + ", umpire3b=" + this.getUmpire3b() + ", recorders=" + this.getRecorders() + ", gameTag=" + this.getGameTag() + ", weatherSummary=" + this.getWeatherSummary() + ", weatherTempC=" + this.getWeatherTempC() + ", weatherWind=" + this.getWeatherWind() + ", weatherRainProbPct=" + this.getWeatherRainProbPct() + ", remark=" + this.getRemark() + ", isSpecialResult=" + this.getIsSpecialResult() + ", showRemarkInCard=" + this.getShowRemarkInCard() + ", includeStatsInRanking=" + this.getIncludeStatsInRanking() + ", gameMode=" + this.getGameMode() + ")";
     }
 
     @Generated
@@ -759,11 +760,6 @@ extends BaseEntity {
         if (this$topBottom == null ? other$topBottom != null : !this$topBottom.equals(other$topBottom)) {
             return false;
         }
-        String this$liveSnapshotJson = this.getLiveSnapshotJson();
-        String other$liveSnapshotJson = other.getLiveSnapshotJson();
-        if (this$liveSnapshotJson == null ? other$liveSnapshotJson != null : !this$liveSnapshotJson.equals(other$liveSnapshotJson)) {
-            return false;
-        }
         String this$umpireHp = this.getUmpireHp();
         String other$umpireHp = other.getUmpireHp();
         if (this$umpireHp == null ? other$umpireHp != null : !this$umpireHp.equals(other$umpireHp)) {
@@ -879,8 +875,6 @@ extends BaseEntity {
         result = result * 59 + ($status == null ? 43 : $status.hashCode());
         String $topBottom = this.getTopBottom();
         result = result * 59 + ($topBottom == null ? 43 : $topBottom.hashCode());
-        String $liveSnapshotJson = this.getLiveSnapshotJson();
-        result = result * 59 + ($liveSnapshotJson == null ? 43 : $liveSnapshotJson.hashCode());
         String $umpireHp = this.getUmpireHp();
         result = result * 59 + ($umpireHp == null ? 43 : $umpireHp.hashCode());
         String $umpire1b = this.getUmpire1b();
