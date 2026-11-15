@@ -266,22 +266,22 @@
         "shortLabel": "SF"
       },
       "gdp": {
-        "fullName": "Grounded Into Double Play",
+        "fullName": "Ground Into Double Play",
         "definition": "When a player hits a ground ball that results in more than one out",
         "shortLabel": "GDP"
       },
       "gidp": {
-        "fullName": "Grounded Into Double Play",
+        "fullName": "Ground Into Double Play",
         "definition": "When a player hits a ground ball that results in more than one out",
         "shortLabel": "GIDP"
       },
       "goFo": {
-        "fullName": "Groundout/Flyout Ratio",
+        "fullName": "Groundout-to-Airout Ratio",
         "definition": "",
-        "shortLabel": "GO/FO"
+        "shortLabel": "GO/AO"
       },
       "goAo": {
-        "fullName": "Groundout/Airout Ratio",
+        "fullName": "Groundout-to-Airout Ratio",
         "definition": "",
         "shortLabel": "GO/AO"
       },
@@ -1326,7 +1326,7 @@
       "pendingR": "Pending Runs",
       "go": "Groundouts",
       "fo": "Flyouts",
-      "goFo": "Groundout/Flyout Ratio",
+      "goFo": "Groundout-to-Airout Ratio",
       "rbi": "Runs Batted In",
       "oneB": "Singles",
       "twoB": "Doubles",
@@ -1336,7 +1336,7 @@
       "obp": "On-Base Percentage",
       "slg": "Slugging Percentage",
       "avg": "Batting Average",
-      "gdp": "Grounded Into Double Play",
+      "gdp": "Ground Into Double Play",
       "sh": "Sacrifice Bunts",
       "sf": "Sacrifice Flies",
       "cs": "Caught Stealing",
@@ -1417,7 +1417,7 @@
       "pendingR": "PEND",
       "go": "GO",
       "fo": "FO",
-      "goFo": "GO/FO",
+      "goFo": "GO/AO",
       "rbi": "RBI",
       "oneB": "1B",
       "twoB": "2B",

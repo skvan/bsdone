@@ -7534,6 +7534,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             return
           }
           if(p.value!=null&&Number(p.value.id)===Number(m)){
+            // #678：历史快照可能把仅守备投手同时写进替补席；先并入其 stats 再从替补席剔除，避免重复行/重复卡
+            if(A){
+              p.value.stats=mergeRowStats(p.value,A.stats);
+              const benchNext=b.filter(E=>Number(E.id)!==Number(m));
+              s.value=benchNext;g.bench=benchNext;
+            }
             // 大谷规则：fpRow 与打线行共用同一份 stats，避免快照恢复后打击/投球统计分叉
             if(T)p.value.stats=mergeRowStats(T,p.value.stats);
             ue(p.value);
@@ -11142,8 +11148,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       return liveBenchTeamKey(side)==="away"?(At.value?.name??lgText("liveGame.team.away")):(xt.value?.name??lgText("liveGame.team.home"))
     }
     function liveBenchItems(side){
-      const{bench:benchRef}=Ee(liveBenchTeamKey(side));
-      return buildLiveBenchItems(benchRef.value,effectiveUnavailable(liveBenchTeamKey(side)),N.value,softballReentryAllowed())
+      const teamKey=liveBenchTeamKey(side),{bench:benchRef,fpRow:fpRowRef}=Ee(teamKey),pitcherId=Number(fpRowRef.value?.id)||0;
+      const bench=(Array.isArray(benchRef.value)?benchRef.value:[]).filter(p=>pitcherId<=0||Number(p.id)!==pitcherId);
+      return buildLiveBenchItems(bench,effectiveUnavailable(teamKey),N.value,softballReentryAllowed())
     }
     const liveBenchOffenseItems=$(()=>liveBenchItems("offense")),liveBenchDefenseItems=$(()=>liveBenchItems("defense")),liveBenchEmptyTextValue=$(()=>softballReentryAllowed()?lgText("liveGame.benchPanel.emptySoftball"):lgText("liveGame.benchPanel.empty"));
     // 换人被禁的原因：文案复用既有 tf（口径不漂移），追加「跑垒待确认（ge）」与「三出局后需先确认半局结束」

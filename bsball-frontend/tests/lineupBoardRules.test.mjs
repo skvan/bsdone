@@ -446,6 +446,37 @@ test('DH 拖回池：不进替补，仅守备投手自动回打线（决策 16�
   assert.equal(b.validation.value.ok, true);
 });
 
+test('批量设置替补：当前仅守备先发投手不会被放进替补席（#678）', () => {
+  const b = board();
+  b.setFieldingPitcher(1);
+  b.setBench([1, 2, 3]);
+  assert.equal(b.fieldingPitcherId.value, 1);
+  assert.deepEqual(b.bench.value.map((p) => p.id), [2, 3]);
+});
+
+test('应用阵容模板：替补名单含当前先发投手时自动剔除（#678）', () => {
+  const b = board();
+  b.applyTemplate({
+    slots: [{ playerId: 2, battingOrder: 1, position: 'C' }],
+    benchPlayerIds: [1, 2, 3],
+    pitcherId: 1,
+  });
+  assert.equal(b.fieldingPitcherId.value, 1);
+  assert.equal(b.bench.value.some((p) => p.id === 1), false);
+});
+
+test('加载旧草稿：替补席中的当前先发投手恢复时自动剔除（#678）', () => {
+  const b = board();
+  b.loadDraft({
+    rows: [{ ...P(2), position: 'C' }],
+    bench: [P(1), P(3)],
+    fieldingPitcherId: 1,
+  });
+  assert.equal(b.fieldingPitcherId.value, 1);
+  assert.equal(b.bench.value.some((p) => p.id === 1), false);
+  assert.equal(b.bench.value.some((p) => p.id === 3), true);
+});
+
 test('仅守备投手回替补后仍按背号升序', () => {
   const b = board();
   b.setBench([7, 5]);

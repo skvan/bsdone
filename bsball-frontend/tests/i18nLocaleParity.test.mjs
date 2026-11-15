@@ -102,7 +102,7 @@ test('英文标准缩写按 MLB 口径落库', () => {
   assert.equal(data.en.stats.colEn.pg, 'SHO');
   assert.equal(data.en.stats.colEn.tcPct, 'FPCT');
   assert.equal(data.en.stats.colEn.pendingR, 'PEND');
-  assert.equal(data.en.stats.colEn.goFo, 'GO/FO');
+  assert.equal(data.en.stats.colEn.goFo, 'GO/AO');
   assert.equal(data.en.glossary.term.pg.shortLabel, 'SHO');
   assert.equal(data.en.glossary.term.tcPct.shortLabel, 'FPCT');
   assert.equal(data.en.glossary.term.pitchBf.shortLabel, 'BF');
