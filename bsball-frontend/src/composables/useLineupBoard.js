@@ -67,6 +67,14 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     bench.value = sortByJersey(bench.value);
   }
 
+  // 仅守备先发投手不属于替补席：批量设置/模板/旧草稿恢复时统一剔除（#678）
+  function dropFieldingPitcherFromBench() {
+    const pitcherId = fieldingPitcherId.value;
+    if (pitcherId == null) return;
+    const next = bench.value.filter((p) => String(p.id) !== String(pitcherId));
+    if (next.length !== bench.value.length) bench.value = next;
+  }
+
   function slotOfRow(code) {
     return slotRow(rows.value, code);
   }
@@ -112,6 +120,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
     fieldingPitcherId.value = snapshot?.fieldingPitcherId ?? null;
     lastDhAddedFromPoolId.value = snapshot?.lastDhAddedFromPoolId ?? null;
     syncPitcher();
+    dropFieldingPitcherFromBench();
   }
 
   /** 清除某球员的一切痕迹（打线行 / 替补 / 守备投手 / lastDh） */
@@ -504,6 +513,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
   function setBench(playerIds) {
     const ids = new Set((playerIds ?? []).map(String));
     bench.value = roster.value.filter((p) => ids.has(String(p.id)) && findRowIndex(rows.value, p.id) < 0);
+    dropFieldingPitcherFromBench();
     sortBench();
   }
 
@@ -525,6 +535,7 @@ export function useLineupBoard(mode, teamId, opts = {}) {
       : (pitcherId != null && roster.value.some((p) => String(p.id) === String(pitcherId)) ? pitcherId : null);
     lastDhAddedFromPoolId.value = null;
     syncPitcher();
+    dropFieldingPitcherFromBench();
   }
 
   return {

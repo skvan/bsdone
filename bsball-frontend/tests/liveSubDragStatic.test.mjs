@@ -86,6 +86,13 @@ test('换人模式门禁：拖拽仅在模式内启动，场上→替补席落�
   assert.ok(css.includes('.defender-hit.live-sub-swap-out'), '缺少场上球员红色放大样式');
 });
 
+test('#678：防守替补席隐藏当前守备投手，避免投手重复行/误拖', () => {
+  const src = read(LIVE);
+  const body = sliceBetween(src, 'function liveBenchItems(side){', 'const liveBenchOffenseItems=');
+  assert.ok(body.includes('fpRow'), '替补席未排除当前守备投手行');
+  assert.ok(body.includes('filter('), '替补席未做守备投手过滤');
+});
+
 test('#535：换人模式内日志静音，提交后只保留换人前日志 + 净变化结果', () => {
   const src = read(LIVE);
   assert.ok(src.includes('if(substitutionLogMuted)return;'), 'addLog 未接入换人模式日志静音');
