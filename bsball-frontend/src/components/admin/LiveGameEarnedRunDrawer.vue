@@ -1,21 +1,21 @@
 <template>
   <el-drawer
     :model-value="visible"
-    title="比赛复核"
+    :title="lt('liveGame.review.drawerTitle')"
     direction="rtl"
     size="520px"
     @update:model-value="$emit('update:visible', $event)"
   >
     <div v-if="statusReady" class="review-status">
       <el-tag size="small" :type="isFinal ? 'success' : 'info'" effect="plain">
-        {{ isFinal ? '比赛已结束 · 赛后复核' : '比赛进行中' }}
+        {{ isFinal ? lt('liveGame.review.statusFinal') : lt('liveGame.review.statusLive') }}
       </el-tag>
       <span class="review-status__hint">
-        {{ isFinal ? 'ER 复核与守备补记均可操作' : '守备补记需比赛结束后操作' }}
+        {{ isFinal ? lt('liveGame.review.hintFinal') : lt('liveGame.review.hintLive') }}
       </span>
     </div>
     <el-tabs v-model="activeTab" class="review-tabs">
-      <el-tab-pane label="ER 复核" name="er">
+      <el-tab-pane :label="lt('liveGame.review.tabEr')" name="er">
         <GameEarnedRunReviewPanel
           v-if="visible && statusReady"
           :game-id="gameId"
@@ -29,7 +29,7 @@
           :away-roster="awayRoster"
         />
       </el-tab-pane>
-      <el-tab-pane label="守备补记" name="fielding" lazy>
+      <el-tab-pane :label="lt('liveGame.review.tabFielding')" name="fielding" lazy>
         <LiveGameFieldingAdjustmentPanel
           v-if="visible && statusReady"
           :visible="visible"
@@ -53,6 +53,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { gameApi } from '../../api/business';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 import GameEarnedRunReviewPanel from './GameEarnedRunReviewPanel.vue';
 import LiveGameFieldingAdjustmentPanel from './LiveGameFieldingAdjustmentPanel.vue';
 
@@ -72,6 +73,7 @@ const props = defineProps({
 });
 defineEmits(['update:visible']);
 
+const { text: lt } = useLiveGameText();
 const activeTab = ref('er');
 const remoteGameStatus = ref('');
 const statusReady = ref(false);

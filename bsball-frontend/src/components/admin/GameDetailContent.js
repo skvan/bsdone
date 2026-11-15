@@ -18,6 +18,7 @@ import { DEFAULT_TEAM_SVG_PATH as kl } from '../../utils/placeholderAssets';
 import { resolveAtBats as La } from '../../utils/gamePlayerStat';
 import { resolveSingles, sumHitTypes } from '../../utils/battingHits';
 import { resolveBoxViewLabel } from '../../utils/i18nText';
+import { statsHeaderKey as gdHeaderKey, statsHeaderAbbr as gdHeaderAbbr, playerColumnWidth as gdWidth } from '../../stores/statsHeaderKeys';
 import { isLegacyPositionLabel as wl } from '../../utils/gamePlayerStat';
 import { isPitcherFlag as ke } from '../../utils/gamePlayerStat';
 import { DEFAULT_PITCHER_FIELDS as Tl } from '../../utils/gameDetailFieldSettingsStorage';
@@ -350,12 +351,6 @@ var Sl={
 ,xs=["onClick"],Es={
   key:1
 }
-,Hs={
-  class:"th-with-tip"
-}
-,Ds={
-  key:1
-}
 ,As={
   key:0,class:"batting-highlights"
 }
@@ -387,12 +382,6 @@ var Sl={
   class:"td3"
 }
 ,zs=["onClick"],Us={
-  key:1
-}
-,js={
-  class:"th-with-tip"
-}
-,Zs={
   key:1
 }
 ,Ys={
@@ -434,12 +423,6 @@ var Sl={
 ,mi={
   class:"td4"
 }
-,hi={
-  class:"th-with-tip"
-}
-,vi={
-  key:1
-}
 ,bi={
   key:0,class:"player-info-cell player-info-cell--totals"
 }
@@ -460,12 +443,6 @@ var Sl={
 }
 ,wi={
   class:"td4"
-}
-,Ti={
-  class:"th-with-tip"
-}
-,Ni={
-  key:1
 }
 ,Si={
   class:"gd-meta-footer-inner"
@@ -551,7 +528,7 @@ var Sl={
       return!f&&!a?"":a?`${f} - ${a}`:f
     }
     const O=kl,Ge=gl(),{
-      t:qe,te:we
+      t:qe,te:we,locale:gdLocale
     }
     =bl();
     const boxView=I("batting"),i18nGlobal=Zt()?.appContext?.config?.globalProperties;
@@ -562,6 +539,22 @@ var Sl={
     function H(e,t){
       const l=`gameDetail.fieldTips.${e}.${t}`;
       return we(l)?String(qe(l)):""
+    }
+    function gdHeaderFull(col){
+      const termKey=gdHeaderKey(col.key,col.key);
+      const statsLabel="stats.col."+termKey;
+      if(we(statsLabel))return qe(statsLabel);
+      const glossaryLabel="glossary.term."+termKey+".fullName";
+      if(we(glossaryLabel))return qe(glossaryLabel);
+      return col.label;
+    }
+    function gdHeaderNode(col){
+      const abbr=gdHeaderAbbr(col.key,col.label);
+      if(!String(gdLocale.value||"").startsWith("zh"))return s("span",{class:"gd-col-header"},[s("span",{class:"gd-col-header__en"},n(abbr))]);
+      return s("span",{class:"gd-col-header"},[
+        s("span",{class:"gd-col-header__cn"},n(gdHeaderFull(col))),
+        s("span",{class:"gd-col-header__en"},n(abbr))
+      ]);
     }
     const{
       portalPath:he
@@ -1595,13 +1588,13 @@ var Sl={
       }
       ,{
         default:h(()=>[k(y,{
-          "class-name":"gd-box-queue-header",label:`${N.value} Batters`,width:"155",fixed:"left"
+          "class-name":"gd-box-queue-header",label:`${N.value} ${qe("gameDetail.batters")}`,width:"155",fixed:"left"
         }
         ,{
           default:h(({
             row:a
           }
-          )=>[A(a)?(r(),i("div",Ss,"Totals")):(r(),i("div",Bs,[s("span",{
+          )=>[A(a)?(r(),i("div",Ss,qe("gameDetail.totals"))):(r(),i("div",Bs,[s("span",{
             class:L(E(a,"battingOrder")!=null?"td1":"td1-empty")
           }
           ,n(E(a,"battingOrder")!=null?String(E(a,"battingOrder")):"-"),3),s("span",Ps,[(r(!0),i(b,null,P([Ae(a)],o=>(r(),B(d,{
@@ -1625,16 +1618,16 @@ var Sl={
           ,"#"+n(j(a)),9,xs)):(r(),i("span",Es,"-"))])]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(Re.value,a=>(r(),B(y,{
-          key:a.key,label:a.label,"min-width":fe(a),align:"center"
+          key:a.key,label:a.label,"min-width":gdWidth(a.key,fe(a)),align:"center"
         }
         ,{
           header:h(()=>[H("batter",a.key)?(r(),B(d,{
             key:0,content:H("batter",a.key),placement:"top"
           }
           ,{
-            default:h(()=>[s("span",Hs,n(a.label),1)]),_:2
+            default:h(()=>[gdHeaderNode(a)]),_:2
           }
-          ,1032,["content"])):(r(),i("span",Ds,n(a.label),1))]),default:h(({
+          ,1032,["content"])):gdHeaderNode(a)]),default:h(({
             row:o
           }
           )=>[a.key==="pa"?(r(),i(b,{
@@ -1703,13 +1696,13 @@ var Sl={
       }
       ,{
         default:h(()=>[k(y,{
-          "class-name":"gd-box-queue-header",label:`${T.value} Batters`,width:"155",fixed:"left"
+          "class-name":"gd-box-queue-header",label:`${T.value} ${qe("gameDetail.batters")}`,width:"155",fixed:"left"
         }
         ,{
           default:h(({
             row:a
           }
-          )=>[A(a)?(r(),i("div",Fs,"Totals")):(r(),i("div",Gs,[s("span",{
+          )=>[A(a)?(r(),i("div",Fs,qe("gameDetail.totals"))):(r(),i("div",Gs,[s("span",{
             class:L(E(a,"battingOrder")!=null?"td1":"td1-empty")
           }
           ,n(E(a,"battingOrder")!=null?String(E(a,"battingOrder")):"-"),3),s("span",qs,[(r(!0),i(b,null,P([Ae(a)],o=>(r(),B(d,{
@@ -1733,16 +1726,16 @@ var Sl={
           ,"#"+n(j(a)),9,zs)):(r(),i("span",Us,"-"))])]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(Re.value,a=>(r(),B(y,{
-          key:a.key,label:a.label,"min-width":fe(a),align:"center"
+          key:a.key,label:a.label,"min-width":gdWidth(a.key,fe(a)),align:"center"
         }
         ,{
           header:h(()=>[H("batter",a.key)?(r(),B(d,{
             key:0,content:H("batter",a.key),placement:"top"
           }
           ,{
-            default:h(()=>[s("span",js,n(a.label),1)]),_:2
+            default:h(()=>[gdHeaderNode(a)]),_:2
           }
-          ,1032,["content"])):(r(),i("span",Zs,n(a.label),1))]),default:h(({
+          ,1032,["content"])):gdHeaderNode(a)]),default:h(({
             row:o
           }
           )=>[a.key==="pa"?(r(),i(b,{
@@ -1811,13 +1804,13 @@ var Sl={
       }
       ,{
         default:h(()=>[k(y,{
-          "class-name":"gd-box-queue-header",label:`${N.value} Pitchers`,width:"155",fixed:"left"
+          "class-name":"gd-box-queue-header",label:`${N.value} ${qe("gameDetail.pitchers")}`,width:"155",fixed:"left"
         }
         ,{
           default:h(({
             row:a,$index:Yi
           }
-          )=>[A(a)?(r(),i("div",si,"Totals")):(r(),i("div",ii,[s("span",{
+          )=>[A(a)?(r(),i("div",si,qe("gameDetail.totals"))):(r(),i("div",ii,[s("span",{
             class:"td1"
           }
           ,n(String(Yi+1)),3),s("span",ni,[(r(!0),i(b,null,P([Ae(a)],o=>(r(),B(d,{
@@ -1841,16 +1834,16 @@ var Sl={
           ,"#"+n(j(a)),9,di)):(r(),i("span",ci,"-"))]),s("span",mi,n(na(a)||"-"),1)]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(xe.value,a=>(r(),B(y,{
-          key:a.key,label:a.label,"min-width":fe(a),align:"center"
+          key:a.key,label:a.label,"min-width":gdWidth(a.key,fe(a)),align:"center"
         }
         ,{
           header:h(()=>[H("pitcher",a.key)?(r(),B(d,{
             key:0,content:H("pitcher",a.key),placement:"top"
           }
           ,{
-            default:h(()=>[s("span",hi,n(a.label),1)]),_:2
+            default:h(()=>[gdHeaderNode(a)]),_:2
           }
-          ,1032,["content"])):(r(),i("span",vi,n(a.label),1))]),default:h(({
+          ,1032,["content"])):gdHeaderNode(a)]),default:h(({
             row:o
           }
           )=>[p(n(ca(o,a.key)),1)]),_:2
@@ -1871,13 +1864,13 @@ var Sl={
       }
       ,{
         default:h(()=>[k(y,{
-          "class-name":"gd-box-queue-header",label:`${T.value} Pitchers`,width:"155",fixed:"left"
+          "class-name":"gd-box-queue-header",label:`${T.value} ${qe("gameDetail.pitchers")}`,width:"155",fixed:"left"
         }
         ,{
           default:h(({
             row:a,$index:Yi
           }
-          )=>[A(a)?(r(),i("div",bi,"Totals")):(r(),i("div",gi,[s("span",{
+          )=>[A(a)?(r(),i("div",bi,qe("gameDetail.totals"))):(r(),i("div",gi,[s("span",{
             class:"td1"
           }
           ,n(String(Yi+1)),3),s("span",yi,[(r(!0),i(b,null,P([Ae(a)],o=>(r(),B(d,{
@@ -1901,16 +1894,16 @@ var Sl={
           ,"#"+n(j(a)),9,_i)):(r(),i("span",ki,"-"))]),s("span",wi,n(na(a)||"-"),1)]))]),_:1
         }
         ,8,["label"]),(r(!0),i(b,null,P(xe.value,a=>(r(),B(y,{
-          key:a.key,label:a.label,"min-width":fe(a),align:"center"
+          key:a.key,label:a.label,"min-width":gdWidth(a.key,fe(a)),align:"center"
         }
         ,{
           header:h(()=>[H("pitcher",a.key)?(r(),B(d,{
             key:0,content:H("pitcher",a.key),placement:"top"
           }
           ,{
-            default:h(()=>[s("span",Ti,n(a.label),1)]),_:2
+            default:h(()=>[gdHeaderNode(a)]),_:2
           }
-          ,1032,["content"])):(r(),i("span",Ni,n(a.label),1))]),default:h(({
+          ,1032,["content"])):gdHeaderNode(a)]),default:h(({
             row:o
           }
           )=>[p(n(ca(o,a.key)),1)]),_:2

@@ -10,9 +10,9 @@ test('ER 抽屉新增守备补记页签并接入独立面板', () => {
   const source = read('../src/components/admin/LiveGameEarnedRunDrawer.vue');
   const panel = read('../src/components/admin/GameEarnedRunReviewPanel.vue');
   for (const needle of [
-    'title="比赛复核"',
-    'label="ER 复核"',
-    'label="守备补记"',
+    "lt('liveGame.review.drawerTitle')",
+    "lt('liveGame.review.tabEr')",
+    "lt('liveGame.review.tabFielding')",
     'LiveGameFieldingAdjustmentPanel',
     'resolvedGameStatus',
     ':game-status="resolvedGameStatus"',
@@ -20,7 +20,7 @@ test('ER 抽屉新增守备补记页签并接入独立面板', () => {
   ]) {
     assert.ok(source.includes(needle), `缺少接线：${needle}`);
   }
-  assert.ok(panel.includes('label="自责分判定"'), 'ER 面板缺少自责分判定页签');
+  assert.ok(panel.includes("lt('liveGame.review.tabDecisions')"), 'ER 面板缺少自责分判定页签');
 });
 
 test('业务 API 暴露补记列表、新增与撤销端点', () => {
@@ -56,12 +56,12 @@ test('LiveGame 向复核抽屉传入比赛状态、Play 与两队名单', () => 
 test('补记面板包含 final 门禁、补记预览与撤销', () => {
   const source = read('../src/components/admin/LiveGameFieldingAdjustmentPanel.vue');
   for (const needle of [
-    '比赛结束后才能补记守备助杀',
+    'liveGame.review.fieldingBlockedTitle',
     'isFinal',
     'gameApi.createFieldingAdjustment',
     'gameApi.revokeFieldingAdjustment',
-    'A +1、TC +1',
-    '源 Play 已不在当前快照时会自动失效并扣回'
+    'liveGame.review.effectLine',
+    'liveGame.review.fieldingFinalDesc'
   ]) {
     assert.ok(source.includes(needle), `缺少面板逻辑：${needle}`);
   }

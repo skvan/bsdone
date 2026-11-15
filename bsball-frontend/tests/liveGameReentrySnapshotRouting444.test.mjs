@@ -28,7 +28,7 @@ assert(start >= 0 && end > start, '找不到 snapshotSyncFailed..ZrLite 区间�
 const code = src.slice(start, end).trimEnd();
 
 // Zr 依赖：R(比赛id ref)、F(可录入 flag)、Tn/to(存前刷新)、pa(构造快照对象)、Fe(消息)、ma(api)
-const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma',
+const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma', 'lgText',
   'return (function(){' + code + '\nreturn {Zr, pushLiveSnapshot, getFlag: () => snapshotSyncFailed};})()');
 
 /** 造一个可控的 saveLiveSnapshot：state.failRemaining>0 时抛错并自减（可中途切换模拟恢复） */
@@ -51,7 +51,7 @@ function ctx({ failRemaining = 0, canSave = true } = {}) {
     Fe,
     ma,
   };
-  const api = make(env.R, env.F, env.Tn, env.to, env.pa, env.Fe, env.ma);
+  const api = make(env.R, env.F, env.Tn, env.to, env.pa, env.Fe, env.ma, (key) => key);
   return { api, calls, state };
 }
 

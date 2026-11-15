@@ -9,6 +9,8 @@ import { exportSfc as G } from '../../utils/exportSfc';
 import { deriveYearsFromDateRange as ce } from '../../utils/portalYearQuery';
 import { normalizeGlossaryKey as ue } from '../../utils/baseballGlossary';
 import { getGlossaryEntry as me } from '../../utils/baseballGlossary';
+import { statsHeaderKey as shk } from '../../stores/statsHeaderKeys';
+import { statsColumnWidth as shw } from '../../stores/statsHeaderKeys';
 import { getEventYear as fe } from '../../composables/useEventGames';
 import '../../styles/legacy/stats-event-cascade.css';
 var de={
@@ -37,6 +39,9 @@ var de={
     colKey:{
       
     }
+    ,headerKey:{
+
+    }
     ,left:{
       type:Boolean
     }
@@ -52,20 +57,14 @@ var de={
     const m=e,{
       locale:y,t:r,te:n
     }
-    =Z(),i=K(()=>!String(y.value).startsWith("zh")),u=K(()=>r("stats.col."+m.colKey,{
-      
-    }
-    ,{
-      locale:"en"
-    }
-    )),L=K(()=>String(y.value||"en")),d=K(()=>L.value.toLowerCase()),M=K(()=>{
+    =Z(),i=K(()=>!String(y.value).startsWith("zh")),L=K(()=>String(y.value||"en")),d=K(()=>L.value.toLowerCase()),M=K(()=>{
       const o=d.value;
       return o.startsWith("ja")?"ja":o.startsWith("ko")?"ko":o.startsWith("zh-tw")||o.startsWith("zh-hk")||o.startsWith("zh-hant")?"zh-TW":o.startsWith("zh")?"zh-CN":(o.startsWith("en"),"en")
     }
-    ),S=K(()=>i.value?"zh-CN":M.value),E=K(()=>ue(m.colKey,{
+    ),S=K(()=>i.value?"zh-CN":M.value),E=K(()=>m.headerKey||ue(m.colKey,{
       domain:m.termDomain,subject:m.termSubject
     }
-    )),T=K(()=>me(m.colKey,{
+    )),T=K(()=>me(E.value,{
       domain:m.termDomain,subject:m.termSubject
     }
     )),k=K(()=>{
@@ -111,10 +110,17 @@ var de={
       
     }
     ),N=K(()=>{
-      if(i.value)return u.value;
+      const headerStatsKey="stats.col."+(m.headerKey||m.colKey);
+      if(n(headerStatsKey,S.value))return r(headerStatsKey,{
+
+      }
+      ,{
+        locale:S.value
+      }
+      );
       const o=E.value;
       if(o){
-        const b=`glossary.term.${o}.shortLabel`;
+        const b=`glossary.term.${o}.fullName`;
         if(n(b,S.value))return r(b,{
           
         }
@@ -123,7 +129,14 @@ var de={
         }
         )
       }
-      return r("stats.col."+m.colKey)
+      const y="stats.col."+m.colKey;
+      return n(y,S.value)?r(y,{
+
+      }
+      ,{
+        locale:S.value
+      }
+      ):r("stats.colEn."+m.colKey)
     }
     ),x=K(()=>{
       const o=E.value;
@@ -155,7 +168,7 @@ var de={
         ,[i.value?(h(),C(F,{
           key:0
         }
-        ,[W(v(u.value),1)],64)):(h(),C(F,{
+        ,[W(v(x.value),1)],64)):(h(),C(F,{
           key:1
         }
         ,[w("span",ye,v(N.value),1),w("span",be,v(x.value),1)],64))],2)]),_:1
@@ -169,7 +182,7 @@ var de={
       ,[i.value?(h(),C(F,{
         key:0
       }
-      ,[W(v(u.value),1)],64)):(h(),C(F,{
+      ,[W(v(x.value),1)],64)):(h(),C(F,{
         key:1
       }
       ,[w("span",pe,v(N.value),1),w("span",ge,v(x.value),1)],64))],2))
@@ -580,16 +593,16 @@ var de={
           ,1032,["to"])):(h(),C("span",He,v(a.teamName),1))]),_:1
         }
         ,8,["width"])):V("",!0),(h(!0),C(F,null,oe(e.metricCols,a=>(h(),A(l,{
-          key:e.metricKeyPrefix+a.key,prop:a.prop,width:a.width,align:"center","class-name":a.sortable?"col-sort-metric":"",sortable:a.sortable?"custom":!1
+          key:e.metricKeyPrefix+a.key,prop:a.prop,width:shw(a.key,a.width),align:"center","class-name":a.sortable?"col-sort-metric":"",sortable:a.sortable?"custom":!1
         }
         ,{
           header:f(()=>[w("div",{
             class:"stats-metric-header-hit",onClick:q(B=>E(a),["stop"])
           }
           ,[g(O,{
-            "col-key":a.colKey,"term-domain":e.termDomain,"term-subject":e.termSubject
+            "col-key":a.colKey,"header-key":shk(a.key,a.colKey,e.termDomain),"term-domain":e.termDomain,"term-subject":e.termSubject
           }
-          ,null,8,["col-key","term-domain","term-subject"])],8,Ee)]),default:f(({
+          ,null,8,["col-key","header-key","term-domain","term-subject"])],8,Ee)]),default:f(({
             row:B
           }
           )=>[W(v(a.formatter?a.formatter(B):e.isStatsRateCol(a.colKey)?e.formatStatsRate(B[a.prop]):B[a.prop]??"-"),1)]),_:2
@@ -642,6 +655,7 @@ function Qe(e,m,y){
   )
 }
 export { qe as PortalLeadersTable };
+export { O as StatsColHeader };
 export { Je as buildCascadeToggleHandler };
 export { Ue as makeStatsPlayerKey };
 export { Le as collectCascadeKeys };

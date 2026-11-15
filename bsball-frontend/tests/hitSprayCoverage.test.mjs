@@ -107,5 +107,5 @@ test('越墙全垒打：落点外推、彩虹粗线、全程火花与落点烟�
   const css = readFileSync(new URL('../src/styles/legacy/live-game.css', import.meta.url), 'utf8');
   assert.match(css, /\.batted-trail\.batted-trail--hr\{[^}]*stroke-width:7/, 'HR 粗线需压过带 scope 属性的基础轨迹样式');
   assert.match(source, /hr-fireworks-layer/, '应存在 HR 烟花图层');
-  assert.match(source, /HR落点/, '拖拽时应显示 HR 落点预览');
+  assert.match(source, /lgText\("liveGame\.field\.hrLanding"\)/, '拖拽时应显示 HR 落点预览');
 });

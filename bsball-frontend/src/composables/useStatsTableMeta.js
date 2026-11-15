@@ -18,6 +18,7 @@ import {
   KEY_TEAM_PITCHING_ORDER as Qt, KEY_TEAM_PITCHING_VISIBILITY as za,
   KEY_TEAM_FIELDING_ORDER as Zt, KEY_TEAM_FIELDING_VISIBILITY as ja
 } from '../stores/statsColumns';
+import { statsHeaderKey as hk } from '../stores/statsHeaderKeys';
 
 const Dt = useI18n;
 const qa = 'rateDisplayStyle';
@@ -224,12 +225,14 @@ export function useStatsTableMeta() {
     const y = 'stats.col.' + P;
     return t(y) ? e(y) : String(h).toUpperCase();
   }
-  function r(h) {
-    const P = a[h] ?? h;
-    const T = 'stats.col.' + P;
-    if (t(T)) return e(T);
-    const y = 'stats.colEn.' + P;
-    return t(y) ? e(y) : String(h);
+  function full(h, domain) {
+    const P = hk(h.key, h.colKey, domain);
+    const g = 'glossary.term.' + P + '.fullName';
+    if (t(g)) return e(g);
+    const s = 'stats.col.' + h.colKey;
+    if (t(s)) return e(s);
+    const y = 'stats.colEn.' + h.colKey;
+    return t(y) ? e(y) : String(h.colKey);
   }
   const l = E(() => V(ae, ot.value));
   const s = E(() => V(te, rt.value));
@@ -273,12 +276,12 @@ export function useStatsTableMeta() {
     setDraftTeamBattingColVisible: vn,
     setDraftTeamPitchingColVisible: Pn,
     setDraftTeamFieldingColVisible: Tn,
-    statsBattingDraftTableRows: E(() => l.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: un(h.key), desc: r(h.colKey) }))),
-    statsPitchingDraftTableRows: E(() => s.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: mn(h.key), desc: r(h.colKey) }))),
-    statsFieldingDraftTableRows: E(() => b.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: fn(h.key), desc: r(h.colKey) }))),
-    teamStatsBattingDraftTableRows: E(() => d.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: gn(h.key), desc: r(h.colKey) }))),
-    teamStatsPitchingDraftTableRows: E(() => L.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: yn(h.key), desc: r(h.colKey) }))),
-    teamStatsFieldingDraftTableRows: E(() => _.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: Sn(h.key), desc: r(h.colKey) }))),
+    statsBattingDraftTableRows: E(() => l.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: un(h.key), desc: full(h) }))),
+    statsPitchingDraftTableRows: E(() => s.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: mn(h.key), desc: full(h) }))),
+    statsFieldingDraftTableRows: E(() => b.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: fn(h.key), desc: full(h, 'fielding') }))),
+    teamStatsBattingDraftTableRows: E(() => d.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: gn(h.key), desc: full(h) }))),
+    teamStatsPitchingDraftTableRows: E(() => L.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: yn(h.key), desc: full(h) }))),
+    teamStatsFieldingDraftTableRows: E(() => _.value.map((h) => ({ key: h.key, label: o(h.colKey), visible: Sn(h.key), desc: full(h, 'fielding') }))),
     PORTAL_STATS_BATTING_ORDER_KEY: $t,
     PORTAL_STATS_PITCHING_ORDER_KEY: zt,
     PORTAL_STATS_FIELDING_ORDER_KEY: jt,

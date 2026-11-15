@@ -89,6 +89,20 @@ var Ce={
     function X(e){
       return o(`starPlayers.metricGroup.${W(e)}`)
     }
+    const AWARD_KEY_BY_CN={
+      '安打王':'hits','打击王':'avg','打点王':'rbi','盗垒王':'sb','全垒打王':'hr',
+      '胜投王':'w','夺三振王':'so','防御率王':'era','最佳救援投手':'reliever','最佳中继投手':'holder',
+      '投手':'p','捕手':'c','一垒手':'1b','二垒手':'2b','三垒手':'3b','游击手':'ss','外野手':'of','指定打击':'dh',
+      '年度MVP':'mvp','最佳进步奖':'improved','年度新人奖':'rookie','年度最佳总教练':'manager','东山再起奖':'comeback'
+    };
+    function awardText(row){
+      const key=AWARD_KEY_BY_CN[row.award]||row.award;
+      const i18nKey=`starPlayers.award.${key}`;
+      return H(i18nKey)?o(i18nKey):row.award;
+    }
+    function winnerText(row){
+      return row.winner==='待公布'?o('starPlayers.awards.pending'):row.winner;
+    }
     const{
       portalPath:O
     }
@@ -542,12 +556,18 @@ var Ce={
       }
       ,{
         default:v(()=>[l(b,{
-          prop:"award",label:i(o)("starPlayers.awards.colAward"),"min-width":"180"
+          label:i(o)("starPlayers.awards.colAward"),"min-width":"180"
         }
-        ,null,8,["label"]),l(b,{
-          prop:"winner",label:i(o)("starPlayers.awards.colWinner"),"min-width":"160"
+        ,{
+          default:v(({row:a})=>[P(w(awardText(a)),1)]),_:2
         }
-        ,null,8,["label"]),l(b,{
+        ,8,["label"]),l(b,{
+          label:i(o)("starPlayers.awards.colWinner"),"min-width":"160"
+        }
+        ,{
+          default:v(({row:a})=>[P(w(winnerText(a)),1)]),_:2
+        }
+        ,8,["label"]),l(b,{
           prop:"team",label:i(o)("starPlayers.awards.colTeam"),"min-width":"140"
         }
         ,null,8,["label"]),l(b,{

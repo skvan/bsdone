@@ -15,14 +15,14 @@ const service = read('../../bsball-backend/src/main/java/com/bsball/service/Game
 
 test('结果页新增修订台账页签并接入面板', () => {
   assert.ok(games.includes('GameAdjustmentLedgerPanel'), '未导入修订台账面板');
-  assert.ok(games.includes('label:"修订台账",name:"adjustmentLedger"'), '缺少修订台账页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabLedger'),name:"adjustmentLedger"`), '缺少修订台账页签');
 });
 
 test('台账面板展示字段级 before → after', () => {
-  assert.ok(panel.includes('字段级留痕'), '缺少字段级说明');
+  assert.ok(panel.includes('liveGame.revision.ledgerTitle'), '缺少字段级说明');
   assert.ok(panel.includes('row.beforeValue'), '缺少修改前值');
   assert.ok(panel.includes('row.afterValue'), '缺少修改后值');
-  assert.ok(panel.includes('暂无字段级修订记录'), '缺少空状态');
+  assert.ok(panel.includes('liveGame.revision.ledgerEmpty'), '缺少空状态');
 });
 
 test('前端 API 与后端接口接线', () => {

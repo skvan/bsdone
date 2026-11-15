@@ -259,7 +259,7 @@ test('比赛详情守备表接线：首个守位、替补缩进与 Totals 汇总
   assert.match(detail, /visibleFields/, '列由字段设置控制');
   assert.match(detail, /DEFAULT_FIELDING_FIELDS/, '缺省字段包含守备/捕手列');
   assert.match(detail, /buildFieldingTotals/, '详情守备表未接入 Totals 汇总');
-  assert.match(detail, /buildFieldingSummaryCells\(columns, totals\.value\)/, '汇总行未按列 prop 取合计');
+  assert.match(detail, /buildFieldingSummaryCells\(columns, totals\.value, t\('gameDetail\.totals'\)\)/, '汇总行未按列 prop 取合计并本地化');
   assert.match(detail, /:prop="col\.key"/, '动态列未绑定 prop，汇总行无法稳定映射');
   assert.match(detail, /:show-summary="rows\.length > 0"/, '详情守备表未开启合计行');
   assert.match(detail, /summary-method="summaryMethod"/, '详情守备表缺少合计行方法');

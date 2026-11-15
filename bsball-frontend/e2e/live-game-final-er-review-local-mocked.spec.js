@@ -59,7 +59,7 @@ function buildSnapshot() {
   };
 }
 
-async function setup(page, { staleSnapshot = null } = {}) {
+async function setup(page, { staleSnapshot = null, locale = 'zh-CN' } = {}) {
   const snapshot = buildSnapshot();
   const players = [...snapshot.homeLineup, ...snapshot.awayLineup, snapshot.homeBench[0], snapshot.awayBench[0]];
   let pitcherOverride = null;
@@ -90,7 +90,7 @@ async function setup(page, { staleSnapshot = null } = {}) {
     overrideNote: null,
   });
 
-  await page.addInitScript((stale) => {
+  await page.addInitScript(({ stale, loc }) => {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('bs-ball-live-'))
       .forEach((key) => localStorage.removeItem(key));
@@ -98,10 +98,11 @@ async function setup(page, { staleSnapshot = null } = {}) {
     localStorage.setItem('admin_user::bs-ball', JSON.stringify({
       id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e',
     }));
+    localStorage.setItem('bs-ball-locale', loc);
     if (stale) {
       localStorage.setItem(stale.key, JSON.stringify(stale.value));
     }
-  }, staleSnapshot);
+  }, { stale: staleSnapshot, loc: locale });
 
   await page.route('**/bsball-server/**', async (route) => {
     const request = route.request();
@@ -182,7 +183,7 @@ test('final 比赛：赛后复核可覆写投手 R/ER 并撤销', async ({ page 
   await expect(drawer).toBeVisible();
 
   await drawer.getByRole('tab', { name: '投手 R/ER' }).click();
-  const row101 = drawer.locator('.el-table__row').filter({ hasText: '主投手' });
+  const row101 = drawer.locator('.pitcher-runs .el-table__row').filter({ hasText: '主投手' });
   await expect(row101).toBeVisible();
   await expect(row101).toContainText('3');
   await expect(row101).toContainText('2');
@@ -224,4 +225,36 @@ test('final 复核忽略本地旧现场，保存比赛按钮禁用', async ({ pa
   await expect(page.getByText('主投手').first()).toBeVisible();
   await expect(page.getByText('STALE_PLAYER')).toHaveCount(0);
   await expect(page.locator('button:visible').filter({ hasText: '保存比赛' }).first()).toBeDisabled();
+});
+
+test('English review drawer: tabs, empty state and pitcher R/ER override', async ({ page }) => {
+  await setup(page, { locale: 'en' });
+
+  const erButton = page.locator('button:visible').filter({ hasText: 'ER Review' }).first();
+  await expect(erButton).toBeVisible();
+  await erButton.click();
+
+  const drawer = page.locator('.el-drawer:visible').filter({ hasText: 'Game Review' });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText('Game final · Post-game review')).toBeVisible();
+  await expect(drawer.getByText('No decisions yet (complete the rebuild first).')).toBeVisible();
+
+  await drawer.getByRole('tab', { name: 'Pitcher R/ER' }).click();
+  const row101 = drawer.locator('.pitcher-runs .el-table__row').filter({ hasText: '主投手' });
+  await expect(row101).toBeVisible();
+
+  await row101.getByRole('button', { name: 'Override' }).click();
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: 'Override Pitcher R/ER' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('New R');
+  await expect(dialog).toContainText('New ER');
+  await dialog.getByRole('button', { name: 'Save Override' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row101.getByText('Manual override')).toBeVisible();
+
+  await row101.getByRole('button', { name: 'Undo' }).click();
+  const confirm = page.locator('.el-message-box:visible');
+  await expect(confirm).toContainText('Undo the manual override');
+  await confirm.getByRole('button', { name: 'Confirm Undo' }).click();
+  await expect(row101.getByText('Engine')).toBeVisible();
 });

@@ -10,6 +10,7 @@ import { fetchPlayersByTeam as Le } from '../../api/business';
 import { gameApi as yt } from '../../api/business';
 import { teamApi as St } from '../../api/business';
 import { buildTeamPlayersMap } from '../../utils/teamPlayersMap';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 import fa from '../../components/admin/GameDetailContent.js';
 import FieldSettingsDrawer from '../../components/admin/GameDetailFieldSettingsDrawer.js';
 import { readWatchFieldSettings as kt } from '../../utils/gameDetailFieldSettingsStorage';
@@ -68,7 +69,7 @@ var Ta={
   class:"watch-live-strip__text"
 }
 ,Ra={
-  class:"watch-bases watch-bases--blue",role:"img",title:"三垒、二垒、一垒：空心为无人，实心为有人","aria-label":"垒包占领示意：左为三垒、上为二垒、右为一垒"
+  class:"watch-bases watch-bases--blue",role:"img"
 }
 ,Ga={
   class:"watch-bases__svg",xmlns:"http://www.w3.org/2000/svg",width:"22",viewBox:"0 0 24 17.25"
@@ -98,7 +99,7 @@ var Ta={
   class:"pbp-idx"
 }
 ,Xa={
-  key:0,class:"pbp-logonly-badge",title:"此类条目仍保存在日志中，但不出现在「实时动态」"
+  key:0,class:"pbp-logonly-badge"
 }
 ,Ka={
   key:1,class:"pbp-line-time"
@@ -298,7 +299,7 @@ var Ta={
 ,pn={
   class:"pbp-count__strike"
 }
-,hn=5e3,dn="bs-ball-live-watch-snapshot-push",bn="bs-ball-live-watch-snapshot-request",Pt="bs-ball-live-watch-local-",mn="bs-ball-live-watch-close",Nt=2,Bt="leadingZero",Lt=!1,vn="当前全场累计比分（历史局次回看时亦为实时总分，非该局结束时快照）",fn=ia({
+,hn=5e3,dn="bs-ball-live-watch-snapshot-push",bn="bs-ball-live-watch-snapshot-request",Pt="bs-ball-live-watch-local-",mn="bs-ball-live-watch-close",Nt=2,Bt="leadingZero",Lt=!1,fn=ia({
   name:"AdminLiveGameWatch",__name:"LiveGameWatch",setup(_n){
     function W(){
       return{
@@ -325,9 +326,10 @@ var Ta={
       const t=String(e??"").trim().toUpperCase();
       return Ue[t]??t
     }
-    const J=ba(),ze=da(),ue=I(()=>Number(J.params.eventId)),Y=I(()=>Number(J.params.gameId)),ce=I(()=>String(J.query.embed??"")==="1"),$=f(String(J.query.source??"local")==="local"),Ft=I(()=>$.value?"数据源：本地实时":"数据源：服务器快照"),G=f("");
-    I(()=>G.value==="push"?"同步：实时推送":G.value==="cache"?"同步：本地缓存":G.value==="server"?"同步：服务器拉取":"");
-    const pe=f(!0),T=f(""),x=f(!1),U=f(""),Fe=f(0),Ae=f(""),Te=f("客队"),Ee=f("主队"),j=f(0),z=f(0),Q=f(null),De=f([]),He=f({
+    const { text: wText } = useLiveGameText();
+    const J=ba(),ze=da(),ue=I(()=>Number(J.params.eventId)),Y=I(()=>Number(J.params.gameId)),ce=I(()=>String(J.query.embed??"")==="1"),$=f(String(J.query.source??"local")==="local"),Ft=I(()=>$.value?wText("liveGame.watch.dataSourceLocal"):wText("liveGame.watch.dataSourceServer")),G=f("");
+    I(()=>G.value==="push"?wText("liveGame.watch.syncPush"):G.value==="cache"?wText("liveGame.watch.syncCache"):G.value==="server"?wText("liveGame.watch.syncServer"):"");
+    const pe=f(!0),T=f(""),x=f(!1),U=f(""),Fe=f(0),Ae=f(""),Te=f(wText("liveGame.team.away")),Ee=f(wText("liveGame.team.home")),j=f(0),z=f(0),Q=f(null),De=f([]),He=f({
       
     }
     ),Ze=DBF,qe=_a,watchFieldOptions={
@@ -374,7 +376,7 @@ var Ta={
       Je.value=e.batterItems,Ye.value=e.pitcherItems,ff.value=e.fieldingItems,Qe.value=e.decimalPlaces,Xe.value=e.rateDisplayStyle,Ke.value=e.showTrailingZeros,watchWriteSettings({
         batterFields:Je.value,pitcherFields:Ye.value,fieldingFields:ff.value,decimalPlaces:Qe.value,rateDisplayStyle:Xe.value,showTrailingZeros:Ke.value
       }
-      ),watchMessage.success("保存成功")
+      ),watchMessage.success(wText("liveGame.watch.saveSuccess"))
     }
     const E=f([]),D=f([]),he=f([]),de=f([]),ae=f(null),se=f(null),be=f([]),me=f([]),_=Ge({
       inning:1,isTop:!0,outs:0,balls:0,strikes:0,batterIndex:{
@@ -764,7 +766,7 @@ var Ta={
     function mt(e,t){
       return t?`${Pt}${e}-${t}`:`${Pt}${e}`
     }
-    const Jt=I(()=>ce.value?"关闭":Q.value?.status==="final"?"返回赛程":"返回录入");
+    const Jt=I(()=>ce.value?wText("liveGame.watch.close"):Q.value?.status==="final"?wText("liveGame.watch.backSchedule"):wText("liveGame.watch.backEntry"));
     function Yt(){
       if(ce.value)try{
         if(window.parent!==window){
@@ -805,7 +807,7 @@ var Ta={
             const b=new Map(m.map(w=>[Number(w.id),w]));
             d.forEach(w=>{
               const n=b.get(Number(w.id));
-              n&&(!w.name||!w.number)&&(w.name||(w.name=n.name??n.shortName??"队员"),w.number||(w.number=n.number??"-"))
+              n&&(!w.name||!w.number)&&(w.name||(w.name=n.name??n.shortName??wText("liveGame.watch.playerFallback")),w.number||(w.number=n.number??"-"))
             }
             )
           };
@@ -910,7 +912,7 @@ var Ta={
       if($.value||(!force&&Date.now()-Fe.value<4e3))return;
       const e=Y.value;
       if(!Number.isFinite(e)||e<=0){
-        T.value="无效的比赛 ID";
+        T.value=wText("liveGame.watch.invalidGameId");
         return
       }
       try{
@@ -933,7 +935,7 @@ var Ta={
         )
       }
       catch{
-        T.value="拉取快照失败，请稍后重试"
+        T.value=wText("liveGame.watch.fetchFailed")
       }
       
     }
@@ -995,13 +997,13 @@ var Ta={
       pe.value=!0,T.value="";
       try{
         const[e,t]=await Promise.all([va.get(ue.value),yt.get(Y.value)]);
-        if(Ae.value=e?.name??"当前赛事",!t){
-          T.value="未找到比赛";
+        if(Ae.value=e?.name??wText("liveGame.watch.currentEvent"),!t){
+          T.value=wText("liveGame.watch.gameNotFound");
           return
         }
         Q.value=t,j.value=t.homeTeamId,z.value=t.awayTeamId;
         const[a,l]=await Promise.all([St.get(t.homeTeamId),St.get(t.awayTeamId)]);
-        De.value=[a,l].filter(Boolean),Ee.value=a?.name??"主队",Te.value=l?.name??"客队";
+        De.value=[a,l].filter(Boolean),Ee.value=a?.name??wText("liveGame.team.home"),Te.value=l?.name??wText("liveGame.team.away");
         try{
           const[r,d]=await Promise.all([Le(t.homeTeamId),Le(t.awayTeamId)]);
           be.value=r,me.value=d,He.value=buildTeamPlayersMap(r,t.homeTeamId,d,t.awayTeamId)
@@ -1012,7 +1014,7 @@ var Ta={
         $.value?await We()||(x.value=!1,Ie()):await ke()
       }
       catch{
-        T.value="加载失败"
+        T.value=wText("liveGame.watch.loadFailed")
       }
       finally{
         pe.value=!1
@@ -1047,15 +1049,15 @@ var Ta={
           type:"primary",link:"",size:"small",class:"watch-source-toggle-btn",onClick:ta
         }
         ,{
-          default:S(()=>[ee(" 切换至"+u($.value?"服务器":"本地实时"),1)]),_:1
+          default:S(()=>[ee(wText("liveGame.watch.switchTo",{target:$.value?wText("liveGame.watch.serverLive"):wText("liveGame.watch.localLive")}),1)]),_:1
         }
-        ),U.value?(c(),h("span",Ca,"已同步 "+u(U.value),1)):F("",!0),M(a,{
+        ),U.value?(c(),h("span",Ca,wText("liveGame.watch.synced",{label:U.value}),1)):F("",!0),M(a,{
           type:"primary",link:"",onClick:Yt
         }
         ,{
           default:S(()=>[ee(u(Jt.value),1)]),_:1
         }
-        )])]),default:S(()=>[T.value?(c(),h("div",Oa,u(T.value),1)):!pe.value&&!x.value?(c(),h("p",Va,u($.value?"等待录入页本地实时推送。请保持录入页开启并继续操作。":"暂无服务端快照。请先在「实时比赛录入」中开始比赛并保存/同步后再打开本页。"),1)):(c(),h("div",$a,[i("div",xa,[i("div",Wa,[i("div",Ma," 实时：第 "+u(_.inning)+" 局 "+u(_.isTop?"上半":"下半")+" · B "+u(_.balls)+" · S "+u(_.strikes)+" · O "+u(_.outs),1),i("div",Ra,[(c(),h("svg",Ga,[t[5]||(t[5]=i("title",null,"Bases",-1)),i("rect",{
+        )])]),default:S(()=>[T.value?(c(),h("div",Oa,u(T.value),1)):!pe.value&&!x.value?(c(),h("p",Va,u($.value?wText("liveGame.watch.waitLocal"):wText("liveGame.watch.noServerSnapshot")),1)):(c(),h("div",$a,[i("div",xa,[i("div",Wa,[i("div",Ma,wText("liveGame.watch.liveInning",{inning:_.inning,half:_.isTop?wText("liveGame.watch.halfTopShort"):wText("liveGame.watch.halfBottomShort"),balls:_.balls,strikes:_.strikes,outs:_.outs}),1),i("div",{...Ra,title:wText("liveGame.watch.basesTitle"),"aria-label":wText("liveGame.watch.basesAria")},[(c(),h("svg",Ga,[t[5]||(t[5]=i("title",null,"Bases",-1)),i("rect",{
           width:"6",height:"6",transform:"translate(5.25, 7.25) rotate(-315)",rx:"0",ry:"0",class:P(["watch-bases__base",{
             "watch-bases__base--on":H[3]
           }
@@ -1087,13 +1089,13 @@ var Ta={
             value:"timeline"
           }
           ,{
-            default:S(()=>[...t[6]||(t[6]=[ee("日志",-1)])]),_:1
+            default:S(()=>[ee(wText("liveGame.watch.tabLogs"),-1)]),_:1
           }
           ),M(l,{
             value:"byInning"
           }
           ,{
-            default:S(()=>[...t[7]||(t[7]=[ee("实时动态",-1)])]),_:1
+            default:S(()=>[ee(wText("liveGame.watch.tabPbp"),-1)]),_:1
           }
           )]),_:1
         }
@@ -1103,7 +1105,7 @@ var Ta={
           }
           ])
         }
-        ,[i("span",Qa,u(n.seq),1),n.logOnly?(c(),h("span",Xa,"仅日志")):F("",!0),n.meta?(c(),h("span",Ka," ["+u(n.meta.time)+"] ["+u(n.meta.inning)+u(n.meta.half==="top"?"上":"下")+"] ",1)):F("",!0),i("span",es,u(n.text),1),n.lines&&n.lines.length?(c(!0),h(L,{key:"lg-members"},O(n.lines,(ml,mi)=>(c(),h("div",{key:mi,class:"log-row__member",style:{paddingLeft:"22px",color:"#64748b",marginTop:"2px"}},[i("span",es,u(ml),1)]))),128)):F("",!0)],2))),128))],512),[[wt,fe.value==="timeline"]]),Re(i("div",ts,[Z.value.inningNumbers.length===0&&Z.value.unc.length===0?(c(),h("p",as,"暂无事件")):(c(),q(m,{
+        ,[i("span",Qa,u(n.seq),1),n.logOnly?(c(),h("span",{...Xa,title:wText("liveGame.watch.logOnlyTitle")},wText("liveGame.watch.logOnly"))):F("",!0),n.meta?(c(),h("span",Ka," ["+u(n.meta.time)+"] ["+u(n.meta.inning)+u(n.meta.half==="top"?wText("liveGame.watch.halfTopShort"):wText("liveGame.watch.halfBottomShort"))+"] ",1)):F("",!0),i("span",es,u(n.text),1),n.lines&&n.lines.length?(c(!0),h(L,{key:"lg-members"},O(n.lines,(ml,mi)=>(c(),h("div",{key:mi,class:"log-row__member",style:{paddingLeft:"22px",color:"#64748b",marginTop:"2px"}},[i("span",es,u(ml),1)]))),128)):F("",!0)],2))),128))],512),[[wt,fe.value==="timeline"]]),Re(i("div",ts,[Z.value.inningNumbers.length===0&&Z.value.unc.length===0?(c(),h("p",as,wText("liveGame.watch.noEvents"))):(c(),q(m,{
           key:1,modelValue:ie.value,"onUpdate:modelValue":t[2]||(t[2]=n=>ie.value=n),class:"pbp-half-inning-collapse"
         }
         ,{
@@ -1111,10 +1113,10 @@ var Ta={
             key:n.key,name:n.key
           }
           ,{
-            title:S(()=>[i("div",ss,[i("div",ns,[i("span",is,"第 "+u(n.inning)+" 局",1),i("span",ls,u(n.half==="top"?"上半局":"下半局"),1),i("span",{
-              class:"pbp-half-head__score",title:vn
+            title:S(()=>[i("div",ss,[i("div",ns,[i("span",is,wText("liveGame.watch.inningTitle",{inning:n.inning}),1),i("span",ls,u(n.half==="top"?wText("liveGame.watch.halfTop"):wText("liveGame.watch.halfBottom")),1),i("span",{
+              class:"pbp-half-head__score",title:wText("liveGame.watch.scoreTip")
             }
-            ,u(Te.value)+" "+u(N.away.score)+" - "+u(N.home.score)+" "+u(Ee.value),1)]),i("span",os,u(n.eventCount)+" 事件",1)])]),default:S(()=>[M(m,{
+            ,u(Te.value)+" "+u(N.away.score)+" - "+u(N.home.score)+" "+u(Ee.value),1)]),i("span",os,wText("liveGame.watch.eventCount",{count:n.eventCount}),1)])]),default:S(()=>[M(m,{
               modelValue:X.value,"onUpdate:modelValue":t[1]||(t[1]=s=>X.value=s),class:"pbp-atbat-collapse"
             }
             ,{
@@ -1122,7 +1124,7 @@ var Ta={
                 key:`${n.inning}-${n.half}-${s.key}`,name:rt(n.inning,n.half,s.key)
               }
               ,{
-                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,"第"+u(ct(s,n.inning,n.half))+"棒",1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
+                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,ct(s,n.inning,n.half),1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).strikes
                   }
@@ -1134,7 +1136,7 @@ var Ta={
                   }
                   ])
                 }
-                ,null,2)),64))])]),i("div",ws,[(c(),h("svg",ys,[t[9]||(t[9]=i("title",null,"Bases",-1)),i("rect",{
+                ,null,2)),64))])]),i("div",{...ws,title:wText("liveGame.watch.basesTitle"),"aria-label":wText("liveGame.watch.basesAria")},[(c(),h("svg",ys,[t[9]||(t[9]=i("title",null,"Bases",-1)),i("rect",{
                   width:"6",height:"6",transform:"translate(5.25, 7.25) rotate(-315)",class:P(["watch-bases__base",{
                     "watch-bases__base--on":K(s,n.inning,n.half)[3]
                   }
@@ -1152,7 +1154,7 @@ var Ta={
                   }
                   ])
                 }
-                ,null,2)]))])])]),i("span",Ss,u(Ve(s))+" 事件",1)])]),default:S(()=>[ge(n.inning,n.half,s)?(c(),h("p",ks," 投手："+u(ge(n.inning,n.half,s)),1)):F("",!0),i("ol",Is,[(c(!0),h(L,null,O(ot(s),(o,p)=>(c(),h("li",{
+                ,null,2)]))])])]),i("span",Ss,wText("liveGame.watch.eventCount",{count:Ve(s)}),1)])]),default:S(()=>[ge(n.inning,n.half,s)?(c(),h("p",ks,wText("liveGame.watch.pitcherLine",{name:ge(n.inning,n.half,s)}),1)):F("",!0),i("ol",Is,[(c(!0),h(L,null,O(ot(s),(o,p)=>(c(),h("li",{
                   key:`${n.half}-${n.inning}-${s.key}-${o.key}`,class:P(["pbp-pitch-item",{
                     "pbp-pitch-item--meta":o.isMeta
                   }
@@ -1180,17 +1182,17 @@ var Ta={
             key:0,name:"unclassified"
           }
           ,{
-            title:S(()=>[t[11]||(t[11]=i("span",null,"未带局标记的事件（旧数据或异常行）",-1)),i("span",As,u(Z.value.unc.length)+" 条",1)]),default:S(()=>[i("ul",Ts,[(c(!0),h(L,null,O(Z.value.unc,(n,s)=>(c(),h("li",{
+            title:S(()=>[i("span",null,wText("liveGame.watch.unlabeledEvents"),-1),i("span",As,wText("liveGame.watch.countUnit",{count:Z.value.unc.length}),1)]),default:S(()=>[i("ul",Ts,[(c(!0),h(L,null,O(Z.value.unc,(n,s)=>(c(),h("li",{
               key:"u-"+s,class:"pbp-unc-line"
             }
             ,[i("span",Es,u(n),1)]))),128))])]),_:1
           }
           )):F("",!0)]),_:1
         }
-        ,8,["modelValue"]))],512),[[wt,fe.value==="byInning"]])])]),i("div",Ds,[i("div",Hs,[t[14]||(t[14]=i("div",{
+        ,8,["modelValue"]))],512),[[wt,fe.value==="byInning"]])])]),i("div",Ds,[i("div",Hs,[i("div",{
           class:"panel-header scoring-panel-header"
         }
-        ,[i("span",null,"得分记录")],-1)),i("div",Cs,[Oe.value.length===0?(c(),h("p",Os,"暂无得分")):(c(),q(m,{
+        ,[i("span",null,wText("liveGame.watch.scoreRecord"))],-1),i("div",Cs,[Oe.value.length===0?(c(),h("p",Os,wText("liveGame.watch.noScores"))):(c(),q(m,{
           key:1,modelValue:Ce.value,"onUpdate:modelValue":t[4]||(t[4]=n=>Ce.value=n),class:"pbp-half-inning-collapse"
         }
         ,{
@@ -1198,7 +1200,7 @@ var Ta={
             key:n.key,name:n.key
           }
           ,{
-            title:S(()=>[i("div",Vs,[i("div",$s,[i("span",xs,"第 "+u(n.inning)+" 局",1),i("span",Ws,u(n.half==="top"?"上半局":"下半局"),1),i("span",Ms,u(Te.value)+" "+u(n.awayScore)+" - "+u(n.homeScore)+" "+u(Ee.value),1)])])]),default:S(()=>[i("ul",Rs,[(c(!0),h(L,null,O(n.entries,s=>(c(),h("li",{
+            title:S(()=>[i("div",Vs,[i("div",$s,[i("span",xs,wText("liveGame.watch.inningTitle",{inning:n.inning}),1),i("span",Ws,u(n.half==="top"?wText("liveGame.watch.halfTop"):wText("liveGame.watch.halfBottom")),1),i("span",Ms,u(Te.value)+" "+u(n.awayScore)+" - "+u(n.homeScore)+" "+u(Ee.value),1)])])]),default:S(()=>[i("ul",Rs,[(c(!0),h(L,null,O(n.entries,s=>(c(),h("li",{
               key:s.id,class:"scoring-record-item"
             }
             ,[M(m,{
@@ -1209,7 +1211,7 @@ var Ta={
                 name:s.id
               }
               ,{
-                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,"第"+u(ct(s.group,s.inning,s.half))+"棒",1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(2,o=>i("span",{
+                title:S(()=>[i("div",Gs,[i("div",Us,[i("div",js,[i("div",zs,[i("span",Zs,wText("liveGame.watch.orderNo",{n:ct(s.group,s.inning,s.half)}),1),we(s.group,s.inning,s.half)?(c(),h("span",qs,u(we(s.group,s.inning,s.half)),1)):F("",!0),i("span",Js,u(pt(s.group,s.inning,s.half)),1)]),s.group.summary?(c(),h("span",Ys,u(s.group.summary),1)):F("",!0)]),i("div",Qs,[i("div",Xs,[i("div",Ks,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.id}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s.group,s.inning,s.half).strikes
                   }
@@ -1221,7 +1223,7 @@ var Ta={
                   }
                   ])
                 }
-                ,null,2)),64))])]),i("div",tn,[(c(),h("svg",an,[t[12]||(t[12]=i("title",null,"Bases",-1)),i("rect",{
+                ,null,2)),64))])]),i("div",{...tn,title:wText("liveGame.watch.basesTitle"),"aria-label":wText("liveGame.watch.basesAria")},[(c(),h("svg",an,[t[12]||(t[12]=i("title",null,"Bases",-1)),i("rect",{
                   width:"6",height:"6",transform:"translate(5.25, 7.25) rotate(-315)",class:P(["watch-bases__base",{
                     "watch-bases__base--on":K(s.group,s.inning,s.half)[3]
                   }
@@ -1239,7 +1241,7 @@ var Ta={
                   }
                   ])
                 }
-                ,null,2)]))])])]),i("span",sn,u(Ve(s.group))+" 事件",1)])]),default:S(()=>[ge(s.inning,s.half,s.group)?(c(),h("p",nn," 投手："+u(ge(s.inning,s.half,s.group)),1)):F("",!0),i("ol",ln,[(c(!0),h(L,null,O(ot(s.group),(o,p)=>(c(),h("li",{
+                ,null,2)]))])])]),i("span",sn,wText("liveGame.watch.eventCount",{count:Ve(s.group)}),1)])]),default:S(()=>[ge(s.inning,s.half,s.group)?(c(),h("p",nn,wText("liveGame.watch.pitcherLine",{name:ge(s.inning,s.half,s.group)}),1)):F("",!0),i("ol",ln,[(c(!0),h(L,null,O(ot(s.group),(o,p)=>(c(),h("li",{
                   key:`${s.half}-${s.inning}-${s.group.key}-${o.key}`,class:P(["pbp-pitch-item",{
                     "pbp-pitch-item--meta":o.isMeta
                   }
@@ -1267,7 +1269,7 @@ var Ta={
         }
         ,8,["modelValue"]))])])])])])]))]),_:1
       }
-      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:"数据项调整",onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"fielding-items":ff.value,"default-batter-items":Ze,"default-pitcher-items":qe,"default-fielding-items":FG,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","fielding-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
+      )),[[w,pe.value]]),i("div",{class:"floating-settings-wrap"},[M(ra,{circle:"",class:"floating-settings-btn",title:wText("liveGame.watch.settings"),onClick:t[15]||(t[15]=n=>watchSettingsOpen.value=!0)},{default:S(()=>[M(watchIcon,null,{default:S(()=>[M(watchSettingIcon)]),_:1})]),_:1})]),M(FieldSettingsDrawer,{modelValue:watchSettingsOpen.value,"onUpdate:modelValue":t[16]||(t[16]=n=>watchSettingsOpen.value=n),"batter-items":Je.value,"pitcher-items":Ye.value,"fielding-items":ff.value,"default-batter-items":Ze,"default-pitcher-items":qe,"default-fielding-items":FG,"decimal-places":Qe.value,"default-decimal-places":Nt,"rate-display-style":Xe.value,"default-rate-display-style":Bt,"show-trailing-zeros":Ke.value,"default-show-trailing-zeros":Lt,"is-small-screen":watchSmallScreen.value,onSave:watchSaveSettings},null,8,["modelValue","batter-items","pitcher-items","fielding-items","decimal-places","rate-display-style","show-trailing-zeros","is-small-screen"])],2)
     }
     
   }

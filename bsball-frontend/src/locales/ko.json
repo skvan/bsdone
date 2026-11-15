@@ -464,6 +464,11 @@
         "fullName": "도루 허용",
         "definition": "포수가 허용한 도루 수",
         "shortLabel": "SB"
+      },
+      "gsFielding": {
+        "fullName": "수비 선발 경기",
+        "definition": "해당 수비 위치에서 선발 출전한 경기 수",
+        "shortLabel": "GS"
       }
     }
   },
@@ -777,7 +782,11 @@
     "stadiumDetail": "구장 안내",
     "announcementDoc": "공지",
     "notFound": "페이지 없음",
-    "serviceUnavailable": "서비스 이용 불가"
+    "serviceUnavailable": "서비스 이용 불가",
+    "leagues": "리그",
+    "clubhouse": "내 홈",
+    "intro": "시스템 소개",
+    "welcome": "환영합니다"
   },
   "stadiumDetail": {
     "notFound": "구장을 찾을 수 없습니다.",
@@ -922,7 +931,33 @@
       "colWinner": "수상자",
       "colTeam": "팀",
       "colPosition": "포지션",
-      "colValue": "기록"
+      "colValue": "기록",
+      "pending": "미정"
+    },
+    "award": {
+      "hits": "최다 안타",
+      "avg": "타격왕",
+      "rbi": "타점왕",
+      "sb": "도루왕",
+      "hr": "홈런왕",
+      "w": "다승왕",
+      "so": "탈삼진왕",
+      "era": "평균자책점왕",
+      "reliever": "최우수 구원투수",
+      "holder": "최우수 홀드 투수",
+      "p": "투수",
+      "c": "포수",
+      "1b": "1루수",
+      "2b": "2루수",
+      "3b": "3루수",
+      "ss": "유격수",
+      "of": "외야수",
+      "dh": "지명타자",
+      "mvp": "시즌 MVP",
+      "improved": "최우수 발전 선수",
+      "rookie": "신인왕",
+      "manager": "최우수 감독상",
+      "comeback": "재기상"
     }
   },
   "events": {
@@ -960,7 +995,11 @@
       "published": "공개",
       "ended": "종료",
       "ongoing": "진행 중"
-    }
+    },
+    "missingDateHint": "경기 날짜나 시작 시간이 없는 {n}경기는 달력에 표시되지 않으며, 목록의 \"{group}\" 그룹에서 확인할 수 있습니다.",
+    "specialResult": "특별 결과",
+    "expandScheduleAria": "{name} 일정 펼치기",
+    "collapseScheduleAria": "{name} 일정 접기"
   },
   "eventGames": {
     "title": "일정 및 결과",
@@ -1055,7 +1094,14 @@
         "pitchSf": "피희생플라이(Sacrifice Flies Allowed)",
         "pitchIo": "피방해 출루(Obstruction Allowed)"
       }
-    }
+    },
+    "batters": "타자",
+    "pitchers": "투수",
+    "totals": "합계",
+    "fieldingTableTitle": "수비",
+    "fieldingPlayer": "선수",
+    "expandFieldingAria": "{name}의 수비 위치별 데이터 펼치기",
+    "collapseFieldingAria": "{name}의 수비 위치별 데이터 접기"
   },
   "news": {
     "title": "소식",
@@ -1166,6 +1212,7 @@
       "ibb": "IBB",
       "hbp": "사구",
       "so": "삼진",
+      "pitchSo": "탈삼진",
       "wp": "폭투",
       "bk": "보크",
       "r": "득점",
@@ -1245,6 +1292,7 @@
       "ibb": "IBB",
       "hbp": "HBP",
       "so": "SO",
+      "pitchSo": "SO",
       "wp": "WP",
       "bk": "BK",
       "r": "R",
@@ -1755,7 +1803,8 @@
       "education": "학력",
       "joinDate": "입단일",
       "debut": "데뷔"
-    }
+    },
+    "avatarAlt": "선수 아바타"
   },
   "teamDetail": {
     "roster": "로스터",
@@ -2103,5 +2152,18 @@
     "revokeFailed": "철회 실패",
     "genericHint": "본 팀에 소속되지 않은 선수만 표시합니다. 미연결 선수는 현재 소속팀을 유지한 채 바로 합류하며, 연결된 선수에게는 공용 링크가 발급됩니다(본인 확인 후 입단).",
     "loadFailed": "불러오기 실패"
+  },
+  "notice": {
+    "contentNotFound": "콘텐츠를 찾을 수 없습니다",
+    "parseFailed": "콘텐츠를 분석하지 못했습니다",
+    "emptyBody": "본문이 없습니다",
+    "originalLink": "원문 링크",
+    "attachment": "첨부 파일",
+    "retry": "다시 시도",
+    "notFound": "공지사항을 찾을 수 없거나 삭제되었습니다"
+  },
+  "team": {
+    "textLogoAlt": "{name} 텍스트 로고",
+    "logoInitialFallback": "볼"
   }
 }

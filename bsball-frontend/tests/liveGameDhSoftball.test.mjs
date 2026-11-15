@@ -153,7 +153,7 @@ test('页面接线：投手已在打序时不走棒球取消 DH 流程，DH 拖�
   assert.ok(defense.includes('target.position="DH"'), 'DH 与守备员应互换守位（对方转 DH）');
   const cancel = sliceFunction('async function requestCancelDh(');
   assert.ok(cancel.includes('if(oa(ctx.lineup.value))'), '投手已在打序时应阻止取消 DH');
-  assert.ok(cancel.includes('无法取消 DH'), '拖离 DH 卡片需给明确提示');
+  assert.ok(cancel.includes('liveGame.sub.dhCancelPitcherInOrder'), '拖离 DH 卡片需给明确提示');
   const rotation = sliceFunction('async function applyFieldRotation(');
   assert.ok(rotation.includes('N.value!=="SOFTBALL"'), '垒球 11 人轮转含 1 号位不应取消 DH');
 });

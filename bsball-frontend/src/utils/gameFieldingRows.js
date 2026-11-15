@@ -354,12 +354,12 @@ export function buildFieldingTotals(rows, fields = []) {
  * 守备表 Totals 行：按 el-table 列的 prop 映射合计值，首列 playerName→Totals，POS 等非合计列留空。
  * 不依赖列下标，字段显隐/排序后仍与对应列对齐。
  */
-export function buildFieldingSummaryCells(columns, totals) {
+export function buildFieldingSummaryCells(columns, totals, totalsLabel = 'Totals') {
   const list = Array.isArray(columns) ? columns : [];
   const values = totals || {};
   return list.map((column) => {
     const key = column?.property;
-    if (key === 'playerName') return 'Totals';
+    if (key === 'playerName') return totalsLabel;
     if (!key || !(key in values)) return '';
     const value = values[key] ?? 0;
     return key === 'defInn' ? formatInningsPitched(value) : String(value);

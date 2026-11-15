@@ -5,31 +5,31 @@
       type="info"
       :closable="false"
       show-icon
-      title="比赛结束后才能补记守备助杀"
-      description="进行中的比赛请先结束并保存赛果；赛后复核只处理失误导致未完成的出局。"
+      :title="lt('liveGame.review.fieldingBlockedTitle')"
+      :description="lt('liveGame.review.fieldingBlockedDesc')"
     />
     <el-alert
       v-else
       type="success"
       :closable="false"
       show-icon
-      title="赛后复核"
-      description="补记立即生效；源 Play 已不在当前快照时会自动失效并扣回。"
+      :title="lt('liveGame.review.fieldingFinalTitle')"
+      :description="lt('liveGame.review.fieldingFinalDesc')"
     />
     <el-alert v-if="loadError" type="error" :closable="false" show-icon :title="loadError" />
 
     <template v-if="isFinal">
       <div class="fielding-adjustment__section">
         <div class="fielding-adjustment__title">
-          待复核的失误 Play
+          {{ lt('liveGame.review.pendingErrorPlays') }}
           <span class="fielding-adjustment__count">{{ candidates.length }}</span>
         </div>
-        <el-empty v-if="!candidates.length" :image-size="64" description="本场没有带失误的 Play" />
+        <el-empty v-if="!candidates.length" :image-size="64" :description="lt('liveGame.review.noErrorPlays')" />
         <div v-for="candidate in candidates" :key="candidate.sourceEventId" class="fielding-adjustment__play">
           <div class="fielding-adjustment__play-head">
             <div>
-              <b>{{ candidate.inningLabel }}</b>
-              <span class="fielding-adjustment__meta">{{ candidate.outsBefore }}出局 · {{ candidate.baseLabel }}</span>
+              <b>{{ candidateInningLabel(candidate) }}</b>
+              <span class="fielding-adjustment__meta">{{ lt('liveGame.review.outsBefore', { n: candidate.outsBefore }) }} · {{ candidateBaseLabel(candidate) }}</span>
             </div>
             <el-button
               type="primary"
@@ -37,11 +37,11 @@
               plain
               :disabled="!hasAvailablePlayers(candidate)"
               @click="openAdjust(candidate)"
-            >补记助杀</el-button>
+            >{{ lt('liveGame.review.creditAssist') }}</el-button>
           </div>
           <div class="fielding-adjustment__play-text">{{ candidate.resultText || '—' }}</div>
           <div v-if="candidate.adjustments.length" class="fielding-adjustment__credited">
-            <span class="fielding-adjustment__credited-label">已处理：</span>
+            <span class="fielding-adjustment__credited-label">{{ lt('liveGame.review.credited') }}</span>
             <el-tag
               v-for="item in candidate.adjustments"
               :key="item.adjustmentId"
@@ -54,26 +54,26 @@
       </div>
 
       <div class="fielding-adjustment__section">
-        <div class="fielding-adjustment__title">补记记录</div>
-        <el-table :data="rows" size="small" border stripe empty-text="暂无补记记录">
-          <el-table-column label="局" width="82">
+        <div class="fielding-adjustment__title">{{ lt('liveGame.review.creditsTitle') }}</div>
+        <el-table :data="rows" size="small" border stripe :empty-text="lt('liveGame.review.noCredits')">
+          <el-table-column :label="lt('liveGame.review.inning')" width="82">
             <template #default="{ row }">{{ inningLabel(row) }}</template>
           </el-table-column>
-          <el-table-column label="守备员" min-width="90">
+          <el-table-column :label="lt('liveGame.review.fielder')" min-width="90">
             <template #default="{ row }">{{ row.playerName || playerName(row.playerId) }}</template>
           </el-table-column>
-          <el-table-column label="位置" prop="position" width="56" align="center" />
-          <el-table-column label="补记" width="86" align="center">
+          <el-table-column :label="lt('liveGame.review.position')" prop="position" width="56" align="center" />
+          <el-table-column :label="lt('liveGame.review.credit')" width="86" align="center">
             <template #default="{ row }">A +{{ row.assistCount || 1 }}</template>
           </el-table-column>
-          <el-table-column label="状态" width="78" align="center">
+          <el-table-column :label="lt('liveGame.review.status')" width="78" align="center">
             <template #default="{ row }">
               <el-tag size="small" :type="statusTagType(row.status)" effect="plain">
                 {{ statusLabel(row.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="76" align="center">
+          <el-table-column :label="lt('liveGame.review.actions')" width="76" align="center">
             <template #default="{ row }">
               <el-button
                 v-if="row.status === 'APPROVED'"
@@ -81,7 +81,7 @@
                 type="danger"
                 size="small"
                 @click="revoke(row)"
-              >撤销</el-button>
+              >{{ lt('liveGame.review.undo') }}</el-button>
               <span v-else class="fielding-adjustment__muted">—</span>
             </template>
           </el-table-column>
@@ -91,22 +91,22 @@
 
     <el-dialog
       v-model="dialogVisible"
-      title="补记助杀"
+      :title="lt('liveGame.review.creditAssist')"
       width="420px"
       append-to-body
       destroy-on-close
     >
       <template v-if="selectedCandidate">
         <div class="fielding-adjustment__dialog-context">
-          <div><b>{{ selectedCandidate.inningLabel }}</b> · {{ selectedCandidate.outsBefore }}出局 · {{ selectedCandidate.baseLabel }}</div>
+          <div><b>{{ candidateInningLabel(selectedCandidate) }}</b> · {{ lt('liveGame.review.outsBefore', { n: selectedCandidate.outsBefore }) }} · {{ candidateBaseLabel(selectedCandidate) }}</div>
           <div class="fielding-adjustment__dialog-text">{{ selectedCandidate.resultText || '—' }}</div>
         </div>
-        <el-form label-width="82px" size="default">
-          <el-form-item label="守备员">
+        <el-form :label-width="isEnglish ? '96px' : '82px'" size="default">
+          <el-form-item :label="lt('liveGame.review.fielder')">
             <el-select
               v-model="selectedPlayerId"
               filterable
-              placeholder="选择补记助杀的守备员"
+              :placeholder="lt('liveGame.review.selectFielder')"
               style="width: 100%"
               @change="handlePlayerChange"
             >
@@ -118,24 +118,24 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="守位">
-            <el-select v-model="selectedPosition" placeholder="选择守位" style="width: 100%">
+          <el-form-item :label="lt('liveGame.review.positionLabel')">
+            <el-select v-model="selectedPosition" :placeholder="lt('liveGame.review.selectPosition')" style="width: 100%">
               <el-option v-for="position in positionOptions" :key="position" :label="position" :value="position" />
             </el-select>
           </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="note" maxlength="200" show-word-limit placeholder="可空，例如：外野传本垒，捕手接球失误" />
+          <el-form-item :label="lt('liveGame.review.note')">
+            <el-input v-model="note" maxlength="200" show-word-limit :placeholder="lt('liveGame.review.notePlaceholder')" />
           </el-form-item>
         </el-form>
         <div v-if="selectedPlayer" class="fielding-adjustment__preview">
-          <b>{{ selectedPlayer.name || playerName(selectedPlayer.id) }}</b>：A +1、TC +1；
-          位置 <b>{{ selectedPosition || '—' }}</b> A +1、TC +1；全队 A +1。
-          <div class="fielding-adjustment__muted">确认后立即生效；不会改变 R/ER。</div>
+          <b>{{ selectedPlayer.name || playerName(selectedPlayer.id) }}</b>{{ lt('liveGame.review.effectPlayerSuffix') }}
+          {{ lt('liveGame.review.effectLine', { pos: selectedPosition || '—' }) }}
+          <div class="fielding-adjustment__muted">{{ lt('liveGame.review.effectHint') }}</div>
         </div>
       </template>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submit">确认补记</el-button>
+        <el-button @click="dialogVisible = false">{{ lt('liveGame.common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">{{ lt('liveGame.review.confirmCredit') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -145,6 +145,7 @@
 import { computed, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { gameApi } from '../../api/business';
+import { useLiveGameText } from '../../composables/useLiveGameText';
 import {
   FIELDING_ADJUSTMENT_POSITIONS,
   buildFieldingAdjustmentCandidates,
@@ -167,6 +168,7 @@ const props = defineProps({
   remoteCandidates: { type: Boolean, default: false }
 });
 const emit = defineEmits(['changed']);
+const { text: lt, isEnglish } = useLiveGameText();
 
 const rows = ref([]);
 const remoteCandidateRows = ref([]);
@@ -258,7 +260,7 @@ async function load() {
       rows.value = [];
       remoteCandidateRows.value = [];
       loadError.value = result.error;
-      ElMessage.error('加载守备补记失败');
+      ElMessage.error(lt('liveGame.review.loadFieldingFailed'));
       return;
     }
     rows.value = Array.isArray(result?.data) ? result.data : [];
@@ -269,15 +271,15 @@ async function load() {
     if (candidateResult?.error) {
       remoteCandidateRows.value = [];
       loadError.value = candidateResult.error;
-      ElMessage.error('加载补记候选失败');
+      ElMessage.error(lt('liveGame.review.loadCandidatesFailed'));
       return;
     }
     remoteCandidateRows.value = Array.isArray(candidateResult?.data) ? candidateResult.data : [];
   } catch (error) {
     rows.value = [];
     remoteCandidateRows.value = [];
-    loadError.value = error?.message ?? '加载失败';
-    ElMessage.error('加载守备补记失败');
+    loadError.value = error?.message ?? lt('liveGame.review.loadFailed');
+    ElMessage.error(lt('liveGame.review.loadFieldingFailed'));
   } finally {
     loading.value = false;
   }
@@ -313,11 +315,11 @@ function handlePlayerChange() {
 async function submit() {
   if (!selectedCandidate.value) return;
   if (!selectedPlayerId.value) {
-    ElMessage.warning('请选择补记助杀的守备员');
+    ElMessage.warning(lt('liveGame.review.selectCreditFielder'));
     return;
   }
   if (!selectedPosition.value) {
-    ElMessage.warning('请选择守位');
+    ElMessage.warning(lt('liveGame.review.selectPositionRequired'));
     return;
   }
   submitting.value = true;
@@ -328,12 +330,12 @@ async function submit() {
       position: selectedPosition.value,
       note: note.value.trim() || undefined
     });
-    ElMessage.success(`补记已生效：${selectedPosition.value} A +1`);
+    ElMessage.success(lt('liveGame.review.creditSaved', { pos: selectedPosition.value }));
     dialogVisible.value = false;
     await load();
     emit('changed');
   } catch (error) {
-    ElMessage.error(error?.message ?? '补记失败');
+    ElMessage.error(error?.message ?? lt('liveGame.review.creditFailed'));
   } finally {
     submitting.value = false;
   }
@@ -342,20 +344,20 @@ async function submit() {
 async function revoke(row) {
   try {
     await ElMessageBox.confirm(
-      `撤销 ${row.playerName || playerName(row.playerId)} 的这次补记？撤销后将扣回 A/TC。`,
-      '撤销补记',
-      { type: 'warning', confirmButtonText: '确认撤销', cancelButtonText: '取消' }
+      lt('liveGame.review.fieldingUndoConfirm', { name: row.playerName || playerName(row.playerId) }),
+      lt('liveGame.review.fieldingUndoTitle'),
+      { type: 'warning', confirmButtonText: lt('liveGame.review.undoConfirmBtn'), cancelButtonText: lt('liveGame.common.cancel') }
     );
   } catch {
     return;
   }
   try {
     await gameApi.revokeFieldingAdjustment(props.gameId, row.adjustmentId);
-    ElMessage.success('已撤销补记，统计同步扣回');
+    ElMessage.success(lt('liveGame.review.fieldingUndoSuccess'));
     await load();
     emit('changed');
   } catch (error) {
-    ElMessage.error(error?.message ?? '撤销失败');
+    ElMessage.error(error?.message ?? lt('liveGame.review.fieldingUndoFailed'));
   }
 }
 
@@ -379,13 +381,29 @@ function playerName(playerId) {
 }
 
 function inningLabel(row) {
-  return `${row.inning ?? '-'}${row.half === 'top' ? '上' : '下'}#${row.sequence ?? '-'}`;
+  return `${row.inning ?? '-'}${row.half === 'top' ? lt('liveGame.review.halfTop') : lt('liveGame.review.halfBottom')}#${row.sequence ?? '-'}`;
+}
+
+function candidateInningLabel(candidate) {
+  if (candidate?.inning == null) return candidate?.inningLabel ?? '';
+  const half = candidate.half === 'top' ? lt('liveGame.review.halfTop') : lt('liveGame.review.halfBottom');
+  return `${candidate.inning}${half} #${candidate.sequence ?? '-'}`;
+}
+
+function candidateBaseLabel(candidate) {
+  if (!candidate?.basesBefore) return candidate?.baseLabel ?? '';
+  const occupied = [1, 2, 3].filter((base) => candidate.basesBefore?.[base]);
+  if (occupied.length === 0) return lt('liveGame.review.basesEmpty');
+  if (occupied.length === 3) return lt('liveGame.review.basesFull');
+  const names = occupied.map((base) => lt(`liveGame.scoreboard.base${base}`));
+  if (names.length === 1) return lt('liveGame.review.baseOccupied', { base: names[0] });
+  return lt('liveGame.review.basesOccupied', { bases: names.join(lt('liveGame.common.listSeparator')) });
 }
 
 function statusLabel(status) {
-  if (status === 'APPROVED') return '已生效';
-  if (status === 'REVOKED') return '已撤销';
-  if (status === 'INVALIDATED') return '已失效';
+  if (status === 'APPROVED') return lt('liveGame.review.statusApproved');
+  if (status === 'REVOKED') return lt('liveGame.review.statusRevoked');
+  if (status === 'INVALIDATED') return lt('liveGame.review.statusInvalidated');
   return status || '—';
 }
 

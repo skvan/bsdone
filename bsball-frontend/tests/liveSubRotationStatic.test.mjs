@@ -19,7 +19,7 @@ const sliceBetween = (src, start, end) => {
 test('横幅接线：速记输入框 + 轮转按钮，value 绑定带 patchFlag 以便成功后清空', () => {
   const banner = sliceBetween(LIVE, 'key:"sub-mode-banner"', 'key:"dh-card-"');
   assert.ok(banner.includes('class:"live-sub-rotation__input"'), '缺少速记输入框');
-  assert.ok(banner.includes('placeholder:"守备轮转 如 1341"'), '缺少输入提示');
+  assert.ok(banner.includes('placeholder:lgText("liveGame.sub.rotationPlaceholder")'), '缺少输入提示');
   assert.ok(banner.includes('event.key==="Enter"&&(event.preventDefault(),event.stopPropagation(),applyFieldRotation())'), 'Enter 未接轮转执行');
   assert.ok(banner.includes('onClick:applyFieldRotation'), '缺少轮转按钮接线');
   assert.ok(banner.includes(',null,8,["value"]'), '输入框 value 缺少 patchFlag（成功清空会失效）');
@@ -31,9 +31,9 @@ test('执行接线：纯函数解析/占位校验/置换表，含 DH 取消确�
   assert.ok(movesBody.includes('syncFieldingPitcher(side,oldPitcher,byId.get(Number(intoPitcher.id)))'), '投手变更未同步守备投手行');
 
   const applyBody = sliceBetween(LIVE, 'async function applyFieldRotation(){', '/* ---------------- 替补席拖拽换人');
-  assert.ok(applyBody.includes('parseFieldRotation(rotationDraft.value)'), '未使用纯函数解析');
-  assert.ok(applyBody.includes('buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side))'), '未使用占位校验/置换表');
-  assert.ok(applyBody.includes('守备轮转并取消DH'), '含投手+DH 未走取消 DH 确认');
+  assert.ok(applyBody.includes('parseFieldRotation(rotationDraft.value,lgText)'), '未使用纯函数解析');
+  assert.ok(applyBody.includes('buildFieldRotationMoves(parsed.digits,rotationTeamEntries(side),lgText)'), '未使用占位校验/置换表');
+  assert.ok(applyBody.includes('liveGame.sub.confirmRotation'), '含投手+DH 未走取消 DH 确认');
   assert.ok(applyBody.includes('if(!applyCancelDh(side))return;'), '未复用取消 DH 实现');
   assert.ok(applyBody.includes('hasDh&&includesPitcher&&hasPitcherInOrder&&N.value!=="SOFTBALL"'), 'DH 队已有 P 时仅棒球拦截（垒球 11 人为普通轮转）');
   assert.ok(applyBody.includes('hasDh&&includesPitcher&&!hasPitcherInOrder'), '仅投手不在打序且轮转含 1 号位时走取消 DH 确认');

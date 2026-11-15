@@ -19,7 +19,7 @@ test('final 比赛不再被 _c 直接挡回赛程，并强制进入结束态', (
     'final 比赛加载后应标记复核态与结束态'
   );
   assert.ok(
-    live.includes('比赛已结束，可进行赛后复核'),
+    live.includes('lgText("liveGame.restore.gameFinal")'),
     'final 恢复提示应引导赛后复核'
   );
   assert.ok(
@@ -47,7 +47,7 @@ test('赛后复核不恢复本地旧现场，也不允许写回录入现场', ()
     'final 复核仍可能优先恢复本地旧现场'
   );
   assert.ok(
-    live.includes('赛后复核模式请使用复核抽屉保存，录入现场不会写回'),
+    live.includes('lgText("liveGame.save.reviewOnly")'),
     '缺少复核态主保存守卫提示'
   );
   assert.ok(

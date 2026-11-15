@@ -12,7 +12,7 @@
       :class="['box-table', 'box-table-fielding', sideClass]"
       @row-click="toggle"
     >
-      <el-table-column prop="playerName" label="球员" min-width="150" show-overflow-tooltip>
+      <el-table-column prop="playerName" :label="t('gameDetail.fieldingPlayer')" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
           <span
             class="gd-fielding-table__player"
@@ -29,7 +29,7 @@
                 class="gd-fielding-table__expander"
                 :class="{ 'is-open': row.open }"
                 :aria-expanded="row.open ? 'true' : 'false'"
-                :aria-label="`${row.open ? '收起' : '展开'} ${nameOf(row)} 的逐位置守备数据`"
+                :aria-label="t(row.open ? 'gameDetail.collapseFieldingAria' : 'gameDetail.expandFieldingAria', { name: nameOf(row) })"
                 @click.stop="toggle(row)"
               >
                 <span class="gd-fielding-table__expander-h"></span>
@@ -50,9 +50,17 @@
         :key="col.key"
         :prop="col.key"
         :label="col.label"
-        :width="columnWidth(col)"
+        :width="playerColumnWidth(col.key, columnWidth(col))"
         align="center"
       >
+        <template #header>
+          <StatsColHeader
+            :col-key="col.key"
+            :header-key="statsHeaderKey(col.key, col.key, 'fielding')"
+            term-domain="fielding"
+            term-subject="fielder"
+          />
+        </template>
         <template #default="{ row }">
           <span :class="{ 'gd-fielding-table__stat--dim': isDimStat(col, row) }">{{ cellValue(col, row) }}</span>
         </template>
@@ -63,6 +71,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   buildFieldingDisplayRows,
   buildFieldingSummaryCells,
@@ -71,6 +80,10 @@ import {
 } from '../../utils/gameFieldingRows.js';
 import { formatInningsPitched } from '../../utils/inningsFormat.js';
 import { DEFAULT_FIELDING_FIELDS } from '../../utils/gameDetailFieldSettingsStorage.js';
+import { StatsColHeader } from '../../components/portal/statsEventCascade.js';
+import { playerColumnWidth, statsHeaderKey } from '../../stores/statsHeaderKeys';
+
+const { t } = useI18n();
 
 const props = defineProps({
   stats: { type: Array, default: () => [] },
@@ -93,7 +106,7 @@ const visibleFields = computed(() => {
 });
 
 const totals = computed(() => buildFieldingTotals(baseRows.value, visibleFields.value));
-const title = computed(() => `${props.teamName || ''} 守备`.trim());
+const title = computed(() => `${props.teamName || ''} ${t('gameDetail.fieldingTableTitle')}`.trim());
 
 function toggle(row) {
   if (!row?.multiPosition) return;
@@ -130,7 +143,7 @@ function cellValue(col, row) {
 }
 
 function summaryMethod({ columns }) {
-  return buildFieldingSummaryCells(columns, totals.value);
+  return buildFieldingSummaryCells(columns, totals.value, t('gameDetail.totals'));
 }
 
 function nameOf(row) {

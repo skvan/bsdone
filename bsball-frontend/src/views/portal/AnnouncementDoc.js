@@ -3,6 +3,7 @@
 import { createElementBlock as n, defineComponent as y, createTextVNode as v, toDisplayString as s, createElementVNode as _, unref as e, createBlock as c, createVNode as E, openBlock as r, withCtx as m, createCommentVNode as D } from 'vue';
 import { ElSkeleton as h, ElEmpty as g, ElButton as B } from 'element-plus';
 import { useRoute as b } from 'vue-router';
+import { useI18n as qI18n } from 'vue-i18n';
 import { fetchResult as w } from '../../api/request';
 import { formatDateTimeDotWithWeek as x } from '../../utils/dateExtras';
 import { exportSfc as A } from '../../utils/exportSfc';
@@ -22,6 +23,7 @@ var N={
 }
 ,L=y({
   __name:"AnnouncementDoc",setup(M){
+    const { t: tr } = qI18n();
     const p=b(),{
       loading:u,error:i,result:o,retry:d
     }
@@ -46,12 +48,12 @@ var N={
           type:"primary",onClick:e(d)
         }
         ,{
-          default:m(()=>[...t[0]||(t[0]=[v("重试",-1)])]),_:1
+          default:m(()=>[v(tr("notice.retry"))]),_:1
         }
         ,8,["onClick"])]),_:1
       }
       ,8,["description"])):(r(),c(l,{
-        key:3,description:"公告不存在或已删除"
+        key:3,description:tr("notice.notFound")
       }
       ))])
     }

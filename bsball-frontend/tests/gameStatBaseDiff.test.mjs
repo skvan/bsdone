@@ -14,7 +14,7 @@ const migration = read('../../bsball-backend/src/main/resources/db/migration/pos
 
 test('结果页新增基座对比页签并接入面板', () => {
   assert.ok(games.includes('GameStatBaseDiffPanel'), '未导入基座对比面板');
-  assert.ok(games.includes('label:"基座对比",name:"statBase"'), '缺少基座对比页签');
+  assert.ok(games.includes(`label:gText('liveGame.revision.tabStatBase'),name:"statBase"`), '缺少基座对比页签');
 });
 
 test('基座对比面板覆盖差异、一致与 LEGACY', () => {
