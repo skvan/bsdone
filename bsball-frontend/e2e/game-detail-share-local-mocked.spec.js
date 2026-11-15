@@ -40,6 +40,7 @@ const awayStats = [{
 
 async function mockApis(page) {
   await page.addInitScript(() => {
+    localStorage.setItem('bs-ball-locale', 'zh-CN');
     localStorage.setItem('admin_token::bs-ball', 'local-e2e-token');
     localStorage.setItem('admin_user::bs-ball', JSON.stringify({
       id: 1, tenantCode: 'bs-ball', superAdmin: true, username: 'local-e2e'
