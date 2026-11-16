@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Table;
 import org.hibernate.annotations.Formula;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.mapping.PersistentClass;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,12 +36,31 @@ class GameSnapshotMappingTest {
     }
 
     @Test
-    @DisplayName("快照轻量实体映射同一张 bs_game 表与 live_snapshot_json 列")
-    void gameSnapshot_mapsSameTableAndSnapshotColumn() throws Exception {
-        Table table = GameSnapshot.class.getAnnotation(Table.class);
-        assertEquals("bs_game", table.name());
+    @DisplayName("Game 与 GameSnapshot 同表映射元数据可构建（防物理列出现多个逻辑列名）")
+    void metadata_buildsForGameAndSnapshot() {
+        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
+                .applySetting("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect")
+                .applySetting("hibernate.physical_naming_strategy",
+                        "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy")
+                .applySetting("hibernate.boot.allow_jdbc_metadata_access", "false")
+                .build();
+        try {
+            MetadataSources sources = new MetadataSources(registry);
+            sources.addAnnotatedClass(Game.class);
+            sources.addAnnotatedClass(GameSnapshot.class);
+            var metadata = sources.buildMetadata();
+            assertNotNull(metadata.getEntityBinding(Game.class.getName()));
+            PersistentClass snapshotBinding = metadata.getEntityBinding(GameSnapshot.class.getName());
+            assertNotNull(snapshotBinding);
+            assertEquals("live_snapshot_json", firstColumnName(snapshotBinding, "liveSnapshotJson"));
+            assertEquals("updated_at", firstColumnName(snapshotBinding, "updatedAt"));
+            assertEquals("updated_by", firstColumnName(snapshotBinding, "updatedBy"));
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
 
-        Column column = GameSnapshot.class.getDeclaredField("liveSnapshotJson").getAnnotation(Column.class);
-        assertEquals("live_snapshot_json", column.name());
+    private static String firstColumnName(PersistentClass binding, String property) {
+        return binding.getProperty(property).getColumns().get(0).getName();
     }
 }

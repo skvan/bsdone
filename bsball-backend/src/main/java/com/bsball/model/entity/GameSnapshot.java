@@ -24,15 +24,13 @@ public class GameSnapshot {
     @Comment(value="\u6bd4\u8d5bID")
     private Long id;
 
-    @Column(name="live_snapshot_json", columnDefinition="TEXT")
+    @Column(columnDefinition="TEXT")
     @Comment(value="\u5b9e\u65f6\u5f55\u5165\u5feb\u7167 JSON")
     private String liveSnapshotJson;
 
-    @Column(name="updated_at")
     @Comment(value="\u66f4\u65b0\u65f6\u95f4")
     private LocalDateTime updatedAt;
 
-    @Column(name="updated_by")
     @Comment(value="\u66f4\u65b0\u4eba")
     private Long updatedBy;
 
