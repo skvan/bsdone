@@ -25,7 +25,7 @@
 
 ## 项目结构
 - 领域实体位于 model/entity 包下，Game 为 JPA 实体，映射到表 bs_game。
-- GameSnapshot 为同表轻量实体（仅 id + live_snapshot_json），快照正文按需单独读写，不进入比赛列表/详情实体对象图。
+- GameSnapshot 为同表轻量实体（仅 id、live_snapshot_json 与 updated_at/updated_by），快照正文按需单独读写，不进入比赛列表/详情实体对象图。同表双实体依赖 Spring 的下划线命名策略：不要再对已有逻辑列显式写 `@Column(name=...)`，否则 Hibernate 会因同一物理列出现多个逻辑名而拒绝启动（2026-11-15 测试环境部署失败的根因）。
 - DTO 层包含 GameResponseDTO，用于对外响应时转换与展示（如将每局得分字符串解析为列表）。
 - 数据库通过 Flyway 迁移脚本逐步扩展 bs_game 表结构，包括租户隔离、实时快照、裁判与天气等列。
 
