@@ -25,6 +25,7 @@ import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.bsball.repository.PlayerRepository;
 import com.bsball.stats.earnedrun.EarnedRunDecision;
@@ -89,6 +90,7 @@ public class EarnedRunReconstructionService {
     private final GameIdentityTransferRepository gameIdentityTransferRepository;
     private final ErDecisionAdjustmentRepository erDecisionAdjustmentRepository;
     private final GameRepository gameRepository;
+    private final GameSnapshotRepository gameSnapshotRepository;
     private final EarnedRunReconstructionEngine engine;
     private final PlayerRepository playerRepository;
     private final ObjectMapper objectMapper;
@@ -105,6 +107,7 @@ public class EarnedRunReconstructionService {
             GameIdentityTransferRepository gameIdentityTransferRepository,
             ErDecisionAdjustmentRepository erDecisionAdjustmentRepository,
             GameRepository gameRepository,
+            GameSnapshotRepository gameSnapshotRepository,
             PlayerRepository playerRepository,
             ObjectMapper objectMapper) {
         this.playRepository = playRepository;
@@ -117,11 +120,21 @@ public class EarnedRunReconstructionService {
         this.gameIdentityTransferRepository = gameIdentityTransferRepository;
         this.erDecisionAdjustmentRepository = erDecisionAdjustmentRepository;
         this.gameRepository = gameRepository;
+        this.gameSnapshotRepository = gameSnapshotRepository;
         this.playerRepository = playerRepository;
         this.objectMapper = objectMapper;
         // 审计快照包含 BaseEntity 的 LocalDateTime；项目 ObjectMapper 未注册 JavaTimeModule，使用副本注册。
         this.auditMapper = objectMapper.copy().registerModule(new JavaTimeModule());
         this.engine = new EarnedRunReconstructionEngine();
+    }
+
+    /**
+     * 快照正文按需读取（2026-11-15 OOM 修复，Issue #686）：
+     * 大字段不随 Game 实体加载，只在核对/改写现场记录时单独查询。
+     */
+    private String liveSnapshotOf(Game game) {
+        return game.getId() == null ? null
+                : this.gameSnapshotRepository.findSnapshotJsonById(game.getId()).orElse(null);
     }
 
     private record IntStatField(
@@ -569,7 +582,7 @@ public class EarnedRunReconstructionService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        String liveJson = game.getLiveSnapshotJson();
+        String liveJson = liveSnapshotOf(game);
         boolean liveSnapshotAvailable = liveJson != null && !liveJson.isBlank();
         int liveReferenceCount = liveSnapshotAvailable
                 ? countLiveReferences(liveJson, sourcePlayerId, blockers) : 0;
@@ -614,7 +627,7 @@ public class EarnedRunReconstructionService {
             throw new IllegalArgumentException(String.join("；", preview.blockers()));
         }
         Set<String> scopeSet = normalizeIdentityScopes(scopes);
-        String liveSnapshot = game.getLiveSnapshotJson();
+        String liveSnapshot = liveSnapshotOf(game);
         String liveSnapshotAudit = null;
         if (scopeSet.contains(SCOPE_LIVE_RECORDS)) {
             if (liveSnapshot == null || liveSnapshot.isBlank()) {
@@ -658,7 +671,7 @@ public class EarnedRunReconstructionService {
                     LiveSnapshotIdentityTransfer.rewrite(
                             liveSnapshot, sourcePlayerId, targetPlayerId, objectMapper);
             if (rewritten.changed()) {
-                game.setLiveSnapshotJson(rewritten.json());
+                this.gameSnapshotRepository.updateSnapshotJson(gameId, rewritten.json(), operatorId);
                 game.setUpdatedBy(operatorId);
                 gameRepository.save(game);
             }
@@ -723,7 +736,7 @@ public class EarnedRunReconstructionService {
             throw new IllegalArgumentException("源球员仍有守备补记，请先在守备补记 A 撤销或转记");
         }
         Game game = loadIdentityGame(tenantId, gameId);
-        String liveSnapshot = game.getLiveSnapshotJson();
+        String liveSnapshot = liveSnapshotOf(game);
         if (liveSnapshot != null && !liveSnapshot.isBlank()
                 && LiveSnapshotIdentityTransfer.countReferences(
                         liveSnapshot, sourcePlayerId, objectMapper) > 0) {

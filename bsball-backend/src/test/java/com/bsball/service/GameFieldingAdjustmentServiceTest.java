@@ -24,6 +24,7 @@ import com.bsball.model.entity.Player;
 import com.bsball.repository.GameFieldingAdjustmentRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.repository.GamePlayerStatRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.PlayerRepository;
 import java.util.List;
 import java.util.Optional;
@@ -44,17 +45,25 @@ class GameFieldingAdjustmentServiceTest {
     private GameFieldingPosStatRepository gameFieldingPosStatRepository;
     @Mock
     private PlayerRepository playerRepository;
+    @Mock
+    private GameSnapshotRepository gameSnapshotRepository;
 
     private GameFieldingAdjustmentService service;
     private Game game;
     private GamePlayerStat fielderStat;
     private GameFieldingPosStat positionRow;
 
+    /** 快照正文改由 GameSnapshotRepository 按需读取（Issue #686）。 */
+    private void withSnapshot(String json) {
+        lenient().when(gameSnapshotRepository.findSnapshotJsonById(game.getId()))
+                .thenReturn(Optional.ofNullable(json));
+    }
+
     @BeforeEach
     void setUp() {
         service = new GameFieldingAdjustmentService(
                 adjustmentRepository, gamePlayerStatRepository,
-                gameFieldingPosStatRepository, playerRepository);
+                gameFieldingPosStatRepository, playerRepository, gameSnapshotRepository);
         game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
@@ -121,7 +130,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("候选补记：只返回失误 Play，并只带守备方球员")
     void listCandidatesReturnsErrorPlaysForDefensiveSide() {
-        game.setLiveSnapshotJson("""
+        withSnapshot("""
                 {"playEventsComplete":true,"playEvents":[
                   {"id":"play-1","inning":5,"half":"bottom","sequence":167,
                    "outsBefore":1,"basesBefore":{"1":true,"2":true,"3":false},
@@ -169,7 +178,7 @@ class GameFieldingAdjustmentServiceTest {
     @DisplayName("候选补记：无快照或没有失误 Play 时返回空列表")
     void listCandidatesReturnsEmptyWithoutSnapshotOrErrorPlay() {
         assertEquals(List.of(), service.listCandidates(game));
-        game.setLiveSnapshotJson(snapshot("1B", "一垒安打"));
+        withSnapshot(snapshot("1B", "一垒安打"));
         assertEquals(List.of(), service.listCandidates(game));
     }
 
@@ -186,7 +195,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("补记助杀：从源 Play 推导守备方并同步球员 A/TC 与位置 A")
     void createCreditsPlayerAndPosition() {
-        game.setLiveSnapshotJson(snapshot("E", "5下 失误：CF 主中外 (#23) 记 E，二垒跑者 #31 得分"));
+        withSnapshot(snapshot("E", "5下 失误：CF 主中外 (#23) 记 E，二垒跑者 #31 得分"));
         when(adjustmentRepository
                 .findFirstByTenantIdAndGameIdAndSourceEventIdAndPlayerIdOrderByIdAsc(
                         1L, 20L, "play-1", 23L))
@@ -219,7 +228,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("同一 Play 同一守备员不能重复补记（换守位也不行）")
     void createRejectsDuplicateApprovedAdjustment() {
-        game.setLiveSnapshotJson(snapshot("E", "失误：CF 记 E"));
+        withSnapshot(snapshot("E", "失误：CF 记 E"));
         when(adjustmentRepository
                 .existsByTenantIdAndGameIdAndSourceEventIdAndPlayerIdAndStatus(
                         1L, 20L, "play-1", 23L, "APPROVED"))
@@ -247,7 +256,7 @@ class GameFieldingAdjustmentServiceTest {
         pitcherRow.setPosition("P");
         pitcherRow.setA(2);
         pitcherRow.setTc(4);
-        game.setLiveSnapshotJson(snapshot("E", "失误：CF 记 E"));
+        withSnapshot(snapshot("E", "失误：CF 记 E"));
         when(adjustmentRepository
                 .findFirstByTenantIdAndGameIdAndSourceEventIdAndPlayerIdOrderByIdAsc(
                         1L, 20L, "play-1", 23L))
@@ -293,7 +302,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("源 Play 不在快照中时拒绝新增补记")
     void createRejectsMissingSourcePlay() {
-        game.setLiveSnapshotJson(snapshot("E", "失误：CF 记 E"));
+        withSnapshot(snapshot("E", "失误：CF 记 E"));
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.create(game, 9L, request("missing-play", 23L, "CF")));
@@ -305,7 +314,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("非失误 Play 不能补记助杀")
     void createRejectsNonErrorPlay() {
-        game.setLiveSnapshotJson(snapshot("K", "5下 三振"));
+        withSnapshot(snapshot("K", "5下 三振"));
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.create(game, 9L, request("play-1", 23L, "CF")));
@@ -317,7 +326,7 @@ class GameFieldingAdjustmentServiceTest {
     @Test
     @DisplayName("补记对象必须在本场守备方统计行中")
     void createRejectsPlayerOutsideFieldingTeam() {
-        game.setLiveSnapshotJson(snapshot("E", "失误：CF 记 E"));
+        withSnapshot(snapshot("E", "失误：CF 记 E"));
         when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
 
         BusinessException error = assertThrows(BusinessException.class,
@@ -334,7 +343,7 @@ class GameFieldingAdjustmentServiceTest {
         fielderStat.setA(3);
         fielderStat.setTc(5);
         positionRow.setA(3);
-        game.setLiveSnapshotJson("""
+        withSnapshot("""
                 {"playEventsComplete":true,"playEvents":[]}
                 """);
         when(adjustmentRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
@@ -359,7 +368,7 @@ class GameFieldingAdjustmentServiceTest {
         fielderStat.setA(3);
         fielderStat.setTc(5);
         positionRow.setA(3);
-        game.setLiveSnapshotJson("""
+        withSnapshot("""
                 {"playEventsComplete":true,"playEvents":[]}
                 """);
         when(adjustmentRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
@@ -420,7 +429,7 @@ class GameFieldingAdjustmentServiceTest {
         GameFieldingAdjustment row = adjustment("REVOKED");
         row.setId(77L);
         row.setRevokedBy(9L);
-        game.setLiveSnapshotJson(snapshot("E", "失误：CF 记 E"));
+        withSnapshot(snapshot("E", "失误：CF 记 E"));
         when(adjustmentRepository
                 .findFirstByTenantIdAndGameIdAndSourceEventIdAndPlayerIdOrderByIdAsc(
                         1L, 20L, "play-1", 23L))

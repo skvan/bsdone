@@ -25,6 +25,7 @@
 
 ## 项目结构
 - 领域实体位于 model/entity 包下，Game 为 JPA 实体，映射到表 bs_game。
+- GameSnapshot 为同表轻量实体（仅 id、live_snapshot_json 与 updated_at/updated_by），快照正文按需单独读写，不进入比赛列表/详情实体对象图。同表双实体依赖 Spring 的下划线命名策略：不要再对已有逻辑列显式写 `@Column(name=...)`，否则 Hibernate 会因同一物理列出现多个逻辑名而拒绝启动（2026-11-15 测试环境部署失败的根因）。
 - DTO 层包含 GameResponseDTO，用于对外响应时转换与展示（如将每局得分字符串解析为列表）。
 - 数据库通过 Flyway 迁移脚本逐步扩展 bs_game 表结构，包括租户隔离、实时快照、裁判与天气等列。
 
@@ -36,11 +37,12 @@ E["Flyway 迁移脚本"] --> B
 ```
 
 ## 核心组件
-- Game 实体：承载比赛的核心业务数据与动态状态，包含赛事、队伍、比分、局分、统计、时间、场地、状态、裁判、天气、备注及配置项等。
+- Game 实体：承载比赛的核心业务数据与动态状态，包含赛事、队伍、比分、局分、统计、时间、场地、状态、裁判、天气、备注及配置项等；快照正文不在该实体映射。
+- GameSnapshot 实体：仅映射 bs_game 的 id 与 live_snapshot_json，供快照读取/保存与身份转记核对使用。
 - GameResponseDTO：面向前端的响应对象，负责将实体中的 JSON 文本（如每局得分）转换为更易用的列表结构，并暴露是否有实时快照的布尔标记。
 
 ## 架构总览
-Game 实体作为领域模型，直接映射到数据库表 bs_game；其部分字段以 TEXT 存储 JSON 文本（如每局得分、实时快照），在 DTO 层进行解析与转换，便于前端消费。
+Game 实体作为领域模型，直接映射到数据库表 bs_game；其部分字段以 TEXT 存储 JSON 文本（如每局得分），在 DTO 层进行解析与转换，便于前端消费。实时录入快照（live_snapshot_json，生产平均约 2.4MB/场）自 2026-11-15（Issue #686）起由同表轻量实体 GameSnapshot 单独读写：Game 仅通过 SQL 计算字段 hasLiveSnapshot 判断是否存在快照（只判 NULL，避免 length() 触发 TOAST 解压），写入时空白内容统一归一为 NULL，避免列表分页把大字段读入堆内存。
 
 ```mermaid
 classDiagram
@@ -67,7 +69,7 @@ class Game {
 +String status
 +Integer inning
 +String topBottom
-+String liveSnapshotJson
++Boolean hasLiveSnapshot
 +Integer spectatorCount
 +String umpireHp
 +String umpire1b
@@ -141,7 +143,8 @@ Game --> GameResponseDTO : "转换为响应"
   - venue：场地名称。
 
 - 实时快照
-  - liveSnapshotJson：实时录入完整快照（阵容、局面、事件日志等），TEXT 存储 JSON，用于断线恢复。
+  - 存储：`bs_game.live_snapshot_json`（TEXT JSON，实时录入完整快照：阵容、局面、事件日志等，用于断线恢复）。
+  - 映射：由 GameSnapshot 轻量实体单独读写；Game 不再映射该列，仅保留 `hasLiveSnapshot` SQL 计算字段（仅判 NULL，Issue #686）。列表/详情查询不会加载快照正文；空白写入统一归一为 NULL。
 
 - 观众与裁判
   - spectatorCount：观众人数（可空）。
@@ -225,7 +228,7 @@ API-->>FE : 返回 GameResponseDTO
   - 参考路径：`V20260407100000__game_extra_meta.sql:9-35`
 
 ## 结论
-Game 实体提供了完整的比赛数据模型，涵盖静态信息、动态状态、实时快照、裁判与天气、以及多种配置开关。通过 TEXT 字段灵活存储复杂结构，配合 DTO 层的解析与展示，满足前后端高效协作。多租户隔离与必要的索引优化保障了系统的可扩展性与查询性能。
+Game 实体提供了完整的比赛数据模型，涵盖静态信息、动态状态、裁判与天气、以及多种配置开关；实时快照正文由 GameSnapshot 同表轻量实体按需读写。通过 TEXT 字段灵活存储复杂结构，配合 DTO 层的解析与展示，满足前后端高效协作。多租户隔离与必要的索引优化保障了系统的可扩展性与查询性能。
 
 [本节为总结性内容，不直接分析具体文件]
 

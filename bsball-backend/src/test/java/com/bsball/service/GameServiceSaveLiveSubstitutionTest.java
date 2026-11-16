@@ -78,7 +78,8 @@ class GameServiceSaveLiveSubstitutionTest {
                 eventRepository, stadiumRepository, accountScopeService, scopeQuerySupport, resourceGuard,
                 tenantQueryPolicyService, earnedRunReconstructionService, eventRegistrationService, gameFieldingPosStatRepository,
                 org.mockito.Mockito.mock(GameFieldingAdjustmentService.class),
-                org.mockito.Mockito.mock(GameRevisionAuditService.class));
+                org.mockito.Mockito.mock(GameRevisionAuditService.class),
+                org.mockito.Mockito.mock(com.bsball.repository.GameSnapshotRepository.class));
         CurrentUserHolder.set(Long.valueOf(USER_ID), Long.valueOf(TENANT_ID));
 
         Game game = new Game();

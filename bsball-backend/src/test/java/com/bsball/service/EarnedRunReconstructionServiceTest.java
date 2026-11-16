@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,7 @@ import com.bsball.repository.GameIdentityTransferRepository;
 import com.bsball.repository.GamePitcherTransferRepository;
 import com.bsball.repository.GamePlayerStatRepository;
 import com.bsball.repository.GameRepository;
+import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.PitcherRunOverrideRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bsball.stats.earnedrun.EarnedRunPlay;
@@ -78,6 +80,8 @@ class EarnedRunReconstructionServiceTest {
     @Mock
     private GameRepository gameRepository;
     @Mock
+    private GameSnapshotRepository gameSnapshotRepository;
+    @Mock
     private PlayerRepository playerRepository;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private EarnedRunReconstructionService service;
@@ -89,7 +93,8 @@ class EarnedRunReconstructionServiceTest {
                 pitcherRunOverrideRepository, gameFieldingPosStatRepository,
                 gameFieldingAdjustmentRepository, gamePitcherTransferRepository,
                 gameIdentityTransferRepository, erDecisionAdjustmentRepository,
-                gameRepository, playerRepository, objectMapper);
+                gameRepository, gameSnapshotRepository, playerRepository, objectMapper);
+        lenient().when(gameSnapshotRepository.findSnapshotJsonById(any())).thenReturn(Optional.empty());
         Game game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
@@ -1245,12 +1250,12 @@ class EarnedRunReconstructionServiceTest {
         Game game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
-        game.setLiveSnapshotJson("""
+        when(gameSnapshotRepository.findSnapshotJsonById(20L)).thenReturn(Optional.of("""
                 {"gameId":20,"homeLineup":[{"id":700}],
                  "playEvents":[{"batterPlayerId":700,
                    "scoringRunners":[{"runnerId":700,"responsiblePitcherId":700}]}],
                  "playerStatsById":{"700":{"batting":{"pa":3}}}}
-                """);
+                """));
         when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
 
         var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
@@ -1260,9 +1265,12 @@ class EarnedRunReconstructionServiceTest {
         service.transferIdentity(
                 1L, 20L, 700L, 701L, List.of("LIVE_RECORDS"), "现场更正", 9L);
 
-        assertTrue(game.getLiveSnapshotJson().contains("\"id\":701"));
-        assertFalse(game.getLiveSnapshotJson().contains("\"id\":700"));
-        assertFalse(game.getLiveSnapshotJson().contains("\"batterPlayerId\":700"));
+        ArgumentCaptor<String> snapshotCaptor = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(eq(20L), snapshotCaptor.capture(), eq(9L));
+        String rewritten = snapshotCaptor.getValue();
+        assertTrue(rewritten.contains("\"id\":701"));
+        assertFalse(rewritten.contains("\"id\":700"));
+        assertFalse(rewritten.contains("\"batterPlayerId\":700"));
         verify(gameRepository).save(game);
         ArgumentCaptor<GameIdentityTransfer> captor =
                 ArgumentCaptor.forClass(GameIdentityTransfer.class);
@@ -1313,7 +1321,8 @@ class EarnedRunReconstructionServiceTest {
         Game game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
-        game.setLiveSnapshotJson("{\"playEvents\":[{\"batterPlayerId\":700}]}");
+        when(gameSnapshotRepository.findSnapshotJsonById(20L))
+                .thenReturn(Optional.of("{\"playEvents\":[{\"batterPlayerId\":700}]}"));
         when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
@@ -1345,7 +1354,8 @@ class EarnedRunReconstructionServiceTest {
         Game game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
-        game.setLiveSnapshotJson("{\"playEvents\":[{\"batterPlayerId\":700}]}");
+        when(gameSnapshotRepository.findSnapshotJsonById(20L))
+                .thenReturn(Optional.of("{\"playEvents\":[{\"batterPlayerId\":700}]}"));
         when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
 
         var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
@@ -1369,7 +1379,8 @@ class EarnedRunReconstructionServiceTest {
         Game game = new Game();
         game.setId(20L);
         game.setTenantId(1L);
-        game.setLiveSnapshotJson("{\"homeLineup\":[{\"id\":700},{\"id\":701}]}");
+        when(gameSnapshotRepository.findSnapshotJsonById(20L))
+                .thenReturn(Optional.of("{\"homeLineup\":[{\"id\":700},{\"id\":701}]}"));
         when(gameRepository.findById(20L)).thenReturn(Optional.of(game));
 
         var preview = service.previewIdentityTransfer(1L, 20L, 700L, 701L);
