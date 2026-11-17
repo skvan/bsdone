@@ -119,13 +119,14 @@ class ClubhouseServiceTest {
     }
 
     @Test
-    @DisplayName("已认领但无代表球队时返回默认配置与空数据")
+    @DisplayName("已认领但无代表球队时返回默认配置与空数据，展示守位优先个人设置")
     void claimedPlayerWithoutTeamsReturnsDefaults() {
         CurrentUserHolder.set(7L, 1L);
         Player player = new Player();
         player.setId(10L);
         player.setTenantId(1L);
         player.setName("林嘉豪");
+        player.setPositionsList(List.of("1B"));
         when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
                 .thenReturn(Optional.of(player));
         when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
@@ -144,6 +145,8 @@ class ClubhouseServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> playerView = (Map<String, Object>) result.get("player");
         assertEquals("林嘉豪", playerView.get("name"));
+        // 未设置个人展示守位时回退名册守位
+        assertEquals(List.of("1B"), playerView.get("positions"));
         assertTrue(((List<?>) result.get("teams")).isEmpty());
         assertNotNull(result.get("catalog"));
         @SuppressWarnings("unchecked")
@@ -163,6 +166,13 @@ class ClubhouseServiceTest {
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");
         assertEquals(false, performance.get("available"));
         assertTrue(((List<?>) result.get("schedule")).isEmpty());
+
+        // 本人设置展示守位后，优先于名册守位展示
+        player.setProfilePositionsList(List.of("P", "C"));
+        Map<String, Object> resultWithProfile = service.getDashboard(7L, null, null);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> playerViewWithProfile = (Map<String, Object>) resultWithProfile.get("player");
+        assertEquals(List.of("P", "C"), playerViewWithProfile.get("positions"));
     }
 
     @Test

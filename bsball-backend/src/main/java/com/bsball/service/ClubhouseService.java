@@ -953,9 +953,18 @@ public class ClubhouseService {
         return scoreFor > scoreAgainst ? "W" : scoreFor < scoreAgainst ? "L" : "D";
     }
 
-    /** 雷达守位分组取球员档案的第一个守位；无守位时返回 null，由评价服务回退全体口径。 */
+    /**
+     * 个人展示守位：本人自助维护的 profilePositions 优先；未设置时回退球队名册守位。
+     * 仅用于个人资料/个人主场展示，不参与比赛统计与排行。
+     */
+    private List<String> displayPositions(Player player) {
+        List<String> own = player.getProfilePositionsList();
+        return own.isEmpty() ? player.getPositionsList() : own;
+    }
+
+    /** 雷达守位分组取个人展示守位的第一项；无守位时返回 null，由评价服务回退全体口径。 */
     private String firstPosition(Player player) {
-        List<String> positions = PositionsJsonUtil.parseList(player.getPositions());
+        List<String> positions = this.displayPositions(player);
         return positions.isEmpty() ? null : positions.get(0);
     }
 
@@ -978,7 +987,7 @@ public class ClubhouseService {
         out.put("nameEn", player.getNameEn());
         out.put("nickname", player.getNickname());
         out.put("number", player.getNumber());
-        out.put("positions", PositionsJsonUtil.parseList(player.getPositions()));
+        out.put("positions", this.displayPositions(player));
         out.put("avatar", player.getAvatar());
         out.put("bgImage", player.getBgImage());
         out.put("height", player.getHeight());

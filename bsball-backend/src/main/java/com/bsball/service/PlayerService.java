@@ -111,7 +111,7 @@ public class PlayerService {
     private static final Set<String> SELF_EDITABLE = Set.of(
             "height", "weight", "throwHand", "batHand", "avatar", "bgImage", "bgImages", "bgFocusConfig",
             "nickname", "nameEn", "birthDate", "birthPlace", "education", "intro", "contactPhone", "contactEmail",
-            "draft", "debut", "name", "positions");
+            "draft", "debut", "name", "profilePositions");
 
     public List<PlayerOptionDto> listForSelect() {
         if (this.tenantQueryPolicyService.isGlobalQueryMode()) {
@@ -443,6 +443,8 @@ public class PlayerService {
         entity.setTenantId(existing.getTenantId());
         entity.setCreatedBy(existing.getCreatedBy());
         entity.setCurrentJoinRecordId(existing.getCurrentJoinRecordId());
+        // 个人展示守位由本人 SELF 通道维护，管理台整体保存时须继承原值
+        entity.setProfilePositions(existing.getProfilePositions());
         if (entity.getName() != null) {
             String n = entity.getName().trim();
             entity.setName(n.isEmpty() ? null : n);
@@ -518,6 +520,7 @@ public class PlayerService {
         draft.setId(null);
         draft.setTeamId(null);
         draft.setNumber(null);
+        draft.setPositions(null);
         draft.setCurrentJoinRecordId(null);
         draft.setSort(null);
         draft.setDeletedAt(null);
@@ -746,7 +749,7 @@ public class PlayerService {
             case "draft" -> PlayerService.applyScalarText(value, p::setDraft);
             case "debut" -> PlayerService.applyScalarText(value, p::setDebut);
             case "name" -> PlayerService.applyScalarText(value, p::setName);
-            case "positions" -> p.setPositions(PlayerService.asPositionsStorage(value));
+            case "profilePositions" -> p.setProfilePositions(PlayerService.asPositionsStorage(value));
             case "bgImages" -> p.setBgImages(PlayerService.asTextList(value));
             case "bgFocusConfig" -> p.setBgFocusConfig(PlayerService.asTextObjectMap(value));
             default -> { }
@@ -845,6 +848,9 @@ public class PlayerService {
         }
         if (p.getPositions() != null && p.getPositions().isBlank()) {
             p.setPositions(null);
+        }
+        if (p.getProfilePositions() != null && p.getProfilePositions().isBlank()) {
+            p.setProfilePositions(null);
         }
         if (p.getAvatar() != null && p.getAvatar().isBlank()) {
             p.setAvatar(null);
@@ -1155,6 +1161,8 @@ public class PlayerService {
                 if (overwrite) {
                     p.setId(existing.getId());
                     p.setCreatedAt(existing.getCreatedAt());
+                    // 个人展示守位由本人维护，导入覆盖不得清空
+                    p.setProfilePositions(existing.getProfilePositions());
                     Player savedOverwrite = (Player)this.playerRepository.save(p);
                     this.playerTeamService.syncLegacyEntry(savedOverwrite);
                     ++updated;
