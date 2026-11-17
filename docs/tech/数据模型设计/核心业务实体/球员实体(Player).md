@@ -89,7 +89,8 @@ API-->>Client : "Result<Map>"
   - 性别 gender：当前实体未直接定义 gender 字段；如需支持可在后续扩展
 - 职业信息
   - 号码 number：镜像字段，取“主注册”经历（“当前”段按 sort,id 排序取第一段）的背号
-  - 守备位置 positions：镜像字段，JSON 字符串存储，通过 getter/setter 转换为 List<String> 供外部使用
+  - 守备位置 positions：镜像字段，取“主注册”经历的守位；JSON 字符串存储，通过 getter/setter 转换为 List<String> 供外部使用
+  - 个人展示守位 profilePositions：本人自助维护（SELF 通道），仅用于个人资料/个人主场展示；JSON 字符串存储；不参与比赛统计与排行；未设置时个人展示回退名册守位
   - 所属球队 teamId：镜像字段，取主注册经历球队；无“当前”经历时置空（自由球员）
   - 球队经历（多队注册）：完整经历段存于 bs_player_team，见下文“球员-球队经历”小节
   - 所属联赛 leagueId：当前实体未直接定义 leagueId；可通过球队或赛事维度间接关联
@@ -120,6 +121,7 @@ class Player {
 +String nickname
 +String number
 +String positions
++String profilePositions
 +String avatar
 +String bgImage
 +Map~String,Object~ bgFocusConfig
@@ -141,6 +143,8 @@ class Player {
 +Integer sort
 +getPositionsList() String[]
 +setPositionsList(String[]) void
++getProfilePositionsList() String[]
++setProfilePositionsList(String[]) void
 }
 ```
 

@@ -57,6 +57,9 @@ extends BaseEntity {
     @Column(columnDefinition="TEXT")
     @Comment(value="\u5b88\u5907\u4f4d\u7f6e")
     private String positions;
+    @Column(columnDefinition="TEXT")
+    @Comment(value="\u4e2a\u4eba\u5c55\u793a\u5b88\u4f4d\uff08\u672c\u4eba\u81ea\u52a9\u7ef4\u62a4\uff0c\u4ec5\u4e2a\u4eba\u8d44\u6599/\u4e2a\u4eba\u4e3b\u573a\u5c55\u793a\uff09")
+    private String profilePositions;
     @Comment(value="\u5934\u50cf")
     private String avatar;
     @Size(max=500)
@@ -127,6 +130,26 @@ extends BaseEntity {
     @JsonProperty(value="positions")
     public void setPositionsList(List<String> list) {
         this.positions = PositionsJsonUtil.toStorage(list);
+    }
+
+    @JsonIgnore
+    public String getProfilePositions() {
+        return this.profilePositions;
+    }
+
+    @JsonIgnore
+    public void setProfilePositions(String profilePositions) {
+        this.profilePositions = profilePositions;
+    }
+
+    @JsonProperty(value="profilePositions")
+    public List<String> getProfilePositionsList() {
+        return PositionsJsonUtil.parseList((String)this.profilePositions);
+    }
+
+    @JsonProperty(value="profilePositions")
+    public void setProfilePositionsList(List<String> list) {
+        this.profilePositions = PositionsJsonUtil.toStorage(list);
     }
 
     @Generated

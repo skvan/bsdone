@@ -5,7 +5,7 @@
 // 2026-09-30 H37：位置列显示口径调整——列内仅英文简称（如 "LF, P"），鼠标悬浮显示全称（ElTooltip）；超列宽保持省略号。
 // 2026-10-15 #310 延伸：筛选区「自由球员」选项仅特权身份（superAdmin/tenantAdmin）渲染——复用既有 hPrivileged（受限角色无自由球员视图，与后端 PlayerService.list 守卫同口径）。
 // 本页已脱离编译产物逐字对照（设计变更页），后续以本文件为准维护；重跑生成器须保留本改造。
-import { ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, vLoading as gn, ElTooltip as pn, ElForm as yn } from 'element-plus';
+import { ElAlert as HAlert, ElRadioGroup as Pl, ElDropdown as Ul, ElImage as Tl, ElDialog as Hl, ElCol as $l, ElDropdownMenu as zl, ElDivider as jl, ElRadioButton as ql, ElDatePicker as Kl, ElIcon as Wl, ElRow as Xl, ElTableColumn as Gl, ElInput as Ql, ElSkeleton as Jl, ElFormItem as Zl, ElMessage as p, ElUpload as en, ElTable as an, ElAvatar as tn, ElOption as nn, ElDropdownItem as on, ElEmpty as un, ElButton as rn, ElCard as sn, ElSelect as dn, ElCollapseTransition as mn, ElMessageBox as vn, ElTag as fn, vLoading as gn, ElTooltip as pn, ElForm as yn } from 'element-plus';
 import { nextTick as Oe, withModifiers as Pe, createElementBlock as b, normalizeStyle as vt, defineComponent as Nl, createTextVNode as s, computed as N, toDisplayString as V, createElementVNode as f, unref as g, normalizeClass as na, vShow as Ol, mergeProps as Yl, createBlock as R, ref as v, createVNode as t, withDirectives as ft, openBlock as m, withCtx as n, onUnmounted as ln, Fragment as q, withKeys as Ra, watch as Ue, onMounted as kt, renderList as ie, reactive as oa, createCommentVNode as H } from 'vue';
 import { ArrowDown as Ll, ArrowUp as Al, MoreFilled as cn } from '@element-plus/icons-vue';
 import { useRouter as _n, useRoute as hn } from 'vue-router';
@@ -22,6 +22,7 @@ import { userApi as uq } from '../../api/system';
 import InvitePlayerDialog from '../../components/admin/InvitePlayerDialog.vue';
 import { fetchAllPlayers as pt } from '../../api/business';
 import { playerApi as Ve } from '../../api/business';
+import { accountApi as hSelfApi } from '../../api/account';
 import { useAuthStore as hA } from '../../stores/auth';
 import { teamApi as Bn } from '../../api/business';
 import { DEFAULT_AVATAR_SVG_PATH as xn } from '../../utils/placeholderAssets';
@@ -444,7 +445,7 @@ var $n={
       
     }
     const l=oa({
-      name:"",shortName:"",nickname:"",teamId:void 0,number:void 0,positions:[],teamEntries:[],throwHand:"",batHand:"",birthDate:"",birthPlace:"",height:"",weight:"",avatar:"",bgImages:[],bgFocusBundle:{
+      name:"",shortName:"",nickname:"",teamId:void 0,number:void 0,positions:[],profilePositions:[],teamEntries:[],throwHand:"",batHand:"",birthDate:"",birthPlace:"",height:"",weight:"",avatar:"",bgImages:[],bgFocusBundle:{
         devices:{
           
         }
@@ -471,6 +472,30 @@ var $n={
     }
     const He=v(!1),Se=v("");
     const hAuth=hA(),hCtxTeam=N(()=>{const a=Number(se.query?.teamId);return Number.isFinite(a)&&a>0?a:null}),hPrivileged=N(()=>!!hAuth.user?.superAdmin||hAuth.user?.tenantAdmin===!0);
+    // 本人已认领档案：管理台编辑切换为个人资料模式（SELF 通道），名册字段只读
+    const hSelfMode=v(!1);
+    function hIsSelfClaim(a){
+      const uid=hAuth.user?.id;
+      return !!(a&&a.userId!=null&&uid!=null&&String(a.userId)===String(uid)&&!hPrivileged.value)
+    }
+    // 背景聚焦配置：空对象视为未配置（管理台 it() 与个人资料通道共用同一口径）
+    function hBgFocusConfig(){
+      const a=Hn(l.bgFocusBundle);
+      return a&&typeof a=="object"&&!Array.isArray(a)&&Object.keys(a).length>0?a:void 0
+    }
+    function hSelfFormPayload(){
+      return{
+        name:l.name,nickname:l.nickname||void 0,height:l.height,weight:l.weight,
+        throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthDate:l.birthDate,birthPlace:l.birthPlace||void 0,
+        draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0,
+        contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,intro:l.intro,
+        avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:hBgFocusConfig(),
+        profilePositions:l.profilePositions
+      }
+    }
+    async function hSaveEdit(a){
+      hSelfMode.value?await hSelfApi.updateSelfProfile(ce.value,a):await Ve.update(ce.value,a)
+    }
     function hHasCurrent(a){
       return(Array.isArray(a)?a:[]).some(e=>e&&e.teamId!=null&&e.teamId!==""&&e.current!==!1)
     }
@@ -512,14 +537,14 @@ var $n={
     function We(a){
       ba(),l.name=a?.name??"",l.shortName=a?.shortName??"",l.nickname=a?.nickname??"",l.teamId=a?.teamId??(r.teamId?r.teamId:null),l.number=a?.number!=null?String(a.number):void 0;
       const e=a;
-      l.positions=e?.positions?.length?[...e.positions]:e?.position?[e.position]:[],l.throwHand=a?.throwHand??a?.hand??"",l.batHand=a?.batHand??a?.hand??"",l.birthDate=a?.birthDate??"",l.birthPlace=a?.birthPlace??"",l.height=a?.height??"",l.weight=a?.weight??"",l.avatar=a?.avatar??"",l.bgImages=An(a).slice(0,ee);
+      l.positions=e?.positions?.length?[...e.positions]:e?.position?[e.position]:[],l.profilePositions=a?.profilePositions?.length?[...a.profilePositions]:[],l.throwHand=a?.throwHand??a?.hand??"",l.batHand=a?.batHand??a?.hand??"",l.birthDate=a?.birthDate??"",l.birthPlace=a?.birthPlace??"",l.height=a?.height??"",l.weight=a?.weight??"",l.avatar=a?.avatar??"",l.bgImages=An(a).slice(0,ee);
       const u=Ln(a?.bgFocusConfig);
       l.bgFocusBundle.devices=u.devices,l.bgFocusBundle.perImage=u.perImage,l.contactPhone=a?.contactPhone??"",l.contactEmail=a?.contactEmail??"",l.draft=a?.draft??"",l.debut=a?.debut??"",l.education=a?.education??a?.college??"",l.status=a?.status??"active",l.intro=a?.intro??"";
       const eu=Array.isArray(a?.teamEntries)?a.teamEntries:[];
       l.teamEntries=eu.length?eu.map(te=>({
         id:te.id??null,teamId:te.teamId??null,number:te.number!=null?String(te.number):"",positions:Array.isArray(te.positions)?[...te.positions]:[],current:!!te.current
       }
-      )):a?[]:(()=>{const zt=[Zc()];return hApplyCtx(zt),zt})(),ce.value=a?.id??null,De.value=!0,Oe(()=>ge.value?.clearValidate())
+      )):a?[]:(()=>{const zt=[Zc()];return hApplyCtx(zt),zt})(),ce.value=a?.id??null,hSelfMode.value=hIsSelfClaim(a),De.value=!0,Oe(()=>ge.value?.clearValidate())
     }
     const M=v(!1),Ne=v(!1),te=v(null),k=v(""),he=v(null),$a=v(null),B=v("desktop"),x=v(0),S=v(0),ya=v(470),_a=v(Math.round(470/wt)),j=v(1),F=v(1),W=v(0),X=v(0),I=v({
       
@@ -997,7 +1022,7 @@ var $n={
       ,l.bgFocusBundle.perImage={
         
       }
-      ,l.contactPhone="",l.contactEmail="",l.draft="",l.debut="",l.education="",l.status="active",l.intro="";
+      ,l.contactPhone="",l.contactEmail="",l.draft="",l.debut="",l.education="",l.status="active",l.intro="",l.profilePositions=[];
       const eu=l.teamEntries?.[0]?.teamId??null;
       l.teamEntries=[{
         teamId:eu,number:"",positions:[],current:!0
@@ -1005,7 +1030,7 @@ var $n={
       ],ge.value?.clearValidate()
     }
     function it(){
-      const a=Hn(l.bgFocusBundle),e=a&&typeof a=="object"&&!Array.isArray(a)&&Object.keys(a).length>0?a:void 0,u={
+      const e=hBgFocusConfig(),u={
         ...l
       };
       const eg=new Set(),tg=(Array.isArray(l.teamEntries)?l.teamEntries:[]).filter(ce2=>ce2&&ce2.teamId!=null&&ce2.teamId!=="").map(ce2=>{
@@ -1021,7 +1046,7 @@ var $n={
       }
       );
       const hCur=tg.find(z=>z.current)?.teamId??tg[0]?.teamId??null;
-      return delete u.bgFocusBundle,{
+      return delete u.bgFocusBundle,delete u.profilePositions,{
         ...u,teamId:l.teamId==null?(ce.value?null:hCur):l.teamId,positions:l.positions,shortName:l.shortName||void 0,nickname:l.nickname||void 0,throwHand:l.throwHand||void 0,batHand:l.batHand||void 0,birthPlace:l.birthPlace||void 0,avatar:l.avatar||void 0,bgImages:l.bgImages.length?[...l.bgImages]:void 0,bgFocusConfig:e,contactPhone:l.contactPhone||void 0,contactEmail:l.contactEmail||void 0,draft:l.draft||void 0,debut:l.debut||void 0,education:l.education||void 0,teamEntries:tg
       }
       
@@ -1034,8 +1059,8 @@ var $n={
             p.warning("请先在「球队经历」中添加当前球队后再保存");
             return
           }
-          const a=it();
-          ce.value?(await Ve.update(ce.value,a),p.success("修改成功")):(await Ve.create(a),p.success("新增成功")),De.value=!1,L()
+          const a=hSelfMode.value?hSelfFormPayload():it();
+          ce.value?(await hSaveEdit(a),p.success("修改成功")):(await Ve.create(a),p.success("新增成功")),De.value=!1,L()
         }
         catch(a){
           a?.message&&p.error(a.message||"保存失败")
@@ -1740,7 +1765,7 @@ var $n={
         ,8,["fill-mode"])]),_:1
       }
       ),t(la,{
-        modelValue:De.value,"onUpdate:modelValue":e[33]||(e[33]=o=>De.value=o),title:ce.value?"编辑球员":"新增球员",width:Dt.value,"align-center":"","append-to-body":"","destroy-on-close":"","close-on-click-modal":g(Bt),class:"player-edit-dialog"
+        modelValue:De.value,"onUpdate:modelValue":e[33]||(e[33]=o=>De.value=o),title:ce.value?(hSelfMode.value?"编辑本人档案":"编辑球员"):"新增球员",width:Dt.value,"align-center":"","append-to-body":"","destroy-on-close":"","close-on-click-modal":g(Bt),class:"player-edit-dialog"
       }
       ,{
         footer:n(()=>[f("div",ao,[t(i,{
@@ -1768,7 +1793,7 @@ var $n={
           ])
         }
         ,{
-          default:n(()=>[t(Ca,{
+          default:n(()=>[hSelfMode.value?(m(),R(HAlert,{key:"self-edit",type:"info","show-icon":!0,closable:!1,style:{marginBottom:"12px"}},{default:n(()=>[s("球队经历、背号、简称、在役状态不可在此修改；「守备位置」仅用于个人资料展示，不影响球队名册、比赛数据与排行。")]),_:1})):H("",!0),t(Ca,{
             "content-position":"left"
           }
           ,{
@@ -1802,7 +1827,7 @@ var $n={
               }
               ,{
                 default:n(()=>[t(C,{
-                  modelValue:l.status,"onUpdate:modelValue":e[17]||(e[17]=o=>l.status=o),placeholder:"请选择",style:{
+                  modelValue:l.status,"onUpdate:modelValue":e[17]||(e[17]=o=>l.status=o),placeholder:"请选择",disabled:hSelfMode.value,style:{
                     width:"100%"
                   }
                   
@@ -1813,7 +1838,7 @@ var $n={
                   }
                   ,null,8,["label","value"]))),128))]),_:1
                 }
-                ,8,["modelValue"])]),_:1
+                ,8,["modelValue","disabled"])]),_:1
               }
               )]),_:1
             }
@@ -1913,9 +1938,9 @@ var $n={
               }
               ,{
                 default:n(()=>[t(_,{
-                  modelValue:l.shortName,"onUpdate:modelValue":e[18]||(e[18]=o=>l.shortName=o),placeholder:""
+                  modelValue:l.shortName,"onUpdate:modelValue":e[18]||(e[18]=o=>l.shortName=o),placeholder:"",disabled:hSelfMode.value
                 }
-                ,null,8,["modelValue"])]),_:1
+                ,null,8,["modelValue","disabled"])]),_:1
               }
               )]),_:1
             }
@@ -1936,7 +1961,7 @@ var $n={
             }
             )]),_:1
           }
-          ),t(me,{
+          ),hSelfMode.value?(m(),R(me,{key:"self-positions",gutter:16},{default:n(()=>[t(U,{xs:24,md:8},{default:n(()=>[t(c,{label:"守备位置",class:"player-self-positions"},{default:n(()=>[t(C,{modelValue:l.profilePositions,"onUpdate:modelValue":o=>l.profilePositions=o,multiple:!0,filterable:!0,clearable:!0,placeholder:"仅用于个人展示，可多选",style:{width:"100%"}},{default:n(()=>[(m(!0),b(q,null,ie(Object.keys(Pn),o=>(m(),R(d,{key:o,label:Ma(o),value:o},null,8,["label","value"]))),128))]),_:1},8,["modelValue"])]),_:1})]),_:1})]),_:1})):H("",!0),t(me,{
             gutter:16
           }
           ,{
@@ -2192,9 +2217,9 @@ var $n={
             default:n(()=>[s("球队经历",-1)]),_:1
           }
           ),t(Pte,{
-            entries:l.teamEntries,teams:Le.value
+            entries:l.teamEntries,teams:Le.value,readonly:hSelfMode.value
           }
-          ,null,8,["entries","teams"])]),_:1
+          ,null,8,["entries","teams","readonly"])]),_:1
         }
         ,8,["model","label-position","label-width","class"])]),_:1
       }
