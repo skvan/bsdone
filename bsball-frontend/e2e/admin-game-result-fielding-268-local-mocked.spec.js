@@ -161,7 +161,6 @@ test('结果录入守备表：DH 取消后 1B 行与投手 P 行都要显示', a
   await expect(pitcherRow).toBeVisible();
   await expect(pitcherRow.locator('td').nth(2)).toHaveText('P');
   await expect(pitcherRow.locator('td').nth(5)).toHaveText('2');
-  await expect(pitcherRow.locator('.el-input-number input').first()).toBeEditable();
 
   const twoWayRow = awayTable.locator('tbody tr', { hasText: '王译圣' }).first();
   await expect(twoWayRow).toBeVisible();
@@ -169,6 +168,15 @@ test('结果录入守备表：DH 取消后 1B 行与投手 P 行都要显示', a
   await expect(twoWayRow.locator('td').nth(2)).toHaveText('3B');
   await expect(twoWayRow.locator('td').nth(4)).toHaveText('1');
   await expect(twoWayRow.locator('td').nth(5)).toHaveText('2');
+
+  // final 可编辑性：展开有逐位置行的球员，子行 PO 输入应可编辑（逐位置值保留）
+  await twoWayRow.locator('.game-fielding-table__expander').click();
+  const positionRows = awayTable.locator('tbody tr.row-position');
+  await expect(positionRows).toHaveCount(2);
+  const firstPositionRow = positionRows.first();
+  const positionPoInput = firstPositionRow.locator('td').nth(4).locator('input');
+  await expect(positionPoInput).toHaveValue('1');
+  await expect(positionPoInput).toBeEditable();
 
   const homeTable = page.locator('.game-fielding-table', { hasText: '主队B 守备' });
   const homePitcherRow = homeTable.locator('tbody tr', { hasText: '主队投手' }).first();

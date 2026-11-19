@@ -2855,7 +2855,7 @@ var Li={
       ,(c,u)=>e(t.awayScoreByInning[u])):Array.from({
         length:n
       }
-      ,()=>""),m.totalInnings=t?.totalInnings??Math.max(n,m.homeScoreByInning.length,m.awayScoreByInning.length),m.homeScore=t?.homeScore,m.awayScore=t?.awayScore,m.homeE=t?.homeE,m.awayE=t?.awayE,m.spectatorCount=t?.spectatorCount,m.umpireHp=t?.umpireHp??"",m.umpire1b=t?.umpire1b??"",m.umpire2b=t?.umpire2b??"",m.umpire3b=t?.umpire3b??"",m.recorders=t?.recorders??"",m.gameTag=t?.gameTag??"",m.remark=t?.remark??"",m.isSpecialResult=t?.isSpecialResult??!1,m.showRemarkInCard=t?.showRemarkInCard??!1,m.includeStatsInRanking=t?.includeStatsInRanking??!0,te.value=[],le.value=[],z.value=!1,Object.keys(D).forEach(c=>delete D[c]),Object.keys(ee).forEach(c=>delete ee[c]),_e(()=>Ps()),await ensureTeamOptions()
+      ,()=>""),m.totalInnings=t?.totalInnings??Math.max(n,m.homeScoreByInning.length,m.awayScoreByInning.length),m.homeScore=t?.homeScore,m.awayScore=t?.awayScore,m.homeE=t?.homeE,m.awayE=t?.awayE,m.spectatorCount=t?.spectatorCount,m.umpireHp=t?.umpireHp??"",m.umpire1b=t?.umpire1b??"",m.umpire2b=t?.umpire2b??"",m.umpire3b=t?.umpire3b??"",m.recorders=t?.recorders??"",m.gameTag=t?.gameTag??"",m.remark=t?.remark??"",m.isSpecialResult=t?.isSpecialResult??!1,m.showRemarkInCard=t?.showRemarkInCard??!1,m.includeStatsInRanking=t?.includeStatsInRanking??!0,resultPositionRows.value={},dirtyFieldingPlayers.clear(),te.value=[],le.value=[],z.value=!1,Object.keys(D).forEach(c=>delete D[c]),Object.keys(ee).forEach(c=>delete ee[c]),_e(()=>Ps()),await ensureTeamOptions()
     }
     // 排赛候选兜底（Issue #318）：弹窗选项=候选（每次打开重置，防上次「历史」项泄漏）；
     // 既有主客队不在候选时仅作展示兜底（名称走全量名表，缺失再无声回退取名），保存仍走后端门槛
@@ -3082,20 +3082,28 @@ var Li={
       function positionOptionsFor(row){
         return positionOptions(allowedFieldingPositions(),positionRowsFor(row))
       }
-      function markFieldingPositionsChanged(row){
+      function markFieldingPositionsChanged(row,nextRows){
         const key=fieldingPlayerKey(row);
         dirtyFieldingPlayers.add(key);
         const stats=D[X(row,row.teamId??m.homeTeamId)];
-        const rows=positionRowsFor(row);
+        const rows=nextRows??positionRowsFor(row);
         applyFieldingPositionTotals(stats,rows);
-        rows.length>0&&(row._fieldPosition=rows[0].position);
+        row._fieldPosition=rows.length>0?rows[0].position:"";
         resultPositionRows.value={...resultPositionRows.value,[key]:[...rows]}
       }
       function addFieldingPosition(row,position){
-        const key=fieldingPlayerKey(row);
         const rows=[...positionRowsFor(row)];
-        const target=String(position??positionOptionsFor(row)[0]??"").trim().toUpperCase();
-        if(!target||rows.some(item=>item.position===target))return;
+        const allowed=allowedFieldingPositions();
+        const used=new Set(rows.map(item=>item.position));
+        const normalize=value=>String(value??"").trim().toUpperCase();
+        let target=normalize(position);
+        if(!target){
+          const current=normalize(row?._fieldPosition||row?.position);
+          target=allowed.includes(current)&&!used.has(current)?current:""
+        }
+        if(!target)target=allowed.find(item=>!used.has(item))??"";
+        if(!target){J.warning("守位已满");return}
+        if(!allowed.includes(target)||used.has(target))return;
         const stats=D[X(row,row.teamId??m.homeTeamId)];
         const seed=rows.length===0;
         rows.push({
@@ -3110,14 +3118,11 @@ var Li={
           catcherCs:seed?Number(stats?.catcherCs)||0:0,
           fieldingGs:seed?Number(stats?.fieldingGs)===1:false
         });
-        resultPositionRows.value={...resultPositionRows.value,[key]:rows};
-        markFieldingPositionsChanged(row)
+        markFieldingPositionsChanged(row,rows)
       }
       function removeFieldingPosition(row,position){
-        const key=fieldingPlayerKey(row);
         const rows=positionRowsFor(row).filter(item=>item.position!==position);
-        resultPositionRows.value={...resultPositionRows.value,[key]:rows};
-        markFieldingPositionsChanged(row)
+        markFieldingPositionsChanged(row,rows)
       }
       async function Na(){const t=m.homeTeamId,e=m.awayTeamId;if(t==null||e==null||t===e){te.value=[],le.value=[],z.value=!1,Yn();return}const[n,c]=await Promise.all([Je(t),Je(e)]);if(nt.value=n,ot.value=c,pe.value&&z.value&&Ke.value===t&&Le.value===e&&(te.value.length>0||le.value.length>0))return;const u=v=>nt.value.find(f=>f.id===v)??ot.value.find(f=>f.id===v);let p=[],_={},S={},fieldingPositionRows=[];if(pe.value){const[v,fp]=await Promise.all([eo.listByGame(pe.value),il.listFieldingPositions(pe.value).catch(()=>[])]);p=Array.isArray(v?.list)?v.list:[],fieldingPositionRows=Array.isArray(fp)?fp:[];manualPitcherRunIds.clear();removedStatRows.clear();const f=p.filter(h=>h.teamId===t),U=p.filter(h=>h.teamId===e),k=async h=>u(h)??await La.get(h),x=f.filter(h=>!Qe(h)).sort((h,E)=>(h.listOrder??9999)-(E.listOrder??9999)||(h.battingOrder??99)-(E.battingOrder??99)),N=f.filter(h=>Qe(h)).sort((h,E)=>(h.listOrder??9999)-(E.listOrder??9999)||(h.pitcherOrder??99)-(E.pitcherOrder??99)),A=U.filter(h=>!Qe(h)).sort((h,E)=>(h.listOrder??9999)-(E.listOrder??9999)||(h.battingOrder??99)-(E.battingOrder??99)),Z=U.filter(h=>Qe(h)).sort((h,E)=>(h.listOrder??9999)-(E.listOrder??9999)||(h.pitcherOrder??99)-(E.pitcherOrder??99)),L=(await Promise.all(x.map(h=>k(h.playerId)))).map(h=>h?{...h,teamId:t,_rowId:at()}:null),se=(await Promise.all(N.map(h=>k(h.playerId)))).map(h=>h?{...h,teamId:t,_asPitcher:!0,_rowId:at()}:null),F=(await Promise.all(A.map(h=>k(h.playerId)))).map(h=>h?{...h,teamId:e,_rowId:at()}:null),w=(await Promise.all(Z.map(h=>k(h.playerId)))).map(h=>h?{...h,teamId:e,_asPitcher:!0,_rowId:at()}:null);S={},L.forEach((h,E)=>{h&&(S[x[E].id]=X(h,t))}),F.forEach((h,E)=>{h&&(S[A[E].id]=X(h,e))}),_={},se.forEach((h,E)=>{h&&(_[N[E].id]=X(h,t))}),w.forEach((h,E)=>{h&&(_[Z[E].id]=X(h,e))}),te.value=[...L.filter(h=>h!=null),...se.filter(h=>h!=null)],le.value=[...F.filter(h=>h!=null),...w.filter(h=>h!=null)],z.value=!0,Ke.value=t,Le.value=e}else te.value=[],le.value=[];for(let v=0;v<G.value.length;v++){const f=G.value[v],U=X(f,t);U in D||(D[U]={...Xe});const k=D[U];k.position===void 0&&(k.position=f.positions?.[0]??f.position),k.number===void 0&&(k.number=Re(f.number)??void 0),k.batHand===void 0&&(k.batHand=f.batHand??void 0),k.battingOrder===void 0&&v<q.value?k.battingOrder=v+1:k.battingOrder===void 0&&(k.battingOrder=void 0)}for(let v=0;v<je.value.length;v++){const f=je.value[v],U=X(f,t);U in ee||(ee[U]={...Tl},ee[U].pitcherOrder=v+1,ee[U].position=f.positions?.[0]??f.position??"P",ee[U].number=Re(f.number)??void 0,ee[U].throwHand=f.throwHand??void 0)}for(let v=0;v<W.value.length;v++){const f=W.value[v],U=X(f,e);U in D||(D[U]={...Xe});const k=D[U];k.position===void 0&&(k.position=f.positions?.[0]??f.position),k.number===void 0&&(k.number=Re(f.number)??void 0),k.batHand===void 0&&(k.batHand=f.batHand??void 0),k.battingOrder===void 0&&v<q.value?k.battingOrder=v+1:k.battingOrder===void 0&&(k.battingOrder=void 0)}for(let v=0;v<qe.value.length;v++){const f=qe.value[v],U=X(f,e);U in ee||(ee[U]={...Tl},ee[U].pitcherOrder=v+1,ee[U].position=f.positions?.[0]??f.position??"P",ee[U].number=Re(f.number)??void 0,ee[U].throwHand=f.throwHand??void 0)}if(pe.value&&p.length>0){for(const v of p){const f=Ci(v.teamId,v.playerId);if(!Qe(v)){const U=S[v.id]??f;if(!D[U])continue;const k=D[U];k.statId=v.id,k.battingOrder=v.battingOrder??void 0,k.listOrder=v.listOrder??void 0,k.position=v.position??void 0,k.firstPosition=v.firstPosition??void 0,k.number=v.number??void 0,k.batHand=v.batHand??void 0,k.pa=v.pa??0,k.ab=v.ab??0,k.r=v.r??0,k.h=v.h??0,k.e=v.e??0,k.bbHp=v.bbHp??0,k.sb=v.sb??0,k.so=v.so??0,k.soSwing=v.soSwing??0,k.soLooking=v.soLooking??0,k.rbi=v.rbi??0,k.hr=v.hr??0,k.insideParkHr=v.insideParkHr??0,v.doubles!=null&&(k.doubles=v.doubles),v.triples!=null&&(k.triples=v.triples),v.gdp!=null&&(k.gdp=v.gdp),v.sh!=null&&(k.sh=v.sh),v.sf!=null&&(k.sf=v.sf),v.bb!=null&&(k.bb=v.bb),v.ibb!=null&&(k.ibb=v.ibb),v.hbp!=null&&(k.hbp=v.hbp),v.io!=null&&(k.io=v.io),v.cs!=null&&(k.cs=v.cs),v.tc!=null&&(k.tc=v.tc),v.po!=null&&(k.po=v.po),v.a!=null&&(k.a=v.a),k.fieldingGs=v.fieldingGs??0,k.defInn=v.defInn??0,k.dp=v.dp??0,k.pb=v.pb??0,k.catcherSb=v.catcherSb??0,k.catcherCs=v.catcherCs??0}if(Qe(v)){const U=_[v.id]??f;if(!ee[U])continue;const k=ee[U];k.statId=v.id,k.pitcherOrder=v.pitcherOrder??void 0,k.listOrder=v.listOrder??void 0,k.position=v.position??void 0,k.firstPosition=v.firstPosition??void 0,k.number=v.number??void 0,k.throwHand=v.throwHand??void 0,k.ip=v.ip??0,k.pitchR=v.pitchR??0,k.er=v.er??0,k.pitchH=v.pitchH??0,k.pitchDoubles=v.pitchDoubles??0,k.pitchTriples=v.pitchTriples??0,k.pitchBbHp=v.pitchBbHp??0,k.pitchSo=v.pitchSo??0,k.pitchHr=v.pitchHr??0,k.pitchInsideParkHr=v.pitchInsideParkHr??0,k.pitchSh=v.pitchSh??0,k.pitchSf=v.pitchSf??0,k.pitchPa=v.pitchPa??0,k.pitchBf=v.pitchBf??0,k.pitAb=Bi(v),k.np=v.np??0,k.pitchBb=v.pitchBb??0,k.pitchIbb=v.pitchIbb??0,k.pitchHbp=v.pitchHbp??0,k.pitchIo=v.pitchIo??0,k.pickoffAttempts=v.pickoffAttempts??0,k.wp=v.wp??0,k.bk=v.bk??0,k.go=v.go??0,k.fo=v.fo??0,k.gs=v.gs??0,k.svo=v.svo??0,k.cg=v.cg??0,k.pg=v.pg??0,k.w=v.w??0,k.l=v.l??0,k.sv=v.sv??0,k.hld=v.hld??0;const fd=D[U]??(D[U]={...Xe});fd.position=v.position??fd.position,fd.firstPosition=v.firstPosition??fd.firstPosition,fd.po=v.po??0,fd.a=v.a??0,fd.e=v.e??0,fd.tc=v.tc??0,fd.dp=v.dp??0,fd.pb=v.pb??0,fd.catcherSb=v.catcherSb??0,fd.catcherCs=v.catcherCs??0,fd.fieldingGs=v.fieldingGs??0,fd.defInn=v.defInn??0}}for(const v of te.value){const f=D[X(v,t)];f&&(f.pb??0)+(f.catcherSb??0)+(f.catcherCs??0)>0&&(v._asCatcher=!0)}for(const v of le.value){const f=D[X(v,e)];f&&(f.pb??0)+(f.catcherSb??0)+(f.catcherCs??0)>0&&(v._asCatcher=!0)}for(const v of te.value){const k=D[X(v,t)];if(k){k.bb=k.bb!=null?k.bb:(k.bbHp??0);k.hbp=k.hbp??0;k.ibb=k.ibb??0;k.io=k.io??0;k.bbHp=(Number(k.bb)||0)+(Number(k.hbp)||0)}const q=ee[X(v,t)];if(q){q.pitchBb=q.pitchBb!=null?q.pitchBb:(q.pitchBbHp??0);q.pitchHbp=q.pitchHbp??0;q.pitchIbb=q.pitchIbb??0;q.pitchIo=q.pitchIo??0;q.pitchDoubles=q.pitchDoubles??0;q.pitchTriples=q.pitchTriples??0;q.pitchSh=q.pitchSh??0;q.pitchSf=q.pitchSf??0;q.pitchBbHp=(Number(q.pitchBb)||0)+(Number(q.pitchHbp)||0)}}for(const v of le.value){const k=D[X(v,e)];if(k){k.bb=k.bb!=null?k.bb:(k.bbHp??0);k.hbp=k.hbp??0;k.ibb=k.ibb??0;k.io=k.io??0;k.bbHp=(Number(k.bb)||0)+(Number(k.hbp)||0)}const q=ee[X(v,e)];if(q){q.pitchBb=q.pitchBb!=null?q.pitchBb:(q.pitchBbHp??0);q.pitchHbp=q.pitchHbp??0;q.pitchIbb=q.pitchIbb??0;q.pitchIo=q.pitchIo??0;q.pitchDoubles=q.pitchDoubles??0;q.pitchTriples=q.pitchTriples??0;q.pitchSh=q.pitchSh??0;q.pitchSf=q.pitchSf??0;q.pitchBbHp=(Number(q.pitchBb)||0)+(Number(q.pitchHbp)||0)}}}
       resultPositionRows.value=groupFieldingPositionRows(fieldingPositionRows);

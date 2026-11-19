@@ -33,14 +33,46 @@ test('逐位置工具与局数换算从既有工具导入', () => {
   );
 });
 
-test('编辑后替换 resultPositionRows 引用以触发组件重算', () => {
-  assert.ok(
-    compact.includes('resultPositionRows.value={...resultPositionRows.value,[key]:[...rows]}'),
-    'markFieldingPositionsChanged 未替换 resultPositionRows 引用'
+test('逐位置编辑统一由 markFieldingPositionsChanged 替换引用', () => {
+  assert.match(compact, /functionmarkFieldingPositionsChanged\(row,nextRows\)\{/, 'mark 未接收本次 rows');
+  assert.ok(compact.includes('constrows=nextRows??positionRowsFor(row)'), 'mark 未复用调用方 rows');
+  assert.equal(
+    (compact.match(/resultPositionRows\.value=\{\.\.\.resultPositionRows\.value,\[key\]:\[\.\.\.rows\]\}/g) ?? []).length,
+    1,
+    '引用替换应只在 mark 中发生一次'
   );
   assert.ok(
-    compact.includes('resultPositionRows.value={...resultPositionRows.value,[key]:rows}'),
-    '增删守位未替换 resultPositionRows 引用'
+    compact.includes('row._fieldPosition=rows.length>0?rows[0].position:""'),
+    '删光守位后未清空 _fieldPosition'
+  );
+});
+
+test('新建/切换比赛时清理逐位置状态，避免脏数据跨比赛', () => {
+  assert.ok(
+    compact.includes('resultPositionRows.value={},dirtyFieldingPlayers.clear(),te.value=[]'),
+    'Mn() 未清空 resultPositionRows 与 dirty 球员'
+  );
+});
+
+test('添加守位优先显式位置，旧 emit 回退当前守位并校验白名单/占用', () => {
+  assert.ok(compact.includes('constnormalize=value=>String(value??"").trim().toUpperCase()'), '缺少守位归一');
+  assert.ok(compact.includes('lettarget=normalize(position)'), '未优先使用显式传入的守位');
+  assert.ok(
+    compact.includes('constcurrent=normalize(row?._fieldPosition||row?.position)'),
+    '旧 emit 未优先当前守位'
+  );
+  assert.ok(
+    compact.includes('target=allowed.includes(current)&&!used.has(current)?current:""'),
+    '当前守位未校验模式白名单与占用'
+  );
+  assert.ok(
+    compact.includes('target=allowed.find(item=>!used.has(item))??""'),
+    '缺少首个可用守位回落'
+  );
+  assert.ok(compact.includes('if(!target){J.warning("守位已满");return}'), '无可用守位未提示');
+  assert.ok(
+    compact.includes('if(!allowed.includes(target)||used.has(target))return'),
+    '显式守位未校验白名单/重复'
   );
 });
 

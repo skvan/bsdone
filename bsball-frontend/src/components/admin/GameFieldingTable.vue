@@ -117,9 +117,27 @@
             </el-button>
           </template>
           <template v-else-if="editable">
-            <el-button link type="primary" size="small" @click="emit('add-position', row)">
-              {{ t('gameResultFielding.addPosition') }}
-            </el-button>
+            <el-dropdown
+              v-if="positionOptionsFor(row).length"
+              trigger="click"
+              @command="(position) => emit('add-position', row, position)"
+            >
+              <el-button link type="primary" size="small">
+                {{ t('gameResultFielding.addPosition') }}
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="option in positionOptionsFor(row)"
+                    :key="option"
+                    :command="option"
+                  >
+                    {{ option }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button v-else link type="info" size="small" disabled>守位已满</el-button>
           </template>
         </template>
       </el-table-column>

@@ -51,7 +51,7 @@ test('守备表子行修改回写原对象并通知页面', () => {
   assert.ok(table.includes('row._source[key] = Number(value) || 0'), '子行数值未回写原对象');
   assert.ok(table.includes("emit('positions-changed', row._parentRow)"), '子行修改未通知页面');
   assert.ok(table.includes("emit('remove-position', row._parentRow, row.position)"), '删除守位未带父行与守位');
-  assert.ok(table.includes("emit('add-position', row)"), '添加守位事件未接入');
+  assert.ok(table.includes("emit('add-position', row, position)"), '添加守位事件未携带所选守位');
   assert.ok(table.includes("row.position === 'C'"), 'PB/CS/SB 未按捕手守位启用');
   // 逐位置行以 outs 存储，INN 列需换算而不是直接写 defInn
   assert.ok(table.includes('inningsToOuts') && table.includes('outsToInnings'), 'INN 未按 outs 换算');
@@ -103,6 +103,22 @@ test('子行守位下拉包含当前守位且去重', () => {
   assert.deepEqual(options({ position: 'C' }, ['1b', 'C', '2B']), ['C', '1B', '2B']);
   assert.deepEqual(options({ position: 'P' }, ['C']), ['P', 'C']);
   assert.deepEqual(options({ position: '' }, ['C']), ['C']);
+});
+
+test('添加守位改为点击短菜单，菜单项来自剩余守位并携带所选守位', () => {
+  const table = read('../src/components/admin/GameFieldingTable.vue');
+  assert.ok(table.includes('<el-dropdown'), '添加守位未改为 el-dropdown');
+  assert.ok(table.includes('trigger="click"'), '添加守位菜单未配置点击触发');
+  assert.ok(
+    table.includes('v-for="option in positionOptionsFor(row)"'),
+    '菜单项未来自 positionOptionsFor(row)'
+  );
+  assert.ok(table.includes('<el-dropdown-item'), '缺少守位菜单项');
+  assert.ok(
+    table.includes("emit('add-position', row, position)"),
+    '菜单选择后未携带守位 emit add-position'
+  );
+  assert.ok(table.includes('守位已满'), '无可用守位时缺少禁用文案');
 });
 
 test('守备表编辑门禁、GS 可编辑与 final 提示', () => {
