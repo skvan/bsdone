@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -90,6 +92,8 @@ class GameServiceSaveResultFieldingSyncTest {
         lenient().when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID)))
                 .thenReturn(new ArrayList<>());
         lenient().when(gamePlayerStatRepository.save(any(GamePlayerStat.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(gameFieldingPosStatRepository.saveAll(any()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -160,15 +164,147 @@ class GameServiceSaveResultFieldingSyncTest {
     }
 
     @Test
-    @DisplayName("无逐位置行：不回写也不保存")
+    @DisplayName("无逐位置行且合计无变化：不回写也不保存")
     void saveResult_noPositionRows_noSync() {
         when(gameFieldingPosStatRepository
                 .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
                 .thenReturn(new ArrayList<>());
-        SaveGameResultDTO.StatPart part = part(1L, 0, 1, 1, 4.0);
+        SaveGameResultDTO.StatPart part = part(1L, 0, null, null, null);
 
         gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
 
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+    }
+
+    @Test
+    @DisplayName("已提交逐位置部分的球员：跳过 #704 差额回写")
+    void saveResult_replacedPlayer_skipsDeltaSync() {
+        GameFieldingPosStat old = positionRow("SS", 12, 0, 0, 0, false);
+        stubPositionRows(old);
+        GamePlayerStat stat = statRow();
+        when(gamePlayerStatRepository.findByGameId(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>(List.of(stat)));
+        SaveGameResultDTO.StatPart statPart = part(1L, 0, 5, null, null);
+        SaveGameResultDTO dto = dto(statPart);
+        dto.setFieldingPlayerParts(List.of(fieldingPart("SS", 12, 1)));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
+        verify(gameFieldingPosStatRepository, times(1)).saveAll(captor.capture());
+        assertEquals(Integer.valueOf(1), captor.getValue().get(0).getPo(),
+                "最终以逐位置提交的 PO=1 为准");
+        assertEquals(Integer.valueOf(0), old.getPo(), "旧行不再被 stats 差额拉回 5");
+        assertEquals(Integer.valueOf(1), stat.getPo(), "球员合计由逐位置行重算");
+    }
+
+    @Test
+    @DisplayName("旧球员无逐位置行且合计有变化：按 position 自动补一行")
+    void saveResult_legacyPlayerChanged_createsPositionRow() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        ArgumentCaptor<GameFieldingPosStat> captor =
+                ArgumentCaptor.forClass(GameFieldingPosStat.class);
+        verify(gameFieldingPosStatRepository).save(captor.capture());
+        GameFieldingPosStat created = captor.getValue();
+        assertEquals("SS", created.getPosition(), "按 stats 的 position 补行");
+        assertEquals(Integer.valueOf(12), created.getOuts(), "INN 4.0 换算为 12 出局");
+        assertEquals(Integer.valueOf(3), created.getPo());
+        assertEquals("RESULT", created.getSource());
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("旧球员补行：非捕手守位强制捕手字段为 0")
+    void saveResult_legacyPlayerNonCatcher_catcherFieldsZeroed() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("SS");
+        part.setPb(Integer.valueOf(2));
+        part.setCatcherSb(Integer.valueOf(3));
+        part.setCatcherCs(Integer.valueOf(1));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        ArgumentCaptor<GameFieldingPosStat> captor =
+                ArgumentCaptor.forClass(GameFieldingPosStat.class);
+        verify(gameFieldingPosStatRepository).save(captor.capture());
+        GameFieldingPosStat created = captor.getValue();
+        assertEquals("SS", created.getPosition());
+        assertEquals(Integer.valueOf(0), created.getPb(), "非 C 补行不承接 PB");
+        assertEquals(Integer.valueOf(0), created.getCatcherSb(), "非 C 补行不承接被盗垒");
+        assertEquals(Integer.valueOf(0), created.getCatcherCs(), "非 C 补行不承接阻杀");
+    }
+
+    @Test
+    @DisplayName("旧球员合计没变化：不新造逐位置行")
+    void saveResult_legacyPlayerUnchanged_noRowCreated() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 0, 0, null);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("live 比赛：旧球员合计有变化也不补行（final 门禁）")
+    void saveResult_liveLegacyPlayerChanged_noRowCreated() {
+        game.setStatus("live");
+        game.setIsSpecialResult(Boolean.TRUE);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("补行只看守位：position=DH 不补行")
+    void saveResult_legacyPlayerDh_noRowCreated() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("DH");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("补行出局数越界（>999）：不补行")
+    void saveResult_legacyPlayerOutsOverLimit_noRowCreated() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 334.0);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
         verify(gameFieldingPosStatRepository, never()).saveAll(any());
     }
 
@@ -236,6 +372,34 @@ class GameServiceSaveResultFieldingSyncTest {
 
         assertEquals(Integer.valueOf(13), ss.getOuts(), "INN 4.1 应换算为 13 个出局");
         assertFalse(Boolean.TRUE.equals(ss.getFieldingGs()), "GS 人工改 0 应回写");
+    }
+
+    private GamePlayerStat statRow() {
+        GamePlayerStat stat = new GamePlayerStat();
+        stat.setId(Long.valueOf(1L));
+        stat.setTenantId(Long.valueOf(TENANT_ID));
+        stat.setGameId(Long.valueOf(GAME_ID));
+        stat.setTeamId(Long.valueOf(TEAM_ID));
+        stat.setPlayerId(Long.valueOf(PLAYER_ID));
+        stat.setIsPitcher(Integer.valueOf(0));
+        stat.setPosition("SS");
+        stat.setFirstPosition("SS");
+        return stat;
+    }
+
+    private SaveGameResultDTO.FieldingPlayerPart fieldingPart(
+            String position, int outs, int po) {
+        SaveGameResultDTO.FieldingPositionRowPart row = new SaveGameResultDTO.FieldingPositionRowPart();
+        row.setPosition(position);
+        row.setOuts(Integer.valueOf(outs));
+        row.setPo(Integer.valueOf(po));
+        row.setA(Integer.valueOf(0));
+        row.setE(Integer.valueOf(0));
+        SaveGameResultDTO.FieldingPlayerPart part = new SaveGameResultDTO.FieldingPlayerPart();
+        part.setTeamId(Long.valueOf(TEAM_ID));
+        part.setPlayerId(Long.valueOf(PLAYER_ID));
+        part.setRows(List.of(row));
+        return part;
     }
 
     private void stubPositionRows(GameFieldingPosStat... rows) {

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// Issue #701 复核：结果录入「守备数据」页签必须回显球员级人工修订值，
-// 不能被旧的逐位置合计覆盖；球员级全零时（旧数据）仍用逐位置合计补全（#560）。
+// Issue #701 复核 + 逐位置编辑（2026-11-19 设计）：有逐位置明细的球员，合计改为
+// 逐位置派生、球员级只读；球员级全零的旧数据仍由逐位置合计补全（#560）。
 // 运行：E2E_PORT=3030 npx playwright test e2e/admin-game-result-fielding-701-local-mocked.spec.js
 const GAME_ID = 701;
 const HOME_ID = 2;
@@ -123,21 +123,21 @@ async function openFieldingTab(page) {
   return page.locator('.game-fielding-table', { hasText: '客队A 守备' });
 }
 
-test('结果录入守备表：人工修订值不被旧的逐位置合计覆盖', async ({ page }) => {
+test('结果录入守备表：有逐位置明细时合计按逐位置派生', async ({ page }) => {
   await mockApis(page);
   const awayTable = await openFieldingTab(page);
   await expect(awayTable).toBeVisible();
 
   const ssRow = awayTable.locator('tbody tr', { hasText: '梁大鹏' }).first();
   await expect(ssRow).toBeVisible();
-  // GS PO A E DP INN
-  await expect(ssRow.locator('.el-input-number input').nth(1)).toHaveValue('1');
-  await expect(ssRow.locator('.el-input-number input').nth(3)).toHaveValue('1');
+  // GS PO A E DP INN：逐位置 SS 为 PO=0 / E=2，球员级只读显示派生值
+  await expect(ssRow.locator('td').nth(4)).toHaveText('0');
+  await expect(ssRow.locator('td').nth(6)).toHaveText('2');
 
   const pitcherRow = awayTable.locator('tbody tr', { hasText: '邱俊锋' }).first();
   await expect(pitcherRow).toBeVisible();
-  await expect(pitcherRow.locator('.el-input-number input').nth(1)).toHaveValue('1');
-  await expect(pitcherRow.locator('.el-input-number input').nth(3)).toHaveValue('2');
+  await expect(pitcherRow.locator('td').nth(4)).toHaveText('0');
+  await expect(pitcherRow.locator('td').nth(6)).toHaveText('1');
 });
 
 test('结果录入守备表：旧数据球员级全零时仍用逐位置合计补全（#560）', async ({ page }) => {
@@ -147,5 +147,5 @@ test('结果录入守备表：旧数据球员级全零时仍用逐位置合计�
 
   const legacyPitcherRow = awayTable.locator('tbody tr', { hasText: '姚智鹏' }).first();
   await expect(legacyPitcherRow).toBeVisible();
-  await expect(legacyPitcherRow.locator('.el-input-number input').nth(2)).toHaveValue('2');
+  await expect(legacyPitcherRow.locator('td').nth(5)).toHaveText('2');
 });

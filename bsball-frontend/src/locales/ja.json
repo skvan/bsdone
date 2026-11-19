@@ -2168,5 +2168,20 @@
   "team": {
     "textLogoAlt": "{name} テキストロゴ",
     "logoInitialFallback": "球"
+  },
+  "gameResultFielding": {
+    "positions": "ポジション別",
+    "addPosition": "守備位置を追加",
+    "removePosition": "守備位置を削除",
+    "autoTotal": "自動集計",
+    "positionsCount": "{n} ポジション",
+    "autoTotalHint": "選手の合計はポジション別から自動集計されます。PB/CS/SB は捕手のポジションのみ有効です。",
+    "finalOnly": "試合終了後にポジション別守備を編集できます",
+    "noPositions": "ポジション別の明細はありません"
+  },
+  "liveGame": {
+    "revision": {
+      "scopeFieldingPositions": "ポジション別守備"
+    }
   }
 }

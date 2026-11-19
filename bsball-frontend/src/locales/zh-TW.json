@@ -3293,7 +3293,7 @@
       "targetPlaceholder": "選擇同隊正確球員",
       "scopes": "轉記範圍",
       "scopeStats": "統計",
-      "scopeFieldingPositions": "守備位置",
+      "scopeFieldingPositions": "逐位置守備",
       "scopeEr": "ER 判定",
       "scopeLive": "現場記錄",
       "scopeRequired": "至少選擇一個轉記範圍",
@@ -3388,5 +3388,15 @@
       "playerFallback": "隊員",
       "currentEvent": "當前賽事"
     }
+  },
+  "gameResultFielding": {
+    "positions": "逐位置",
+    "addPosition": "新增守位",
+    "removePosition": "刪除守位",
+    "autoTotal": "自動合計",
+    "positionsCount": "{n} 個守位",
+    "autoTotalHint": "球員合計由逐位置自動彙總；PB/CS/SB 只對捕手守位生效。",
+    "finalOnly": "比賽結束後才能編輯逐位置守備",
+    "noPositions": "尚無逐位置明細"
   }
 }

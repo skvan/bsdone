@@ -42,3 +42,31 @@ test('台账表结构与写入范围', () => {
   assert.ok(service.includes('RESULT_SAVE'), '缺少 RESULT_SAVE 来源');
   assert.ok(service.includes('recordStatChanges'), '缺少台账写入方法');
 });
+
+test('台账展示逐位置守备修订', () => {
+  assert.ok(panel.includes('FIELDPOS_STAT'), '缺少逐位置 scope');
+  assert.ok(panel.includes('scopeFieldingPositions'), '缺少逐位置标签 key');
+  assert.ok(
+    panel.includes("FIELDPOS_STAT: 'liveGame.revision.scopeFieldingPositions'"),
+    '缺少逐位置标签映射'
+  );
+  assert.ok(panel.includes("scope === 'FIELDPOS_STAT'"), '缺少逐位置 tag 颜色');
+});
+
+test('逐位置守备标签五语齐全', () => {
+  const expected = {
+    'zh-CN': '逐位置守备',
+    'zh-TW': '逐位置守備',
+    en: 'Per-position fielding',
+    ja: 'ポジション別守備',
+    ko: '포지션별 수비'
+  };
+  for (const [locale, label] of Object.entries(expected)) {
+    const messages = JSON.parse(read(`../src/locales/${locale}.json`));
+    assert.equal(
+      messages.liveGame?.revision?.scopeFieldingPositions,
+      label,
+      `${locale} 逐位置守备标签缺失或不一致`
+    );
+  }
+});

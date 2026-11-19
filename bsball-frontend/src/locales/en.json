@@ -3286,7 +3286,7 @@
       "targetPlaceholder": "Select the correct teammate",
       "scopes": "Transfer Scope",
       "scopeStats": "Stats",
-      "scopeFieldingPositions": "Fielding positions",
+      "scopeFieldingPositions": "Per-position fielding",
       "scopeEr": "ER decisions",
       "scopeLive": "Live records",
       "scopeRequired": "Select at least one transfer scope.",
@@ -3381,5 +3381,15 @@
       "playerFallback": "Player",
       "currentEvent": "Current Event"
     }
+  },
+  "gameResultFielding": {
+    "positions": "Positions",
+    "addPosition": "Add position",
+    "removePosition": "Remove position",
+    "autoTotal": "Auto total",
+    "positionsCount": "{n} positions",
+    "autoTotalHint": "Player totals are summed automatically from position rows; PB/CS/SB apply only to the catcher position.",
+    "finalOnly": "Position fielding is available after the game is final",
+    "noPositions": "No position rows"
   }
 }
