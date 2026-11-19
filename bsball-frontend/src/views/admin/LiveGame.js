@@ -88,7 +88,19 @@ import { clampHitSpotToField as LgClampHitSpot } from '../../utils/hitSprayField
 import { shouldCreditError, filterErrorReasons, selectErrorFielder, normalizeErrorFlow } from '../../utils/liveGameErrorCredit';
 import { resolveDoublePlay as LgResolveDoublePlay, canStartDoublePlay as LgCanStartDoublePlay, canStartTriplePlay as LgCanStartTriplePlay, BASE_NAME as LgDpBaseName } from '../../utils/liveGameDoublePlay';
 import { resolveBatterForceAdvance, resolveGroundOutForceAdvance } from '../../utils/liveGameForceAdvance';
+// #529 触屏拖动：MessageBox 原生 draggable 只认鼠标，全部弹窗入口统一经包装补绑触摸桥接
+import { bindLastMessageBoxTouchDrag } from '../../utils/messageBoxTouchDrag';
 import '../../styles/legacy/live-game.css';
+function LgBox(options){
+  const p=al(options);
+  bindLastMessageBoxTouchDrag();
+  return p
+}
+function LgConfirm(message,title,options){
+  const p=al.confirm(message,title,options);
+  bindLastMessageBoxTouchDrag();
+  return p
+}
 function gd(u){
   const f=qc();
   let l=!1;
@@ -113,7 +125,7 @@ function gd(u){
         }
         
       };
-      al({
+      LgBox({
         title:_,draggable:!0,message:da("div",{
           class:"leave-confirm-tri"
         }
@@ -184,7 +196,7 @@ function gd(u){
     if(u.triButton)return await N()!=="stay";
     u.onBeforeConfirm&&await u.onBeforeConfirm();
     try{
-      return await al.confirm(S,_,{
+      return await LgConfirm(S,_,{
         confirmButtonText:R,cancelButtonText:F,type:"warning",draggable:!0
       }
       ),!0
@@ -1199,7 +1211,7 @@ function LgPick(options,title,message){
       }
       resolve(v)
     };
-    al({
+    LgBox({
       title:title??"请选择",draggable:!0,
       message:da("div",null,[da("p",{
         style:{margin:"0 0 10px",lineHeight:"1.5",color:"var(--el-text-color-regular)"}
@@ -8406,7 +8418,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       try{
-        await al.confirm(lgText("liveGame.forceHalf.confirmMessage"),lgText("liveGame.forceHalf.confirmTitle"),{
+        await LgConfirm(lgText("liveGame.forceHalf.confirmMessage"),lgText("liveGame.forceHalf.confirmTitle"),{
           confirmButtonText:lgText("liveGame.forceHalf.confirmOk"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
         }
         )
@@ -10770,7 +10782,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       // 中间操作日志已静音：提交成功后只保留换人前的日志 + 净变化结果
       const logBase=Array.isArray(substitutionModeLogBase.value)?[...substitutionModeLogBase.value]:null;
       try{
-        await al.confirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmSubstitution"),{
+        await LgConfirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmSubstitution"),{
           dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.submitSubstitution"),cancelButtonText:lgText("liveGame.sub.keepAdjusting"),type:"warning",draggable:!0
         }
         )
@@ -10890,7 +10902,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const rule=dhRuleForSide(side);
       if(!rule.ok)try{
-        await al.confirm(substitutionModeHtml([rule.warning]),lgText("liveGame.sub.confirmCancelDhRule"),{
+        await LgConfirm(substitutionModeHtml([rule.warning]),lgText("liveGame.sub.confirmCancelDhRule"),{
           dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.stillCancel"),cancelButtonText:lgText("liveGame.sub.back"),type:"warning",draggable:!0
         }
         )
@@ -10917,7 +10929,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ];
       appendDhRuleWarning(lines,rule);
       try{
-        await al.confirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhSwap"),{
+        await LgConfirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhSwap"),{
           dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.confirmCancelDhSwapOk"),cancelButtonText:lgText("liveGame.sub.back"),type:"warning",draggable:!0
         }
         )
@@ -10986,7 +10998,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ];
         appendDhRuleWarning(lines,rule);
         try{
-          await al.confirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhPitch"),{
+          await LgConfirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhPitch"),{
             dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.confirmCancelDhPitchOk"),cancelButtonText:lgText("liveGame.sub.back"),type:"warning",draggable:!0
           }
           )
@@ -11021,7 +11033,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ];
       appendDhRuleWarning(lines,rule);
       try{
-        await al.confirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhDefense"),{
+        await LgConfirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmCancelDhDefense"),{
           dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.confirmCancelDhDefenseOk"),cancelButtonText:lgText("liveGame.sub.back"),type:"warning",draggable:!0
         }
         )
@@ -11111,7 +11123,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ];
         appendDhRuleWarning(lines,rule);
         try{
-          await al.confirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmRotation"),{
+          await LgConfirm(substitutionModeHtml(lines),lgText("liveGame.sub.confirmRotation"),{
             dangerouslyUseHTMLString:!0,confirmButtonText:lgText("liveGame.sub.confirmRotationOk"),cancelButtonText:lgText("liveGame.sub.back"),type:"warning",draggable:!0
           }
           )
@@ -12038,7 +12050,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(lgText("liveGame.endGame.blockedSubMode"),"warning");
         return
       }
-      await al.confirm(lgText("liveGame.endGame.confirmMessage"),lgText("liveGame.endGame.confirmTitle"),{
+      await LgConfirm(lgText("liveGame.endGame.confirmMessage"),lgText("liveGame.endGame.confirmTitle"),{
         confirmButtonText:lgText("liveGame.endGame.confirmOk"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
       }
       ),l.isGameEnd=!0,D(LgSys({kind:"game_end"}));
@@ -12172,7 +12184,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     async function bc(){
       if(!R.value||Be.value)return;
       try{
-        await al.confirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
+        await LgConfirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
           confirmButtonText:lgText("liveGame.restore.confirmContinue"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
         }
         )
