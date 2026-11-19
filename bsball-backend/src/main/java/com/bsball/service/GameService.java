@@ -43,11 +43,13 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.repository.StadiumRepository;
+import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.utils.GamePlayerStatZeros;
 import com.bsball.utils.GameStatDeleteDiagnostics;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -211,6 +213,7 @@ public class GameService {
             return;
         }
         this.assertGameWritable(g);
+        assertSnapshotNotRegressive(g, json);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
             log.warn("快照更新未命中比赛 id={}", gameId);
@@ -232,6 +235,7 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
+        this.assertSnapshotNotRegressive(g, json);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
             log.warn("阵容快照更新未命中比赛 id={}", gameId);
@@ -241,6 +245,103 @@ public class GameService {
     /** 快照空白值统一存 NULL，配合 Game.hasLiveSnapshot 的“非空即存在”口径（Issue #686）。 */
     private static String normalizeSnapshotJson(String json) {
         return json == null || json.isBlank() ? null : json;
+    }
+
+    /**
+     * 现场快照覆盖守门（线上实测 game 261/260）：已出比分的场次被后续存档盖成空壳后，
+     * playEvents 逐棒证据就永久消失，ER 判定与投手 R/ER 再也无法复核（261 的快照在赛后
+     * 第七天被盖成「只剩 2 条、比分 0」，导致 3局下那一分无法追溯）。
+     * 两个覆盖向量都走本入口：现场页自动存档（本地状态回退时推空壳）与阵容板保存
+     * （payload 只含名单、根本没有 playEvents）。
+     * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
+     * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
+     * <p>旧快照正文走 {@code GameSnapshotRepository}：Issue #686 后 {@code Game} 实体不再映射
+     * {@code live_snapshot_json}（只剩 @Generated 的 {@code hasLiveSnapshot}，连 setter 都没有），
+     * 所以这里不能直读实体。也没拿那个布尔值做读前短路：它不可测，一旦测试里的 Game 没填充
+     * 该字段，守门会被静默绕过而全绿（假验证）；而本入口同一次呼叫已经带着同尺寸的 incoming
+     * json 在内存里，多一次主键读取不是新的量级。
+     */
+    private void assertSnapshotNotRegressive(Game game, String json) {
+        int existingEvents = snapshotPlayEventCount(this.gameSnapshotRepository
+                .findSnapshotJsonById(game.getId()).orElse(null));
+        if (existingEvents <= 0) {
+            return;
+        }
+        int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+                + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+        Integer incomingRuns = snapshotRunTotal(json);
+        if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
+            throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
+                    + (incomingRuns == null ? "读不出（只含名单）" : "只到 " + incomingRuns + " 分")
+                    + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
+                    + "若确需从头重录，请先清空比分或另开新场");
+        }
+        int incomingEvents = snapshotPlayEventCount(json);
+        if (incomingEvents < existingEvents) {
+            throw new BusinessException(409, "提交的快照逐棒记录（" + incomingEvents + " 条）少于服务器现有记录（"
+                    + existingEvents + " 条），已拒绝覆盖");
+        }
+    }
+
+    /** 快照里的 playEvents 条数；解不开或无该键都算 0（调用方据此判“无逐棒证据”）。 */
+    private static int snapshotPlayEventCount(String json) {
+        JsonNode root = snapshotReadTree(json);
+        if (root == null) {
+            return 0;
+        }
+        JsonNode events = root.path("playEvents");
+        return events.isArray() ? events.size() : 0;
+    }
+
+    /** 快照已记的得分总数：teamsData 优先，没有就加 playEvents 的 scoreDelta；都拿不到回 null。 */
+    private static Integer snapshotRunTotal(String json) {
+        JsonNode root = snapshotReadTree(json);
+        if (root == null) {
+            return null;
+        }
+        int total = 0;
+        boolean measured = false;
+        JsonNode teams = root.path("teamsData");
+        if (teams.isObject()) {
+            for (JsonNode team : teams) {
+                JsonNode score = team.path("score");
+                if (score.isNumber()) {
+                    total += score.asInt();
+                    measured = true;
+                }
+            }
+        }
+        if (measured) {
+            return Integer.valueOf(total);
+        }
+        JsonNode events = root.path("playEvents");
+        if (!events.isArray()) {
+            return null;
+        }
+        for (JsonNode event : events) {
+            JsonNode delta = event.path("scoreDelta");
+            if (delta.isNumber()) {
+                total += delta.asInt();
+                measured = true;
+            } else if (delta.isObject()) {
+                total += delta.path("away").asInt(0) + delta.path("home").asInt(0);
+                measured = true;
+            }
+        }
+        return measured ? Integer.valueOf(total) : null;
+    }
+
+    /** 快照 JSON 解析：空值/非法内容回 null，调用方先判 null 就不会 NPE。 */
+    private static JsonNode snapshotReadTree(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return MAPPER.readTree(json);
+        }
+        catch (JsonProcessingException ex) {
+            return null;
+        }
     }
 
     public Game create(Game entity) {
@@ -738,6 +839,11 @@ public class GameService {
         if (operatorId == null) {
             throw new BusinessException(401, "未登录");
         }
+        // 旧客户端不送 halfComplete：视为完整半局，行为与现行一致（不会因后端先上而改口径）
+        boolean halfComplete = !Boolean.FALSE.equals(request.getHalfComplete());
+        if (halfComplete) {
+            assertRebuildCoversRecordedRuns(game, request);
+        }
         Long fieldingTeamId = "top".equals(request.getHalf())
                 ? game.getHomeTeamId()
                 : game.getAwayTeamId();
@@ -748,7 +854,45 @@ public class GameService {
                 request.getHalf(),
                 operatorId,
                 request.getPlays(),
-                fieldingTeamId);
+                fieldingTeamId,
+                halfComplete);
+    }
+
+    /**
+     * 半局重建完整性守门（线上实测 game 261/235/248）：重建是「整半局替换 + 全场投手层绝对重算」，
+     * 一旦推上来的逐分资料没涵盖记分栏已确认的分数，残缺的分母会把其他投手已经落账的 R 直接砍小，
+     * 同时作废相关投手的人工覆写（261 的崔铉 R 就是这样从 3 掉到 2，逐棒证据又已被快照覆盖丢掉）。
+     * 记分栏是独立证人、判定是它的衍生物，所以只用「重建后全场判定数 < 记分栏总分」这一个条件设限，
+     * 不看投手统计也不猜哪一场该例外。尚未记分、或本次推送正好补齐分母时完全放行；
+     * 确定在做局部重建的可带 confirmPartialRebuild=true 明确越过，越过后留警告供事后复核。
+     */
+    private void assertRebuildCoversRecordedRuns(Game game, EarnedRunHalfInningRequest request) {
+        int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+                + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+        if (officialRuns <= 0) {
+            return;
+        }
+        int pushedRuns = request.getPlays().stream()
+                .mapToInt(play -> play.scoringRunners().size())
+                .sum();
+        int afterTotal = this.earnedRunReconstructionService.countLiveDecisions(
+                        game.getTenantId(), game.getId())
+                - this.earnedRunReconstructionService.countLiveDecisionsOfHalf(
+                        game.getTenantId(), game.getId(), request.getInning(), request.getHalf())
+                + pushedRuns;
+        if (afterTotal >= officialRuns) {
+            return;
+        }
+        if (Boolean.TRUE.equals(request.getConfirmPartialRebuild())) {
+            log.warn("[reconstruct-guard] gameId={} {}{} 为局部重建：判定 {} 低于记分 {}，投手 R/ER 需事后复核",
+                    game.getId(), request.getInning(), request.getHalf(), afterTotal, officialRuns);
+            return;
+        }
+        throw new BusinessException(409, "本次重建后全场判定只有 " + afterTotal + " 笔，低于记分栏的 "
+                + officialRuns + " 分，说明推上来的逐分资料没有涵盖已记的分数；而重建会拿这个残缺分母"
+                + "绝对重算全部投手的 R/ER，并作废相关投手的人工覆写（线上 261/235/248 就是这样丢数据的）。"
+                + "请先把其余有得分的半局一并重建补齐，或改用投手 R/ER 人工覆写；"
+                + "确认要做局部重建请带 confirmPartialRebuild=true");
     }
 
     /** Resolves a pending earned-run decision and records the reviewing operator. */

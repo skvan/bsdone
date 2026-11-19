@@ -7417,20 +7417,28 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const E={
         id:w.id,inning:w.inning,half:w.half,sequence:nextPlaySequence(f.playEvents),batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:scoringRunners.map((runner)=>runner.runnerId),scoringRunners,scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:pendingPlayOptions??w.options??null
       };
-      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null,pendingPlayOptions=null
+      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E,{halfComplete:l.outs>=3}),ve.value=null,i.value=null,pendingPlayOptions=null
     }
     function syncEarnedRunHalfInning(event,options={}){
+      // 该半局还没打完（未凑到第三出局）时只做现场预览：后端不删旧判定、不作废投手 R/ER 覆写、
+      // 不改统计。引擎对第 k 棒的裁决只依赖前 k-1 棒（后端 EarnedRunProvisionalPushTest 钉住该
+      // 不变性），所以延后入库不会改变任何判定结果，只是不再每个打席撕一次人工介入。
+      // 不送该选项的调用点（保存、换局、补台账）一律视为半局定案。
+      const halfComplete=options.halfComplete!==false;
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
         const gameId=Number(R.value);
         if(!gameId||!event)return;
         const plays=f.playEvents.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
         if(!plays.length&&!options.allowEmpty)return;
         try{
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
+          // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
+          // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见。
+          J(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`,"warning");
         }
       });
       return earnedRunSyncPending;
