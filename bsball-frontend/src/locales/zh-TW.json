@@ -2590,7 +2590,22 @@
       "lockedScope": "分享範圍已鎖定",
       "unavailable": "該主頁未公開或已失效",
       "emptyModules": "該主頁暫無公開模組",
-      "playerPage": "球員主頁"
+      "playerPage": "球員主頁",
+      "imageSection": "圖片分享",
+      "imagePublicOffHint": "公開關閉也可用",
+      "imageEntry": "儲存長圖",
+      "imageGenerating": "正在產生長圖…",
+      "imageHint": "依目前裝置產生：手機單列長圖、電腦整頁寬圖；隱藏設定/帳戶/分享/編輯版面等控制項。",
+      "imageTitle": "儲存長圖",
+      "imageMeta": "{width} × {height} px · {size}",
+      "imageLongPress": "長按圖片儲存到相簿",
+      "imageSaveHint": "可儲存到本機；也可長按/右鍵儲存。",
+      "imageSave": "儲存圖片",
+      "imageClose": "關閉",
+      "imageTooLong": "頁面過長，圖片清晰度將降低",
+      "imageFail": "長圖產生失敗，請重試",
+      "imageExitEdit": "請先完成版面編輯再儲存長圖",
+      "imageFooter": "BSD棒壘球數據平台"
     }
   },
   "notice": {
