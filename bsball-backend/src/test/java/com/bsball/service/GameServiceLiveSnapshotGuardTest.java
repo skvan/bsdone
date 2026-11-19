@@ -194,6 +194,25 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
+    @DisplayName("服务器快照自己落后于记分时阵容板仍要能保存：倒退只看 payload 自己带的段落")
+    void saveLiveSnapshot_lineupPayloadNotBlamedForLaggingServerSnapshot() {
+        // game 260 型：逐棒记录有 24 条，但快照里的 teamsData 停在 2 分（现场中断过、比分栏被人
+        // 工补写过）。合并之后正文得分就是这 2 分，拿它去比记分 24 分会把阵容板顶回 409——
+        // 而阵容板连一个分都没提，不能为服务器自己的落后负责。
+        givenExistingSnapshot("{\"gameId\":" + GAME_ID + ",\"playEvents\":["
+                + repeatedEvents(24, 2) + "],\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":2}}}");
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        String saved = written.getValue();
+        assertEquals(24, playEventCount(saved), "证据不能因为这道误判而丢：" + saved);
+        assertTrue(saved.contains("homeLineup"), "阵容板改的名单要留住：" + saved);
+    }
+
+    @Test
     @DisplayName("自带空 playEvents 数组的收缩仍拒：比分 0:0 也不允许 24 条掉到 0 条")
     void saveLiveSnapshot_countGuardAppliesEvenWithoutScore() {
         game.setAwayScore(Integer.valueOf(0));

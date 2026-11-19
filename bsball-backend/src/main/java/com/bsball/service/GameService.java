@@ -267,6 +267,8 @@ public class GameService {
      * 服务器现有快照并回来，再跑上面的比对。少了这一步，阵容板那种只含名单的 payload 要么被
      * 409 顶回（打过比分的场次不能从阵容板保存），要么放行后把逐棒记录擦掉（game 261）——
      * 两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
+     * 反过来比对也必须拿原 payload 而并非并好的正文：并回来的段落是服务器自己的现值，
+     * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
      */
     private String mergeAndGuardSnapshot(Game game, String json) {
         String existingJson = this.gameSnapshotRepository
@@ -276,18 +278,29 @@ public class GameService {
             return json;
         }
         String effective = preserveUnmentionedSections(json, existingJson, existingEvents);
-        int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
-                + (game.getHomeScore() == null ? 0 : game.getHomeScore());
-        Integer incomingRuns = snapshotRunTotal(effective);
-        if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
-            throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
-                    + (incomingRuns == null ? "读不出（只含名单）" : "只到 " + incomingRuns + " 分")
-                    + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
-                    + "若确需从头重录，请先清空比分或另开新场");
+        // 两道比对都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
+        // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
+        // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
+        // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
+        // 就是 261 的空壳形态，两道守门照旧都要跑。
+        JsonNode incoming = snapshotReadTree(json);
+        boolean parseable = incoming != null && incoming.isObject();
+        boolean mentionsScore = !parseable || incoming.has("teamsData");
+        boolean mentionsEvidence = !parseable || incoming.has("playEvents");
+        if (mentionsScore) {
+            int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+                    + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+            Integer incomingRuns = snapshotRunTotal(json);
+            if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
+                throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
+                        + (incomingRuns == null ? "读不出（只含名单）" : "只到 " + incomingRuns + " 分")
+                        + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
+                        + "若确需从头重录，请先清空比分或另开新场");
+            }
         }
-        int incomingEvents = snapshotPlayEventCount(effective);
-        if (incomingEvents < existingEvents) {
-            throw new BusinessException(409, "提交的快照逐棒记录（" + incomingEvents + " 条）少于服务器现有记录（"
+        if (mentionsEvidence && snapshotPlayEventCount(json) < existingEvents) {
+            throw new BusinessException(409, "提交的快照逐棒记录（"
+                    + snapshotPlayEventCount(json) + " 条）少于服务器现有记录（"
                     + existingEvents + " 条），已拒绝覆盖");
         }
         return effective;

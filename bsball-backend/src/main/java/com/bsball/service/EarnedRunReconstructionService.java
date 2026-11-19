@@ -359,28 +359,6 @@ public class EarnedRunReconstructionService {
                 .count();
     }
 
-    /** 未被人工作废的全部判定；作废口径与 enginePitcherTotals 共用，避免守门与落账两套数。 */
-    private List<EarnedRunDecisionEntity> liveDecisions(long tenantId, long gameId) {
-        List<EarnedRunDecisionEntity> decisions =
-                decisionRepository.findByTenantIdAndGameId(tenantId, gameId);
-        if (decisions.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
-        Map<DecisionKey, ErDecisionAdjustment> adjustments =
-                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
-        List<EarnedRunDecisionEntity> live = new ArrayList<>(decisions.size());
-        for (EarnedRunDecisionEntity decision : decisions) {
-            ErDecisionAdjustment adjustment = adjustmentFor(
-                    sourceEventByPlayId.get(decision.getPlayId()), decision.getRunnerId(), adjustments);
-            if (adjustment != null && ADJUSTMENT_VOID.equals(adjustment.getAction())) {
-                continue;
-            }
-            live.add(decision);
-        }
-        return live;
-    }
-
     /** 赛后复核：列出本场全部投手的 R/ER 合计与生效中的人工覆写。 */
     public List<PitcherRunTotalsDTO> listPitcherTotals(long tenantId, long gameId) {
         Map<Long, GamePlayerStat> pitcherStats =
