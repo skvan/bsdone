@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -239,7 +240,7 @@ class GameServiceLiveSnapshotGuardTest {
         givenExistingSnapshot("{\"playEventsComplete\":true,\"playEvents\":["
                 + repeatedEvents(24, 24) + "],\"teamsData\":{\"home\":{\"score\":6},\"away\":{\"score\":18}}}");
 
-        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT);
+        gameService.saveLineupSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT);
 
         ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
         verify(gameSnapshotRepository).updateSnapshotJson(
@@ -248,6 +249,7 @@ class GameServiceLiveSnapshotGuardTest {
                 "payload 没提到的证书不能因为没提到就被抹掉：" + written.getValue());
 
         // 反过来也一样：payload 明确说不可信时以它为准，不能拿服务器的 true 去洗
+        // （这一段走现场端点：现场页才是会写证书的那个人）
         gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEventsComplete\":false}");
         ArgumentCaptor<String> downgraded = ArgumentCaptor.forClass(String.class);
         verify(gameSnapshotRepository, Mockito.times(2)).updateSnapshotJson(
@@ -280,6 +282,67 @@ class GameServiceLiveSnapshotGuardTest {
         assertEquals(18, saved.path("teamsData").path("away").path("score").asInt(),
                 "记分栏不能被零分盖掉：" + saved);
         assertTrue(saved.has("gameState"), "阵容板自己写的字段要留住：" + saved);
+    }
+
+    @Test
+    @DisplayName("服务器快照没有比分段时：开局草稿的那份 0 分要从正文里删掉，不是留着")
+    void saveLineupSnapshot_dropsBootstrapZeroScoreWhenServerHasNoScoreSection() {
+        // 豁免的根据是「阵容板不主张比分」，那就得做到底：服务器没有现值可并时，
+        // 留着 payload 的 0 分等于把谁都没写过的比分落库。云端恢复只在 teamsData 存在时
+        // 覆盖比分（Vl()），那份假 0 会一路跟到现场页，之后每次自动存档都被得分守门顶回。
+        givenExistingSnapshot("{\"playEventsComplete\":true,\"playEvents\":["
+                + repeatedEvents(24, 24) + "]}");
+
+        gameService.saveLineupSnapshot(Long.valueOf(GAME_ID),
+                "{\"gameStarted\":true,\"gameState\":{\"inning\":1,\"outs\":0},"
+                        + "\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":0}}}");
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode saved = readJson(written.getValue());
+        assertFalse(saved.has("teamsData"), "不主张比分的写入者不该留下一份 0 分：" + saved);
+        assertEquals(24, saved.path("playEvents").size(), "证据与证书照旧不能动：" + saved);
+        assertTrue(saved.path("playEventsComplete").asBoolean(false), "证书要跟着证据一起留：" + saved);
+    }
+
+    @Test
+    @DisplayName("阵容板端点自带一套等量证据：豁免不成立，仍要被得分交叉验证拦住")
+    void saveLineupSnapshot_payloadCarryingOwnEvidenceIsStillCrossCheckedAgainstScoreboard() {
+        // 豁免只看形状不看调用方：两个真实阵容板写入者从不带 playEvents。带了就不是
+        // 阵容板的形态，即使从 lineup-snapshot 端点进来，也不能绕过比分对帐——否则把 261
+        // 那批真证据等量换成凭空捏造的一批，在这条路上不会被卡住。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        String forged = "{\"playEvents\":[" + repeatedEvents(24, 0) + "],"
+                + "\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":0}}}";
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLineupSnapshot(Long.valueOf(GAME_ID), forged));
+
+        assertEquals(409, ex.getCode(), "条数持平不能当作证据可信的凭据：" + ex.getMessage());
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("整份换掉 playEvents 时不继承服务器替旧证据开的证书")
+    void saveLiveSnapshot_replacedEvidenceDoesNotInheritOldCertificate() {
+        // 证书说的是「现在这份 playEvents 值不值得信」，不是「这个场次历史上信过」。
+        // payload 换了一整套事件却没带证书，落库正文就该没有证书（恢复时维持预设口径），
+        // 而不是被 graft 上一纸替旧证据开的可信章。
+        givenExistingSnapshot("{\"playEventsComplete\":true,\"playEvents\":["
+                + repeatedEvents(24, 24) + "],\"teamsData\":{\"home\":{\"score\":6},\"away\":{\"score\":18}}}");
+        String freshEvidence = "{\"playEvents\":[" + repeatedEvents(25, 25) + "],"
+                + "\"teamsData\":{\"home\":{\"score\":6},\"away\":{\"score\":18}}}";
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), freshEvidence);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode saved = readJson(written.getValue());
+        assertEquals(25, saved.path("playEvents").size(), "本次带的事件以本次为准：" + saved);
+        assertFalse(saved.has("playEventsComplete"),
+                "换了证据就不该继承旧证书：" + saved);
     }
 
     @Test

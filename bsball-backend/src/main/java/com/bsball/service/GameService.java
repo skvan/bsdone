@@ -261,8 +261,9 @@ public class GameService {
      *     那种走下面的合并保留，既不拦下保存也不丢证据。</li>
      * <li>阵容板进入录入（{@code startEntry} 与旧板的 bootstrap）：提到一份开局默认值的
      *     teamsData（双方 0 分、1 局 0 出局）但不提 playEvents。阵容板从不主张比分，
-     *     所以它走 {@code lineupWriter}：服务器的 teamsData 会被并回去，得分守门也不跑
-     *     ——否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份零分根本不会落库。</li>
+     *     所以服务器的 teamsData 会被并回去（服务器没有时连 payload 那份 0 分一起删掉）、
+     *     得分守门也不跑——否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份
+     *     零分本来就不该落库。两道守门都只在服务器已有逐棒记录时存在（见下面 early return）。</li>
      * </ol>
      * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
      * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
@@ -283,7 +284,8 @@ public class GameService {
      * 本轮不动它：宁可锁死也不放行证据覆盖，真正的出路是显式 allowShrink 或改按
      * 「是否丢弃判定层仍在引用的 sourceEventId」判定，那个取舍归 #713 拍板。
      *
-     * @param lineupWriter 该 payload 来自阵容板（只主张名单，不主张比分与证据）
+     * @param lineupWriter 该保存来自阵容板端点（只主张名单）。豁免还要 payload 不自带
+     *                     playEvents 才生效：自带证据的请求照旧要过得分交叉验证
      */
     private String mergeAndGuardSnapshot(Game game, String json, boolean lineupWriter) {
         String existingJson = this.gameSnapshotRepository
@@ -291,19 +293,24 @@ public class GameService {
         int existingEvents = snapshotPlayEventCount(existingJson);
         if (existingEvents <= 0) {
             // 服务器还没有任何逐棒记录（刚建场或纯结果录入）：没有证据可保护，payload 原样落库。
-            // 「没提到的段落保持原样」只对已有记录的场次有意义。
+            // 也就是说下面「没提到的段落保持原样」「阵容板不主张比分」都只对已有记录的场次
+            // 生效；那种场次落库的就是 payload 自己那一份（含开局默认 0 分，与 base 一致）。
             return json;
         }
-        String effective = preserveUnmentionedSections(
-                json, existingJson, existingEvents, lineupWriter);
+        // 豁免只看 payload 形状，不看调用方是谁：阵容板两个真实写入者（buildLineupDraft 草稿、
+        // startEntry 的 bootstrap）都只主张名单，最多附带一份开局默认 0 分，绝不带 playEvents。
+        // 「自带一套 playEvents」的请求不是阵容板的形态，即使从阵容板端点进来也要照旧过
+        // 得分交叉验证——否则等于给「等量替换逐棒证据」开一条不比分数的旁路。
+        JsonNode incoming = snapshotReadTree(json);
+        boolean parseable = incoming != null && incoming.isObject();
+        boolean lineupOnly = lineupWriter && parseable && !incoming.has("playEvents");
+        String effective = preserveUnmentionedSections(json, existingJson, existingEvents, lineupOnly);
         // 两道比对都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
         // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
         // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
         // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
         // 就是 261 的空壳形态，两道守门照旧都要跑（阵容板也不例外）。
-        JsonNode incoming = snapshotReadTree(json);
-        boolean parseable = incoming != null && incoming.isObject();
-        boolean mentionsScore = !parseable || (!lineupWriter && incoming.has("teamsData"));
+        boolean mentionsScore = !parseable || (!lineupOnly && incoming.has("teamsData"));
         boolean mentionsEvidence = !parseable || incoming.has("playEvents");
         if (mentionsScore) {
             int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
@@ -335,11 +342,13 @@ public class GameService {
      * 的证书，一丢云端恢复就把本地逐棒记录当成不可信（{@code earnedRunPlayEventsTrusted=false}），
      * 半局定案的那个兜底从此 no-op——等于从阵容板保存一次，就把 #712 的缺口扩大到本地记录本来
      * 完整的场次。
-     * <p>{@code lineupWriter} 还要多留一样：阵容板那份 teamsData 永远是开局默认 0（startEntry 的
-     * bootstrap），不是「这场打成 0 分」的陈述，所以它即便提了也按没提处理。
+     * <p>{@code lineupOnly}（payload 确实是阵容板形态：不自带 playEvents）还要处理 teamsData：
+     * 阵容板那份永远是开局默认 0（startEntry 的 bootstrap），不是「这场打成 0 分」的陈述。
+     * 服务器有现值就并回来；没有就连 payload 那份 0 分一起删掉——留着它等于把谁都没写过的
+     * 0 分落库，而云端恢复只在 teamsData 存在时才覆盖比分，那份假 0 会一路跟到现场页。
      */
     private static String preserveUnmentionedSections(String json, String existingJson,
-            int existingEvents, boolean lineupWriter) {
+            int existingEvents, boolean lineupOnly) {
         JsonNode incoming = snapshotReadTree(json);
         JsonNode existing = snapshotReadTree(existingJson);
         // 解不开（非法 JSON、不是物件）时不改 payload：交给下面两道比对处理，旧行为不抛 NPE 的理由就在这里。
@@ -347,16 +356,26 @@ public class GameService {
             return json;
         }
         ObjectNode target = (ObjectNode) incoming;
+        // 要在合并之前问：循环会把 playEvents 先并进 target，之后再查 target.has("playEvents")
+        // 会永远为真，「换了证据就不继承旧证书」那条判断就此失真（实测：两例测试红了）。
+        boolean payloadBringsOwnEvidence = target.has("playEvents");
         boolean merged = false;
         for (String key : new String[] {"playEvents", "teamsData", "playEventsComplete"}) {
             JsonNode kept = existing.get(key);
-            boolean mentioned = target.has(key) && !(lineupWriter && "teamsData".equals(key));
+            boolean mentioned = target.has(key) && !(lineupOnly && "teamsData".equals(key));
+            // 证书跟着证据走：payload 自己换了一整套 playEvents 时，不该把服务器替旧证据
+            // 开的那纸证书并过来（那等于给一份没被任何客户端认证过的证据盖上可信章）。
+            boolean pairsWithEvidence = "playEventsComplete".equals(key) && payloadBringsOwnEvidence;
             // 只略过「没内容」的容器（playEvents:[]、teamsData:{}）：本项目用的 Jackson 2.21 里
             // 纯量节点的 isEmpty()/size() 恒为 true/0，直接写 kept.isEmpty() 会把
             // playEventsComplete:false 当成「没资料」而永远并不回去（实测：测试红了才发现）。
             boolean nothingToKeep = kept == null || kept.isNull()
                     || (kept.isContainerNode() && kept.isEmpty());
-            if (mentioned || nothingToKeep) {
+            if (mentioned || pairsWithEvidence || nothingToKeep) {
+                if (lineupOnly && "teamsData".equals(key) && !mentioned && target.has(key)) {
+                    target.remove(key);
+                    merged = true;
+                }
                 continue;
             }
             target.set(key, kept.deepCopy());
