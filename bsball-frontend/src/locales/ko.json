@@ -2165,5 +2165,15 @@
   "team": {
     "textLogoAlt": "{name} 텍스트 로고",
     "logoInitialFallback": "볼"
+  },
+  "gameResultFielding": {
+    "positions": "포지션별",
+    "addPosition": "수비 위치 추가",
+    "removePosition": "수비 위치 삭제",
+    "autoTotal": "자동 합계",
+    "positionsCount": "{n}개 포지션",
+    "autoTotalHint": "선수 합계는 포지션별 기록에서 자동 합산됩니다. PB/CS/SB는 포수 포지션에만 적용됩니다.",
+    "finalOnly": "경기 종료 후 포지션별 수비를 편집할 수 있습니다",
+    "noPositions": "포지션별 내역이 없습니다"
   }
 }

@@ -3340,5 +3340,15 @@
       "playerFallback": "队员",
       "currentEvent": "当前赛事"
     }
+  },
+  "gameResultFielding": {
+    "positions": "逐位置",
+    "addPosition": "添加守位",
+    "removePosition": "删除守位",
+    "autoTotal": "自动合计",
+    "positionsCount": "{n} 个守位",
+    "autoTotalHint": "球员合计由逐位置自动汇总；PB/CS/SB 只对捕手守位生效。",
+    "finalOnly": "比赛结束后才能编辑逐位置守备",
+    "noPositions": "尚无逐位置明细"
   }
 }
