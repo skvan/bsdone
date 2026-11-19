@@ -21,7 +21,7 @@ public class SaveGameResultDTO {
     private List<StatPart> stats;
     /** 本次保存要显式删除的既有统计行 id；payload 中未出现的行不再自动删除。 */
     private List<Long> removedStatIds;
-    /** 结果页逐位置守备：按球员整体替换；rows 为空表示清空该球员全部守位。 */
+    /** 结果页逐位置守备：按球员整体替换；rows=[] 表示清空该球员全部守位，null 视为缺少逐位置行（400）。 */
     private List<FieldingPlayerPart> fieldingPlayerParts;
 
     @Generated
@@ -822,7 +822,7 @@ public class SaveGameResultDTO {
         }
     }
 
-    /** 逐位置守备的球员级整体替换单元：rows 为空表示清空该球员全部守位。 */
+    /** 逐位置守备的球员级整体替换单元：rows=[] 表示清空该球员全部守位，null 视为缺少逐位置行（400）。 */
     public static class FieldingPlayerPart {
         private Long teamId;
         private Long playerId;

@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,6 +39,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -209,7 +214,7 @@ class GameServiceSaveResultFieldingPartsTest {
     }
 
     @Test
-    @DisplayName("调用顺序：stats 差额回写先跑，逐位置整体替换最后落定")
+    @DisplayName("逐位置提交优先：已被替换的球员不再被 stats 差额回写")
     void saveResult_replacementRunsAfterStatsSync() {
         GameFieldingPosStat old = positionRow("SS", 9, 0, 0, 0, false);
         old.setId(9001L);
@@ -228,10 +233,11 @@ class GameServiceSaveResultFieldingPartsTest {
         gameService.saveResult(GAME_ID, dto);
 
         ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
-        verify(gameFieldingPosStatRepository, times(2)).saveAll(captor.capture());
-        List<GameFieldingPosStat> lastSaved = captor.getAllValues().get(1);
+        verify(gameFieldingPosStatRepository, times(1)).saveAll(captor.capture());
+        List<GameFieldingPosStat> lastSaved = captor.getAllValues().get(0);
         assertEquals(1, lastSaved.size());
         assertEquals(Integer.valueOf(2), lastSaved.get(0).getPo());
+        assertEquals(Integer.valueOf(0), old.getPo(), "旧行不再被 stats 差额改写");
         GamePlayerStat stat = gamePlayerStatRepository.findByGameId(GAME_ID).get(0);
         assertEquals(Integer.valueOf(2), stat.getPo());
     }
@@ -352,6 +358,100 @@ class GameServiceSaveResultFieldingPartsTest {
         assertTrue(error.getMessage().contains("接杀数无效"));
         verify(gameFieldingPosStatRepository, never())
                 .deleteByGameIdAndTeamIdAndPlayerId(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("逐位置替换写台账：删除/新增/修改字段均记录")
+    void saveResult_recordsFieldingPositionLedger() {
+        GameFieldingPosStat old = positionRow("SS", 12, 0, 0, 2, true);
+        old.setId(9001L);
+        stubExistingRows(List.of(old), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("SS", 12, 1, 0, 1)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("UPDATE_FIELD"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("po"), eq("PO"), eq("0"), eq("1"), eq("ACTIVE"), isNull(), eq(USER_ID));
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("UPDATE_FIELD"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("e"), eq("E"), eq("2"), eq("1"), eq("ACTIVE"), isNull(), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("逐位置替换写台账：新增守位记 ADD_ROW，移除守位记 DELETE_ROW")
+    void saveResult_recordsAddedAndDeletedPositionRows() {
+        GameFieldingPosStat old = positionRow("SS", 12, 1, 0, 0, true);
+        old.setId(9001L);
+        stubExistingRows(List.of(old), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("P", 3, 0, 0, 0)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("ADD_ROW"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("position"), eq("守位"), eq(""), eq("P"), eq("ACTIVE"), isNull(), eq(USER_ID));
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("DELETE_ROW"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("position"), eq("守位"), eq("SS"), eq(""), eq("ACTIVE"), isNull(), eq(USER_ID));
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("DELETE_ROW"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("po"), eq("PO"), eq("1"), eq(""), eq("ACTIVE"), isNull(), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("逐位置替换：删除后先 flush 再插入，合计重算写入 PLAYER_STAT 台账")
+    void saveResult_recomputeRecordsPlayerStatLedgerAfterFlush() {
+        GameFieldingPosStat old = positionRow("SS", 12, 0, 0, 0, false);
+        old.setId(9001L);
+        stubExistingRows(List.of(old), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("SS", 12, 2, 1, 1)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        InOrder inOrder = inOrder(gameFieldingPosStatRepository);
+        inOrder.verify(gameFieldingPosStatRepository)
+                .deleteByGameIdAndTeamIdAndPlayerId(GAME_ID, TEAM_ID, PLAYER_ID);
+        inOrder.verify(gameFieldingPosStatRepository).flush();
+        inOrder.verify(gameFieldingPosStatRepository).saveAll(any());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameRevisionAuditService.StatChange>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(revisionAuditService, atLeastOnce())
+                .recordStatChanges(eq(game), captor.capture(), eq(USER_ID));
+        List<GameRevisionAuditService.StatChange> changes = captor.getAllValues().stream()
+                .flatMap(List::stream)
+                .toList();
+        assertTrue(changes.stream().anyMatch(change ->
+                "po".equals(change.fieldKey())
+                        && change.beforeValue() == 0d
+                        && change.afterValue() == 2d), "PO 0→2 应入账");
+        assertTrue(changes.stream().anyMatch(change ->
+                "defInn".equals(change.fieldKey())
+                        && change.beforeValue() == 0d
+                        && change.afterValue() == 4d), "守备局数 0→4 应入账");
+    }
+
+    @Test
+    @DisplayName("逐位置保存不重放守备补记 A")
+    void saveResult_doesNotReplayFieldingAdjustments() {
+        stubExistingRows(List.of(), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("SS", 12, 1, 0, 0)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        verify(fieldingAdjustmentService, never()).reapplyPositionStats(any());
+        verify(fieldingAdjustmentService, never()).reapplyPlayerStats(any(), any());
     }
 
     private void stubExistingRows(
