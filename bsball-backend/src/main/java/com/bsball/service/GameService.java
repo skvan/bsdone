@@ -267,8 +267,12 @@ public class GameService {
      * 服务器现有快照并回来，再跑上面的比对。少了这一步，阵容板那种只含名单的 payload 要么被
      * 409 顶回（打过比分的场次不能从阵容板保存），要么放行后把逐棒记录擦掉（game 261）——
      * 两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
-     * 反过来比对也必须拿原 payload 而并非并好的正文：并回来的段落是服务器自己的现值，
+     * 反过来比对也必须拿原 payload，而不是并完之后的正文：并回来的段落是服务器自己的现值，
      * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
+     * <p>已知限制（#713）：「条数只增不减」跟撤销/重做正面冲突（历史条目本来就把
+     * playEvents 换回更短的一份），而且前端 pushLiveSnapshot 会把 409 重试后吞掉。
+     * 本轮不动它：宁可锁死也不放行证据覆盖，真正的出路是显式 allowShrink 或改按
+     * 「是否丢弃判定层仍在引用的 sourceEventId」判定，那个取舍归 #713 拍板。
      */
     private String mergeAndGuardSnapshot(Game game, String json) {
         String existingJson = this.gameSnapshotRepository

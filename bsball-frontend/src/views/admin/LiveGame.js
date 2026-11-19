@@ -8447,6 +8447,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       // 都是预览、不落库，所以收尾必须在这里补一次定案推送，写法照抄保存链（flush 补不到台账
       // 就绝对重建当前半局）。少了它，这半局在库里零判定而记分栏已有分，之后每个半局的定案
       // 推送都会因为「重建数 < 官方总分」被永久顶回 409。必须在 Qa(!0) 翻局之前呼叫。
+      // 重进场次（本地逐棒记录不完整，engineManaged）时 resync 依旧 return null，这半局仍不定案：#712。
       flushPendingRunsToPlayEvent()||resyncEarnedRunHalfInningForSave(),clearRunLedger(),Qa(!0),J(lgText("liveGame.forceHalf.done"),"info"),await autoSaveHalfInning()
     }
     function Qa(e){

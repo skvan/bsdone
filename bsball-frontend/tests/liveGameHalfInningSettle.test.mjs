@@ -18,7 +18,10 @@ function codeOnly(source) {
   return source.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n');
 }
 
-test('每个翻局入口都先定案：Qa(!0) 之前必须有 Qr() 或保存链兜底', () => {
+test('翻局入口在文字上都带定案兜底（重进场次是否真推见 #712）', () => {
+  // 本用例只证明「两个翻局入口都接了兜底表达式」，证明不了兜底一定开火：
+  // resyncEarnedRunHalfInningForSave() 在本地 playEvents 不可信（engineManaged 场次重进）时
+  // 直接 return null，那个缺口由 #712 跟踪，不要把它当成已修。
   const body = codeOnly(liveGame);
   const sites = [...body.matchAll(/Qa\(!0\)/g)];
   assert.equal(sites.length, 2, '翻局入口应只有「第三出局」与「强制换局」两处');
