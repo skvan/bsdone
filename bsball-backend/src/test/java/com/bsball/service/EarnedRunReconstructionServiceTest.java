@@ -849,6 +849,39 @@ class EarnedRunReconstructionServiceTest {
                 "判定 2 笔 < 总分 4 且逐局加总平，全场级那两条本就该闭嘴：" + violations);
     }
 
+    @Test
+    @DisplayName("§11.10 差额里有人工作废：成因指向作废，不得说成事件缺笔")
+    void validateSettlement_blamesVoidedDecisionNotMissingEvidence() {
+        // 同一个半局里「重建跑过、判定也推上来过、只是被人抹了」与「事件根本没入库」是两种
+        // 完全不同的故障。守门分母已经为这个区别改成含作废（countDecisionsForCoverage），
+        // 稽核的成因文案要是还写「没跑完或被覆盖」，就与它正面矛盾、把复盘的人带偏。
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L),
+                scoredDecision(3L, 902L, 57L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 2, "bottom"),
+                playOfHalf(902L, 2, "bottom")));
+        ErDecisionAdjustment voided = adjustment(87L, "VOID", null);
+        voided.setSourceEventId("901");
+        voided.setRunnerId(56L);
+        when(erDecisionAdjustmentRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "ACTIVE"))
+                .thenReturn(List.of(voided));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(1, 3, "[1]", "[0,3]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+        List<String> half110 = violations.stream()
+                .filter(v -> v.contains("§11.10") && v.contains("第 2 局下"))
+                .collect(java.util.stream.Collectors.toList());
+
+        assertEquals(1, half110.size(), "2局下判定 1 对记分 3，应且只应点一次名：" + violations);
+        assertTrue(half110.get(0).contains("差额 -2") && half110.get(0).contains("作废"),
+                "有作废笔数的缺口要说作废：" + half110.get(0));
+        assertFalse(half110.get(0).contains("没跑完或事件被覆盖"),
+                "该半局的重建明明跑过，不能归成缺笔：" + half110.get(0));
+    }
+
     /** 带半局归属的逐棒事件列（§11.10 要靠它把判定归到正确的半局）。 */
     private EarnedRunPlayEntity playOfHalf(Long id, int inning, String half) {
         EarnedRunPlayEntity play = new EarnedRunPlayEntity();

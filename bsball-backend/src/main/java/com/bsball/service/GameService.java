@@ -214,7 +214,7 @@ public class GameService {
             return;
         }
         this.assertGameWritable(g);
-        String effective = mergeAndGuardSnapshot(g, json);
+        String effective = mergeAndGuardSnapshot(g, json, false);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("快照更新未命中比赛 id={}", gameId);
@@ -236,7 +236,7 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
-        String effective = this.mergeAndGuardSnapshot(g, json);
+        String effective = this.mergeAndGuardSnapshot(g, json, true);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("阵容快照更新未命中比赛 id={}", gameId);
@@ -252,9 +252,18 @@ public class GameService {
      * 现场快照覆盖守门（线上实测 game 261/260）：已出比分的场次被后续存档盖成空壳后，
      * playEvents 逐棒证据就永久消失，ER 判定与投手 R/ER 再也无法复核（261 的快照在赛后
      * 第七天被盖成「只剩 2 条、比分 0」，导致 3局下那一分无法追溯）。
-     * 两个写入者都走本入口，但处理方式不同：现场页自动存档会带着全套 playEvents（本地状态
-     * 归零时推来一份更短的）——那种归覆盖守门拦；阵容板只送名单、连 playEvents 都没提到
-     * ——那种走下面的合并保留，既不拦下保存也不丢证据。
+     * base（bdcf518f）上两个快照入口都是裸盖写，守门与合并都是本分支新增的。
+     * <p>三个写入现场都走本入口，形态与处理方式不同：
+     * <ol>
+     * <li>现场页高频自动存档（{@link #saveLiveSnapshot}）：带全套 playEvents 与 teamsData，
+     *     本地状态归零时会推来一份更短的——那种归「条数/得分不得倒退」拦。</li>
+     * <li>阵容板草稿（{@code buildLineupDraft}）：只有名单，连 playEvents 都没提到——
+     *     那种走下面的合并保留，既不拦下保存也不丢证据。</li>
+     * <li>阵容板进入录入（{@code startEntry} 与旧板的 bootstrap）：提到一份开局默认值的
+     *     teamsData（双方 0 分、1 局 0 出局）但不提 playEvents。阵容板从不主张比分，
+     *     所以它走 {@code lineupWriter}：服务器的 teamsData 会被并回去，得分守门也不跑
+     *     ——否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份零分根本不会落库。</li>
+     * </ol>
      * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
      * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
      * <p>旧快照正文走 {@code GameSnapshotRepository}：Issue #686 后 {@code Game} 实体不再映射
@@ -263,33 +272,38 @@ public class GameService {
      * 该字段，守门会被静默绕过而全绿（假验证）；而本入口同一次呼叫已经带着同尺寸的 incoming
      * json 在内存里，多一次主键读取不是新的量级。
      *
-     * <p>返回值是「真正该落库的那一份」：payload 根本没提到的键（playEvents/teamsData）先从
-     * 服务器现有快照并回来，再跑上面的比对。少了这一步，阵容板那种只含名单的 payload 要么被
-     * 409 顶回（打过比分的场次不能从阵容板保存），要么放行后把逐棒记录擦掉（game 261）——
-     * 两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
+     * <p>返回值是「真正该落库的那一份」：payload 根本没提到的键（playEvents/teamsData/
+     * playEventsComplete）先从服务器现有快照并回来，再跑上面的比对。少了这一步，阵容板那种
+     * 只含名单的 payload 要么被 409 顶回（打过比分的场次不能从阵容板保存），要么放行后把
+     * 逐棒记录擦掉（game 261）——两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
      * 反过来比对也必须拿原 payload，而不是并完之后的正文：并回来的段落是服务器自己的现值，
      * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
      * <p>已知限制（#713）：「条数只增不减」跟撤销/重做正面冲突（历史条目本来就把
      * playEvents 换回更短的一份），而且前端 pushLiveSnapshot 会把 409 重试后吞掉。
      * 本轮不动它：宁可锁死也不放行证据覆盖，真正的出路是显式 allowShrink 或改按
      * 「是否丢弃判定层仍在引用的 sourceEventId」判定，那个取舍归 #713 拍板。
+     *
+     * @param lineupWriter 该 payload 来自阵容板（只主张名单，不主张比分与证据）
      */
-    private String mergeAndGuardSnapshot(Game game, String json) {
+    private String mergeAndGuardSnapshot(Game game, String json, boolean lineupWriter) {
         String existingJson = this.gameSnapshotRepository
                 .findSnapshotJsonById(game.getId()).orElse(null);
         int existingEvents = snapshotPlayEventCount(existingJson);
         if (existingEvents <= 0) {
+            // 服务器还没有任何逐棒记录（刚建场或纯结果录入）：没有证据可保护，payload 原样落库。
+            // 「没提到的段落保持原样」只对已有记录的场次有意义。
             return json;
         }
-        String effective = preserveUnmentionedSections(json, existingJson, existingEvents);
+        String effective = preserveUnmentionedSections(
+                json, existingJson, existingEvents, lineupWriter);
         // 两道比对都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
         // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
         // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
         // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
-        // 就是 261 的空壳形态，两道守门照旧都要跑。
+        // 就是 261 的空壳形态，两道守门照旧都要跑（阵容板也不例外）。
         JsonNode incoming = snapshotReadTree(json);
         boolean parseable = incoming != null && incoming.isObject();
-        boolean mentionsScore = !parseable || incoming.has("teamsData");
+        boolean mentionsScore = !parseable || (!lineupWriter && incoming.has("teamsData"));
         boolean mentionsEvidence = !parseable || incoming.has("playEvents");
         if (mentionsScore) {
             int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
@@ -297,7 +311,8 @@ public class GameService {
             Integer incomingRuns = snapshotRunTotal(json);
             if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
                 throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
-                        + (incomingRuns == null ? "读不出（只含名单）" : "只到 " + incomingRuns + " 分")
+                        + (incomingRuns == null ? "读不出有效比分（payload 不可解析或不含 teamsData）"
+                                : "只到 " + incomingRuns + " 分")
                         + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
                         + "若确需从头重录，请先清空比分或另开新场");
             }
@@ -313,11 +328,18 @@ public class GameService {
     /**
      * payload 里根本没出现的键，不该被理解成「把它清空」。阵容板（buildLineupDraft）送出的 json
      * 只有名单，既没 playEvents 也没 teamsData；把这种 payload 当空壳直接顶回，等于任何已经打出
-     * 比分的场次都不能从阵容板保存。这里把服务器现有那两段并进来，让阵容板只改它看得见的东西。
+     * 比分的场次都不能从阵容板保存。这里把服务器现有那几段并进来，让阵容板只改它看得见的东西。
      * 真正自带一套的 payload（哪怕只有 2 条、得分 0）绝不合并——game 261 就是被那种完整但残缺的
      * payload 盖掉的，那条路归上面「条数/得分不得倒退」管。
+     * <p>{@code playEventsComplete} 必须跟着 playEvents 一起留：它是「这份 playEvents 值不值得信」
+     * 的证书，一丢云端恢复就把本地逐棒记录当成不可信（{@code earnedRunPlayEventsTrusted=false}），
+     * 半局定案的那个兜底从此 no-op——等于从阵容板保存一次，就把 #712 的缺口扩大到本地记录本来
+     * 完整的场次。
+     * <p>{@code lineupWriter} 还要多留一样：阵容板那份 teamsData 永远是开局默认 0（startEntry 的
+     * bootstrap），不是「这场打成 0 分」的陈述，所以它即便提了也按没提处理。
      */
-    private static String preserveUnmentionedSections(String json, String existingJson, int existingEvents) {
+    private static String preserveUnmentionedSections(String json, String existingJson,
+            int existingEvents, boolean lineupWriter) {
         JsonNode incoming = snapshotReadTree(json);
         JsonNode existing = snapshotReadTree(existingJson);
         // 解不开（非法 JSON、不是物件）时不改 payload：交给下面两道比对处理，旧行为不抛 NPE 的理由就在这里。
@@ -326,9 +348,15 @@ public class GameService {
         }
         ObjectNode target = (ObjectNode) incoming;
         boolean merged = false;
-        for (String key : new String[] {"playEvents", "teamsData"}) {
+        for (String key : new String[] {"playEvents", "teamsData", "playEventsComplete"}) {
             JsonNode kept = existing.get(key);
-            if (target.has(key) || kept == null || kept.isEmpty()) {
+            boolean mentioned = target.has(key) && !(lineupWriter && "teamsData".equals(key));
+            // 只略过「没内容」的容器（playEvents:[]、teamsData:{}）：本项目用的 Jackson 2.21 里
+            // 纯量节点的 isEmpty()/size() 恒为 true/0，直接写 kept.isEmpty() 会把
+            // playEventsComplete:false 当成「没资料」而永远并不回去（实测：测试红了才发现）。
+            boolean nothingToKeep = kept == null || kept.isNull()
+                    || (kept.isContainerNode() && kept.isEmpty());
+            if (mentioned || nothingToKeep) {
                 continue;
             }
             target.set(key, kept.deepCopy());
@@ -337,8 +365,8 @@ public class GameService {
         if (!merged) {
             return json;
         }
-        log.info("快照 payload 未提到 playEvents/teamsData，已保留服务器现有值（现有 {} 条逐棒记录）",
-                existingEvents);
+        log.info("快照 payload 未提到 playEvents/teamsData/playEventsComplete，"
+                + "已保留服务器现有值（现有 {} 条逐棒记录）", existingEvents);
         try {
             return MAPPER.writeValueAsString(target);
         }

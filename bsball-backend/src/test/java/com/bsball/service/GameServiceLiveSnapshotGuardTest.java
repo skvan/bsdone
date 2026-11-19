@@ -22,6 +22,7 @@ import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -228,10 +229,96 @@ class GameServiceLiveSnapshotGuardTest {
                 "playEvents 从 24 条掉到 0 条仍须拒绝（与记分无关）：" + ex.getMessage());
     }
 
+    @Test
+    @DisplayName("证书 playEventsComplete 跟着证据一起留：阵容板保存不该把可信度降级")
+    void saveLiveSnapshot_keepsPlayEventsCompleteCertificate() {
+        // playEventsComplete 是「这份 playEvents 值不值得信」的证书：现场页存快照时写进去，
+        // 云端恢复时按 ===true 决定 earnedRunPlayEventsTrusted。它一丢，恢复出来的场次会把
+        // 本地完整的逐棒记录当成不可信，半局定案的兜底从此 no-op——等于阵容板保存一次
+        // 就把 #712 的缺口扩大到本来没这个毛病的场次。
+        givenExistingSnapshot("{\"playEventsComplete\":true,\"playEvents\":["
+                + repeatedEvents(24, 24) + "],\"teamsData\":{\"home\":{\"score\":6},\"away\":{\"score\":18}}}");
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertTrue(readJson(written.getValue()).path("playEventsComplete").asBoolean(false),
+                "payload 没提到的证书不能因为没提到就被抹掉：" + written.getValue());
+
+        // 反过来也一样：payload 明确说不可信时以它为准，不能拿服务器的 true 去洗
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEventsComplete\":false}");
+        ArgumentCaptor<String> downgraded = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository, Mockito.times(2)).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), downgraded.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode last = readJson(downgraded.getAllValues().get(1));
+        assertTrue(last.path("playEventsComplete").isBoolean()
+                        && !last.path("playEventsComplete").asBoolean(),
+                "显式提交的 false 不该被服务器现值盖掉：" + last);
+        assertEquals(24, last.path("playEvents").size(), "同时证据照旧要留：" + last);
+    }
+
+    @Test
+    @DisplayName("阵容板 startEntry 的开局草稿（teamsData 全 0）：放行，比分用服务器现值")
+    void saveLineupSnapshot_bootstrapZeroScoreKeepsServerScoreAndEvidence() {
+        // 阵容板进入录入时会推一份 bootstrap：gameState 停在 1 局 0 出局、双方比分全 0，
+        // 但不带 playEvents。它对比分的「主张」其实是开局默认值：拿它跑得分守门会把
+        // 「已记分场次从阵容板进入录入」顶回 409（base 上根本没守门，那是本分支新拦的路），
+        // 不管它又会让零分真的盖掉记分——正解是两份都不采纳，落库仍用服务器的比分与证据。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        String bootstrap = "{\"gameStarted\":true,\"gameState\":{\"inning\":1,\"outs\":0},"
+                + "\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":0}}}";
+
+        gameService.saveLineupSnapshot(Long.valueOf(GAME_ID), bootstrap);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode saved = readJson(written.getValue());
+        assertEquals(24, saved.path("playEvents").size(), "证据不能丢：" + saved);
+        assertEquals(18, saved.path("teamsData").path("away").path("score").asInt(),
+                "记分栏不能被零分盖掉：" + saved);
+        assertTrue(saved.has("gameState"), "阵容板自己写的字段要留住：" + saved);
+    }
+
+    @Test
+    @DisplayName("payload 只带 playEvents 不带 teamsData：不按猜测拦得分，条数一道照旧")
+    void saveLiveSnapshot_payloadWithoutScoreSkipsScoreGuardOnly() {
+        // 把「没提比分」当成「主张 0 分」会误伤；但「没提比分」绝不等于「可以少事件」。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        String evidenceOnly = "{\"playEvents\":[" + repeatedEvents(25, 0) + "]}";
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), evidenceOnly);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode saved = readJson(written.getValue());
+        assertEquals(25, saved.path("playEvents").size(), "本次带的事件以本次为准：" + saved);
+        assertEquals(18, saved.path("teamsData").path("away").path("score").asInt(),
+                "没提的比分保持服务器现值：" + saved);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> gameService.saveLiveSnapshot(
+                Long.valueOf(GAME_ID), "{\"playEvents\":[" + repeatedEvents(3, 0) + "]}"));
+        assertEquals(409, ex.getCode(),
+                "同一形状但事件变短，仍要被条数守门拦住：" + ex.getMessage());
+    }
+
     /** 服务器现有快照正文：#686 后只能从 GameSnapshotRepository 读，不能再塞给 Game 实体。 */
     private void givenExistingSnapshot(String existingJson) {
         when(gameSnapshotRepository.findSnapshotJsonById(Long.valueOf(GAME_ID)))
                 .thenReturn(Optional.of(existingJson));
+    }
+
+    /** 落库正文解成树：要断言的是「哪个键带着什么值落库」，不是子串。 */
+    private static JsonNode readJson(String json) {
+        try {
+            return new ObjectMapper().readTree(json);
+        }
+        catch (Exception ex) {
+            throw new AssertionError("落库正文解不开：" + json, ex);
+        }
     }
 
     /** 落库正文里的 playEvents 条数：服务端的计数方法是 private，测试自己解析一份对照。 */

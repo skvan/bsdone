@@ -2336,6 +2336,10 @@ public class EarnedRunReconstructionService {
             String cause;
             if (counts[0] == 0 && counts[1] == 0) {
                 cause = "该半局判定层一笔都没有：逐棒事件从未入库（半局被强制结束，或局中预览没等到定案推送）";
+            } else if (counts[1] > 0 && counts[0] < recorded.intValue()) {
+                // 同一个半局里只要有人工作废过，差额就不能先当成缺笔：作废证明重建跑过、也推上来过，
+                // 改的是「这分怎么算」而不是「有没有发生」。叫复盘的人先去核作废，而不是去追事件覆盖。
+                cause = "差额里有被人工作废的判定：先确认作废成立与否，再判断是不是缺笔";
             } else if (counts[0] < recorded.intValue()) {
                 cause = "逐棒证据缺一笔（该半局的重建没跑完或事件被覆盖）";
             } else {
