@@ -51,14 +51,18 @@ export function sumFieldingPositionRows(rows) {
 }
 
 /**
- * 把逐位置合计就地写回球员级统计：计数据取合计，INN 由 outs 换算，GS 取任一行出场。
+ * 把逐位置合计就地写回球员级统计：计数据取合计，INN 由 outs 换算。
+ * GS 保持球员级口径：已有值（非 null/undefined）时保留，缺省才按 rows 推导
+ * （兼容 _fieldingOnly 等未带 GS 的新建对象）。
  */
 export function applyFieldingPositionTotals(stats, rows) {
   if (!stats) return;
   const sum = sumFieldingPositionRows(rows);
   for (const key of POSITION_CREDIT_KEYS) stats[key] = sum[key];
   stats.defInn = outsToInnings(sum.outs);
-  stats.fieldingGs = (rows ?? []).some((row) => isFieldingGs(row)) ? 1 : 0;
+  if (stats.fieldingGs === null || stats.fieldingGs === undefined) {
+    stats.fieldingGs = (rows ?? []).some((row) => isFieldingGs(row)) ? 1 : 0;
+  }
 }
 
 /**

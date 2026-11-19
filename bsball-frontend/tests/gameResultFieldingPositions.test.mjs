@@ -32,6 +32,28 @@ test('汇总与回写：合计 = 逐位置之和，INN 按出局换算', () => {
   assert.equal(stats.defInn, 4);
 });
 
+test('汇总不覆盖球员级 GS：已有值保留，缺省才按 rows 推导', () => {
+  // 球员手改 GS=1，逐位置行均无 GS：保持 1（GS 保持球员级口径）
+  const manual = { fieldingGs: 1 };
+  applyFieldingPositionTotals(manual, [{ position: '3B', outs: 9 }]);
+  assert.equal(manual.fieldingGs, 1);
+
+  // _fieldingOnly 等新建对象未带 GS：按 rows 推导
+  const derived = {};
+  applyFieldingPositionTotals(derived, [{ position: '3B', outs: 9, fieldingGs: true }]);
+  assert.equal(derived.fieldingGs, 1);
+
+  // 已有 0 也是有效值，不被 rows 覆盖
+  const zero = { fieldingGs: 0 };
+  applyFieldingPositionTotals(zero, [{ position: '3B', outs: 9, fieldingGs: true }]);
+  assert.equal(zero.fieldingGs, 0);
+
+  // 缺省且 rows 无 GS：0
+  const empty = {};
+  applyFieldingPositionTotals(empty, [{ position: '3B', outs: 9 }]);
+  assert.equal(empty.fieldingGs, 0);
+});
+
 test('保存 payload：只带 dirty 球员，空数组表示清空', () => {
   const byPlayer = { '1_21': [{ position: '3B', outs: 9, po: 1 }] };
   const parts = buildFieldingPlayerParts(['1_21', '2_9'], byPlayer);

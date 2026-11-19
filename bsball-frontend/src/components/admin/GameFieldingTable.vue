@@ -48,7 +48,12 @@
             :disabled="!editable"
             @update:model-value="(value) => changePosition(row, value)"
           >
-            <el-option v-for="option in positionOptionsFor(row._parentRow)" :key="option" :label="option" :value="option" />
+            <el-option
+              v-for="option in positionOptionsWithCurrent(row, positionOptionsFor(row._parentRow))"
+              :key="option"
+              :label="option"
+              :value="option"
+            />
           </el-select>
           <template v-else>{{ row._fieldPosition || row.position || '-' }}</template>
         </template>
@@ -73,7 +78,6 @@
               :controls="false"
               size="small"
               class="stat-input"
-              :disabled="hasPlayerPositions(row) && !editable"
               @update:model-value="(value) => setValue(row, 'fieldingGs', value)"
             />
           </template>
@@ -208,13 +212,24 @@ function toggle(row) {
   expandedKeys.value = next;
 }
 
+// 仅捕手守位计入的计数据；切换离开 C 时需清零，避免跨守位残留
+const CATCHER_ONLY_KEYS = ['pb', 'catcherSb', 'catcherCs'];
+
 function hasPlayerPositions(row) {
   return (props.positionRowsFor(row) ?? []).length > 0;
 }
 
 function positionFieldEnabled(row, key) {
-  if (['pb', 'catcherSb', 'catcherCs'].includes(key)) return row.position === 'C';
+  if (CATCHER_ONLY_KEYS.includes(key)) return row.position === 'C';
   return true;
+}
+
+// 当前守位会被 positionOptionsFor（排除已用守位）过滤掉，下拉里合并回当前项
+function positionOptionsWithCurrent(row, options) {
+  const list = [row.position, ...(options ?? [])]
+    .map((value) => String(value ?? '').trim().toUpperCase())
+    .filter(Boolean);
+  return [...new Set(list)];
 }
 
 function summaryMethod({ columns: tableColumns }) {
@@ -241,7 +256,15 @@ function setPositionValue(row, key, value) {
 
 function changePosition(row, value) {
   if (!row._source) return;
-  row._source.position = String(value || '').toUpperCase();
+  const position = String(value || '').toUpperCase();
+  row._source.position = position;
+  // 离开捕手位后清零 PB/SB/CS（源对象与展示副本同步），避免被汇总/保存
+  if (position !== 'C') {
+    for (const key of CATCHER_ONLY_KEYS) {
+      row._source[key] = 0;
+      row[key] = 0;
+    }
+  }
   emit('positions-changed', row._parentRow);
 }
 </script>
