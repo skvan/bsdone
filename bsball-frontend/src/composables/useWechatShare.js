@@ -3,6 +3,7 @@ import { initWechatShare, updateShareData } from '../utils/wechatJssdk.js';
 
 const PLATFORM_NAME = 'BSD棒垒球数据平台';
 const SHARE_ROUTE_NAME = 'PortalPlayerDetail';
+const CLUBHOUSE_SHARE_ROUTE_NAME = 'PortalClubhouseShare';
 
 function currentOrigin() {
   return typeof location !== 'undefined' && location.origin ? location.origin : '';
@@ -14,6 +15,21 @@ export function buildPlayerShareUrl(router, playerId, source, tenantCode) {
     name: SHARE_ROUTE_NAME,
     params: { tenantCode: String(tenantCode || ''), id: String(playerId) },
     query: { from: source }
+  }).href;
+  return currentOrigin() + href;
+}
+
+/** 公开个人主页分享链接：固定主页地址 + 分享时范围参数；href 已含部署 base */
+export function buildClubhouseShareUrl(router, playerId, source, tenantCode, scope = {}) {
+  const query = { from: source };
+  ['teamId', 'leagueId', 'eventId'].forEach((key) => {
+    if (scope[key]) query[key] = String(scope[key]);
+  });
+  if (scope.gameMode) query.gameMode = scope.gameMode;
+  const href = router.resolve({
+    name: CLUBHOUSE_SHARE_ROUTE_NAME,
+    params: { tenantCode: String(tenantCode || ''), id: String(playerId) },
+    query
   }).href;
   return currentOrigin() + href;
 }
@@ -51,6 +67,20 @@ export function buildPlayerShareMeta(player, team, league, stats, options = {}) 
   const summary = buildStatSummary(stats);
   const title = summary ? `${player.name} | ${summary}` : player.name;
   const desc = [team && team.name, league && league.name, platformName].filter((x) => x).join(' · ');
+  const rawImg = typeof player.avatar === 'string' ? player.avatar.trim() : '';
+  const imgUrl = rawImg ? toAbsolute(resolveAsset(rawImg), origin) : origin + '/static/logo/logo2.png';
+  return { title, desc, imgUrl };
+}
+
+/** 个人主页分享元数据：标题=球员名+我的主场；desc=数据摘要/球队/联赛/平台；缩略图同球员分享 */
+export function buildClubhouseShareMeta(player, team, league, stats, options = {}) {
+  if (!player || !player.name) return null;
+  const origin = options.origin != null ? options.origin : currentOrigin();
+  const resolveAsset = options.resolveAsset || ((u) => u);
+  const platformName = options.platformName || PLATFORM_NAME;
+  const summary = buildStatSummary(stats);
+  const title = options.title || `${player.name} | 我的主场`;
+  const desc = [summary, team && team.name, league && league.name, platformName].filter((x) => x).join(' · ');
   const rawImg = typeof player.avatar === 'string' ? player.avatar.trim() : '';
   const imgUrl = rawImg ? toAbsolute(resolveAsset(rawImg), origin) : origin + '/static/logo/logo2.png';
   return { title, desc, imgUrl };

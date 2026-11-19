@@ -46,7 +46,7 @@
   - 球队 + 生涯/联盟/赛事：该球队在对应赛事集合内的合计；不使用赛事总合计代替。
   - 球队维度只统计球员在该队出场的比赛；各范围均只计入排行的比赛（`include_stats_in_ranking`）。
   - 零数据契约：球队维度查询返回完整字段（计数为 `0`、比率类为 `"0"`、投手 `goFo` 为 `"-"`）；全部球队 + 赛事无个人统计时返回三个空 Map，某领域无数据时该领域为空 Map。前端按 `gp` / `ab` / `pa` / `ip` 判断空态，不把 `0` / `0.000` 当成真实表现展示。
-- `config`：当前用户配置（version 4；`modules[]` 含 `x`/`y`/`width`/`height` 像素几何，默认见 PUT 示例）。
+- `config`：当前用户配置（version 4；`modules[]` 含 `x`/`y`/`width`/`height` 像素几何，默认见 PUT 示例；`share.enabled` 为公开主页开关，默认 `false`）。
 - `moduleCatalog[]`：模块白名单；含 `key`、`label`、`defaultWidth`、`defaultHeight`、`minWidth`、`minHeight`、`maxWidth`（1216）、`maxHeight`（1600），共 9 个模块。
 - `milestoneCatalog[]`：生涯里程碑指标白名单；含 `key`、`label`、`shortLabel`、`domain`、`unit`、`defaultSelected`、`thresholds[]`。
 - `catalog[]`：指标白名单；含 `key`、`label`、`domain`、`viz[]`、`rankable`、`available`。
@@ -151,6 +151,34 @@
 - 内野优先按 `bs_hit_spray.spray_zone` 判定（`P/C/1B/2B/3B/SS/IF` → `IF`），不参与外野扇带；越界角度贴边归入 `LL`/`RL`。
 - 安打结果码：`H1`、`H2`、`H3`、`HR`、`IPHR`。
 - 只统计比赛未删除、`include_stats_in_ranking = true`、赛事未删除且运动类型一致的记录。
+## 公开个人主页（免登录只读）
+
+公开主页按球员 ID 取数，不需要登录；球员未认领、请求租户与球员租户不一致、或主人关闭分享开关时统一返回 404（不区分原因，避免枚举）。响应中的模块数据按主人**当前启用模块**裁剪：`quickLinks` 始终不公开；未启用的 `ranks` / `evaluation` / `performance` / `schedule` / `recentGames` 不下发数据，`config` 中对应的指标选择也会移除。`config.modules` 仍保留完整九项（禁用项 `enabled=false`），以便公开页沿用主人布局。响应统一带 `Cache-Control: no-store`。
+
+### GET /api/player/{playerId}/clubhouse
+
+参数与 `/api/account/clubhouse` 一致（`teamId` / `leagueId` / `eventId` / `gameMode`），返回结构与登录态聚合接口同构。分享链接应携带主人分享时的范围参数；公开页按该范围锁定展示。
+
+### GET /api/player/{playerId}/clubhouse/milestones
+
+仅当主人启用 `milestones` 模块且分享开关开启时返回，结构同 `/api/account/clubhouse/milestones`；否则 404。
+
+### GET /api/player/{playerId}/clubhouse/sprays
+
+仅当主人启用 `spray` 模块且分享开关开启时返回，范围参数同聚合接口；结构同 `/api/account/clubhouse/sprays`；否则 404。
+
+## PUT /api/account/clubhouse/share
+
+只修改公开分享开关，避免与布局保存互相覆盖。请求体：
+
+```json
+{ "enabled": true }
+```
+
+- `enabled` 必须为布尔值，否则 400。
+- 返回规范化后的完整 `config`（含 `share.enabled`）。
+- 关闭后公开链接立即失效（公开接口下一次请求返回 404）。
+
 ## PUT /api/account/clubhouse/config
 
 保存模块顺序/开关、桌面像素坐标与尺寸、表现图与队内排名选择。
@@ -181,7 +209,8 @@
     { "metricKey": "batting.h" },
     { "metricKey": "batting.obp" },
     { "metricKey": "batting.rbi" }
-  ]
+  ],
+  "share": { "enabled": false }
 }
 ```
 
@@ -200,6 +229,7 @@
 - `performance.viz` 必须在指标的兼容列表内；安打构成只允许 `donut`，比率/计数指标允许 `kpi` / `line` / `bar`。
 - `ranks` 必须恰好 4 个、不可重复，且只能使用 `rankable=true` 的指标。
 - **队内排名不提供全垒打**；默认四格为打击率、安打、上垒率、打点。
+- `share` 可选；缺省时服务端回读旧配置保留现状（旧前端保存布局不会静默关闭公开分享）。`share.enabled` 非布尔返回 400。恢复默认配置同样保留分享开关。
 
 ### 旧配置兼容
 
@@ -213,8 +243,9 @@
 
 | 场景 | 返回 |
 |---|---|
-| 未登录/Token 无效 | 401 |
+| 未登录/Token 无效（登录态接口） | 401 |
 | 当前账号未关联球员档案 | 404 |
+| 公开主页未认领、跨租户或分享已关闭 | 404（统一文案，不区分原因） |
 | 指标、图表、排名数量或重复项非法 | 400 |
 | 未知或重复的模块 key、非布尔 enabled | 400 |
 | 模块坐标/尺寸越界、低于最小宽高、超过 1216×1600、负坐标或非整数 | 400 |

@@ -1,6 +1,7 @@
 package com.bsball.api;
 
 import com.bsball.common.Result;
+import com.bsball.exception.BusinessException;
 import com.bsball.exception.UnauthorizedException;
 import com.bsball.service.ClubhouseService;
 import com.bsball.service.JwtService;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET  /account/clubhouse/milestones：按需加载全租户生涯里程碑</li>
  *   <li>PUT  /account/clubhouse/config：保存模块顺序/开关/宽高、表现图与队内排名指标</li>
  *   <li>POST /account/clubhouse/config/reset：恢复默认配置</li>
+ *   <li>PUT  /account/clubhouse/share：单独开启/关闭公开主页分享</li>
  * </ul>
  */
 @RestController
@@ -74,6 +76,19 @@ public class ClubhouseApi {
             @RequestHeader(value = "Authorization", required = false) String auth) {
         Long userId = requireUserId(auth);
         return Result.ok(configService.reset(userId, clubhouseService.playerTenantId(userId)));
+    }
+
+    /** 只改公开分享开关，避免与布局保存互相覆盖。 */
+    @PutMapping(value = {"/share"})
+    public Result<Map<String, Object>> saveShare(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody(required = false) Map<String, Object> body) {
+        Long userId = requireUserId(auth);
+        Object raw = body == null ? null : body.get("enabled");
+        if (!(raw instanceof Boolean enabled)) {
+            throw new BusinessException(400, "分享开关必须为布尔值");
+        }
+        return Result.ok(configService.saveShare(userId, clubhouseService.playerTenantId(userId), enabled));
     }
 
     private Long requireUserId(String auth) {

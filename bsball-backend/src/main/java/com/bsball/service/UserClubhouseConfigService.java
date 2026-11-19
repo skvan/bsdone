@@ -49,14 +49,47 @@ public class UserClubhouseConfigService {
 
     @Transactional
     public Map<String, Object> save(Long userId, Long tenantId, Map<String, Object> body) {
-        Map<String, Object> normalized = normalize(body);
-        configRepository.upsert(userId, tenantId, write(normalized));
-        return normalized;
+        // 旧前端保存布局时不会带 share 字段：回读旧值兜底，避免编辑布局静默关闭分享
+        return save(userId, tenantId, body, isShareEnabled(userId, tenantId));
+    }
+
+    @Transactional
+    public Map<String, Object> saveShare(Long userId, Long tenantId, boolean enabled) {
+        Map<String, Object> body = new LinkedHashMap<>(getOrCreate(userId, tenantId));
+        body.put("share", Map.of("enabled", enabled));
+        return save(userId, tenantId, body, enabled);
     }
 
     @Transactional
     public Map<String, Object> reset(Long userId, Long tenantId) {
-        return save(userId, tenantId, ClubhouseMetricCatalog.defaultConfig());
+        Map<String, Object> body = new LinkedHashMap<>(ClubhouseMetricCatalog.defaultConfig());
+        body.put("share", Map.of("enabled", isShareEnabled(userId, tenantId)));
+        return save(userId, tenantId, body, false);
+    }
+
+    /** 单独读取分享开关；旧配置无 share 字段或解析失败一律视为关闭。 */
+    public boolean isShareEnabled(Long userId, Long tenantId) {
+        UserClubhouseConfig entity = configRepository
+                .findFirstByUserIdAndTenantIdAndDeletedAtIsNull(userId, tenantId)
+                .orElse(null);
+        if (entity == null || entity.getConfigJson() == null || entity.getConfigJson().isBlank()) {
+            return false;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = objectMapper.readValue(entity.getConfigJson(), Map.class);
+            Object share = raw.get("share");
+            return share instanceof Map<?, ?> map && Boolean.TRUE.equals(map.get("enabled"));
+        } catch (JsonProcessingException e) {
+            return false;
+        }
+    }
+
+    private Map<String, Object> save(Long userId, Long tenantId, Map<String, Object> body,
+            boolean shareFallbackEnabled) {
+        Map<String, Object> normalized = normalize(body, shareFallbackEnabled);
+        configRepository.upsert(userId, tenantId, write(normalized));
+        return normalized;
     }
 
     private Map<String, Object> parseOrDefault(String json) {
@@ -85,6 +118,10 @@ public class UserClubhouseConfigService {
      * <p>v1–v3 旧网格配置在内存中迁移为 v4 像素画布，GET 不会写库。</p>
      */
     Map<String, Object> normalize(Map<String, Object> body) {
+        return normalize(body, false);
+    }
+
+    Map<String, Object> normalize(Map<String, Object> body, boolean shareFallbackEnabled) {
         Map<String, Object> source = body == null ? Map.of() : body;
         Map<String, Object> performance = asMap(source.get("performance"));
         String metricKey = asText(performance.get("metricKey"));
@@ -100,6 +137,19 @@ public class UserClubhouseConfigService {
         List<Map<String, Object>> ranks = normalizeRanks(source.get("ranks"));
         List<Map<String, Object>> modules = normalizeModules(source.get("modules"), isBoardConfig(source));
         List<String> milestoneKeys = normalizeMilestones(source.get("milestones"));
+        boolean shareEnabled = shareFallbackEnabled;
+        Object rawShare = source.get("share");
+        if (rawShare != null) {
+            if (!(rawShare instanceof Map<?, ?> share)) {
+                throw new BusinessException(400, "分享配置格式不正确");
+            }
+            if (share.get("enabled") != null) {
+                if (!(share.get("enabled") instanceof Boolean enabled)) {
+                    throw new BusinessException(400, "分享开关必须为布尔值");
+                }
+                shareEnabled = enabled;
+            }
+        }
         LinkedHashMap<String, Object> config = new LinkedHashMap<>();
         config.put("version", CONFIG_VERSION);
         config.put("layout", CONFIG_LAYOUT);
@@ -112,6 +162,9 @@ public class UserClubhouseConfigService {
         outPerformance.put("viz", viz.trim());
         config.put("performance", outPerformance);
         config.put("ranks", ranks);
+        LinkedHashMap<String, Object> outShare = new LinkedHashMap<>();
+        outShare.put("enabled", shareEnabled);
+        config.put("share", outShare);
         return config;
     }
 
