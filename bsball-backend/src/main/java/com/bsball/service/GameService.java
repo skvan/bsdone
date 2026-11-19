@@ -64,6 +64,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -1453,6 +1455,9 @@ public class GameService {
                         existingById, keepIds);
             }
             this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
+            // Issue #701：结果页守备表显示的是逐位置合计，人工改写后必须同步回逐位置明细，
+            // 否则刷新再保存会用旧合计把球员级人工值回滚。
+            this.syncResultFieldingPositions(gameId, dto.getStats());
         }
         // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
         // 首次 final 保存写入基座快照；已有基座不覆盖。
@@ -1515,6 +1520,162 @@ public class GameService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
+    }
+
+    /**
+     * 把结果页保存的球员级守备合计差额回写到逐位置守备明细（Issue #701）。
+     *
+     * <p>结果页守备表以球员级汇总为编辑对象，逐位置明细继续作为盒子比分拆分与守备位置榜的数据源。
+     * 只在球员已有逐位置行时同步；同一球员多守位时，正差额落在出场局数最多的位置行，
+     * 负差额按出场局数从多到少扣减，保证合计一致且不出现负数。</p>
+     */
+    private void syncResultFieldingPositions(Long gameId, List<SaveGameResultDTO.StatPart> stats) {
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        List<GameFieldingPosStat> rows = this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(gameId);
+        if (rows.isEmpty()) {
+            return;
+        }
+        Map<String, List<GameFieldingPosStat>> rowsByPlayer = new LinkedHashMap<>();
+        for (GameFieldingPosStat row : rows) {
+            rowsByPlayer.computeIfAbsent(resultStatPlayerKey(row.getTeamId(), row.getPlayerId()),
+                    key -> new ArrayList<>()).add(row);
+        }
+        Map<String, SaveGameResultDTO.StatPart> partsByPlayer = new LinkedHashMap<>();
+        for (SaveGameResultDTO.StatPart part : stats) {
+            if (part == null || part.getTeamId() == null || part.getPlayerId() == null) {
+                continue;
+            }
+            String key = resultStatPlayerKey(part.getTeamId(), part.getPlayerId());
+            SaveGameResultDTO.StatPart previous = partsByPlayer.get(key);
+            // 二刀流的打者行聚合全部守备位置，优先于投手行。
+            if (previous == null || (isPitcherStatPart(previous) && !isPitcherStatPart(part))) {
+                partsByPlayer.put(key, part);
+            }
+        }
+        boolean changed = false;
+        for (Map.Entry<String, SaveGameResultDTO.StatPart> entry : partsByPlayer.entrySet()) {
+            List<GameFieldingPosStat> playerRows = rowsByPlayer.get(entry.getKey());
+            if (playerRows != null) {
+                changed |= applyFieldingDeltas(playerRows, entry.getValue());
+            }
+        }
+        if (changed) {
+            this.gameFieldingPosStatRepository.saveAll(rows);
+        }
+    }
+
+    private static String resultStatPlayerKey(Long teamId, Long playerId) {
+        return teamId + "_" + playerId;
+    }
+
+    /** 按差额把球员级守备合计分摊到逐位置行；返回是否有行发生变化。 */
+    private static boolean applyFieldingDeltas(
+            List<GameFieldingPosStat> rows, SaveGameResultDTO.StatPart part) {
+        // 正差额落在出场最多的位置行，故按 outs 排一次供各计数字段共用。
+        List<GameFieldingPosStat> ordered = orderedByOuts(rows);
+        // 捕逸/盗垒阻杀/被盗垒只属于捕手位置，避免分摊到出场更多的其他守位。
+        List<GameFieldingPosStat> catcherRows = rows.stream()
+                .filter(row -> "C".equalsIgnoreCase(row.getPosition()))
+                .toList();
+        boolean changed = false;
+        changed |= applyFieldingDelta(ordered, part.getPo(),
+                GameFieldingPosStat::getPo, GameFieldingPosStat::setPo);
+        changed |= applyFieldingDelta(ordered, part.getA(),
+                GameFieldingPosStat::getA, GameFieldingPosStat::setA);
+        changed |= applyFieldingDelta(ordered, part.getE(),
+                GameFieldingPosStat::getE, GameFieldingPosStat::setE);
+        changed |= applyFieldingDelta(ordered, part.getDp(),
+                GameFieldingPosStat::getDp, GameFieldingPosStat::setDp);
+        changed |= applyFieldingDelta(catcherRows, part.getPb(),
+                GameFieldingPosStat::getPb, GameFieldingPosStat::setPb);
+        changed |= applyFieldingDelta(catcherRows, part.getCatcherCs(),
+                GameFieldingPosStat::getCatcherCs, GameFieldingPosStat::setCatcherCs);
+        changed |= applyFieldingDelta(catcherRows, part.getCatcherSb(),
+                GameFieldingPosStat::getCatcherSb, GameFieldingPosStat::setCatcherSb);
+        if (part.getDefInn() != null) {
+            changed |= applyFieldingDelta(ordered,
+                    StatsFormatUtil.baseballIpToOuts(part.getDefInn().doubleValue()),
+                    GameFieldingPosStat::getOuts, GameFieldingPosStat::setOuts);
+        }
+        if (part.getFieldingGs() != null) {
+            changed |= applyFieldingGs(rows, part.getFieldingGs().intValue() == 1);
+        }
+        return changed;
+    }
+
+    /** 先发标记按球员归一：最多只保留一行 GS=1，目标为 0 时全部清除。 */
+    private static boolean applyFieldingGs(List<GameFieldingPosStat> rows, boolean target) {
+        GameFieldingPosStat chosen = null;
+        if (target) {
+            // 已有 GS=1 的行保持不变（同分取出场更多者），否则回落到出场最多的位置行。
+            chosen = rows.stream()
+                    .filter(row -> Boolean.TRUE.equals(row.getFieldingGs()))
+                    .max(Comparator.comparingInt(row -> valueOrZero(row.getOuts())))
+                    .orElseGet(() -> orderedByOuts(rows).get(0));
+        }
+        boolean changed = false;
+        for (GameFieldingPosStat row : rows) {
+            boolean desired = row == chosen;
+            if (Boolean.TRUE.equals(row.getFieldingGs()) != desired) {
+                row.setFieldingGs(desired);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /** 单个守备字段按差额回写；入参已按 outs 降序，目标值缺栏时不动（旧客户端/漏字段不误清零）。 */
+    private static boolean applyFieldingDelta(
+            List<GameFieldingPosStat> orderedRows, Integer targetValue,
+            Function<GameFieldingPosStat, Integer> getter,
+            BiConsumer<GameFieldingPosStat, Integer> setter) {
+        if (targetValue == null || orderedRows.isEmpty()) {
+            return false;
+        }
+        int sum = 0;
+        for (GameFieldingPosStat row : orderedRows) {
+            sum += valueOrZero(getter.apply(row));
+        }
+        int delta = targetValue.intValue() - sum;
+        if (delta == 0) {
+            return false;
+        }
+        if (delta > 0) {
+            GameFieldingPosStat row = orderedRows.get(0);
+            setter.accept(row, valueOrZero(getter.apply(row)) + delta);
+            return true;
+        }
+        // 负差额从出场最多的位置依次扣，且不把某一行扣成负数。
+        int remaining = -delta;
+        for (GameFieldingPosStat row : orderedRows) {
+            int current = valueOrZero(getter.apply(row));
+            int take = Math.min(remaining, current);
+            if (take > 0) {
+                setter.accept(row, current - take);
+                remaining -= take;
+            }
+            if (remaining == 0) {
+                break;
+            }
+        }
+        return true;
+    }
+
+    private static int valueOrZero(Integer value) {
+        return value == null ? 0 : value.intValue();
+    }
+
+    /** 出场局数多的位置优先承接差额；同局数按 id 稳定排序。 */
+    private static List<GameFieldingPosStat> orderedByOuts(List<GameFieldingPosStat> rows) {
+        List<GameFieldingPosStat> ordered = new ArrayList<>(rows);
+        ordered.sort(Comparator
+                .comparingInt((GameFieldingPosStat row) -> valueOrZero(row.getOuts())).reversed()
+                .thenComparing(GameFieldingPosStat::getId,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
+        return ordered;
     }
 
     /** 比賽統計列身分複合鍵：與 saveLive 的 existingMap key 同構（isPitcher 為 null 時視為 0） */
