@@ -230,6 +230,43 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(0, original.getEr());
     }
 
+    /**
+     * 作废只改「这分怎么算」，不改「这分有没有发生」：分账口径照旧把这笔剔掉，
+     * 但保存守门的分母必须仍算它，否则记录员作废完再保存下一个半局，会被
+     * 「重建数 < 记分栏总分」永久顶回 409（线上就是这么卡住过）。
+     */
+    @Test
+    @DisplayName("判定作废后：不再计入投手 R/ER，但仍计入守门分母")
+    void voidDecision_keepsDecisionInGuardDenominator() {
+        GamePlayerStat original = pitcherStat(1L, 700L, 1, 1);
+        original.setTeamId(1L);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(original));
+        EarnedRunPlayEntity play = play(900L, "play-1");
+        EarnedRunDecisionEntity decision = decision(700L, "EARNED");
+        decision.setId(11L);
+        decision.setPlayId(900L);
+        decision.setRunnerId(55L);
+        when(playRepository.findById(900L)).thenReturn(Optional.of(play));
+        when(decisionRepository.findByIdAndTenantIdAndGameId(11L, 1L, 20L))
+                .thenReturn(Optional.of(decision));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(play));
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(1L, 20L, 3, "top"))
+                .thenReturn(List.of(play));
+        List<ErDecisionAdjustment> activeRows = new ArrayList<>();
+        stubActiveAdjustmentStore(activeRows);
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(55L, "跑者甲"), player(700L, "投手乙")));
+
+        service.voidDecision(1L, 20L, 11L, "误录判定", 9L);
+
+        assertEquals(0, original.getPitchR());
+        assertEquals(0, original.getEr());
+        assertEquals(1, service.countDecisionsForCoverage(1L, 20L));
+        assertEquals(1, service.countDecisionsForCoverageOfHalf(1L, 20L, 3, "top"));
+    }
+
     @Test
     @DisplayName("撤销判定改派后：恢复原责任投手与统计")
     void revokeDecisionAdjustment_restoresOriginalPitcher() {
@@ -788,6 +825,28 @@ class EarnedRunReconstructionServiceTest {
         assertTrue(service.validateSettlement(1L, 20L).stream()
                         .noneMatch(v -> v.contains("§11.10")),
                 "无逐棒证据的场次不参与半局对帐");
+    }
+
+    @Test
+    @DisplayName("§11.10 记分有分、判定层一笔都没有的半局也被点名（强制换局形状）")
+    void validateSettlement_reportsHalfWithRunsButNoDecisionAtAll() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        // 1局上正常定案（两笔判定）；2局下被强制结束，库里连 play 列都没有，但记分栏已有 2 分
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 1, "top")));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(2, 2, "[2]", "[0,2]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.10")
+                        && v.contains("第 2 局下") && v.contains("判定 0 笔")
+                        && v.contains("差额 -2") && v.contains("一笔都没有")),
+                "零判定的半局不能因为「没有 play 列」而逃出对帐：" + violations);
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7") || v.contains("§11.9")),
+                "判定 2 笔 < 总分 4 且逐局加总平，全场级那两条本就该闭嘴：" + violations);
     }
 
     /** 带半局归属的逐棒事件列（§11.10 要靠它把判定归到正确的半局）。 */
@@ -1386,8 +1445,8 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
-    @DisplayName("预览与落库同款优先级：生效人工覆写盖过引擎合计，且保留待判定")
-    void previewAppliesActiveOverrideLikeSettlementDoes() {
+    @DisplayName("预览不叠「定案时会被作废」的覆写：给引擎口径，并把该名单回传")
+    void previewExcludesOverrideThatSettlementWouldInvalidate() {
         when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                 1L, 20L, 3, "top")).thenReturn(List.of());
         when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
@@ -1402,15 +1461,43 @@ class EarnedRunReconstructionServiceTest {
 
         EarnedRunReconstructionResult.PitcherRunTotals totals =
                 result.pitcherAbsoluteTotals().get(701L);
-        assertEquals(3, totals.runs(), "人工 R 优先于引擎合计");
-        assertEquals(1, totals.earnedRuns());
-        assertEquals(1, totals.pendingRuns(), "引擎的待判定不能被人手工 R/ER 折进非自责");
-        assertEquals(1, totals.unearnedRuns());
-        assertEquals(totals.runs(),
-                totals.earnedRuns() + totals.unearnedRuns() + totals.pendingRuns(),
-                "四栏恒等式必须成立");
+        // 701 是本半局新判定的责任投手，定案时他的 APPROVED 覆写会被作废；
+        // 预览若照叠覆写值，就是在给记录员看一个马上会被推翻的数字。
+        assertEquals(3, totals.runs());
+        assertEquals(2, totals.earnedRuns(), "该给引擎口径而不是覆写值：" + totals);
+        assertEquals(1, totals.pendingRuns());
+        assertEquals(List.of(701L), result.overrideInvalidationPitcherIds(),
+                "哪些人的覆写会在定案时失效，必须随预览回传");
         verify(pitcherRunOverrideRepository, never()).save(any(PitcherRunOverride.class));
         verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("预览仍保留「本半局碰不到」的投手覆写：不被作废的人工决断继续生效")
+    void previewKeepsOverrideOfPitcherNotTouchedByThisHalf() {
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 3, "top")).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                decisionForPlay(701L, 999L), decisionForPlay(702L, 999L)));
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(overrideRow(2L, 1L, 20L, 702L, 3, 1)));
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 3, "top", 9L,
+                List.of(play(101L, 1, 0, 0, false, ScoringRunner.normal(55L, 701L))),
+                500L, false);
+
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> totals =
+                result.pitcherAbsoluteTotals();
+        assertEquals(2, totals.get(701L).runs(), "本半局责任投手走引擎口径");
+        assertTrue(result.overrideInvalidationPitcherIds().isEmpty(),
+                "702 不属受影响投手，定案不会动他的覆写：" + result.overrideInvalidationPitcherIds());
+        EarnedRunReconstructionResult.PitcherRunTotals kept = totals.get(702L);
+        assertEquals(3, kept.runs(), "不受影的投手仍显示人工 R/ER，与落库同款优先级");
+        assertEquals(1, kept.earnedRuns());
+        assertEquals(2, kept.unearnedRuns());
+        assertEquals(kept.runs(), kept.earnedRuns() + kept.unearnedRuns() + kept.pendingRuns(),
+                "四栏恒等式必须成立");
     }
 
     private PitcherRunOverride overrideRow(long id, long tenantId, long gameId,

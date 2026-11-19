@@ -148,6 +148,14 @@ test('撤销/重做快照携带击球台账并在恢复时按 id 重绑球员', 
 });
 
 test('强制换局先补记得分再清空台账，避免得分串到下一半局（#449）', () => {
-  assert.match(liveGame, /D\(LgSys\(\{kind:"force_half"\}\)\),flushPendingRunsToPlayEvent\(\),clearRunLedger\(\),Qa\(!0\)/);
+  // 只比顺序、不比邻接：定案推送与翻局之间夹的是注释，写死邻接会被下一行注释改动误报
+  const at = liveGame.indexOf('async function forceHalf(){');
+  assert.ok(at >= 0, 'forceHalf 存在');
+  const body = liveGame.slice(at, liveGame.indexOf('function Qa(e){', at));
+  const settle = body.indexOf('flushPendingRunsToPlayEvent()||resyncEarnedRunHalfInningForSave()');
+  assert.ok(settle >= 0, '强制换局收尾要补一次定案推送：台账补记，补不到就按当前半局绝对重建');
+  // 取 lastIndexOf：上方注释里也写了 Qa(!0)，indexOf 会先命中注释
+  assert.ok(body.lastIndexOf('clearRunLedger()') > settle, '定案推送要在清空台账之前');
+  assert.ok(body.lastIndexOf('Qa(!0)') > settle, '定案推送要在翻局之前，否则推的是下一个半局');
 });
 

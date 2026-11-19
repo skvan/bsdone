@@ -180,7 +180,8 @@ test('LiveGame 静态接线：Qr 改用统一序列；保存与强制换局前�
     '保存前补记台账；无补记时也按当前半局对账（覆盖撤销后的后端判定）');
 
   const force = liveGame.slice(liveGame.indexOf('async function forceHalf(){'), liveGame.indexOf('function Qa(e){'));
-  assert.match(force, /flushPendingRunsToPlayEvent\(\),clearRunLedger\(\)/, '强制换局先补记再清台账');
+  assert.match(force, /flushPendingRunsToPlayEvent\(\)\|\|resyncEarnedRunHalfInningForSave\(\),clearRunLedger\(\),Qa\(!0\)/,
+    '强制换局先补记再清台账；台账补不到也要按当前半局定案推送，且在翻局之前');
 
   assert.match(liveGame, /function syncEarnedRunHalfInning\(event,options=\{\}\)/, '同步函数支持 allowEmpty');
   assert.match(liveGame, /if\(!plays\.length&&!options\.allowEmpty\)return/, '仅显式对账时允许空半局');

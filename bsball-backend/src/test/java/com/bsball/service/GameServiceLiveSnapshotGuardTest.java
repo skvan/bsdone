@@ -2,7 +2,9 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,12 +22,14 @@ import com.bsball.repository.GameSnapshotRepository;
 import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -121,15 +125,21 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
-    @DisplayName("阵容板空壳（无 playEvents）不得覆盖已有逐棒记录")
-    void saveLiveSnapshot_rejectsLineupOnlyPayloadOverExistingEvidence() {
+    @DisplayName("阵容板 payload（未提到 playEvents）：并入现有证据后放行，不是顶回也不是清空")
+    void saveLiveSnapshot_mergesLineupOnlyPayloadAndKeepsEvidence() {
         givenExistingSnapshot(RICH_SNAPSHOT);
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT));
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT);
 
-        assertEquals(409, ex.getCode());
-        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        String saved = written.getValue();
+        // 证据不丢：24 条逐棒记录与比分都跟着回去
+        assertEquals(24, playEventCount(saved), "阵容板保存不能把逐棒记录抹掉：" + saved);
+        assertTrue(saved.contains("\"teamsData\""), "比分段也要并回来：" + saved);
+        // 它自己的改动也不能被吃掉
+        assertTrue(saved.contains("homeLineup"), "阵容板改的名单要留住：" + saved);
     }
 
     @Test
@@ -184,14 +194,15 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
-    @DisplayName("条数守卫独立于记分栏：比分 0:0 也不允许 playEvents 从 24 条掉到 0 条")
+    @DisplayName("自带空 playEvents 数组的收缩仍拒：比分 0:0 也不允许 24 条掉到 0 条")
     void saveLiveSnapshot_countGuardAppliesEvenWithoutScore() {
         game.setAwayScore(Integer.valueOf(0));
         game.setHomeScore(Integer.valueOf(0));
         givenExistingSnapshot(RICH_SNAPSHOT);
-
+        // 与上一例的差别就在「有没有自己带 playEvents」：带了（哪怕是空数组）就是真要覆写，
+        // 没带才是“我没说到这件事”。game 261 属于前者（被盖成只剩 2 条）。
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), LINEUP_ONLY_SNAPSHOT));
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[]}"));
 
         verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
         assertEquals(409, ex.getCode(),
@@ -202,6 +213,16 @@ class GameServiceLiveSnapshotGuardTest {
     private void givenExistingSnapshot(String existingJson) {
         when(gameSnapshotRepository.findSnapshotJsonById(Long.valueOf(GAME_ID)))
                 .thenReturn(Optional.of(existingJson));
+    }
+
+    /** 落库正文里的 playEvents 条数：服务端的计数方法是 private，测试自己解析一份对照。 */
+    private static int playEventCount(String json) {
+        try {
+            return new ObjectMapper().readTree(json).path("playEvents").size();
+        }
+        catch (Exception ex) {
+            throw new AssertionError("落库正文解不开：" + json, ex);
+        }
     }
 
     /** 生成 n 条 playEvents，其中 m 条带 1 分（scoreDelta 为 {away,home} 对象形状）。 */

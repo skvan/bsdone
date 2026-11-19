@@ -183,7 +183,7 @@ class GameServiceReconstructGuardTest {
 
         verify(earnedRunReconstructionService).replaceHalfInning(
                 anyLong(), anyLong(), anyInt(), anyString(), anyLong(), any(), any(), anyBoolean());
-        verify(earnedRunReconstructionService, never()).countLiveDecisions(anyLong(), anyLong());
+        verify(earnedRunReconstructionService, never()).countDecisionsForCoverage(anyLong(), anyLong());
     }
 
     @Test
@@ -212,17 +212,36 @@ class GameServiceReconstructGuardTest {
         gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID),
                 request("top", 1, null, Boolean.FALSE));
 
-        verify(earnedRunReconstructionService, never()).countLiveDecisions(anyLong(), anyLong());
+        verify(earnedRunReconstructionService, never()).countDecisionsForCoverage(anyLong(), anyLong());
         verify(earnedRunReconstructionService).replaceHalfInning(
                 eq(Long.valueOf(TENANT_ID)), eq(Long.valueOf(GAME_ID)), eq(3), eq("top"),
                 eq(Long.valueOf(USER_ID)), any(), eq(Long.valueOf(HOME_TEAM_ID)),
                 eq(false));
     }
 
+    /**
+     * 守门要的口径是「含人工作废的判定数」，由 countDecisionsForCoverage 保证；
+     * 这里只确认 GameService 确实改调那两个方法，不再拿有效判定数当分母。
+     */
+    @Test
+    @DisplayName("人工作废过的判定仍计入分母：先作废、还没改记分，后续半局定案不该被顶回 409")
+    void reconstructEarnedRuns_stillPassesAfterDecisionVoided() {
+        // 记分 6 分；判定表 6 笔（含 1 笔已作废），本半局占 1 笔：6-1+1=6 → 放行。
+        // 旧口径会先剔掉作废的那笔（5-1+1=5 < 6），记录员作废之后保存就会被永久顶回。
+        givenDecisions("top", 6, 1);
+
+        gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID), request("top", 1, null));
+
+        verify(earnedRunReconstructionService).countDecisionsForCoverage(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID));
+        verify(earnedRunReconstructionService).replaceHalfInning(
+                anyLong(), anyLong(), anyInt(), anyString(), anyLong(), any(), any(), anyBoolean());
+    }
+
     private void givenDecisions(String half, int liveTotal, int liveInThisHalf) {
-        when(earnedRunReconstructionService.countLiveDecisions(
+        when(earnedRunReconstructionService.countDecisionsForCoverage(
                 Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID))).thenReturn(liveTotal);
-        when(earnedRunReconstructionService.countLiveDecisionsOfHalf(
+        when(earnedRunReconstructionService.countDecisionsForCoverageOfHalf(
                 Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID), 3, half)).thenReturn(liveInThisHalf);
     }
 

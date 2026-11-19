@@ -275,8 +275,9 @@ public class EarnedRunReconstructionService {
                 .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                         tenantId, gameId, inning, half);
         if (!halfComplete) {
+            PitcherPreview preview = previewPitcherTotals(tenantId, gameId, existing, result);
             return result.withPitcherAbsoluteTotals(
-                    previewPitcherTotals(tenantId, gameId, existing, result));
+                    preview.totals(), preview.overridesToInvalidate());
         }
         Set<Long> affectedPitcherIds = collectAffectedPitcherIds(tenantId, gameId, existing);
         deleteExistingDecisions(tenantId, gameId, existing);
@@ -292,7 +293,7 @@ public class EarnedRunReconstructionService {
                 affectedPitcherIds, "半局重建后需重新复核投手 R/ER", operatorId);
         Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals =
                 recomputePitcherStats(tenantId, gameId, fieldingTeamId, invalidatedPitcherIds);
-        return result.withPitcherAbsoluteTotals(absoluteTotals);
+        return result.withPitcherAbsoluteTotals(absoluteTotals, List.copyOf(invalidatedPitcherIds));
     }
 
     /** 该场是否已有 ER 引擎事件；按 gameId 全局唯一判断，避免换赛事/租户后守卫失效。 */
@@ -329,24 +330,31 @@ public class EarnedRunReconstructionService {
         return countResponsiblePitcherDecisions(gameId, pitcherId) > 0;
     }
 
-    /** 该场有效判定数（已扣除人工作废），供半局重建的完整性守门使用。 */
-    public int countLiveDecisions(long tenantId, long gameId) {
-        return liveDecisions(tenantId, gameId).size();
+    /**
+     * 该场判定总数（含被人工作废的那批），供半局重建的完整性守门使用。
+     * 这里故意不用「有效判定数」：守门问的是「推上来的逐棒资料有没有涵盖记分栏已记的分」，
+     * 而人工作废改的是这笔分怎么算（归谁、算不算自责），不是这笔分有没有发生。拿有效数做比对，
+     * 「先作废判定、还没改记分」这个正常顺序会被当成缺笔，之后每一个半局的定案推送都会撞 409。
+     * 反之记分真的被改小了，afterTotal 只会大于 officialRuns，守门本来就只拦「少」不拦「多」，
+     * 不会因此放行错误数据。
+     */
+    public int countDecisionsForCoverage(long tenantId, long gameId) {
+        return decisionRepository.findByTenantIdAndGameId(tenantId, gameId).size();
     }
 
     /**
-     * 指定半局的既有判定数（已扣除人工作废）。重建是整半局替换，守门必须先从全场
+     * 指定半局的既有判定数（含人工作废）。重建是整半局替换，守门必须先从全场
      * 扣掉这一半、再加回本次推送的得分跑者数，才推得出「重建后全场判定数」，
-     * 再拿它去比记分栏（独立证人）才能发现分母残缺。
+     * 再拿它去比记分栏（独立证人）才能发现分母残缺。口径跟 countDecisionsForCoverage。
      */
-    public int countLiveDecisionsOfHalf(long tenantId, long gameId, int inning, String half) {
+    public int countDecisionsForCoverageOfHalf(long tenantId, long gameId, int inning, String half) {
         Set<Long> playIds = playRepository
                 .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(tenantId, gameId, inning, half)
                 .stream().map(EarnedRunPlayEntity::getId).collect(Collectors.toSet());
         if (playIds.isEmpty()) {
             return 0;
         }
-        return (int) liveDecisions(tenantId, gameId).stream()
+        return (int) decisionRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
                 .filter(decision -> playIds.contains(decision.getPlayId()))
                 .count();
     }
@@ -1580,11 +1588,15 @@ public class EarnedRunReconstructionService {
 
     /**
      * 局中预览：算出「本半局若在此刻定案会落库的投手四栏」回给前端显示，全程不写库。
-     * 分母 = 其他半局有效判定 + 本次逐棒判定，再按落库同款优先级叠生效人工覆写。
+     * 分母 = 其他半局有效判定 + 本次逐棒判定；人工覆写只对「定案时不会被作废」的投手继续生效——
+     * 定案路径会先取 collectAffectedPitcherIds（该半局旧判定的责任投手）再加上本次新判定的责任
+     * 投手，把这批人的 APPROVED 覆写改成 INVALIDATED。预览若照单全叠，显示的就是几个马上会被
+     * 推翻的数字，记录员会以为人工决断还在生效。两边用同一个 affected 集合筛，报出来的才是
+     * 同一个口径。
      * 本次判定尚未入库，不可能已带人工改派/作废，所以按引擎责任投手归位；
      * 该偏差只影响显示，该半局定案入库时会以完整口径重算。
      */
-    private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> previewPitcherTotals(
+    private PitcherPreview previewPitcherTotals(
             long tenantId, long gameId, List<EarnedRunPlayEntity> existing,
             EarnedRunReconstructionResult result) {
         Set<Long> replacedPlayIds = existing.stream()
@@ -1600,13 +1612,31 @@ public class EarnedRunReconstructionService {
         for (EarnedRunDecision decision : result.decisions()) {
             addPitcherRun(totals, decision.responsiblePitcherId(), decision.status().name());
         }
-        activeOverridesByPlayer(tenantId, gameId).forEach((playerId, override) ->
-                totals.put(playerId, overrideTotals(override, pendingOf(totals, playerId))));
+        Set<Long> affectedPitcherIds = collectAffectedPitcherIds(tenantId, gameId, existing);
+        for (EarnedRunDecision decision : result.decisions()) {
+            if (decision.responsiblePitcherId() > 0) {
+                affectedPitcherIds.add(decision.responsiblePitcherId());
+            }
+        }
+        List<Long> overridesToInvalidate = new ArrayList<>();
+        activeOverridesByPlayer(tenantId, gameId).forEach((playerId, override) -> {
+            if (affectedPitcherIds.contains(playerId)) {
+                overridesToInvalidate.add(playerId);
+            } else {
+                totals.put(playerId, overrideTotals(override, pendingOf(totals, playerId)));
+            }
+        });
         Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> preview = new HashMap<>();
         totals.forEach((playerId, value) -> preview.put(playerId,
                 new EarnedRunReconstructionResult.PitcherRunTotals(
                         value[0], value[1], value[2], value[3])));
-        return preview;
+        return new PitcherPreview(preview, overridesToInvalidate);
+    }
+
+    /** 预览回包：投手四栏，加上「本半局一旦定案就会被作废的覆写所属投手」。 */
+    private record PitcherPreview(
+            Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> totals,
+            List<Long> overridesToInvalidate) {
     }
 
     private Map<Long, PitcherRunOverride> activeOverridesByPlayer(long tenantId, long gameId) {
@@ -2245,15 +2275,21 @@ public class EarnedRunReconstructionService {
     }
 
     /**
-     * §11.10：有逐棒事件的半局，判定笔数必须等于该半局记分。
-     * 只判有事件列的半局：纯结果录入的场次没有逐棒证据，拿记分栏比它只会误报（235/248）；
-     * 逐局那一格缺资料也直接跳过。人工作废单独在消息里报数，默默略过会让
-     * 「真的缺笔」和「人工抹掉」再也分不开。
+     * §11.10：半局记分与该半局有效判定笔数必须逐格相等。
+     * 对帐范围取并集：有逐棒事件的半局，加上记分栏那一格有分的半局——少了后半段，「记分有分、
+     * 判定层一笔都没有」的半局（库里连 play 列都没有，例如被强制结束或局中预览从没等到定案推送）
+     * 根本进不了循环，而它正是最该被点名的一种。整个场次没有任何 play 列时完全不参与：纯结果录入
+     * 的老场次没有逐棒证据，拿记分栏比它只会误报（彩排实测：不拦这一道，184 场里 147 场老场次
+     * 会贡献 780 条假命中）；逐局那一格缺资料也直接跳过。
+     * 人工作废单独在消息里报数，默默略过会让「真的缺笔」和「人工抹掉」再也分不开。
      *
-     * <p>上线前拿生产资料彩排过（audit_11_10_sim.py）：184 场 final、157 个可对帐半局
-     * 只命中 3 条，且三条都是已独立确认的真异常——261「3局下 判定 2 对记分 3」（缺笔）、
-     * 255「1局下 判定 6 对记分 5」（原本只在全场级露出 +1，现在能点名哪一半局）、
-     * 260「1局下 判定 8 对记分 9」（比分栏走过人工补写的混合来源）。噪音量级可以接受。
+     * <p>上线前拿生产资料做过一轮只读彩排（审计脚本 audit_11_10_sim.py，属仓库外的一次性
+     * 工具；走同一套并集口径与同一道引擎托管闸门）：旧口径（只看 play 派生半局）184 场
+     * final、157 个可对帐半局只命中 3 条；并集口径 35 场、165 个半局命中 11 条，多出的 8 条
+     * 全是「整半局零判定」，落在 235（4 条）、248（3 条）、260 的 4 局上（1 条）。这三部都
+     * 是投手层已被残缺分母砍过的已知场次（GameService 半局重建完整性守门的注释里点名的就是
+     * 261/235/248），所以是补到了真异常，不是新噪音。旧口径已命中的三条：261「3局下 判定 2
+     * 对记分 3」（缺笔）、255「1局下 判定 6 对记分 5」、260「1局下 判定 8 对记分 9」。
      */
     private void appendHalfInningCoverage(long tenantId, long gameId, Game game,
             List<EarnedRunDecisionEntity> decisions, List<String> violations) {
@@ -2287,7 +2323,21 @@ public class EarnedRunReconstructionService {
         }
         List<Integer> awayCells = inningRunCells(game.getAwayScoreByInning());
         List<Integer> homeCells = inningRunCells(game.getHomeScoreByInning());
-        List<String> halfKeys = new ArrayList<>(countsByHalf.keySet());
+        // 并集：判定派生的半局（旧口径）＋记分栏有分但判定层可能一笔都没有的半局。
+        Set<String> halfKeyUniverse = new LinkedHashSet<>(countsByHalf.keySet());
+        for (int inning = 1; inning <= awayCells.size(); inning++) {
+            Integer runs = awayCells.get(inning - 1);
+            if (runs != null && runs > 0) {
+                halfKeyUniverse.add(inning + "|top");
+            }
+        }
+        for (int inning = 1; inning <= homeCells.size(); inning++) {
+            Integer runs = homeCells.get(inning - 1);
+            if (runs != null && runs > 0) {
+                halfKeyUniverse.add(inning + "|bottom");
+            }
+        }
+        List<String> halfKeys = new ArrayList<>(halfKeyUniverse);
         halfKeys.sort(Comparator.comparingInt((String key) ->
                 Integer.parseInt(key.substring(0, key.indexOf('|'))))
                 .thenComparing(key -> key.substring(key.indexOf('|') + 1)));
@@ -2301,17 +2351,22 @@ public class EarnedRunReconstructionService {
             if (recorded == null) {
                 continue;
             }
-            int[] counts = countsByHalf.get(halfKey);
+            int[] counts = countsByHalf.getOrDefault(halfKey, new int[2]);
             if (counts[0] == recorded.intValue()) {
                 continue;
+            }
+            String cause;
+            if (counts[0] == 0 && counts[1] == 0) {
+                cause = "该半局判定层一笔都没有：逐棒事件从未入库（半局被强制结束，或局中预览没等到定案推送）";
+            } else if (counts[0] < recorded.intValue()) {
+                cause = "逐棒证据缺一笔（该半局的重建没跑完或事件被覆盖）";
+            } else {
+                cause = "判定层有记分层没记到的分数";
             }
             violations.add(String.format(
                     "\u00a711.10 第 %d 局%s 判定 %d 笔与该半局记分 %d 分不符，差额 %+d：%s%s",
                     inning, "top".equals(half) ? "上" : "下", counts[0], recorded.intValue(),
-                    counts[0] - recorded.intValue(),
-                    counts[0] < recorded.intValue()
-                            ? "逐棒证据缺一笔（该半局的重建没跑完或事件被覆盖）"
-                            : "判定层有记分层没记到的分数",
+                    counts[0] - recorded.intValue(), cause,
                     counts[1] > 0 ? "（另有 " + counts[1] + " 笔被人工作废）" : ""));
         }
     }

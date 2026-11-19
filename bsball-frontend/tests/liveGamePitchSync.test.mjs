@@ -54,7 +54,7 @@ test('非 P 的守位互换保持纯标签（不出换投日志）；只出不�
 test('既有回归点不受影响：lc 失误得分挂接 / Qr 台账消费 / 派发日志仍在', () => {
   assert.match(src, /ls\(1,\{runner:s,pitcher:w\?\?void 0,origin:"ERROR",runCause:"ERROR"\}\)/, 'lc 挂接保留');
   assert.match(src, /const scoringEntries=takeAllRuns\(runLedger\)/, 'Qr 台账消费保留');
-  assert.match(src, /f\.playEvents\.push\(E\),syncEarnedRunHalfInning\(E\)/, 'Qr 同步重建保留');
+  assert.match(src, /f\.playEvents\.push\(E\),syncEarnedRunHalfInning\(E,\{halfComplete:l\.outs>=3\}\)/, 'Qr 同步重建保留');
   assert.match(src, /function pc\(e,t\)\{[\s\S]*?投手 \$\{e\} 更换为 \$\{t\}/, '换投日志模板保留');
 });
 
