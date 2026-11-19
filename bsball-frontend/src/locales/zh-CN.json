@@ -3245,7 +3245,7 @@
       "targetPlaceholder": "选择同队正确球员",
       "scopes": "转记范围",
       "scopeStats": "统计",
-      "scopeFieldingPositions": "守备位置",
+      "scopeFieldingPositions": "逐位置守备",
       "scopeEr": "ER 判定",
       "scopeLive": "现场记录",
       "scopeRequired": "至少选择一个转记范围",

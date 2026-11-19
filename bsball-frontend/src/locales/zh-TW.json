@@ -3245,7 +3245,7 @@
       "targetPlaceholder": "選擇同隊正確球員",
       "scopes": "轉記範圍",
       "scopeStats": "統計",
-      "scopeFieldingPositions": "守備位置",
+      "scopeFieldingPositions": "逐位置守備",
       "scopeEr": "ER 判定",
       "scopeLive": "現場記錄",
       "scopeRequired": "至少選擇一個轉記範圍",

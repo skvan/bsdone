@@ -78,6 +78,7 @@ const SCOPE_LABEL_KEYS = {
   ER_DECISION: 'liveGame.revision.scopeErDecision',
   PITCHER_RUN_OVERRIDE: 'liveGame.revision.scopePitcherOverride',
   FIELDING_A: 'liveGame.revision.scopeFielding',
+  FIELDPOS_STAT: 'liveGame.revision.scopeFieldingPositions',
   PITCHER_TRANSFER: 'liveGame.revision.scopePitcherTransfer',
   IDENTITY_TRANSFER: 'liveGame.revision.scopeIdentityTransfer'
 };
@@ -118,7 +119,7 @@ function scopeLabel(scope) {
 function scopeTagType(scope) {
   if (scope === 'ER_DECISION') return 'warning';
   if (scope === 'PITCHER_RUN_OVERRIDE') return 'primary';
-  if (scope === 'FIELDING_A') return 'success';
+  if (scope === 'FIELDING_A' || scope === 'FIELDPOS_STAT') return 'success';
   if (scope === 'PITCHER_TRANSFER' || scope === 'IDENTITY_TRANSFER') return 'info';
   return 'info';
 }

@@ -2178,5 +2178,10 @@
     "autoTotalHint": "選手の合計はポジション別から自動集計されます。PB/CS/SB は捕手のポジションのみ有効です。",
     "finalOnly": "試合終了後にポジション別守備を編集できます",
     "noPositions": "ポジション別の明細はありません"
+  },
+  "liveGame": {
+    "revision": {
+      "scopeFieldingPositions": "ポジション別守備"
+    }
   }
 }
