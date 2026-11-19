@@ -7440,18 +7440,44 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           // 局中每个打席都弹就成噪音了。
           const invalidated=f.earnedRunReconstruction?.overrideInvalidationPitcherIds;
           if(halfComplete&&Array.isArray(invalidated)&&invalidated.length){
-            J(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`,"warning");
+            // 走 ElMessage 而不是 J（局面提示）：那是个单格位，下一个打席 / 下一句提示就把
+            // 这条盖掉，记录员实际看不到。作废覆写是一次性事件，必须自己占一条弹提示。
+            noticeOverrideInvalidation(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`);
           }
+          // 这一发重建成了：之前那句「判定没更新」已经不再成立，清掉去重位，真再坏一次还能看见
+          noticeEarnedRunIssue.reset();
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
           // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
-          // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见。
-          J(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`,"warning");
+          // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
+          // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
+          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`);
         }
       });
       return earnedRunSyncPending;
     }
     let earnedRunSyncPending=Promise.resolve();
+    // 这两条都是 ElMessage（不能走 J：单格局面提示会被下一句盖掉），所以得自己防刷屏：
+    // 判定层出问题时几乎每次保存/定案都会撞上同一条（守门看的是状态：判定少于记分，修好
+    // 之前每次成立），而第三出局那一拍本来就是「定案推送＋换局自动保存对账」连发两回。
+    // 按句去重：同一句只弹一次，换了半局/换了原因（文字不同）重新弹。两条各自一个格子：
+    // 判定失败那条在重建成功后清零（真再坏一次要重新看得见），覆写作废那条不清零（同一
+    // 半局同一批作废再说一遍没意义，而它偏偏是在成功路径上发的）。
+    function makeNoticeOnce(){
+      let shown=null;
+      const notice=(text)=>{
+        // 预设 3 秒读不完那串后端原文（它带着该怎么做），所以给到 8 秒
+        shown===text||(shown=text,Fe.warning({
+          message:text,
+          duration:8000
+        }))
+      };
+      notice.reset=()=>{
+        shown=null
+      };
+      return notice
+    }
+    const noticeEarnedRunIssue=makeNoticeOnce(),noticeOverrideInvalidation=makeNoticeOnce();
     // #449：手动进垒/垒况纠偏只写台账，通常等下一打席 Qr 才进 playEvents。
     // 若比赛在下一打席前保存（含结束比赛、换人提交、保存离开），台账会被丢弃导致
     // ER 引擎绝对重算漏掉这一分（比分与投手 R 不等）。保存/强制换局前补一条独立
@@ -7475,13 +7501,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // 只有 playEvents 完整可信时才按当前半局绝对重建；allowEmpty 允许撤销掉半局
     // 全部事件时清空该半局判定，避免旧 R 残留。不可信（Do 仅按统计重建）时跳过。
     function resyncEarnedRunHalfInningForSave(){
-      if(!earnedRunPlayEventsTrusted||!F.value||!R.value)return null;
+      if(!F.value||!R.value)return null;
+      if(!earnedRunPlayEventsTrusted){
+        // #712 可见性：这里过去静默 return null，记录员看到的是「保存成功」，实际上这个半局
+        // 从没做定案重建，判定层会一直比记分栏少几笔（261 型缺笔的温床）。
+        // 只在本地确实有逐棒记录时提一次：那种记录本来可以直接定案，只是因为证书（
+        // playEventsComplete）缺失而被当成不可信，不说就等于把缺口留给赛后。全新导入、
+        // 本地一条事件都没有的场次，定案本来就没有输入，不提，免得变成每次自动保存的噪音。
+        // 走 ElMessage 而不是 J：J 是单格的局面提示，forceHalf 结尾马上会用「强制换局完成」
+        // 把它盖掉（实测），而现场没有把这批记录变可信的开关，唯一出路是赛后人工复核。
+        f.playEvents.length&&!settleSkipNoticed&&(settleSkipNoticed=!0,Fe.warning({
+          message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 ${f.playEvents.length} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认`,
+          duration:8000
+        }));
+        return null
+      }
       const event={
         inning:l.inning,half:l.isTop?"top":"bottom"
       };
       syncEarnedRunHalfInning(event,{allowEmpty:!0});
       return event
     }
+    // 整个入场只提一次上面那条（保存/换局/强制换局都会走 resync）
+    let settleSkipNoticed=!1;
     const es=new WeakMap;
     function ua(e){
       nt()||requestAnimationFrame(()=>{
@@ -7723,11 +7765,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // #444-A：现场快照（含换人史 lineupStarterIds/slotSubHistory）同步服务器。
     // 存了统计却没同步快照时，_c()/bc() 在跨设备/清缓存重进会取不到快照、回退 Do()
-    // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：先重试一次，
-    // 仍失败则提示一次（不阻断录入本身）；成功后清除脏标，避免每次自动保存都弹。
-    let snapshotSyncFailed=!1;
+    // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：可能被
+    // 重试救回来的失败（网络、5xx、429 限流）先重试一次，仍失败提示一次（不阻断录入本身）；
+    // 服务器点名拒收（快照覆盖守门的 409）不重试，直接把服务器给的原因抬到人前（#713）。
+    // 提示按「这一次要播的话」去重，而不是按「本场是否已经失败过一次」：同一句不刷屏，
+    // 内容换了（先抖动、后拒收）就必须看得见；成功后清脏标与已播记录，下次真故障能重新提示。
+    let snapshotSyncFailed=!1,snapshotSyncReason=null,snapshotNoticeShown=null;
     async function pushLiveSnapshot(e){
       const body=JSON.stringify(e);
+      // 原因说的是「这一发为什么没进去」：每次进来先清掉，免得拿上一拍的拒收话解释这一拍的故障
+      snapshotSyncReason=null;
       for(let attempt=0;
       attempt<2;
       attempt++){
@@ -7735,7 +7782,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           await ma.saveLiveSnapshot(R.value,body);
           return !0
         }
-        catch{
+        catch(error){
+          // 只认 409：那是快照覆盖守门点名拒收（本项目 BusinessException 走 HTTP 200 + body.code，
+          // request.js 再包成带 apiCode 的 ApiBizError），重试只会再撞一次、多白花 800ms，再把原因
+          // 拖成下面那句「未能同步」的误导文案。其余 4xx 不敢当拒收：RateLimitFilter 对这个端点真会
+          // 回 429「请稍后再试」（重试才是对的），401 走会话重登，所以都留着原来的重试兜底。
+          if(error?.apiCode===409){
+            snapshotSyncReason=error.message||String(error);
+            return !1
+          }
           if(attempt===0)await new Promise(rr=>{
             setTimeout(rr,800)
           }
@@ -7744,6 +7799,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       return !1
     }
+    function reportSnapshotSyncFailure(){
+      snapshotSyncFailed=!0;
+      // 服务器给出原因时按原因说（它带着具体的下一步动作），并换用 error 级提示：「这份存档根本没
+      // 进去」不是「可能丢点换人在场状态」那种可以忽略的提醒；拿不到原因（网络/5xx/429）时维持原文案。
+      const notice=snapshotSyncReason?{
+        kind:"error",
+        text:snapshotSyncReason
+      }:{
+        kind:"warning",
+        text:lgText("liveGame.sub.snapshotWarning")
+      };
+      if(snapshotNoticeShown===notice.text)return;
+      snapshotNoticeShown=notice.text;
+      // 服务器那两句很长（带该按哪个按钮），预设 3 秒读不完，给到 8 秒
+      Fe[notice.kind]({
+        message:notice.text,
+        duration:8000
+      })
+    }
     async function Zr(){
       if(!R.value||!F.value)return;
       Tn(),to();
@@ -7751,7 +7825,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         includeUndoStacks:!0
       }
       );
-      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1):snapshotSyncFailed||(snapshotSyncFailed=!0,Fe.warning(lgText("liveGame.sub.snapshotWarning")))
+      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1,snapshotNoticeShown=null):reportSnapshotSyncFailure()
     }
     async function ZrLite(){
       // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行

@@ -185,8 +185,34 @@ test('LiveGame 静态接线：Qr 改用统一序列；保存与强制换局前�
 
   assert.match(liveGame, /function syncEarnedRunHalfInning\(event,options=\{\}\)/, '同步函数支持 allowEmpty');
   assert.match(liveGame, /if\(!plays\.length&&!options\.allowEmpty\)return/, '仅显式对账时允许空半局');
-  assert.match(liveGame, /if\(!earnedRunPlayEventsTrusted\|\|!F\.value\|\|!R\.value\)return null/,
-    '只有 playEvents 完整可信时才做保存对账，Do 重建路径跳过');
+
+  // 保存对账的门：只有 playEvents 完整可信时才做，Do 重建路径跳过。
+  // #712 把这一步从「静默 return」改成「看得见地 return」，所以断言不能只看守卫形状，
+  // 还得钉住「跳过时会占一条真弹提示（ElMessage）而不是写进单格的局面提示栏」——
+  // 后者会被 forceHalf 结尾的「强制换局完成」马上盖掉（实测），等于又回到静默。
+  const resync = liveGame.slice(
+    liveGame.indexOf('function resyncEarnedRunHalfInningForSave(){'),
+    liveGame.indexOf('let settleSkipNoticed', liveGame.indexOf('function resyncEarnedRunHalfInningForSave(){'))
+  );
+  assert.match(resync, /if\(!F\.value\|\|!R\.value\)return null/, '未开赛/无可录入时无对账对象');
+  assert.match(resync, /if\(!earnedRunPlayEventsTrusted\)\{/, '不可信时不进对账');
+  assert.match(resync, /return null\s*\}\s*const event=/, '不可信分支必须自行 return，不能落到重建');
+  assert.match(resync, /Fe\.warning\(\{[\s\S]{0,40}message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行/,
+    '不可信而跳过定案时要当场给记录员看见，不能拖到赛后才发现缺笔');
+  assert.doesNotMatch(resync, /J\(`本场次的本地逐棒记录/,
+    '这条不能走 J（单格局面提示）：马上会被后续提示盖掉');
+  assert.match(resync, /syncEarnedRunHalfInning\(event,\{allowEmpty:!0\}\)/, '可信时按当前半局定案对账');
+
+  // 同一段里另外两条弹提示（判定未更新、覆写作废）也被换成 ElMessage，于是得防刷屏：
+  // 守门看的是状态（判定少于记分），修好之前每次保存/定案都会重发同一句。
+  const sync = liveGame.slice(
+    liveGame.indexOf('function syncEarnedRunHalfInning(event,options={}){'),
+    liveGame.indexOf('let earnedRunSyncPending')
+  );
+  assert.match(sync, /noticeEarnedRunIssue\(`自责分判定未更新/, '判定未更新走按句去重的弹提示');
+  assert.doesNotMatch(sync, /Fe\.warning\(`自责分判定未更新/, '不能裸弹：那会每次保存叠一条一模一样的');
+  assert.match(sync, /noticeEarnedRunIssue\.reset\(\)/, '重建成功后要清掉去重位，真再坏一次还得看得见');
+  assert.match(sync, /noticeOverrideInvalidation\(/, '覆写作废用另一格去重（它在成功路径上，不跟成功一起清零）');
 });
 
 test('LiveGame 静态接线：现场快照保存并恢复 playEvents 与未落定台账', () => {
