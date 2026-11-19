@@ -89,6 +89,12 @@ public class GameService {
     private static final Set<String> BRACKET_STAGE_CODES = Set.of("R16", "QF", "SF", "FINAL", "THIRD_PLACE");
     private static final String STAGE_GROUP = "GROUP";
     private static final String FORMAT_SINGLE_ROUND_ROBIN = "SINGLE_ROUND_ROBIN";
+    /** 结果页逐位置守备允许的棒球守位（不含 DH/PH/EP）。 */
+    private static final Set<String> BASEBALL_FIELDING_POSITIONS = Set.of(
+            "P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF");
+    /** 结果页逐位置守备允许的垒球守位（额外含 XF 系列）。 */
+    private static final Set<String> SOFTBALL_FIELDING_POSITIONS = Set.of(
+            "P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "XF", "XF1", "XF2");
     private final GameRepository gameRepository;
     private final GamePlayerStatRepository gamePlayerStatRepository;
     private final GameSubstitutionEventRepository gameSubstitutionEventRepository;
@@ -1454,6 +1460,9 @@ public class GameService {
                 this.deleteRemovedStatRows(gameId, statTenantId, engineManaged, dto.getRemovedStatIds(),
                         existingById, keepIds);
             }
+            // 结果页逐位置整体替换（Issue #701 后续）：按球员重建逐位置行并重算球员级合计。
+            Set<String> replacedFieldingKeys =
+                    this.applyFieldingPlayerParts(game, dto.getFieldingPlayerParts());
             this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
             // Issue #701：结果页守备表显示的是逐位置合计，人工改写后必须同步回逐位置明细，
             // 否则刷新再保存会用旧合计把球员级人工值回滚。
@@ -1520,6 +1529,149 @@ public class GameService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(400, ex.getMessage());
         }
+    }
+
+    /**
+     * 结果页逐位置守备按球员整体替换：删除该球员旧行后按 rows 重建，并由新行重算球员级合计。
+     *
+     * <p>未出现在 parts 中的球员不动；rows 为空表示清空该球员全部守位行。
+     * 仅 final 比赛接受该字段，球队必须是本场主/客队，球员必须已有本场统计行。</p>
+     *
+     * @return 被替换的球员键（teamId_playerId）
+     */
+    private Set<String> applyFieldingPlayerParts(
+            Game game, List<SaveGameResultDTO.FieldingPlayerPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return Set.of();
+        }
+        if (!"final".equalsIgnoreCase(game.getStatus())) {
+            throw new BusinessException(400, "比赛结束后才能编辑逐位置守备");
+        }
+        if (parts.size() > 200) {
+            throw new BusinessException(400, "逐位置守备球员过多");
+        }
+        List<GameFieldingPosStat> existingRows = this.gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(game.getId());
+        Map<String, GamePlayerStat> statsByPlayer = new LinkedHashMap<>();
+        for (GamePlayerStat stat : this.gamePlayerStatRepository.findByGameId(game.getId())) {
+            statsByPlayer.put(resultStatPlayerKey(stat.getTeamId(), stat.getPlayerId()), stat);
+        }
+        Set<String> replaced = new LinkedHashSet<>();
+        int totalRows = 0;
+        for (SaveGameResultDTO.FieldingPlayerPart part : parts) {
+            if (part == null || part.getTeamId() == null || part.getPlayerId() == null) {
+                continue;
+            }
+            if (!Objects.equals(part.getTeamId(), game.getHomeTeamId())
+                    && !Objects.equals(part.getTeamId(), game.getAwayTeamId())) {
+                throw new BusinessException(400, "守备球队不属于本场比赛");
+            }
+            String key = resultStatPlayerKey(part.getTeamId(), part.getPlayerId());
+            GamePlayerStat stat = statsByPlayer.get(key);
+            if (stat == null) {
+                throw new BusinessException(400, "逐位置守备对象不在本场统计行中");
+            }
+            List<GameFieldingPosStat> newRows = buildFieldingPositionRows(game, stat, part);
+            totalRows += newRows.size();
+            if (totalRows > 200) {
+                throw new BusinessException(400, "逐位置守备数据过多");
+            }
+            this.gameFieldingPosStatRepository.deleteByGameIdAndTeamIdAndPlayerId(
+                    game.getId(), part.getTeamId(), part.getPlayerId());
+            if (!newRows.isEmpty()) {
+                newRows = this.gameFieldingPosStatRepository.saveAll(newRows);
+            }
+            applyPositionTotals(stat, newRows);
+            this.gamePlayerStatRepository.save(stat);
+            replaced.add(key);
+        }
+        return replaced;
+    }
+
+    /** 校验并构建某球员的逐位置行（不落库）；位置非法或重复时抛 400。 */
+    private List<GameFieldingPosStat> buildFieldingPositionRows(
+            Game game, GamePlayerStat stat, SaveGameResultDTO.FieldingPlayerPart part) {
+        List<SaveGameResultDTO.FieldingPositionRowPart> rows =
+                part.getRows() == null ? List.of() : part.getRows();
+        if (rows.size() > 200) {
+            throw new BusinessException(400, "逐位置守备数据过多");
+        }
+        Set<String> allowed = allowedFieldingPositions(game);
+        String firstPosition = normalizeFirstPosition(stat.getFirstPosition());
+        Set<String> used = new LinkedHashSet<>();
+        List<GameFieldingPosStat> result = new ArrayList<>();
+        for (SaveGameResultDTO.FieldingPositionRowPart partRow : rows) {
+            if (partRow == null) {
+                continue;
+            }
+            String position = normalizePosition(partRow.getPosition());
+            if (position == null || !allowed.contains(position)) {
+                throw new BusinessException(400, "逐位置守备位置无效：" + partRow.getPosition());
+            }
+            if (!used.add(position)) {
+                throw new BusinessException(400, "逐位置守备存在重复行");
+            }
+            int outs = partRow.getOuts() == null ? 0 : partRow.getOuts();
+            if (outs < 0 || outs > 999) {
+                throw new BusinessException(400, "逐位置守备出局数无效");
+            }
+            GameFieldingPosStat row = new GameFieldingPosStat();
+            row.setTenantId(game.getTenantId());
+            row.setGameId(game.getId());
+            row.setTeamId(part.getTeamId());
+            row.setPlayerId(part.getPlayerId());
+            row.setPosition(position);
+            row.setOuts(Integer.valueOf(outs));
+            row.setPo(Integer.valueOf(normalizeFieldingCredit(partRow.getPo(), "接杀数")));
+            row.setA(Integer.valueOf(normalizeFieldingCredit(partRow.getA(), "助杀数")));
+            row.setE(Integer.valueOf(normalizeFieldingCredit(partRow.getE(), "失误数")));
+            row.setDp(Integer.valueOf(normalizeFieldingCredit(partRow.getDp(), "双杀数")));
+            row.setPb(Integer.valueOf(normalizeFieldingCredit(partRow.getPb(), "捕逸数")));
+            row.setCatcherCs(Integer.valueOf(normalizeFieldingCredit(partRow.getCatcherCs(), "盗垒阻杀数")));
+            row.setCatcherSb(Integer.valueOf(normalizeFieldingCredit(partRow.getCatcherSb(), "被盗垒数")));
+            boolean gs = Integer.valueOf(1).equals(stat.getFieldingGs())
+                    && (firstPosition == null ? result.isEmpty() : firstPosition.equals(position));
+            row.setFieldingGs(Boolean.valueOf(gs));
+            row.setSource("RESULT");
+            result.add(row);
+        }
+        return result;
+    }
+
+    /** 按逐位置行重算球员级守备合计（PO/A/E/DP/PB/CS/SB、INN、TC），首守位为空时补首个守位。 */
+    private static void applyPositionTotals(GamePlayerStat stat, List<GameFieldingPosStat> rows) {
+        stat.setPo(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getPo)));
+        stat.setA(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getA)));
+        stat.setE(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getE)));
+        stat.setDp(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getDp)));
+        stat.setPb(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getPb)));
+        stat.setCatcherCs(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getCatcherCs)));
+        stat.setCatcherSb(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getCatcherSb)));
+        int outs = sumPositionInt(rows, GameFieldingPosStat::getOuts);
+        stat.setDefInn(Double.valueOf(StatsFormatUtil.baseballOutsToIp(outs)));
+        stat.setTc(Integer.valueOf((stat.getPo() == null ? 0 : stat.getPo())
+                + (stat.getA() == null ? 0 : stat.getA())
+                + (stat.getE() == null ? 0 : stat.getE())));
+        if (normalizeFirstPosition(stat.getFirstPosition()) == null && !rows.isEmpty()) {
+            stat.setFirstPosition(rows.get(0).getPosition());
+        }
+    }
+
+    /** 累加逐位置行的整数字段；缺栏按 0 计。 */
+    private static int sumPositionInt(
+            List<GameFieldingPosStat> rows,
+            Function<GameFieldingPosStat, Integer> getter) {
+        int total = 0;
+        for (GameFieldingPosStat row : rows) {
+            total += valueOrZero(getter.apply(row));
+        }
+        return total;
+    }
+
+    /** 本场可用的逐位置守位集合（垒球额外允许 XF 系列）。 */
+    private static Set<String> allowedFieldingPositions(Game game) {
+        return "SOFTBALL".equalsIgnoreCase(game.getGameMode())
+                ? SOFTBALL_FIELDING_POSITIONS : BASEBALL_FIELDING_POSITIONS;
     }
 
     /**

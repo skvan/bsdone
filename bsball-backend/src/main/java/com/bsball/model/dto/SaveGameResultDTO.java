@@ -21,6 +21,8 @@ public class SaveGameResultDTO {
     private List<StatPart> stats;
     /** 本次保存要显式删除的既有统计行 id；payload 中未出现的行不再自动删除。 */
     private List<Long> removedStatIds;
+    /** 结果页逐位置守备：按球员整体替换；rows 为空表示清空该球员全部守位。 */
+    private List<FieldingPlayerPart> fieldingPlayerParts;
 
     @Generated
     public SaveGameResultDTO() {
@@ -41,6 +43,10 @@ public class SaveGameResultDTO {
         return this.removedStatIds;
     }
 
+    public List<FieldingPlayerPart> getFieldingPlayerParts() {
+        return this.fieldingPlayerParts;
+    }
+
     @Generated
     public void setGame(GamePart game) {
         this.game = game;
@@ -54,6 +60,10 @@ public class SaveGameResultDTO {
     @Generated
     public void setRemovedStatIds(List<Long> removedStatIds) {
         this.removedStatIds = removedStatIds;
+    }
+
+    public void setFieldingPlayerParts(List<FieldingPlayerPart> fieldingPlayerParts) {
+        this.fieldingPlayerParts = fieldingPlayerParts;
     }
 
     @Generated
@@ -810,6 +820,52 @@ public class SaveGameResultDTO {
         public String toString() {
             return "SaveGameResultDTO.GamePart(eventId=" + this.getEventId() + ", homeTeamId=" + this.getHomeTeamId() + ", awayTeamId=" + this.getAwayTeamId() + ", gameTime=" + this.getGameTime() + ", gameEndTime=" + this.getGameEndTime() + ", gameday=" + this.getGameday() + ", gameNumber=" + this.getGameNumber() + ", stadiumId=" + this.getStadiumId() + ", venue=" + this.getVenue() + ", status=" + this.getStatus() + ", gameMode=" + this.getGameMode() + ", totalInnings=" + this.getTotalInnings() + ", homeScore=" + this.getHomeScore() + ", awayScore=" + this.getAwayScore() + ", homeScoreByInning=" + String.valueOf(this.getHomeScoreByInning()) + ", awayScoreByInning=" + String.valueOf(this.getAwayScoreByInning()) + ", homeH=" + this.getHomeH() + ", awayH=" + this.getAwayH() + ", homeE=" + this.getHomeE() + ", awayE=" + this.getAwayE() + ", spectatorCount=" + this.getSpectatorCount() + ", umpireHp=" + this.getUmpireHp() + ", umpire1b=" + this.getUmpire1b() + ", umpire2b=" + this.getUmpire2b() + ", umpire3b=" + this.getUmpire3b() + ", recorders=" + this.getRecorders() + ", gameTag=" + this.getGameTag() + ", weatherSummary=" + this.getWeatherSummary() + ", weatherTempC=" + this.getWeatherTempC() + ", weatherWind=" + this.getWeatherWind() + ", weatherRainProbPct=" + this.getWeatherRainProbPct() + ", remark=" + this.getRemark() + ", isSpecialResult=" + this.getIsSpecialResult() + ", showRemarkInCard=" + this.getShowRemarkInCard() + ", includeStatsInRanking=" + this.getIncludeStatsInRanking() + ")";
         }
+    }
+
+    /** 逐位置守备的球员级整体替换单元：rows 为空表示清空该球员全部守位。 */
+    public static class FieldingPlayerPart {
+        private Long teamId;
+        private Long playerId;
+        private List<FieldingPositionRowPart> rows;
+
+        public Long getTeamId() { return this.teamId; }
+        public void setTeamId(Long teamId) { this.teamId = teamId; }
+        public Long getPlayerId() { return this.playerId; }
+        public void setPlayerId(Long playerId) { this.playerId = playerId; }
+        public List<FieldingPositionRowPart> getRows() { return this.rows; }
+        public void setRows(List<FieldingPositionRowPart> rows) { this.rows = rows; }
+    }
+
+    /** 逐位置守备的单个守位行：出局数与各守备计数据。 */
+    public static class FieldingPositionRowPart {
+        private String position;
+        private Integer outs;
+        private Integer po;
+        private Integer a;
+        private Integer e;
+        private Integer dp;
+        private Integer pb;
+        private Integer catcherSb;
+        private Integer catcherCs;
+
+        public String getPosition() { return this.position; }
+        public void setPosition(String position) { this.position = position; }
+        public Integer getOuts() { return this.outs; }
+        public void setOuts(Integer outs) { this.outs = outs; }
+        public Integer getPo() { return this.po; }
+        public void setPo(Integer po) { this.po = po; }
+        public Integer getA() { return this.a; }
+        public void setA(Integer a) { this.a = a; }
+        public Integer getE() { return this.e; }
+        public void setE(Integer e) { this.e = e; }
+        public Integer getDp() { return this.dp; }
+        public void setDp(Integer dp) { this.dp = dp; }
+        public Integer getPb() { return this.pb; }
+        public void setPb(Integer pb) { this.pb = pb; }
+        public Integer getCatcherSb() { return this.catcherSb; }
+        public void setCatcherSb(Integer catcherSb) { this.catcherSb = catcherSb; }
+        public Integer getCatcherCs() { return this.catcherCs; }
+        public void setCatcherCs(Integer catcherCs) { this.catcherCs = catcherCs; }
     }
 
     public static class StatPart {
