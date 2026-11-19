@@ -409,6 +409,7 @@ EventService --> EventRepository
   - ER 单一写方：引擎场次默认忽略请求里的 `er`/`pitchR`；若某投手笔显式带 `manualPitcherRunOverride=true`，则把该行 R/ER 保存为人工覆写（仅 final，`0 ≤ ER ≤ R ≤ 99`），只更新该投手统计，不触发全场引擎重算，避免用不完整判定改写其他投手。legacy 无引擎数据场次仍允许手工修正
   - 结果页人工覆写 R/ER：同一投手已有生效覆写时就地更新；如需恢复引擎值，到「比赛复核 → 投手 R/ER」撤销。该路径只写覆写与统计，不读写 LiveGame 现场快照
   - 赛后守备补记（Issue #554）：结果页统计来自 `GET /game/{id}/stats`（已含补记后的 A/TC），本接口不再回放补记；若后续客户端改为提交基础统计，需显式约定回放标记，避免重复 +1
+  - 守备合计回写（Issue #701）：结果页守备表编辑的是球员级守备合计；保存时按「提交值 − 该球员逐位置合计」的差额回写 `bs_game_fielding_pos_stat`（`po/a/e/dp/pb/catcherCs/catcherSb/outs/fieldingGs`），保证球员级总表与逐位置明细、盒子比分一致；字段缺栏不回写（不误清零）。同一球员多守位时正差额落在出场局数最多的位置行，负差额按出场局数从多到少扣减。二刀流同时提交打者段与投手段时以打者段为准（其合计覆盖全部守备位置）
   - 行删除语义：`stats` 未出现但未列入 `removedStatIds` 的既有行一律保留；只有 `removedStatIds` 显式列出的既有统计行才物理删除。同一行同时出现在 `stats` 与 `removedStatIds` → 400；`removedStatIds` 含本场不存在的 id 或 null 时忽略，重复 id 只删一次。结果页删除打者/投手时由前端带上被删的 `statId`（删除后又补录同一球员则不再提交），旧页面漏带不再触发删除
   - 引擎场次投手行经 `removedStatIds` 删除时仍要求全零且无自责分判定，否则 400（先转记 / 先处理判定）；全零判定现在包含 `pitchPa`（PA 已开放为可编辑列并与 BF 同步）
   - 纸质表单字段（Issue #347）：`StatPart` 新增 `io/pitchDoubles/pitchTriples/pitchSh/pitchSf/pitchIo`；结果页四栏同送数字（`pitchBb/pitchIbb/pitchHbp/pitchBbHp`），后端对缺栏保留既有值、显式 0 清零（#387/#459）
