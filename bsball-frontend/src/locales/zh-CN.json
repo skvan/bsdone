@@ -2590,7 +2590,22 @@
       "lockedScope": "分享范围已锁定",
       "unavailable": "该主页未公开或已失效",
       "emptyModules": "该主页暂无公开模块",
-      "playerPage": "球员主页"
+      "playerPage": "球员主页",
+      "imageSection": "图片分享",
+      "imagePublicOffHint": "公开关闭也可用",
+      "imageEntry": "保存长图",
+      "imageGenerating": "正在生成长图…",
+      "imageHint": "按当前设备生成：手机单列长图、电脑整页宽图；隐藏设置/账户/分享/编辑布局等控件。",
+      "imageTitle": "保存长图",
+      "imageMeta": "{width} × {height} px · {size}",
+      "imageLongPress": "长按图片保存到相册",
+      "imageSaveHint": "可保存到本地；也可长按/右键保存。",
+      "imageSave": "保存图片",
+      "imageClose": "关闭",
+      "imageTooLong": "页面过长，图片清晰度将降低",
+      "imageFail": "长图生成失败，请重试",
+      "imageExitEdit": "请先完成布局编辑再保存长图",
+      "imageFooter": "BSD棒垒球数据平台"
     }
   },
   "notice": {

@@ -157,7 +157,7 @@
 
 ### GET /api/player/{playerId}/clubhouse
 
-参数与 `/api/account/clubhouse` 一致（`teamId` / `leagueId` / `eventId` / `gameMode`），返回结构与登录态聚合接口同构。分享链接应携带主人分享时的范围参数；公开页按该范围锁定展示。
+参数与 `/api/account/clubhouse` 一致（`teamId` / `leagueId` / `eventId` / `gameMode`），返回结构与登录态聚合接口同构。分享链接应携带主人分享时的范围参数；公开页按该范围锁定展示。公开页在全部球队（career）范围不计算队内排名，`ranks` 键省略；前端按 `teamId` 隐藏该模块。未启用模块的 `performance` / `evaluation` / `schedule` / `nextGame` / `recentGames` 同样不计算、不下发。
 
 ### GET /api/player/{playerId}/clubhouse/milestones
 

@@ -79,7 +79,23 @@
       <p v-if="!isWechat" class="csp-hint">{{ t('clubhouse.share.outsideWechat') }}</p>
       <p v-else-if="!shareEnabled && !readonlyView" class="csp-hint">{{ t('clubhouse.share.enableFirst') }}</p>
 
-      <slot name="poster" />
+      <template v-if="imageEnabled">
+        <div class="csp-divider"></div>
+        <div class="csp-row">
+          <b>{{ t('clubhouse.share.imageSection') }}</b>
+          <span v-if="!shareEnabled && !readonlyView" class="csp-badge">{{ t('clubhouse.share.imagePublicOffHint') }}</span>
+        </div>
+        <button
+          type="button"
+          class="csp-image-action"
+          :disabled="imageGenerating"
+          @click="emit('save-image')"
+        >
+          <span class="csp-image-icon" aria-hidden="true">{{ imageGenerating ? '…' : '图' }}</span>
+          <span>{{ imageGenerating ? t('clubhouse.share.imageGenerating') : t('clubhouse.share.imageEntry') }}</span>
+        </button>
+        <p class="csp-hint">{{ t('clubhouse.share.imageHint') }}</p>
+      </template>
     </div>
   </el-drawer>
 </template>
@@ -97,9 +113,11 @@ const props = defineProps({
   saving: { type: Boolean, default: false },
   shareUrl: { type: String, default: '' },
   preview: { type: Object, default: () => ({}) },
-  scopeChips: { type: Array, default: () => [] }
+  scopeChips: { type: Array, default: () => [] },
+  imageEnabled: { type: Boolean, default: false },
+  imageGenerating: { type: Boolean, default: false }
 });
-const emit = defineEmits(['update:modelValue', 'toggle']);
+const emit = defineEmits(['update:modelValue', 'toggle', 'save-image']);
 const { t } = useI18n();
 
 const visible = computed({
@@ -172,6 +190,14 @@ async function copyLink() {
 .csp-link-line { margin: 8px 0 10px; padding: 6px 9px; overflow: hidden; border: 1px dashed var(--bs-hairline); border-radius: 7px; color: var(--bs-text-faint); font-family: var(--bs-font-num); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .csp-guide { display: grid; gap: 3px; margin-bottom: 10px; padding: 9px 11px; border-left: 3px solid var(--bs-accent); border-radius: 6px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font-size: 11px; line-height: 1.6; }
 .csp-guide b { font-size: 12px; }
+.csp-divider { border-top: 1px solid var(--bs-hairline); margin: 12px 0 9px; }
+.csp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+.csp-row b { color: var(--bs-ink); font-size: 12px; }
+.csp-badge { padding: 2px 7px; border: 1px solid var(--bs-hairline); border-radius: 999px; background: var(--bs-surface-soft); color: var(--bs-text-muted); font-size: 10px; white-space: nowrap; }
+.csp-image-action { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; border: 1px solid var(--bs-accent); border-radius: 9px; background: var(--bs-accent-soft); color: var(--bs-accent-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.csp-image-action:hover:not(:disabled) { background: var(--bs-surface); }
+.csp-image-action:disabled { opacity: .5; cursor: wait; }
+.csp-image-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bs-surface); font-size: 11px; font-weight: 800; }
 .csp-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .csp-action { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 64px; padding: 9px 5px; border: 1px solid var(--bs-hairline); border-radius: 10px; background: var(--bs-surface); color: var(--bs-text); font: inherit; font-size: 11px; cursor: pointer; }
 .csp-action:hover:not(:disabled) { border-color: var(--bs-accent); background: var(--bs-accent-soft); }

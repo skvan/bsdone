@@ -131,7 +131,23 @@ async function mockShareApi(page, options = {}) {
       return;
     }
     if (path === '/account/clubhouse' && method === 'GET') {
-      await json({ code: 200, data: ownerDashboard() });
+      const data = ownerDashboard();
+      if (options.lineChart) {
+        data.performance = {
+          available: true,
+          viz: 'line',
+          metricKey: 'batting.avg',
+          label: 'AVG',
+          summaryValue: '0.314',
+          points: [
+            { label: '5/01', value: '0.300', gameday: '2026-05-01' },
+            { label: '5/08', value: '0.312', gameday: '2026-05-08' },
+            { label: '5/15', value: '0.308', gameday: '2026-05-15' },
+            { label: '5/22', value: '0.320', gameday: '2026-05-22' }
+          ]
+        };
+      }
+      await json({ code: 200, data });
       return;
     }
     if (path === '/account/clubhouse/share' && method === 'PUT') {
@@ -179,6 +195,31 @@ test('公开页：未公开时展示空态，不跳登录', async ({ page }) => 
 
   await expect(page.getByText('该主页未公开或已失效')).toBeVisible();
   await expect(page).not.toHaveURL(/account\/login/);
+});
+
+test('/me：保存长图生成预览弹窗', async ({ page }) => {
+  await page.setViewportSize(VIEWPORT);
+  await page.addInitScript(() => {
+    localStorage.setItem('admin_token::bs-ball', 'local-e2e-token');
+    localStorage.setItem('admin_user::bs-ball', JSON.stringify({
+      id: 1, tenantCode: 'bs-ball', superAdmin: false, username: 'local-e2e'
+    }));
+  });
+  await mockShareApi(page, { lineChart: true });
+
+  await page.goto(`/bs-ball/${TENANT}/me`);
+  await page.locator('.clubhouse-share-entry').click();
+  await expect(page.locator('.csp-image-action')).toBeVisible();
+
+  await page.locator('.csp-image-action').click();
+  await expect(page.locator('.cip-dialog')).toBeVisible({ timeout: 30_000 });
+  const image = page.locator('.cip-frame img');
+  await expect(image).toHaveAttribute('src', /^(blob:|data:image\/)/);
+  await expect.poll(() => image.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect.poll(() => image.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
+  // 生成结束后 capture 状态已恢复，页面控件不再被隐藏
+  await expect(page.locator('.clubhouse-page.is-capturing')).toHaveCount(0);
+  await expect(page.locator('.page-actions')).toBeVisible();
 });
 
 test('/me：顶部分享入口打开面板，公开开关调用保存接口', async ({ page }) => {

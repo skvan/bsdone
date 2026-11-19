@@ -1,5 +1,5 @@
 <template>
-  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing, 'is-reordering': layoutDragging }" v-loading="loading">
+  <div ref="pageEl" class="clubhouse-page" :class="{ 'is-resizing': layoutResizing, 'is-reordering': layoutDragging, 'is-capturing': capturing }" v-loading="loading">
     <template v-if="data">
       <div class="page-head">
         <div>
@@ -15,7 +15,7 @@
           </template>
           <template v-else>
             <el-button v-if="canEditLayout && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">{{ translate('clubhouse.header.editLayout') }}</el-button>
-            <el-button link type="primary" class="clubhouse-share-entry" @click="openSharePanel">{{ translate('clubhouse.share.entry') }}</el-button>
+            <el-button link type="primary" class="clubhouse-share-entry" :disabled="layoutEditing || layoutSaving" @click="openSharePanel">{{ translate('clubhouse.share.entry') }}</el-button>
             <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">{{ translate('clubhouse.settings.title') }}</el-button>
             <el-button link type="primary" @click="goAccount">{{ translate('nav.accountProfile') }}</el-button>
             <el-button @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
@@ -25,7 +25,7 @@
 
       <div class="scope-bar">
         <span class="scope-title">{{ translate('clubhouse.scope.title') }}</span>
-        <template v-if="!readonly">
+        <template v-if="!readonly && !capturing">
           <el-select
             v-if="availableGameModes.length > 1"
             v-model="gameMode"
@@ -56,7 +56,7 @@
         <template v-else>
           <span class="scope-static">{{ scopeLabel }}</span>
           <span v-if="availableGameModes.length" class="scope-static">{{ gameModeLabel(gameMode) }}</span>
-          <span class="scope-public-note">{{ translate('clubhouse.share.lockedScope') }}</span>
+          <span v-if="readonly" class="scope-public-note">{{ translate('clubhouse.share.lockedScope') }}</span>
         </template>
       </div>
 
@@ -96,7 +96,7 @@
             <span class="card-stack one" aria-hidden="true">
               <ClubhousePlayerCard v-bind="fanLegendCards[0]" :scale="heroCardScale" />
             </span>
-            <ClubhousePlayerCard v-bind="cardFaceProps" :scale="heroCardScale" />
+            <ClubhousePlayerCard v-bind="cardFaceProps" :scale="capturing ? 1 : heroCardScale" />
           </button>
         </div>
       </section>
@@ -871,6 +871,8 @@
       </div>
     </Teleport>
 
+    <div v-if="capturing" class="clubhouse-capture-footer">{{ translate('clubhouse.share.imageFooter') }}</div>
+
     <ClubhouseSharePanel
       v-model="sharePanelOpen"
       :readonly-view="readonly"
@@ -879,13 +881,24 @@
       :share-url="shareUrl"
       :preview="sharePreview"
       :scope-chips="shareScopeChips"
+      :image-enabled="!readonly"
+      :image-generating="posterGenerating"
       @toggle="onToggleShare"
+      @save-image="generateLongImage"
+    />
+
+    <ClubhouseImagePreview
+      v-model="posterDialogOpen"
+      :result="posterResult"
+      :wechat="isWechat"
+      @save="saveLongImage"
+      @closed="closePoster"
     />
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -895,6 +908,9 @@ import dayjs from 'dayjs';
 import { clubhouseApi, publicClubhouseApi } from '../../api/clubhouse';
 import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
 import ClubhouseSharePanel from '../../components/portal/ClubhouseSharePanel.vue';
+import ClubhouseImagePreview from '../../components/portal/ClubhouseImagePreview.vue';
+import { captureClubhouseLongImage, downloadBlob } from '../../utils/clubhouseLongImage.js';
+import { isWechatBrowser } from '../../utils/wechatJssdk';
 import {
   buildClubhouseShareMeta,
   buildClubhouseShareUrl,
@@ -985,6 +1001,13 @@ const publicUnavailable = ref(false);
 const initialScopeApplied = ref(false);
 const sharePanelOpen = ref(false);
 const shareSaving = ref(false);
+const capturing = ref(false);
+const posterGenerating = ref(false);
+const posterDialogOpen = ref(false);
+// Blob 不能被 Vue 深度代理，否则下载/长按可能拿到 Proxy 而非原生 Blob
+const posterResult = shallowRef(null);
+const isWechat = computed(() => isWechatBrowser());
+let longImageToken = 0;
 const teamId = ref(SCOPE_ALL);
 const leagueId = ref(SCOPE_ALL);
 const eventId = ref(SCOPE_ALL);
@@ -1306,7 +1329,67 @@ const wxShareMeta = computed(() => {
 useWechatShare(wxShareMeta);
 
 function openSharePanel() {
+  settingsOpen.value = false;
   sharePanelOpen.value = true;
+}
+
+function closePoster() {
+  const result = posterResult.value;
+  if (result?.blob && result?.src) URL.revokeObjectURL(result.src);
+  posterResult.value = null;
+}
+
+function longImageFilename() {
+  const name = String(player.value.name || '球员').replace(/[\\/:*?"<>|\s]+/g, '-');
+  return `个人主页-${name}-${dayjs().format('YYYYMMDD')}.png`;
+}
+
+async function generateLongImage() {
+  if (posterGenerating.value || capturing.value || !pageEl.value) return;
+  if (layoutEditing.value) {
+    ElMessage.warning(translate('clubhouse.share.imageExitEdit'));
+    return;
+  }
+  const token = ++longImageToken;
+  posterGenerating.value = true;
+  capturing.value = true;
+  try {
+    await nextTick();
+    const result = await captureClubhouseLongImage(pageEl.value, {
+      wechat: isWechat.value,
+      waitUntil: async () => {
+        const deadline = Date.now() + 15000;
+        while ((milestonesLoading.value || spraysLoading.value || sprayAnim.running)
+          && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+        }
+      }
+    });
+    if (token !== longImageToken) {
+      if (result.blob && result.src) URL.revokeObjectURL(result.src);
+      return;
+    }
+    closePoster();
+    posterResult.value = result;
+    posterDialogOpen.value = true;
+    if (result.limited) {
+      ElMessage.warning(translate('clubhouse.share.imageTooLong'));
+    }
+  } catch (error) {
+    console.error('[ClubhouseLongImage]', error);
+    ElMessage.error(translate('clubhouse.share.imageFail'));
+  } finally {
+    if (token === longImageToken) {
+      capturing.value = false;
+      posterGenerating.value = false;
+    }
+  }
+}
+
+function saveLongImage() {
+  const result = posterResult.value;
+  if (!result?.blob) return;
+  downloadBlob(result.blob, longImageFilename());
 }
 
 async function onToggleShare(enabled) {
@@ -3158,6 +3241,10 @@ onMounted(() => {
   load();
 });
 onBeforeUnmount(() => {
+  longImageToken += 1;
+  capturing.value = false;
+  posterGenerating.value = false;
+  closePoster();
   destroyModuleSortable();
   flushKeyboardLayout();
   clearLayoutPointer();
@@ -3204,6 +3291,21 @@ onBeforeUnmount(() => {
 .layout-edit-banner button:focus-visible { outline: 2px solid var(--bs-accent-ink); outline-offset: 2px; }
 .clubhouse-page.is-resizing, .clubhouse-page.is-reordering { user-select: none; }
 .clubhouse-page.is-reordering { cursor: grabbing; }
+.clubhouse-page.is-capturing .page-actions,
+.clubhouse-page.is-capturing .hero-actions,
+.clubhouse-page.is-capturing .layout-edit-banner,
+.clubhouse-page.is-capturing .layout-selection-frame,
+.clubhouse-page.is-capturing .layout-swap-frame,
+.clubhouse-page.is-capturing .resize-handle { display: none !important; }
+.clubhouse-capture-footer { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--bs-hairline); color: var(--bs-accent-ink); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-align: center; }
+.clubhouse-page.is-capture-clone .dashboard-board .dashboard-module,
+.clubhouse-page.is-capture-clone .dashboard-board.is-free .dashboard-module { overflow: hidden; }
+.clubhouse-page.is-capture-clone .mt-list { max-height: none; overflow: visible; }
+.clubhouse-page.is-capture-clone .chart-wrap { overflow: visible; }
+.clubhouse-page.is-capture-clone .trend-chart { min-width: 0; }
+.clubhouse-page.is-capture-clone .card-stack { display: none; }
+/* 卡片倾角是 .card-slot 的内联 CSS 变量，必须在 onclone 中覆盖（样式表规则优先级不足） */
+.clubhouse-page.is-capture-clone .spray-zone { mix-blend-mode: normal; opacity: .5; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
 .scope-static { font-size: 11px; font-weight: 600; color: var(--bs-text); }
