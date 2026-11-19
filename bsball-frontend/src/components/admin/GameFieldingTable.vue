@@ -22,7 +22,7 @@
           </span>
           <span v-else class="game-fielding-table__player">
             <button
-              v-if="positionRowsFor(row).length"
+              v-if="hasPlayerPositions(row)"
               type="button"
               class="game-fielding-table__expander"
               :class="{ 'is-open': expandedKeys.has(rowKey(row)) }"
@@ -30,7 +30,7 @@
               @click.stop="toggle(row)"
             >{{ expandedKeys.has(rowKey(row)) ? '▾' : '▸' }}</button>
             <span>{{ row.name }}</span>
-            <span v-if="positionRowsFor(row).length" class="game-fielding-table__count">
+            <span v-if="hasPlayerPositions(row)" class="game-fielding-table__count">
               {{ t('gameResultFielding.positionsCount', { n: positionRowsFor(row).length }) }}
             </span>
           </span>

@@ -1714,7 +1714,7 @@ public class GameService {
             if (!used.add(position)) {
                 throw new BusinessException(400, "逐位置守备存在重复行");
             }
-            int outs = partRow.getOuts() == null ? 0 : partRow.getOuts();
+            int outs = valueOrZero(partRow.getOuts());
             if (outs < 0 || outs > 999) {
                 throw new BusinessException(400, "逐位置守备出局数无效");
             }
@@ -1779,18 +1779,19 @@ public class GameService {
 
     /** 按逐位置行重算球员级守备合计（PO/A/E/DP/PB/CS/SB、INN、TC），首守位/先发守位随行重指。 */
     private static void applyPositionTotals(GamePlayerStat stat, List<GameFieldingPosStat> rows) {
-        stat.setPo(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getPo)));
-        stat.setA(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getA)));
-        stat.setE(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getE)));
+        int po = sumPositionInt(rows, GameFieldingPosStat::getPo);
+        int a = sumPositionInt(rows, GameFieldingPosStat::getA);
+        int e = sumPositionInt(rows, GameFieldingPosStat::getE);
+        stat.setPo(Integer.valueOf(po));
+        stat.setA(Integer.valueOf(a));
+        stat.setE(Integer.valueOf(e));
         stat.setDp(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getDp)));
         stat.setPb(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getPb)));
         stat.setCatcherCs(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getCatcherCs)));
         stat.setCatcherSb(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getCatcherSb)));
         int outs = sumPositionInt(rows, GameFieldingPosStat::getOuts);
         stat.setDefInn(Double.valueOf(StatsFormatUtil.baseballOutsToIp(outs)));
-        stat.setTc(Integer.valueOf((stat.getPo() == null ? 0 : stat.getPo())
-                + (stat.getA() == null ? 0 : stat.getA())
-                + (stat.getE() == null ? 0 : stat.getE())));
+        stat.setTc(Integer.valueOf(po + a + e));
         Set<String> positions = new LinkedHashSet<>();
         for (GameFieldingPosStat row : rows) {
             String position = normalizePosition(row.getPosition());
@@ -1950,11 +1951,8 @@ public class GameService {
         }
         for (GameFieldingPosStat oldRow : oldRows) {
             GameFieldingPosStat newRow = newByPos.get(oldRow.getPosition());
-            if (newRow == null) {
-                recordFieldingRowFields(game, oldRow, null, "DELETE_ROW", operatorId);
-            } else {
-                recordFieldingRowFields(game, oldRow, newRow, "UPDATE_FIELD", operatorId);
-            }
+            recordFieldingRowFields(game, oldRow, newRow,
+                    newRow == null ? "DELETE_ROW" : "UPDATE_FIELD", operatorId);
         }
         for (GameFieldingPosStat newRow : newRows) {
             if (!oldByPos.containsKey(newRow.getPosition())) {
@@ -1972,32 +1970,32 @@ public class GameService {
                 oldRow == null ? "" : oldRow.getPosition(),
                 newRow == null ? "" : newRow.getPosition(), operatorId);
         recordFieldingField(game, source, action, "outs", "守备出局",
-                numberText(oldRow == null ? null : oldRow.getOuts()),
-                numberText(newRow == null ? null : newRow.getOuts()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getOuts),
+                numberText(newRow, GameFieldingPosStat::getOuts), operatorId);
         recordFieldingField(game, source, action, "po", "PO",
-                numberText(oldRow == null ? null : oldRow.getPo()),
-                numberText(newRow == null ? null : newRow.getPo()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getPo),
+                numberText(newRow, GameFieldingPosStat::getPo), operatorId);
         recordFieldingField(game, source, action, "a", "A",
-                numberText(oldRow == null ? null : oldRow.getA()),
-                numberText(newRow == null ? null : newRow.getA()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getA),
+                numberText(newRow, GameFieldingPosStat::getA), operatorId);
         recordFieldingField(game, source, action, "e", "E",
-                numberText(oldRow == null ? null : oldRow.getE()),
-                numberText(newRow == null ? null : newRow.getE()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getE),
+                numberText(newRow, GameFieldingPosStat::getE), operatorId);
         recordFieldingField(game, source, action, "dp", "DP",
-                numberText(oldRow == null ? null : oldRow.getDp()),
-                numberText(newRow == null ? null : newRow.getDp()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getDp),
+                numberText(newRow, GameFieldingPosStat::getDp), operatorId);
         recordFieldingField(game, source, action, "pb", "PB",
-                numberText(oldRow == null ? null : oldRow.getPb()),
-                numberText(newRow == null ? null : newRow.getPb()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getPb),
+                numberText(newRow, GameFieldingPosStat::getPb), operatorId);
         recordFieldingField(game, source, action, "catcherSb", "SB",
-                numberText(oldRow == null ? null : oldRow.getCatcherSb()),
-                numberText(newRow == null ? null : newRow.getCatcherSb()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getCatcherSb),
+                numberText(newRow, GameFieldingPosStat::getCatcherSb), operatorId);
         recordFieldingField(game, source, action, "catcherCs", "CS",
-                numberText(oldRow == null ? null : oldRow.getCatcherCs()),
-                numberText(newRow == null ? null : newRow.getCatcherCs()), operatorId);
+                numberText(oldRow, GameFieldingPosStat::getCatcherCs),
+                numberText(newRow, GameFieldingPosStat::getCatcherCs), operatorId);
         recordFieldingField(game, source, action, "fieldingGs", "GS",
-                booleanText(oldRow == null ? null : oldRow.getFieldingGs()),
-                booleanText(newRow == null ? null : newRow.getFieldingGs()), operatorId);
+                booleanText(oldRow, GameFieldingPosStat::getFieldingGs),
+                booleanText(newRow, GameFieldingPosStat::getFieldingGs), operatorId);
     }
 
     /** 写入一条 FIELDPOS_STAT 台账；before/after 相同则跳过。 */
@@ -2023,12 +2021,24 @@ public class GameService {
         return value == null ? "" : String.valueOf(value);
     }
 
+    /** 行字段台账文本：行缺失（新增/删除对侧）同样为空串。 */
+    private static String numberText(
+            GameFieldingPosStat row, Function<GameFieldingPosStat, Integer> getter) {
+        return row == null ? "" : numberText(getter.apply(row));
+    }
+
     /** 布尔字段台账文本：true/1，false/0，缺失为空串。 */
     private static String booleanText(Boolean value) {
         if (value == null) {
             return "";
         }
         return value.booleanValue() ? "1" : "0";
+    }
+
+    /** 行字段台账文本：行缺失（新增/删除对侧）同样为空串。 */
+    private static String booleanText(
+            GameFieldingPosStat row, Function<GameFieldingPosStat, Boolean> getter) {
+        return row == null ? "" : booleanText(getter.apply(row));
     }
 
     private static String resultStatPlayerKey(Long teamId, Long playerId) {

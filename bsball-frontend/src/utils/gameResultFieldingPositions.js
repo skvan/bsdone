@@ -15,6 +15,12 @@ const countOrZero = (value) => (value === undefined || value === null || value =
 // 出场（GS）归一：真值 1；其余 0
 const isFieldingGs = (row) => row?.fieldingGs === true || Number(row?.fieldingGs) === 1;
 const normalizePosition = (value) => String(value ?? '').trim().toUpperCase();
+// 出局数与各计数据的归一快照（分组与保存 payload 共用，缺栏归零）
+const positionCounts = (row) => {
+  const counts = { outs: int(row?.outs) };
+  for (const key of POSITION_CREDIT_KEYS) counts[key] = int(row?.[key]);
+  return counts;
+};
 
 /**
  * 逐位置明细按 teamId_playerId 分组，返回普通对象 Record（Task 5 直接按键取用）。
@@ -31,9 +37,7 @@ export function groupFieldingPositionRows(rows) {
     if (!map[key]) map[key] = [];
     map[key].push({
       position,
-      outs: int(row.outs),
-      po: int(row.po), a: int(row.a), e: int(row.e), dp: int(row.dp),
-      pb: int(row.pb), catcherSb: int(row.catcherSb), catcherCs: int(row.catcherCs),
+      ...positionCounts(row),
       fieldingGs: isFieldingGs(row)
     });
   }
@@ -78,9 +82,7 @@ export function buildFieldingPlayerParts(dirtyKeys, byPlayer) {
       playerId,
       rows: rows.map((row) => ({
         position: String(row.position ?? '').toUpperCase(),
-        outs: int(row.outs),
-        po: int(row.po), a: int(row.a), e: int(row.e), dp: int(row.dp),
-        pb: int(row.pb), catcherSb: int(row.catcherSb), catcherCs: int(row.catcherCs)
+        ...positionCounts(row)
       }))
     };
   });
