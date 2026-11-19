@@ -1,87 +1,121 @@
 <template>
-  <section class="lg-scoreboard" role="group" :aria-label="lt('liveGame.scoreboard.aria')">
-    <div class="lg-scoreboard__grid lg-scoreboard__grid--top">
-      <div class="lg-scoreboard__teams">
-        <div
-          :class="['lg-team-row', { 'is-batting': isTop }]"
-          :style="{ '--lg-team-logo': logoSrc(awayLogo) }"
-        >
-          <span class="lg-team-side">{{ lt('liveGame.team.awayShort') }}</span>
-          <span class="lg-team-name">{{ awayName || lt('liveGame.team.away') }}</span>
-          <span class="lg-team-score" aria-live="polite">{{ awayScore ?? 0 }}</span>
+  <div
+    ref="dockRef"
+    :class="['lg-scoreboard-dock', { 'is-dragging': dragging, 'is-resizing': resizing }]"
+    :style="dockStyle"
+    @pointermove="onPointerMove"
+    @pointerup="endInteraction"
+    @pointercancel="endInteraction"
+    @lostpointercapture="endInteraction"
+    @click.stop
+    @contextmenu.prevent
+  >
+    <section
+      ref="cardRef"
+      class="lg-scoreboard"
+      role="group"
+      :aria-label="lt('liveGame.scoreboard.aria')"
+      :style="cardStyle"
+    >
+      <div
+        class="lg-scoreboard__grid lg-scoreboard__grid--top lg-scoreboard__drag"
+        @pointerdown.stop="onDragPointerDown"
+      >
+        <div class="lg-scoreboard__teams">
+          <div
+            :class="['lg-team-row', { 'is-batting': isTop }]"
+            :style="{ '--lg-team-logo': logoSrc(awayLogo) }"
+          >
+            <span class="lg-team-side">{{ lt('liveGame.team.awayShort') }}</span>
+            <span class="lg-team-name">{{ awayName || lt('liveGame.team.away') }}</span>
+            <span class="lg-team-score" aria-live="polite">{{ awayScore ?? 0 }}</span>
+          </div>
+          <div
+            :class="['lg-team-row', { 'is-batting': !isTop }]"
+            :style="{ '--lg-team-logo': logoSrc(homeLogo) }"
+          >
+            <span class="lg-team-side">{{ lt('liveGame.team.homeShort') }}</span>
+            <span class="lg-team-name">{{ homeName || lt('liveGame.team.home') }}</span>
+            <span class="lg-team-score" aria-live="polite">{{ homeScore ?? 0 }}</span>
+          </div>
         </div>
-        <div
-          :class="['lg-team-row', { 'is-batting': !isTop }]"
-          :style="{ '--lg-team-logo': logoSrc(homeLogo) }"
-        >
-          <span class="lg-team-side">{{ lt('liveGame.team.homeShort') }}</span>
-          <span class="lg-team-name">{{ homeName || lt('liveGame.team.home') }}</span>
-          <span class="lg-team-score" aria-live="polite">{{ homeScore ?? 0 }}</span>
+
+        <div class="lg-scoreboard__situation">
+          <div class="lg-bases" role="img" :aria-label="basesLabel">
+            <span
+              v-for="base in [3, 2, 1]"
+              :key="base"
+              :class="['lg-base', `lg-base--${base}`, { 'is-on': !!bases?.[base] }]"
+            ></span>
+          </div>
+
+          <div class="lg-lights">
+            <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.strikesAria', { n: strikes })">
+              <span class="lg-light-label">S</span>
+              <span
+                v-for="i in 2"
+                :key="`s-${i}`"
+                :class="['lg-light', 'lg-light--strike', { 'is-on': strikes >= i }]"
+              ></span>
+            </div>
+            <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.ballsAria', { n: balls })">
+              <span class="lg-light-label">B</span>
+              <span
+                v-for="i in 3"
+                :key="`b-${i}`"
+                :class="['lg-light', 'lg-light--ball', { 'is-on': balls >= i }]"
+              ></span>
+            </div>
+            <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.outsAria', { n: outs })">
+              <span class="lg-light-label">O</span>
+              <span
+                v-for="i in 2"
+                :key="`o-${i}`"
+                :class="['lg-light', 'lg-light--out', { 'is-on': outs >= i }]"
+              ></span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="lg-scoreboard__situation">
-        <div class="lg-bases" role="img" :aria-label="basesLabel">
-          <span
-            v-for="base in [3, 2, 1]"
-            :key="base"
-            :class="['lg-base', `lg-base--${base}`, { 'is-on': !!bases?.[base] }]"
-          ></span>
+      <div class="lg-scoreboard__grid lg-scoreboard__grid--bottom">
+        <div class="lg-actor-main lg-actor-main--batter" :style="battingLogoStyle">
+          <span class="lg-actor-label">{{ lt('liveGame.scoreboard.batter') }}</span>
+          <span class="lg-actor-number">#{{ batter.number || '-' }}</span>
+          <span class="lg-actor-name">{{ batter.name || '--' }}</span>
         </div>
-
-        <div class="lg-lights">
-          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.strikesAria', { n: strikes })">
-            <span class="lg-light-label">S</span>
-            <span
-              v-for="i in 2"
-              :key="`s-${i}`"
-              :class="['lg-light', 'lg-light--strike', { 'is-on': strikes >= i }]"
-            ></span>
-          </div>
-          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.ballsAria', { n: balls })">
-            <span class="lg-light-label">B</span>
-            <span
-              v-for="i in 3"
-              :key="`b-${i}`"
-              :class="['lg-light', 'lg-light--ball', { 'is-on': balls >= i }]"
-            ></span>
-          </div>
-          <div class="lg-light-group" :aria-label="lt('liveGame.scoreboard.outsAria', { n: outs })">
-            <span class="lg-light-label">O</span>
-            <span
-              v-for="i in 2"
-              :key="`o-${i}`"
-              :class="['lg-light', 'lg-light--out', { 'is-on': outs >= i }]"
-            ></span>
-          </div>
+        <span v-if="batter.order" class="lg-actor-extra lg-actor-extra--batter" :style="battingLogoStyle">{{ orderText }}</span>
+        <div class="lg-inning-number" :aria-label="lt('liveGame.scoreboard.inningAria', { inning, half: isTop ? lt('liveGame.scoreboard.top') : lt('liveGame.scoreboard.bottom') })">{{ lt('liveGame.scoreboard.inning', { inning }) }}</div>
+        <div class="lg-inning-arrows" aria-hidden="true">
+          <span :class="['lg-inning-arrow', { 'is-on': isTop }]">▲</span>
+          <span :class="['lg-inning-arrow', { 'is-on': !isTop }]">▼</span>
         </div>
+        <div class="lg-actor-main lg-actor-main--pitcher" :style="fieldingLogoStyle">
+          <span class="lg-actor-label">{{ lt('liveGame.scoreboard.pitcher') }}</span>
+          <span class="lg-actor-number">#{{ pitcher.number || '-' }}</span>
+          <span class="lg-actor-name">{{ pitcher.name || '--' }}</span>
+        </div>
+        <span class="lg-actor-extra lg-actor-extra--pitcher" :style="fieldingLogoStyle">NP {{ pitcher.np ?? 0 }}</span>
       </div>
-    </div>
+      <span
+        class="lg-scoreboard-grip"
+        aria-hidden="true"
+        @pointerdown.stop="onResizePointerDown($event, 'se')"
+      ></span>
+    </section>
 
-    <div class="lg-scoreboard__grid lg-scoreboard__grid--bottom">
-      <div class="lg-actor-main lg-actor-main--batter" :style="battingLogoStyle">
-        <span class="lg-actor-label">{{ lt('liveGame.scoreboard.batter') }}</span>
-        <span class="lg-actor-number">#{{ batter.number || '-' }}</span>
-        <span class="lg-actor-name">{{ batter.name || '--' }}</span>
-      </div>
-      <span v-if="batter.order" class="lg-actor-extra lg-actor-extra--batter" :style="battingLogoStyle">{{ orderText }}</span>
-      <div class="lg-inning-number" :aria-label="lt('liveGame.scoreboard.inningAria', { inning, half: isTop ? lt('liveGame.scoreboard.top') : lt('liveGame.scoreboard.bottom') })">{{ lt('liveGame.scoreboard.inning', { inning }) }}</div>
-      <div class="lg-inning-arrows" aria-hidden="true">
-        <span :class="['lg-inning-arrow', { 'is-on': isTop }]">▲</span>
-        <span :class="['lg-inning-arrow', { 'is-on': !isTop }]">▼</span>
-      </div>
-      <div class="lg-actor-main lg-actor-main--pitcher" :style="fieldingLogoStyle">
-        <span class="lg-actor-label">{{ lt('liveGame.scoreboard.pitcher') }}</span>
-        <span class="lg-actor-number">#{{ pitcher.number || '-' }}</span>
-        <span class="lg-actor-name">{{ pitcher.name || '--' }}</span>
-      </div>
-      <span class="lg-actor-extra lg-actor-extra--pitcher" :style="fieldingLogoStyle">NP {{ pitcher.np ?? 0 }}</span>
-    </div>
-  </section>
+    <span
+      v-for="dir in RESIZE_DIRS"
+      :key="dir"
+      :class="['lg-scoreboard-resize', `lg-scoreboard-resize--${dir}`]"
+      aria-hidden="true"
+      @pointerdown="onResizePointerDown($event, dir)"
+    ></span>
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useLiveGameText } from '../../composables/useLiveGameText';
 
 const { isEnglish, text: lt } = useLiveGameText();
@@ -101,6 +135,227 @@ const props = defineProps({
   outs: { type: Number, default: 0 },
   batter: { type: Object, default: () => ({}) },
   pitcher: { type: Object, default: () => ({}) }
+});
+
+// 记分牌基准尺寸：拖拽/缩放只改变整体比例，内部字号与灯位保持等比
+const BASE_WIDTH = 270;
+const MIN_WIDTH = 240;
+const MAX_SCALE = 2.4;
+const MIN_SCALE = MIN_WIDTH / BASE_WIDTH;
+const EDGE_GAP = 16;
+const STORAGE_KEY = 'bs-ball-live-scoreboard-layout';
+const RESIZE_DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+
+const dockRef = ref(null);
+const cardRef = ref(null);
+const layout = reactive({ left: null, top: null, scale: 1 });
+const baseHeight = ref(72);
+const dragging = ref(false);
+const resizing = ref(false);
+
+let container = null;
+let observer = null;
+let gesture = null;
+
+const dockStyle = computed(() => {
+  const { width, height } = cardSize();
+  const style = { width: `${width}px`, height: `${height}px` };
+  // 未主动移动时交给 CSS 定位（含小屏 10px 内边距），移动后再用绝对坐标
+  if (layout.left != null && layout.top != null) {
+    style.left = `${layout.left}px`;
+    style.top = `${layout.top}px`;
+    style.right = 'auto';
+  }
+  return style;
+});
+
+const cardStyle = computed(() => ({
+  '--lg-base-width': `${BASE_WIDTH}px`,
+  transform: `scale(${layout.scale})`
+}));
+
+function containerSize() {
+  if (!container) return { width: 0, height: 0 };
+  const rect = container.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
+// 记分牌在给定缩放比例下的整体尺寸
+function cardSize(scale = layout.scale) {
+  return { width: BASE_WIDTH * scale, height: baseHeight.value * scale };
+}
+
+function maxScale() {
+  const { width, height } = containerSize();
+  let max = MAX_SCALE;
+  if (width > 0) max = Math.min(max, (width - EDGE_GAP * 2) / BASE_WIDTH);
+  if (height > 0) max = Math.min(max, (height - EDGE_GAP * 2) / baseHeight.value);
+  return Math.max(MIN_SCALE, max);
+}
+
+function clampScale(value) {
+  const numeric = Number(value);
+  const scale = Number.isFinite(numeric) && numeric > 0 ? numeric : 1;
+  return Math.min(Math.max(scale, MIN_SCALE), maxScale());
+}
+
+// 位置以球场容器左上角为原点；四边都留出 EDGE_GAP，保证外扩的缩放手柄不被裁掉
+function clampPosition(left, top, scale = layout.scale) {
+  const { width, height } = containerSize();
+  const { width: cardWidth, height: cardHeight } = cardSize(scale);
+  return {
+    left: Math.min(Math.max(EDGE_GAP, left), Math.max(EDGE_GAP, width - cardWidth - EDGE_GAP)),
+    top: Math.min(Math.max(EDGE_GAP, top), Math.max(EDGE_GAP, height - cardHeight - EDGE_GAP))
+  };
+}
+
+function measureBaseHeight() {
+  const height = cardRef.value?.offsetHeight;
+  if (height && Math.abs(height - baseHeight.value) > 0.5) baseHeight.value = height;
+}
+
+function saveLayout() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      left: layout.left,
+      top: layout.top,
+      scale: layout.scale
+    }));
+  } catch {
+    // 隐私模式等禁用 localStorage 时忽略，仅本次会话生效
+  }
+}
+
+function restoreLayout() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (!saved) return;
+    layout.scale = clampScale(saved.scale);
+    if (Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+      const position = clampPosition(saved.left, saved.top, layout.scale);
+      layout.left = position.left;
+      layout.top = position.top;
+    }
+  } catch {
+    // 记录损坏时回退到默认位置
+  }
+}
+
+function settleInsideContainer() {
+  layout.scale = clampScale(layout.scale);
+  if (layout.left == null || layout.top == null) return;
+  const position = clampPosition(layout.left, layout.top, layout.scale);
+  layout.left = position.left;
+  layout.top = position.top;
+}
+
+function beginGesture(event, mode, direction = '') {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  const dock = dockRef.value;
+  if (!dock || !container) return;
+  event.preventDefault();
+  const dockRect = dock.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  layout.left = dockRect.left - containerRect.left;
+  layout.top = dockRect.top - containerRect.top;
+  gesture = {
+    mode,
+    direction,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    left: layout.left,
+    top: layout.top,
+    scale: layout.scale,
+    ...cardSize()
+  };
+  if (mode === 'drag') dragging.value = true;
+  else resizing.value = true;
+  try {
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+  } catch {
+    gesture = null;
+    dragging.value = false;
+    resizing.value = false;
+  }
+}
+
+function onDragPointerDown(event) {
+  if (gesture) return;
+  beginGesture(event, 'drag');
+}
+
+function onResizePointerDown(event, direction) {
+  if (gesture) return;
+  event.stopPropagation();
+  beginGesture(event, 'resize', direction);
+}
+
+function moveDrag(event, state) {
+  const position = clampPosition(
+    state.left + (event.clientX - state.startX),
+    state.top + (event.clientY - state.startY)
+  );
+  layout.left = position.left;
+  layout.top = position.top;
+}
+
+// 四边/四角统一按等比缩放：边缘看单轴位移，角落取两轴平均
+function resizeDelta(event, state) {
+  const dx = event.clientX - state.startX;
+  const dy = event.clientY - state.startY;
+  const deltas = [];
+  if (state.direction.includes('e')) deltas.push(dx / BASE_WIDTH);
+  if (state.direction.includes('w')) deltas.push(-dx / BASE_WIDTH);
+  if (state.direction.includes('s')) deltas.push(dy / baseHeight.value);
+  if (state.direction.includes('n')) deltas.push(-dy / baseHeight.value);
+  if (!deltas.length) return 0;
+  return deltas.reduce((sum, delta) => sum + delta, 0) / deltas.length;
+}
+
+function moveResize(event, state) {
+  const nextScale = clampScale(state.scale + resizeDelta(event, state));
+  const { width: nextWidth, height: nextHeight } = cardSize(nextScale);
+  // 向西/向北缩放时锚定对边，保证对角位置不动
+  const left = state.direction.includes('w') ? state.left + state.width - nextWidth : state.left;
+  const top = state.direction.includes('n') ? state.top + state.height - nextHeight : state.top;
+  const position = clampPosition(left, top, nextScale);
+  layout.scale = nextScale;
+  layout.left = position.left;
+  layout.top = position.top;
+}
+
+function onPointerMove(event) {
+  if (!gesture || event.pointerId !== gesture.pointerId) return;
+  if (gesture.mode === 'drag') moveDrag(event, gesture);
+  else moveResize(event, gesture);
+}
+
+function endInteraction(event) {
+  if (!gesture || (event && event.pointerId !== gesture.pointerId)) return;
+  gesture = null;
+  dragging.value = false;
+  resizing.value = false;
+  saveLayout();
+}
+
+onMounted(async () => {
+  await nextTick();
+  container = dockRef.value?.closest('.field-svg-wrap') || dockRef.value?.parentElement || null;
+  measureBaseHeight();
+  restoreLayout();
+  if (!container) return;
+  observer = new ResizeObserver(() => {
+    measureBaseHeight();
+    settleInsideContainer();
+  });
+  observer.observe(container);
+  if (cardRef.value) observer.observe(cardRef.value);
+});
+
+onBeforeUnmount(() => {
+  observer?.disconnect();
+  observer = null;
 });
 
 const ordinal = (n) => {
@@ -129,17 +384,32 @@ const fieldingLogoStyle = computed(() => ({
 </script>
 
 <style scoped>
+.lg-scoreboard-dock {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 6;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.lg-scoreboard-dock.is-dragging,
+.lg-scoreboard-dock.is-resizing {
+  z-index: 7;
+}
+
 .lg-scoreboard {
   --lg-line: rgba(255, 255, 255, 0.14);
   --lg-muted: #94a3b8;
   --lg-text: #f8fafc;
   --lg-gold: #fbbf24;
   position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 6;
+  top: 0;
+  left: 0;
   box-sizing: border-box;
-  width: min(270px, calc(100% - 24px));
+  width: var(--lg-base-width);
   padding: 8px 10px 7px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 10px;
@@ -147,7 +417,137 @@ const fieldingLogoStyle = computed(() => ({
   color: var(--lg-text);
   box-shadow: 0 8px 24px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(4px);
+  transform-origin: top left;
   pointer-events: none;
+}
+
+/* 顶部标题区是唯一拖动区，其余牌面让位给球场点击（守备员/落点） */
+.lg-scoreboard__drag {
+  position: relative;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.lg-scoreboard__drag::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 22px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.55);
+  transform: translateX(-50%);
+  transition: background 0.15s;
+}
+
+@media (hover: hover) {
+  .lg-scoreboard-dock:hover .lg-scoreboard {
+    border-color: rgba(148, 163, 184, 0.5);
+  }
+
+  .lg-scoreboard__drag:hover::before {
+    background: rgba(203, 213, 225, 0.85);
+  }
+}
+
+/* 边框/四角拖动缩放：命中区贴在边框上，视觉只保留右下角一道细握把 */
+.lg-scoreboard-resize {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* 命中区贴着边框外侧，只向牌内探 1px，避免盖住贴边的守备员/落点 */
+.lg-scoreboard-resize--n,
+.lg-scoreboard-resize--s {
+  left: 12px;
+  right: 12px;
+  height: 12px;
+}
+
+.lg-scoreboard-resize--n {
+  top: -11px;
+  cursor: ns-resize;
+}
+
+.lg-scoreboard-resize--s {
+  bottom: -11px;
+  cursor: ns-resize;
+}
+
+.lg-scoreboard-resize--e,
+.lg-scoreboard-resize--w {
+  top: 12px;
+  bottom: 12px;
+  width: 12px;
+}
+
+.lg-scoreboard-resize--e {
+  right: -11px;
+  cursor: ew-resize;
+}
+
+.lg-scoreboard-resize--w {
+  left: -11px;
+  cursor: ew-resize;
+}
+
+.lg-scoreboard-resize--ne,
+.lg-scoreboard-resize--nw,
+.lg-scoreboard-resize--se,
+.lg-scoreboard-resize--sw {
+  width: 16px;
+  height: 16px;
+}
+
+.lg-scoreboard-resize--ne {
+  top: -15px;
+  right: -15px;
+  cursor: nesw-resize;
+}
+
+.lg-scoreboard-resize--nw {
+  top: -15px;
+  left: -15px;
+  cursor: nwse-resize;
+}
+
+.lg-scoreboard-resize--se {
+  right: -15px;
+  bottom: -15px;
+  cursor: nwse-resize;
+}
+
+.lg-scoreboard-resize--sw {
+  bottom: -15px;
+  left: -15px;
+  cursor: nesw-resize;
+}
+
+/* 右下角可见握把同时也是可命中的缩放把手，避免“看得见点不到” */
+.lg-scoreboard-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: nwse-resize;
+}
+
+.lg-scoreboard-grip::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid rgba(203, 213, 225, 0.55);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.55);
+  border-radius: 0 0 1px 0;
 }
 
 .lg-scoreboard__grid {
@@ -445,29 +845,21 @@ const fieldingLogoStyle = computed(() => ({
 }
 
 .lg-light--ball.is-on {
-  border-color: #ef4444;
-  background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
-}
-
-.lg-light--strike.is-on {
   border-color: #22c55e;
   background: #22c55e;
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.65);
 }
 
-.lg-light--out.is-on {
-  border-color: var(--lg-gold);
-  background: var(--lg-gold);
-  box-shadow: 0 0 6px rgba(251, 191, 36, 0.65);
+.lg-light--strike.is-on {
+  border-color: #facc15;
+  background: #facc15;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.65);
 }
 
-@media (max-width: 640px) {
-  .lg-scoreboard {
-    top: 10px;
-    right: 10px;
-    width: min(260px, calc(100% - 20px));
-    padding: 7px 9px 6px;
-  }
+.lg-light--out.is-on {
+  border-color: #ef4444;
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
 }
+
 </style>
