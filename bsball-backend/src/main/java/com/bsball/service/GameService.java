@@ -1460,14 +1460,15 @@ public class GameService {
                 this.deleteRemovedStatRows(gameId, statTenantId, engineManaged, dto.getRemovedStatIds(),
                         existingById, keepIds);
             }
-            // 结果页逐位置整体替换（Issue #701 后续）：按球员重建逐位置行并重算球员级合计。
-            Set<String> replacedFieldingKeys =
-                    this.applyFieldingPlayerParts(game, dto.getFieldingPlayerParts());
             this.applyResultPitcherRunOverrides(game, manualPitcherRunParts);
             // Issue #701：结果页守备表显示的是逐位置合计，人工改写后必须同步回逐位置明细，
             // 否则刷新再保存会用旧合计把球员级人工值回滚。
             this.syncResultFieldingPositions(gameId, dto.getStats());
         }
+        // 逐位置整体替换必须晚于 stats 差额回写：否则 #704 的 sync 会用合计差额把刚替换的行改回。
+        // 放在 stats 分支外，stats 缺失时 final 门禁照常生效（Task 2 仍会在此加 skip）。
+        Set<String> replacedFieldingKeys =
+                this.applyFieldingPlayerParts(game, dto.getFieldingPlayerParts());
         // saveResult 的统计行来自结果页 /stats 读取（已含赛后补记），此处不再回放，避免重复 +1。
         // 首次 final 保存写入基座快照；已有基座不覆盖。
         this.revisionAuditService.captureBase(game, CurrentUserHolder.get(), "RESULT");
@@ -1534,7 +1535,8 @@ public class GameService {
     /**
      * 结果页逐位置守备按球员整体替换：删除该球员旧行后按 rows 重建，并由新行重算球员级合计。
      *
-     * <p>未出现在 parts 中的球员不动；rows 为空表示清空该球员全部守位行。
+     * <p>未出现在 parts 中的球员不动；rows 为空数组表示清空该球员全部守位行，
+     * 缺少 rows 字段（null）视为客户端漏传并拒绝，避免误清空。
      * 仅 final 比赛接受该字段，球队必须是本场主/客队，球员必须已有本场统计行。</p>
      *
      * @return 被替换的球员键（teamId_playerId）
@@ -1552,9 +1554,10 @@ public class GameService {
         }
         List<GameFieldingPosStat> existingRows = this.gameFieldingPosStatRepository
                 .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(game.getId());
-        Map<String, GamePlayerStat> statsByPlayer = new LinkedHashMap<>();
+        Map<String, List<GamePlayerStat>> statsByPlayer = new LinkedHashMap<>();
         for (GamePlayerStat stat : this.gamePlayerStatRepository.findByGameId(game.getId())) {
-            statsByPlayer.put(resultStatPlayerKey(stat.getTeamId(), stat.getPlayerId()), stat);
+            statsByPlayer.computeIfAbsent(resultStatPlayerKey(stat.getTeamId(), stat.getPlayerId()),
+                    key -> new ArrayList<>()).add(stat);
         }
         Set<String> replaced = new LinkedHashSet<>();
         int totalRows = 0;
@@ -1567,10 +1570,11 @@ public class GameService {
                 throw new BusinessException(400, "守备球队不属于本场比赛");
             }
             String key = resultStatPlayerKey(part.getTeamId(), part.getPlayerId());
-            GamePlayerStat stat = statsByPlayer.get(key);
-            if (stat == null) {
+            List<GamePlayerStat> playerStats = statsByPlayer.get(key);
+            if (playerStats == null || playerStats.isEmpty()) {
                 throw new BusinessException(400, "逐位置守备对象不在本场统计行中");
             }
+            GamePlayerStat stat = selectFieldingStatRow(playerStats);
             List<GameFieldingPosStat> newRows = buildFieldingPositionRows(game, stat, part);
             totalRows += newRows.size();
             if (totalRows > 200) {
@@ -1588,11 +1592,26 @@ public class GameService {
         return replaced;
     }
 
-    /** 校验并构建某球员的逐位置行（不落库）；位置非法或重复时抛 400。 */
+    /**
+     * 二刀流同一球员有打者/投手两行时，守备合计属于打者行：
+     * 优先取 {@code isPitcher != 1} 的行，没有则取第一行。
+     */
+    private static GamePlayerStat selectFieldingStatRow(List<GamePlayerStat> candidates) {
+        for (GamePlayerStat candidate : candidates) {
+            if (!Integer.valueOf(1).equals(candidate.getIsPitcher())) {
+                return candidate;
+            }
+        }
+        return candidates.get(0);
+    }
+
+    /** 校验并构建某球员的逐位置行（不落库）；rows 缺失、位置非法或重复时抛 400。 */
     private List<GameFieldingPosStat> buildFieldingPositionRows(
             Game game, GamePlayerStat stat, SaveGameResultDTO.FieldingPlayerPart part) {
-        List<SaveGameResultDTO.FieldingPositionRowPart> rows =
-                part.getRows() == null ? List.of() : part.getRows();
+        List<SaveGameResultDTO.FieldingPositionRowPart> rows = part.getRows();
+        if (rows == null) {
+            throw new BusinessException(400, "缺少逐位置行");
+        }
         if (rows.size() > 200) {
             throw new BusinessException(400, "逐位置守备数据过多");
         }
