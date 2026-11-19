@@ -21,5 +21,19 @@ export const clubhouseApi = {
     return get(`/api/account/clubhouse/sprays${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
   },
   saveConfig: (config) => put('/api/account/clubhouse/config', config).then((res) => res?.data ?? null),
-  resetConfig: () => post('/api/account/clubhouse/config/reset', {}).then((res) => res?.data ?? null)
+  resetConfig: () => post('/api/account/clubhouse/config/reset', {}).then((res) => res?.data ?? null),
+  saveShare: (enabled) => put('/api/account/clubhouse/share', { enabled }).then((res) => res?.data ?? null)
+};
+
+// 公开个人主页：免登录只读，按球员 ID 取数；范围参数与 /account/clubhouse 一致。
+export const publicClubhouseApi = {
+  dashboard: (playerId, params) => {
+    const qs = queryString(params);
+    return get(`/api/player/${playerId}/clubhouse${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
+  },
+  milestones: (playerId) => get(`/api/player/${playerId}/clubhouse/milestones`).then((res) => res?.data ?? null),
+  sprays: (playerId, params) => {
+    const qs = queryString(params);
+    return get(`/api/player/${playerId}/clubhouse/sprays${qs ? `?${qs}` : ''}`).then((res) => res?.data ?? null);
+  }
 };
