@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.common.PageResult;
@@ -119,13 +120,14 @@ class ClubhouseServiceTest {
     }
 
     @Test
-    @DisplayName("已认领但无代表球队时返回默认配置与空数据")
+    @DisplayName("已认领但无代表球队时返回默认配置与空数据，展示守位优先个人设置")
     void claimedPlayerWithoutTeamsReturnsDefaults() {
         CurrentUserHolder.set(7L, 1L);
         Player player = new Player();
         player.setId(10L);
         player.setTenantId(1L);
         player.setName("林嘉豪");
+        player.setPositionsList(List.of("1B"));
         when(playerRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
                 .thenReturn(Optional.of(player));
         when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
@@ -144,6 +146,8 @@ class ClubhouseServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> playerView = (Map<String, Object>) result.get("player");
         assertEquals("林嘉豪", playerView.get("name"));
+        // 未设置个人展示守位时回退名册守位
+        assertEquals(List.of("1B"), playerView.get("positions"));
         assertTrue(((List<?>) result.get("teams")).isEmpty());
         assertNotNull(result.get("catalog"));
         @SuppressWarnings("unchecked")
@@ -163,6 +167,13 @@ class ClubhouseServiceTest {
         Map<String, Object> performance = (Map<String, Object>) result.get("performance");
         assertEquals(false, performance.get("available"));
         assertTrue(((List<?>) result.get("schedule")).isEmpty());
+
+        // 本人设置展示守位后，优先于名册守位展示
+        player.setProfilePositionsList(List.of("P", "C"));
+        Map<String, Object> resultWithProfile = service.getDashboard(7L, null, null);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> playerViewWithProfile = (Map<String, Object>) resultWithProfile.get("player");
+        assertEquals(List.of("P", "C"), playerViewWithProfile.get("positions"));
     }
 
     @Test
@@ -928,6 +939,167 @@ class ClubhouseServiceTest {
     }
 
     /** 两支代表球队都报名同一赛事，用于多球队赛事口径。 */
+    @Test
+    @DisplayName("公开主页：未公开、未认领、跨租户都返回 404")
+    void publicDashboardRejectsInvisiblePlayers() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        player.setUserId(7L);
+        when(playerRepository.findById(10L)).thenReturn(Optional.of(player));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(ClubhouseMetricCatalog.defaultConfig());
+
+        assertThrows(BusinessException.class,
+                () -> service.getPublicDashboard(10L, null, null, null, null));
+
+        player.setUserId(null);
+        assertThrows(BusinessException.class,
+                () -> service.getPublicDashboard(10L, null, null, null, null));
+
+        player.setUserId(7L);
+        CurrentUserHolder.set(9L, 2L);
+        assertThrows(BusinessException.class,
+                () -> service.getPublicDashboard(10L, null, null, null, null));
+    }
+
+    @Test
+    @DisplayName("公开主页：关闭的模块不下发数据，快捷入口强制关闭")
+    void publicDashboardFiltersDisabledModules() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        player.setUserId(7L);
+        player.setName("公开球员");
+        when(playerRepository.findById(10L)).thenReturn(Optional.of(player));
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
+                .thenReturn(List.of());
+        when(teamRepository.findAllById(any())).thenReturn(List.of());
+        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
+        config.put("share", Map.of("enabled", true));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        modules.stream()
+                .filter(row -> "evaluation".equals(row.get("key")))
+                .forEach(row -> row.put("enabled", false));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
+        Map<String, Object> emptyStats = new LinkedHashMap<>();
+        emptyStats.put("batting", new LinkedHashMap<>());
+        emptyStats.put("pitching", new LinkedHashMap<>());
+        emptyStats.put("fielding", new LinkedHashMap<>());
+        when(statsService.getPlayerStats(10L, "BASEBALL")).thenReturn(emptyStats);
+        when(statsService.getPlayerGameLogForScope(10L, null, List.of(), 3, "BASEBALL", false))
+                .thenReturn(List.of());
+
+        Map<String, Object> result = service.getPublicDashboard(10L, null, null, null, null);
+
+        // 全部球队范围不计算队内排名；未启用总体评价也不下发，且不触发评价查询
+        assertTrue(!result.containsKey("ranks"));
+        assertTrue(!result.containsKey("evaluation"));
+        verifyNoInteractions(evaluationService);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> publicConfig = (Map<String, Object>) result.get("config");
+        assertTrue(!publicConfig.containsKey("share"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> publicModules = (List<Map<String, Object>>) publicConfig.get("modules");
+        Map<String, Object> quickLinks = publicModules.stream()
+                .filter(row -> "quickLinks".equals(row.get("key")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(false, quickLinks.get("enabled"));
+    }
+
+    @Test
+    @DisplayName("公开里程碑：模块关闭时不返回数据")
+    void publicMilestonesRequiresEnabledModule() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        player.setUserId(7L);
+        when(playerRepository.findById(10L)).thenReturn(Optional.of(player));
+        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
+        config.put("share", Map.of("enabled", true));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        modules.stream()
+                .filter(row -> "milestones".equals(row.get("key")))
+                .forEach(row -> row.put("enabled", false));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
+
+        assertThrows(BusinessException.class, () -> service.getPublicMilestones(10L));
+    }
+
+    @Test
+    @DisplayName("公开打击落点：模块关闭时不返回数据")
+    void publicSpraysRequiresEnabledModule() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        player.setUserId(7L);
+        when(playerRepository.findById(10L)).thenReturn(Optional.of(player));
+        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
+        config.put("share", Map.of("enabled", true));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> modules = (List<Map<String, Object>>) config.get("modules");
+        modules.stream()
+                .filter(row -> "spray".equals(row.get("key")))
+                .forEach(row -> row.put("enabled", false));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
+
+        assertThrows(BusinessException.class, () -> service.getPublicSprays(10L, 1L, null, 11L, "BASEBALL"));
+    }
+
+    @Test
+    @DisplayName("公开打击落点：启用时只返回范围与落点，不下发配置")
+    void publicSpraysDoNotExposeConfig() {
+        CurrentUserHolder.set(7L, 1L);
+        Player player = new Player();
+        player.setId(10L);
+        player.setTenantId(1L);
+        player.setUserId(7L);
+        when(playerRepository.findById(10L)).thenReturn(Optional.of(player));
+        PlayerTeam entry = new PlayerTeam();
+        entry.setTeamId(1L);
+        entry.setCurrent(true);
+        when(playerTeamRepository.findByPlayerIdAndDeletedAtIsNullOrderBySortAscIdAsc(10L))
+                .thenReturn(List.of(entry));
+        Team team = new Team();
+        team.setId(1L);
+        team.setName("广州猎豹");
+        when(teamRepository.findAllById(any())).thenReturn(List.of(team));
+        EventTeam registration = new EventTeam();
+        registration.setEventId(11L);
+        registration.setStatus(EventTeam.STATUS_CONFIRMED);
+        when(eventTeamRepository.findByTeamIdAndDeletedAtIsNullOrderByIdDesc(1L))
+                .thenReturn(List.of(registration));
+        Event event = new Event();
+        event.setId(11L);
+        event.setTenantId(1L);
+        event.setName("花城联赛");
+        event.setStatus("ongoing");
+        event.setStartDate("2026-03-01");
+        event.setGameMode("BASEBALL");
+        when(eventRepository.findAllById(any())).thenReturn(List.of(event));
+        when(statsService.getStandings(11L, null, null, "BASEBALL", 1, 100))
+                .thenReturn(PageResult.of(List.of(), 0L));
+        Map<String, Object> config = ClubhouseMetricCatalog.defaultConfig();
+        config.put("share", Map.of("enabled", true));
+        when(configService.getOrCreate(7L, 1L)).thenReturn(config);
+        when(statsService.getPlayerEventSummaries(10L, 1L, null))
+                .thenReturn(List.of(eventSummary(11L, "花城联赛", "BASEBALL")));
+        when(statsService.getPlayerHitSprays(10L, 1L, 1L, List.of(11L), "BASEBALL"))
+                .thenReturn(List.of(hitSpray(240d, 300d, "H1", "CF")));
+
+        Map<String, Object> result = service.getPublicSprays(10L, 1L, null, 11L, "BASEBALL");
+
+        assertTrue(result.containsKey("scope"));
+        assertTrue(result.containsKey("summary"));
+        assertTrue(!result.containsKey("config"));
+    }
+
     private void stubTwoTeamsSameEvent() {
         CurrentUserHolder.set(7L, 1L);
         Player player = new Player();

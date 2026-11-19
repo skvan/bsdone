@@ -142,6 +142,7 @@ const routes = [
         { path: 'star-players', name: 'PortalStarPlayers', component: StarPlayers },
         { path: 'teams/:id', name: 'PortalTeamDetail', component: PortalTeamDetail },
         { path: 'stadiums/:id', name: 'PortalStadiumDetail', component: PortalStadiumDetail },
+        { path: 'players/:id/clubhouse', name: 'PortalClubhouseShare', component: PortalClubhouse, meta: { title: '个人主页', readonly: true } },
         { path: 'players/:id', name: 'PortalPlayerDetail', component: PortalPlayerDetail },
         { path: 'stats', name: 'PortalStats', component: PortalStats },
         { path: 'docs/:id', name: 'PortalAnnouncementDoc', component: AnnouncementDoc },

@@ -152,22 +152,31 @@ test('结果录入守备表：DH 取消后 1B 行与投手 P 行都要显示', a
   const wuRow = awayTable.locator('tbody tr', { hasText: '吴昌言' }).first();
   await expect(wuRow).toBeVisible();
   await expect(wuRow.locator('td').nth(2)).toHaveText('1B');
-  await expect(wuRow.locator('.el-input-number input').nth(1)).toHaveValue('10');
-  await expect(wuRow.locator('.el-input-number input').nth(2)).toHaveValue('1');
-  await expect(wuRow.locator('.el-input-number input').nth(4)).toHaveValue('1');
+  // 有逐位置明细时球员级合计只读，按逐位置派生显示
+  await expect(wuRow.locator('td').nth(4)).toHaveText('10');
+  await expect(wuRow.locator('td').nth(5)).toHaveText('1');
+  await expect(wuRow.locator('td').nth(7)).toHaveText('1');
 
   const pitcherRow = awayTable.locator('tbody tr', { hasText: '姚智鹏' }).first();
   await expect(pitcherRow).toBeVisible();
   await expect(pitcherRow.locator('td').nth(2)).toHaveText('P');
-  await expect(pitcherRow.locator('.el-input-number input').nth(2)).toHaveValue('2');
-  await expect(pitcherRow.locator('.el-input-number input').nth(2)).toBeEditable();
+  await expect(pitcherRow.locator('td').nth(5)).toHaveText('2');
 
   const twoWayRow = awayTable.locator('tbody tr', { hasText: '王译圣' }).first();
   await expect(twoWayRow).toBeVisible();
   await expect(awayTable.locator('tbody tr', { hasText: '王译圣' })).toHaveCount(1);
   await expect(twoWayRow.locator('td').nth(2)).toHaveText('3B');
-  await expect(twoWayRow.locator('.el-input-number input').nth(1)).toHaveValue('1');
-  await expect(twoWayRow.locator('.el-input-number input').nth(2)).toHaveValue('2');
+  await expect(twoWayRow.locator('td').nth(4)).toHaveText('1');
+  await expect(twoWayRow.locator('td').nth(5)).toHaveText('2');
+
+  // final 可编辑性：展开有逐位置行的球员，子行 PO 输入应可编辑（逐位置值保留）
+  await twoWayRow.locator('.game-fielding-table__expander').click();
+  const positionRows = awayTable.locator('tbody tr.row-position');
+  await expect(positionRows).toHaveCount(2);
+  const firstPositionRow = positionRows.first();
+  const positionPoInput = firstPositionRow.locator('td').nth(4).locator('input');
+  await expect(positionPoInput).toHaveValue('1');
+  await expect(positionPoInput).toBeEditable();
 
   const homeTable = page.locator('.game-fielding-table', { hasText: '主队B 守备' });
   const homePitcherRow = homeTable.locator('tbody tr', { hasText: '主队投手' }).first();

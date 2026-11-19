@@ -210,6 +210,27 @@ class BatchOnboardingRuleTest {
     }
 
     @Test
+    @DisplayName("批量代建覆盖：保留本人维护的个人展示守位（不被导入清空）")
+    void batchImport_overwrite_keepsProfilePositions() {
+        when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);
+        when(accountScopeService.resolveCurrent()).thenReturn(EffectiveScope.restricted(false, Set.of(), Set.of(100L)));
+        when(teamRepository.findById(100L)).thenReturn(Optional.of(team(100L, TENANT_ID)));
+        Player existing = playerRow("张三", null, "1990-01-01", null);
+        existing.setId(900L);
+        existing.setProfilePositionsList(List.of("P"));
+        when(playerRepository.findByDeletedAtIsNullAndTenantId(TENANT_ID)).thenReturn(List.of(existing));
+        when(playerRepository.save(any(Player.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Player row = playerRow("张三", 100L, "1990-01-01", "7");
+        Map<String, Object> result = playerService.batchImport(List.of(row), "overwrite");
+
+        assertEquals(Integer.valueOf(0), result.get("created"));
+        assertEquals(Integer.valueOf(1), result.get("updated"));
+        assertEquals(List.of("P"), row.getProfilePositionsList());
+        verify(playerTeamService).syncLegacyEntry(row);
+    }
+
+    @Test
     @DisplayName("批量代建去重：文件内两行同 name+birthDate → 仅建一条")
     void batchImport_dedup_inFile_sameNameBirthDate() {
         when(tenantQueryPolicyService.requiredTenantId()).thenReturn(TENANT_ID);

@@ -18,12 +18,14 @@ import com.bsball.repository.PlayerRepository;
 import com.bsball.repository.PlayerTeamRepository;
 import com.bsball.repository.TeamRepository;
 import com.bsball.service.query.ScopeQuerySupport;
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -202,13 +204,14 @@ class PlayerServiceSelfProfileTest {
     @DisplayName("本人档案编辑：经 guard 校验并按白名单生效（组图/JSON 走归一化链）")
     void updateSelfProfile_guardInvokedAndWhitelistApplied() {
         Player p = player(1L);
+        p.setPositionsList(List.of("1B"));
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Map<String, Object> body = new HashMap<>();
         body.put("height", "180");
         body.put("name", "李四");
         body.put("bgImages", List.of("a", "a", "b"));
-        body.put("positions", List.of("P", "C"));
+        body.put("profilePositions", List.of("P", "C"));
 
         Player result = service.updateSelfProfile(1L, body);
         
@@ -217,7 +220,9 @@ class PlayerServiceSelfProfileTest {
         assertEquals("李四", result.getName());
         assertEquals(List.of("a", "b"), result.getBgImages());
         assertEquals("a", result.getBgImage());
-        assertEquals(List.of("P", "C"), result.getPositionsList());
+        assertEquals(List.of("P", "C"), result.getProfilePositionsList());
+        // 名册镜像守位不随个人展示守位变化
+        assertEquals(List.of("1B"), result.getPositionsList());
         verify(playerRepository).save(p);
     }
 
@@ -228,6 +233,7 @@ class PlayerServiceSelfProfileTest {
         p.setNumber("7");
         p.setStatus("active");
         p.setTeamId(5L);
+        p.setPositionsList(List.of("1B"));
         when(playerRepository.findById(1L)).thenReturn(Optional.of(p));
         when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Map<String, Object> body = new HashMap<>();
@@ -235,6 +241,7 @@ class PlayerServiceSelfProfileTest {
         body.put("status", "retired");
         body.put("teamId", 8L);
         body.put("sort", 123);
+        body.put("positions", List.of("SS"));
 
         Player result = service.updateSelfProfile(1L, body);
         
@@ -242,6 +249,8 @@ class PlayerServiceSelfProfileTest {
         assertEquals("active", result.getStatus());
         assertEquals(Long.valueOf(5L), result.getTeamId());
         assertEquals(Integer.valueOf(0), result.getSort());
+        // 名册守位不属于本人白名单，不能借 SELF 通道改写
+        assertEquals(List.of("1B"), result.getPositionsList());
     }
 
     @Test
@@ -321,7 +330,7 @@ class PlayerServiceSelfProfileTest {
 
     @Test
     @DisplayName("白名单一致性：SELF_EDITABLE 全部 20 键均有 switch 分支（逐键生效）")
-    void updateSelfProfile_whitelistCoversEverySwitchBranch() {
+    void updateSelfProfile_whitelistCoversEverySwitchBranch() throws Exception {
         Map<String, Object> samples = new LinkedHashMap<>();
         samples.put("height", "180");
         samples.put("weight", "75");
@@ -342,9 +351,14 @@ class PlayerServiceSelfProfileTest {
         samples.put("draft", "draft-1");
         samples.put("debut", "debut-1");
         samples.put("name", "李四");
-        samples.put("positions", List.of("P", "C"));
+        samples.put("profilePositions", List.of("P", "C"));
 
-        assertEquals(20, samples.size(), "SELF_EDITABLE 白名单应为 20 个键");
+        Field whitelistField = PlayerService.class.getDeclaredField("SELF_EDITABLE");
+        whitelistField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Set<String> whitelist = (Set<String>) whitelistField.get(null);
+        assertEquals(20, whitelist.size(), "SELF_EDITABLE 白名单应为 20 个键");
+        assertEquals(whitelist, samples.keySet(), "样本键应与 SELF_EDITABLE 完全一致");
 
         final Player[] holder = new Player[1];
         when(playerRepository.findById(1L)).thenAnswer(invocation -> Optional.of(holder[0]));
@@ -412,7 +426,7 @@ class PlayerServiceSelfProfileTest {
             case "draft" -> "draft-1".equals(p.getDraft());
             case "debut" -> "debut-1".equals(p.getDebut());
             case "name" -> "李四".equals(p.getName());
-            case "positions" -> List.of("P", "C").equals(p.getPositionsList());
+            case "profilePositions" -> List.of("P", "C").equals(p.getProfilePositionsList());
             default -> false;
         };
     }

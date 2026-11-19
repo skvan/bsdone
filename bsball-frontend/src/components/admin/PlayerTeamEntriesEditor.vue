@@ -1,17 +1,17 @@
 <template>
   <div class="pte-editor">
-    <p v-if="!entries.length" class="pte-empty">暂无球队经历，点击下方「添加球队经历」为球员登记球队。</p>
+    <p v-if="!entries.length" class="pte-empty">{{ readonly ? '暂无球队经历。' : '暂无球队经历，点击下方「添加球队经历」为球员登记球队。' }}</p>
     <div v-for="(seg, idx) in entries" :key="idx" class="pte-seg">
       <div class="pte-seg-head">
         <span class="pte-seg-title">球队经历 {{ idx + 1 }}</span>
         <el-tag v-if="seg.current" type="success" size="small" effect="plain">当前球队</el-tag>
         <span class="pte-seg-spacer"></span>
-        <el-button link type="danger" @click="removeSegment(idx)">删除</el-button>
+        <el-button v-if="!readonly" link type="danger" @click="removeSegment(idx)">删除</el-button>
       </div>
       <div class="pte-seg-grid">
         <div class="pte-field">
           <span class="pte-label">球队</span>
-          <el-select v-model="seg.teamId" placeholder="选择球队" filterable clearable style="width: 100%">
+          <el-select v-model="seg.teamId" placeholder="选择球队" filterable clearable :disabled="readonly" style="width: 100%">
             <el-option v-for="item in teams" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </div>
@@ -21,6 +21,7 @@
             v-model="seg.number"
             maxlength="4"
             placeholder="如 00、1、01"
+            :disabled="readonly"
             @input="onNumberInput(seg)"
           />
         </div>
@@ -31,6 +32,7 @@
             multiple
             filterable
             placeholder="可多选"
+            :disabled="readonly"
             style="width: 100%"
           >
             <el-option v-for="code in positionCodes" :key="code" :label="formatPosition(code)" :value="code" />
@@ -38,13 +40,13 @@
         </div>
         <div class="pte-field pte-field--current">
           <span class="pte-label">&nbsp;</span>
-          <el-checkbox v-model="seg.current">当前球队</el-checkbox>
+          <el-checkbox v-model="seg.current" :disabled="readonly">当前球队</el-checkbox>
         </div>
       </div>
     </div>
     <div class="pte-actions">
-      <el-button plain @click="addSegment">添加球队经历</el-button>
-      <span class="pte-hint">勾选「当前球队」表示目前在队（可多选）；未勾选为历史经历</span>
+      <el-button v-if="!readonly" plain @click="addSegment">添加球队经历</el-button>
+      <span class="pte-hint">{{ readonly ? '球队经历与背号由球队管理维护，不支持在此修改。' : '勾选「当前球队」表示目前在队（可多选）；未勾选为历史经历' }}</span>
     </div>
   </div>
 </template>
@@ -56,7 +58,9 @@ import { POSITION_LABELS, formatPosition } from '../../utils/playerOptions';
 // 段内字段编辑与增删直接作用于该响应式数组，无需额外事件同步。
 const props = defineProps({
   entries: { type: Array, default: () => [] },
-  teams: { type: Array, default: () => [] }
+  teams: { type: Array, default: () => [] },
+  // 本人档案（SELF 通道）编辑时为只读：名册字段归球队管理
+  readonly: { type: Boolean, default: false }
 });
 
 const positionCodes = Object.keys(POSITION_LABELS);

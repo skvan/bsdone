@@ -2223,6 +2223,10 @@ implements CommandLineRunner {
         if (path.equals("/wechat/jssdk-config")) {
             return true;
         }
+        // 公开个人主页是门户公开能力；即使未开启 business 种子也放行；只匹配 /player/*/clubhouse
+        if (path.startsWith("/player/") && path.contains("/clubhouse")) {
+            return true;
+        }
         if (path.contains("/stadium")) {
             return true;
         }

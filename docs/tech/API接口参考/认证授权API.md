@@ -286,6 +286,16 @@ A-->>C : Result{code,msg,data}
 - 行为：校验验证码并重置密码
 - 响应data：reset=true
 
+#### 20) 本人球员档案（SELF 通道）
+- 方法/URL：
+  - GET /account/player-profile：取当前账号认领的球员档案（无则 data=null）
+  - POST /account/player-profile：自助建档（body=Player 草稿）
+  - PUT /account/player-profile/{playerId}：本人档案编辑
+- 请求头：Authorization: Bearer <jwt>
+- 权限：仅档案本人可写；超管/租管按既有范围规则放行；其他账号返回 403
+- PUT 请求体：仅白名单字段生效，包括姓名/英文名/昵称/身高/体重/投打/出生日期/出生地/学历/选秀/首秀/联系电话/联系邮箱/简介/头像/背景图/个人展示守位（`profilePositions`）；`profilePositions` 仅用于个人资料与个人主场展示，不参与比赛统计与排行
+- teamEntries 自助白名单：仅允许取消当前球队（current true→false）与删除无比赛记录的球队经历；新增经历/重新入队走球队邀请，改动背号或经历中的守位返回 403
+
 ## 依赖关系分析
 - API层依赖服务层进行业务编排，服务层依赖仓储与外部服务（短信、邮件）。
 - JWT服务独立于业务，提供统一的令牌签发与校验。

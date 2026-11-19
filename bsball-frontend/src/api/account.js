@@ -31,6 +31,8 @@ export const accountApi = {
   getProfile: () => get('/api/account/profile'),
   // 本人已认领的球员档案（未认领时 data 为 null；404 由调用方兜底）
   getPlayerProfile: () => get('/api/account/player-profile').then((res) => res?.data ?? null),
+  // 本人档案编辑（SELF 通道，仅后端白名单字段生效）
+  updateSelfProfile: (playerId, data) => put(`/api/account/player-profile/${playerId}`, data),
   // 当前用户信息（App 启动时恢复登录态；编译产物 authApi.me）
   me: () => get('/api/auth/me'),
   updateProfile: (data) => put('/api/account/profile', data),

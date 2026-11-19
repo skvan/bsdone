@@ -136,8 +136,9 @@ class Team {
   - 统计与钻取通过服务聚合计算并按模式过滤；统计按 playerId 聚合，不受多队注册影响
   - 导入与旧页面更新会按旧字段确保/更新一条“当前球队”经历
 - 数据模型要点
-  - 关联用户ID、租户ID；包含姓名、昵称、号码镜像、位置镜像、头像、背景配置、出生信息、身高体重、投打手、选秀/首秀、学历、当前加入记录ID、状态、联系方式、简介、排序等
+  - 关联用户ID、租户ID；包含姓名、昵称、号码镜像、位置镜像、个人展示守位、头像、背景配置、出生信息、身高体重、投打手、选秀/首秀、学历、当前加入记录ID、状态、联系方式、简介、排序等
   - 多队注册：teamId/number/positions 为“主注册”镜像字段；完整球队经历见 bs_player_team（下表）
+  - profilePositions（个人展示守位）：本人经 SELF 通道维护，仅用于个人资料/个人主场展示，不参与比赛统计与排行；管理台 PUT /player/update/{id} 忽略该字段并由服务端继承原值
 
 ```mermaid
 classDiagram
@@ -151,6 +152,7 @@ class Player {
 +String nickname
 +String number
 +String positions
++String profilePositions
 +String avatar
 +String bgImage
 +Map~String,Object~ bgFocusConfig

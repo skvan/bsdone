@@ -85,7 +85,13 @@ public class ClubhouseService {
      */
     public Map<String, Object> getDashboard(Long userId, Long teamId, Long leagueId, Long eventId,
             String requestedGameMode) {
-        Player player = findPlayer(userId);
+        return buildDashboard(findPlayer(userId), userId, null, null, teamId, leagueId, eventId,
+                requestedGameMode);
+    }
+
+    private Map<String, Object> buildDashboard(Player player, Long ownerUserId,
+            Map<String, Object> configOverride, Set<String> modulesToBuild, Long teamId, Long leagueId,
+            Long eventId, String requestedGameMode) {
         Long tenantId = player.getTenantId();
         List<PlayerTeam> entries = currentEntries(player.getId());
         List<Map<String, Object>> teams = buildTeams(entries, tenantId);
@@ -98,13 +104,16 @@ public class ClubhouseService {
             // 所选球队在当前运动类型下既无已确认赛事也无比赛记录：与球队选项同口径回落到全部球队
             playedSummaries = statsService.getPlayerEventSummaries(player.getId(), null, null);
         }
-        Map<String, Object> config = configService.getOrCreate(userId, tenantId);
+        Map<String, Object> config = configOverride != null
+                ? configOverride
+                : configService.getOrCreate(ownerUserId, tenantId);
         String gameMode = scope.gameMode();
         Map<String, Object> stats = loadStats(player.getId(), scope.teamId(), scope.eventIds(), gameMode);
         boolean battingAvailable = hasBatting(stats);
         boolean pitchingAvailable = hasPitching(stats);
         List<Long> evaluationTeamIds = scope.teamId() == null ? List.of() : List.of(scope.teamId());
 
+        boolean buildAll = modulesToBuild == null;
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("player", playerView(player, entries));
         out.put("teams", teams);
@@ -116,16 +125,27 @@ public class ClubhouseService {
         out.put("catalog", ClubhouseMetricCatalog.catalog(battingAvailable, pitchingAvailable));
         out.put("moduleCatalog", ClubhouseModuleCatalog.catalog());
         out.put("milestoneCatalog", ClubhouseMilestoneCatalog.catalog());
-        out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
-        out.put("ranks", ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
-        out.put("evaluation", evaluationService.buildScoped(
-                player.getId(), gameMode, stats, firstPosition(player),
-                scope.eventIds(), evaluationTeamIds, comparisonLabel(scope)));
-        List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventIds(),
-                gameMode);
-        out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
-        out.put("schedule", schedule);
-        out.put("recentGames", recentGames(player, scope.teamId(), scope.eventIds(), gameMode));
+        if (buildAll || modulesToBuild.contains("performance")) {
+            out.put("performance", performance(player.getId(), scope, config, stats, gameMode));
+        }
+        if (buildAll || (modulesToBuild.contains("ranks") && scope.teamId() != null)) {
+            out.put("ranks",
+                    ranks(player.getId(), scope, config, battingAvailable, pitchingAvailable, gameMode));
+        }
+        if (buildAll || modulesToBuild.contains("evaluation")) {
+            out.put("evaluation", evaluationService.buildScoped(
+                    player.getId(), gameMode, stats, firstPosition(player),
+                    scope.eventIds(), evaluationTeamIds, comparisonLabel(scope)));
+        }
+        if (buildAll || modulesToBuild.contains("schedule")) {
+            List<Map<String, Object>> schedule = schedule(tenantId, teams, scope.teamId(), scope.eventIds(),
+                    gameMode);
+            out.put("nextGame", schedule.isEmpty() ? null : schedule.get(0));
+            out.put("schedule", schedule);
+        }
+        if (buildAll || modulesToBuild.contains("recentGames")) {
+            out.put("recentGames", recentGames(player, scope.teamId(), scope.eventIds(), gameMode));
+        }
         return out;
     }
 
@@ -143,7 +163,11 @@ public class ClubhouseService {
     /** 打击落点按需加载：跟随顶部球队/联盟/赛事/运动类型范围，模块隐藏时零请求。 */
     public Map<String, Object> getSprays(Long userId, Long teamId, Long leagueId, Long eventId,
             String requestedGameMode) {
-        Player player = findPlayer(userId);
+        return buildSprays(findPlayer(userId), teamId, leagueId, eventId, requestedGameMode);
+    }
+
+    private Map<String, Object> buildSprays(Player player, Long teamId, Long leagueId, Long eventId,
+            String requestedGameMode) {
         Long tenantId = player.getTenantId();
         List<PlayerTeam> entries = currentEntries(player.getId());
         List<Map<String, Object>> teams = buildTeams(entries, tenantId);
@@ -158,6 +182,150 @@ public class ClubhouseService {
         out.put("scope", scopeView(scope));
         out.putAll(ClubhouseSprayReport.build(sprays));
         return out;
+    }
+
+    /**
+     * 公开主页聚合：按球员 ID 取数，不依赖当前登录用户；未认领、跨租户或主人未开启分享统一 404。
+     * 返回前按主人启用模块裁剪数据，避免前端隐藏而接口仍下发私有模块。
+     */
+    public Map<String, Object> getPublicDashboard(Long playerId, Long teamId, Long leagueId, Long eventId,
+            String requestedGameMode) {
+        Player player = resolvePublicPlayer(playerId);
+        Map<String, Object> config = requireShareEnabled(player);
+        Set<String> modules = enabledModuleKeys(config);
+        return filterPublicDashboard(buildDashboard(player, player.getUserId(), config, modules,
+                teamId, leagueId, eventId, requestedGameMode));
+    }
+
+    /** 公开生涯里程碑：分享开关与里程碑模块都开启时才返回。 */
+    public Map<String, Object> getPublicMilestones(Long playerId) {
+        Player player = resolvePublicPlayer(playerId);
+        Map<String, Object> config = requireShareEnabled(player);
+        requirePublicModule(config, "milestones");
+        return milestoneService.build(player.getId(), null, config);
+    }
+
+    /** 公开打击落点：分享开关与打击落点模块都开启时才返回。 */
+    public Map<String, Object> getPublicSprays(Long playerId, Long teamId, Long leagueId, Long eventId,
+            String requestedGameMode) {
+        Player player = resolvePublicPlayer(playerId);
+        Map<String, Object> config = requireShareEnabled(player);
+        requirePublicModule(config, "spray");
+        return buildSprays(player, teamId, leagueId, eventId, requestedGameMode);
+    }
+
+    private Player resolvePublicPlayer(Long playerId) {
+        Player player = playerId == null ? null : playerRepository.findById(playerId).orElse(null);
+        if (player == null || player.getDeletedAt() != null) {
+            throw publicNotFound();
+        }
+        Long requestTenantId = CurrentUserHolder.getTenantId();
+        if (requestTenantId == null || !Objects.equals(requestTenantId, player.getTenantId())) {
+            throw publicNotFound();
+        }
+        if (player.getUserId() == null) {
+            throw publicNotFound();
+        }
+        return player;
+    }
+
+    /** 公开请求每轮只读一次主人配置；同时校验分享开关。 */
+    private Map<String, Object> requireShareEnabled(Player player) {
+        Map<String, Object> config = configService.getOrCreate(player.getUserId(), player.getTenantId());
+        Object share = config.get("share");
+        if (!(share instanceof Map<?, ?> map) || !Boolean.TRUE.equals(map.get("enabled"))) {
+            throw publicNotFound();
+        }
+        return config;
+    }
+
+    private void requirePublicModule(Map<String, Object> config, String moduleKey) {
+        if (!enabledModuleKeys(config).contains(moduleKey)) {
+            throw publicNotFound();
+        }
+    }
+
+    private BusinessException publicNotFound() {
+        return new BusinessException(404, "该主页未公开");
+    }
+
+    /**
+     * 公开响应裁剪：模块数据只保留启用项；快捷入口强制关闭；分享配置不对外下发。
+     * 基础球员统计与球队/赛事范围仍保留：公开球员页本就公开统计，分享卡摘要也依赖 stats；
+     * 球队/赛事/运动类型用于展示锁定的分享范围。
+     */
+    private Map<String, Object> filterPublicDashboard(Map<String, Object> dashboard) {
+        Object rawConfig = dashboard.get("config");
+        if (!(rawConfig instanceof Map<?, ?>)) {
+            return dashboard;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> config = (Map<String, Object>) rawConfig;
+        Set<String> enabled = enabledModuleKeys(config);
+        if (!enabled.contains("ranks")) {
+            dashboard.remove("ranks");
+        }
+        if (!enabled.contains("evaluation")) {
+            dashboard.remove("evaluation");
+        }
+        if (!enabled.contains("performance")) {
+            dashboard.remove("performance");
+        }
+        if (!enabled.contains("schedule")) {
+            dashboard.remove("schedule");
+            dashboard.remove("nextGame");
+        }
+        if (!enabled.contains("recentGames")) {
+            dashboard.remove("recentGames");
+        }
+        disableQuickLinks(config);
+        config.remove("share");
+        if (!enabled.contains("performance")) {
+            config.remove("performance");
+        }
+        if (!enabled.contains("ranks")) {
+            config.remove("ranks");
+        }
+        if (!enabled.contains("milestones")) {
+            config.remove("milestones");
+        }
+        return dashboard;
+    }
+
+    private Set<String> enabledModuleKeys(Map<String, Object> config) {
+        Set<String> keys = new LinkedHashSet<>();
+        Object rawModules = config == null ? null : config.get("modules");
+        if (rawModules instanceof List<?> modules) {
+            for (Object item : modules) {
+                if (item instanceof Map<?, ?> row
+                        && Boolean.TRUE.equals(row.get("enabled"))
+                        && row.get("key") != null) {
+                    keys.add(String.valueOf(row.get("key")));
+                }
+            }
+        } else {
+            for (ClubhouseModuleCatalog.ModuleDef def : ClubhouseModuleCatalog.all()) {
+                if (def.enabledByDefault()) {
+                    keys.add(def.key());
+                }
+            }
+        }
+        keys.remove("quickLinks");
+        return keys;
+    }
+
+    private void disableQuickLinks(Map<String, Object> config) {
+        Object rawModules = config.get("modules");
+        if (!(rawModules instanceof List<?> modules)) {
+            return;
+        }
+        for (Object item : modules) {
+            if (item instanceof Map<?, ?> row && "quickLinks".equals(row.get("key"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mutable = (Map<String, Object>) row;
+                mutable.put("enabled", false);
+            }
+        }
     }
 
     private Player findPlayer(Long userId) {
@@ -953,9 +1121,18 @@ public class ClubhouseService {
         return scoreFor > scoreAgainst ? "W" : scoreFor < scoreAgainst ? "L" : "D";
     }
 
-    /** 雷达守位分组取球员档案的第一个守位；无守位时返回 null，由评价服务回退全体口径。 */
+    /**
+     * 个人展示守位：本人自助维护的 profilePositions 优先；未设置时回退球队名册守位。
+     * 仅用于个人资料/个人主场展示，不参与比赛统计与排行。
+     */
+    private List<String> displayPositions(Player player) {
+        List<String> own = player.getProfilePositionsList();
+        return own.isEmpty() ? player.getPositionsList() : own;
+    }
+
+    /** 雷达守位分组取个人展示守位的第一项；无守位时返回 null，由评价服务回退全体口径。 */
     private String firstPosition(Player player) {
-        List<String> positions = PositionsJsonUtil.parseList(player.getPositions());
+        List<String> positions = this.displayPositions(player);
         return positions.isEmpty() ? null : positions.get(0);
     }
 
@@ -978,7 +1155,7 @@ public class ClubhouseService {
         out.put("nameEn", player.getNameEn());
         out.put("nickname", player.getNickname());
         out.put("number", player.getNumber());
-        out.put("positions", PositionsJsonUtil.parseList(player.getPositions()));
+        out.put("positions", this.displayPositions(player));
         out.put("avatar", player.getAvatar());
         out.put("bgImage", player.getBgImage());
         out.put("height", player.getHeight());

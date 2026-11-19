@@ -12,6 +12,7 @@ const player = read('../src/components/admin/PlayerDetailContent.js');
 const statsCols = read('../src/stores/statsColumns.js');
 const storage = read('../src/utils/gameDetailFieldSettingsStorage.js');
 const fieldingTable = read('../src/components/admin/GameFieldingTable.vue');
+const fieldingMerge = read('../src/utils/gameResultFieldingMerge.js');
 const defaults = read('../src/utils/gamePlayerStat.js');
 const tableMeta = read('../src/composables/useStatsTableMeta.js');
 
@@ -40,16 +41,21 @@ test('结果录入守备表合并逐位置数据并纳入投手/DH取消球员',
     'il.listFieldingPositions(pe.value)',
     'fieldingPositionRows',
     'function mergeFieldingRows',
-    'target._fieldPosition',
     'resultFieldingRows(le.value)',
     'resultFieldingRows(te.value)',
     '!t._fieldingOnly',
     'fo=le.value.filter(f=>f._fieldingOnly)',
-    'fo=te.value.filter(f=>f._fieldingOnly)',
-    'stats.battingOrder==null&&stats.listOrder==null',
-    'row._fieldingOnly=!0'
+    'fo=te.value.filter(f=>f._fieldingOnly)'
   ]) {
     assert.ok(games.includes(needle), `结果录入守备表缺少 ${needle}`);
+  }
+  // 合并口径已抽到 gameResultFieldingMerge.js（Issue #701），相关行为在工具内断言
+  for (const needle of [
+    'target._fieldPosition',
+    'stats.battingOrder == null && stats.listOrder == null',
+    'row._fieldingOnly = true'
+  ]) {
+    assert.ok(fieldingMerge.includes(needle), `守备合并工具缺少 ${needle}`);
   }
   assert.ok(fieldingTable.includes('row._fieldPosition || row.position'), '守备表 POS 未使用合并后的守位');
 });
