@@ -1564,6 +1564,10 @@ public class GameService {
      * 缺少 rows 字段（null）视为客户端漏传并拒绝，避免误清空。
      * 仅 final 比赛接受该字段，球队必须是本场主/客队，球员必须已有本场统计行。</p>
      *
+     * <p>顺序：先完成全部球员的校验与构建（含 200 行上限），通过后再落库并统一写台账。
+     * 台账服务用独立事务（REQUIRES_NEW），若在循环中即时写入，后续球员校验失败、
+     * 外层回滚时会留下无法回滚的台账孤行。</p>
+     *
      * @return 被替换的球员键（teamId_playerId）
      */
     private Set<String> applyFieldingPlayerParts(
@@ -1584,25 +1588,52 @@ public class GameService {
             statsByPlayer.computeIfAbsent(resultStatPlayerKey(stat.getTeamId(), stat.getPlayerId()),
                     key -> new ArrayList<>()).add(stat);
         }
-        Set<String> replaced = new LinkedHashSet<>();
+        List<FieldingReplacement> replacements = new ArrayList<>();
         int totalRows = 0;
         for (SaveGameResultDTO.FieldingPlayerPart part : parts) {
             if (part == null || part.getTeamId() == null || part.getPlayerId() == null) {
                 continue;
             }
-            totalRows += this.replacePlayerFieldingRows(game, part, statsByPlayer, existingRows, replaced);
+            FieldingReplacement replacement =
+                    planPlayerFieldingRows(game, part, statsByPlayer, existingRows);
+            totalRows += replacement.newRows().size();
             if (totalRows > 200) {
                 throw new BusinessException(400, "逐位置守备数据过多");
             }
+            replacements.add(replacement);
+        }
+        List<GameRevisionAuditService.StatChange> recomputeChanges = new ArrayList<>();
+        List<FieldingPositionChange> positionChanges = new ArrayList<>();
+        Set<String> replaced = new LinkedHashSet<>();
+        for (FieldingReplacement replacement : replacements) {
+            List<GameFieldingPosStat> savedRows =
+                    this.savePlayerFieldingRows(game, replacement, recomputeChanges);
+            positionChanges.add(new FieldingPositionChange(replacement.oldRows(), savedRows));
+            replaced.add(replacement.key());
+        }
+        this.revisionAuditService.recordStatChanges(game, recomputeChanges, CurrentUserHolder.get());
+        for (FieldingPositionChange change : positionChanges) {
+            recordFieldingPositionChanges(game, change.oldRows(), change.newRows());
         }
         return replaced;
     }
 
-    /** 单个球员的逐位置整体替换（删除→flush→重建→重算合计），返回新行数。 */
-    private int replacePlayerFieldingRows(
+    /** 单个球员的逐位置整体替换计划：全部校验通过后由落库阶段执行。 */
+    private record FieldingReplacement(
+            String key, Long teamId, Long playerId, GamePlayerStat stat,
+            List<GameFieldingPosStat> oldRows, List<GameFieldingPosStat> newRows) {
+    }
+
+    /** 一位球员的台账数据：替换前旧行与落库后的新行。 */
+    private record FieldingPositionChange(
+            List<GameFieldingPosStat> oldRows, List<GameFieldingPosStat> newRows) {
+    }
+
+    /** 校验球队/球员并构建某球员的逐位置替换计划（不落库、不写台账）。 */
+    private FieldingReplacement planPlayerFieldingRows(
             Game game, SaveGameResultDTO.FieldingPlayerPart part,
             Map<String, List<GamePlayerStat>> statsByPlayer,
-            List<GameFieldingPosStat> existingRows, Set<String> replaced) {
+            List<GameFieldingPosStat> existingRows) {
         if (!Objects.equals(part.getTeamId(), game.getHomeTeamId())
                 && !Objects.equals(part.getTeamId(), game.getAwayTeamId())) {
             throw new BusinessException(400, "守备球队不属于本场比赛");
@@ -1621,24 +1652,29 @@ public class GameService {
                 oldRows.add(row);
             }
         }
+        return new FieldingReplacement(
+                key, part.getTeamId(), part.getPlayerId(), stat, oldRows, newRows);
+    }
+
+    /** 落库单个球员的逐位置整体替换（删除→flush→重建→重算合计），返回落库后的新行。 */
+    private List<GameFieldingPosStat> savePlayerFieldingRows(
+            Game game, FieldingReplacement replacement,
+            List<GameRevisionAuditService.StatChange> recomputeChanges) {
         this.gameFieldingPosStatRepository.deleteByGameIdAndTeamIdAndPlayerId(
-                game.getId(), part.getTeamId(), part.getPlayerId());
+                game.getId(), replacement.teamId(), replacement.playerId());
         // 先 flush 删除再插入：部分唯一索引（game_id, team_id, player_id, position）会在 INSERT
         // 先于同事务 DELETE 生效时报冲突，与 save-live 全量替换保持同一顺序。
         this.gameFieldingPosStatRepository.flush();
+        List<GameFieldingPosStat> newRows = replacement.newRows();
         if (!newRows.isEmpty()) {
             newRows = this.gameFieldingPosStatRepository.saveAll(newRows);
         }
-        Map<String, Double> beforeTotals = statValueMap(stat);
-        applyPositionTotals(stat, newRows);
-        this.gamePlayerStatRepository.save(stat);
-        // 逐位置编辑路径（stats=null）也要把合计重算写入 PLAYER_STAT 台账。
-        List<GameRevisionAuditService.StatChange> recomputeChanges = new ArrayList<>();
-        addStatChanges(recomputeChanges, stat, beforeTotals);
-        this.revisionAuditService.recordStatChanges(game, recomputeChanges, CurrentUserHolder.get());
-        recordFieldingPositionChanges(game, oldRows, newRows);
-        replaced.add(key);
-        return newRows.size();
+        Map<String, Double> beforeTotals = statValueMap(replacement.stat());
+        applyPositionTotals(replacement.stat(), newRows);
+        this.gamePlayerStatRepository.save(replacement.stat());
+        // 逐位置编辑路径（stats=null）也要把合计重算写入 PLAYER_STAT 台账；统一在本轮校验全部通过后写入。
+        addStatChanges(recomputeChanges, replacement.stat(), beforeTotals);
+        return newRows;
     }
 
     /**
@@ -1810,7 +1846,10 @@ public class GameService {
         return partsByPlayer;
     }
 
-    /** 旧数据补行：按球员当前守位建一条 RESULT 逐位置行；无有效守位或打击专用身份返回 null。 */
+    /**
+     * 旧数据补行：按球员当前守位建一条 RESULT 逐位置行；
+     * 非 final 比赛、无有效守位、打击专用身份或出局数越界返回 null（不建行）。
+     */
     private GameFieldingPosStat createPositionRowFromPart(
             Long gameId, SaveGameResultDTO.StatPart part) {
         String position = normalizePosition(part.getPosition());
@@ -1818,7 +1857,15 @@ public class GameService {
             return null;
         }
         Game game = this.gameRepository.findById(gameId).orElse(null);
-        if (game == null || !allowedFieldingPositions(game).contains(position)) {
+        if (game == null || !"final".equalsIgnoreCase(game.getStatus())) {
+            return null;
+        }
+        if (!allowedFieldingPositions(game).contains(position)) {
+            return null;
+        }
+        int outs = StatsFormatUtil.baseballIpToOuts(
+                part.getDefInn() == null ? 0.0 : part.getDefInn().doubleValue());
+        if (outs < 0 || outs > 999) {
             return null;
         }
         GameFieldingPosStat row = new GameFieldingPosStat();
@@ -1827,8 +1874,7 @@ public class GameService {
         row.setTeamId(part.getTeamId());
         row.setPlayerId(part.getPlayerId());
         row.setPosition(position);
-        row.setOuts(Integer.valueOf(StatsFormatUtil.baseballIpToOuts(
-                part.getDefInn() == null ? 0.0 : part.getDefInn().doubleValue())));
+        row.setOuts(Integer.valueOf(outs));
         row.setPo(Integer.valueOf(valueOrZero(part.getPo())));
         row.setA(Integer.valueOf(valueOrZero(part.getA())));
         row.setE(Integer.valueOf(valueOrZero(part.getE())));
@@ -1900,6 +1946,9 @@ public class GameService {
         recordFieldingField(game, source, action, "catcherCs", "CS",
                 numberText(oldRow == null ? null : oldRow.getCatcherCs()),
                 numberText(newRow == null ? null : newRow.getCatcherCs()), operatorId);
+        recordFieldingField(game, source, action, "fieldingGs", "GS",
+                booleanText(oldRow == null ? null : oldRow.getFieldingGs()),
+                booleanText(newRow == null ? null : newRow.getFieldingGs()), operatorId);
     }
 
     /** 写入一条 FIELDPOS_STAT 台账；before/after 相同则跳过。 */
@@ -1923,6 +1972,14 @@ public class GameService {
 
     private static String numberText(Integer value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    /** 布尔字段台账文本：true/1，false/0，缺失为空串。 */
+    private static String booleanText(Boolean value) {
+        if (value == null) {
+            return "";
+        }
+        return value.booleanValue() ? "1" : "0";
     }
 
     private static String resultStatPlayerKey(Long teamId, Long playerId) {

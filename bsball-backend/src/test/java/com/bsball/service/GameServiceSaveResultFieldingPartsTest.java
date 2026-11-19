@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
@@ -215,7 +216,7 @@ class GameServiceSaveResultFieldingPartsTest {
 
     @Test
     @DisplayName("逐位置提交优先：已被替换的球员不再被 stats 差额回写")
-    void saveResult_replacementRunsAfterStatsSync() {
+    void saveResult_replacementRunsAfterAllStatsWrites() {
         GameFieldingPosStat old = positionRow("SS", 9, 0, 0, 0, false);
         old.setId(9001L);
         stubExistingRows(List.of(old), List.of(existingStatRow()));
@@ -452,6 +453,50 @@ class GameServiceSaveResultFieldingPartsTest {
 
         verify(fieldingAdjustmentService, never()).reapplyPositionStats(any());
         verify(fieldingAdjustmentService, never()).reapplyPlayerStats(any(), any());
+    }
+
+    @Test
+    @DisplayName("第一位球员合法、第二位非法：400 且不落库、不写任何台账（台账延迟到全部校验通过）")
+    void saveResult_invalidLaterPlayer_writesNoLedger() {
+        stubExistingRows(List.of(), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart legal =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("SS", 12, 1, 0, 0)));
+        SaveGameResultDTO.FieldingPlayerPart invalid = playerPart(
+                TEAM_ID, Long.valueOf(888888L), List.of(rowPart("SS", 12, 1, 0, 0)));
+        SaveGameResultDTO dto = new SaveGameResultDTO();
+        dto.setFieldingPlayerParts(List.of(legal, invalid));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> gameService.saveResult(GAME_ID, dto));
+
+        assertEquals(400, error.getCode());
+        assertTrue(error.getMessage().contains("不在本场统计行"));
+        verify(revisionAuditService, never()).recordAdjustment(
+                anyLong(), anyLong(), any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any());
+        verify(revisionAuditService, never()).recordStatChanges(any(), any(), any());
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+        verify(gameFieldingPosStatRepository, never()).flush();
+        verify(gameFieldingPosStatRepository, never())
+                .deleteByGameIdAndTeamIdAndPlayerId(any(), any(), any());
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("台账记录 GS：before/after 用 1/0")
+    void saveResult_recordsFieldingGsLedger() {
+        GameFieldingPosStat old = positionRow("SS", 12, 1, 0, 0, false);
+        old.setId(9001L);
+        stubExistingRows(List.of(old), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part =
+                playerPart(TEAM_ID, PLAYER_ID, List.of(rowPart("SS", 12, 1, 0, 0)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        verify(revisionAuditService, atLeastOnce()).recordAdjustment(
+                eq(TENANT_ID), eq(GAME_ID), eq("FIELDPOS_STAT"), eq("UPDATE_FIELD"),
+                eq("RESULT_SAVE"), any(), eq(TEAM_ID), eq(PLAYER_ID), isNull(),
+                eq("fieldingGs"), eq("GS"), eq("0"), eq("1"), eq("ACTIVE"), isNull(), eq(USER_ID));
     }
 
     private void stubExistingRows(

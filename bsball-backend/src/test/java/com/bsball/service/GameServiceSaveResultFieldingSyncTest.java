@@ -238,6 +238,53 @@ class GameServiceSaveResultFieldingSyncTest {
     }
 
     @Test
+    @DisplayName("live 比赛：旧球员合计有变化也不补行（final 门禁）")
+    void saveResult_liveLegacyPlayerChanged_noRowCreated() {
+        game.setStatus("live");
+        game.setIsSpecialResult(Boolean.TRUE);
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("补行只看守位：position=DH 不补行")
+    void saveResult_legacyPlayerDh_noRowCreated() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("DH");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("补行出局数越界（>999）：不补行")
+    void saveResult_legacyPlayerOutsOverLimit_noRowCreated() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 334.0);
+        part.setPosition("SS");
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        verify(gameFieldingPosStatRepository, never()).save(any(GameFieldingPosStat.class));
+        verify(gameFieldingPosStatRepository, never()).saveAll(any());
+    }
+
+    @Test
     @DisplayName("捕手字段只落 C 行：多守位球员的 PB 不写进出场更多的其他位置")
     void saveResult_catcherFieldsLandOnCatcherRow() {
         GameFieldingPosStat firstBase = positionRow("1B", 15, 0, 0, 0, true);
