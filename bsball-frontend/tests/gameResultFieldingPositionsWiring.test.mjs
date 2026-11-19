@@ -24,7 +24,7 @@ test('结果页接入逐位置状态与保存 payload', () => {
 
 test('逐位置工具与局数换算从既有工具导入', () => {
   assert.ok(
-    compact.includes("groupFieldingPositionRows,applyFieldingPositionTotals,buildFieldingPlayerParts,positionOptions}from'../../utils/gameResultFieldingPositions'"),
+    compact.includes("groupFieldingPositionRows,applyFieldingPositionTotals,buildFieldingPlayerParts,positionOptions,validateFieldingPositionRows}from'../../utils/gameResultFieldingPositions'"),
     '缺少逐位置工具导入'
   );
   assert.ok(
@@ -143,5 +143,70 @@ test('旧球员首个守位用现有合计 seed，其余新行从零开始', () 
   assert.ok(
     compact.includes('fieldingGs:seed?Number(stats?.fieldingGs)===1:false'),
     '首个守位未沿用球员级 GS'
+  );
+});
+
+test('添加守位 seed：捕手字段只给 C 行，其他守位从零开始', () => {
+  assert.ok(
+    compact.includes('constseedCatcher=seed&&target==="C"'),
+    '缺少捕手 seed 判定'
+  );
+  for (const needle of [
+    'pb:seedCatcher?Number(stats?.pb)||0:0',
+    'catcherSb:seedCatcher?Number(stats?.catcherSb)||0:0',
+    'catcherCs:seedCatcher?Number(stats?.catcherCs)||0:0'
+  ]) {
+    assert.ok(compact.includes(needle), `捕手 seed 未限定 C 行：${needle}`);
+  }
+});
+
+test('删除守位先二次确认，取消不改 rows', () => {
+  assert.ok(
+    compact.includes(
+      'asyncfunctionremoveFieldingPosition(row,position){try{awaitdt.confirm("确定删除该守位行？","删除确认",{confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"})}catch{return}'
+    ),
+    '删除守位未先确认并在取消时直接返回'
+  );
+  assert.ok(
+    compact.includes(
+      'constrows=positionRowsFor(row).filter(item=>item.position!==position);markFieldingPositionsChanged(row,rows)'
+    ),
+    '确认后未再执行 splice/mark'
+  );
+});
+
+test('保存前校验所有 dirty 球员逐位置行，错误带球员名', () => {
+  assert.ok(
+    compact.includes(
+      'functionvalidateDirtyFieldingPositions(){for(constkeyofdirtyFieldingPlayers){consterror=validateFieldingPositionRows(resultPositionRows.value[key]??[],allowedFieldingPositions());if(error)thrownewError(`${fieldingPlayerName(key)}逐位置守备：${error}`)}}'
+    ),
+    'dirty 球员未逐位置校验或错误未带球员名'
+  );
+  assert.ok(
+    compact.includes('returnu(playerId)?.name??playerId'),
+    '球员名未按 u(playerId)?.name 回退 playerId'
+  );
+  assert.ok(
+    compact.includes('validateDirtyFieldingPositions();be.value=!0'),
+    '保存流程未在提交前调用逐位置校验'
+  );
+});
+
+test('删除统计行后清理对应逐位置状态，避免同时提交 removedStatIds 与 parts', () => {
+  assert.ok(
+    compact.includes('constactivePlayers=newSet(rows.map(S=>`${S.teamId}_${S.playerId}`))'),
+    '未按 payload 行统计仍保留的球员'
+  );
+  assert.ok(
+    compact.includes('if(activePlayers.has(key))continue'),
+    '仍有统计行的球员不应被清理'
+  );
+  assert.ok(
+    compact.includes('dirtyFieldingPlayers.delete(key)'),
+    '无统计行球员未从 dirty 中移除'
+  );
+  assert.ok(
+    compact.includes('deletenext[key];resultPositionRows.value=next'),
+    '无统计行球员未清理逐位置 rows'
   );
 });

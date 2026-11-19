@@ -1701,7 +1701,6 @@ public class GameService {
             throw new BusinessException(400, "逐位置守备数据过多");
         }
         Set<String> allowed = allowedFieldingPositions(game);
-        String firstPosition = normalizeFirstPosition(stat.getFirstPosition());
         Set<String> used = new LinkedHashSet<>();
         List<GameFieldingPosStat> result = new ArrayList<>();
         for (SaveGameResultDTO.FieldingPositionRowPart partRow : rows) {
@@ -1719,30 +1718,66 @@ public class GameService {
             if (outs < 0 || outs > 999) {
                 throw new BusinessException(400, "逐位置守备出局数无效");
             }
-            GameFieldingPosStat row = new GameFieldingPosStat();
-            row.setTenantId(game.getTenantId());
-            row.setGameId(game.getId());
-            row.setTeamId(part.getTeamId());
-            row.setPlayerId(part.getPlayerId());
-            row.setPosition(position);
-            row.setOuts(Integer.valueOf(outs));
-            row.setPo(Integer.valueOf(normalizeFieldingCredit(partRow.getPo(), "接杀数")));
-            row.setA(Integer.valueOf(normalizeFieldingCredit(partRow.getA(), "助杀数")));
-            row.setE(Integer.valueOf(normalizeFieldingCredit(partRow.getE(), "失误数")));
-            row.setDp(Integer.valueOf(normalizeFieldingCredit(partRow.getDp(), "双杀数")));
-            row.setPb(Integer.valueOf(normalizeFieldingCredit(partRow.getPb(), "捕逸数")));
-            row.setCatcherCs(Integer.valueOf(normalizeFieldingCredit(partRow.getCatcherCs(), "盗垒阻杀数")));
-            row.setCatcherSb(Integer.valueOf(normalizeFieldingCredit(partRow.getCatcherSb(), "被盗垒数")));
-            boolean gs = Integer.valueOf(1).equals(stat.getFieldingGs())
-                    && (firstPosition == null ? result.isEmpty() : firstPosition.equals(position));
-            row.setFieldingGs(Boolean.valueOf(gs));
-            row.setSource("RESULT");
-            result.add(row);
+            result.add(buildResultPositionRow(game, part, partRow, position, outs));
         }
+        assignPositionGs(result, stat);
         return result;
     }
 
-    /** 按逐位置行重算球员级守备合计（PO/A/E/DP/PB/CS/SB、INN、TC），首守位为空时补首个守位。 */
+    /** 构建单条结果页逐位置行：捕手字段只落 C 行，其他守位强制 0。 */
+    private static GameFieldingPosStat buildResultPositionRow(
+            Game game, SaveGameResultDTO.FieldingPlayerPart part,
+            SaveGameResultDTO.FieldingPositionRowPart partRow, String position, int outs) {
+        boolean catcher = "C".equals(position);
+        GameFieldingPosStat row = new GameFieldingPosStat();
+        row.setTenantId(game.getTenantId());
+        row.setGameId(game.getId());
+        row.setTeamId(part.getTeamId());
+        row.setPlayerId(part.getPlayerId());
+        row.setPosition(position);
+        row.setOuts(Integer.valueOf(outs));
+        row.setPo(Integer.valueOf(normalizeFieldingCredit(partRow.getPo(), "接杀数")));
+        row.setA(Integer.valueOf(normalizeFieldingCredit(partRow.getA(), "助杀数")));
+        row.setE(Integer.valueOf(normalizeFieldingCredit(partRow.getE(), "失误数")));
+        row.setDp(Integer.valueOf(normalizeFieldingCredit(partRow.getDp(), "双杀数")));
+        row.setPb(Integer.valueOf(catcher
+                ? normalizeFieldingCredit(partRow.getPb(), "捕逸数") : 0));
+        row.setCatcherCs(Integer.valueOf(catcher
+                ? normalizeFieldingCredit(partRow.getCatcherCs(), "盗垒阻杀数") : 0));
+        row.setCatcherSb(Integer.valueOf(catcher
+                ? normalizeFieldingCredit(partRow.getCatcherSb(), "被盗垒数") : 0));
+        row.setSource("RESULT");
+        return row;
+    }
+
+    /**
+     * GS 归一：球员级 GS=1 时只保留一行。原首守位在本次提交守位中则沿用，
+     * 否则落到首个提交守位，避免首守位被删后 GS 丢失。
+     */
+    private static void assignPositionGs(List<GameFieldingPosStat> rows, GamePlayerStat stat) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        boolean target = Integer.valueOf(1).equals(stat.getFieldingGs());
+        String gsPosition = normalizeFirstPosition(stat.getFirstPosition());
+        boolean matched = false;
+        if (gsPosition != null) {
+            for (GameFieldingPosStat row : rows) {
+                if (gsPosition.equals(row.getPosition())) {
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if (!matched) {
+            gsPosition = rows.get(0).getPosition();
+        }
+        for (GameFieldingPosStat row : rows) {
+            row.setFieldingGs(Boolean.valueOf(target && row.getPosition().equals(gsPosition)));
+        }
+    }
+
+    /** 按逐位置行重算球员级守备合计（PO/A/E/DP/PB/CS/SB、INN、TC），首守位/先发守位随行重指。 */
     private static void applyPositionTotals(GamePlayerStat stat, List<GameFieldingPosStat> rows) {
         stat.setPo(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getPo)));
         stat.setA(Integer.valueOf(sumPositionInt(rows, GameFieldingPosStat::getA)));
@@ -1756,8 +1791,21 @@ public class GameService {
         stat.setTc(Integer.valueOf((stat.getPo() == null ? 0 : stat.getPo())
                 + (stat.getA() == null ? 0 : stat.getA())
                 + (stat.getE() == null ? 0 : stat.getE())));
-        if (normalizeFirstPosition(stat.getFirstPosition()) == null && !rows.isEmpty()) {
-            stat.setFirstPosition(rows.get(0).getPosition());
+        Set<String> positions = new LinkedHashSet<>();
+        for (GameFieldingPosStat row : rows) {
+            String position = normalizePosition(row.getPosition());
+            if (position != null) {
+                positions.add(position);
+            }
+        }
+        String fallback = rows.isEmpty() ? null : rows.get(0).getPosition();
+        String firstPosition = normalizeFirstPosition(stat.getFirstPosition());
+        if (rows.isEmpty() || firstPosition == null || !positions.contains(firstPosition)) {
+            stat.setFirstPosition(fallback);
+        }
+        String startingPosition = normalizeFirstPosition(stat.getStartingPosition());
+        if (rows.isEmpty() || (startingPosition != null && !positions.contains(startingPosition))) {
+            stat.setStartingPosition(fallback);
         }
     }
 
@@ -1879,9 +1927,10 @@ public class GameService {
         row.setA(Integer.valueOf(valueOrZero(part.getA())));
         row.setE(Integer.valueOf(valueOrZero(part.getE())));
         row.setDp(Integer.valueOf(valueOrZero(part.getDp())));
-        row.setPb(Integer.valueOf(valueOrZero(part.getPb())));
-        row.setCatcherCs(Integer.valueOf(valueOrZero(part.getCatcherCs())));
-        row.setCatcherSb(Integer.valueOf(valueOrZero(part.getCatcherSb())));
+        boolean catcher = "C".equals(position);
+        row.setPb(Integer.valueOf(catcher ? valueOrZero(part.getPb()) : 0));
+        row.setCatcherCs(Integer.valueOf(catcher ? valueOrZero(part.getCatcherCs()) : 0));
+        row.setCatcherSb(Integer.valueOf(catcher ? valueOrZero(part.getCatcherSb()) : 0));
         row.setFieldingGs(Boolean.valueOf(Integer.valueOf(1).equals(part.getFieldingGs())));
         row.setSource("RESULT");
         return row;

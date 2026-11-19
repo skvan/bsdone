@@ -228,8 +228,12 @@ test('逐位置编辑：展开、合计联动、增删与保存 payload', async 
   await expect(subRows.last().locator('.game-fielding-table__sub-name')).toHaveText('↳ 1B');
   await expect(subRows.last().locator('td').nth(4).locator('input')).toHaveValue('0');
 
-  // 删除刚加的 1B：行数 -1，合计回到两条守位
+  // 删除刚加的 1B：二次确认后行数 -1，合计回到两条守位
   await subRows.last().getByRole('button', { name: '删除守位' }).click();
+  const removeConfirm = page.locator('.el-message-box:visible');
+  await expect(removeConfirm).toContainText('确定删除该守位行？');
+  await removeConfirm.getByRole('button', { name: '确定' }).click();
+  await expect(removeConfirm).toBeHidden();
   await expect(subRows).toHaveCount(2);
   await expect(playerRow.locator('td').nth(4)).toHaveText('3');
 

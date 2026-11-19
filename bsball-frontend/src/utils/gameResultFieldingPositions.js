@@ -60,6 +60,7 @@ export function applyFieldingPositionTotals(stats, rows) {
   const sum = sumFieldingPositionRows(rows);
   for (const key of POSITION_CREDIT_KEYS) stats[key] = sum[key];
   stats.defInn = outsToInnings(sum.outs);
+  stats.tc = sum.po + sum.a + sum.e;
   if (stats.fieldingGs === null || stats.fieldingGs === undefined) {
     stats.fieldingGs = (rows ?? []).some((row) => isFieldingGs(row)) ? 1 : 0;
   }

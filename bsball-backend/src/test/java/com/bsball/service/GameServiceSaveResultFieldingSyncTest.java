@@ -223,6 +223,30 @@ class GameServiceSaveResultFieldingSyncTest {
     }
 
     @Test
+    @DisplayName("旧球员补行：非捕手守位强制捕手字段为 0")
+    void saveResult_legacyPlayerNonCatcher_catcherFieldsZeroed() {
+        when(gameFieldingPosStatRepository
+                .findByGameIdOrderByTeamIdAscPlayerIdAscIdAsc(Long.valueOf(GAME_ID)))
+                .thenReturn(new ArrayList<>());
+        SaveGameResultDTO.StatPart part = part(null, 0, 3, null, 4.0);
+        part.setPosition("SS");
+        part.setPb(Integer.valueOf(2));
+        part.setCatcherSb(Integer.valueOf(3));
+        part.setCatcherCs(Integer.valueOf(1));
+
+        gameService.saveResult(Long.valueOf(GAME_ID), dto(part));
+
+        ArgumentCaptor<GameFieldingPosStat> captor =
+                ArgumentCaptor.forClass(GameFieldingPosStat.class);
+        verify(gameFieldingPosStatRepository).save(captor.capture());
+        GameFieldingPosStat created = captor.getValue();
+        assertEquals("SS", created.getPosition());
+        assertEquals(Integer.valueOf(0), created.getPb(), "非 C 补行不承接 PB");
+        assertEquals(Integer.valueOf(0), created.getCatcherSb(), "非 C 补行不承接被盗垒");
+        assertEquals(Integer.valueOf(0), created.getCatcherCs(), "非 C 补行不承接阻杀");
+    }
+
+    @Test
     @DisplayName("旧球员合计没变化：不新造逐位置行")
     void saveResult_legacyPlayerUnchanged_noRowCreated() {
         when(gameFieldingPosStatRepository

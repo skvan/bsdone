@@ -42,7 +42,7 @@ public class GameFieldingPosStat extends BaseEntity {
     @Comment("该位置是否先发")
     private Boolean fieldingGs;
     @Column(length = 16)
-    @Comment("数据来源：LIVE/DERIVED/MANUAL")
+    @Comment("数据来源：LIVE/RESULT/MANUAL")
     private String source;
 
     public Long getTenantId() {

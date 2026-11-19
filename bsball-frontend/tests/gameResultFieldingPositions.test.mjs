@@ -30,6 +30,7 @@ test('汇总与回写：合计 = 逐位置之和，INN 按出局换算', () => {
   applyFieldingPositionTotals(stats, rows);
   assert.equal(stats.po, 1);
   assert.equal(stats.defInn, 4);
+  assert.equal(stats.tc, 3, 'TC 同步为 PO+A+E，避免保存前台账出现 transient 值');
 });
 
 test('汇总不覆盖球员级 GS：已有值保留，缺省才按 rows 推导', () => {

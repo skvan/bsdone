@@ -1,6 +1,8 @@
 package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -167,6 +169,61 @@ class GameServiceSaveResultFieldingPartsTest {
         assertEquals(Integer.valueOf(0), stat.getA());
         assertEquals(Integer.valueOf(0), stat.getE());
         assertEquals(Double.valueOf(0.0), stat.getDefInn());
+        assertNull(stat.getFirstPosition(), "清空逐位置行后首守位必须清空");
+        assertNull(stat.getStartingPosition(), "清空逐位置行后先发守位必须清空");
+    }
+
+    @Test
+    @DisplayName("首守位不在提交守位中：GS 落到首个提交守位，firstPosition/startingPosition 重指")
+    void saveResult_firstPositionMissingFromRows_repointsGsAndPositions() {
+        stubExistingRows(List.of(), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPlayerPart part = playerPart(TEAM_ID, PLAYER_ID, List.of(
+                rowPart("1B", 12, 1, 0, 0),
+                rowPart("P", 3, 0, 0, 0)));
+
+        gameService.saveResult(GAME_ID, dtoWith(part));
+
+        ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
+        verify(gameFieldingPosStatRepository).saveAll(captor.capture());
+        List<GameFieldingPosStat> rows = captor.getValue();
+        assertEquals("1B", rows.get(0).getPosition());
+        assertTrue(Boolean.TRUE.equals(rows.get(0).getFieldingGs()), "GS 应落到首个提交守位");
+        assertFalse(Boolean.TRUE.equals(rows.get(1).getFieldingGs()), "其他守位不得带 GS");
+        GamePlayerStat stat = gamePlayerStatRepository.findByGameId(GAME_ID).get(0);
+        assertEquals("1B", stat.getFirstPosition(), "首守位随提交行重指");
+        assertEquals("1B", stat.getStartingPosition(), "先发守位随提交行重指");
+    }
+
+    @Test
+    @DisplayName("捕手字段只落 C 行：非 C 行带 PB/SB/CS 输入也按 0 落库")
+    void saveResult_nonCatcherRows_zeroCatcherFields() {
+        stubExistingRows(List.of(), List.of(existingStatRow()));
+        SaveGameResultDTO.FieldingPositionRowPart firstBase = rowPart("1B", 12, 1, 0, 0);
+        firstBase.setPb(Integer.valueOf(2));
+        firstBase.setCatcherSb(Integer.valueOf(3));
+        firstBase.setCatcherCs(Integer.valueOf(1));
+        SaveGameResultDTO.FieldingPositionRowPart catcher = rowPart("C", 3, 0, 0, 0);
+        catcher.setPb(Integer.valueOf(1));
+        catcher.setCatcherSb(Integer.valueOf(4));
+        catcher.setCatcherCs(Integer.valueOf(2));
+
+        gameService.saveResult(GAME_ID,
+                dtoWith(playerPart(TEAM_ID, PLAYER_ID, List.of(firstBase, catcher))));
+
+        ArgumentCaptor<List<GameFieldingPosStat>> captor = ArgumentCaptor.forClass(List.class);
+        verify(gameFieldingPosStatRepository).saveAll(captor.capture());
+        GameFieldingPosStat nonCatcher = captor.getValue().get(0);
+        assertEquals(Integer.valueOf(0), nonCatcher.getPb(), "非 C 行不落 PB");
+        assertEquals(Integer.valueOf(0), nonCatcher.getCatcherSb(), "非 C 行不落被盗垒");
+        assertEquals(Integer.valueOf(0), nonCatcher.getCatcherCs(), "非 C 行不落阻杀");
+        GameFieldingPosStat catcherRow = captor.getValue().get(1);
+        assertEquals(Integer.valueOf(1), catcherRow.getPb(), "C 行保留 PB");
+        assertEquals(Integer.valueOf(4), catcherRow.getCatcherSb(), "C 行保留被盗垒");
+        assertEquals(Integer.valueOf(2), catcherRow.getCatcherCs(), "C 行保留阻杀");
+        GamePlayerStat stat = gamePlayerStatRepository.findByGameId(GAME_ID).get(0);
+        assertEquals(Integer.valueOf(1), stat.getPb());
+        assertEquals(Integer.valueOf(4), stat.getCatcherSb());
+        assertEquals(Integer.valueOf(2), stat.getCatcherCs());
     }
 
     @Test
@@ -533,6 +590,7 @@ class GameServiceSaveResultFieldingPartsTest {
         stat.setPlayerId(Long.valueOf(PLAYER_ID));
         stat.setIsPitcher(Integer.valueOf(0));
         stat.setFirstPosition("SS");
+        stat.setStartingPosition("SS");
         stat.setPosition("SS");
         stat.setFieldingGs(Integer.valueOf(1));
         return stat;

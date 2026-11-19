@@ -1,6 +1,7 @@
 // 结果录入页守备表：逐位置守备与球员级统计的合并口径（Issue #701）
-// - 球员统计行已有守备数据：以球员级为权威（人工修订后的最终值），逐位置只补守位展示，
-//   不得用逐位置合计覆盖 PO/A/E/DP/PB/CS/SB/INN/GS，否则刷新再保存会把人工值回滚。
+// - 逐位置优先已在结果页装载阶段完成（Games.js Na() 按逐位置合计回写球员级统计）。
+// - #701 分支只保留没有逐位置合计来源的球员级人工值：不得改成用逐位置合计覆盖
+//   PO/A/E/DP/PB/CS/SB/INN/GS，避免后人误“修复”后把人工修订值回滚。
 // - 球员统计行守备全零（兼容旧数据）或只存在于逐位置表：用逐位置合计补全（#560 口径）。
 import { createBatterStatDefaults, resolveFirstFieldPosition } from './gamePlayerStat.js';
 import { outsToInnings } from './inningsFormat.js';
@@ -68,7 +69,8 @@ export function mergeResultFieldingRows({
       (item) => item.fieldingGs === true || Number(item.fieldingGs) === 1
     ) ? 1 : 0;
     if (hasPlayerStatRow(playerId) && hasResultFieldingActivity(stats)) {
-      // #701：人工修订后的球员级值必须原样回显，逐位置合计只用于补守位展示。
+      // #701：逐位置优先已在装载阶段完成；此分支只对没有逐位置合计来源的球员级人工值保留原样，
+      // 不要改成逐位置合计覆盖，否则会回滚人工修订。
       stats.position = stats.position || firstPosition;
       stats.firstPosition = originalFirst || stats.firstPosition || firstPosition;
       // INN/GS 单独兜底：旧数据可能只写了逐位置（保存后差额回写会让两边一致）。
