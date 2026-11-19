@@ -132,7 +132,9 @@ test('#713 pushLiveSnapshot：服务器点名拒收（409）时不重试，重�
 });
 
 test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换人在场状态会丢失」顶掉', async () => {
-  const msg = '提交的快照逐棒记录（2 条）少于服务器现有记录（3 条），已拒绝覆盖；用「从云端恢复录入现场」可回到服务器那份继续记';
+  // 文案取现在唯一还会发生的拒收形状（得分倒退）：条数那道已于 #713 拍板放行，
+  // 拿它当样本会让这份测试读起来像在描述一条已经不存在的 409。
+  const msg = '本场比赛已有逐棒记录，提交的快照得分只到 2 分，低于记分 24 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状';
   const { api, calls } = ctx({ businessFail: msg });
   await api.Zr();
   assert.equal(api.getFlag(), true, '被拒收同样是没同步上去，脏标要置');
@@ -179,7 +181,7 @@ test('#713 Zr：先网络抖动、后被拒收——脏标不能把后来的拒�
   await api.Zr();
   assert.equal(calls.warn, 1, '第一拍：网络抖动→通用文案');
   state.failRemaining = 0;
-  state.businessFail = '提交的快照逐棒记录少于服务器现有记录，已拒绝覆盖';
+  state.businessFail = '提交的快照得分低于记分，已拒绝覆盖';
   await api.Zr();
   assert.equal(calls.err, 1, '抖动过后的拒收同样要看得见');
   assert.match(calls.lastError, /已拒绝覆盖/);
