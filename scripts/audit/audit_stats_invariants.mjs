@@ -5,11 +5,14 @@
  * 数据来源二选一：
  *   --games-json <path>   已抓取的 [{ game, rows }] JSON（推荐；可复用）
  *   --fetch               从 --api-base 重新抓取（只发 GET，不写业务数据）
+ * 可选：
+ *   --tenant-code <code>  仅 --fetch 抓取时附带请求头 X-Tenant-Code（多租户/指定租户审计）
  *
  * 示例：
  *   node scripts/audit/audit_stats_invariants.mjs --games-json _audit130/games.json
  *   node scripts/audit/audit_stats_invariants.mjs --fetch \
  *     --api-base https://bsdone.com/bsball-server \
+ *     --tenant-code bs-ball \
  *     --games-json _audit130/games.json --summary-json _audit130/summary.json
  *
  * 退出码：0=未发现当前缺陷/覆盖缺口；1=发现；2=输入错误。
@@ -22,6 +25,9 @@ import path from 'node:path';
 const SEV = { P0: 0, P1: 1, P2: 2, P3: 3 };
 const args = parseArgs(process.argv.slice(2));
 const API_BASE = (args['api-base'] || 'https://bsdone.com/bsball-server').replace(/\/+$/, '');
+const TENANT_CODE = args['tenant-code'] === true
+  ? fail('--tenant-code 需要租户编码，例如 --tenant-code bs-ball')
+  : (args['tenant-code'] || '');
 const CURRENT_FROM = args['current-from'] || '2026-09-28';
 const MAX_SAMPLES = Number(args['max-samples'] || 8);
 const GAMES_JSON = args['games-json'] || '';
@@ -126,7 +132,9 @@ function makeSink() {
 }
 
 async function getJson(url) {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const headers = { Accept: 'application/json' };
+  if (TENANT_CODE) headers['X-Tenant-Code'] = TENANT_CODE;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
   const json = await res.json();
   if (json.code !== 200) throw new Error(`${url} -> code ${json.code}: ${json.msg}`);
