@@ -4,45 +4,60 @@
       <div class="page-head">
         <div>
           <div class="breadcrumb">{{ translate('clubhouse.header.breadcrumbPortal') }} / <b>{{ translate('nav.clubhouse') }}</b></div>
-          <h1>{{ translate('nav.clubhouse') }}</h1>
+          <h1>{{ translate('nav.clubhouse') }} <span v-if="readonly" class="public-badge">{{ translate('clubhouse.share.publicBadge') }}</span></h1>
           <p class="page-sub">{{ translate('clubhouse.header.subtitle') }}</p>
         </div>
         <div class="page-actions">
-          <el-button v-if="layoutEditingEnabled && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">{{ translate('clubhouse.header.editLayout') }}</el-button>
-          <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">{{ translate('clubhouse.settings.title') }}</el-button>
-          <el-button link type="primary" @click="goAccount">{{ translate('nav.accountProfile') }}</el-button>
-          <el-button @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
+          <template v-if="readonly">
+            <el-button link type="primary" class="clubhouse-share-entry" @click="openSharePanel">{{ translate('clubhouse.share.entry') }}</el-button>
+            <el-button link type="primary" @click="goPublicProfile">{{ translate('clubhouse.share.playerPage') }}</el-button>
+            <el-button @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
+          </template>
+          <template v-else>
+            <el-button v-if="canEditLayout && freeBoard && !layoutEditing && renderableModules.length" ref="layoutEditEntryEl" class="layout-edit-entry" :disabled="layoutSaving" @click="enterLayoutEditing">{{ translate('clubhouse.header.editLayout') }}</el-button>
+            <el-button link type="primary" class="clubhouse-share-entry" @click="openSharePanel">{{ translate('clubhouse.share.entry') }}</el-button>
+            <el-button link type="primary" :disabled="layoutEditing || layoutSaving" @click="openSettings">{{ translate('clubhouse.settings.title') }}</el-button>
+            <el-button link type="primary" @click="goAccount">{{ translate('nav.accountProfile') }}</el-button>
+            <el-button @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
+          </template>
         </div>
       </div>
 
       <div class="scope-bar">
         <span class="scope-title">{{ translate('clubhouse.scope.title') }}</span>
-        <el-select
-          v-if="availableGameModes.length > 1"
-          v-model="gameMode"
-          size="small"
-          class="scope-select scope-game-mode"
-          :aria-label="translate('clubhouse.scope.gameMode')"
-          :disabled="layoutEditing"
-          @change="onGameModeChange"
-        >
-          <el-option v-for="mode in availableGameModes" :key="mode" :label="gameModeLabel(mode)" :value="mode" />
-        </el-select>
-        <el-select v-model="teamId" size="small" class="scope-select scope-team" :aria-label="translate('nav.teams')" :disabled="layoutEditing" @change="onTeamChange">
-          <el-option :label="translate('stats.allTeams')" :value="SCOPE_ALL" />
-          <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
-        </el-select>
-        <el-select v-model="leagueId" size="small" class="scope-select scope-league" :aria-label="translate('nav.leagues')" :disabled="layoutEditing" @change="onLeagueChange">
-          <el-option :label="translate('clubhouse.scope.allLeagues')" :value="SCOPE_ALL" />
-          <el-option v-for="league in availableLeagues" :key="league.id" :label="league.name" :value="league.id" />
-        </el-select>
-        <el-select v-model="eventId" size="small" class="scope-select scope-event" :aria-label="translate('player.event')" :disabled="layoutEditing" @change="onEventChange">
-          <el-option :label="eventAllLabel" :value="SCOPE_ALL" />
-          <el-option v-for="event in eventOptions" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
-        </el-select>
-        <i18n-t keypath="clubhouse.scope.representingTeams" tag="span" class="scope-right">
-          <template #n><b>{{ availableTeams.length }}</b></template>
-        </i18n-t>
+        <template v-if="!readonly">
+          <el-select
+            v-if="availableGameModes.length > 1"
+            v-model="gameMode"
+            size="small"
+            class="scope-select scope-game-mode"
+            :aria-label="translate('clubhouse.scope.gameMode')"
+            :disabled="layoutEditing"
+            @change="onGameModeChange"
+          >
+            <el-option v-for="mode in availableGameModes" :key="mode" :label="gameModeLabel(mode)" :value="mode" />
+          </el-select>
+          <el-select v-model="teamId" size="small" class="scope-select scope-team" :aria-label="translate('nav.teams')" :disabled="layoutEditing" @change="onTeamChange">
+            <el-option :label="translate('stats.allTeams')" :value="SCOPE_ALL" />
+            <el-option v-for="team in availableTeams" :key="team.id" :label="team.name" :value="team.id" />
+          </el-select>
+          <el-select v-model="leagueId" size="small" class="scope-select scope-league" :aria-label="translate('nav.leagues')" :disabled="layoutEditing" @change="onLeagueChange">
+            <el-option :label="translate('clubhouse.scope.allLeagues')" :value="SCOPE_ALL" />
+            <el-option v-for="league in availableLeagues" :key="league.id" :label="league.name" :value="league.id" />
+          </el-select>
+          <el-select v-model="eventId" size="small" class="scope-select scope-event" :aria-label="translate('player.event')" :disabled="layoutEditing" @change="onEventChange">
+            <el-option :label="eventAllLabel" :value="SCOPE_ALL" />
+            <el-option v-for="event in eventOptions" :key="event.id" :label="scopeEventLabel(event)" :value="event.id" />
+          </el-select>
+          <i18n-t keypath="clubhouse.scope.representingTeams" tag="span" class="scope-right">
+            <template #n><b>{{ availableTeams.length }}</b></template>
+          </i18n-t>
+        </template>
+        <template v-else>
+          <span class="scope-static">{{ scopeLabel }}</span>
+          <span v-if="availableGameModes.length" class="scope-static">{{ gameModeLabel(gameMode) }}</span>
+          <span class="scope-public-note">{{ translate('clubhouse.share.lockedScope') }}</span>
+        </template>
       </div>
 
       <section class="hero">
@@ -68,7 +83,7 @@
             </div>
           </div>
           <div class="hero-actions">
-            <button class="hero-btn primary" type="button" @click="goPublicProfile">{{ translate('clubhouse.header.viewPublicProfile') }}</button>
+            <button class="hero-btn primary" type="button" @click="goPublicProfile">{{ translate(readonly ? 'clubhouse.share.playerPage' : 'clubhouse.header.viewPublicProfile') }}</button>
             <button class="hero-btn ghost" type="button" @click="goTeam">{{ translate('clubhouse.header.teamHome') }}</button>
           </div>
         </div>
@@ -701,14 +716,14 @@
       <div v-if="!activeModules.length" class="panel dashboard-empty">
         <span class="kicker">EMPTY DASHBOARD</span>
         <h3>{{ translate('clubhouse.empty.allHiddenTitle') }}</h3>
-        <p>{{ translate('clubhouse.empty.allHiddenBody') }}</p>
-        <el-button type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
+        <p>{{ readonly ? translate('clubhouse.share.emptyModules') : translate('clubhouse.empty.allHiddenBody') }}</p>
+        <el-button v-if="!readonly" type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
       </div>
       <div v-else-if="!renderableModules.length" class="panel dashboard-empty">
         <span class="kicker">SCOPE EMPTY</span>
         <h3>{{ translate('clubhouse.empty.scopeEmptyTitle') }}</h3>
-        <p>{{ translate('clubhouse.empty.scopeEmptyBody') }}</p>
-        <el-button type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
+        <p>{{ readonly ? translate('clubhouse.share.emptyModules') : translate('clubhouse.empty.scopeEmptyBody') }}</p>
+        <el-button v-if="!readonly" type="primary" @click="openSettings">{{ translate('clubhouse.empty.goSettings') }}</el-button>
       </div>
     </template>
 
@@ -721,6 +736,11 @@
       </el-empty>
       <p class="state-detail">{{ loadError }}</p>
     </div>
+    <div v-else-if="publicUnavailable" class="page-state">
+      <el-empty :description="translate('clubhouse.share.unavailable')">
+        <el-button type="primary" @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
+      </el-empty>
+    </div>
     <div v-else class="page-state">
       <el-empty :description="translate('clubhouse.empty.unclaimed')">
         <el-button type="primary" @click="goPortal">{{ translate('clubhouse.header.backToPortal') }}</el-button>
@@ -728,6 +748,7 @@
     </div>
 
     <el-drawer
+      v-if="!readonly"
       v-model="settingsOpen"
       :title="translate('clubhouse.settings.title')"
       size="min(430px, 92vw)"
@@ -849,19 +870,38 @@
         <button ref="zoomCloseBtnRef" type="button" class="pcard-zoom-close" :aria-label="translate('clubhouse.card.closeZoomAria')" @click="closeCardZoom">×</button>
       </div>
     </Teleport>
+
+    <ClubhouseSharePanel
+      v-model="sharePanelOpen"
+      :readonly-view="readonly"
+      :share-enabled="readonly ? true : shareEnabled"
+      :saving="shareSaving"
+      :share-url="shareUrl"
+      :preview="sharePreview"
+      :scope-chips="shareScopeChips"
+      @toggle="onToggleShare"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, ArrowUp, Setting } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import dayjs from 'dayjs';
-import { clubhouseApi } from '../../api/clubhouse';
+import { clubhouseApi, publicClubhouseApi } from '../../api/clubhouse';
 import ClubhousePlayerCard from '../../components/portal/ClubhousePlayerCard.vue';
+import ClubhouseSharePanel from '../../components/portal/ClubhouseSharePanel.vue';
+import {
+  buildClubhouseShareMeta,
+  buildClubhouseShareUrl,
+  buildPlayerShareMeta,
+  buildPlayerShareUrl,
+  useWechatShare
+} from '../../composables/useWechatShare';
 import { CARD_BASE_WIDTH, CARD_BASE_HEIGHT, cardGradeMaterial } from '../../components/portal/clubhouseCardGrade.js';
 import { isAuthSessionError, resolveAssetUrl } from '../../api/request';
 import { battedGeo, battedShapeOf, battedShapeColor } from '../../utils/battedBallFlight';
@@ -885,9 +925,12 @@ import {
   resizeModule
 } from './clubhouseBoard.js';
 
+const route = useRoute();
 const router = useRouter();
 const { tenantCode } = useTenantRouter();
 const { t: translate, locale } = useI18n();
+const readonly = computed(() => route.meta?.readonly === true);
+const publicPlayerId = computed(() => Number(route.params.id) || 0);
 
 function statMatrixLabel(key) {
   const abbr = translate(`stats.colEn.${key}`);
@@ -933,10 +976,15 @@ function moduleLabel(key, fallback) {
 const freeBoardQuery = window.matchMedia('(min-width: 1340px)');
 // 生产构建通过 VITE_CLUBHOUSE_LAYOUT_EDITING=false 关闭布局编辑（测试/本地默认开启）
 const layoutEditingEnabled = import.meta.env.VITE_CLUBHOUSE_LAYOUT_EDITING !== 'false';
+const canEditLayout = computed(() => layoutEditingEnabled && !readonly.value);
 const compactBoardQuery = window.matchMedia('(min-width: 981px) and (max-width: 1339px)');
 const data = ref(null);
 const loading = ref(false);
 const loadError = ref('');
+const publicUnavailable = ref(false);
+const initialScopeApplied = ref(false);
+const sharePanelOpen = ref(false);
+const shareSaving = ref(false);
 const teamId = ref(SCOPE_ALL);
 const leagueId = ref(SCOPE_ALL);
 const eventId = ref(SCOPE_ALL);
@@ -1217,6 +1265,78 @@ const scopeLeague = computed(() => {
   const scope = data.value?.scope;
   return scope && !scope.leagueAll ? { name: scope.leagueName, count: scope.eventCount || 0 } : null;
 });
+const shareEnabled = computed(() => Boolean(data.value?.config?.share?.enabled));
+const sharePreview = computed(() => buildClubhouseShareMeta(
+  player.value,
+  scopeTeam.value,
+  scopeLeague.value,
+  data.value?.stats,
+  {
+    resolveAsset: resolveAssetUrl,
+    title: translate('clubhouse.share.cardTitle', { name: player.value.name || '' })
+  }
+) || {});
+const shareUrl = computed(() => (player.value.id
+  ? buildClubhouseShareUrl(router, player.value.id, 'share', tenantCode.value, data.value?.scope || {})
+  : ''));
+const shareScopeChips = computed(() => {
+  const scope = data.value?.scope || {};
+  const chips = [];
+  if (scope.teamName && !scope.teamAll) chips.push(scope.teamName);
+  if (scope.leagueName && !scope.leagueAll) chips.push(scope.leagueName);
+  if (!scope.career && scope.eventName) chips.push(scope.eventName);
+  if (scope.gameMode) chips.push(gameModeLabel(scope.gameMode));
+  if (!chips.length) chips.push(translate('clubhouse.share.careerScope'));
+  return chips;
+});
+const wxShareMeta = computed(() => {
+  if (!player.value.id) return null;
+  const useClubhouse = readonly.value || shareEnabled.value;
+  const meta = useClubhouse
+    ? sharePreview.value
+    : buildPlayerShareMeta(player.value, scopeTeam.value, scopeLeague.value, data.value?.stats, {
+        resolveAsset: resolveAssetUrl
+      });
+  if (!meta?.title) return null;
+  const link = useClubhouse
+    ? shareUrl.value
+    : buildPlayerShareUrl(router, player.value.id, 'share', tenantCode.value);
+  return link ? { ...meta, link } : null;
+});
+useWechatShare(wxShareMeta);
+
+function openSharePanel() {
+  sharePanelOpen.value = true;
+}
+
+async function onToggleShare(enabled) {
+  if (readonly.value || shareSaving.value) return;
+  try {
+    await ElMessageBox.confirm(
+      translate(enabled ? 'clubhouse.share.enableConfirm' : 'clubhouse.share.disableConfirm'),
+      translate('clubhouse.share.title'),
+      {
+        confirmButtonText: translate('common.confirm'),
+        cancelButtonText: translate('common.cancel'),
+        type: 'warning'
+      }
+    );
+  } catch {
+    return;
+  }
+  shareSaving.value = true;
+  try {
+    const saved = await clubhouseApi.saveShare(enabled);
+    if (data.value) {
+      data.value.config = saved || { ...(data.value.config || {}), share: { enabled } };
+    }
+    ElMessage.success(translate(enabled ? 'clubhouse.share.enabledToast' : 'clubhouse.share.disabledToast'));
+  } catch (error) {
+    ElMessage.error(error?.message || translate('clubhouse.share.saveFailed'));
+  } finally {
+    shareSaving.value = false;
+  }
+}
 const rankScopeLabel = computed(() => {
   if (eventId.value) return translate('clubhouse.modules.ranks.scopeSameEvent');
   if (leagueId.value) return translate('clubhouse.modules.ranks.scopeSameLeague');
@@ -1918,7 +2038,7 @@ function autoScrollLayoutPointer() {
 }
 
 function enterLayoutEditing() {
-  if (!layoutEditingEnabled || !data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
+  if (readonly.value || !layoutEditingEnabled || !data.value || layoutSaving.value || !renderableModules.value.length || !freeBoard.value) return;
   settingsOpen.value = false;
   layoutEditing.value = true;
   clearModuleSelection();
@@ -2006,13 +2126,16 @@ function buildConfigPayload(modules, extras = {}) {
       : DEFAULT_RANK_KEYS.map((metricKey) => ({ metricKey })));
   const milestoneKeys = extras.milestones?.metricKeys
     || (Array.isArray(config.milestones?.metricKeys) ? [...config.milestones.metricKeys] : []);
+  const share = extras.share
+    || (config.share && typeof config.share === 'object' ? { ...config.share } : { enabled: false });
   return {
     version: CONFIG_VERSION,
     layout: CONFIG_LAYOUT,
     modules: toConfigRows(modules),
     milestones: { metricKeys: milestoneKeys },
     performance,
-    ranks
+    ranks,
+    share
   };
 }
 
@@ -2629,7 +2752,7 @@ function recentLine(game) {
 }
 
 function openSettings() {
-  if (!data.value || layoutSaving.value || layoutEditing.value) return;
+  if (readonly.value || !data.value || layoutSaving.value || layoutEditing.value) return;
   resetDraft();
   settingsOpen.value = true;
 }
@@ -2816,10 +2939,16 @@ function scopeEventLabel(event) {
   return `${event?.name || translate('player.event')} · ${event?.lastGameday && last.isValid() ? last.format('MM.DD') : translate('clubhouse.scope.noGames')}`;
 }
 
+function scopeParam(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : SCOPE_ALL;
+}
+
 async function load() {
   const seq = ++requestSeq;
   loading.value = true;
   loadError.value = '';
+  publicUnavailable.value = false;
   milestonePayload.value = null;
   milestonesError.value = '';
   milestonesLoading.value = false;
@@ -2827,14 +2956,28 @@ async function load() {
   spraysError.value = '';
   spraysLoading.value = false;
   try {
-    const result = await clubhouseApi.dashboard({
+    if (readonly.value && !initialScopeApplied.value) {
+      initialScopeApplied.value = true;
+      teamId.value = scopeParam(route.query.teamId);
+      leagueId.value = scopeParam(route.query.leagueId);
+      eventId.value = scopeParam(route.query.eventId);
+      gameMode.value = String(route.query.gameMode || '').toUpperCase() === 'SOFTBALL' ? 'SOFTBALL' : 'BASEBALL';
+    }
+    const params = {
       teamId: teamId.value || null,
       leagueId: leagueId.value || null,
       eventId: eventId.value || null,
       gameMode: gameMode.value
-    });
+    };
+    const result = readonly.value
+      ? await publicClubhouseApi.dashboard(publicPlayerId.value, params)
+      : await clubhouseApi.dashboard(params);
     if (seq !== requestSeq) return;
     if (!result) {
+      if (readonly.value) {
+        publicUnavailable.value = true;
+        return;
+      }
       await goUnclaimed();
       return;
     }
@@ -2843,27 +2986,29 @@ async function load() {
     leagueId.value = result.scope?.leagueId ?? SCOPE_ALL;
     eventId.value = result.scope?.eventId ?? SCOPE_ALL;
     gameMode.value = result.scope?.gameMode || gameMode.value;
-    // 仅垒球（或仅棒球）球员：当前类型没有任何赛事且只存在另一种类型时，自动切换一次并重载。
-    if (!autoGameModeAdjusted) {
-      const fallbackMode = fallbackGameMode();
-      if (fallbackMode) {
-        autoGameModeAdjusted = true;
-        gameMode.value = fallbackMode;
-        teamId.value = SCOPE_ALL;
-        leagueId.value = SCOPE_ALL;
-        eventId.value = SCOPE_ALL;
-        await load();
-        return;
+    if (!readonly.value) {
+      // 仅垒球（或仅棒球）球员：当前类型没有任何赛事且只存在另一种类型时，自动切换一次并重载。
+      if (!autoGameModeAdjusted) {
+        const fallbackMode = fallbackGameMode();
+        if (fallbackMode) {
+          autoGameModeAdjusted = true;
+          gameMode.value = fallbackMode;
+          teamId.value = SCOPE_ALL;
+          leagueId.value = SCOPE_ALL;
+          eventId.value = SCOPE_ALL;
+          await load();
+          return;
+        }
       }
-    }
-    // 赛事以后端返回的 events[] 为准：已从下拉消失的赛事回退「生涯」，只重载一次。
-    const responseEventIds = new Set((result.events || []).map((event) => String(event.id)));
-    if (eventId.value && !responseEventIds.has(String(eventId.value))) {
-      eventId.value = SCOPE_ALL;
-      if (!eventScopeResetApplied) {
-        eventScopeResetApplied = true;
-        await load();
-        return;
+      // 赛事以后端返回的 events[] 为准：已从下拉消失的赛事回退「生涯」，只重载一次。
+      const responseEventIds = new Set((result.events || []).map((event) => String(event.id)));
+      if (eventId.value && !responseEventIds.has(String(eventId.value))) {
+        eventId.value = SCOPE_ALL;
+        if (!eventScopeResetApplied) {
+          eventScopeResetApplied = true;
+          await load();
+          return;
+        }
       }
     }
     resetDraft();
@@ -2871,6 +3016,14 @@ async function load() {
     void loadSprays(seq);
   } catch (error) {
     if (seq !== requestSeq) return;
+    if (readonly.value) {
+      if (error?.apiCode === 404) {
+        publicUnavailable.value = true;
+      } else {
+        loadError.value = error?.message || translate('common.error');
+      }
+      return;
+    }
     if (isAuthSessionError(error)) {
       await redirectToLogin();
       return;
@@ -2894,11 +3047,17 @@ async function loadMilestones(seq) {
   milestonesLoading.value = true;
   milestonesError.value = '';
   try {
-    const result = await clubhouseApi.milestones();
+    const result = readonly.value
+      ? await publicClubhouseApi.milestones(publicPlayerId.value)
+      : await clubhouseApi.milestones();
     if (seq !== requestSeq) return;
     milestonePayload.value = result || {};
   } catch (error) {
     if (seq !== requestSeq) return;
+    if (readonly.value) {
+      milestonesError.value = error?.message || translate('clubhouse.milestones.loadFailed');
+      return;
+    }
     if (isAuthSessionError(error)) {
       await redirectToLogin();
       return;
@@ -2919,17 +3078,24 @@ async function loadSprays(seq) {
   spraysLoading.value = true;
   spraysError.value = '';
   try {
-    const result = await clubhouseApi.sprays({
+    const params = {
       teamId: teamId.value || null,
       leagueId: leagueId.value || null,
       eventId: eventId.value || null,
       gameMode: gameMode.value
-    });
+    };
+    const result = readonly.value
+      ? await publicClubhouseApi.sprays(publicPlayerId.value, params)
+      : await clubhouseApi.sprays(params);
     if (seq !== requestSeq) return;
     sprayPayload.value = result || {};
     if (sprayMode.value === 'animate') startSprayAnimation();
   } catch (error) {
     if (seq !== requestSeq) return;
+    if (readonly.value) {
+      spraysError.value = error?.message || translate('clubhouse.spray.loadFailed');
+      return;
+    }
     if (isAuthSessionError(error)) {
       await redirectToLogin();
       return;
@@ -2940,7 +3106,12 @@ async function loadSprays(seq) {
   }
 }
 
-async function redirectToLogin() {  await router.replace({
+async function redirectToLogin() {
+  if (readonly.value) {
+    publicUnavailable.value = true;
+    return;
+  }
+  await router.replace({
     name: 'PortalAccountLogin',
     params: { tenantCode: tenantCode.value },
     query: { redirect: router.currentRoute.value.fullPath }
@@ -2948,6 +3119,10 @@ async function redirectToLogin() {  await router.replace({
 }
 
 async function goUnclaimed() {
+  if (readonly.value) {
+    publicUnavailable.value = true;
+    return;
+  }
   ElMessage.warning(translate('clubhouse.toast.unclaimed'));
   await router.replace({ name: 'PortalHome', params: { tenantCode: tenantCode.value } });
 }
@@ -3031,6 +3206,10 @@ onBeforeUnmount(() => {
 .clubhouse-page.is-reordering { cursor: grabbing; }
 .scope-bar { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 9px 13px; background: var(--bs-surface); border: 1px solid var(--bs-hairline-soft); border-radius: 12px; box-shadow: var(--bs-shadow-sm); }
 .scope-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--bs-accent-ink); white-space: nowrap; }
+.scope-static { font-size: 11px; font-weight: 600; color: var(--bs-text); }
+.scope-public-note { margin-left: auto; font-size: 10px; color: var(--bs-text-faint); }
+.public-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border: 1px solid var(--bs-accent); border-radius: 999px; color: var(--bs-accent-ink); font-size: 10px; font-weight: 700; vertical-align: middle; }
+.clubhouse-share-entry { color: var(--bs-accent-ink) !important; font-weight: 700; }
 .scope-select { width: 148px; max-width: 100%; }
 .scope-select :deep(.el-select__wrapper) { min-height: 30px; border-radius: 7px; box-shadow: 0 0 0 1px var(--bs-hairline) inset; background: var(--bs-surface-soft); }
 .scope-right { margin-left: auto; font-size: 10px; color: var(--bs-text-muted); white-space: nowrap; }

@@ -13,6 +13,7 @@ const locales = Object.fromEntries(
 
 const starPlayers = read('../src/views/portal/StarPlayers.js');
 const clubhouse = read('../src/views/portal/PortalClubhouse.vue');
+const clubhouseSharePanel = read('../src/components/portal/ClubhouseSharePanel.vue');
 const teamDetail = read('../src/views/portal/PortalTeamDetail.js');
 const events = read('../src/views/portal/PortalEvents.js');
 const filterBar = read('../src/components/portal/PortalScheduleFilterBar.js');
@@ -112,7 +113,9 @@ test('门户路由标题键覆盖联盟/我的主场/介绍/欢迎页', () => {
 
 test('驾驶舱 clubhouse.* 三语齐全、源码引用与词条一一对应', () => {
   const referenced = new Set();
-  for (const match of clubhouse.matchAll(/['"](clubhouse\.[^'"]+)['"]/g)) referenced.add(match[1]);
+  for (const source of [clubhouse, clubhouseSharePanel]) {
+    for (const match of source.matchAll(/['"](clubhouse\.[^'"]+)['"]/g)) referenced.add(match[1]);
+  }
 
   const flat = (obj, prefix = '', out = {}) => {
     for (const [key, value] of Object.entries(obj)) {
@@ -125,7 +128,7 @@ test('驾驶舱 clubhouse.* 三语齐全、源码引用与词条一一对应', (
   const zhFlat = flat(locales['zh-CN']);
   const zhKeys = Object.keys(zhFlat).filter((key) => key.startsWith('clubhouse.'));
   const zhKeySet = new Set(zhKeys);
-  assert.equal(zhKeys.length, 205, '驾驶舱词条数量应为 205');
+  assert.equal(zhKeys.length, 236, '驾驶舱词条数量应为 236');
   assert.deepEqual(referenced, zhKeySet, '驾驶舱词条应与源码引用一一对应');
   for (const locale of ['zh-CN', 'zh-TW', 'en']) {
     const localeFlat = flat(locales[locale]);

@@ -94,6 +94,9 @@ public final class ClubhouseMetricCatalog {
         config.put("milestones", milestones);
         config.put("performance", performance);
         config.put("ranks", defaultRankEntries());
+        LinkedHashMap<String, Object> share = new LinkedHashMap<>();
+        share.put("enabled", false);
+        config.put("share", share);
         return config;
     }
 

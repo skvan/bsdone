@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -553,6 +554,84 @@ class UserClubhouseConfigServiceTest {
         assertEquals(9, ((List<?>) config.get("modules")).size());
         assertEquals(4, ((List<?>) config.get("ranks")).size());
         verify(configRepository, never()).save(any(UserClubhouseConfig.class));
+    }
+
+    @Test
+    @DisplayName("默认配置分享关闭")
+    void shareDisabledByDefault() {
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.empty());
+
+        Map<String, Object> config = service.getOrCreate(7L, 1L);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> share = (Map<String, Object>) config.get("share");
+        assertEquals(false, share.get("enabled"));
+    }
+
+    @Test
+    @DisplayName("旧前端保存布局不带 share 时保留已开启的分享开关")
+    void saveWithoutShareKeepsExistingValue() throws Exception {
+        UserClubhouseConfig entity = new UserClubhouseConfig();
+        entity.setConfigJson("{\"share\":{\"enabled\":true}}");
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(entity));
+
+        Map<String, Object> saved = service.save(7L, 1L,
+                boardBody(List.of(module("ranks", true, 0, 0, 1216, 220))));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> share = (Map<String, Object>) saved.get("share");
+        assertEquals(true, share.get("enabled"));
+        ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+        verify(configRepository).upsert(eq(7L), eq(1L), json.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> written = new ObjectMapper().readValue(json.getValue(), Map.class);
+        assertEquals(true, ((Map<?, ?>) written.get("share")).get("enabled"));
+    }
+
+    @Test
+    @DisplayName("单独保存分享开关写入 config_json")
+    void saveShareWritesEnabledFlag() throws Exception {
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.empty());
+
+        service.saveShare(7L, 1L, true);
+
+        ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+        verify(configRepository).upsert(eq(7L), eq(1L), json.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> written = new ObjectMapper().readValue(json.getValue(), Map.class);
+        assertEquals(true, ((Map<?, ?>) written.get("share")).get("enabled"));
+    }
+
+    @Test
+    @DisplayName("恢复默认布局时保留分享开关")
+    void resetKeepsShareFlag() throws Exception {
+        UserClubhouseConfig entity = new UserClubhouseConfig();
+        entity.setConfigJson("{\"share\":{\"enabled\":true}}");
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.of(entity));
+
+        service.reset(7L, 1L);
+
+        ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+        verify(configRepository).upsert(eq(7L), eq(1L), json.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> written = new ObjectMapper().readValue(json.getValue(), Map.class);
+        assertEquals(true, ((Map<?, ?>) written.get("share")).get("enabled"));
+    }
+
+    @Test
+    @DisplayName("分享开关必须是布尔值")
+    void shareFlagMustBeBoolean() {
+        when(configRepository.findFirstByUserIdAndTenantIdAndDeletedAtIsNull(7L, 1L))
+                .thenReturn(Optional.empty());
+        Map<String, Object> body = new LinkedHashMap<>(
+                boardBody(List.of(module("ranks", true, 0, 0, 1216, 220))));
+        body.put("share", Map.of("enabled", "yes"));
+
+        assertThrows(BusinessException.class, () -> service.save(7L, 1L, body));
     }
 
     private Map<String, Object> boardBody(List<Map<String, Object>> modules) {
