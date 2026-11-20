@@ -17,8 +17,8 @@ test('Qr()：playEvent 组装前消费台账并在推入后同步重建（防决
   const body = pick('function Qr(){', 'function syncEarnedRunHalfInning(');
   assert.match(body, /const scoringEntries=takeAllRuns\(runLedger\)/,
     'Qr 必须先一次性取走台账得分');
-  assert.match(body, /f\.playEvents\.push\(E\),syncEarnedRunHalfInning\(E\)/,
-    'push(E) 后紧跟同步重建');
+  assert.match(body, /f\.playEvents\.push\(E\),syncEarnedRunHalfInning\(E,\{halfComplete:l\.outs>=3\}\)/,
+    'push(E) 后紧跟同步重建，并按实际出局数决定是否定案（未满三出只预览）');
   assert.doesNotMatch(body, /Jl\(\)/, '旧的整表清空入口不得残留');
 });
 

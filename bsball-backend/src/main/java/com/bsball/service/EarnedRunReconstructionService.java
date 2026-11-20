@@ -233,7 +233,7 @@ public class EarnedRunReconstructionService {
         return List.copyOf(fields);
     }
 
-    /** Replaces and reconstructs all earned-run events for one half-inning. */
+    /** Replaces and reconstructs all earned-run events for one completed half-inning. */
     @Transactional
     public EarnedRunReconstructionResult replaceHalfInning(
             long tenantId,
@@ -243,11 +243,42 @@ public class EarnedRunReconstructionService {
             long operatorId,
             List<EarnedRunPlay> plays,
             Long fieldingTeamId) {
+        return replaceHalfInning(tenantId, gameId, inning, half, operatorId, plays,
+                fieldingTeamId, true);
+    }
+
+    /**
+     * 重建一个半局；{@code halfComplete=false}（该半局仍在进行）时只算不写。
+     *
+     * <p>不删旧判定、不插新判定、不作废投手 R/ER 覆写、不改统计，仅回一份与落库同款算术的
+     * 预览四栏。线上实测引擎对第 k 棒的裁决只是「该半局前 k-1 棒」的函数（同前缀早晚
+     * 重推逐项相同，见 EarnedRunProvisionalPushTest），所以延后入库不会改变任何判定结果；
+     * 但旧行为是每个打席都跑一次「删判定＋作废受影响投手覆写＋全场重算」，等于让人工覆写
+     * 在该半局还会继续被记录时随时会被无声抹掉（线上 game 261 的赛后覆写就长在这个窗口里）。
+     * 副作用因此不再随每个打席发生：自动的逐打席推送只做预览，落库只发生在半局打完（第三
+     * 出局）与记录员显式保存／换局／补台账这些定案动作上。后者故意保持为定案写入，因为它们
+     * 是撤销／重做后唯一能把判定层重新对回逐棒证据的时机（见前端 resyncEarnedRunHalfInningForSave）。
+     */
+    @Transactional
+    public EarnedRunReconstructionResult replaceHalfInning(
+            long tenantId,
+            long gameId,
+            int inning,
+            String half,
+            long operatorId,
+            List<EarnedRunPlay> plays,
+            Long fieldingTeamId,
+            boolean halfComplete) {
         validateIdentity(tenantId, gameId, inning, half, operatorId);
         EarnedRunReconstructionResult result = engine.reconstruct(plays);
         List<EarnedRunPlayEntity> existing = playRepository
                 .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
                         tenantId, gameId, inning, half);
+        if (!halfComplete) {
+            PitcherPreview preview = previewPitcherTotals(tenantId, gameId, existing, result);
+            return result.withPitcherAbsoluteTotals(
+                    preview.totals(), preview.overridesToInvalidate());
+        }
         Set<Long> affectedPitcherIds = collectAffectedPitcherIds(tenantId, gameId, existing);
         deleteExistingDecisions(tenantId, gameId, existing);
         playRepository.deleteByTenantIdAndGameIdAndInningAndHalf(
@@ -262,7 +293,7 @@ public class EarnedRunReconstructionService {
                 affectedPitcherIds, "半局重建后需重新复核投手 R/ER", operatorId);
         Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absoluteTotals =
                 recomputePitcherStats(tenantId, gameId, fieldingTeamId, invalidatedPitcherIds);
-        return result.withPitcherAbsoluteTotals(absoluteTotals);
+        return result.withPitcherAbsoluteTotals(absoluteTotals, List.copyOf(invalidatedPitcherIds));
     }
 
     /** 该场是否已有 ER 引擎事件；按 gameId 全局唯一判断，避免换赛事/租户后守卫失效。 */
@@ -297,6 +328,35 @@ public class EarnedRunReconstructionService {
     /** 该场是否仍有以该投手为有效责任投手的自责分判定；删除投手统计行前的守卫。 */
     public boolean hasResponsiblePitcherDecisions(long gameId, long pitcherId) {
         return countResponsiblePitcherDecisions(gameId, pitcherId) > 0;
+    }
+
+    /**
+     * 该场判定总数（含被人工作废的那批），供半局重建的完整性守门使用。
+     * 这里故意不用「有效判定数」：守门问的是「推上来的逐棒资料有没有涵盖记分栏已记的分」，
+     * 而人工作废改的是这笔分怎么算（归谁、算不算自责），不是这笔分有没有发生。拿有效数做比对，
+     * 「先作废判定、还没改记分」这个正常顺序会被当成缺笔，之后每一个半局的定案推送都会撞 409。
+     * 反之记分真的被改小了，afterTotal 只会大于 officialRuns，守门本来就只拦「少」不拦「多」，
+     * 不会因此放行错误数据。
+     */
+    public int countDecisionsForCoverage(long tenantId, long gameId) {
+        return decisionRepository.findByTenantIdAndGameId(tenantId, gameId).size();
+    }
+
+    /**
+     * 指定半局的既有判定数（含人工作废）。重建是整半局替换，守门必须先从全场
+     * 扣掉这一半、再加回本次推送的得分跑者数，才推得出「重建后全场判定数」，
+     * 再拿它去比记分栏（独立证人）才能发现分母残缺。口径跟 countDecisionsForCoverage。
+     */
+    public int countDecisionsForCoverageOfHalf(long tenantId, long gameId, int inning, String half) {
+        Set<Long> playIds = playRepository
+                .findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(tenantId, gameId, inning, half)
+                .stream().map(EarnedRunPlayEntity::getId).collect(Collectors.toSet());
+        if (playIds.isEmpty()) {
+            return 0;
+        }
+        return (int) decisionRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
+                .filter(decision -> playIds.contains(decision.getPlayId()))
+                .count();
     }
 
     /** 赛后复核：列出本场全部投手的 R/ER 合计与生效中的人工覆写。 */
@@ -356,7 +416,9 @@ public class EarnedRunReconstructionService {
             upsertApprovedOverride(tenantId, gameId, playerId, runs, earned, null, operatorId);
             GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, playerId,
                     pitcherStats, teamByPlayer, null);
-            applyPitcherTotals(stat, new int[]{runs, earned, Math.max(0, runs - earned), 0});
+            // 结果页契约是“不拿部分半局的残缺判定改写任何投手”，所以不查引擎；
+            // 但统计行已有的待判定不能被人手工 R/ER 无声折进非自责，故拿它当 PEND 上限。
+            applyPitcherTotals(stat, splitRuns(runs, earned, valueOrZero(stat.getPendingR())));
             gamePlayerStatRepository.save(stat);
         }
     }
@@ -1343,7 +1405,7 @@ public class EarnedRunReconstructionService {
         for (PitcherRunOverride override : overrides.values()) {
             GamePlayerStat stat = ensurePitcherStat(tenantId, gameId, override.getPlayerId(),
                     pitcherStats, teamByPlayer, fallbackTeamId);
-            applyPitcherTotals(stat, overrideTotals(override));
+            applyPitcherTotals(stat, overrideTotals(override, pendingOf(totals, override.getPlayerId())));
             gamePlayerStatRepository.save(stat);
         }
         // 覆写刚失效/撤销且该投手已无判定：不能保留旧人工值，四字段归零。
@@ -1388,10 +1450,26 @@ public class EarnedRunReconstructionService {
         stat.setPendingR(total[3]);
     }
 
-    private int[] overrideTotals(PitcherRunOverride override) {
-        int runs = valueOrZero(override.getRunsAllowed());
-        int earned = valueOrZero(override.getEarnedRuns());
-        return new int[]{runs, earned, Math.max(0, runs - earned), 0};
+    private int[] overrideTotals(PitcherRunOverride override, int enginePending) {
+        return splitRuns(valueOrZero(override.getRunsAllowed()),
+                valueOrZero(override.getEarnedRuns()), enginePending);
+    }
+
+    /**
+     * 人工覆写四栏口径：R/ER 以人工值为准，非自责部分先留给引擎的待判定（PEND），剩下的才是 UER。
+     * 直接把 runs-earned 全归 UER 会把待判定无声折成「已判定为非自责」，而 R=ER+UER+PEND 照样
+     * 成立，四栏自洽检查根本查不出这种折叠（线上实测 game 278 投手 1275）。
+     * 人工额度不够容纳全部待判定时，以人工值为准截断 PEND，仍保证恒等式成立。
+     */
+    private static int[] splitRuns(int runs, int earned, int enginePending) {
+        int room = Math.max(0, runs - earned);
+        int pending = Math.min(Math.max(0, enginePending), room);
+        return new int[]{runs, earned, room - pending, pending};
+    }
+
+    private static int pendingOf(Map<Long, int[]> totals, Long playerId) {
+        int[] value = totals.get(playerId);
+        return value == null ? 0 : value[3];
     }
 
     private Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> absolutePitcherTotals(
@@ -1435,12 +1513,22 @@ public class EarnedRunReconstructionService {
     }
 
     private Map<Long, int[]> enginePitcherTotals(long tenantId, long gameId) {
+        return aggregatePitcherTotals(tenantId, gameId,
+                decisionRepository.findByTenantIdAndGameId(tenantId, gameId));
+    }
+
+    /**
+     * 给定判定列聚合投手四栏（含人工作废过滤与改派口径）。
+     * 引擎合计与局中预览共用这一份算术，避免两条路各算一套数。
+     * 返回可变 Map：预览需要在同一分母上继续累加本次尚未入库的判定。
+     */
+    private Map<Long, int[]> aggregatePitcherTotals(long tenantId, long gameId,
+            List<EarnedRunDecisionEntity> decisions) {
         Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
         Map<DecisionKey, ErDecisionAdjustment> adjustments =
                 activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
         Map<Long, int[]> totals = new HashMap<>();
-        for (EarnedRunDecisionEntity decision : decisionRepository
-                .findByTenantIdAndGameId(tenantId, gameId)) {
+        for (EarnedRunDecisionEntity decision : decisions) {
             ErDecisionAdjustment adjustment = adjustmentFor(
                     sourceEventByPlayId.get(decision.getPlayId()),
                     decision.getRunnerId(), adjustments);
@@ -1451,18 +1539,82 @@ public class EarnedRunReconstructionService {
             if (pitcherId == null) {
                 continue;
             }
-            int[] value = totals.computeIfAbsent(pitcherId, ignored -> new int[4]);
-            value[0] += 1;
-            String status = decision.getEarnedStatus();
-            if (EarnedRunStatus.EARNED.name().equals(status)) {
-                value[1] += 1;
-            } else if (EarnedRunStatus.UNEARNED.name().equals(status)) {
-                value[2] += 1;
-            } else if (EarnedRunStatus.PENDING.name().equals(status)) {
-                value[3] += 1;
-            }
+            addPitcherRun(totals, pitcherId, decision.getEarnedStatus());
         }
         return totals;
+    }
+
+    /**
+     * 一笔判定对投手四栏的归位：R 恒加一，再按状态进 ER/UER/PEND 之一（未知状态只进 R）。
+     * 落库重算、引擎合计、局中预览三条路必须走同一个方法，否则同一分会在画面上变出口径。
+     */
+    private static void addPitcherRun(
+            Map<Long, int[]> totals, Long pitcherId, String earnedStatus) {
+        if (pitcherId == null) {
+            return;
+        }
+        int[] value = totals.computeIfAbsent(pitcherId, ignored -> new int[4]);
+        value[0] += 1;
+        if (EarnedRunStatus.EARNED.name().equals(earnedStatus)) {
+            value[1] += 1;
+        } else if (EarnedRunStatus.UNEARNED.name().equals(earnedStatus)) {
+            value[2] += 1;
+        } else if (EarnedRunStatus.PENDING.name().equals(earnedStatus)) {
+            value[3] += 1;
+        }
+    }
+
+    /**
+     * 局中预览：算出「本半局若在此刻定案会落库的投手四栏」回给前端显示，全程不写库。
+     * 分母 = 其他半局有效判定 + 本次逐棒判定；人工覆写只对「定案时不会被作废」的投手继续生效——
+     * 定案路径会先取 collectAffectedPitcherIds（该半局旧判定的责任投手）再加上本次新判定的责任
+     * 投手，把这批人的 APPROVED 覆写改成 INVALIDATED。预览若照单全叠，显示的就是几个马上会被
+     * 推翻的数字，记录员会以为人工决断还在生效。两边用同一个 affected 集合筛，报出来的才是
+     * 同一个口径。
+     * 本次判定尚未入库，不可能已带人工改派/作废，所以按引擎责任投手归位；
+     * 该偏差只影响显示，该半局定案入库时会以完整口径重算。
+     */
+    private PitcherPreview previewPitcherTotals(
+            long tenantId, long gameId, List<EarnedRunPlayEntity> existing,
+            EarnedRunReconstructionResult result) {
+        Set<Long> replacedPlayIds = existing.stream()
+                .map(EarnedRunPlayEntity::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<EarnedRunDecisionEntity> otherHalves = decisionRepository
+                .findByTenantIdAndGameId(tenantId, gameId).stream()
+                .filter(row -> row.getPlayId() == null
+                        || !replacedPlayIds.contains(row.getPlayId()))
+                .toList();
+        Map<Long, int[]> totals = aggregatePitcherTotals(tenantId, gameId, otherHalves);
+        for (EarnedRunDecision decision : result.decisions()) {
+            addPitcherRun(totals, decision.responsiblePitcherId(), decision.status().name());
+        }
+        Set<Long> affectedPitcherIds = collectAffectedPitcherIds(tenantId, gameId, existing);
+        for (EarnedRunDecision decision : result.decisions()) {
+            if (decision.responsiblePitcherId() > 0) {
+                affectedPitcherIds.add(decision.responsiblePitcherId());
+            }
+        }
+        List<Long> overridesToInvalidate = new ArrayList<>();
+        activeOverridesByPlayer(tenantId, gameId).forEach((playerId, override) -> {
+            if (affectedPitcherIds.contains(playerId)) {
+                overridesToInvalidate.add(playerId);
+            } else {
+                totals.put(playerId, overrideTotals(override, pendingOf(totals, playerId)));
+            }
+        });
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> preview = new HashMap<>();
+        totals.forEach((playerId, value) -> preview.put(playerId,
+                new EarnedRunReconstructionResult.PitcherRunTotals(
+                        value[0], value[1], value[2], value[3])));
+        return new PitcherPreview(preview, overridesToInvalidate);
+    }
+
+    /** 预览回包：投手四栏，加上「本半局一旦定案就会被作废的覆写所属投手」。 */
+    private record PitcherPreview(
+            Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> totals,
+            List<Long> overridesToInvalidate) {
     }
 
     private Map<Long, PitcherRunOverride> activeOverridesByPlayer(long tenantId, long gameId) {
@@ -1476,7 +1628,7 @@ public class EarnedRunReconstructionService {
     private PitcherRunTotalsDTO toPitcherTotals(Long playerId, GamePlayerStat stat,
             int[] engineTotal, PitcherRunOverride override, Player player) {
         int[] engine = engineTotal == null ? new int[4] : engineTotal;
-        int[] effective = override != null ? overrideTotals(override) : engine;
+        int[] effective = override != null ? overrideTotals(override, engine[3]) : engine;
         int runs = effective[0];
         int earned = effective[1];
         int unearned = effective[2];
@@ -1945,13 +2097,16 @@ public class EarnedRunReconstructionService {
 
     /**
      * 比賽結束時執行，回傳違規訊息列表（空 = 全部通過）。
-     * 規範 §11：R=ER+UER+PENDING、ER≤R、UER≥0、不重複判定、責任投手非空。
+     * 規範 §11：R=ER+UER+PENDING、ER≤R、UER≥0、不重複判定、責任投手非空；
+     * §11.7–§11.9 再補全場級分解自洽（判定數=總分、逐隊投手群 R=對手得分、總分=逐局和），
+     * 因為單筆判定正確不代表三層加總對得上，線上實測過這三種漂移。
      */
     public List<String> validateSettlement(long tenantId, long gameId) {
         List<String> violations = new ArrayList<>();
+        List<GamePlayerStat> stats = gamePlayerStatRepository.findByGameId(gameId);
 
         // 1-3: per-pitcher aggregated checks
-        for (GamePlayerStat p : gamePlayerStatRepository.findByGameId(gameId)) {
+        for (GamePlayerStat p : stats) {
             if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
             if (!Integer.valueOf(1).equals(p.getIsPitcher())) continue;
             long pid = p.getPlayerId() != null ? p.getPlayerId() : 0;
@@ -1996,7 +2151,7 @@ public class EarnedRunReconstructionService {
         // \u00a711.6 責任投手（含轉記後口徑）在場內卻無投手統計列：這筆分數的 R/ER 無處落帳，
         // box score 會直接看不見它（game 261 判定掛在 114、場內無 114 投手列實測）。
         Set<Long> pitcherRowIds = new HashSet<>();
-        for (GamePlayerStat p : gamePlayerStatRepository.findByGameId(gameId)) {
+        for (GamePlayerStat p : stats) {
             if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
             if (Integer.valueOf(1).equals(p.getIsPitcher()) && p.getPlayerId() != null) {
                 pitcherRowIds.add(p.getPlayerId());
@@ -2011,7 +2166,252 @@ public class EarnedRunReconstructionService {
             }
         }
 
+        appendTotalBreakage(tenantId, gameId, stats, decisions, violations);
+
         return violations;
+    }
+
+    /**
+     * §11.7–§11.9 全場級分解自洽：判定筆數、逐隊投手群失分、總分與逐局比分必須互相扣得上。
+     * 只比「同一記錄動作同時產出的兩側」，因為比分欄可被結果錄入補寫（game 260 實測：
+     * 快照停在 1 局、判定 16 筆，但比分 18 且投手 R=18 對得上），
+     * 所以「判定少於比分」是混合來源場次的常態，不報警；反過來才一定是記錄鏈路壞了。
+     */
+    private void appendTotalBreakage(long tenantId, long gameId, List<GamePlayerStat> stats,
+            List<EarnedRunDecisionEntity> decisions, List<String> violations) {
+        Game game = gameRepository.findById(gameId).orElse(null);
+        if (game == null || !Objects.equals(game.getTenantId(), Long.valueOf(tenantId))) {
+            return;
+        }
+        int awayScore = valueOrZero(game.getAwayScore());
+        int homeScore = valueOrZero(game.getHomeScore());
+        int totalScore = awayScore + homeScore;
+        // 裁定/特殊結果場次的比分按規則判定，不來自逐筆記錄，加總必然對不上：不套這三條。
+        if (Boolean.TRUE.equals(game.getIsSpecialResult())) {
+            return;
+        }
+
+        // §11.7 判定筆數不得超過總分：一筆判定就是一個跑者回本壘，被 VOID 修訂抹掉的不算。
+        // 判定多於比分代表判定層有比分層沒的分數（扣分只動比分層、或重複判定），線上實測 255/278 各 +1。
+        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
+        Map<DecisionKey, ErDecisionAdjustment> adjustments =
+                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
+        int judgedRuns = 0;
+        for (EarnedRunDecisionEntity decision : decisions) {
+            ErDecisionAdjustment adjustment = adjustmentFor(
+                    sourceEventByPlayId.get(decision.getPlayId()), decision.getRunnerId(), adjustments);
+            if (adjustment != null && ADJUSTMENT_VOID.equals(adjustment.getAction())) {
+                continue;
+            }
+            judgedRuns += 1;
+        }
+        if (judgedRuns > totalScore) {
+            violations.add(String.format(
+                    "\u00a711.7 判定 %d 筆多於總分 %d:%d（合計 %d），差額 %+d：判定層有比分層沒記到的分數",
+                    judgedRuns, awayScore, homeScore, totalScore, judgedRuns - totalScore));
+        }
+
+        // §11.8 逐隊投手群失分合計 = 對隊得分（客隊投手守的是主隊打序，反之亦然）。
+        // 全隊 pitchR 都是 NULL 時視為「引擎從未落帳」而不是失 0 分：這種場次的比分與 R 走結果錄入，
+        // 拿它跟得分對帳只會誤報（線上實測 235/248 即此形）。
+        if (game.getAwayTeamId() != null && game.getHomeTeamId() != null) {
+            Map<Long, Integer> runsByTeam = new LinkedHashMap<>();
+            Set<Long> settledTeams = new LinkedHashSet<>();
+            for (GamePlayerStat p : stats) {
+                if (p.getTenantId() == null || p.getTenantId() != tenantId) continue;
+                if (!Integer.valueOf(1).equals(p.getIsPitcher()) || p.getTeamId() == null) continue;
+                runsByTeam.merge(p.getTeamId(), valueOrZero(p.getPitchR()), Integer::sum);
+                if (p.getPitchR() != null) {
+                    settledTeams.add(p.getTeamId());
+                }
+            }
+            for (Map.Entry<Long, Integer> entry : runsByTeam.entrySet()) {
+                long teamId = entry.getKey();
+                if (!settledTeams.contains(teamId)) {
+                    continue;
+                }
+                Integer opponent = Long.valueOf(teamId).equals(game.getAwayTeamId()) ? homeScore
+                        : Long.valueOf(teamId).equals(game.getHomeTeamId()) ? awayScore : null;
+                if (opponent == null) {
+                    violations.add(String.format("\u00a711.8 teamId=%d 有投手失分 %d 但不屬本場兩隊", teamId,
+                            entry.getValue()));
+                } else if (!entry.getValue().equals(opponent)) {
+                    violations.add(String.format(
+                            "\u00a711.8 teamId=%d 投手群 R 合計 %d 但對手的得分 %d 不等，差額 %+d：兩層必有一層沒落齊",
+                            teamId, entry.getValue(), opponent, entry.getValue() - opponent));
+                }
+            }
+        }
+
+        // §11.9 總分 = 逐局比分加總；逐局資料缺失或解不了時跳過，不硬判違規。
+        appendLineScoreBreakage("home", homeScore, inningRunsSum(game.getHomeScoreByInning()), violations);
+        appendLineScoreBreakage("away", awayScore, inningRunsSum(game.getAwayScoreByInning()), violations);
+
+        // §11.10 逐半局对帐（线上 game 261 型故障）：全场级的 §11.7/§11.9 会互相抵销
+        // （3局下缺笔、5局上多一笔，全场加总照样平），缺在哪一半局只能在半局粒度才看得见。
+        appendHalfInningCoverage(tenantId, gameId, game, decisions, violations);
+    }
+
+    /**
+     * §11.10：半局记分与该半局有效判定笔数必须逐格相等。
+     * 对帐范围取并集：有逐棒事件的半局，加上记分栏那一格有分的半局——少了后半段，「记分有分、
+     * 判定层一笔都没有」的半局（库里连 play 列都没有，例如被强制结束或局中预览从没等到定案推送）
+     * 根本进不了循环，而它正是最该被点名的一种。整个场次没有任何 play 列时完全不参与：纯结果录入
+     * 的老场次没有逐棒证据，拿记分栏比它只会误报（彩排实测：不拦这一道，184 场里 147 场老场次
+     * 会贡献 780 条假命中）；逐局那一格缺资料也直接跳过。
+     * 人工作废单独在消息里报数，默默略过会让「真的缺笔」和「人工抹掉」再也分不开。
+     *
+     * <p>上线前拿生产资料做过一轮只读彩排（审计脚本 audit_11_10_sim.py，属仓库外的一次性
+     * 工具；走同一套并集口径与同一道引擎托管闸门）：旧口径（只看 play 派生半局）184 场
+     * final、157 个可对帐半局只命中 3 条；并集口径 35 场、165 个半局命中 11 条，多出的 8 条
+     * 全是「整半局零判定」，落在 235（4 条）、248（3 条）、260 的 4 局上（1 条）。这三部都
+     * 是投手层已被残缺分母砍过的已知场次（GameService 半局重建完整性守门的注释里点名的就是
+     * 261/235/248），所以是补到了真异常，不是新噪音。旧口径已命中的三条：261「3局下 判定 2
+     * 对记分 3」（缺笔）、255「1局下 判定 6 对记分 5」、260「1局下 判定 8 对记分 9」。
+     */
+    private void appendHalfInningCoverage(long tenantId, long gameId, Game game,
+            List<EarnedRunDecisionEntity> decisions, List<String> violations) {
+        Map<Long, String> halfKeyByPlayId = new HashMap<>();
+        for (EarnedRunPlayEntity play : playRepository.findByTenantIdAndGameId(tenantId, gameId)) {
+            if (play.getId() != null && play.getInning() != null && play.getHalf() != null) {
+                halfKeyByPlayId.put(play.getId(), play.getInning() + "|" + play.getHalf());
+            }
+        }
+        if (halfKeyByPlayId.isEmpty()) {
+            return;
+        }
+        Map<Long, String> sourceEventByPlayId = sourceEventByPlayId(tenantId, gameId);
+        Map<DecisionKey, ErDecisionAdjustment> adjustments =
+                activeAdjustmentsByKey(activeAdjustments(tenantId, gameId));
+        Map<String, int[]> countsByHalf = new HashMap<>();
+        for (EarnedRunDecisionEntity decision : decisions) {
+            String halfKey = decision.getPlayId() == null
+                    ? null : halfKeyByPlayId.get(decision.getPlayId());
+            if (halfKey == null) {
+                continue;
+            }
+            ErDecisionAdjustment adjustment = adjustmentFor(
+                    sourceEventByPlayId.get(decision.getPlayId()), decision.getRunnerId(), adjustments);
+            int[] slot = countsByHalf.computeIfAbsent(halfKey, ignored -> new int[2]);
+            if (adjustment != null && ADJUSTMENT_VOID.equals(adjustment.getAction())) {
+                slot[1] += 1;
+            } else {
+                slot[0] += 1;
+            }
+        }
+        List<Integer> awayCells = inningRunCells(game.getAwayScoreByInning());
+        List<Integer> homeCells = inningRunCells(game.getHomeScoreByInning());
+        // 并集：判定派生的半局（旧口径）＋记分栏有分但判定层可能一笔都没有的半局。
+        Set<String> halfKeyUniverse = new LinkedHashSet<>(countsByHalf.keySet());
+        for (int inning = 1; inning <= awayCells.size(); inning++) {
+            Integer runs = awayCells.get(inning - 1);
+            if (runs != null && runs > 0) {
+                halfKeyUniverse.add(inning + "|top");
+            }
+        }
+        for (int inning = 1; inning <= homeCells.size(); inning++) {
+            Integer runs = homeCells.get(inning - 1);
+            if (runs != null && runs > 0) {
+                halfKeyUniverse.add(inning + "|bottom");
+            }
+        }
+        List<String> halfKeys = new ArrayList<>(halfKeyUniverse);
+        halfKeys.sort(Comparator.comparingInt((String key) ->
+                Integer.parseInt(key.substring(0, key.indexOf('|'))))
+                .thenComparing(key -> key.substring(key.indexOf('|') + 1)));
+        for (String halfKey : halfKeys) {
+            int split = halfKey.indexOf('|');
+            int inning = Integer.parseInt(halfKey.substring(0, split));
+            String half = halfKey.substring(split + 1);
+            Integer recorded = "top".equals(half)
+                    ? inningRunCell(awayCells, inning)
+                    : inningRunCell(homeCells, inning);
+            if (recorded == null) {
+                continue;
+            }
+            int[] counts = countsByHalf.getOrDefault(halfKey, new int[2]);
+            if (counts[0] == recorded.intValue()) {
+                continue;
+            }
+            String cause;
+            if (counts[0] == 0 && counts[1] == 0) {
+                cause = "该半局判定层一笔都没有：逐棒事件从未入库（半局被强制结束，或局中预览没等到定案推送）";
+            } else if (counts[1] > 0 && counts[0] < recorded.intValue()) {
+                // 同一个半局里只要有人工作废过，差额就不能先当成缺笔：作废证明重建跑过、也推上来过，
+                // 改的是「这分怎么算」而不是「有没有发生」。叫复盘的人先去核作废，而不是去追事件覆盖。
+                cause = "差额里有被人工作废的判定：先确认作废成立与否，再判断是不是缺笔";
+            } else if (counts[0] < recorded.intValue()) {
+                cause = "逐棒证据缺一笔（该半局的重建没跑完或事件被覆盖）";
+            } else {
+                cause = "判定层有记分层没记到的分数";
+            }
+            violations.add(String.format(
+                    "\u00a711.10 第 %d 局%s 判定 %d 笔与该半局记分 %d 分不符，差额 %+d：%s%s",
+                    inning, "top".equals(half) ? "上" : "下", counts[0], recorded.intValue(),
+                    counts[0] - recorded.intValue(), cause,
+                    counts[1] > 0 ? "（另有 " + counts[1] + " 笔被人工作废）" : ""));
+        }
+    }
+
+    /** 第 N 局那一格；越界或空值返回 null 表示「无资料可判」而不是 0 分。 */
+    private static Integer inningRunCell(List<Integer> cells, int inning) {
+        return inning <= 0 || inning > cells.size() ? null : cells.get(inning - 1);
+    }
+
+    /** 逐局比分 JSON 展开成每局一格（保留空位）；空值/非法内容返回空列表。 */
+    private List<Integer> inningRunCells(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            List<?> raw = objectMapper.readValue(json.trim(), List.class);
+            List<Integer> cells = new ArrayList<>(raw.size());
+            for (Object cell : raw) {
+                if (cell == null) {
+                    cells.add(null);
+                    continue;
+                }
+                String text = String.valueOf(cell).trim();
+                cells.add(text.isEmpty() ? null : Integer.valueOf(Integer.parseInt(text)));
+            }
+            return cells;
+        }
+        catch (JsonProcessingException | NumberFormatException | IllegalStateException e) {
+            return List.of();
+        }
+    }
+
+    private static void appendLineScoreBreakage(String side, int score, Integer lineSum,
+            List<String> violations) {
+        if (lineSum == null || lineSum == score) {
+            return;
+        }
+        violations.add(String.format("\u00a711.9 %s 總分 %d 與逐局比分加總 %d 不符，差額 %+d", side, score,
+                lineSum, score - lineSum));
+    }
+
+    /** 逐局比分 JSON 加總；空值/非法內容回傳 null 表示「無資料可判」而不是 0。 */
+    private Integer inningRunsSum(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            List<?> raw = objectMapper.readValue(json.trim(), List.class);
+            int sum = 0;
+            for (Object cell : raw) {
+                if (cell == null) {
+                    continue;
+                }
+                String text = String.valueOf(cell).trim();
+                if (!text.isEmpty()) {
+                    sum += Integer.parseInt(text);
+                }
+            }
+            return sum;
+        }
+        catch (JsonProcessingException | NumberFormatException | IllegalStateException e) {
+            return null;
+        }
     }
 
 }
