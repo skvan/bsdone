@@ -53,3 +53,10 @@ test('定案作废的人工覆写名单回传前端，且只在定案时提示�
   assert.match(liveGame, /if\(halfComplete&&Array\.isArray\(invalidated\)&&invalidated\.length\)/,
     '只在半局定案且名单非空时提示，免得局中每个打席都弹');
 });
+
+test('定案推送携带本地官方总分：同一次保存里记分栏尚未落库时不被旧分误拒', () => {
+  assert.match(liveGame, /const localOfficialRuns=\(Number\(f\.teamsData\?\.home\?\.score\)\|\|0\)\+\(Number\(f\.teamsData\?\.away\?\.score\)\|\|0\)/,
+    '从本地 teamsData 计算官方总分');
+  assert.match(liveGame, /officialRuns:localOfficialRuns/,
+    '定案请求必须带本地官方总分');
+});
