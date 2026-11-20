@@ -987,9 +987,21 @@ public class GameService {
                 + (game.getHomeScore() == null ? 0 : game.getHomeScore());
         // 同一次保存里 save-live 还没把新比分落库：客户端带了本地官方总分就用它当证人，
         // 撤销/改小本半局得分后不会被旧记分误拒；旧客户端缺省仍用服务器记分栏。
-        int officialRuns = request.getOfficialRuns() != null
-                ? Math.max(0, request.getOfficialRuns().intValue())
-                : serverOfficialRuns;
+        // 本地 0 分且服务器有分视为「本地比分未载入/未知」，仍用服务器分，防陈旧标签页
+        // 靠一个空 teamsData 直接跳过守门；真撤销到 0 的场次会由 save-live 写低比分后自然放行。
+        int officialRuns = serverOfficialRuns;
+        if (request.getOfficialRuns() != null) {
+            int localRuns = Math.max(0, request.getOfficialRuns().intValue());
+            if (localRuns == 0 && serverOfficialRuns > 0) {
+                officialRuns = serverOfficialRuns;
+            } else {
+                officialRuns = localRuns;
+                if (localRuns < serverOfficialRuns) {
+                    log.warn("[reconstruct-guard] reason=local_official_runs_lower gameId={} local={} server={}",
+                            game.getId(), localRuns, serverOfficialRuns);
+                }
+            }
+        }
         if (officialRuns <= 0) {
             return;
         }

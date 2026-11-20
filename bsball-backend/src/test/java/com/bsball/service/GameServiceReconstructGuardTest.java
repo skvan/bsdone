@@ -221,6 +221,19 @@ class GameServiceReconstructGuardTest {
     }
 
     @Test
+    @DisplayName("本地总分为 0 但服务器有分：视为未载入，仍按服务器分守门")
+    void reconstructEarnedRuns_treatsZeroLocalScoreAsUnknown() {
+        givenDecisions("top", 5, 0);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID),
+                        request("top", 0, null, Boolean.TRUE, Integer.valueOf(0))));
+
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains(" 5 "), "应按服务器 6 分守门：" + ex.getMessage());
+    }
+
+    @Test
     @DisplayName("本地总分仍高于重建后判定：照常 409（守门不因本地比分放水）")
     void reconstructEarnedRuns_stillRejectsWhenLocalScoreExceedsDecisions() {
         givenDecisions("top", 6, 1);
