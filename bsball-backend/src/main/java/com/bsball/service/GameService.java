@@ -207,14 +207,21 @@ public class GameService {
         return this.gameSnapshotRepository.findSnapshotJsonById(gameId).orElse(null);
     }
 
+    /** 旧调用/测试入口：未声明撤销意图，按默认的空壳拒收口径处理。 */
     @Transactional
     public void saveLiveSnapshot(Long gameId, String json) {
+        this.saveLiveSnapshot(gameId, json, null);
+    }
+
+    @Transactional
+    public void saveLiveSnapshot(Long gameId, String json, Boolean allowEvidenceShrink) {
         Game g = this.gameRepository.findById(gameId).orElse(null);
         if (g == null) {
             return;
         }
         this.assertGameWritable(g);
-        String effective = mergeAndGuardSnapshot(g, json, false);
+        String effective = mergeAndGuardSnapshot(
+                g, json, false, Boolean.TRUE.equals(allowEvidenceShrink));
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("快照更新未命中比赛 id={}", gameId);
@@ -236,7 +243,7 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
-        String effective = this.mergeAndGuardSnapshot(g, json, true);
+        String effective = this.mergeAndGuardSnapshot(g, json, true, false);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("阵容快照更新未命中比赛 id={}", gameId);
@@ -256,14 +263,20 @@ public class GameService {
      * <p>三个写入现场都走本入口，形态与处理方式不同：
      * <ol>
      * <li>现场页高频自动存档（{@link #saveLiveSnapshot}）：带全套 playEvents 与 teamsData，
-     *     本地状态归零时会推来一份更短的——那种归「条数/得分不得倒退」拦。</li>
+     *     本地状态归零时会推来一份更短的——那种只看下面的得分一道（条数那道按 #713 的拍板放行）。</li>
      * <li>阵容板草稿（{@code buildLineupDraft}）：只有名单，连 playEvents 都没提到——
      *     那种走下面的合并保留，既不拦下保存也不丢证据。</li>
      * <li>阵容板进入录入（{@code startEntry} 与旧板的 bootstrap）：提到一份开局默认值的
      *     teamsData（双方 0 分、1 局 0 出局）但不提 playEvents。阵容板从不主张比分，
-     *     所以服务器的 teamsData 会被并回去（服务器没有时连 payload 那份 0 分一起删掉）、
-     *     得分守门也不跑——否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份
-     *     零分本来就不该落库。两道守门都只在服务器已有逐棒记录时存在（见下面 early return）。</li>
+     *     所以服务器的 teamsData 会被并回去（服务器没有时连 payload 那份 0 分一起删掉）——
+     *     否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份零分本来就不该落库。
+     *     但这层豁免只认从阵容板端点进来的那一路（{@code lineupOnly} 要 lineupWriter 为真）：
+     *     旧板 bootstrap（{@code LiveGameLineup.js} 进录入前那一发）走的是 {@code saveLiveSnapshot}
+     *     即 live 端点，payload 自带一份 0 分的 teamsData 而不带 playEvents，所以已记分场次
+     *     重新从旧板进录入仍会被得分一道拒收（实测它 catch 掉 409 只播
+     *     「初始阵容未同步到服务器，切换页面后可能需要重排阵容」，原因到人眼里就丢了）。
+     *     两道比对都只在服务器已有逐棒记录时存在（见下面 early return），
+     *     其中得分那道会拒收，条数那道只在清空整份证据时拒收——见下文 #713 拍板。</li>
      * </ol>
      * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
      * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
@@ -279,16 +292,34 @@ public class GameService {
      * 逐棒记录擦掉（game 261）——两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
      * 反过来比对也必须拿原 payload，而不是并完之后的正文：并回来的段落是服务器自己的现值，
      * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
-     * <p>已知限制（#713）：「条数只增不减」跟撤销/重做正面冲突（历史条目本来就把
-     * playEvents 换回更短的一份）。本轮不改判据：宁可锁死也不放行证据覆盖，拒收本身已经是
-     * 正确行为，所以只把它变得看得见——拒收时留 reason 日志供统计发生率，409 文案给一个
-     * 画面真能做的动作（从云端恢复录入现场）。真正的出路是显式 allowShrink 或改按
-     * 「是否丢弃判定层仍在引用的 sourceEventId」判定，那个取舍归 #713 拍板。
+     * <p>条数那道比对已按 #713 的拍板改成<b>放行</b>：「只增不减」跟撤销/重做正面冲突——历史条目
+     * 本来就把 playEvents 换回更短的一份，实测「录一拍→保存→撤销→保存」推上来的就是较短的那
+     * 一份，于是那场录入会从此锁死（只能恢复云端，等于把撤销这一步变成不可保存）。日志留着
+     * （{@code reason=snapshot_event_count_shrink}，只是不改判据）是为了真出问题时还能统计发生率。
+     * <p>放行时唯一保留的一格：<b>{@code incoming==0 && existing>1} 默认拒收</b>
+     * （{@code reason=snapshot_event_count_wiped}）。把证据清零正是 260/261 那种空壳的终态，
+     * 也是旧设备/旧标签页那份「本地已归零」的存档推上来的形状。
+     * 若这次保存来自撤销/重做后的现场恢复，前端会显式带 {@code allowEvidenceShrink=true}，
+     * 此时放行（{@code reason=snapshot_event_count_wiped_allowed}）——否则整场撤销到 0
+     * 会再次变成不可保存；旧客户端/未标记意图的请求维持拒收。
+     * 注意前端 {@code pa()} 是无条件序列化 {@code playEvents} 的，所以空数组会带着键上来
+     * （{@code mentionsEvidence} 为真），这道比对对它是生效的。
+     * <p>放行的范围是「不丢分、且不清零的撤销」：本地逐棒记录变短而总分仍对得上记分栏时照旧进得去；
+     * 撤销掉一个有分的打席时，本地 teamsData 会跟着变低而记分栏不跟着退，那一发仍会被得分
+     * 一道拒收（本来就该拒：分数发生过，证据不能凭空消失）。
+     * <p>得说清放行了什么：得分一道的证人是记分栏，<b>记分栏还是 0/NULL 的场次（从未按过
+     * 保存比赛，或整场 0:0）它整体不跑</b>，条数那道又已放行（除上面那格清零）——那种场次里，一份
+     * 更短但非空的 payload（旧设备/旧标签页跨会话盖短同一场）不再会被服务端拦下，只剩
+     * {@code reason=} 日志可追。盖掉 261 的那一发恰好记分栏有 24 分且比分主张 0，所以它仍会被
+     * 得分一道拦住，但不能把那个案例当普遍保证。
      *
      * @param lineupWriter 该保存来自阵容板端点（只主张名单）。豁免还要 payload 不自带
      *                     playEvents 才生效：自带证据的请求照旧要过得分交叉验证
+     * @param allowEvidenceShrink 撤销/重做后的显式保存意图，允许把逐棒记录清零；
+     *                            旧客户端/未标记请求为 false，维持空壳拒收
      */
-    private String mergeAndGuardSnapshot(Game game, String json, boolean lineupWriter) {
+    private String mergeAndGuardSnapshot(
+            Game game, String json, boolean lineupWriter, boolean allowEvidenceShrink) {
         String existingJson = this.gameSnapshotRepository
                 .findSnapshotJsonById(game.getId()).orElse(null);
         int existingEvents = snapshotPlayEventCount(existingJson);
@@ -306,11 +337,12 @@ public class GameService {
         boolean parseable = incoming != null && incoming.isObject();
         boolean lineupOnly = lineupWriter && parseable && !incoming.has("playEvents");
         String effective = preserveUnmentionedSections(json, existingJson, existingEvents, lineupOnly);
-        // 两道比对都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
+        // 两道判定都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
         // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
         // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
         // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
-        // 就是 261 的空壳形态，两道守门照旧都要跑（阵容板也不例外）。
+        // 就是 261 的空壳形态，两道判定照旧都要跑（阵容板也不例外；非法 payload 计 0 条，
+        // 云端 >1 条时也可能命中清零拒收，不是只有得分那道会拦）。
         boolean mentionsScore = !parseable || (!lineupOnly && incoming.has("teamsData"));
         boolean mentionsEvidence = !parseable || incoming.has("playEvents");
         if (mentionsScore) {
@@ -329,13 +361,30 @@ public class GameService {
                         + "确需从头重录请先清空比分或另开新场");
             }
         }
-        if (mentionsEvidence && snapshotPlayEventCount(json) < existingEvents) {
+        if (mentionsEvidence) {
             int incomingEvents = snapshotPlayEventCount(json);
-            log.warn("[snapshot-guard] reason=snapshot_event_count_regress gameId={} incoming={} existing={}",
-                    game.getId(), incomingEvents, existingEvents);
-            throw new BusinessException(409, "提交的快照逐棒记录（" + incomingEvents + " 条）少于服务器现有记录（"
-                    + existingEvents + " 条），已拒绝覆盖；常见于本地记录变短（撤销、重进或读到旧缓存），"
-                    + "用「从云端恢复录入现场」可回到服务器那份继续记");
+            if (incomingEvents < existingEvents) {
+                if (incomingEvents == 0 && existingEvents > 1) {
+                    // 放行时唯一保留的一格（#713）：0 条正是 260/261 那种空壳的终态，也是旧设备/
+                    // 旧标签页那份「本地状态已归零」的存档推上来的形状。只有撤销/重做后的现场恢复
+                    // 会显式带 allowEvidenceShrink=true；旧客户端/未标记意图的请求维持拒收。
+                    if (allowEvidenceShrink) {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped_allowed gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                    } else {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                        throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
+                                + " 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；"
+                                + "若你刚撤销了全部记录，请从云端恢复录入现场后重新操作；"
+                                + "确需从头重录请另开新场");
+                    }
+                }
+                // 放行（#713 拍板）：撤销后的保存本来就该能把云端带回较短的那一份。
+                // 日志留着：真出现「证据凭空变短」的场次，这条是唯一能统计发生率的入口。
+                log.warn("[snapshot-guard] reason=snapshot_event_count_shrink gameId={} incoming={} existing={}",
+                        game.getId(), incomingEvents, existingEvents);
+            }
         }
         return effective;
     }
@@ -345,7 +394,7 @@ public class GameService {
      * 只有名单，既没 playEvents 也没 teamsData；把这种 payload 当空壳直接顶回，等于任何已经打出
      * 比分的场次都不能从阵容板保存。这里把服务器现有那几段并进来，让阵容板只改它看得见的东西。
      * 真正自带一套的 payload（哪怕只有 2 条、得分 0）绝不合并——game 261 就是被那种完整但残缺的
-     * payload 盖掉的，那条路归上面「条数/得分不得倒退」管。
+     * payload 盖掉的，那条路归上面的得分守门管。
      * <p>{@code playEventsComplete} 必须跟着 playEvents 一起留：它是「这份 playEvents 值不值得信」
      * 的证书，一丢云端恢复就把本地逐棒记录当成不可信（{@code earnedRunPlayEventsTrusted=false}），
      * 半局定案的那个兜底从此 no-op——等于从阵容板保存一次，就把 #712 的缺口扩大到本地记录本来
@@ -398,7 +447,7 @@ public class GameService {
             return MAPPER.writeValueAsString(target);
         }
         catch (JsonProcessingException ex) {
-            // 并完写不回去就用原 payload：得分与条数两道比对会把它拦下来，不会静默丢证据。
+            // 并完写不回去就用原 payload：得分那道比对会把它拦下来，不会静默丢证据。
             return json;
         }
     }

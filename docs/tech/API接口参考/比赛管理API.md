@@ -268,6 +268,7 @@ EventService --> EventRepository
 - POST /game/{id}/live-snapshot
   - 作用：保存实时快照
   - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
+  - 撤销清零（Issue #713）：可选 `allowEvidenceShrink`（布尔，缺省 false）。撤销/重做后的现场保存由前端显式带 true，允许把逐棒记录清零；旧设备/未标记意图的本地归零存档仍返回 409。仅清零受此开关影响，变短的非空 payload 始终放行，得分低于记分栏仍拒收。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛

@@ -39,7 +39,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  * 现场快照覆盖守门：线上 game 261 在赛后第七天被一次阵容板保存盖成「只剩 2 条 playEvents、
  * 比分 0」，逐棒证据消失后 3局下 那一分再也无法追溯；game 260 同样停在 1 局空壳。
- * 这里守住「有逐棒证据就不许被更不完整的快照覆盖」，同时不能挡住正常收尾与开局。
+ * 这里守住「有逐棒证据就不许被一份自称打了更少分的快照盖掉」（得分一道），同时不能挡住正常收尾与开局。
+ * 条数那道（事件变短即拒）已按 #713 的拍板改成放行：它跟撤销/重做正面冲突，而 261 那种覆盖靠得分
+ * 一道就拦得住，本文件的《条数变短放行》那一例钉的就是这个新口径。
  *
  * <p>快照正文自 Issue #686 起不再挂在 Game 实体上，而是走 GameSnapshotRepository 的局部实体，
  * 所以本测试的「服务器现有快照」一律用 repository 打桩，断言看的是 updateSnapshotJson 有没有被调用，
@@ -219,23 +221,116 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
-    @DisplayName("自带空 playEvents 数组的收缩仍拒：比分 0:0 也不允许 24 条掉到 0 条")
-    void saveLiveSnapshot_countGuardAppliesEvenWithoutScore() {
+    @DisplayName("条数变短放行（#713 拍板）：撤销后的保存能把云端带回较短那一份")
+    void saveLiveSnapshot_shrinkingEvidenceIsAllowed() {
+        // 这一例在 #713 拍板前断的是反（409）。改放行的根据有两个：
+        // ① 拒收会把场次锁死——撤销过的本地状态永远存不进去（实测：录一拍→保存→撤销→保存
+        //    推上来的就是较短的一份，而记分栏不会跟着撤销回退），只能靠「从云端恢复」放弃本地；
+        // ② 261 那型本来就不靠这一道——盖掉证据的那份 payload 同时主张「比分 0」，归得分守门。
+        // 保留的是落库以 payload 为准（不并回旧证据）：放行要说做到底，不然只是把 24 条偷偷留回来。
+        // （形状选 3 条而不是 0 条：清零已被复拍后的那一格挡回去了，见 wipingAllEventsIsRejected。）
         game.setAwayScore(Integer.valueOf(0));
         game.setHomeScore(Integer.valueOf(0));
         givenExistingSnapshot(RICH_SNAPSHOT);
-        // 与上一例的差别就在「有没有自己带 playEvents」：带了（哪怕是空数组）就是真要覆写，
-        // 没带才是“我没说到这件事”。game 261 属于前者（被盖成只剩 2 条）。
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID),
+                "{\"playEvents\":[" + repeatedEvents(3, 0) + "]}");
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertEquals(3, playEventCount(written.getValue()),
+                "变短的 payload 就是落库的那一份：" + written.getValue());
+    }
+
+    @Test
+    @DisplayName("清空整份证据仍拒收（#713 复拍）：撤销不可能把 N>1 条退到 0 条")
+    void saveLiveSnapshot_wipingAllEventsIsRejected() {
+        // 放行买的是「撤销能保存」，不该顺带把 260/261 那种空壳也买进去：一份带键但零条的
+        // playEvents（前端 pa() 无条件序列化，本地归零时就是这么上来的）如果没有撤销/重做意图，
+        // 仍按空壳拒收。记分栏刻意留 0：证明拦住它的是条数这道而不是得分那道，得分那道在这种
+        // 场次根本不跑。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[]}"));
 
+        assertEquals(409, ex.getCode(), "清零仍要拒：" + ex.getMessage());
+        assertTrue(ex.getMessage().contains("24 条"), "要说清云端现在有多少条：" + ex.getMessage());
+        assertTrue(ex.getMessage().contains("从云端恢复录入现场"), "出路要写在文案里：" + ex.getMessage());
         verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
-        assertEquals(409, ex.getCode(),
-                "playEvents 从 24 条掉到 0 条仍须拒绝（与记分无关）：" + ex.getMessage());
-        // 条数倒退正是撤销/重做会撞到的那一道（#713），所以文案得说出常见成因与出路，
-        // 而不是只留一句「已拒绝覆盖」让人去猜是哪份存档没进去。
-        assertTrue(ex.getMessage().contains("从云端恢复录入现场"),
-                "条数倒退的 409 要给得出路：" + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("撤销/重做意图：云端 24 条、payload 0 条也放行")
+    void saveLiveSnapshot_wipingAllEventsWithUndoIntentIsAllowed() {
+        // 整场撤销到 0 是合法的现场恢复：前端在 applyHistoryEntry 后显式带意图，
+        // 后端只对未标记的旧设备/本地归零存档维持清零拒收。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[]}", Boolean.TRUE);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertEquals(0, playEventCount(written.getValue()),
+                "撤销意图下云端要跟着回到空的那一份：" + written.getValue());
+    }
+
+    @Test
+    @DisplayName("云端只剩 1 条时撤到 0 条要放行：那是合法的撤销，不能拿清零判据误伤它")
+    void saveLiveSnapshot_undoLastEventToZeroIsAllowed() {
+        // 拒收判据写的是 incoming==0 && existing>1。这一例钉住 >1 那一半，否则下一个人
+        // 会把它简化成「0 条一律拒」，于是刚录了一拍就撤销的场次又回到 #713 的锁死。
+        givenExistingSnapshot("{\"gameId\":" + GAME_ID + ",\"playEvents\":["
+                + repeatedEvents(1, 1) + "],\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":1}}}");
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[]}");
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertEquals(0, playEventCount(written.getValue()),
+                "云端要跟着回到空的这一份：" + written.getValue());
+    }
+
+    @Test
+    @DisplayName("真撤销形状（记分栏已有分、总分仍对得上）：变短要进得去，那才是 #713 要解的锁死")
+    void saveLiveSnapshot_undoOfNonScoringPlayIsAllowed() {
+        // 上一例把记分栏改成 0，验证的是「没证人时不拦」；这一例才是撤销过的现场实际发上来的东西：
+        // 撤销不会回退记分栏（只有保存比赛才写它），而本地 teamsData 仍与记分栏相等，
+        // 所以得分一道不跑（24==24）、条数一道放行——两道的分工就钉在这一例里。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        String undone = "{\"playEvents\":[" + repeatedEvents(3, 3) + "],"
+                + "\"teamsData\":{\"home\":{\"score\":6},\"away\":{\"score\":18}}}";
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), undone);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertEquals(3, playEventCount(written.getValue()),
+                "云端要跟着回到本地那份条数，不能只口头放行：" + written.getValue());
+    }
+
+    @Test
+    @DisplayName("撤销掉一个有分的打席：仍被得分一道拒收（分数发生过，证据不能凭空消失）")
+    void saveLiveSnapshot_undoOfScoringPlayIsStillRejected() {
+        // 放行只解到「不丢分的撤销」。这一例钉住剩下的那一半，免得下一个人以为 #713 已全部解开；
+        // 出路仍是原本那两条：从云端恢复，或先清空比分。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        String undoneRun = "{\"playEvents\":[" + repeatedEvents(3, 2) + "],"
+                + "\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":2}}}";
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), undoneRun));
+
+        assertEquals(409, ex.getCode(), "变短同时丢分仍要拒：" + ex.getMessage());
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
     }
 
     @Test
@@ -354,9 +449,10 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
-    @DisplayName("payload 只带 playEvents 不带 teamsData：不按猜测拦得分，条数一道照旧")
+    @DisplayName("payload 只带 playEvents 不带 teamsData：不按猜测拦得分，变短也不拦")
     void saveLiveSnapshot_payloadWithoutScoreSkipsScoreGuardOnly() {
-        // 把「没提比分」当成「主张 0 分」会误伤；但「没提比分」绝不等于「可以少事件」。
+        // 把「没提比分」当成「主张 0 分」会误伤；条数那道也已于 #713 拍板放行（见上一例）。
+        // 保留本例是因为它钉的是「落库以 payload 为准、没提的比分保持服务器现值」这个形状。
         givenExistingSnapshot(RICH_SNAPSHOT);
         String evidenceOnly = "{\"playEvents\":[" + repeatedEvents(25, 0) + "]}";
 
@@ -370,10 +466,14 @@ class GameServiceLiveSnapshotGuardTest {
         assertEquals(18, saved.path("teamsData").path("away").path("score").asInt(),
                 "没提的比分保持服务器现值：" + saved);
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> gameService.saveLiveSnapshot(
-                Long.valueOf(GAME_ID), "{\"playEvents\":[" + repeatedEvents(3, 0) + "]}"));
-        assertEquals(409, ex.getCode(),
-                "同一形状但事件变短，仍要被条数守门拦住：" + ex.getMessage());
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[" + repeatedEvents(3, 0) + "]}");
+        ArgumentCaptor<String> shrunk = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository, Mockito.times(2)).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), shrunk.capture(), eq(Long.valueOf(USER_ID)));
+        JsonNode shorter = readJson(shrunk.getAllValues().get(1));
+        assertEquals(3, shorter.path("playEvents").size(), "变短不再被拦：" + shorter);
+        assertEquals(18, shorter.path("teamsData").path("away").path("score").asInt(),
+                "没提的比分仍保持服务器现值：" + shorter);
     }
 
     /** 服务器现有快照正文：#686 后只能从 GameSnapshotRepository 读，不能再塞给 Game 实体。 */

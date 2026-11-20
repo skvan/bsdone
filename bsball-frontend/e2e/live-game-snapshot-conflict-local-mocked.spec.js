@@ -9,6 +9,10 @@ import { test, expect } from '@playwright/test';
 //
 // 同时钉住反向：可被重试救回来的失败（网络/5xx，以及 RateLimitFilter 对这个端点真会回的
 // 429「请稍后再试」）仍走原文案与原重试，别把原来的兜底一起砍掉——所以只有 409 当拒收。
+//
+// 第三条钉的是 #713 拍板后的另一面：条数变短不再拒收（撤销过的本地状态得存得进去），
+// 得分落后于记分栏那道仍拒。下面两个拒收/放行用例跑的是同一个 makeServerGuard——
+// 它复刻的是后端现行规则，不是手写应答，所以 mock 不会偷偷比线上宽。
 
 const positions = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const players = [1, 2].flatMap((teamId) => positions.map((position, index) => ({
@@ -115,14 +119,39 @@ function eventCount(snapshotJson) {
 }
 
 /**
+ * 后端现行快照守门的复刻（#713 拍板后只剩得分那道会拒收）：自带证据且总分落后于记分栏才 409，
+ * 条数变短照实落库。记分栏必须与 /game/{id} 的响应同源（同一个 official），否则 mock 会跟
+ * 线上相反（比如把该拒的那一发静默放行）。
+ */
+function makeServerGuard({ official, state }) {
+  const officialRuns = official.home + official.away;
+  return (json, allowEvidenceShrink) => {
+    const body = JSON.parse(json);
+    const claimed = (body.teamsData?.away?.score ?? 0) + (body.teamsData?.home?.score ?? 0);
+    if (officialRuns > 0 && claimed < officialRuns) {
+      return { msg: `本场比赛已有逐棒记录，提交的快照得分只到 ${claimed} 分，低于记分 ${officialRuns} 分，已拒绝覆盖` };
+    }
+    const incoming = body.playEvents?.length;
+    // 清零默认仍拒（旧设备/本地归零的存档）；只有撤销/重做后的显式意图才放行。
+    // 本档的用例走的是「变短」与「丢分」两型，清零+意图由后端测试钉住；装进 mock
+    // 只是为了让这份服务器不会偷偷比后端更宽。
+    if (incoming === 0 && state.events > 1 && !allowEvidenceShrink) {
+      return { msg: `本场比赛云端已有 ${state.events} 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空` };
+    }
+    state.events = incoming ?? state.events;
+    return {};
+  };
+}
+
+/**
  * @param snapshotPosts 收集每次快照 POST 的正文（含被拒的）
  * @param replyFor 快照 POST 的应答：返回 {status} 走 HTTP 层，返回 {msg} 走 Result 包体的
  *                 code 409（后端守门就是这个形态：HTTP 200 + body.code 409），返回 {} 放行
  *                 注：这里只模拟「payload 自带 playEvents」的现场页形态；阵容板那种不带
- *                 playEvents 的 payload 在真后端是「不参与条数比对、并回现有证据」（靠
- *                 mentionsEvidence 分流），本 spec 不交叉那一块（由后端测试钉）
+ *                 playEvents 的 payload 在真后端是「不参与比对、并回现有证据」（靠
+ *                 mentionsEvidence/mentionsScore 分流），本 spec 不交叉那一块（由后端测试钉）
  */
-async function installMock(page, { snapshotPosts, replyFor, restoredEvents = 1 }) {
+async function installMock(page, { snapshotPosts, replyFor, restoredEvents = 1, official = { home: 0, away: 0 } }) {
   await page.addInitScript(() => {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('bs-ball-live-'))
@@ -138,9 +167,10 @@ async function installMock(page, { snapshotPosts, replyFor, restoredEvents = 1 }
     const url = new URL(request.url());
     const path = url.pathname.replace('/bsball-server', '');
     if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
-      const json = request.postDataJSON().snapshotJson;
+      const requestBody = request.postDataJSON();
+      const json = requestBody.snapshotJson;
       snapshotPosts.push(json);
-      const reply = replyFor(json) ?? {};
+      const reply = replyFor(json, requestBody.allowEvidenceShrink === true) ?? {};
       if (reply.status) {
         await route.fulfill({ status: reply.status, contentType: 'text/plain', body: 'gateway down' });
         return;
@@ -167,7 +197,7 @@ async function installMock(page, { snapshotPosts, replyFor, restoredEvents = 1 }
     ];
     else if (path === '/game/10') data = {
       id: 10, eventId: 1, homeTeamId: 1, awayTeamId: 2, status: 'live',
-      gameMode: 'BASEBALL', inning: 1, topBottom: 'top', homeScore: 0, awayScore: 0
+      gameMode: 'BASEBALL', inning: 1, topBottom: 'top', homeScore: official.home, awayScore: official.away
     };
     else if (path === '/game/10/stats') data = { list: stats, total: stats.length };
     else if (path === '/game/10/live-snapshot') {
@@ -201,18 +231,20 @@ async function openLive(page) {
 
 test('快照被服务器 409 拒收：显示服务器给的原因，并且不做无意义重试', async ({ page }) => {
   const snapshotPosts = [];
+  // 记分栏 18:6、本地现场停在开局 0 分（fixture 里的 teamsData 就是 0/0）：那一发存档发的就是
+  // 后端现行唯一还会拒的形状，拒收文案由 makeServerGuard 算出来，不是手写的
+  const official = { home: 6, away: 18 };
   await installMock(page, {
     snapshotPosts,
-    replyFor: () => ({
-      msg: '提交的快照逐棒记录（1 条）少于服务器现有记录（9 条），已拒绝覆盖【E2E-MARKER】'
-    })
+    official,
+    replyFor: makeServerGuard({ official, state: { events: 1 } })
   });
   await openLive(page);
 
   await saveButton(page).click();
 
   // 服务器那句话要原样到人眼里（它带着可执行的下一步）
-  await expect(page.getByText('【E2E-MARKER】')).toBeVisible();
+  await expect(page.getByText('低于记分 24 分，已拒绝覆盖')).toBeVisible();
   // 不能再被通用文案顶掉：那句讲的是「换人在场状态会丢失」，与本次被拒收无关
   // （拖过重试窗口再断：否则「当时为 0」不能排除“晚一步又被通用文案顶替”）
 
@@ -235,23 +267,18 @@ test('快照 POST 撞网络/5xx：仍按原设计重试一次，并走通用提�
   expect(snapshotPosts.length).toBeLessThanOrEqual(2);
 });
 
-test('撤销把逐棒条数推回更低（#713 前提）：服务器按守门拒收，原因看得到', async ({ page }) => {
+test('撤销把逐棒条数推回更低：保存放行、云端跟着变短（#713 拍板）', async ({ page }) => {
   // 这一例不预设「撤销会不会把条数推低」（本轮之前只能靠读码推断），而是真的录一拍再撤销，
-  // 看推上来的 payload 剩几条。mock 里跑的是后端条数守门的同一条规则（incoming < 现有即拒），
-  // 所以画面上出现的就是线上会发生的。
+  // 看推上来的 payload 剩几条。mock 跑的是后端现行规则（makeServerGuard）：条数变短放行；
+  // 本例记分栏与本地都是 0 分，撞不到得分那道，所以画面上出现的就是线上会发生的。
   const posted = [];
-  const server = { events: 2 };
+  const official = { home: 0, away: 0 };
+  const state = { events: 2 };
   await installMock(page, {
     snapshotPosts: posted,
     restoredEvents: 2,
-    replyFor: (json) => {
-      const incoming = eventCount(json);
-      if (incoming < server.events) {
-        return { msg: `快照覆盖守门拒收：提交的快照逐棒记录（${incoming} 条）少于服务器现有记录（${server.events} 条）` };
-      }
-      server.events = incoming;
-      return {};
-    }
+    official,
+    replyFor: makeServerGuard({ official, state })
   });
   await openLive(page);
 
@@ -269,20 +296,22 @@ test('撤销把逐棒条数推回更低（#713 前提）：服务器按守门拒
   // 先存一次，让服务器现状追到 3 条
   await saveButton(page).click();
   await expect.poll(() => Math.max(...posted.map(eventCount))).toBe(3);
-  expect(server.events).toBe(3);
+  expect(state.events).toBe(3);
 
   // 撤销那一拍：本地记录回到 2 条，比服务器现有的 3 条短。
   // 「撤销会不会把条数推低」本轮之前只是读码推断，现在用这一例坐实了：撤销后的保存
-  // 确实推上较短的那一份（把 ns() 里恢复 playEvents 的那句改成 no-op，本例就转红），
-  // 所以 #713 新增的条数守门确实会被撤销正面撞到 —— 拒收时看得见原因就不是锦上添花。
+  // 确实推上较短的那一份（把 ns() 里恢复 playEvents 的那句改成 no-op，本例就转红）。
   await page.getByRole('button', { name: '撤销' }).first().click();
   await page.waitForTimeout(300);
   await saveButton(page).click();
 
   // 前提坐实：推上来的确实是被算短的那一份
   await expect.poll(() => eventCount(posted.at(-1)), { message: '撤销后保存推上来的条数' }).toBe(2);
-  // 拒收本身是对的（宁可锁死也不放行证据覆盖），但原因必须给到记录员眼里，
-  // 而不是被顶成一句「未能同步……换人在场状态会丢失」
-  await expect(page.getByText('快照覆盖守门拒收')).toBeVisible();
+  // #713 拍板：条数变短放行。云端跟着回到 2 条，而不是把这场锁死在「只能放弃本地、
+  // 从云端恢复」——那等于让撤销这一步变成不可保存
+  await expect.poll(() => state.events).toBe(2);
+  // 拖过重试窗口再断两句反向：否则「当时为 0」不能排除“晚一步又弹出提示”
+  await page.waitForTimeout(1500);
   await expect(page.getByText('现场快照未能同步到服务器')).toHaveCount(0);
+  await expect(page.getByText('已拒绝覆盖')).toHaveCount(0);
 });

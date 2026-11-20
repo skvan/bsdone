@@ -987,6 +987,8 @@ function iu(u,f){
 // 已成功写入 bs_hit_spray 的落点记录 rid（跨撤销/重做/重进现场去重）。
 // 放模块作用域：store 的 applyHistoryEntry 与页面 setup 的 co()/撤销/重做/快照还原都要读它。
 const sentHitSprayRids=new Set();
+// 撤销/重做后的下一次快照保存允许逐棒证据清零（#713）；默认 false：旧设备/本地归零的存档仍拒收。
+let allowEvidenceShrink=false;
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
   function F(){
@@ -7769,7 +7771,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       attempt<2;
       attempt++){
         try{
-          await ma.saveLiveSnapshot(R.value,body);
+          await ma.saveLiveSnapshot(R.value,body,allowEvidenceShrink);
+          allowEvidenceShrink=false;
           return !0
         }
         catch(error){
@@ -7826,7 +7829,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       );
       if(e)try{
-        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e)),new Promise(rr=>{
+        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e),allowEvidenceShrink).then(()=>{
+          allowEvidenceShrink=false
+        }
+        ),new Promise(rr=>{
           setTimeout(rr,1e4)
         }
         )])
@@ -8104,6 +8110,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s&&typeof s.score=="number"&&Number.isFinite(s.score)&&(o.home.score=s.score),s&&Array.isArray(s.innings)&&(o.home.innings=s.innings.map(r=>Number(r)||0))
     }
     function ns(e){
+      // 撤销/重做/历史恢复的实际入口（页面级 as/Ff 调用）：允许本次快照把逐棒记录带回更短（含 0）的那一份。
+      allowEvidenceShrink=true;
       Object.assign(l,e.game),l.flow=normalizeErrorFlow(l.flow),Array.isArray(l.halfInningOuts)||(l.halfInningOuts=[]),Object.prototype.hasOwnProperty.call(e.game,"runnerDragCiRunnerId")||(l.runnerDragCiRunnerId=null),Object.prototype.hasOwnProperty.call(e.game,"playErrorCredited")||(l.playErrorCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playWpCredited")||(l.playWpCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playPbCredited")||(l.playPbCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"lastPitchWasBall")||(l.lastPitchWasBall=(e.game?.balls??0)>0),Object.prototype.hasOwnProperty.call(e.game,"playOut")||(l.playOut=null),Cf(e.lineup),Bf(e),o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,(()=>{
         const t=a=>{
           if(!a)return a;

@@ -25,7 +25,9 @@ const src = fs.readFileSync(SRC_PATH, 'utf8').replace(/\r\n/g, '\n');
 const start = src.indexOf('let snapshotSyncFailed');
 const end = src.indexOf('async function ZrLite');
 assert(start >= 0 && end > start, '找不到 snapshotSyncFailed..ZrLite 区间，元件结构可能已变动');
-const code = src.slice(start, end).trimEnd();
+// 撤销/重做意图标志在模块作用域、位于切片之前；这里注入默认 false，
+// 让 pushLiveSnapshot 的单测仍能在独立闭包里执行（置位/清位由 liveGameSnapshotUndoIntent 钉住）。
+const code = 'let allowEvidenceShrink=false;\n' + src.slice(start, end).trimEnd();
 
 // Zr 依赖：R(比赛id ref)、F(可录入 flag)、Tn/to(存前刷新)、pa(构造快照对象)、Fe(消息)、ma(api)
 const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma', 'lgText',
@@ -132,7 +134,9 @@ test('#713 pushLiveSnapshot：服务器点名拒收（409）时不重试，重�
 });
 
 test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换人在场状态会丢失」顶掉', async () => {
-  const msg = '提交的快照逐棒记录（2 条）少于服务器现有记录（3 条），已拒绝覆盖；用「从云端恢复录入现场」可回到服务器那份继续记';
+  // 文案取现在唯一还会发生的拒收形状（得分倒退）：条数那道已于 #713 拍板放行，
+  // 拿它当样本会让这份测试读起来像在描述一条已经不存在的 409。
+  const msg = '本场比赛已有逐棒记录，提交的快照得分只到 2 分，低于记分 24 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状';
   const { api, calls } = ctx({ businessFail: msg });
   await api.Zr();
   assert.equal(api.getFlag(), true, '被拒收同样是没同步上去，脏标要置');
@@ -179,7 +183,7 @@ test('#713 Zr：先网络抖动、后被拒收——脏标不能把后来的拒�
   await api.Zr();
   assert.equal(calls.warn, 1, '第一拍：网络抖动→通用文案');
   state.failRemaining = 0;
-  state.businessFail = '提交的快照逐棒记录少于服务器现有记录，已拒绝覆盖';
+  state.businessFail = '提交的快照得分低于记分，已拒绝覆盖';
   await api.Zr();
   assert.equal(calls.err, 1, '抖动过后的拒收同样要看得见');
   assert.match(calls.lastError, /已拒绝覆盖/);

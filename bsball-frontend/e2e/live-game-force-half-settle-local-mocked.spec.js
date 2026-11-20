@@ -232,8 +232,8 @@ test('强制换局发出半局定案推送（halfComplete=true），且用的是
   expect(body.halfComplete).toBe(true);
   expect(body.plays.map((play) => play.sequence)).toEqual([1, 2]);
 
-  // 定案走 reconstruct，快照走另一条端点；但换局后的自动保存不能把逐棒记录丢短（
-  // #713 的条数守门就是拿这份条数算的），所以这里把同一拍推上来的快照也钉住
+  // 定案走 reconstruct，快照走另一条端点；换局后的自动存档也不能把逐棒记录丢短。
+  // 拍板后服务端已不再对条数设限（#713 放行），现场页自己没丢就是最后一道，所以钉在这里
   await expect.poll(() => snapshotPosts.length).toBeGreaterThan(0);
   const posted = JSON.parse(snapshotPosts.at(-1));
   expect(posted.playEvents.length).toBe(2);
@@ -264,7 +264,7 @@ test('台账里有未落地得分时，强制换局先补记再定案（#449 同
   ]);
 
   // 台账补记的那一条同时存在于两条通道：定案推送几条，快照里就得是几条逐棒记录
-  // （#713 的条数守门只看快照这一份，两边对不上就是存档本身在说谎）
+  // （条数那道守门已改成放行，两边对不上不会有人拦，只能靠这一例钉）
   await expect.poll(() => snapshotPosts.length).toBeGreaterThan(0);
   expect(JSON.parse(snapshotPosts.at(-1)).playEvents).toHaveLength(body.plays.length);
 });

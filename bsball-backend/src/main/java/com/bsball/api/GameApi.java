@@ -108,7 +108,8 @@ public class GameApi {
 
     @PostMapping(value={"/{id}/live-snapshot"})
     public Result<Object> saveLiveSnapshot(@PathVariable Long id, @RequestBody LiveSnapshotSaveDTO body) {
-        this.gameService.saveLiveSnapshot(id, body != null ? body.getSnapshotJson() : null);
+        this.gameService.saveLiveSnapshot(id, body != null ? body.getSnapshotJson() : null,
+                body != null ? body.getAllowEvidenceShrink() : null);
         return Result.ok(Map.of());
     }
 
