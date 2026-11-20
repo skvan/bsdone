@@ -118,13 +118,19 @@ test('拖拽时前方垒位有人保持阻塞，不自动前推占垒者', () =>
   assert.match(source, /l\.flow\?\.type==="ADVANCE_FE"&&l\.flow\.advanceFeStep==="pick_target"[\s\S]{0,80}lc\(e\)/, '点目标垒完成 ADVANCE_FE 推进');
 });
 
-test('拖拽安全原因新增安打/牺牲打，去掉未进垒；非强迫封杀不出现', () => {
-  assert.match(source, /id:"safe_hit",en:"Advance on Hit \(No RBI\)"/);
-  assert.match(source, /id:"safe_hit_rbi",en:"Advance on Hit \(RBI\)"/);
+test('拖拽安全原因用上一棒内推进覆盖安打/野选，保留牺牲打（#694）', () => {
+  assert.ok(!source.includes('safe_hit'), '安打推进（不计打点/有打点）已由上一棒内推进覆盖');
+  assert.ok(!source.includes('safe_fc'), '野手选择局面下推进已由上一棒内推进覆盖');
+  assert.ok(!source.includes('cn:"野手选择局面下推进"'), '野选推进选项已移除');
+  const nd = sliceBetween('function Nd(u){', 'function Ve(u){');
+  assert.ok(!nd.includes('safe_hit') && !nd.includes('safe_fc'), '上一棒推进判定不再包含已移除的原因');
+  assert.match(nd, /safe_last_play/);
+  assert.match(source, /id:"safe_last_play_rbi",en:"On Last Play \(RBI\)"/, '上一棒内推进（有打点）承接原安打推进的 RBI 场景');
   assert.match(source, /id:"safe_sac_fly",en:"Advance on Sac Fly \(RBI\)"/);
   assert.match(source, /id:"safe_sac_bunt",en:"Advance on Sac Bunt"/);
-  assert.match(source, /advanceReasons\.length&&o\.splice\(0,0,\.\.\.advanceReasons\)/, '前向拖拽菜单置顶安打/牺牲打原因');
-  assert.match(source, /e\.id==="safe_hit_rbi"&&r===4&&\(rbiWho=creditLastBatterRbi\(\)\)/, '安打推进得分记 RBI');
+  assert.match(source, /const advanceReasons=\[\.\.\.sl,\.\.\.sacAdvanceReasons\],advanceIds=new Set/, '上一棒内推进/牺牲打组成固定前置组');
+  assert.match(source, /o=advanceReasons\.concat\(o\.filter\(x=>!advanceIds\.has\(x\.id\)\)\)/, '所有前向拖拽菜单固定置顶上一棒内推进/牺牲打原因');
+  assert.ok(!/e\.id==="safe_hit_rbi"/.test(source), '安打推进 RBI 分支已移除');
   assert.match(source, /e\.id==="safe_sac_fly"&&r===4&&\(rbiWho=creditLastBatterRbi\(\)\)/, '牺牲高飞得分记 RBI');
 });
 
