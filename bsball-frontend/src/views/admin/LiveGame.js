@@ -461,13 +461,7 @@ var sl=[{
 ,{
   id:"safe_last_play_sac",en:"On Last Play (Sacrifice)",cn:"上一棒内推进（牺牲打）"
 }
-],hitAdvanceReasons=[{
-  id:"safe_hit",en:"Advance on Hit (No RBI)",cn:"安打推进（不计打点）",emph:"不计打点"
-}
-,{
-  id:"safe_hit_rbi",en:"Advance on Hit (RBI)",cn:"安打推进（有打点）",emph:"有打点"
-}
-,{
+],sacAdvanceReasons=[{
   id:"safe_sac_fly",en:"Advance on Sac Fly (RBI)",cn:"牺牲高飞推进（有打点）",emph:"有打点"
 }
 ,{
@@ -475,7 +469,7 @@ var sl=[{
 }
 ];
 function Nd(u){
-  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_hit"||u==="safe_hit_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"||u==="safe_fc"
+  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"
 }
 function Ve(u){
   return u===1?"一垒":u===2?"二垒":u===3?"三垒":"本垒"
@@ -648,9 +642,6 @@ function Ud(u,f){
     id:"safe_diff_err",en:"On Different Play Error",cn:"其他失误后推进"
   }
   ,{
-    id:"safe_fc",en:"Fielder's Choice (advance)",cn:"野手选择局面下推进"
-  }
-  ,{
     id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"
   }
   ,{
@@ -774,11 +765,9 @@ function Wd(u,f,l){
     // 暴投/捕逸按真实投球顺序给：没投球不给；捕逸需先有投球；暴投还要求最近一球是坏球；
     // 同一球已记过 WP/PB 时隐藏（承接用「同一play内失误推进」），下一球 Ea() 重置后再出现
     o=o.filter(x=>x.id!=="safe_wp"&&x.id!=="safe_pb");
-    const advanceReasons=[...hitAdvanceReasons,{
-      id:"safe_fc",en:"Fielder's Choice (advance)",cn:"野手选择局面下推进"
-    }
-    ].filter(x=>!o.some(y=>y.id===x.id));
-    advanceReasons.length&&o.splice(0,0,...advanceReasons);
+    // 上一棒内推进/牺牲打推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）
+    const advanceReasons=[...sl,...sacAdvanceReasons],advanceIds=new Set(advanceReasons.map(x=>x.id));
+    o=advanceReasons.concat(o.filter(x=>!advanceIds.has(x.id)));
     const canWpPb=!!l.hasPitchThisAB&&!l.playWpCredited&&!l.playPbCredited
       ,add=[];
     if(canWpPb){
@@ -6270,7 +6259,7 @@ var sg={
         return
       }
       let rbiWho=null;
-      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_hit_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
+      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
       wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([{
         playerId:p,from:s,to:r
       }
