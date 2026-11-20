@@ -982,15 +982,22 @@ public class GameService {
      * 半局重建完整性守门（线上实测 game 261/235/248）：重建是「整半局替换 + 全场投手层绝对重算」，
      * 一旦推上来的逐分资料没涵盖记分栏已确认的分数，残缺的分母会把其他投手已经落账的 R 直接砍小，
      * 同时作废相关投手的人工覆写（261 的崔铉 R 就是这样从 3 掉到 2，逐棒证据又已被快照覆盖丢掉）。
-     * 记分栏是独立证人、判定是它的衍生物，所以只用「重建后全场判定数 < 记分栏总分」这一个条件设限，
-     * 不看投手统计也不猜哪一场该例外。尚未记分、或本次推送正好补齐分母时完全放行；
+     * 记分栏是独立证人、判定是它的衍生物，所以只用「重建后全场判定数 < 官方总分」这一个条件设限，
+     * 不看投手统计也不猜哪一场该例外。证人优先用请求携带的本地官方总分（同一次保存里
+     * save-live 尚未落库，撤销/改小本半局得分后服务器记分仍是旧值），缺省用服务器记分栏。
+     * 尚未记分、或本次推送正好补齐分母时完全放行；
      * 确定在做局部重建的可带 confirmPartialRebuild=true 明确越过，越过后留警告供事后复核。
      * 判定数含被人工作废的那批（见 countDecisionsForCoverage 的说明）：作废只改「这分怎么算」，
      * 不改「这分有没有发生」，否则先作废判定、还没改记分的正常顺序会被当成缺笔而永久拒绝保存。
      */
     private void assertRebuildCoversRecordedRuns(Game game, EarnedRunHalfInningRequest request) {
-        int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+        int serverOfficialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
                 + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+        // 同一次保存里 save-live 还没把新比分落库：客户端带了本地官方总分就用它当证人，
+        // 撤销/改小本半局得分后不会被旧记分误拒；旧客户端缺省仍用服务器记分栏。
+        int officialRuns = request.getOfficialRuns() != null
+                ? Math.max(0, request.getOfficialRuns().intValue())
+                : serverOfficialRuns;
         if (officialRuns <= 0) {
             return;
         }
