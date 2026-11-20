@@ -351,7 +351,7 @@ test('拖拽选失误推进后直接使用拖拽目标垒，不再二次选目�
   await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：二垒有人');
 });
 
-test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，拖拽安打推进后才进垒', async ({ page }) => {
+test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，拖拽上一棒内推进后才进垒', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);
   await throwBalls(page, 4);
@@ -361,13 +361,35 @@ test('强迫进垒口径：仅二垒有人时一垒安打不自动上三垒，�
   await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒、二垒有人');
   await waitForRunnerToken(page, 2);
   const menu = await dragRunner(page, 2, 3, 'safe');
-  await expect(menu.getByText('安打推进（不计打点）')).toBeVisible();
-  await pickMenuItem(page, '安打推进（不计打点）');
+  await expect(menu.locator('.rdm__item').first()).toContainText('上一棒内推进（不计打点）');
+  await expect(menu.getByText('上一棒内推进（不计打点）')).toBeVisible();
+  await pickMenuItem(page, '上一棒内推进（不计打点）');
   await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒、三垒有人');
   const snapshot = await saveGame(page, bucket);
   expect(snapshot.gameState.runners[2]).toBeNull();
   expect(snapshot.gameState.runners[3]).toBe(201);
   expect(snapshot.gameState.runners[1]).not.toBeNull();
+});
+
+test('#694：安打推进移除后，2→4 得分仍可用上一棒内推进（有打点）记 RBI', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await dragRunner(page, 1, 2, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await recordSingle(page);
+  await waitForRunnerToken(page, 2);
+  const menu = await dragRunner(page, 2, 4, 'safe');
+  await expect(menu.getByText('安打推进（不计打点）')).toHaveCount(0);
+  await expect(menu.getByText('野手选择局面下推进')).toHaveCount(0);
+  await expect(menu.getByText('上一棒内推进（有打点）')).toBeVisible();
+  await pickMenuItem(page, '上一棒内推进（有打点）');
+  await expect(page.locator('[aria-label^="垒包"]')).toHaveAttribute('aria-label', '垒包：一垒有人');
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.gameState.runners[2]).toBeNull();
+  expect(snapshot.gameState.runners[3]).toBeNull();
+  expect(snapshot.playerStatsById['201'].batting.r).toBe(1);
+  expect(snapshot.playerStatsById['202'].batting.rbi).toBe(1);
 });
 
 test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page }) => {
