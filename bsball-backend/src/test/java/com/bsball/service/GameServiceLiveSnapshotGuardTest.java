@@ -155,6 +155,10 @@ class GameServiceLiveSnapshotGuardTest {
                 () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), stale));
 
         assertEquals(409, ex.getCode());
+        // 拒收文案必须指向一个画面真做得出的动作（#713）：前端会把这句话原样弹给记录员，
+        // 说「请重录」或只说「已拒绝」都会让人继续往一个进不去的存档里录下去。
+        assertTrue(ex.getMessage().contains("从云端恢复录入现场"),
+                "得分倒退的 409 要给得出路：" + ex.getMessage());
         verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
     }
 
@@ -228,6 +232,10 @@ class GameServiceLiveSnapshotGuardTest {
         verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
         assertEquals(409, ex.getCode(),
                 "playEvents 从 24 条掉到 0 条仍须拒绝（与记分无关）：" + ex.getMessage());
+        // 条数倒退正是撤销/重做会撞到的那一道（#713），所以文案得说出常见成因与出路，
+        // 而不是只留一句「已拒绝覆盖」让人去猜是哪份存档没进去。
+        assertTrue(ex.getMessage().contains("从云端恢复录入现场"),
+                "条数倒退的 409 要给得出路：" + ex.getMessage());
     }
 
     @Test

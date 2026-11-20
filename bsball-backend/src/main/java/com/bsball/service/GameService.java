@@ -280,8 +280,9 @@ public class GameService {
      * 反过来比对也必须拿原 payload，而不是并完之后的正文：并回来的段落是服务器自己的现值，
      * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
      * <p>已知限制（#713）：「条数只增不减」跟撤销/重做正面冲突（历史条目本来就把
-     * playEvents 换回更短的一份），而且前端 pushLiveSnapshot 会把 409 重试后吞掉。
-     * 本轮不动它：宁可锁死也不放行证据覆盖，真正的出路是显式 allowShrink 或改按
+     * playEvents 换回更短的一份）。本轮不改判据：宁可锁死也不放行证据覆盖，拒收本身已经是
+     * 正确行为，所以只把它变得看得见——拒收时留 reason 日志供统计发生率，409 文案给一个
+     * 画面真能做的动作（从云端恢复录入现场）。真正的出路是显式 allowShrink 或改按
      * 「是否丢弃判定层仍在引用的 sourceEventId」判定，那个取舍归 #713 拍板。
      *
      * @param lineupWriter 该保存来自阵容板端点（只主张名单）。豁免还要 payload 不自带
@@ -317,17 +318,24 @@ public class GameService {
                     + (game.getHomeScore() == null ? 0 : game.getHomeScore());
             Integer incomingRuns = snapshotRunTotal(json);
             if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
+                // 原因码给日志用（文案会随措辞改，稳定的 key 才能统计发生率，#713）
+                log.warn("[snapshot-guard] reason=snapshot_run_total_regress gameId={} incoming={} official={}",
+                        game.getId(), incomingRuns, officialRuns);
                 throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
                         + (incomingRuns == null ? "读不出有效比分（payload 不可解析或不含 teamsData）"
                                 : "只到 " + incomingRuns + " 分")
                         + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
-                        + "若确需从头重录，请先清空比分或另开新场");
+                        + "用「从云端恢复录入现场」可放弃本地这份回到服务器现状，"
+                        + "确需从头重录请先清空比分或另开新场");
             }
         }
         if (mentionsEvidence && snapshotPlayEventCount(json) < existingEvents) {
-            throw new BusinessException(409, "提交的快照逐棒记录（"
-                    + snapshotPlayEventCount(json) + " 条）少于服务器现有记录（"
-                    + existingEvents + " 条），已拒绝覆盖");
+            int incomingEvents = snapshotPlayEventCount(json);
+            log.warn("[snapshot-guard] reason=snapshot_event_count_regress gameId={} incoming={} existing={}",
+                    game.getId(), incomingEvents, existingEvents);
+            throw new BusinessException(409, "提交的快照逐棒记录（" + incomingEvents + " 条）少于服务器现有记录（"
+                    + existingEvents + " 条），已拒绝覆盖；常见于本地记录变短（撤销、重进或读到旧缓存），"
+                    + "用「从云端恢复录入现场」可回到服务器那份继续记");
         }
         return effective;
     }
@@ -1017,15 +1025,17 @@ public class GameService {
             return;
         }
         if (Boolean.TRUE.equals(request.getConfirmPartialRebuild())) {
-            log.warn("[reconstruct-guard] gameId={} {}{} 为局部重建：判定 {} 低于记分 {}，投手 R/ER 需事后复核",
+            log.warn("[reconstruct-guard] reason=partial_rebuild_confirmed gameId={} {}{} 为局部重建：判定 {} 低于记分 {}，投手 R/ER 需事后复核",
                     game.getId(), request.getInning(), request.getHalf(), afterTotal, officialRuns);
             return;
         }
+        log.warn("[reconstruct-guard] reason=reconstruct_denominator_short gameId={} {}{} 判定 {} 低于记分 {}",
+                game.getId(), request.getInning(), request.getHalf(), afterTotal, officialRuns);
         throw new BusinessException(409, "本次重建后全场判定只有 " + afterTotal + " 笔，低于记分栏的 "
                 + officialRuns + " 分，说明推上来的逐分资料没有涵盖已记的分数；而重建会拿这个残缺分母"
                 + "绝对重算全部投手的 R/ER，并作废相关投手的人工覆写（线上 261/235/248 就是这样丢数据的）。"
                 + "请先把其余有得分的半局一并重建补齐，或改用投手 R/ER 人工覆写；"
-                + "确认要做局部重建请带 confirmPartialRebuild=true");
+                + "确认要做局部重建请带 confirmPartialRebuild=true（录入画面没有这个开关，只能走 API）");
     }
 
     /** Resolves a pending earned-run decision and records the reviewing operator. */
