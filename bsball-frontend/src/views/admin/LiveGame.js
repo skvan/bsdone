@@ -7435,7 +7435,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const plays=f.playEvents.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
         if(!plays.length&&!options.allowEmpty)return;
         try{
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete});
+          const localOfficialRuns=(Number(f.teamsData?.home?.score)||0)+(Number(f.teamsData?.away?.score)||0);
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
           // 半局定案会把该半局责任投手的人工 R/ER 覆写作废（后端 invalidateActiveOverrides），

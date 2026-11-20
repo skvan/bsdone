@@ -18,6 +18,12 @@ public class EarnedRunHalfInningRequest {
      * 旧客户端不送该字段时按 true 处理，保持与现行行为一致。
      */
     private Boolean halfComplete;
+    /**
+     * 客户端当前看到的官方总比分（主+客）。同一次保存里记分栏要等 save-live 才落库，
+     * 这里用本地比分当守门证人，撤销/改小本半局得分后才不会被旧记分误拒。
+     * 旧客户端不送该字段时沿用服务器记分栏。
+     */
+    private Integer officialRuns;
 
     public Integer getInning() {
         return inning;
@@ -57,5 +63,13 @@ public class EarnedRunHalfInningRequest {
 
     public void setHalfComplete(Boolean halfComplete) {
         this.halfComplete = halfComplete;
+    }
+
+    public Integer getOfficialRuns() {
+        return officialRuns;
+    }
+
+    public void setOfficialRuns(Integer officialRuns) {
+        this.officialRuns = officialRuns;
     }
 }
