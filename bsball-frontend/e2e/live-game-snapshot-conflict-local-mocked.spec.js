@@ -125,17 +125,17 @@ function eventCount(snapshotJson) {
  */
 function makeServerGuard({ official, state }) {
   const officialRuns = official.home + official.away;
-  return (json) => {
+  return (json, allowEvidenceShrink) => {
     const body = JSON.parse(json);
     const claimed = (body.teamsData?.away?.score ?? 0) + (body.teamsData?.home?.score ?? 0);
     if (officialRuns > 0 && claimed < officialRuns) {
       return { msg: `本场比赛已有逐棒记录，提交的快照得分只到 ${claimed} 分，低于记分 ${officialRuns} 分，已拒绝覆盖` };
     }
     const incoming = body.playEvents?.length;
-    // #713 复拍保留的那一格：清零不是任何撤销的终态（撤销只退一步），所以仍拒。
-    // 本档的用例走的是「变短」与「丢分」两型，这一格由后端测试钉住；装进 mock 只是
-    // 为了让这份服务器不会偷偷比对后端更宽。
-    if (incoming === 0 && state.events > 1) {
+    // 清零默认仍拒（旧设备/本地归零的存档）；只有撤销/重做后的显式意图才放行。
+    // 本档的用例走的是「变短」与「丢分」两型，清零+意图由后端测试钉住；装进 mock
+    // 只是为了让这份服务器不会偷偷比后端更宽。
+    if (incoming === 0 && state.events > 1 && !allowEvidenceShrink) {
       return { msg: `本场比赛云端已有 ${state.events} 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空` };
     }
     state.events = incoming ?? state.events;
@@ -167,9 +167,10 @@ async function installMock(page, { snapshotPosts, replyFor, restoredEvents = 1, 
     const url = new URL(request.url());
     const path = url.pathname.replace('/bsball-server', '');
     if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
-      const json = request.postDataJSON().snapshotJson;
+      const requestBody = request.postDataJSON();
+      const json = requestBody.snapshotJson;
       snapshotPosts.push(json);
-      const reply = replyFor(json) ?? {};
+      const reply = replyFor(json, requestBody.allowEvidenceShrink === true) ?? {};
       if (reply.status) {
         await route.fulfill({ status: reply.status, contentType: 'text/plain', body: 'gateway down' });
         return;

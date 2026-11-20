@@ -247,8 +247,9 @@ class GameServiceLiveSnapshotGuardTest {
     @DisplayName("清空整份证据仍拒收（#713 复拍）：撤销不可能把 N>1 条退到 0 条")
     void saveLiveSnapshot_wipingAllEventsIsRejected() {
         // 放行买的是「撤销能保存」，不该顺带把 260/261 那种空壳也买进去：一份带键但零条的
-        // playEvents（前端 pa() 无条件序列化，本地归零时就是这么上来的）不是任何撤销的终态。
-        // 记分栏刻意留 0：证明拦住它的是条数这道而不是得分那道，得分那道在这种场次根本不跑。
+        // playEvents（前端 pa() 无条件序列化，本地归零时就是这么上来的）如果没有撤销/重做意图，
+        // 仍按空壳拒收。记分栏刻意留 0：证明拦住它的是条数这道而不是得分那道，得分那道在这种
+        // 场次根本不跑。
         game.setAwayScore(Integer.valueOf(0));
         game.setHomeScore(Integer.valueOf(0));
         givenExistingSnapshot(RICH_SNAPSHOT);
@@ -260,6 +261,24 @@ class GameServiceLiveSnapshotGuardTest {
         assertTrue(ex.getMessage().contains("24 条"), "要说清云端现在有多少条：" + ex.getMessage());
         assertTrue(ex.getMessage().contains("从云端恢复录入现场"), "出路要写在文案里：" + ex.getMessage());
         verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("撤销/重做意图：云端 24 条、payload 0 条也放行")
+    void saveLiveSnapshot_wipingAllEventsWithUndoIntentIsAllowed() {
+        // 整场撤销到 0 是合法的现场恢复：前端在 applyHistoryEntry 后显式带意图，
+        // 后端只对未标记的旧设备/本地归零存档维持清零拒收。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
+        gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{\"playEvents\":[]}", Boolean.TRUE);
+
+        ArgumentCaptor<String> written = ArgumentCaptor.forClass(String.class);
+        verify(gameSnapshotRepository).updateSnapshotJson(
+                eq(Long.valueOf(GAME_ID)), written.capture(), eq(Long.valueOf(USER_ID)));
+        assertEquals(0, playEventCount(written.getValue()),
+                "撤销意图下云端要跟着回到空的那一份：" + written.getValue());
     }
 
     @Test

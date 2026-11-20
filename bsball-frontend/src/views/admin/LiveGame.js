@@ -998,6 +998,8 @@ function iu(u,f){
 // 已成功写入 bs_hit_spray 的落点记录 rid（跨撤销/重做/重进现场去重）。
 // 放模块作用域：store 的 applyHistoryEntry 与页面 setup 的 co()/撤销/重做/快照还原都要读它。
 const sentHitSprayRids=new Set();
+// 撤销/重做后的下一次快照保存允许逐棒证据清零（#713）；默认 false：旧设备/本地归零的存档仍拒收。
+let allowEvidenceShrink=false;
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
   function F(){
@@ -1095,6 +1097,8 @@ var Bu=Yc("liveGame",()=>{
     Ft.value=[],Ue.value=[...Ue.value,pe],Ue.value.length>80&&(Ue.value=Ue.value.slice(-60))
   }
   function qn(G){
+    // 历史条目是撤销/重做的显式结果：允许本次快照把逐棒记录带回更短（含 0）的那一份。
+    allowEvidenceShrink=true;
     const pe=G.game;    O.inning=pe.inning??O.inning,O.isTop=pe.isTop??O.isTop,O.outs=pe.outs??O.outs,O.balls=pe.balls??O.balls,O.strikes=pe.strikes??O.strikes,O.runners=pe.runners??O.runners,O.batterIndex=pe.batterIndex??O.batterIndex,O.flow=normalizeErrorFlow(pe.flow??null),O.isGameEnd=pe.isGameEnd??!1,O.hasPitchThisAB=pe.hasPitchThisAB??!1,O.needNextBatter=pe.needNextBatter??!1,O.mvp=pe.mvp??null,O.svp=pe.svp??null,O.runnerDragCiRunnerId=pe.runnerDragCiRunnerId??null,O.playErrorCredited=pe.playErrorCredited??!1,O.playWpCredited=pe.playWpCredited??!1,O.playPbCredited=pe.playPbCredited??!1,O.lastPitchWasBall=Object.prototype.hasOwnProperty.call(pe,"lastPitchWasBall")?!!pe.lastPitchWasBall:(pe.balls??0)>0;
     const tt=G.teams;
     tt&&(te.away.score=tt.away?.score??te.away.score,te.away.innings=tt.away?.innings??te.away.innings,te.home.score=tt.home?.score??te.home.score,te.home.innings=tt.home?.innings??te.home.innings),G.lineup&&(Te.value=structuredClone(G.lineup.homeLineup),Ie.value=structuredClone(G.lineup.awayLineup),I.value=structuredClone(G.lineup.homeBench),le.value=structuredClone(G.lineup.awayBench),fe.value=G.lineup.awayFieldingPitcherId??null,Ae.value=G.lineup.homeFieldingPitcherId??null,ie.value=G.lineup.awayFieldingPitcherRow?structuredClone(G.lineup.awayFieldingPitcherRow):null,ke.value=G.lineup.homeFieldingPitcherRow?structuredClone(G.lineup.homeFieldingPitcherRow):null,Me.value=G.lineup.awayLastDhAddedFromPoolId??null,ve.value=G.lineup.homeLastDhAddedFromPoolId??null,i.value=G.lineup.awayUnavailablePlayerIds??[],dt.value=G.lineup.homeUnavailablePlayerIds??[]),(()=>{
@@ -7779,7 +7783,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       attempt<2;
       attempt++){
         try{
-          await ma.saveLiveSnapshot(R.value,body);
+          await ma.saveLiveSnapshot(R.value,body,allowEvidenceShrink);
+          allowEvidenceShrink=false;
           return !0
         }
         catch(error){
@@ -7836,7 +7841,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       );
       if(e)try{
-        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e)),new Promise(rr=>{
+        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e),allowEvidenceShrink),new Promise(rr=>{
           setTimeout(rr,1e4)
         }
         )])

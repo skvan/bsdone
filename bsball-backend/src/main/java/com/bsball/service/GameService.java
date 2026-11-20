@@ -207,14 +207,21 @@ public class GameService {
         return this.gameSnapshotRepository.findSnapshotJsonById(gameId).orElse(null);
     }
 
+    /** 旧调用/测试入口：未声明撤销意图，按默认的空壳拒收口径处理。 */
     @Transactional
     public void saveLiveSnapshot(Long gameId, String json) {
+        this.saveLiveSnapshot(gameId, json, null);
+    }
+
+    @Transactional
+    public void saveLiveSnapshot(Long gameId, String json, Boolean allowEvidenceShrink) {
         Game g = this.gameRepository.findById(gameId).orElse(null);
         if (g == null) {
             return;
         }
         this.assertGameWritable(g);
-        String effective = mergeAndGuardSnapshot(g, json, false);
+        String effective = mergeAndGuardSnapshot(
+                g, json, false, Boolean.TRUE.equals(allowEvidenceShrink));
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("快照更新未命中比赛 id={}", gameId);
@@ -236,7 +243,7 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
-        String effective = this.mergeAndGuardSnapshot(g, json, true);
+        String effective = this.mergeAndGuardSnapshot(g, json, true, false);
         if (this.gameSnapshotRepository.updateSnapshotJson(
                 gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("阵容快照更新未命中比赛 id={}", gameId);
@@ -289,10 +296,12 @@ public class GameService {
      * 本来就把 playEvents 换回更短的一份，实测「录一拍→保存→撤销→保存」推上来的就是较短的那
      * 一份，于是那场录入会从此锁死（只能恢复云端，等于把撤销这一步变成不可保存）。日志留着
      * （{@code reason=snapshot_event_count_shrink}，只是不改判据）是为了真出问题时还能统计发生率。
-     * <p>放行时唯一保留的一格（复拍后补回）：<b>{@code incoming==0 && existing>1} 仍拒收</b>
-     * （{@code reason=snapshot_event_count_wiped}）。根据是撤销数学上不可能产生 0 条——它只回退
-     * 一步，云端 N&gt;1 条时本地最多少一条（云端只有 1 条时撤到 0 依旧放行），而把证据清零正是
-     * 260/261 那种空壳的终态，也是旧设备/旧标签页那份「本地已归零」的存档推上来的形状。
+     * <p>放行时唯一保留的一格：<b>{@code incoming==0 && existing>1} 默认拒收</b>
+     * （{@code reason=snapshot_event_count_wiped}）。把证据清零正是 260/261 那种空壳的终态，
+     * 也是旧设备/旧标签页那份「本地已归零」的存档推上来的形状。
+     * 若这次保存来自撤销/重做后的现场恢复，前端会显式带 {@code allowEvidenceShrink=true}，
+     * 此时放行（{@code reason=snapshot_event_count_wiped_allowed}）——否则整场撤销到 0
+     * 会再次变成不可保存；旧客户端/未标记意图的请求维持拒收。
      * 注意前端 {@code pa()} 是无条件序列化 {@code playEvents} 的，所以空数组会带着键上来
      * （{@code mentionsEvidence} 为真），这道比对对它是生效的。
      * <p>放行的范围是「不丢分、且不清零的撤销」：本地逐棒记录变短而总分仍对得上记分栏时照旧进得去；
@@ -306,8 +315,11 @@ public class GameService {
      *
      * @param lineupWriter 该保存来自阵容板端点（只主张名单）。豁免还要 payload 不自带
      *                     playEvents 才生效：自带证据的请求照旧要过得分交叉验证
+     * @param allowEvidenceShrink 撤销/重做后的显式保存意图，允许把逐棒记录清零；
+     *                            旧客户端/未标记请求为 false，维持空壳拒收
      */
-    private String mergeAndGuardSnapshot(Game game, String json, boolean lineupWriter) {
+    private String mergeAndGuardSnapshot(
+            Game game, String json, boolean lineupWriter, boolean allowEvidenceShrink) {
         String existingJson = this.gameSnapshotRepository
                 .findSnapshotJsonById(game.getId()).orElse(null);
         int existingEvents = snapshotPlayEventCount(existingJson);
@@ -329,7 +341,8 @@ public class GameService {
         // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
         // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
         // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
-        // 就是 261 的空壳形态，两道判定照旧都要跑（阵容板也不例外；会拒收的只有得分那道）。
+        // 就是 261 的空壳形态，两道判定照旧都要跑（阵容板也不例外；非法 payload 计 0 条，
+        // 云端 >1 条时也可能命中清零拒收，不是只有得分那道会拦）。
         boolean mentionsScore = !parseable || (!lineupOnly && incoming.has("teamsData"));
         boolean mentionsEvidence = !parseable || incoming.has("playEvents");
         if (mentionsScore) {
@@ -352,16 +365,20 @@ public class GameService {
             int incomingEvents = snapshotPlayEventCount(json);
             if (incomingEvents < existingEvents) {
                 if (incomingEvents == 0 && existingEvents > 1) {
-                    // 放行后唯一保留的一格（#713 复拍）：把整份证据清零不可能是撤销的结果——
-                    // 撤销只回退一步，云端 N>1 条时本地最多少一条（云端本来只有 1 条时撤到 0 仍然放行，
-                    // 见下面第二道日志）。而 0 条恰恰是 260/261 那种空壳的终态，也是旧设备/旧标签页
-                    // 那份「本地状态已归零」的存档推上来的形状。
-                    log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
-                            game.getId(), incomingEvents, existingEvents);
-                    throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
-                            + " 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；"
-                            + "撤销只会退一步、不会把记录清零，所以这一发不是撤销造成的——"
-                            + "请用「从云端恢复录入现场」回到服务器现状，确需从头重录请另开新场");
+                    // 放行时唯一保留的一格（#713）：0 条正是 260/261 那种空壳的终态，也是旧设备/
+                    // 旧标签页那份「本地状态已归零」的存档推上来的形状。只有撤销/重做后的现场恢复
+                    // 会显式带 allowEvidenceShrink=true；旧客户端/未标记意图的请求维持拒收。
+                    if (allowEvidenceShrink) {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped_allowed gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                    } else {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                        throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
+                                + " 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；"
+                                + "若你刚撤销了全部记录，请从云端恢复录入现场后重新操作；"
+                                + "确需从头重录请另开新场");
+                    }
                 }
                 // 放行（#713 拍板）：撤销后的保存本来就该能把云端带回较短的那一份。
                 // 日志留着：真出现「证据凭空变短」的场次，这条是唯一能统计发生率的入口。
