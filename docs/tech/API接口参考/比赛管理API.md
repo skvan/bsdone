@@ -268,6 +268,7 @@ EventService --> EventRepository
 - POST /game/{id}/live-snapshot
   - 作用：保存实时快照
   - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
+  - 撤销清零（Issue #713）：可选 `allowEvidenceShrink`（布尔，缺省 false）。撤销/重做后的现场保存由前端显式带 true，允许把逐棒记录清零；旧设备/未标记意图的本地归零存档仍返回 409。仅清零受此开关影响，变短的非空 payload 始终放行，得分低于记分栏仍拒收。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛
@@ -290,6 +291,7 @@ EventService --> EventRepository
 - POST /game/{id}/earned-runs/reconstruct
   - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
   - 请求：`inning`、`half`（`top`/`bottom`）及按 `sequence` 严格递增的完整 `plays` 列表
+  - 完整性守门（Issue #714）：可选 `officialRuns`（客户端当前官方总分）。同一次保存里 `save-live` 尚未落库时用它作证人，撤销/改小本半局得分后不会被旧记分误拒；缺省沿用服务器记分栏。本地为 0 且服务器有分时视为未载入，仍按服务器分守门；本地低于服务器会留 `local_official_runs_lower` 日志。
   - 判定输入：得分跑者可携带 `wouldScoreWithoutMisplay`（布尔，可空）——记录员对「若没有捕逸等防守失误，该跑者是否仍会得分」的判断；传 `null` 或省略时，捕逸得分保留为 `PENDING` 待人工覆核
   - 注意：该接口不是增量追加；判决待定时应传 `rulingPending=true`，结果会保留为 `PENDING`
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）

@@ -12,8 +12,10 @@ const business = fs.readFileSync(
 
 test('撤销/重做后的快照保存带 allowEvidenceShrink，成功后清位', () => {
   assert.match(liveGame, /let allowEvidenceShrink=false;/, '默认必须不带意图');
-  assert.match(liveGame, /function qn\(G\)\{[\s\S]{0,200}allowEvidenceShrink=true;/,
-    'applyHistoryEntry 是撤销/重做/历史恢复的唯一入口，必须在这里置位');
+  assert.match(liveGame, /function ns\(e\)\{[\s\S]{0,200}allowEvidenceShrink=true;/,
+    '页面级撤销/重做实际走 ns（as/Ff → ns），必须在这里置位');
+  assert.doesNotMatch(liveGame, /function qn\(G\)\{[\s\S]{0,200}allowEvidenceShrink=true;/,
+    'store 的 applyHistoryEntry 在页面里没有调用点，不能把意图接在死路径上');
   assert.match(liveGame, /ma\.saveLiveSnapshot\(R\.value,body,allowEvidenceShrink\)/,
     '现场快照推送必须把意图带给后端');
   assert.match(liveGame, /allowEvidenceShrink=false;[\s\S]{0,40}return !0/,
