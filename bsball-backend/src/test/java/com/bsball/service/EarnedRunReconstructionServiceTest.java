@@ -230,6 +230,43 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(0, original.getEr());
     }
 
+    /**
+     * 作废只改「这分怎么算」，不改「这分有没有发生」：分账口径照旧把这笔剔掉，
+     * 但保存守门的分母必须仍算它，否则记录员作废完再保存下一个半局，会被
+     * 「重建数 < 记分栏总分」永久顶回 409（线上就是这么卡住过）。
+     */
+    @Test
+    @DisplayName("判定作废后：不再计入投手 R/ER，但仍计入守门分母")
+    void voidDecision_keepsDecisionInGuardDenominator() {
+        GamePlayerStat original = pitcherStat(1L, 700L, 1, 1);
+        original.setTeamId(1L);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(original));
+        EarnedRunPlayEntity play = play(900L, "play-1");
+        EarnedRunDecisionEntity decision = decision(700L, "EARNED");
+        decision.setId(11L);
+        decision.setPlayId(900L);
+        decision.setRunnerId(55L);
+        when(playRepository.findById(900L)).thenReturn(Optional.of(play));
+        when(decisionRepository.findByIdAndTenantIdAndGameId(11L, 1L, 20L))
+                .thenReturn(Optional.of(decision));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decision));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(play));
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(1L, 20L, 3, "top"))
+                .thenReturn(List.of(play));
+        List<ErDecisionAdjustment> activeRows = new ArrayList<>();
+        stubActiveAdjustmentStore(activeRows);
+        when(playerRepository.findAllById(any())).thenReturn(List.of(
+                player(55L, "跑者甲"), player(700L, "投手乙")));
+
+        service.voidDecision(1L, 20L, 11L, "误录判定", 9L);
+
+        assertEquals(0, original.getPitchR());
+        assertEquals(0, original.getEr());
+        assertEquals(1, service.countDecisionsForCoverage(1L, 20L));
+        assertEquals(1, service.countDecisionsForCoverageOfHalf(1L, 20L, 3, "top"));
+    }
+
     @Test
     @DisplayName("撤销判定改派后：恢复原责任投手与统计")
     void revokeDecisionAdjustment_restoresOriginalPitcher() {
@@ -573,6 +610,313 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
+    @DisplayName("§11.7 判定笔数多于总分时进入违规清单（线上实测：255 判定 14、总分 13）")
+    void validateSettlement_reportsJudgedRunCountAgainstScore() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L),
+                scoredDecision(3L, 902L, 57L), scoredDecision(4L, 903L, 58L)));
+        // 总分 2:1 = 3，判定却有 4 笔
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(2, 1, null, null, 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.7") && v.contains("+1")),
+                "判定多于比分时一定是判定层有比分层没记到的分数，必须报出并带差额方向");
+    }
+
+    @Test
+    @DisplayName("§11.7 判定少于比分不报警：混合来源场次（结果录入补分）的常態，线上实测 260")
+    void validateSettlement_staysQuietWhenJudgedRunsBelowScore() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L)));
+        // 总分 1:17 = 18，live 只判定过 1 笔：不能当成记录链路的缺陷
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(1, 17, null, null, 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7")),
+                "判定少于总分不该报警：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.8 某队投手群 R 合计不等于对手得分时进入违规清单")
+    void validateSettlement_reportsPitcherStaffRunsAgainstOpponentScore() {
+        GamePlayerStat away1 = pitcherStat(1L, 700L, 5, 4);
+        away1.setTeamId(7L);
+        GamePlayerStat away2 = pitcherStat(1L, 701L, 3, 3);
+        away2.setTeamId(7L);
+        GamePlayerStat home = pitcherStat(1L, 702L, 3, 3);
+        home.setTeamId(8L);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(away1, away2, home));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        // 客队（teamId 7）投手合计 8 分，但主队只得 7 分；主队投手 3 = 客队得分 3
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(3, 7, "[3,4]", "[2,4,2]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertEquals(1, violations.stream().filter(v -> v.contains("§11.8")).count(),
+                "只报对不上的那一队");
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.8") && v.contains("teamId=7")
+                && v.contains("+1")), "违规信息要点名队伍与差额");
+    }
+
+    @Test
+    @DisplayName("§11.8 投手群 pitchR 全为 NULL 时不报警：该队从未被落账，比分与 R 走结果录入")
+    void validateSettlement_skipsPitcherStaffWhenNeverSettled() {
+        GamePlayerStat nullRuns = new GamePlayerStat();
+        nullRuns.setTenantId(1L);
+        nullRuns.setPlayerId(700L);
+        nullRuns.setIsPitcher(1);
+        nullRuns.setTeamId(7L);
+        // pitchR 保持 null：引擎从没为这队写过四栏（线上实测 235/248 即此形）
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(nullRuns));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(4, 2, null, null, 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.8")),
+                "未落账不等于失 0 分，不该报错：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.8 显式归零（pitchR=0）算已落账：要被拖进对账，不能当成 NULL")
+    void validateSettlement_treatsZeroedPitcherStaffAsSettled() {
+        GamePlayerStat zeroed = pitcherStat(1L, 700L, 0, 0);   // 走 applyPitcherTotals(stat, new int[4]) 的形状
+        zeroed.setTeamId(7L);
+        zeroed.setUnearnedR(0);
+        zeroed.setPendingR(0);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(zeroed));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(4, 2, null, null, 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        // 客队（teamId 7）投手群归零为 0，但主队（home）得 2 分 → 必须报错；
+        // 这条钉住 NULL/0 的分界：归零路径会把未落账的队变成“已落账且失 0 分”。
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.8") && v.contains("teamId=7")),
+                "归零的队要被看见对不上，而不是静悄悄：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.9 总分与逐局比分加总不符（线上实测：278 总分 22、逐局和 23）")
+    void validateSettlement_reportsTotalAgainstLineScore() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(15, 7, "[7,8]", "[2,4,2]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertEquals(1, violations.stream().filter(v -> v.contains("§11.9")).count(),
+                "客队逐局和 15 = 总分 15 不报，只报主队 7 vs 8");
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.9") && v.contains("home")),
+                "违规信息要分清是哪一队");
+    }
+
+    @Test
+    @DisplayName("三层加总互相对得上时不得误报 §11.7–§11.9")
+    void validateSettlement_staysQuietWhenTotalsCohere() {
+        // 客队投手守主队打序：teamId=7 的投手群承 1 分（=主队得分），teamId=8 的投手群承 2 分（=客队得分）
+        GamePlayerStat awayPitcher = pitcherStat(1L, 700L, 1, 1);
+        awayPitcher.setTeamId(7L);
+        GamePlayerStat homePitcher = pitcherStat(1L, 701L, 2, 2);
+        homePitcher.setTeamId(8L);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(awayPitcher, homePitcher));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L), scoredDecision(3L, 902L, 57L)));
+        // 总分 2:1 = 3 = 判定 3 笔；逐局加总也齐（客队 1+1、主队 1）
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(2, 1, "[1,1]", "[1]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7") || v.contains("§11.8")
+                        || v.contains("§11.9")),
+                "自洽场次不应产生全场级违规：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.7–§11.9 跳过裁定/特殊结果场次：比分按规则给出，不参与逐笔加总检查")
+    void validateSettlement_skipsTotalsForSpecialResult() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L)));
+        Game special = scoreGame(7, 0, "[3,4]", null, 7L, 8L);
+        special.setIsSpecialResult(Boolean.TRUE);
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(special));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7") || v.contains("§11.8")
+                        || v.contains("§11.9")),
+                "裁定场次不该产生全场级违规：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.10 半局有逐棒事件但判定缺笔：点名哪一半局、差多少（线上 game 261）")
+    void validateSettlement_reportsMissingDecisionOfOneHalfInning() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        // 全场级完全平：判定 3 笔 = 总分 3:0，逐局加总也对得上——正因为两笔差额互相抵销，缺笔只能靠半局粒度抓
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L),
+                scoredDecision(3L, 902L, 57L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 3, "bottom"),
+                playOfHalf(902L, 3, "bottom")));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(0, 3, "[0]", "[0,0,3]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.10")
+                        && v.contains("第 3 局下") && v.contains("-1")),
+                "要点名缺笔的那一半局与方向：" + violations);
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.10")
+                        && v.contains("第 1 局上") && v.contains("+1")),
+                "抵销另一侧的多判也要看见：" + violations);
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7") || v.contains("§11.9")),
+                "这形状在全场级是平的，不该报：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.10 该半局判定多于记分：差额方向为 +")
+    void validateSettlement_reportsExtraDecisionOfOneHalfInning() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 2, "bottom"), playOfHalf(901L, 2, "bottom")));
+        // 总分 0:2 与判定 2 笔平；主队 2 局下记分 1 分、另有 1 局下 1 分
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(0, 2, null, "[1,1]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.10")
+                        && v.contains("第 2 局下") && v.contains("+1")),
+                "判定层多出记分层没有的分也要按半局点名：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.10 不误报：半局判定与记分一致、或根本无逐棒事件（纯结果录入）")
+    void validateSettlement_staysQuietOnCohesiveAndLegacyHalves() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 2, "top")));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(2, 0, "[1,1]", null, 7L, 8L)));
+
+        assertTrue(service.validateSettlement(1L, 20L).stream()
+                        .noneMatch(v -> v.contains("§11.10")),
+                "对得上的半局不该产生违规");
+
+        // 同一比分下拿掉事件列（结果录入场次，线上实测 235/248）：依旧不报
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        assertTrue(service.validateSettlement(1L, 20L).stream()
+                        .noneMatch(v -> v.contains("§11.10")),
+                "无逐棒证据的场次不参与半局对帐");
+    }
+
+    @Test
+    @DisplayName("§11.10 记分有分、判定层一笔都没有的半局也被点名（强制换局形状）")
+    void validateSettlement_reportsHalfWithRunsButNoDecisionAtAll() {
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        // 1局上正常定案（两笔判定）；2局下被强制结束，库里连 play 列都没有，但记分栏已有 2 分
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 1, "top")));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(2, 2, "[2]", "[0,2]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("§11.10")
+                        && v.contains("第 2 局下") && v.contains("判定 0 笔")
+                        && v.contains("差额 -2") && v.contains("一笔都没有")),
+                "零判定的半局不能因为「没有 play 列」而逃出对帐：" + violations);
+        assertTrue(violations.stream().noneMatch(v -> v.contains("§11.7") || v.contains("§11.9")),
+                "判定 2 笔 < 总分 4 且逐局加总平，全场级那两条本就该闭嘴：" + violations);
+    }
+
+    @Test
+    @DisplayName("§11.10 差额里有人工作废：成因指向作废，不得说成事件缺笔")
+    void validateSettlement_blamesVoidedDecisionNotMissingEvidence() {
+        // 同一个半局里「重建跑过、判定也推上来过、只是被人抹了」与「事件根本没入库」是两种
+        // 完全不同的故障。守门分母已经为这个区别改成含作废（countDecisionsForCoverage），
+        // 稽核的成因文案要是还写「没跑完或被覆盖」，就与它正面矛盾、把复盘的人带偏。
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                scoredDecision(1L, 900L, 55L), scoredDecision(2L, 901L, 56L),
+                scoredDecision(3L, 902L, 57L)));
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playOfHalf(900L, 1, "top"), playOfHalf(901L, 2, "bottom"),
+                playOfHalf(902L, 2, "bottom")));
+        ErDecisionAdjustment voided = adjustment(87L, "VOID", null);
+        voided.setSourceEventId("901");
+        voided.setRunnerId(56L);
+        when(erDecisionAdjustmentRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "ACTIVE"))
+                .thenReturn(List.of(voided));
+        when(gameRepository.findById(20L)).thenReturn(Optional.of(
+                scoreGame(1, 3, "[1]", "[0,3]", 7L, 8L)));
+
+        List<String> violations = service.validateSettlement(1L, 20L);
+        List<String> half110 = violations.stream()
+                .filter(v -> v.contains("§11.10") && v.contains("第 2 局下"))
+                .collect(java.util.stream.Collectors.toList());
+
+        assertEquals(1, half110.size(), "2局下判定 1 对记分 3，应且只应点一次名：" + violations);
+        assertTrue(half110.get(0).contains("差额 -2") && half110.get(0).contains("作废"),
+                "有作废笔数的缺口要说作废：" + half110.get(0));
+        assertFalse(half110.get(0).contains("没跑完或事件被覆盖"),
+                "该半局的重建明明跑过，不能归成缺笔：" + half110.get(0));
+    }
+
+    /** 带半局归属的逐棒事件列（§11.10 要靠它把判定归到正确的半局）。 */
+    private EarnedRunPlayEntity playOfHalf(Long id, int inning, String half) {
+        EarnedRunPlayEntity play = new EarnedRunPlayEntity();
+        play.setId(id);
+        play.setTenantId(1L);
+        play.setGameId(20L);
+        play.setInning(Integer.valueOf(inning));
+        play.setHalf(half);
+        play.setSourceEventId(String.valueOf(id));
+        return play;
+    }
+
+    private EarnedRunDecisionEntity scoredDecision(long id, long playId, long runnerId) {
+        EarnedRunDecisionEntity decision = decision(700L, "EARNED");
+        decision.setId(id);
+        decision.setPlayId(playId);
+        decision.setRunnerId(runnerId);
+        return decision;
+    }
+
+    private Game scoreGame(int awayScore, int homeScore, String awayLine, String homeLine,
+            long awayTeamId, long homeTeamId) {
+        Game game = new Game();
+        game.setId(20L);
+        game.setTenantId(1L);
+        game.setAwayScore(awayScore);
+        game.setHomeScore(homeScore);
+        game.setAwayScoreByInning(awayLine);
+        game.setHomeScoreByInning(homeLine);
+        game.setAwayTeamId(awayTeamId);
+        game.setHomeTeamId(homeTeamId);
+        return game;
+    }
+
+    @Test
     @DisplayName("判定清单：带出半局/序号/姓名与覆写信息")
     void listDecisions_mapsPlayAndPlayerNames() {
         EarnedRunPlayEntity play = new EarnedRunPlayEntity();
@@ -763,6 +1107,72 @@ class EarnedRunReconstructionServiceTest {
     }
 
     @Test
+    @DisplayName("投手覆写：引擎待判定不被无声折进非自责（线上实测 game 278 投手 1275）")
+    void overridePitcherRuns_keepsEnginePendingOutOfUnearned() {
+        GamePlayerStat pitcher = pitcherStat(1L, 700L, 4, 3);
+        pitcher.setTeamId(1L);
+        pitcher.setUnearnedR(1);
+        pitcher.setPendingR(0);
+        PitcherRunTotalsDTO row = overrideWithDecisions(pitcher, 700L, List.of(
+                decision(700L, "EARNED"), decision(700L, "EARNED"), decision(700L, "PENDING")),
+                3, 1);
+
+        // 人工额度 room = 3-1 = 2，引擎还有 1 笔待判 → PEND 保留 1、UER 只剩 1；
+        // 旧口径会直接报 UER=2/PEND=0，把「还没判」说成「已判定为非自责」。
+        assertEquals(3, row.runsAllowed());
+        assertEquals(1, row.earnedRuns());
+        assertEquals(1, row.unearnedRuns(), "待判定不得被折进非自责");
+        assertEquals(1, row.pendingRuns(), "引擎的待判定必须保留");
+        assertEquals(1, pitcher.getUnearnedR());
+        assertEquals(1, pitcher.getPendingR());
+    }
+
+    @Test
+    @DisplayName("投手覆写：人工额度装不下全部待判定时以人工值截断，恒等式仍成立")
+    void overridePitcherRuns_truncatesPendingWhenManualRoomIsSmaller() {
+        GamePlayerStat pitcher = pitcherStat(1L, 700L, 4, 2);
+        pitcher.setTeamId(1L);
+        PitcherRunTotalsDTO row = overrideWithDecisions(pitcher, 700L, List.of(
+                decision(700L, "EARNED"), decision(700L, "PENDING"), decision(700L, "PENDING")),
+                3, 3);
+
+        // room = 0：记录员明确宣告这 3 分全是自责分，人工值为准，PEND 被截到 0。
+        assertEquals(3, row.runsAllowed());
+        assertEquals(3, row.earnedRuns());
+        assertEquals(0, row.unearnedRuns());
+        assertEquals(0, row.pendingRuns());
+        assertEquals(row.runsAllowed(), row.earnedRuns() + row.unearnedRuns() + row.pendingRuns(),
+                "§11.1 恒等式不能被截断破坏");
+    }
+
+    /** 赛后覆写的标准桩件：给定引擎判定与统计行，跑一次人工覆写并返回回读的四栏。 */
+    private PitcherRunTotalsDTO overrideWithDecisions(GamePlayerStat pitcher, long playerId,
+            List<EarnedRunDecisionEntity> decisions, int runs, int earned) {
+        when(playRepository.existsByGameId(20L)).thenReturn(true);
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(pitcher));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(decisions);
+        when(pitcherRunOverrideRepository
+                .findFirstByTenantIdAndGameIdAndPlayerIdAndStatusOrderByIdDesc(
+                        1L, 20L, playerId, "APPROVED")).thenReturn(Optional.empty());
+        AtomicReference<PitcherRunOverride> saved = new AtomicReference<>();
+        when(pitcherRunOverrideRepository.save(any(PitcherRunOverride.class)))
+                .thenAnswer(invocation -> {
+                    PitcherRunOverride row = invocation.getArgument(0);
+                    if (row.getId() == null) {
+                        row.setId(55L);
+                    }
+                    saved.set(row);
+                    return row;
+                });
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenAnswer(invocation -> saved.get() == null
+                        ? List.of() : List.of(saved.get()));
+        when(playerRepository.findAllById(any()))
+                .thenReturn(List.of(player(playerId, "投手甲")));
+        return service.overridePitcherRuns(1L, 20L, playerId, runs, earned, "复核", 9L);
+    }
+
+    @Test
     @DisplayName("撤销投手覆写：恢复引擎值")
     void revokePitcherOverride_restoresEngineTotals() {
         GamePlayerStat pitcher = pitcherStat(1L, 700L, 3, 1);
@@ -872,6 +1282,37 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(0, selected.getPendingR());
         assertEquals(5, other.getPitchR(), "未编辑投手不得被引擎重算覆盖");
         assertEquals(4, other.getEr());
+        verify(decisionRepository, never()).findByTenantIdAndGameId(1L, 20L);
+    }
+
+    @Test
+    @DisplayName("结果页覆写：不查判定表，但保留统计行已有的待判定")
+    void applyResultPitcherRunOverrides_keepsExistingPending() {
+        when(playRepository.existsByGameId(20L)).thenReturn(true);
+        GamePlayerStat selected = pitcherStat(1L, 700L, 3, 1);
+        selected.setTeamId(1L);
+        selected.setUnearnedR(1);
+        selected.setPendingR(1);   // 引擎先前落过一笔待判
+        when(gamePlayerStatRepository.findByGameId(20L)).thenReturn(List.of(selected));
+        when(pitcherRunOverrideRepository
+                .findFirstByTenantIdAndGameIdAndPlayerIdAndStatusOrderByIdDesc(
+                        1L, 20L, 700L, "APPROVED")).thenReturn(Optional.empty());
+        when(pitcherRunOverrideRepository.save(any(PitcherRunOverride.class)))
+                .thenAnswer(invocation -> {
+                    PitcherRunOverride row = invocation.getArgument(0);
+                    if (row.getId() == null) {
+                        row.setId(1L);
+                    }
+                    return row;
+                });
+
+        service.applyResultPitcherRunOverrides(1L, 20L, Map.of(700L, new int[]{3, 2}), 9L);
+
+        // room = 3-2 = 1，已有 PEND=1 → 该分留在待判，不被折成已判定非自责
+        assertEquals(3, selected.getPitchR());
+        assertEquals(2, selected.getEr());
+        assertEquals(0, selected.getUnearnedR(), "待判定不得被折进非自责");
+        assertEquals(1, selected.getPendingR());
         verify(decisionRepository, never()).findByTenantIdAndGameId(1L, 20L);
     }
 
@@ -986,6 +1427,110 @@ class EarnedRunReconstructionServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.overrideDecision(
                 1L, 20L, 77L, 9L, "UNEARNED", "ERROR_REACHED_BASE"));
+    }
+
+    @Test
+    @DisplayName("半局未完成的重建：不删旧判定、不写新判定、不作废覆写、不改统计")
+    void halfIncompleteRebuildPreviewsWithoutWriting() {
+        EarnedRunPlayEntity oldPlay = new EarnedRunPlayEntity();
+        oldPlay.setId(88L);
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 3, "top")).thenReturn(List.of(oldPlay));
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decisionForPlay(700L, 88L)));
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 3, "top", 9L,
+                List.of(play(101L, 1, 0, 0, false, ScoringRunner.normal(55L, 701L))),
+                500L, false);
+
+        assertEquals(1, result.pitcherAbsoluteTotals().get(701L).runs());
+        assertEquals(1, result.pitcherAbsoluteTotals().get(701L).earnedRuns());
+        verify(playRepository, never()).save(any(EarnedRunPlayEntity.class));
+        verify(playRepository, never())
+                .deleteByTenantIdAndGameIdAndInningAndHalf(1L, 20L, 3, "top");
+        verify(decisionRepository, never()).save(any(EarnedRunDecisionEntity.class));
+        verify(decisionRepository, never())
+                .deleteByTenantIdAndGameIdAndPlayIdIn(1L, 20L, List.of(88L));
+        verify(pitcherRunOverrideRepository, never()).save(any(PitcherRunOverride.class));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("预览分母：排除本半局即将被替换的旧判定，保留其他半局，再叠上本次逐棒判定")
+    void previewDenominatorReplacesOnlyTheCurrentHalf() {
+        EarnedRunPlayEntity oldPlay = new EarnedRunPlayEntity();
+        oldPlay.setId(88L);
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 3, "top")).thenReturn(List.of(oldPlay));
+        EarnedRunDecisionEntity otherHalf = decisionForPlay(700L, 999L);
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L))
+                .thenReturn(List.of(decisionForPlay(700L, 88L), otherHalf));
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 3, "top", 9L,
+                List.of(play(101L, 1, 0, 0, false, ScoringRunner.normal(55L, 701L))),
+                500L, false);
+
+        assertEquals(1, result.pitcherAbsoluteTotals().get(700L).runs(),
+                "其他半局那笔保留、本半局即将被替换的那笔不能双计");
+        assertEquals(1, result.pitcherAbsoluteTotals().get(701L).runs());
+    }
+
+    @Test
+    @DisplayName("预览不叠「定案时会被作废」的覆写：给引擎口径，并把该名单回传")
+    void previewExcludesOverrideThatSettlementWouldInvalidate() {
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 3, "top")).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                decisionForPlay(701L, 999L), decision(701L, "PENDING")));
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(overrideRow(1L, 1L, 20L, 701L, 3, 1)));
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 3, "top", 9L,
+                List.of(play(101L, 1, 0, 0, false, ScoringRunner.normal(55L, 701L))),
+                500L, false);
+
+        EarnedRunReconstructionResult.PitcherRunTotals totals =
+                result.pitcherAbsoluteTotals().get(701L);
+        // 701 是本半局新判定的责任投手，定案时他的 APPROVED 覆写会被作废；
+        // 预览若照叠覆写值，就是在给记录员看一个马上会被推翻的数字。
+        assertEquals(3, totals.runs());
+        assertEquals(2, totals.earnedRuns(), "该给引擎口径而不是覆写值：" + totals);
+        assertEquals(1, totals.pendingRuns());
+        assertEquals(List.of(701L), result.overrideInvalidationPitcherIds(),
+                "哪些人的覆写会在定案时失效，必须随预览回传");
+        verify(pitcherRunOverrideRepository, never()).save(any(PitcherRunOverride.class));
+        verify(gamePlayerStatRepository, never()).save(any(GamePlayerStat.class));
+    }
+
+    @Test
+    @DisplayName("预览仍保留「本半局碰不到」的投手覆写：不被作废的人工决断继续生效")
+    void previewKeepsOverrideOfPitcherNotTouchedByThisHalf() {
+        when(playRepository.findByTenantIdAndGameIdAndInningAndHalfOrderBySequence(
+                1L, 20L, 3, "top")).thenReturn(List.of());
+        when(decisionRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                decisionForPlay(701L, 999L), decisionForPlay(702L, 999L)));
+        when(pitcherRunOverrideRepository.findByTenantIdAndGameIdAndStatus(1L, 20L, "APPROVED"))
+                .thenReturn(List.of(overrideRow(2L, 1L, 20L, 702L, 3, 1)));
+
+        EarnedRunReconstructionResult result = service.replaceHalfInning(
+                1L, 20L, 3, "top", 9L,
+                List.of(play(101L, 1, 0, 0, false, ScoringRunner.normal(55L, 701L))),
+                500L, false);
+
+        Map<Long, EarnedRunReconstructionResult.PitcherRunTotals> totals =
+                result.pitcherAbsoluteTotals();
+        assertEquals(2, totals.get(701L).runs(), "本半局责任投手走引擎口径");
+        assertTrue(result.overrideInvalidationPitcherIds().isEmpty(),
+                "702 不属受影响投手，定案不会动他的覆写：" + result.overrideInvalidationPitcherIds());
+        EarnedRunReconstructionResult.PitcherRunTotals kept = totals.get(702L);
+        assertEquals(3, kept.runs(), "不受影的投手仍显示人工 R/ER，与落库同款优先级");
+        assertEquals(1, kept.earnedRuns());
+        assertEquals(2, kept.unearnedRuns());
+        assertEquals(kept.runs(), kept.earnedRuns() + kept.unearnedRuns() + kept.pendingRuns(),
+                "四栏恒等式必须成立");
     }
 
     private PitcherRunOverride overrideRow(long id, long tenantId, long gameId,

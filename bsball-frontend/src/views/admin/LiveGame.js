@@ -72,6 +72,7 @@ import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.j
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
 import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, appendOuts as LgAppendOuts, dpRunnerOutText as LgDpRunnerOut, dpMainText as LgDpMain, hitResultText as LgHitText, noAdvanceRunText as LgNoAdvance, noAdvanceThirdText as LgNoAdvanceThird, runOutNoScoreText as LgRunOutNoScore, setLogTextLocale } from '../../utils/liveGameLogTexts';
+import { computeErrorChainAssists, computeErrorChainPutout } from '../../utils/liveGameErrorChain';
 import { resolveBalkAction as LgBalkAction } from '../../utils/liveGameBalk';
 import { resolveSacrificeCredit as LgSacrificeCredit } from '../../utils/liveGameSacrifice';
 import { computeChainFieldingStats as LgChainStats, computeCatchBackFieldingStats as LgCatchBackStats, normalizeChainForDisplay as LgChainDisplay, chainReadyForSettle as LgChainReady, computeSingleOutChainStats as LgSingleOutStats, computeDoublePlayParticipants as LgDpParticipants } from '../../utils/liveGameChainStats';
@@ -987,6 +988,8 @@ function iu(u,f){
 // 已成功写入 bs_hit_spray 的落点记录 rid（跨撤销/重做/重进现场去重）。
 // 放模块作用域：store 的 applyHistoryEntry 与页面 setup 的 co()/撤销/重做/快照还原都要读它。
 const sentHitSprayRids=new Set();
+// 撤销/重做后的下一次快照保存允许逐棒证据清零（#713）；默认 false：旧设备/本地归零的存档仍拒收。
+let allowEvidenceShrink=false;
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
   function F(){
@@ -5830,13 +5833,15 @@ var sg={
       }
       await pp(e,t),fn.value=!1,cn.value=null
     }
-    function $l(e,t,a,s){
+    function $l(e,t,a,s,chain){
       if(e==="H3"||!be.value)return!1;
       const plan=resolveBatterForceAdvance({batterBase:t,runners:l.runners,batter:be.value});
       if(!plan?.homeRunners?.length)return!1;
       gt();
       const context={
-        kind:"hit",playType:e,bases:t,fielders:a,opts:s,plan
+        kind:"hit",playType:e,bases:t,fielders:a,opts:s,plan,...(Array.isArray(chain)&&chain.length?{
+          chain
+        }:{})
       };
       return startForceQueue(plan,outcomes=>dp(context,outcomes))
     }
@@ -5986,11 +5991,23 @@ var sg={
       else if(e.playType==="H2")a.stats.batting.h=(a.stats.batting.h??0)+1,a.stats.batting.doubles=(a.stats.batting.doubles??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchH=(s.stats.pitching.pitchH??0)+1,s.stats.pitching.pitchDoubles=(s.stats.pitching.pitchDoubles??0)+1),m="H2",y=g(`${a.name}: ${hn("H2")}`),D(y,p??void 0),p&&(y=`${y}，${p}`);
       else if(e.playType==="H3")a.stats.batting.h=(a.stats.batting.h??0)+1,a.stats.batting.triples=(a.stats.batting.triples??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchH=(s.stats.pitching.pitchH??0)+1,s.stats.pitching.pitchTriples=(s.stats.pitching.pitchTriples??0)+1),m="H3",y=g(`${a.name}: ${hn("H3")}`),D(y,p??void 0),p&&(y=`${y}，${p}`);
       else if(e.playType==="E"){
+        const chain=Array.isArray(e.chain)?e.chain:[],chainText=chain.length>1?`${nu(chain)} `:"";
         a.stats.batting.ab=(a.stats.batting.ab??0)+1;
         for(const w of dpException?[]:e.fielders)creditFieldingError(Vt(w));
         if(dpException){
           applyChainFieldingStats("FC",e.fielders),recordPlayOut(e.fielders,"batterContact"),m="FC",y=`${a.name}: 双杀机会传球失误，实际一出局，按野手选择记录（不计 E）`
-        }else m="E",y=g(b?`${a.name}: 失误 + 牺牲打 (Error + Sac)`:`${a.name}: ${Un("E",e.fielders)||"失误 (E) 上垒"}`),y+=errorCreditNote(e.fielders);
+        }else{
+          for(const pos of computeErrorChainAssists(e.fielders,chain)){
+            const fielder=resolveFieldingCreditTarget(pos,Vt(pos),s);
+            fielder?.stats?.fielding&&(fielder.stats.fielding.a=(fielder.stats.fielding.a??0)+1,accrueFieldingPlay(fielder.stats.fielding,pos,{a:1}))
+          }
+          const chainPutout=computeErrorChainPutout(e.fielders,chain);
+          if(chainPutout){
+            const fielder=resolveFieldingCreditTarget(chainPutout,Vt(chainPutout),s);
+            fielder?.stats?.fielding&&(fielder.stats.fielding.po=(fielder.stats.fielding.po??0)+1,accrueFieldingPlay(fielder.stats.fielding,chainPutout,{po:1}))
+          }
+          m="E",y=g(b?`${a.name}: 失误 + 牺牲打 (Error + Sac)`:`${a.name}: ${chainText}${Un("E",e.fielders)||"失误 (E) 上垒"}`),y+=errorCreditNote(e.fielders)
+        }
         D(y)
       }
       l.balls=0,l.strikes=0,Je(m,y,dpException?{doublePlayThrowingErrorException:!0}:null),Qe()
@@ -7167,9 +7184,13 @@ var sg={
       if(e.type==="CATCH_BACK_DP")return"接杀回传：点击回踩垒守备员";
       if(e.type==="E"){
         const s=e.steps??[],r=s.length,p=errorCreditNames(s),g=e.errorMode==="foul_error"?"界外球+失误：":ff(e);
+        if(e.phase==="chain"){
+          const chain=e.chain??[],chainText=chain.length?`已选传球链 ${nu(chain)}；`:"";
+          return`${g}${chainText}请按传球顺序继续点选（最后一位为接球失误者），无传球链可直接「完成记录」`
+        }
         if(r===0)return`${g}点击失误责任守备员（默认 1 人）`;
-        const credit=r>1?"各记 1E":"记 1E",hint=e.multiError?"；多失误模式：可继续点选，再点已选守备员可取消":r>1?"；点其他守备员将替换全部，若要逐个取消请点「再记一名失误」":"；点其他守备员可替换，确有多名失误请点「再记一名失误」";
-        return`${g}已选 ${p}（${credit}）${hint}`
+        const credit=r>1?"各记 1E":"记 1E",hint=e.multiError?"；多失误模式：可继续点选，再点已选守备员可取消":r>1?"；点其他守备员将替换全部，若要逐个取消请点「再记一名失误」":"；点其他守备员可替换，确有多名失误请点「再记一名失误」",nextHint=e.phase==="pick_error"?"；完成后点「下一步」":"";
+        return`${g}已选 ${p}（${credit}）${hint}${nextHint}`
       }
       if(e.type==="BIP_HIT_PENDING"){
         const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后可点「完成记录」":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
@@ -7234,7 +7255,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function gf(e){
       if(!mf.value)return!1;
       const t=l.flow;
-      if(t?.type==="E"&&Array.isArray(t.steps)&&t.steps.includes(e)&&!t.multiError)return!1;
+      if(t?.type==="E"&&t.phase!=="chain"&&Array.isArray(t.steps)&&t.steps.includes(e)&&!t.multiError)return!1;
       const a=vf.value;
       return a?a.has(e):!0
     }
@@ -7406,25 +7427,68 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const E={
         id:w.id,inning:w.inning,half:w.half,sequence:nextPlaySequence(f.playEvents),batterPlayerId:w.batterPlayerId,pitcherPlayerId:w.pitcherPlayerId,resultCode:w.resultCode,resultText:w.resultText,outsBefore:w.outsBefore??l.outs,outsAfter:l.outs,basesBefore:m?.runnerIdsBefore??{1:null,2:null,3:null},basesAfter:{1:l.runners[1]?.id??null,2:l.runners[2]?.id??null,3:l.runners[3]?.id??null},scoringRunnerIds:scoringRunners.map((runner)=>runner.runnerId),scoringRunners,scoreDelta:{away:o.away.score-(m?.scoreAwayBefore??o.away.score),home:o.home.score-(m?.scoreHomeBefore??o.home.score)},rbi:w.rbi,recordedAt:w.recordedAt,options:pendingPlayOptions??w.options??null
       };
-      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E),ve.value=null,i.value=null,pendingPlayOptions=null
+      Me.value.push(w),f.playEvents.push(E),syncEarnedRunHalfInning(E,{halfComplete:l.outs>=3}),ve.value=null,i.value=null,pendingPlayOptions=null
     }
     function syncEarnedRunHalfInning(event,options={}){
+      // 该半局还没打完（未凑到第三出局）时只做现场预览：后端不删旧判定、不作废投手 R/ER 覆写、
+      // 不改统计。引擎对第 k 棒的裁决只依赖前 k-1 棒（后端 EarnedRunProvisionalPushTest 钉住该
+      // 不变性），所以延后入库不会改变任何判定结果，只是不再每个打席撕一次人工介入。
+      // 不送该选项的调用点（保存、换局、补台账）一律视为半局定案。
+      const halfComplete=options.halfComplete!==false;
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
         const gameId=Number(R.value);
         if(!gameId||!event)return;
         const plays=f.playEvents.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
         if(!plays.length&&!options.allowEmpty)return;
         try{
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays});
+          const localOfficialRuns=(Number(f.teamsData?.home?.score)||0)+(Number(f.teamsData?.away?.score)||0);
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
+          // 半局定案会把该半局责任投手的人工 R/ER 覆写作废（后端 invalidateActiveOverrides），
+          // 这事以前只记在后端 log 里——记录员只看见数字变了，不知道是自己按过的覆写没了。
+          // 后端两种口径都回传名单（定案＝已作废，预览＝一旦定案就作废），这里只在定案时提一次，
+          // 局中每个打席都弹就成噪音了。
+          const invalidated=f.earnedRunReconstruction?.overrideInvalidationPitcherIds;
+          if(halfComplete&&Array.isArray(invalidated)&&invalidated.length){
+            // 走 ElMessage 而不是 J（局面提示）：那是个单格位，下一个打席 / 下一句提示就把
+            // 这条盖掉，记录员实际看不到。作废覆写是一次性事件，必须自己占一条弹提示。
+            noticeOverrideInvalidation(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`);
+          }
+          // 这一发重建成了：之前那句「判定没更新」已经不再成立，清掉去重位，真再坏一次还能看见
+          noticeEarnedRunIssue.reset();
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
+          // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
+          // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
+          // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
+          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`);
         }
       });
       return earnedRunSyncPending;
     }
     let earnedRunSyncPending=Promise.resolve();
+    // 这两条都是 ElMessage（不能走 J：单格局面提示会被下一句盖掉），所以得自己防刷屏：
+    // 判定层出问题时几乎每次保存/定案都会撞上同一条（守门看的是状态：判定少于记分，修好
+    // 之前每次成立），而第三出局那一拍本来就是「定案推送＋换局自动保存对账」连发两回。
+    // 按句去重：同一句只弹一次，换了半局/换了原因（文字不同）重新弹。两条各自一个格子：
+    // 判定失败那条在重建成功后清零（真再坏一次要重新看得见），覆写作废那条不清零（同一
+    // 半局同一批作废再说一遍没意义，而它偏偏是在成功路径上发的）。
+    function makeNoticeOnce(){
+      let shown=null;
+      const notice=(text)=>{
+        // 预设 3 秒读不完那串后端原文（它带着该怎么做），所以给到 8 秒
+        shown===text||(shown=text,Fe.warning({
+          message:text,
+          duration:8000
+        }))
+      };
+      notice.reset=()=>{
+        shown=null
+      };
+      return notice
+    }
+    const noticeEarnedRunIssue=makeNoticeOnce(),noticeOverrideInvalidation=makeNoticeOnce();
     // #449：手动进垒/垒况纠偏只写台账，通常等下一打席 Qr 才进 playEvents。
     // 若比赛在下一打席前保存（含结束比赛、换人提交、保存离开），台账会被丢弃导致
     // ER 引擎绝对重算漏掉这一分（比分与投手 R 不等）。保存/强制换局前补一条独立
@@ -7448,13 +7512,29 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // 只有 playEvents 完整可信时才按当前半局绝对重建；allowEmpty 允许撤销掉半局
     // 全部事件时清空该半局判定，避免旧 R 残留。不可信（Do 仅按统计重建）时跳过。
     function resyncEarnedRunHalfInningForSave(){
-      if(!earnedRunPlayEventsTrusted||!F.value||!R.value)return null;
+      if(!F.value||!R.value)return null;
+      if(!earnedRunPlayEventsTrusted){
+        // #712 可见性：这里过去静默 return null，记录员看到的是「保存成功」，实际上这个半局
+        // 从没做定案重建，判定层会一直比记分栏少几笔（261 型缺笔的温床）。
+        // 只在本地确实有逐棒记录时提一次：那种记录本来可以直接定案，只是因为证书（
+        // playEventsComplete）缺失而被当成不可信，不说就等于把缺口留给赛后。全新导入、
+        // 本地一条事件都没有的场次，定案本来就没有输入，不提，免得变成每次自动保存的噪音。
+        // 走 ElMessage 而不是 J：J 是单格的局面提示，forceHalf 结尾马上会用「强制换局完成」
+        // 把它盖掉（实测），而现场没有把这批记录变可信的开关，唯一出路是赛后人工复核。
+        f.playEvents.length&&!settleSkipNoticed&&(settleSkipNoticed=!0,Fe.warning({
+          message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 ${f.playEvents.length} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认`,
+          duration:8000
+        }));
+        return null
+      }
       const event={
         inning:l.inning,half:l.isTop?"top":"bottom"
       };
       syncEarnedRunHalfInning(event,{allowEmpty:!0});
       return event
     }
+    // 整个入场只提一次上面那条（保存/换局/强制换局都会走 resync）
+    let settleSkipNoticed=!1;
     const es=new WeakMap;
     function ua(e){
       nt()||requestAnimationFrame(()=>{
@@ -7696,19 +7776,33 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // #444-A：现场快照（含换人史 lineupStarterIds/slotSubHistory）同步服务器。
     // 存了统计却没同步快照时，_c()/bc() 在跨设备/清缓存重进会取不到快照、回退 Do()
-    // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：先重试一次，
-    // 仍失败则提示一次（不阻断录入本身）；成功后清除脏标，避免每次自动保存都弹。
-    let snapshotSyncFailed=!1;
+    // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：可能被
+    // 重试救回来的失败（网络、5xx、429 限流）先重试一次，仍失败提示一次（不阻断录入本身）；
+    // 服务器点名拒收（快照覆盖守门的 409）不重试，直接把服务器给的原因抬到人前（#713）。
+    // 提示按「这一次要播的话」去重，而不是按「本场是否已经失败过一次」：同一句不刷屏，
+    // 内容换了（先抖动、后拒收）就必须看得见；成功后清脏标与已播记录，下次真故障能重新提示。
+    let snapshotSyncFailed=!1,snapshotSyncReason=null,snapshotNoticeShown=null;
     async function pushLiveSnapshot(e){
       const body=JSON.stringify(e);
+      // 原因说的是「这一发为什么没进去」：每次进来先清掉，免得拿上一拍的拒收话解释这一拍的故障
+      snapshotSyncReason=null;
       for(let attempt=0;
       attempt<2;
       attempt++){
         try{
-          await ma.saveLiveSnapshot(R.value,body);
+          await ma.saveLiveSnapshot(R.value,body,allowEvidenceShrink);
+          allowEvidenceShrink=false;
           return !0
         }
-        catch{
+        catch(error){
+          // 只认 409：那是快照覆盖守门点名拒收（本项目 BusinessException 走 HTTP 200 + body.code，
+          // request.js 再包成带 apiCode 的 ApiBizError），重试只会再撞一次、多白花 800ms，再把原因
+          // 拖成下面那句「未能同步」的误导文案。其余 4xx 不敢当拒收：RateLimitFilter 对这个端点真会
+          // 回 429「请稍后再试」（重试才是对的），401 走会话重登，所以都留着原来的重试兜底。
+          if(error?.apiCode===409){
+            snapshotSyncReason=error.message||String(error);
+            return !1
+          }
           if(attempt===0)await new Promise(rr=>{
             setTimeout(rr,800)
           }
@@ -7717,6 +7811,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       return !1
     }
+    function reportSnapshotSyncFailure(){
+      snapshotSyncFailed=!0;
+      // 服务器给出原因时按原因说（它带着具体的下一步动作），并换用 error 级提示：「这份存档根本没
+      // 进去」不是「可能丢点换人在场状态」那种可以忽略的提醒；拿不到原因（网络/5xx/429）时维持原文案。
+      const notice=snapshotSyncReason?{
+        kind:"error",
+        text:snapshotSyncReason
+      }:{
+        kind:"warning",
+        text:lgText("liveGame.sub.snapshotWarning")
+      };
+      if(snapshotNoticeShown===notice.text)return;
+      snapshotNoticeShown=notice.text;
+      // 服务器那两句很长（带该按哪个按钮），预设 3 秒读不完，给到 8 秒
+      Fe[notice.kind]({
+        message:notice.text,
+        duration:8000
+      })
+    }
     async function Zr(){
       if(!R.value||!F.value)return;
       Tn(),to();
@@ -7724,7 +7837,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         includeUndoStacks:!0
       }
       );
-      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1):snapshotSyncFailed||(snapshotSyncFailed=!0,Fe.warning(lgText("liveGame.sub.snapshotWarning")))
+      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1,snapshotNoticeShown=null):reportSnapshotSyncFailure()
     }
     async function ZrLite(){
       // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行
@@ -7735,7 +7848,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       );
       if(e)try{
-        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e)),new Promise(rr=>{
+        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e),allowEvidenceShrink).then(()=>{
+          allowEvidenceShrink=false
+        }
+        ),new Promise(rr=>{
           setTimeout(rr,1e4)
         }
         )])
@@ -8013,6 +8129,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s&&typeof s.score=="number"&&Number.isFinite(s.score)&&(o.home.score=s.score),s&&Array.isArray(s.innings)&&(o.home.innings=s.innings.map(r=>Number(r)||0))
     }
     function ns(e){
+      // 撤销/重做/历史恢复的实际入口（页面级 as/Ff 调用）：允许本次快照把逐棒记录带回更短（含 0）的那一份。
+      allowEvidenceShrink=true;
       Object.assign(l,e.game),l.flow=normalizeErrorFlow(l.flow),Array.isArray(l.halfInningOuts)||(l.halfInningOuts=[]),Object.prototype.hasOwnProperty.call(e.game,"runnerDragCiRunnerId")||(l.runnerDragCiRunnerId=null),Object.prototype.hasOwnProperty.call(e.game,"playErrorCredited")||(l.playErrorCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playWpCredited")||(l.playWpCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playPbCredited")||(l.playPbCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"lastPitchWasBall")||(l.lastPitchWasBall=(e.game?.balls??0)>0),Object.prototype.hasOwnProperty.call(e.game,"playOut")||(l.playOut=null),Cf(e.lineup),Bf(e),o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,(()=>{
         const t=a=>{
           if(!a)return a;
@@ -8415,7 +8533,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       catch{
         return
       }
-      de("强制换局"),lt.value=!1,pt(),l.needNextBatter=!1,ve.value=null,i.value=null,D(LgSys({kind:"force_half"})),flushPendingRunsToPlayEvent(),clearRunLedger(),Qa(!0),J(lgText("liveGame.forceHalf.done"),"info"),await autoSaveHalfInning()
+      de("强制换局"),lt.value=!1,pt(),l.needNextBatter=!1,ve.value=null,i.value=null,D(LgSys({kind:"force_half"})),
+      // 强制换局＝这个半局到此定案（没有第三出局，但之后再也不会往里记）。局中的逐打席推送
+      // 都是预览、不落库，所以收尾必须在这里补一次定案推送，写法照抄保存链（flush 补不到台账
+      // 就绝对重建当前半局）。少了它，这半局在库里零判定而记分栏已有分，之后每个半局的定案
+      // 推送都会因为「重建数 < 官方总分」被永久顶回 409。必须在 Qa(!0) 翻局之前呼叫。
+      // 重进场次（本地逐棒记录不完整，engineManaged）时 resync 依旧 return null，这半局仍不定案：#712。
+      flushPendingRunsToPlayEvent()||resyncEarnedRunHalfInningForSave(),clearRunLedger(),Qa(!0),J(lgText("liveGame.forceHalf.done"),"info"),await autoSaveHalfInning()
     }
     function Qa(e){
       l.isGameEnd||e&&(l.inning>=yn&&!l.isTop&&o.home.score===o.away.score&&D(LgSys({kind:"extend_inning"})),Af())
@@ -9145,10 +9269,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function ko(e,t){
       if(l.flow&&!settleChainIfReady())return warnFlowBusy(l.flow),!1;
-      return Gf()?(l.flow={
+      if(!Gf())return!1;
+      // 界内失误上垒（#695）：先选失误责任守备员（可多选），下一步再选落点与传球链
+      if(t==="E"){
+        l.flow={
+          type:"E",steps:[],selectRunner:!1,multiError:!1,errorMode:"batted_error",phase:"pick_error"
+        }
+        ,J("失误上垒：请点击失误责任守备员（默认 1 人，确有多名失误请点「再记一名失误」），完成后点「下一步」","info");
+        return!0
+      }
+      return l.flow={
         type:"BIP_HIT_PENDING",bipCode:e||void 0,resolveType:t
       }
-      ,J(t==="HR"?"全垒打：点击 LF/CF/RF 选择方向，拖拽选择墙外落点（拖到扇形内会自动外推）":"点击守备位置确认落点，或拖拽调整落点位置","info"),!0):!1
+      ,J(t==="HR"?"全垒打：点击 LF/CF/RF 选择方向，拖拽选择墙外落点（拖到扇形内会自动外推）":"点击守备位置确认落点，或拖拽调整落点位置","info"),!0
     }
     function Po(e,t,a,s){
       let r=us(e);
@@ -9479,8 +9612,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function syncChainVisualFromFlow(){
       clearChainVisual();
-      const e=l.flow;
-      if(!e||!isChainFlow(e))return;
+      const e=l.flow,errChain=e?.type==="E"&&e.phase==="chain";
+      if(!e||(!isChainFlow(e)&&!errChain))return;
       const T2=e.bipSpray;
       if(T2?.sprayX!=null&&T2?.sprayY!=null){
         const S2=LgBattedShapeOf(e.bipCode),G2=battedGeo(T2.sprayX,T2.sprayY,S2.k);
@@ -9488,7 +9621,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           d:S2.k===0?`M 240 555 L ${T2.sprayX} ${T2.sprayY}`:`M 240 555 Q ${G2.cx} ${G2.cy} ${T2.sprayX} ${T2.sprayY}`,color:battedShapeColor(e.bipCode)
         }
       }
-      const a=e.steps??[];
+      const a=errChain?e.chain??[]:e.steps??[];
       if(!a.length)return;
       const s=e.bipSpray,t=s?.sprayX!=null&&s?.sprayY!=null?{
         x:s.sprayX,y:s.sprayY
@@ -9707,7 +9840,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J(`${e.type==="TP"?"三杀":"双杀"}记录待完成：拖拽持球守备员到垒包记录出局，或点「完成记录」/「取消」`,"warning");
         return
       }
-      e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${chainDisp(e.type,e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
+      e&&e.type==="E"?(e.phase==="chain"?J("请完成传球链或点「完成记录」/取消","warning"):e.phase==="pick_error"?J("请选择失误责任守备员并点「下一步」，或取消","warning"):J("请先完成或取消当前流程","warning")):e&&CHAIN_TYPES.has(e.type)?ru.has(e.type)&&!(e.steps?.length??0)?J("请先点选接杀守备员，或取消","warning"):J(`传球链还不完整（${chainDisp(e.type,e.steps??[]).map(t=>vi[t]??t).join("-")||"?"}），请继续点选或取消`,"warning"):e&&(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE")?J("请先点选完成该出局的守备员，或取消","warning"):J("请先完成或取消当前流程","warning")
     }
     function Bo(e,t,a,s){
       const r=s?.trim().toUpperCase();
@@ -9742,6 +9875,17 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         }
         
       };
+      // 新失误上垒流程（#695）：落点确认后进入传球链，不再在此收尾
+      if(g==="E"&&Array.isArray(p.errorSteps)){
+        l.flow={
+          type:"E",steps:[...p.errorSteps],selectRunner:!1,multiError:!!p.errorMulti,errorMode:"batted_error",phase:"chain",chain:[],...(m?{
+            bipCode:m
+          }:{})
+          ,bipSpray:w
+        }
+        ,J("落点已记录：请按传球顺序点选守备员（最后一位为接球失误者）；无传球链可直接「完成记录」","info");
+        return
+      }
       if(Yv.has(g)){
         l.flow=null,t!=null&&a!=null?bt(g,[],{
           bipCode:m,...w
@@ -10037,7 +10181,26 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         D(LgFoulErr({chainText:`${e.steps.map(t=>It[t]??t).join("→")}${errorCreditNote(e.steps)}`})),l.flow=null,pt();
         return
       }
-      bt("E",[...e.steps],Sr(e)),l.flow=null,pt()
+      if(e.phase==="pick_error"){
+        J("请先点「下一步」选择落点","warning");
+        return
+      }
+      const chain=Array.isArray(e.chain)?[...e.chain]:[];
+      bt("E",[...e.steps],Sr(e),chain.length?{
+        chain
+      }:void 0),l.flow=null,pt()
+    }
+    function nextErrorStep(){
+      const e=l.flow;
+      if(!e||e.type!=="E"||e.phase!=="pick_error")return;
+      if(!e.steps?.length){
+        J("请先点选至少一名失误责任守备员","warning");
+        return
+      }
+      l.flow={
+        type:"BIP_HIT_PENDING",resolveType:"E",errorSteps:[...e.steps],errorMulti:!!e.multiError
+      }
+      ,pt(),J("请拖动或点击守备位置标示球的落点","info")
     }
     function toggleErrorMulti(){
       const e=l.flow;
@@ -10171,9 +10334,23 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(a&&!a.selectRunner&&a.type==="E"){
+        if(a.phase==="chain"){
+          Array.isArray(a.chain)||(a.chain=[]);
+          if(a.chain.length>=hu){
+            J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
+            return
+          }
+          const s={
+            x:Xn.value,y:Yn.value
+          }
+          ,r=ballTargetOf(e)
+          ,C0=a.chain.length;
+          a.chain.push(e),C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),pt();
+          return
+        }
         Array.isArray(a.steps)||(a.steps=[]);
         if(a.multiError&&a.steps.length>=hu&&!a.steps.includes(e)){
-          J(`单次最多记录 ${hu} 名失误责任者，请点「完成记录」或取消`,"warning");
+          J(`单次最多记录 ${hu} 名失误责任者，请点「下一步」或取消`,"warning");
           return
         }
         a.steps=selectErrorFielder(a.steps,e,!!a.multiError);
@@ -11556,7 +11733,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&e!=="DP"&&e!=="TP"&&(t=_i(t));
       const s=(b,w=0)=>pushHitSpray(b,w,a);
-      if(e==="H1"&&$l("H1",1,t,a)||e==="H2"&&$l("H2",2,t,a)||e==="H3"&&$l("H3",3,t,a)||e==="E"&&$l("E",1,t,a)||e==="FC"&&!1||e==="DP"&&Mi("DP",2,t,a)||e==="TP"&&Mi("TP",3,t,a)||e==="BB"&&rr("BB",t,a)||e==="HBP"&&rr("HBP",t,a))return;
+      if(e==="H1"&&$l("H1",1,t,a)||e==="H2"&&$l("H2",2,t,a)||e==="H3"&&$l("H3",3,t,a)||e==="E"&&$l("E",1,t,a,meta?.chain)||e==="FC"&&!1||e==="DP"&&Mi("DP",2,t,a)||e==="TP"&&Mi("TP",3,t,a)||e==="BB"&&rr("BB",t,a)||e==="HBP"&&rr("HBP",t,a))return;
       ["BB","HBP"].includes(e)||de(e==="HR"?"击球结果-HR":e==="IPHR"?"击球结果-IPHR":"击球结果"),beginPlayLedger(),l.flow=null;
       const r=be.value,p=Se.value;
       ue(r),ue(p??void 0);
@@ -11647,11 +11824,22 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       else if(e==="SH")l.outs++,Ipy(),r.stats.batting.sh=(r.stats.batting.sh??0)+1,p?.stats?.pitching&&(p.stats.pitching.pitchSh=(p.stats.pitching.pitchSh??0)+1),Dn(t),recordPlayOut(t,"batterContact"),g="SH",m=`${r.name}: ${Un("SH",t)||"牺牲触击 (SH)"}`,m=Rt(m),s("SH",0);
       else if(e==="E"){
-        const plan=resolveBatterForceAdvance({batterBase:1,runners:l.runners,batter:r});
+        const chain=Array.isArray(meta?.chain)?meta.chain:[],plan=resolveBatterForceAdvance({batterBase:1,runners:l.runners,batter:r});
         applyForcePlanMoves(plan,{runCause:"ERROR",reasonCn:"失误推进",batter:r,pitcher:p}),fn.value||Ge(forcePlanAnimation(plan));
         r.stats.batting.ab=(r.stats.batting.ab??0)+1;
         for(const b of t)creditFieldingError(Vt(b));
-        g="E",m=String(a?.bipCode??"").includes(":sac:e")?y(`${r.name}: 失误 + 牺牲打 (Error + Sac)`):`${r.name}: ${Un("E",t)||"失误 (E) 上垒"}`,m+=errorCreditNote(t),D(m),s("E",0)
+        // 失误传球链（#695）：链上除最后一人外记 A，失误责任者不计 A；链尾不是失误者时记 PO
+        for(const pos of computeErrorChainAssists(t,chain)){
+          const fielder=resolveFieldingCreditTarget(pos,Vt(pos),Se.value);
+          fielder?.stats?.fielding&&(fielder.stats.fielding.a=(fielder.stats.fielding.a??0)+1,accrueFieldingPlay(fielder.stats.fielding,pos,{a:1}))
+        }
+        const chainPutout=computeErrorChainPutout(t,chain);
+        if(chainPutout){
+          const fielder=resolveFieldingCreditTarget(chainPutout,Vt(chainPutout),Se.value);
+          fielder?.stats?.fielding&&(fielder.stats.fielding.po=(fielder.stats.fielding.po??0)+1,accrueFieldingPlay(fielder.stats.fielding,chainPutout,{po:1}))
+        }
+        const chainText=chain.length>1?`${nu(chain)} `:"";
+        g="E",m=String(a?.bipCode??"").includes(":sac:e")?y(`${r.name}: 失误 + 牺牲打 (Error + Sac)`):`${r.name}: ${chainText}${Un("E",t)||"失误 (E) 上垒"}`,m+=errorCreditNote(t),D(m),s("E",0)
       }
       else if(e==="FC"){
         const fc_options=[];
@@ -12738,13 +12926,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         )],64)):c(l).flow?.type==="E"?(h(),C(me,{
           key:1
         }
-        ,[(c(l).flow.steps?.length??0)>0?(h(),Oe(s,{
-          key:0,size:"small",type:"primary",onClick:ic
+        ,[c(l).flow.phase==="chain"?(h(),Oe(s,{
+          key:"err-chain-complete",size:"small",type:"primary",onClick:ic
         }
         ,{
           default:L(()=>[Q(lgText("liveGame.flow.complete"),-1)]),_:1
         }
-        )):W("",!0),(c(l).flow.steps?.length??0)>0?(h(),Oe(s,{
+        )):(c(l).flow.steps?.length??0)>0?(h(),Oe(s,{
+          key:0,size:"small",type:"primary",onClick:c(l).flow.phase==="pick_error"?nextErrorStep:ic
+        }
+        ,{
+          default:L(()=>[Q(lgText(c(l).flow.phase==="pick_error"?"liveGame.flow.nextStep":"liveGame.flow.complete"),-1)]),_:1
+        }
+        )):W("",!0),c(l).flow.phase==="chain"?W("",!0):(c(l).flow.steps?.length??0)>0?(h(),Oe(s,{
           key:1,size:"small",plain:"",onClick:toggleErrorMulti
         }
         ,{

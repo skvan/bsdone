@@ -43,12 +43,15 @@ import com.bsball.repository.GameSubstitutionEventRepository;
 import com.bsball.repository.GameFieldingPosStatRepository;
 import com.bsball.model.entity.GameFieldingPosStat;
 import com.bsball.repository.StadiumRepository;
+import com.bsball.stats.earnedrun.EarnedRunPlay;
 import com.bsball.stats.earnedrun.EarnedRunReconstructionResult;
 import com.bsball.service.query.ScopeQuerySupport;
 import com.bsball.utils.GamePlayerStatZeros;
 import com.bsball.utils.GameStatDeleteDiagnostics;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
@@ -204,15 +207,23 @@ public class GameService {
         return this.gameSnapshotRepository.findSnapshotJsonById(gameId).orElse(null);
     }
 
+    /** 旧调用/测试入口：未声明撤销意图，按默认的空壳拒收口径处理。 */
     @Transactional
     public void saveLiveSnapshot(Long gameId, String json) {
+        this.saveLiveSnapshot(gameId, json, null);
+    }
+
+    @Transactional
+    public void saveLiveSnapshot(Long gameId, String json, Boolean allowEvidenceShrink) {
         Game g = this.gameRepository.findById(gameId).orElse(null);
         if (g == null) {
             return;
         }
         this.assertGameWritable(g);
+        String effective = mergeAndGuardSnapshot(
+                g, json, false, Boolean.TRUE.equals(allowEvidenceShrink));
         if (this.gameSnapshotRepository.updateSnapshotJson(
-                gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
+                gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("快照更新未命中比赛 id={}", gameId);
         }
     }
@@ -232,8 +243,9 @@ public class GameService {
             this.eventRegistrationService.assertLineupSnapshotInRoster(
                     g.getEventId(), g.getHomeTeamId(), g.getAwayTeamId(), json);
         }
+        String effective = this.mergeAndGuardSnapshot(g, json, true, false);
         if (this.gameSnapshotRepository.updateSnapshotJson(
-                gameId, normalizeSnapshotJson(json), CurrentUserHolder.get()) == 0) {
+                gameId, normalizeSnapshotJson(effective), CurrentUserHolder.get()) == 0) {
             log.warn("阵容快照更新未命中比赛 id={}", gameId);
         }
     }
@@ -241,6 +253,264 @@ public class GameService {
     /** 快照空白值统一存 NULL，配合 Game.hasLiveSnapshot 的“非空即存在”口径（Issue #686）。 */
     private static String normalizeSnapshotJson(String json) {
         return json == null || json.isBlank() ? null : json;
+    }
+
+    /**
+     * 现场快照覆盖守门（线上实测 game 261/260）：已出比分的场次被后续存档盖成空壳后，
+     * playEvents 逐棒证据就永久消失，ER 判定与投手 R/ER 再也无法复核（261 的快照在赛后
+     * 第七天被盖成「只剩 2 条、比分 0」，导致 3局下那一分无法追溯）。
+     * base（bdcf518f）上两个快照入口都是裸盖写，守门与合并都是本分支新增的。
+     * <p>三个写入现场都走本入口，形态与处理方式不同：
+     * <ol>
+     * <li>现场页高频自动存档（{@link #saveLiveSnapshot}）：带全套 playEvents 与 teamsData，
+     *     本地状态归零时会推来一份更短的——那种只看下面的得分一道（条数那道按 #713 的拍板放行）。</li>
+     * <li>阵容板草稿（{@code buildLineupDraft}）：只有名单，连 playEvents 都没提到——
+     *     那种走下面的合并保留，既不拦下保存也不丢证据。</li>
+     * <li>阵容板进入录入（{@code startEntry} 与旧板的 bootstrap）：提到一份开局默认值的
+     *     teamsData（双方 0 分、1 局 0 出局）但不提 playEvents。阵容板从不主张比分，
+     *     所以服务器的 teamsData 会被并回去（服务器没有时连 payload 那份 0 分一起删掉）——
+     *     否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份零分本来就不该落库。
+     *     但这层豁免只认从阵容板端点进来的那一路（{@code lineupOnly} 要 lineupWriter 为真）：
+     *     旧板 bootstrap（{@code LiveGameLineup.js} 进录入前那一发）走的是 {@code saveLiveSnapshot}
+     *     即 live 端点，payload 自带一份 0 分的 teamsData 而不带 playEvents，所以已记分场次
+     *     重新从旧板进录入仍会被得分一道拒收（实测它 catch 掉 409 只播
+     *     「初始阵容未同步到服务器，切换页面后可能需要重排阵容」，原因到人眼里就丢了）。
+     *     两道比对都只在服务器已有逐棒记录时存在（见下面 early return），
+     *     其中得分那道会拒收，条数那道只在清空整份证据时拒收——见下文 #713 拍板。</li>
+     * </ol>
+     * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
+     * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
+     * <p>旧快照正文走 {@code GameSnapshotRepository}：Issue #686 后 {@code Game} 实体不再映射
+     * {@code live_snapshot_json}（只剩 @Generated 的 {@code hasLiveSnapshot}，连 setter 都没有），
+     * 所以这里不能直读实体。也没拿那个布尔值做读前短路：它不可测，一旦测试里的 Game 没填充
+     * 该字段，守门会被静默绕过而全绿（假验证）；而本入口同一次呼叫已经带着同尺寸的 incoming
+     * json 在内存里，多一次主键读取不是新的量级。
+     *
+     * <p>返回值是「真正该落库的那一份」：payload 根本没提到的键（playEvents/teamsData/
+     * playEventsComplete）先从服务器现有快照并回来，再跑上面的比对。少了这一步，阵容板那种
+     * 只含名单的 payload 要么被 409 顶回（打过比分的场次不能从阵容板保存），要么放行后把
+     * 逐棒记录擦掉（game 261）——两个结果都错，正解是「你改你的名单，我没提到的部分保持原样」。
+     * 反过来比对也必须拿原 payload，而不是并完之后的正文：并回来的段落是服务器自己的现值，
+     * 它落不落后于记分栏与这次保存无关，拿它当倒退依据会把阵容板重新拦死。
+     * <p>条数那道比对已按 #713 的拍板改成<b>放行</b>：「只增不减」跟撤销/重做正面冲突——历史条目
+     * 本来就把 playEvents 换回更短的一份，实测「录一拍→保存→撤销→保存」推上来的就是较短的那
+     * 一份，于是那场录入会从此锁死（只能恢复云端，等于把撤销这一步变成不可保存）。日志留着
+     * （{@code reason=snapshot_event_count_shrink}，只是不改判据）是为了真出问题时还能统计发生率。
+     * <p>放行时唯一保留的一格：<b>{@code incoming==0 && existing>1} 默认拒收</b>
+     * （{@code reason=snapshot_event_count_wiped}）。把证据清零正是 260/261 那种空壳的终态，
+     * 也是旧设备/旧标签页那份「本地已归零」的存档推上来的形状。
+     * 若这次保存来自撤销/重做后的现场恢复，前端会显式带 {@code allowEvidenceShrink=true}，
+     * 此时放行（{@code reason=snapshot_event_count_wiped_allowed}）——否则整场撤销到 0
+     * 会再次变成不可保存；旧客户端/未标记意图的请求维持拒收。
+     * 注意前端 {@code pa()} 是无条件序列化 {@code playEvents} 的，所以空数组会带着键上来
+     * （{@code mentionsEvidence} 为真），这道比对对它是生效的。
+     * <p>放行的范围是「不丢分、且不清零的撤销」：本地逐棒记录变短而总分仍对得上记分栏时照旧进得去；
+     * 撤销掉一个有分的打席时，本地 teamsData 会跟着变低而记分栏不跟着退，那一发仍会被得分
+     * 一道拒收（本来就该拒：分数发生过，证据不能凭空消失）。
+     * <p>得说清放行了什么：得分一道的证人是记分栏，<b>记分栏还是 0/NULL 的场次（从未按过
+     * 保存比赛，或整场 0:0）它整体不跑</b>，条数那道又已放行（除上面那格清零）——那种场次里，一份
+     * 更短但非空的 payload（旧设备/旧标签页跨会话盖短同一场）不再会被服务端拦下，只剩
+     * {@code reason=} 日志可追。盖掉 261 的那一发恰好记分栏有 24 分且比分主张 0，所以它仍会被
+     * 得分一道拦住，但不能把那个案例当普遍保证。
+     *
+     * @param lineupWriter 该保存来自阵容板端点（只主张名单）。豁免还要 payload 不自带
+     *                     playEvents 才生效：自带证据的请求照旧要过得分交叉验证
+     * @param allowEvidenceShrink 撤销/重做后的显式保存意图，允许把逐棒记录清零；
+     *                            旧客户端/未标记请求为 false，维持空壳拒收
+     */
+    private String mergeAndGuardSnapshot(
+            Game game, String json, boolean lineupWriter, boolean allowEvidenceShrink) {
+        String existingJson = this.gameSnapshotRepository
+                .findSnapshotJsonById(game.getId()).orElse(null);
+        int existingEvents = snapshotPlayEventCount(existingJson);
+        if (existingEvents <= 0) {
+            // 服务器还没有任何逐棒记录（刚建场或纯结果录入）：没有证据可保护，payload 原样落库。
+            // 也就是说下面「没提到的段落保持原样」「阵容板不主张比分」都只对已有记录的场次
+            // 生效；那种场次落库的就是 payload 自己那一份（含开局默认 0 分，与 base 一致）。
+            return json;
+        }
+        // 豁免只看 payload 形状，不看调用方是谁：阵容板两个真实写入者（buildLineupDraft 草稿、
+        // startEntry 的 bootstrap）都只主张名单，最多附带一份开局默认 0 分，绝不带 playEvents。
+        // 「自带一套 playEvents」的请求不是阵容板的形态，即使从阵容板端点进来也要照旧过
+        // 得分交叉验证——否则等于给「等量替换逐棒证据」开一条不比分数的旁路。
+        JsonNode incoming = snapshotReadTree(json);
+        boolean parseable = incoming != null && incoming.isObject();
+        boolean lineupOnly = lineupWriter && parseable && !incoming.has("playEvents");
+        String effective = preserveUnmentionedSections(json, existingJson, existingEvents, lineupOnly);
+        // 两道判定都只看 payload 自己带上的段落。没提到的段落上面已经并回服务器现值，
+        // 拿它去比记分栏等于把服务器快照自己的落后算成这次保存的倒退——阵容板（只送名单）
+        // 正是要放进来的写入者，它连一个分都没提，却会因为旧快照停在第 1 局而被拒。
+        // 解不开（非法 JSON、不是物件）时当作什么都提了：旧快照有记录而 payload 读不出内容
+        // 就是 261 的空壳形态，两道判定照旧都要跑（阵容板也不例外；非法 payload 计 0 条，
+        // 云端 >1 条时也可能命中清零拒收，不是只有得分那道会拦）。
+        boolean mentionsScore = !parseable || (!lineupOnly && incoming.has("teamsData"));
+        boolean mentionsEvidence = !parseable || incoming.has("playEvents");
+        if (mentionsScore) {
+            int officialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+                    + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+            Integer incomingRuns = snapshotRunTotal(json);
+            if (officialRuns > 0 && (incomingRuns == null || incomingRuns < officialRuns)) {
+                // 原因码给日志用（文案会随措辞改，稳定的 key 才能统计发生率，#713）
+                log.warn("[snapshot-guard] reason=snapshot_run_total_regress gameId={} incoming={} official={}",
+                        game.getId(), incomingRuns, officialRuns);
+                throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
+                        + (incomingRuns == null ? "读不出有效比分（payload 不可解析或不含 teamsData）"
+                                : "只到 " + incomingRuns + " 分")
+                        + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
+                        + "用「从云端恢复录入现场」可放弃本地这份回到服务器现状，"
+                        + "确需从头重录请先清空比分或另开新场");
+            }
+        }
+        if (mentionsEvidence) {
+            int incomingEvents = snapshotPlayEventCount(json);
+            if (incomingEvents < existingEvents) {
+                if (incomingEvents == 0 && existingEvents > 1) {
+                    // 放行时唯一保留的一格（#713）：0 条正是 260/261 那种空壳的终态，也是旧设备/
+                    // 旧标签页那份「本地状态已归零」的存档推上来的形状。只有撤销/重做后的现场恢复
+                    // 会显式带 allowEvidenceShrink=true；旧客户端/未标记意图的请求维持拒收。
+                    if (allowEvidenceShrink) {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped_allowed gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                    } else {
+                        log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                        throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
+                                + " 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；"
+                                + "若你刚撤销了全部记录，请从云端恢复录入现场后重新操作；"
+                                + "确需从头重录请另开新场");
+                    }
+                }
+                // 放行（#713 拍板）：撤销后的保存本来就该能把云端带回较短的那一份。
+                // 日志留着：真出现「证据凭空变短」的场次，这条是唯一能统计发生率的入口。
+                log.warn("[snapshot-guard] reason=snapshot_event_count_shrink gameId={} incoming={} existing={}",
+                        game.getId(), incomingEvents, existingEvents);
+            }
+        }
+        return effective;
+    }
+
+    /**
+     * payload 里根本没出现的键，不该被理解成「把它清空」。阵容板（buildLineupDraft）送出的 json
+     * 只有名单，既没 playEvents 也没 teamsData；把这种 payload 当空壳直接顶回，等于任何已经打出
+     * 比分的场次都不能从阵容板保存。这里把服务器现有那几段并进来，让阵容板只改它看得见的东西。
+     * 真正自带一套的 payload（哪怕只有 2 条、得分 0）绝不合并——game 261 就是被那种完整但残缺的
+     * payload 盖掉的，那条路归上面的得分守门管。
+     * <p>{@code playEventsComplete} 必须跟着 playEvents 一起留：它是「这份 playEvents 值不值得信」
+     * 的证书，一丢云端恢复就把本地逐棒记录当成不可信（{@code earnedRunPlayEventsTrusted=false}），
+     * 半局定案的那个兜底从此 no-op——等于从阵容板保存一次，就把 #712 的缺口扩大到本地记录本来
+     * 完整的场次。
+     * <p>{@code lineupOnly}（payload 确实是阵容板形态：不自带 playEvents）还要处理 teamsData：
+     * 阵容板那份永远是开局默认 0（startEntry 的 bootstrap），不是「这场打成 0 分」的陈述。
+     * 服务器有现值就并回来；没有就连 payload 那份 0 分一起删掉——留着它等于把谁都没写过的
+     * 0 分落库，而云端恢复只在 teamsData 存在时才覆盖比分，那份假 0 会一路跟到现场页。
+     */
+    private static String preserveUnmentionedSections(String json, String existingJson,
+            int existingEvents, boolean lineupOnly) {
+        JsonNode incoming = snapshotReadTree(json);
+        JsonNode existing = snapshotReadTree(existingJson);
+        // 解不开（非法 JSON、不是物件）时不改 payload：交给下面两道比对处理，旧行为不抛 NPE 的理由就在这里。
+        if (incoming == null || existing == null || !incoming.isObject() || !existing.isObject()) {
+            return json;
+        }
+        ObjectNode target = (ObjectNode) incoming;
+        // 要在合并之前问：循环会把 playEvents 先并进 target，之后再查 target.has("playEvents")
+        // 会永远为真，「换了证据就不继承旧证书」那条判断就此失真（实测：两例测试红了）。
+        boolean payloadBringsOwnEvidence = target.has("playEvents");
+        boolean merged = false;
+        for (String key : new String[] {"playEvents", "teamsData", "playEventsComplete"}) {
+            JsonNode kept = existing.get(key);
+            boolean mentioned = target.has(key) && !(lineupOnly && "teamsData".equals(key));
+            // 证书跟着证据走：payload 自己换了一整套 playEvents 时，不该把服务器替旧证据
+            // 开的那纸证书并过来（那等于给一份没被任何客户端认证过的证据盖上可信章）。
+            boolean pairsWithEvidence = "playEventsComplete".equals(key) && payloadBringsOwnEvidence;
+            // 只略过「没内容」的容器（playEvents:[]、teamsData:{}）：本项目用的 Jackson 2.21 里
+            // 纯量节点的 isEmpty()/size() 恒为 true/0，直接写 kept.isEmpty() 会把
+            // playEventsComplete:false 当成「没资料」而永远并不回去（实测：测试红了才发现）。
+            boolean nothingToKeep = kept == null || kept.isNull()
+                    || (kept.isContainerNode() && kept.isEmpty());
+            if (mentioned || pairsWithEvidence || nothingToKeep) {
+                if (lineupOnly && "teamsData".equals(key) && !mentioned && target.has(key)) {
+                    target.remove(key);
+                    merged = true;
+                }
+                continue;
+            }
+            target.set(key, kept.deepCopy());
+            merged = true;
+        }
+        if (!merged) {
+            return json;
+        }
+        log.info("快照 payload 未提到 playEvents/teamsData/playEventsComplete，"
+                + "已保留服务器现有值（现有 {} 条逐棒记录）", existingEvents);
+        try {
+            return MAPPER.writeValueAsString(target);
+        }
+        catch (JsonProcessingException ex) {
+            // 并完写不回去就用原 payload：得分那道比对会把它拦下来，不会静默丢证据。
+            return json;
+        }
+    }
+
+    /** 快照里的 playEvents 条数；解不开或无该键都算 0（调用方据此判“无逐棒证据”）。 */
+    private static int snapshotPlayEventCount(String json) {
+        JsonNode root = snapshotReadTree(json);
+        if (root == null) {
+            return 0;
+        }
+        JsonNode events = root.path("playEvents");
+        return events.isArray() ? events.size() : 0;
+    }
+
+    /** 快照已记的得分总数：teamsData 优先，没有就加 playEvents 的 scoreDelta；都拿不到回 null。 */
+    private static Integer snapshotRunTotal(String json) {
+        JsonNode root = snapshotReadTree(json);
+        if (root == null) {
+            return null;
+        }
+        int total = 0;
+        boolean measured = false;
+        JsonNode teams = root.path("teamsData");
+        if (teams.isObject()) {
+            for (JsonNode team : teams) {
+                JsonNode score = team.path("score");
+                if (score.isNumber()) {
+                    total += score.asInt();
+                    measured = true;
+                }
+            }
+        }
+        if (measured) {
+            return Integer.valueOf(total);
+        }
+        JsonNode events = root.path("playEvents");
+        if (!events.isArray()) {
+            return null;
+        }
+        for (JsonNode event : events) {
+            JsonNode delta = event.path("scoreDelta");
+            if (delta.isNumber()) {
+                total += delta.asInt();
+                measured = true;
+            } else if (delta.isObject()) {
+                total += delta.path("away").asInt(0) + delta.path("home").asInt(0);
+                measured = true;
+            }
+        }
+        return measured ? Integer.valueOf(total) : null;
+    }
+
+    /** 快照 JSON 解析：空值/非法内容回 null，调用方先判 null 就不会 NPE。 */
+    private static JsonNode snapshotReadTree(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return MAPPER.readTree(json);
+        }
+        catch (JsonProcessingException ex) {
+            return null;
+        }
     }
 
     public Game create(Game entity) {
@@ -738,6 +1008,11 @@ public class GameService {
         if (operatorId == null) {
             throw new BusinessException(401, "未登录");
         }
+        // 旧客户端不送 halfComplete：视为完整半局，行为与现行一致（不会因后端先上而改口径）
+        boolean halfComplete = !Boolean.FALSE.equals(request.getHalfComplete());
+        if (halfComplete) {
+            assertRebuildCoversRecordedRuns(game, request);
+        }
         Long fieldingTeamId = "top".equals(request.getHalf())
                 ? game.getHomeTeamId()
                 : game.getAwayTeamId();
@@ -748,7 +1023,68 @@ public class GameService {
                 request.getHalf(),
                 operatorId,
                 request.getPlays(),
-                fieldingTeamId);
+                fieldingTeamId,
+                halfComplete);
+    }
+
+    /**
+     * 半局重建完整性守门（线上实测 game 261/235/248）：重建是「整半局替换 + 全场投手层绝对重算」，
+     * 一旦推上来的逐分资料没涵盖记分栏已确认的分数，残缺的分母会把其他投手已经落账的 R 直接砍小，
+     * 同时作废相关投手的人工覆写（261 的崔铉 R 就是这样从 3 掉到 2，逐棒证据又已被快照覆盖丢掉）。
+     * 记分栏是独立证人、判定是它的衍生物，所以只用「重建后全场判定数 < 官方总分」这一个条件设限，
+     * 不看投手统计也不猜哪一场该例外。证人优先用请求携带的本地官方总分（同一次保存里
+     * save-live 尚未落库，撤销/改小本半局得分后服务器记分仍是旧值），缺省用服务器记分栏。
+     * 尚未记分、或本次推送正好补齐分母时完全放行；
+     * 确定在做局部重建的可带 confirmPartialRebuild=true 明确越过，越过后留警告供事后复核。
+     * 判定数含被人工作废的那批（见 countDecisionsForCoverage 的说明）：作废只改「这分怎么算」，
+     * 不改「这分有没有发生」，否则先作废判定、还没改记分的正常顺序会被当成缺笔而永久拒绝保存。
+     */
+    private void assertRebuildCoversRecordedRuns(Game game, EarnedRunHalfInningRequest request) {
+        int serverOfficialRuns = (game.getAwayScore() == null ? 0 : game.getAwayScore())
+                + (game.getHomeScore() == null ? 0 : game.getHomeScore());
+        // 同一次保存里 save-live 还没把新比分落库：客户端带了本地官方总分就用它当证人，
+        // 撤销/改小本半局得分后不会被旧记分误拒；旧客户端缺省仍用服务器记分栏。
+        // 本地 0 分且服务器有分视为「本地比分未载入/未知」，仍用服务器分，防陈旧标签页
+        // 靠一个空 teamsData 直接跳过守门；真撤销到 0 的场次会由 save-live 写低比分后自然放行。
+        int officialRuns = serverOfficialRuns;
+        if (request.getOfficialRuns() != null) {
+            int localRuns = Math.max(0, request.getOfficialRuns().intValue());
+            if (localRuns == 0 && serverOfficialRuns > 0) {
+                officialRuns = serverOfficialRuns;
+            } else {
+                officialRuns = localRuns;
+                if (localRuns < serverOfficialRuns) {
+                    log.warn("[reconstruct-guard] reason=local_official_runs_lower gameId={} local={} server={}",
+                            game.getId(), localRuns, serverOfficialRuns);
+                }
+            }
+        }
+        if (officialRuns <= 0) {
+            return;
+        }
+        int pushedRuns = request.getPlays().stream()
+                .mapToInt(play -> play.scoringRunners().size())
+                .sum();
+        int afterTotal = this.earnedRunReconstructionService.countDecisionsForCoverage(
+                        game.getTenantId(), game.getId())
+                - this.earnedRunReconstructionService.countDecisionsForCoverageOfHalf(
+                        game.getTenantId(), game.getId(), request.getInning(), request.getHalf())
+                + pushedRuns;
+        if (afterTotal >= officialRuns) {
+            return;
+        }
+        if (Boolean.TRUE.equals(request.getConfirmPartialRebuild())) {
+            log.warn("[reconstruct-guard] reason=partial_rebuild_confirmed gameId={} {}{} 为局部重建：判定 {} 低于记分 {}，投手 R/ER 需事后复核",
+                    game.getId(), request.getInning(), request.getHalf(), afterTotal, officialRuns);
+            return;
+        }
+        log.warn("[reconstruct-guard] reason=reconstruct_denominator_short gameId={} {}{} 判定 {} 低于记分 {}",
+                game.getId(), request.getInning(), request.getHalf(), afterTotal, officialRuns);
+        throw new BusinessException(409, "本次重建后全场判定只有 " + afterTotal + " 笔，低于记分栏的 "
+                + officialRuns + " 分，说明推上来的逐分资料没有涵盖已记的分数；而重建会拿这个残缺分母"
+                + "绝对重算全部投手的 R/ER，并作废相关投手的人工覆写（线上 261/235/248 就是这样丢数据的）。"
+                + "请先把其余有得分的半局一并重建补齐，或改用投手 R/ER 人工覆写；"
+                + "确认要做局部重建请带 confirmPartialRebuild=true（录入画面没有这个开关，只能走 API）");
     }
 
     /** Resolves a pending earned-run decision and records the reviewing operator. */

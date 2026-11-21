@@ -392,6 +392,101 @@ test('#694：安打推进移除后，2→4 得分仍可用上一棒内推进（�
   expect(snapshot.playerStatsById['202'].batting.rbi).toBe(1);
 });
 
+test('#695：失误上垒先选失误者，下一步选落点后按 4→3 记录传球链并记助杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await openBipType(page, '滚地球');
+  await clickBipItem(page, '失误');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '下一步' }).click();
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await page.waitForTimeout(500);
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('4-3');
+  expect(log).toContain('一失上垒');
+  expect(snapshot.playerStatsById['103'].fielding.e).toBe(1);
+  expect(snapshot.playerStatsById['104'].fielding.a).toBe(1);
+  expect(snapshot.gameState.runners[1]).toBe(201);
+});
+
+test('#695：失误者不是链尾时，链尾仍记接杀 PO', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await openBipType(page, '滚地球');
+  await clickBipItem(page, '失误');
+  await clickFielder(page, '2B');
+  await page.getByRole('button', { name: '下一步' }).click();
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await page.waitForTimeout(500);
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['104'].fielding.e).toBe(1);
+  expect(snapshot.playerStatsById['104'].fielding.a).toBe(0);
+  expect(snapshot.playerStatsById['103'].fielding.po).toBe(1);
+  expect(snapshot.playerStatsById['103'].fielding.e).toBe(0);
+});
+
+test('#695：满垒失误的被迫得分仍保留传球链助杀', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 1);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 2);
+  await throwBalls(page, 4);
+  await waitForRunnerToken(page, 3);
+  await openBipType(page, '滚地球');
+  await clickBipItem(page, '失误');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '下一步' }).click();
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await expect(page.locator('.hsc-inline__btn--safe')).toBeVisible();
+  await page.locator('.hsc-inline__btn--safe').click();
+  await page.getByRole('button', { name: /不是此雙殺特例/ }).click();
+  await page.getByRole('button', { name: /失誤造成/ }).click();
+  await page.waitForTimeout(500);
+  const snapshot = await saveGame(page, bucket);
+  const log = JSON.stringify(snapshot.eventLog);
+  expect(log).toContain('4-3');
+  expect(snapshot.playerStatsById['103'].fielding.e).toBe(1);
+  expect(snapshot.playerStatsById['104'].fielding.a).toBe(1);
+});
+
+test('#695：失误上垒支持多失误，无传球链可直接完成', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await openBipType(page, '滚地球');
+  await clickBipItem(page, '失误');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: '再记一名失误' }).click();
+  await clickFielder(page, '3B');
+  await page.getByRole('button', { name: '下一步' }).click();
+  await page.waitForTimeout(300);
+  await clickFielder(page, '2B');
+  await page.getByRole('button', { name: '完成记录' }).click();
+  await page.waitForTimeout(500);
+  const snapshot = await saveGame(page, bucket);
+  expect(snapshot.playerStatsById['103'].fielding.e).toBe(1);
+  expect(snapshot.playerStatsById['105'].fielding.e).toBe(1);
+  expect(snapshot.playerStatsById['104'].fielding.a).toBe(0);
+  expect(snapshot.gameState.runners[1]).toBe(201);
+});
+
 test('Issue #527：地滚出局自动推进被迫进垒跑者', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);

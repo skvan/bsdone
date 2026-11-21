@@ -17,8 +17,8 @@ test('LiveGame 引入 accrueFieldingPlay 与投手记账目标解析', () => {
 test('DH 制仅守备投手：所有 PO/A/E 记账目标先解析到活体投手', () => {
   assert.equal(
     live.split('resolveFieldingCreditTarget(').length - 1,
-    9,
-    '应为 Dn/chain/双杀参与/失误/三振捕手/三振野手/牵制/接杀回传/盗垒死 共 9 处解析'
+    13,
+    '应为 Dn/chain/双杀参与/失误/失误传球链助杀与接杀（普通/满垒各一处）/三振捕手/三振野手/牵制/接杀回传/盗垒死 共 13 处解析'
   );
   assert.equal(
     live.split('resolveFieldingCreditTarget(r.pos,Hn.value.find(a=>a.position===r.pos),Se.value)').length - 1,
@@ -30,6 +30,22 @@ test('DH 制仅守备投手：所有 PO/A/E 记账目标先解析到活体投手
     '双杀参与守备员未解析投手目标'
   );
   assert.ok(live.includes('resolveFieldingCreditTarget(player.position,player,Se.value)'), '失误未解析投手目标');
+  assert.ok(
+    live.includes('resolveFieldingCreditTarget(pos,Vt(pos),Se.value)'),
+    '失误传球链助杀未解析投手目标'
+  );
+  assert.ok(
+    live.includes('resolveFieldingCreditTarget(chainPutout,Vt(chainPutout),Se.value)'),
+    '失误传球链接杀未解析投手目标'
+  );
+  assert.ok(
+    live.includes('resolveFieldingCreditTarget(pos,Vt(pos),s)'),
+    '满垒失误传球链助杀未解析投手目标'
+  );
+  assert.ok(
+    live.includes('resolveFieldingCreditTarget(chainPutout,Vt(chainPutout),s)'),
+    '满垒失误传球链接杀未解析投手目标'
+  );
   assert.ok(live.includes('resolveFieldingCreditTarget("C",Vt("C"),Se.value)'), '三振捕手未解析目标');
   assert.ok(
     live.includes('resolveFieldingCreditTarget(fielderCode,Vt(String(fielderCode).trim().toUpperCase()),Se.value)'),
