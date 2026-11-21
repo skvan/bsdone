@@ -22,10 +22,12 @@ test('“未进垒”选项全部移除，拖拽后退改为安全回垒', () =>
 });
 
 test('安打/失误/捕逸确认队列只包含强迫回本垒跑者', () => {
-  const body = sliceBetween('function $l(e,t,a,s){', 'function rr(e,t,a){');
+  const body = sliceBetween('function $l(e,t,a,s,chain){', 'function rr(e,t,a){');
   assert.match(body, /resolveBatterForceAdvance\(\{batterBase:t,runners:l\.runners,batter:be\.value\}\)/);
   assert.match(body, /if\(!plan\?\.homeRunners\?\.length\)return!1/);
   assert.match(body, /startForceQueue\(plan,outcomes=>dp\(context,outcomes\)\)/);
+  assert.match(body, /Array\.isArray\(chain\)&&chain\.length\?\{\s*chain\s*\}/, '满垒失误的传球链应随 context 传给 dp');
+  assert.match(source, /\$l\("E",1,t,a,meta\?\.chain\)/, '失误上垒应把链传给强迫回本垒队列');
   assert.ok(!body.includes('$s(t,l.runners)'), '不再按安打垒数收集全部跑者');
   assert.ok(!body.includes('fu(t,l.runners'), '不再使用 fu 全体推进预览');
 });
