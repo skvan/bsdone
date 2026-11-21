@@ -129,3 +129,55 @@ test('LiveGame 接线：使用判定/过滤函数、记 E 置位、投球/换局
   assert.match(src, /O\.playPbCredited=pe\.playPbCredited\?\?!1/, '历史快照恢复未还原捕逸标记');
   assert.match(src, /playErrorCredited:!1,playWpCredited:!1,playPbCredited:!1/, '初始状态缺少标记');
 });
+
+// #697：同一 play 已记失误时，「同一play内失误推进」只负责跑者进垒，不再二次点选失误守备员。
+test('LiveGame 接线：#697 同一play内失误推进直接完成进垒', () => {
+  const src = fs
+    .readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  const body = (start, end) => {
+    const s = src.indexOf(start);
+    const e = src.indexOf(end, s);
+    assert.ok(s >= 0 && e > s, `缺少代码段 ${start}`);
+    return src.slice(s, e);
+  };
+
+  const spBody = body('function Sp(e){', 'function kp(e){');
+  assert.match(spBody, /if\(e\.id==="safe_same_err"&&l\.playErrorCredited\)\{/, '缺少已记失误时直接进垒的分支');
+  const shortCircuit = spBody.slice(
+    spBody.indexOf('if(e.id==="safe_same_err"&&l.playErrorCredited)'),
+    spBody.indexOf('if(zd.has(e.id)&&!samePlayWpPb)')
+  );
+  assert.ok(shortCircuit.length > 0, '直接进垒分支应位于原失误流程之前');
+  assert.ok(shortCircuit.includes('advanceFeStep:"pick_target"'), '不应再进入点人步骤');
+  assert.ok(!shortCircuit.includes('pick_fielder'), '已记失误时不得进入 pick_fielder');
+  assert.ok(!shortCircuit.includes('errorPos'), '不再传递失误位置');
+  assert.ok(!shortCircuit.includes('J(lu('), '不再提示点选失误责任守备员');
+  assert.ok(shortCircuit.includes(',lc(r);'), '应直接用拖拽目标垒完成进垒');
+  assert.ok(!shortCircuit.includes('creditFieldingError'), '直接进垒不得再记失误（E 不重复计）');
+  assert.ok(!shortCircuit.includes('errorCreditNote'), '直接进垒不得追加失误说明');
+
+  // 其他 zd 原因与 WP/PB 承接保持原状
+  assert.ok(spBody.includes('if(zd.has(e.id)&&!samePlayWpPb){'), '其他失误原因仍走点人流程');
+  assert.ok(spBody.includes('J(lu(e.id));'), '其他失误原因仍提示点选责任守备员');
+  assert.ok(spBody.includes('const samePlayWpPb=e.id==="safe_same_err"&&!l.playErrorCredited'), 'WP/PB 承接分支被改动');
+  assert.ok(spBody.includes('同一play内暴投推进') && spBody.includes('同一play内捕逸推进'), 'WP/PB 承接日志来源缺失');
+
+  // lc：无失误位置时放行 safe_same_err，日志复用菜单文案、不拼守备位置
+  const lcBody = body('function lc(e){', 'function ic(){');
+  assert.ok(lcBody.includes('t.errorPos==null&&t.advanceFeReasonId!=="safe_same_err"'), '无 errorPos 时未放行 safe_same_err');
+  assert.ok(lcBody.includes('t.errorPos==null?(t.advanceFeReasonCn??"失误推进")'), '无位置日志未复用菜单文案（不得拼守备位置）');
+  assert.ok(lcBody.includes(':iu(t.advanceFeReasonId,y)'), '有位置日志未保留原失误明细');
+  assert.ok(lcBody.includes('Je("ADVANCE_FE"'), '进垒事件类型应保持 ADVANCE_FE');
+  assert.ok(lcBody.includes('t.errorPos!=null?It[t.errorPos]??t.errorPos:null'), '有位置路径未保留原失误明细');
+
+  // 上版按位置复用的状态必须已彻底移除
+  assert.ok(!src.includes('playErrorPos'), '不应保留 playErrorPos 状态');
+
+  // 英文文案复用既有映射，不新增 i18n key
+  const logTexts = fs
+    .readFileSync(new URL('../src/utils/liveGameLogTexts.js', import.meta.url), 'utf8')
+    .replace(/\r\n/g, '\n');
+  assert.match(logTexts, /"同一play内失误推进":\s*"Advanced on same-play error"/, '缺少英文映射：同一play内失误推进');
+  assert.match(logTexts, /"同一失误推进":\s*"Advanced on same error"/, '缺少英文映射：同一失误推进');
+});
