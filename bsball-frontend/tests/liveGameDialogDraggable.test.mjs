@@ -7,19 +7,20 @@ import { bindLastMessageBoxTouchDrag, bindMessageBoxTouchDrag } from '../src/uti
 
 const liveGame = fs.readFileSync(new URL('../src/views/admin/LiveGame.js', import.meta.url), 'utf8');
 
-test('12 个实时录入 MessageBox 入口统一经 LgBox/LgConfirm 接入触屏拖动', () => {
+test('14 个实时录入 MessageBox 入口统一经 LgBox/LgConfirm 接入触屏拖动', () => {
   assert.match(liveGame, /import\s*\{[^}]*bindLastMessageBoxTouchDrag[^}]*\}\s*from\s*'\.\.\/\.\.\/utils\/messageBoxTouchDrag'/);
   assert.match(liveGame, /function LgBox\(/, '缺少对象式 MessageBox 包装');
   assert.match(liveGame, /function LgConfirm\(/, '缺少确认式 MessageBox 包装');
 
   const wrappers = liveGame.match(/\bLgBox\(|\bLgConfirm\(/g) || [];
-  assert.equal(wrappers.length, 14, '应为 2 个包装定义 + 12 个弹窗入口');
+  // 2 个包装定义 + 12 个既有入口 + #712 缺口提示/局部定案 2 个入口
+  assert.equal(wrappers.length, 16, '应为 2 个包装定义 + 14 个弹窗入口');
   assert.equal((liveGame.match(/bindLastMessageBoxTouchDrag\(\)/g) || []).length, 2, '两个包装都必须调用触摸绑定');
   assert.equal((liveGame.match(/\bal\(\{/g) || []).length, 0, '对象式入口必须走 LgBox');
   assert.equal((liveGame.match(/\bal\.confirm\(/g) || []).length, 1, '确认式入口必须走 LgConfirm');
   assert.match(liveGame, /function LgBox\([\s\S]*?al\(options\)/);
   assert.match(liveGame, /function LgConfirm\([\s\S]*?al\.confirm\(message,title,options\)/);
-  assert.equal((liveGame.match(/draggable:!0/g) || []).length, 12, '12 个入口仍需启用原生鼠标拖动');
+  assert.equal((liveGame.match(/draggable:!0/g) || []).length, 14, '14 个入口仍需启用原生鼠标拖动');
 });
 
 test('触摸拖动实际派发 mousedown/mousemove/mouseup', () => {

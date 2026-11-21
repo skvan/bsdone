@@ -23,6 +23,7 @@ package com.bsball.core;
 import com.bsball.common.Result;
 import com.bsball.exception.BusinessException;
 import com.bsball.exception.UnauthorizedException;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.slf4j.Logger;
@@ -61,6 +62,9 @@ public class GlobalExceptionHandler {
         };
         Result<Object> r = Result.fail((String)e.getMessage());
         r.setCode(code);
+        if (e.getReason() != null) {
+            r.setData(Map.of("reason", e.getReason()));
+        }
         return ResponseEntity.status((HttpStatusCode)status).body(r);
     }
 

@@ -268,7 +268,8 @@ EventService --> EventRepository
 - POST /game/{id}/live-snapshot
   - 作用：保存实时快照
   - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
-  - 撤销清零（Issue #713）：可选 `allowEvidenceShrink`（布尔，缺省 false）。撤销/重做后的现场保存由前端显式带 true，允许把逐棒记录清零；旧设备/未标记意图的本地归零存档仍返回 409。仅清零受此开关影响，变短的非空 payload 始终放行，得分低于记分栏仍拒收。
+  - 撤销/证据变短（Issue #713）：可选 `allowEvidenceShrink`（布尔，缺省 false）。撤销/重做后的现场保存由前端显式带 true，允许把逐棒记录变短（含清零）；旧设备/陈旧标签页未标记意图的短档一律返回 409（`reason=snapshot_event_count_shrink_without_intent`）。得分低于记分栏仍拒收（`reason=snapshot_run_total_regress`）。拒收响应体带 `data.reason` 稳定原因码，前端据此映射 5 语种文案，无映射时回退 `msg`。
+  - 日志 reason 键（#713 起）：`snapshot_event_count_shrink`（带意图放行）、`snapshot_event_count_shrink_without_intent`、`snapshot_event_count_wiped`（清零形状，兼容旧检索）、`snapshot_run_total_regress`；重建守门为 `reconstruct_guard_partial_denominator` 与 `reconstruct_guard_local_score_lower`（旧键 `reconstruct_denominator_short`/`local_official_runs_lower` 已停用）。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛
@@ -291,12 +292,17 @@ EventService --> EventRepository
 - POST /game/{id}/earned-runs/reconstruct
   - 作用：全量替换并重建指定半局的 ER/UER 判定，返回逐分结果与责任投手汇总
   - 请求：`inning`、`half`（`top`/`bottom`）及按 `sequence` 严格递增的完整 `plays` 列表
-  - 完整性守门（Issue #714）：可选 `officialRuns`（客户端当前官方总分）。同一次保存里 `save-live` 尚未落库时用它作证人，撤销/改小本半局得分后不会被旧记分误拒；缺省沿用服务器记分栏。本地为 0 且服务器有分时视为未载入，仍按服务器分守门；本地低于服务器会留 `local_official_runs_lower` 日志。
+  - 完整性守门（Issue #714）：可选 `officialRuns`（客户端当前官方总分）。同一次保存里 `save-live` 尚未落库时用它作证人，撤销/改小本半局得分后不会被旧记分误拒；缺省沿用服务器记分栏。本地为 0 且服务器有分时视为未载入，仍按服务器分守门；本地低于服务器会留 `reconstruct_guard_local_score_lower` 日志。
+  - 局部重建（Issue #713）：可选 `confirmPartialRebuild`（布尔，缺省 false）。重建后判定数低于记分栏时默认 409（`reason=reconstruct_guard_partial_denominator`）；明确做局部重建时带 true 越过，留 `partial_rebuild_confirmed` 警告供赛后复核。
   - 判定输入：得分跑者可携带 `wouldScoreWithoutMisplay`（布尔，可空）——记录员对「若没有捕逸等防守失误，该跑者是否仍会得分」的判断；传 `null` 或省略时，捕逸得分保留为 `PENDING` 待人工覆核
   - 注意：该接口不是增量追加；判决待定时应传 `rulingPending=true`，结果会保留为 `PENDING`
   - 累计：按该半局新旧判定差额同步更新责任投手的 `pitchR`、`er`、`unearnedR` 与 `pendingR`，重放不会重复累计；责任投手统计列不存在时自动补建（teamId 取该半局守备方）
   - 响应新增 `pitcherAbsoluteTotals`：每投手应用本次差额后的库内绝对 R/ER/UER/PENDING；前端只覆盖、不累加。旧响应缺少该字段时前端不做本地 ER 变更
   - 权限：沿用比赛写入权限、租户隔离与赛事数据范围校验
+- GET /game/{id}/earned-runs/play-keys
+  - 作用（Issue #712）：返回该场已落库的定案打席键，供前端重进时校验本地快照是否覆盖云端记录
+  - 响应：`{ keys: [{ inning, half, sequence, sourceEventId }] }`；只返回 `sourceEventId` 非空的已落库行，按局/半局/序升序
+  - 口径：`sourceEventId` 与前端 `toEarnedRunPlay(event).playId` 同源（`inning*1000000 + half*500000 + sequence`）；空集合表示该场还没有落库定案，前端视为无可校验。只读，无副作用
 - GET /game/{id}/earned-runs/decisions
   - 作用：查询该场逐分判定，含半局/跑者/原始责任投手/有效责任投手/人工调整信息
   - 响应新增：`effectivePitcherId/effectivePitcherName`、`adjustmentId/adjustmentAction/adjustmentReason`、`voided`

@@ -3388,6 +3388,28 @@
       "orderNo": "第{n}棒",
       "playerFallback": "隊員",
       "currentEvent": "當前賽事"
+    },
+    "snapshotKeys": {
+      "top": "上",
+      "bottom": "下",
+      "halfGap": "第 {inning} 局{half}，缺 {count} 筆",
+      "gapSeparator": "；",
+      "verifyFailed": "無法校驗快照完整性：{reason}。本場半局定案將暫停，請賽後在自責分複核裡人工確認",
+      "verified": "已依雲端定案記錄校驗本地快照：{count} 筆記錄覆蓋完整，儲存後將恢復自動定案",
+      "gapTitle": "本地快照與雲端定案不一致",
+      "gapMessage": "雲端已有本地缺失的定案記錄：{detail}。可以放棄本地這份回到伺服器現狀，或依本地記錄局部定案當前半局（投手 R/ER 需賽後複核）。",
+      "restoreFromCloud": "從雲端恢復錄入現場",
+      "partialRebuild": "依本地記錄局部定案",
+      "gapLater": "稍後處理",
+      "partialConfirmTitle": "依本地記錄局部定案",
+      "partialConfirmMessage": "將以本地不完整記錄重建當前半局（第 {inning} 局{half}），投手 R/ER 需賽後複核。是否繼續？",
+      "partialConfirmOk": "繼續定案",
+      "partialDone": "已依本地記錄定案當前半局；其餘缺口請賽後複核或從雲端恢復",
+      "reason": {
+        "runTotalRegress": "雲端已有逐棒記錄，提交的快照得分低於記分欄，已拒絕覆蓋。請用「從雲端恢復錄入現場」或先清空比分再來",
+        "shrinkWithoutIntent": "雲端逐棒記錄比本地多，本次儲存未帶撤銷/重做意圖，已拒絕覆蓋。若是撤銷後儲存，請重新整理頁面後再試；或用「從雲端恢復錄入現場」",
+        "partialDenominator": "本次重建後的判定數低於記分欄，可能是逐分資料殘缺，已拒絕重建。請補齊其餘半局或改用投手 R/ER 人工覆寫"
+      }
     }
   },
   "gameResultFielding": {

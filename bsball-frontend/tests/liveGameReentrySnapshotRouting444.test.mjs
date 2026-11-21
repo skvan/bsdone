@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { snapshotGuardReasonKey } from '../src/domain/earnedRun/snapshotGuardMessage.js';
 
 const SRC_PATH = process.env.LIVEGAME_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js');
@@ -30,22 +31,23 @@ assert(start >= 0 && end > start, '找不到 snapshotSyncFailed..ZrLite 区间�
 const code = 'let allowEvidenceShrink=false;\n' + src.slice(start, end).trimEnd();
 
 // Zr 依赖：R(比赛id ref)、F(可录入 flag)、Tn/to(存前刷新)、pa(构造快照对象)、Fe(消息)、ma(api)
-const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma', 'lgText',
+const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma', 'lgText', 'snapshotGuardReasonKey',
   'return (function(){' + code + '\nreturn {Zr, pushLiveSnapshot, getFlag: () => snapshotSyncFailed};})()');
 
 /** 造一个可控的 saveLiveSnapshot：state.failRemaining>0 时抛错并自减（可中途切换模拟恢复）
  *  businessFail 给定时改抛「带 apiCode 的业务错误」（businessCode 缺省 409）——后端快照覆盖
  *  守门的 409 就是这个形状（GlobalExceptionHandler 把 BusinessException 包成 HTTP 200 +
  *  body.code，request.js 再抛 ApiBizError），E2E 之外在这里钉一层。 */
-function ctx({ failRemaining = 0, canSave = true, businessFail = null, businessCode = 409 } = {}) {
+function ctx({ failRemaining = 0, canSave = true, businessFail = null, businessCode = 409, businessReason = null } = {}) {
   const calls = { save: 0, warn: 0, err: 0 };
-  const state = { failRemaining, businessFail, businessCode };
+  const state = { failRemaining, businessFail, businessCode, businessReason };
   const ma = {
     saveLiveSnapshot: async () => {
       calls.save++;
       if (state.businessFail) {
         const error = new Error(state.businessFail);
         error.apiCode = state.businessCode;
+        error.apiReason = state.businessReason;
         throw error;
       }
       if (state.failRemaining > 0) { state.failRemaining--; throw new Error('network'); }
@@ -65,7 +67,7 @@ function ctx({ failRemaining = 0, canSave = true, businessFail = null, businessC
     Fe,
     ma,
   };
-  const api = make(env.R, env.F, env.Tn, env.to, env.pa, env.Fe, env.ma, (key) => key);
+  const api = make(env.R, env.F, env.Tn, env.to, env.pa, env.Fe, env.ma, (key) => key, snapshotGuardReasonKey);
   return { api, calls, state };
 }
 
@@ -134,8 +136,6 @@ test('#713 pushLiveSnapshot：服务器点名拒收（409）时不重试，重�
 });
 
 test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换人在场状态会丢失」顶掉', async () => {
-  // 文案取现在唯一还会发生的拒收形状（得分倒退）：条数那道已于 #713 拍板放行，
-  // 拿它当样本会让这份测试读起来像在描述一条已经不存在的 409。
   const msg = '本场比赛已有逐棒记录，提交的快照得分只到 2 分，低于记分 24 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状';
   const { api, calls } = ctx({ businessFail: msg });
   await api.Zr();
@@ -143,6 +143,17 @@ test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换�
   assert.equal(calls.err, 1, '拒收走 error 通道（它是服务器确定的决定，不是可重试的暂态）');
   assert.equal(calls.lastError, msg, '原因要原样到人眼里，因为下一步动作就写在里面');
   assert.equal(calls.warn, 0, '不能再被那句无关的通用文案顶掉');
+});
+
+test('#713 Zr：带稳定 reason 的 4xx 用本地化文案 key，不再直接播中文 msg', async () => {
+  const { api, calls } = ctx({
+    businessFail: '本场比赛云端已有 3 条逐棒记录，提交的快照只有 1 条，且未带撤销/重做意图',
+    businessReason: 'snapshot_event_count_shrink_without_intent'
+  });
+  await api.Zr();
+  assert.equal(calls.err, 1);
+  assert.equal(calls.lastError, 'liveGame.snapshotKeys.reason.shrinkWithoutIntent',
+    'reason 有映射时按 5 语种文案播报（测试里 lgText 原样返回 key）');
 });
 
 test('#713 Zr：拒收转成功后要清掉原因，之后的真故障回到通用文案而不是旧拒收词', async () => {

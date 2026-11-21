@@ -19,6 +19,8 @@ import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
 import { resolveAssetUrl as resolveUploadUrl } from '../../api/request';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
+import { findMissingPlayKeys } from '../../domain/earnedRun/snapshotKeyCoverage';
+import { snapshotGuardReasonKey } from '../../domain/earnedRun/snapshotGuardMessage';
 import { applyAbsolutePitcherTotals } from '../../domain/earnedRun/pitcherTotals';
 import { decideRbiForRun, isDoublePlayThrowingErrorException } from '../../domain/liveGameRbi';
 import { createRunLedger, beginPlay, addRun, voidCurrentPlayRuns, takeAllRuns, clearRuns, advanceOrigin, runOrigin } from '../../utils/liveGameRunLedger';
@@ -7435,6 +7437,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       // 不变性），所以延后入库不会改变任何判定结果，只是不再每个打席撕一次人工介入。
       // 不送该选项的调用点（保存、换局、补台账）一律视为半局定案。
       const halfComplete=options.halfComplete!==false;
+      let succeeded=!0;
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
         const gameId=Number(R.value);
         if(!gameId||!event)return;
@@ -7442,7 +7445,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!plays.length&&!options.allowEmpty)return;
         try{
           const localOfficialRuns=(Number(f.teamsData?.home?.score)||0)+(Number(f.teamsData?.away?.score)||0);
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns});
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns,...options.confirmPartialRebuild?{
+            confirmPartialRebuild:!0
+          }
+          :{
+            
+          }});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
           // 半局定案会把该半局责任投手的人工 R/ER 覆写作废（后端 invalidateActiveOverrides），
@@ -7459,11 +7467,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           noticeEarnedRunIssue.reset();
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
+          succeeded=!1;
           // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
           // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
           // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
-          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`);
+          // 有稳定 reason 的按 5 语种文案说（#713），没有的回退服务器 msg。
+          const reasonKey=snapshotGuardReasonKey(error?.apiReason);
+          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${reasonKey?lgText(reasonKey):error?.message||String(error)}`);
         }
+        return succeeded
       });
       return earnedRunSyncPending;
     }
@@ -7535,6 +7547,116 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 整个入场只提一次上面那条（保存/换局/强制换局都会走 resync）
     let settleSkipNoticed=!1;
+    // #712：重进加载后用云端已落库的定案打席键校验本地快照是否覆盖完整。
+    // 证书（playEventsComplete）缺失时后端不认这份 playEvents 可信，半局定案会整个 no-op；
+    // key 覆盖关系可以替代证书：云端每个已定案打席都能在本地找到 → 恢复信任，
+    // 下一次保存把 playEventsComplete=true 写回去（证书自愈）。服务器没有 key 视为无可校验。
+    let earnedRunKeyGap=null,earnedRunKeyVerifyNoticed=!1,earnedRunKeyGapNoticed=!1;
+    function halfLabel(half){
+      return half==="bottom"?lgText("liveGame.snapshotKeys.bottom"):lgText("liveGame.snapshotKeys.top")
+    }
+    function describeEarnedRunKeyGap(gap){
+      return (gap?.byHalf??[]).map(item=>lgText("liveGame.snapshotKeys.halfGap",{
+        inning:item.inning,half:halfLabel(item.half),count:item.count
+      })).join(lgText("liveGame.snapshotKeys.gapSeparator"))
+    }
+    async function verifyEarnedRunPlayKeysCoverage(options={}){
+      if(!R.value||earnedRunPlayEventsTrusted)return earnedRunKeyGap;
+      const localEvents=Array.isArray(f.playEvents)?f.playEvents:[];
+      // 本地没有逐棒记录：没有可校验的输入，保持现有行为（设计 3.2 第 4 条）
+      if(localEvents.length===0){
+        earnedRunKeyGap=null;
+        return null
+      }
+      let serverKeys;
+      try{
+        serverKeys=await ma.listEarnedRunPlayKeys(R.value)||[]
+      }
+      catch(error){
+        // 端点失败不静默：保持不可信，并把原因留给人看（设计 3.2 第 3 条）
+        earnedRunKeyGap={
+          verifyError:error?.apiReason||error?.message||String(error),missing:[],byHalf:[]
+        };
+        earnedRunKeyVerifyNoticed||(earnedRunKeyVerifyNoticed=!0,Fe.warning({
+          message:lgText("liveGame.snapshotKeys.verifyFailed",{
+            reason:earnedRunKeyGap.verifyError
+          }
+          ),duration:8000
+        }
+        ));
+        return earnedRunKeyGap
+      }
+      const {missing,byHalf}=findMissingPlayKeys(serverKeys,localEvents);
+      if(missing.length===0){
+        earnedRunKeyGap=null;
+        // 空集合表示该场还没有落库定案，不额外信任（设计 3.2 第 4 条）
+        if(serverKeys.length>0){
+          earnedRunPlayEventsTrusted=!0,settleSkipNoticed=!1,options.notify&&Fe.info({
+            message:lgText("liveGame.snapshotKeys.verified",{
+              count:serverKeys.length
+            }
+            ),duration:6000
+          }
+          )
+        }
+        return null
+      }
+      earnedRunKeyGap={
+        verifyError:null,missing,byHalf
+      };
+      options.notify&&await promptEarnedRunKeyGap();
+      return earnedRunKeyGap
+    }
+    // 缺口提示：云端有、本地缺的定案打席。两个出路按设计 3.3：
+    // ① 从云端恢复录入现场（放弃本地短档）；② 按本地记录局部定案（仅当前半局本地有事件时）。
+    async function promptEarnedRunKeyGap(){
+      if(!earnedRunKeyGap?.missing?.length||earnedRunKeyGapNoticed)return;
+      earnedRunKeyGapNoticed=!0;
+      const half={inning:l.inning,half:l.isTop?"top":"bottom"};
+      const canPartial=f.playEvents.some(play=>play.inning===half.inning&&play.half===half.half);
+      const detail=describeEarnedRunKeyGap(earnedRunKeyGap);
+      try{
+        await LgConfirm(lgText("liveGame.snapshotKeys.gapMessage",{
+          detail
+        }
+        ),lgText("liveGame.snapshotKeys.gapTitle"),{
+          confirmButtonText:lgText("liveGame.snapshotKeys.restoreFromCloud"),cancelButtonText:canPartial?lgText("liveGame.snapshotKeys.partialRebuild"):lgText("liveGame.snapshotKeys.gapLater"),type:"warning",distinguishCancelAndClose:!0,draggable:!0
+        }
+        );
+        await bc({
+          skipConfirm:!0
+        })
+      }
+      catch(action){
+        if(action!=="cancel"||!canPartial)return;
+        try{
+          await LgConfirm(lgText("liveGame.snapshotKeys.partialConfirmMessage",{
+            inning:half.inning,half:halfLabel(half.half)
+          }
+          ),lgText("liveGame.snapshotKeys.partialConfirmTitle"),{
+            confirmButtonText:lgText("liveGame.snapshotKeys.partialConfirmOk"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+          }
+          )
+        }
+        catch{
+          return
+        }
+        // 用户显式选择「保留本地短档」：这本身就是覆盖云端的意图，等同撤销/重做后的授权。
+        // 只有在重建成功后才置位——重建失败时本地记录并没有被定案，不能让后续保存
+        // 拿着「可以截短」的意图去覆盖云端。
+        const settled=await syncEarnedRunHalfInning(half,{
+          allowEmpty:!0,confirmPartialRebuild:!0
+        }
+        );
+        if(!settled)return;
+        allowEvidenceShrink=!0;
+        earnedRunKeyGap=null;
+        Fe.info({
+          message:lgText("liveGame.snapshotKeys.partialDone"),duration:8000
+        }
+        )
+      }
+    }
     const es=new WeakMap;
     function ua(e){
       nt()||requestAnimationFrame(()=>{
@@ -7778,10 +7900,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // 存了统计却没同步快照时，_c()/bc() 在跨设备/清缓存重进会取不到快照、回退 Do()
     // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：可能被
     // 重试救回来的失败（网络、5xx、429 限流）先重试一次，仍失败提示一次（不阻断录入本身）；
-    // 服务器点名拒收（快照覆盖守门的 409）不重试，直接把服务器给的原因抬到人前（#713）。
+    // 服务器点名拒收（快照覆盖守门 409、400/403 权限/校验；429/401 除外）不重试，
+    // 直接把服务器给的原因抬到人前（#713）。
     // 提示按「这一次要播的话」去重，而不是按「本场是否已经失败过一次」：同一句不刷屏，
     // 内容换了（先抖动、后拒收）就必须看得见；成功后清脏标与已播记录，下次真故障能重新提示。
     let snapshotSyncFailed=!1,snapshotSyncReason=null,snapshotNoticeShown=null;
+    // 后端稳定原因码 → 本地化文案（#713）：文案可以改，reason 不变；不认识的原因码回退服务器 msg。
+    function snapshotSyncMessage(error){
+      const key=snapshotGuardReasonKey(error?.apiReason);
+      return key?lgText(key):error?.message||String(error)
+    }
     async function pushLiveSnapshot(e){
       const body=JSON.stringify(e);
       // 原因说的是「这一发为什么没进去」：每次进来先清掉，免得拿上一拍的拒收话解释这一拍的故障
@@ -7795,12 +7923,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return !0
         }
         catch(error){
-          // 只认 409：那是快照覆盖守门点名拒收（本项目 BusinessException 走 HTTP 200 + body.code，
-          // request.js 再包成带 apiCode 的 ApiBizError），重试只会再撞一次、多白花 800ms，再把原因
-          // 拖成下面那句「未能同步」的误导文案。其余 4xx 不敢当拒收：RateLimitFilter 对这个端点真会
-          // 回 429「请稍后再试」（重试才是对的），401 走会话重登，所以都留着原来的重试兜底。
-          if(error?.apiCode===409){
-            snapshotSyncReason=error.message||String(error);
+          // 4xx 里只有 429（限流）和 401（会话重登）值得重试；其余（409 守门、400/403 权限/
+          // 校验）重试只会再撞一次、多白花 800ms，还把原因拖成下面那句「未能同步」的误导文案。
+          // 直接把服务器原因抬到人前；有稳定 reason 的按 5 语种映射，没有的回退服务器 msg（#713）。
+          const code=error?.apiCode;
+          if(typeof code==="number"&&code>=400&&code<500&&code!==429&&code!==401){
+            snapshotSyncReason=snapshotSyncMessage(error);
             return !1
           }
           if(attempt===0)await new Promise(rr=>{
@@ -12358,19 +12486,22 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       fieldingIpReconcileEnabled=!(r?.list??[]).some(s=>Number(s.defInn)>0);
       Gl(e)
     }
-    async function bc(){
+    async function bc(options={}){
       if(!R.value||Be.value)return;
-      try{
-        await LgConfirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
-          confirmButtonText:lgText("liveGame.restore.confirmContinue"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+      if(!options.skipConfirm){
+        try{
+          await LgConfirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
+            confirmButtonText:lgText("liveGame.restore.confirmContinue"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+          }
+          )
         }
-        )
-      }
-      catch{
-        return
+        catch{
+          return
+        }
       }
       const e=R.value;
       Be.value=!0;
+      let restoredSnapshot=!1;
       try{
         const t=Yo(await ma.getLiveSnapshot(e));
         earnedRunPlayEventsTrusted=t?.playEventsComplete===true;
@@ -12390,31 +12521,32 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           await Vl(t,b),F.value=!0,Gl(e),jt({
             persistCache:"immediate"
           }
-          ),Fe.success(lgText("liveGame.restore.snapshotRestored")),Tn();
-          return
+          ),Fe.success(lgText("liveGame.restore.snapshotRestored")),Tn(),restoredSnapshot=!0
         }
-        const a=await ma.get(e);
-        if(!a||a.status!=="live"){
-          J(lgText("liveGame.restore.cannotContinue"),"warning");
-          return
-        }
-        N.value=a.gameMode??"BASEBALL",_.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"";
-        const[s,r,p]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e)]);
-        await Do(e,a,s,r,p),earnedRunPlayEventsTrusted=a.engineManaged!==true,jt({
-          persistCache:"immediate"
-        }
-        );
-        if(!F.value){
-          Fe.warning(lgText("liveGame.restore.noRecoverableData")),await Pn.replace({
-            name:"AdminGameLiveLineupGame",params:{
-              eventId:String(Re.value),gameId:String(e)
-            }
-            
+        else{
+          const a=await ma.get(e);
+          if(!a||a.status!=="live"){
+            J(lgText("liveGame.restore.cannotContinue"),"warning");
+            return
+          }
+          N.value=a.gameMode??"BASEBALL",_.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"";
+          const[s,r,p]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e)]);
+          await Do(e,a,s,r,p),earnedRunPlayEventsTrusted=a.engineManaged!==true,jt({
+            persistCache:"immediate"
           }
           );
-          return
+          if(!F.value){
+            Fe.warning(lgText("liveGame.restore.noRecoverableData")),await Pn.replace({
+              name:"AdminGameLiveLineupGame",params:{
+                eventId:String(Re.value),gameId:String(e)
+              }
+              
+            }
+            );
+            return
+          }
+          Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
         }
-        Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
       }
       catch(t){
         if(t?.message==="cancel")return;
@@ -12423,7 +12555,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       finally{
         Be.value=!1
       }
-      
+      // #712：等恢复流程退出、Be 复位后再校验；缺口提示里的「从云端恢复」才能再次进入 bc
+      restoredSnapshot&&await verifyEarnedRunPlayKeysCoverage({
+        notify:!0
+      }
+      )
     }
     async function _c(e,t){
       earnedRunPlayEventsTrusted=!1,finalReviewMode=!1;
@@ -12443,10 +12579,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             }
             
           }
-          return await Vl(b,T),F.value=!0,jt({
+          await Vl(b,T),F.value=!0,jt({
             persistCache:"immediate"
           }
-          ),t?.quiet||Fe.success(lgText("liveGame.restore.cacheRestored")),Tn(),"ok"
+          ),t?.quiet||Fe.success(lgText("liveGame.restore.cacheRestored")),Tn(),await verifyEarnedRunPlayKeysCoverage({
+            notify:!t?.quiet
+          }
+          );
+          return "ok"
         }
         return J(lgText("liveGame.restore.cannotContinue"),"warning"),_l(),await Pn.replace({
           name:"AdminGames",params:{
@@ -12458,16 +12598,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true,finalReviewMode=a.status==="final",finalReviewMode&&(l.isGameEnd=!0);
       const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=a.status==="final"?(m?{source:"server",payload:m}:null):id(zo(Re.value,e),m);
-      const loaded=y?(await Vl(y.payload,{
-        homeList:s,awayList:r
+      let loaded;
+      if(y){
+        await Vl(y.payload,{
+          homeList:s,awayList:r
+        }
+        ,p),F.value=!0,Gl(e),jt({
+          persistCache:"immediate"
+        }
+        ),t?.quiet||Fe.success(y.source==="local"?lgText("liveGame.restore.cacheRestored"):lgText("liveGame.restore.serverRestored")),Tn(),loaded="ok";
+        // #712：仅现场录入重进需要校验；赛后复核是只读快照，不做定案恢复
+        finalReviewMode||await verifyEarnedRunPlayKeysCoverage({
+          notify:!t?.quiet
+        }
+        )
       }
-      ,p),F.value=!0,Gl(e),jt({
+      else await Do(e,a,s,r,p),jt({
         persistCache:"immediate"
       }
-      ),t?.quiet||Fe.success(y.source==="local"?lgText("liveGame.restore.cacheRestored"):lgText("liveGame.restore.serverRestored")),Tn(),"ok"):(await Do(e,a,s,r,p),jt({
-        persistCache:"immediate"
-      }
-      ),t?.quiet||(F.value?Fe.success(a.status==="final"?lgText("liveGame.restore.gameFinal"):lgText("liveGame.restore.resumed")):Fe.warning(lgText("liveGame.restore.noRecoverableData"))),Tn(),"ok");
+      ),t?.quiet||(F.value?Fe.success(a.status==="final"?lgText("liveGame.restore.gameFinal"):lgText("liveGame.restore.resumed")):Fe.warning(lgText("liveGame.restore.noRecoverableData"))),Tn(),loaded="ok";
       if(a.status==="final"){
         finalReviewMode=!0,l.isGameEnd=!0;
         if(!F.value){

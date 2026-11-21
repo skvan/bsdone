@@ -38,10 +38,12 @@ export const isAuthSessionError = (e) => e instanceof ApiAuthSessionError;
 
 export class ApiBizError extends Error {
   apiCode;
-  constructor(message, apiCode) {
+  apiReason;
+  constructor(message, apiCode, apiReason) {
     super(message);
     this.name = 'ApiBizError';
     this.apiCode = apiCode;
+    this.apiReason = apiReason ?? null;
   }
 }
 
@@ -363,7 +365,7 @@ export async function request(url, options = {}, retried = false) {
       throw new ApiAuthSessionError(msg);
     }
     warnOnce(msg);
-    throw new ApiBizError(msg, 403);
+    throw new ApiBizError(msg, 403, body?.data?.reason ?? null);
   };
 
   if (!res.ok) {
@@ -396,6 +398,7 @@ export async function request(url, options = {}, retried = false) {
     if (body && typeof body.code === 'number') {
       businessError.apiCode = body.code;
     }
+    businessError.apiReason = body?.data?.reason ?? null;
     throw businessError;
   }
 
@@ -422,7 +425,7 @@ export async function request(url, options = {}, retried = false) {
         warnOnce(message);
       }
     }
-    throw new ApiBizError(message, code);
+    throw new ApiBizError(message, code, body?.data?.reason ?? null);
   }
 
   return body;
