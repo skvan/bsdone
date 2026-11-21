@@ -6237,6 +6237,15 @@ var sg={
       // 同一 play 内先有暴投/捕逸时，承接推进走普通进垒并沿用 WP/PB 来源；
       // 只有前一次事件是失误时才需要选失误责任守备员（否则会产生幽灵失误日志与非自责分归因）。
       const samePlayWpPb=e.id==="safe_same_err"&&!l.playErrorCredited&&(l.playWpCredited||l.playPbCredited),advanceReasonId=samePlayWpPb?(l.playWpCredited?"safe_wp":"safe_pb"):e.id,advanceReasonCn=samePlayWpPb?(l.playWpCredited?"同一play内暴投推进":"同一play内捕逸推进"):e.cn;
+      // #697：本 play 已记过失误时，「同一play内失误推进」只负责跑者进垒，不再二次点选失误守备员；
+      // 菜单仅在拖拽到合法目标垒时出现，直接用目标垒 r 完成（失误明细已在前面录入过）。
+      if(e.id==="safe_same_err"&&l.playErrorCredited){
+        l.flow={
+          type:"ADVANCE_FE",runner:a,runnerBase:s,outAtBase:r,selectRunner:!1,advanceFeStep:"pick_target",advanceFeReasonId:e.id,advanceFeReasonCn:e.cn
+        }
+        ,lc(r);
+        return
+      }
       if(zd.has(e.id)&&!samePlayWpPb){
         l.flow={
           type:"ADVANCE_FE",runner:a,runnerBase:s,outAtBase:r,selectRunner:!1,advanceFeStep:"pick_fielder",advanceFeReasonId:e.id,advanceFeReasonCn:e.cn
@@ -10148,21 +10157,22 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function lc(e){
       const t=l.flow;
-      if(!t||t.type!=="ADVANCE_FE"||t.advanceFeStep!=="pick_target"||!t.runner||t.errorPos==null)return;
+      // #697：同一play内失误推进复用本 play 的失误事实，不再携带失误位置；其他失误原因仍必须有 errorPos。
+      if(!t||t.type!=="ADVANCE_FE"||t.advanceFeStep!=="pick_target"||!t.runner||(t.errorPos==null&&t.advanceFeReasonId!=="safe_same_err"))return;
       const a=t.runnerBase??0;
       if(e<=a)return;
       if(!va(a,e,Ei.value)){
         J("前方垒位有人，请先处理前位跑者","warning");
         return
       }
-      const s=t.runner,r=Vt(t.errorPos),p={
+      const s=t.runner,r=t.errorPos!=null?Vt(t.errorPos):null,p={
         1:"一垒",2:"二垒",3:"三垒",4:"本垒"
       }
       ,g=s.id??s.name??"?";
       const credit=shouldCreditError(t.advanceFeReasonId);
       de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt();
       const credited=credit&&creditFieldingError(r);
-      const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
+      const y=t.errorPos!=null?It[t.errorPos]??t.errorPos:null,b=t.errorPos==null?(t.advanceFeReasonCn??"失误推进"):iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
       // 牵制暴传推进同样是一次牵制企图；拖拽直接选「牵制失误推进」也走这里
       t.advanceFeReasonId==="safe_pk_err"&&creditPickoffAttempt(),a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([{
         playerId:g,from:a,to:e
