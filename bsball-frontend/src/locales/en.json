@@ -2669,6 +2669,8 @@
       "leaveEmptyHint": "Fill later",
       "modeBusy": "Substitution mode is active. Finish or cancel it first.",
       "needMode": "Enter Substitution Mode first (top bar) before making changes.",
+      "needModeShort": "Substitution requires Substitution Mode",
+      "playerInfoOrder": "Batting #{n}",
       "busyWait": "Submitting substitutions. Please wait.",
       "lastFailed": "The last substitution failed. Retry Finish Substitutions or cancel sub mode.",
       "benchEmpty": "The bench is empty.",
@@ -3047,7 +3049,13 @@
         "CF": "Center Field",
         "RF": "Right Field",
         "DH": "Designated Hitter",
-        "XF": "Flex"
+        "XF": "Flex",
+        "XF1": "Flex 1",
+        "XF2": "Flex 2",
+        "OF": "Outfield",
+        "IF": "Infield",
+        "PH": "Pinch Hitter",
+        "PR": "Pinch Runner"
       },
       "battingOrder": {
         "title": "Batting Order",

@@ -2676,6 +2676,8 @@
       "leaveEmptyHint": "可稍后补位",
       "modeBusy": "换人模式进行中，请先结束或取消换人模式",
       "needMode": "换人需先进入「换人模式」：请点顶部「换人模式」后再操作",
+      "needModeShort": "换人须进入「换人模式」",
+      "playerInfoOrder": "第{n}棒",
       "busyWait": "正在提交换人，请稍候",
       "lastFailed": "上次提交换人失败，请先重试「结束换人」或取消换人模式",
       "benchEmpty": "板凳席已空",

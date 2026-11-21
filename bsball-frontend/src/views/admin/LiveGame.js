@@ -1031,7 +1031,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),KnMeta=x(""),KnDismiss=x(!1),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
   function applyEarnedRunTotals(result){
     const absolute=result?.pitcherAbsoluteTotals;
     if(!absolute)return;
@@ -1183,7 +1183,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,flowNoticeMeta:KnMeta,flowNoticeDismissible:KnDismiss,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -1264,11 +1264,11 @@ function qd(){
     }
     ):u.eventLog.unshift(N)
   }
-  function o(S,R="info"){
-    u.flowNotice=S,u.flowNoticeType=R
+  function o(S,R="info",options){
+    u.flowNotice=S,u.flowNoticeType=R,u.flowNoticeMeta=options?.meta??"",u.flowNoticeDismissible=!!options?.dismissOnOutside
   }
   function _(){
-    u.flowNotice=""
+    u.flowNotice="",u.flowNoticeMeta="",u.flowNoticeDismissible=!1
   }
   return{
     addLog:l,showFlowNotice:o,clearFlowNotice:_,withCurrentBatterOrderInLog:f,setSubstitutionLogMuted:S=>{
@@ -5007,7 +5007,7 @@ var sg={
     const { isEnglish: isEnglishUi, locale: lgLocale, text: lgText } = useLiveGameText();
     Ce(lgLocale, (locale) => setLogTextLocale(locale), { immediate: true });
     const f=Bu(),l=f.gameState,o=f.teamsData,_=f.setupForm,{
-      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
+      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,flowNoticeMeta:flowMeta,flowNoticeDismissible:flowDismiss,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
     =Kc(f),xt=$(()=>f.homeTeam),At=$(()=>f.awayTeam);
     const reviewDrawerVisible=x(!1),reviewDrawerSession=x(0);
@@ -10383,11 +10383,44 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function gs(){
       Ma.value=!1,rc()
     }
+    // #693：未进换人模式就点球员时，红字前补该球员的球队/姓名/背号/守备位置/棒次
+    function buildSubstitutionPlayerHint(player,teamKey,options){
+      if(!player)return"";
+      const isHome=teamKey==="home";
+      const side=isHome?lgText("liveGame.team.home"):lgText("liveGame.team.away");
+      const teamName=isHome?xt.value?.name:At.value?.name;
+      const pos=options?.pos||player.position||"";
+      let posText="";
+      if(pos){
+        const posKey=`liveGame.lineup.position.${pos}`,localizedPos=lgText(posKey);
+        posText=localizedPos&&localizedPos!==posKey?`${localizedPos}(${pos})`:(It[pos]??pos)
+      }
+      const lineup=isHome?q.value:X.value;
+      const orderIndex=Array.isArray(lineup)?lineup.findIndex(row=>String(row?.id)===String(player.id)):-1;
+      const orderText=orderIndex>=0?lgText("liveGame.sub.playerInfoOrder",{n:orderIndex+1}):"";
+      const playerText=`${player.name??"--"} #${player.number??"-"}`;
+      return[teamName?`${side} ${teamName}`:side,playerText,posText,orderText].filter(Boolean).join(" · ")
+    }
+    // #693：点击提示条以外的地方，清除可外部关闭的红字提示（不干扰流程自带操作按钮）。
+    // 用 click 而不是 pointerdown：pointerdown 里移除提示条会让比分条塌陷，同一击的 click 落空。
+    function handleFlowNoticeOutsideClick(event){
+      if(!flowDismiss.value)return;
+      if(event.target instanceof Element&&event.target.closest(".les-flow-card, .live-bench-card"))return;
+      pt()
+    }
+    As(()=>{
+      document.addEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    ),yu(()=>{
+      document.removeEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    );
     function Za(e,t,a,s){
       if(substitutionModeBusy.value)return;   // 提交换人过程中不再打开任何换人浮层
       // 换人入口一律收口到换人模式（setRunner 属补跑者纠偏，不算换人）
       if(!substitutionMode.value&&e!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(t,a,s);
+        J(meta?lgText("liveGame.sub.needModeShort"):lgText("liveGame.sub.needMode"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       mt.value=e,Ga.value=t,ia.value=a,Qt.value=s?.base??null,Va.value=s?.pos??null,wt(),On.value=!0,He(()=>{
@@ -10541,7 +10574,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(substitutionModeBusy.value)return;   // 提交进行中拒绝执行，避免净变化之外的本地改动
       // 兜底：任何换人执行路径在模式外都必须拒绝（含换守备位置）
       if(!substitutionMode.value&&mt.value!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionMode.value&&substitutionModeCommitFailed.value){J(lgText("liveGame.sub.lastFailed"),"warning");return}
@@ -11181,7 +11214,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function applyFieldRotation(){
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value){
@@ -11279,7 +11312,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 执行换人：source={kind,player,code?}，hit=落点命中项；成功返回 true（统一走 cc 记账）
     function liveBenchApplyDrop(source,hit){
-      if(!substitutionMode.value){J(lgText("liveGame.sub.needMode"),"warning");return!1}
+      if(!substitutionMode.value){J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});return!1}
       if(source?.player?.disabled){J(lgText("liveGame.sub.playerUnavailable"),"warning");return!1}
       const blockReason=liveBenchSubBlockedReason();
       if(blockReason){
@@ -11417,7 +11450,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function liveBenchCardPointerDown(player,side,event){
       if(player?.disabled||event.button!==0||liveBenchDragSession)return;
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(player,liveBenchTeamKey(side));
+        J(lgText("liveGame.sub.needModeShort"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value)return;
@@ -12801,7 +12835,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
           key:1,class:re(["les-flow-card",`les-flow-card--${c(zt)}`])
         }
-        ,[n("div",Rg,H(c(k)||cf.value),1),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
+        ,[n("div",Rg,[c(flowMeta)?n("span",{class:"les-flow-notice-meta"},H(c(flowMeta)),1):W("",!0),n("span",null,H(c(k)||cf.value),1)],64),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
           key:0
         }
         ,[v(s,{

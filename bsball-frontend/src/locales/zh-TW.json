@@ -2676,6 +2676,8 @@
       "leaveEmptyHint": "可稍後補位",
       "modeBusy": "換人模式進行中，請先結束或取消換人模式",
       "needMode": "換人需先進入「換人模式」：請點頂部「換人模式」後再操作",
+      "needModeShort": "換人須進入「換人模式」",
+      "playerInfoOrder": "第{n}棒",
       "busyWait": "正在提交換人，請稍候",
       "lastFailed": "上次提交換人失敗，請先重試「結束換人」或取消換人模式",
       "benchEmpty": "替補席已空",
