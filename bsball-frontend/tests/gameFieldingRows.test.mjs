@@ -178,7 +178,7 @@ test('首个守位工具：大小写归一，DH/PH/EP 视为未守备', () => {
   assert.equal(resolveFirstFieldPosition({ position: 'DH', firstPosition: 'DH' }), '');
 });
 
-test('守备 Totals：计数列求和，INN 取全队最大守备局数', () => {
+test('守备 Totals：计数列求和，INN 按出局数逐行求和（#699）', () => {
   const rows = [
     { po: 3, a: 1, e: 0, dp: 0, defInn: 3, pb: 1, catcherSb: 1, catcherCs: 0, fieldingGs: 1 },
     { po: 2, a: 4, e: 1, dp: 1, defInn: 2.1, pb: 0, catcherSb: 2, catcherCs: 1, fieldingGs: 0 }
@@ -187,10 +187,27 @@ test('守备 Totals：计数列求和，INN 取全队最大守备局数', () => 
     { key: 'fieldingGs' }, { key: 'po' }, { key: 'a' }, { key: 'e' },
     { key: 'dp' }, { key: 'defInn' }, { key: 'pb' }, { key: 'catcherSb' }, { key: 'catcherCs' }
   ];
+  // 9 + 7 = 16 出局 → 5.1 局；旧口径取最大值 3 会低估
   assert.deepEqual(buildFieldingTotals(rows, fields), {
-    fieldingGs: 1, po: 5, a: 5, e: 1, dp: 1, defInn: 3,
+    fieldingGs: 1, po: 5, a: 5, e: 1, dp: 1, defInn: 5.1,
     pb: 1, catcherSb: 3, catcherCs: 1
   });
+});
+
+test('守备 Totals：混合局数按出局加总（4.0 + 3.2 + 0.1 = 24 出局 → 8 局）', () => {
+  const totals = buildFieldingTotals([
+    { defInn: 4 },
+    { defInn: 3.2 },
+    { defInn: 0.1 }
+  ], [{ key: 'defInn' }]);
+  assert.equal(totals.defInn, 8);
+  assert.equal(formatInningsPitched(totals.defInn), '8');
+});
+
+test('守备 Totals：.1/.2 进位（2.2 + 0.1 = 3 局），不会出现非法 .3', () => {
+  const totals = buildFieldingTotals([{ defInn: 2.2 }, { defInn: 0.1 }], [{ key: 'defInn' }]);
+  assert.equal(totals.defInn, 3);
+  assert.equal(formatInningsPitched(totals.defInn), '3');
 });
 
 test('守备 Totals：空表全 0，且不修改入参', () => {

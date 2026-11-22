@@ -60,7 +60,7 @@ import { getFieldingConfig as fd } from '../../utils/liveGameFieldLayout';
 import { getLineHead as ll } from '../../utils/liveGameFieldLayout';
 import { PITCHER_BALL_POSITION as cd } from '../../utils/liveGameFieldLayout';
 import { getPositionOptions as dd } from '../../utils/liveGameFieldLayout';
-import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders, reconcileTeamFieldingInnings as LgReconcileFieldingInnings } from '../../utils/liveGameFieldingIp';
+import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders, creditOutsWithinLimit as LgCreditOutsWithinLimit, outsRemainingInHalfInning as LgOutsRemaining, reconcileTeamFieldingInnings as LgReconcileFieldingInnings } from '../../utils/liveGameFieldingIp';
 import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
@@ -6298,6 +6298,12 @@ var sg={
         runner:a,fromBase:s,toBase:r
       }
       =t,p=a.id??a.name??"?";
+      // #699：半局已三出局、等待下一打者或比赛结束时不允许再拖拽出局，避免局数/统计继续累加
+      if(l.outs>=3||l.needNextBatter||l.isGameEnd){
+        ge.value=null;
+        J("本半局已达三出局或当前打席未完成，无法记录跑者出局；请先确认半局结束/攻守交换","warning");
+        return
+      }
       if(ge.value=null,e.id==="out_steal_fail"){
         de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
           type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",stealFail:!0,steps:[]
@@ -8734,10 +8740,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const fieldingPositions=new Set(dd(N.value));
         const results=[];
         for(const side of["away","home"]){
-          const lineup=side==="away"?X.value:q.value;
-          const pitcherId=side==="away"?O.value:te.value;
+          const ctx=Ee(side),lineup=ctx.lineup.value,pitcherId=ctx.fpId.value;
+          // 保存 payload 含替补与 DH 制投手行，对账同样覆盖，避免场外球员的 byPos 把多记局数带回
+          const extraPlayers=[...(ctx.bench.value??[]),...(ctx.fpRow.value?[ctx.fpRow.value]:[])];
           const result=LgReconcileFieldingInnings({
-            side,gameState:l,lineup,pitcherId,validPositions:fieldingPositions
+            side,gameState:l,lineup,pitcherId,extraPlayers,validPositions:fieldingPositions
           });
           if(result.changed.length){
             results.push({side,...result});
@@ -8783,17 +8790,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const multiple=Array.isArray(fielders)&&fielders.length>1;
       return LgErrNote(names,multiple)
     }
+    // #699：出局账本（halfInningOuts/日志）照常记录，但守备局数只按本半局剩余出局累计，避免 2 出局双杀多记 1 局
     function Bt(e,t){
-      l.halfInningOuts.push((e??"出局").trim()),l.outs++,Ipy(),D(jr(e??"出局"),void 0,{
+      const allowed=LgOutsRemaining(l.outs);
+      l.halfInningOuts.push((e??"出局").trim()),l.outs=Math.min(3,l.outs+1),allowed>0?Ipy():t?.suppressOutLimitWarning||J("本半局已达三出局，本次出局未计入守备局数（请先确认半局结束/攻守交换）","warning"),D(jr(e??"出局"),void 0,{
         showInPbp:t?.pbp!==!1
       }
       )
     }
     function os(e,t,a,s){
+      const allowed=LgCreditOutsWithinLimit(e,l.outs),options={...s,suppressOutLimitWarning:!0};
       for(let r=0;
       r<e;
-      r++)Bt(r===0?t:a??t,s);
-      l.outs>3&&(l.outs=3)
+      r++)Bt(r===0?t:a??t,options);
+      l.outs=Math.min(3,l.outs),allowed<e&&J(`本半局已达三出局，${e-allowed} 个多余出局未计入守备局数（请先确认半局结束/攻守交换）`,"warning")
     }
     function Dn(e){
       for(const r of LgSingleOutStats(e)){
