@@ -160,7 +160,9 @@ MapRows --> Return["返回PageResult"]
   - GET /hit-spray/player/{playerId}/game/{gameId}：按选手+比赛查询
   - GET /hit-spray/team/{teamId}/game/{gameId}：按队伍+比赛查询
 - 用途：记录每次击球的落点坐标，用于可视化与分析（管理端热力图、管理端与门户的比赛详情「打击落点回放」）
-- 幂等：`POST /hit-spray` 与 `/hit-spray/batch` 支持可选字段 `rid`（客户端唯一键）；服务端按 `(gameId, rid)` 去重，重复提交直接跳过。历史无 `rid` 的记录仍按原语义插入
+- 幂等：`POST /hit-spray` 与 `/hit-spray/batch` 支持可选字段 `rid`（客户端唯一键）；服务端按 `(gameId, rid)` 去重，重复提交直接跳过。`rid` 查重不过滤 `deleted_at`（已软删行同样命中），保证旧 `rid` 延迟重试不会复活成新行。历史无 `rid` 的记录仍按原语义插入
+- 同打席去重（#717）：打席键 = `gameId + inning + half + batterOrder + playerId + outsBefore + runnersBefore`（`runnersBefore` 的 `null` 与空串等价，`teamId` 不参与）。同场同键已有活跃行且 `rid` 不同时，服务端软删旧行（`deletedAt`/`deletedBy`）后插入新行，保留旧 `rid` 供延迟重试识别；不原地覆盖旧行。同一批次内同键只落最后一条；键字段缺失时退回 `rid`/插入语义
+- 读取：三个 `GET` 查询均只返回 `deleted_at IS NULL` 的活跃行；历史同键重复已由迁移 `V20261122100000__hit_spray_soft_delete_duplicates_20261122.sql` 软删清理，读取侧不再做内容去重
 - 权限：`GET /hit-spray/game/{gameId}` 已注册至 sys_api 并对游客角色（guest）及全部角色授权（Flyway `V20261011090000__hit_spray_api_guest_grant.sql`），门户匿名访客可读；其余 hit-spray 接口未注册（对登录用户默认放行，游客不可访问）
 
 ### 数据钻取与多维分析
