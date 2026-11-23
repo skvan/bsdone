@@ -279,7 +279,7 @@ public class GameService {
      *     同名的 {@code LiveGameLineup.js} 是反编译参考件，src 下没有任何地方 import 它，
      *     拿它下结论等于测不运行的代码（接线由 tests/liveGameLineupBoardGuard409.test.mjs 钉住）。
      *     两道比对都只在服务器已有逐棒记录时存在（见下面 early return），
-     *     其中得分那道会拒收，条数那道只在「清空整份证据、且这一发没带撤销意图」时拒收（{@code allowEvidenceShrink}，见下文）。
+     *     其中得分那道会拒收，条数那道只在「清空整份证据」且「正文读不出内容或未带撤销意图」时拒收（{@code allowEvidenceShrink}，见下文）。
      * </ol>
      * 只在旧快照确实有逐棒记录时设限，不挡刚建场/从未现场记录的场次；也刻意不看
      * status==final：结算当下最后一步存档可能就在 final 之后送达，一律拦会把正常收尾丢掉。
@@ -304,7 +304,9 @@ public class GameService {
      * 也是旧设备/旧标签页那份「本地已归零」的存档推上来的形状。
      * 若这次保存来自撤销/重做后的现场恢复，前端会显式带 {@code allowEvidenceShrink=true}，
      * 此时放行（{@code reason=snapshot_event_count_wiped_allowed}）——否则整场撤销到 0
-     * 会再次变成不可保存；旧客户端/未标记意图的请求维持拒收。
+     * 会再次变成不可保存；旧客户端/未标记意图的请求维持拒收。意图放的是「读得出的那份真的
+     * 撤到 0」，正文读不出内容时即便带着意图也照旧拒（{@code snapshot_payload_unreadable}）：
+     * 那种正文根本不是撤销的结果，放行等于把空壳的入口开给任何带该标志的请求。
      * 注意前端 {@code pa()} 是无条件序列化 {@code playEvents} 的，所以空数组会带着键上来
      * （{@code mentionsEvidence} 为真），这道比对对它是生效的。
      * <p>放行的范围是「不丢分、且不清零的撤销」：本地逐棒记录变短而总分仍对得上记分栏时照旧进得去；

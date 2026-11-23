@@ -78,7 +78,7 @@ public class GlobalExceptionHandler {
 
     /**
      * 带文案键的一发按请求语言解词。解不出（漏翻、键打错）退回异常自带的原文：
-     * 嫩可说一门不对的语言，也不能给使用者一个空串或键名。翻译放在这一层而不是 service，
+     * 宁可说一门不对的语言，也不能给使用者一个空串或键名。翻译放在这一层而不是 service，
      * 是因为 service 单测不走 web 上下文，{@code LocaleContextHolder} 那种时候取的是 JVM 默认语言，
      * 把翻译塞进 service 会让那些断言跟着机器语言飘。
      */

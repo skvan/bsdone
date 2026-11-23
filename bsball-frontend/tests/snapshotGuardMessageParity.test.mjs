@@ -65,13 +65,16 @@ test('mock 转写与后端词典逐字相同（含 {0,number,#} 占位符写法�
 });
 
 test('每条文案都带它声称的那个按钮：前端词典里真有这个词', () => {
-  // 后端文案承诺「用『从云端恢复录入现场』」这类可执行动作，动作名取自前端词典
-  // （liveGame.restore.confirmTitle）。前端哪天改了按钮名，后端与 mock 的话就指向一个不存在的按钮。
+  // 后端文案承诺「用『从云端恢复录入现场』」这类可执行动作，动作名取自前端词典。
+  // 钉的是顶栏那颗按钮 liveGame.top.restoreCloud（LiveGame.js 用 lgText 渲染它，是使用者
+  // 真的要去点的东西）；liveGame.restore.confirmTitle 只是点下去之后的对话框标题，
+  // 今天与它同文，但改它不影响「文案指向哪个按钮」，所以不拿来当标尺。
+  // 前端哪天改了按钮名，后端与 mock 的话就指向一个不存在的按钮，这条先红。
   const restoreTitlePerLocale = {};
   for (const locale of Object.keys(BUNDLE_FILES)) {
     const dict = JSON.parse(fs.readFileSync(path.join(FRONTEND_ROOT, 'src', 'locales', `${locale}.json`), 'utf8'));
-    restoreTitlePerLocale[locale] = dict.liveGame.restore.confirmTitle;
-    assert.ok(restoreTitlePerLocale[locale], `${locale} 缺 liveGame.restore.confirmTitle`);
+    restoreTitlePerLocale[locale] = dict.liveGame.top.restoreCloud;
+    assert.ok(restoreTitlePerLocale[locale], `${locale} 缺 liveGame.top.restoreCloud`);
   }
   // 简体中文与繁体：文案里用「」引用按钮名，引用内容必须与词典一致
   for (const locale of ['zh-CN', 'zh-TW']) {
@@ -102,4 +105,26 @@ test('mock 的语言判定与后端 UiLocaleResolver 同规则', () => {
   assert.match(body, /startsWith\('ko'\)[\s\S]*'en'|ko[\s\S]{0,80}ja[\s\S]*\breturn 'en'/,
     'guardLocale 不再把 ja/ko 归英文：与后端 UiLocaleResolver 脱钩');
   assert.match(body, /hant/, 'guardLocale 不再认 zh-Hant 为繁体');
+});
+
+test('头名三处对齐：后端常量、前端发的、mock 读的是同一个（#713）', () => {
+  // X-UI-Locale 这个名字同时写在三处：后端 UiLocaleResolver.HEADER、前端 request.js 的字面量、
+  // e2e mock 的 guardLocale，改一处不会自动红另两处。失效方式还是静默的——后端只是收不到
+  // 头、退回 Accept-Language，于是「界面英文、文案中文」照常上线，而 mock 那侧永远绿。
+  const resolver = fs.readFileSync(
+    path.join(FRONTEND_ROOT, '..', 'bsball-backend', 'src', 'main', 'java', 'com', 'bsball', 'config', 'UiLocaleResolver.java'),
+    'utf8');
+  const decl = resolver.match(/String\s+HEADER\s*=\s*"([^"]+)"/);
+  assert.ok(decl, '后端 UiLocaleResolver 里找不到 HEADER 常量（改名或挪文件了就要同步看这条）');
+  const header = decl[1];
+
+  const request = fs.readFileSync(path.join(FRONTEND_ROOT, 'src', 'api', 'request.js'), 'utf8');
+  assert.ok(request.includes(`'${header}'`) || request.includes(`"${header}"`),
+    `前端 request.js 发的头名不是后端认的 ${header}：两边会各说各话`);
+
+  // mock 读的是归一后的小写形式：Playwright 的 request.headers() 会把头名转小写
+  const lower = header.toLowerCase();
+  const spec = fs.readFileSync(SPEC, 'utf8');
+  assert.ok(spec.includes(`['${lower}']`) || spec.includes(`["${lower}"]`),
+    `e2e mock 读的头名不是 ${header} 的小写形式：它已经在假装一个前端不会发的头`);
 });

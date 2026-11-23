@@ -454,6 +454,14 @@ async function installBoardMock(page, { lineupPosts, livePosts, state, official 
             code: 409, msg: formatGuardMessage(messages['snapshot.guard.run.regress'], [claimed, runs])
           }) });
         }
+        // 补齐条数那道：payload 自带证据时后端按 lineupOnly=false 照跑两道比对，而阵容板端点
+        // 恒为 saveLineupSnapshot(g, json, true) → allowEvidenceShrink=false，没有意图放行那一格。
+        // 少了这一段，这份 mock 就比后端宽，「mock 绿而线上拒」查不出来。
+        if (body.playEvents.length === 0 && state.events > 1) {
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+            code: 409, msg: formatGuardMessage(messages['snapshot.guard.events.wiped'], [state.events])
+          }) });
+        }
         state.events = body.playEvents.length;
       }
       // 没提 playEvents：不比对、现有证据原样留着（并回服务器现值后落库）

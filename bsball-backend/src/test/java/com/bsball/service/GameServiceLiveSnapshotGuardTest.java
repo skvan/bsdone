@@ -324,6 +324,26 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
+    @DisplayName("不可解析＋撤销意图：仍拒收，别让意图变成空壳的后门")
+    void saveLiveSnapshot_unparsableWithUndoIntentStillRejected() {
+        // 这一条钉的是分支先后：「读不出内容」排在「意图放行」之前。把两个对调以后，一份
+        // 读不出来的正文只要带上 allowEvidenceShrink=true 就能直接落库，把云端 24 条逐棒
+        // 证据盖成空壳——正是 261 的终态（上面那例只测了 allowEvidenceShrink=false 的一侧，
+        // 而对侧——合法空数组带意图——该拒的还是得放行，所以两个方向各钉一条）。
+        // 意图本该只放「真的把记录撤到 0」那一发：它推上来的永远是读得出的快照配一个空数组。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{不是 JSON", Boolean.TRUE));
+
+        assertEquals("snapshot.guard.payload.unreadable", ex.getMessageKey(),
+                "带了意图也不该改判，也不该换到「一条都没有」那句：" + ex.getMessageKey());
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("四条拒收各带一个键，且 Java 兜底原文与 messages.properties 的简体中文逐字一致")
     void saveLiveSnapshot_everyRejectionMatchesItsChineseBundleEntry() {
         // GameService 的注释承诺「两份措辞必须一致」，这条就是那句承诺本身：拿异常自带的

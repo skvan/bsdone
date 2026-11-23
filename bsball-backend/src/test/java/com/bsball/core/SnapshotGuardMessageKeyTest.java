@@ -188,9 +188,10 @@ class SnapshotGuardMessageKeyTest {
     @Test
     @DisplayName("没带键的两参 BusinessException 原文照发：全库另外几百处不受影响")
     void legacyTwoArgExceptionIsUntouched() throws Exception {
-        // 这条是「改动范围」的护栏。库里 598 处 throw 全是两参形式，只要 handleBusiness 对
-        // messageKey==null 走原路，它们的文案就一个字都不会变。哪天有人把 localize()
-        // 改成无条件过 MessageSource，红的第一条就是它。
+        // 这条是「改动范围」的护栏。实测全库 600 处 new BusinessException 调用点里，本轮带键的
+        // 只有 GameService 那 4 处，其余 596 处（590 个两参、6 个单参）都不带键；只要
+        // handleBusiness 对 messageKey==null 走原路，它们的文案就一个字都不会变。哪天有人把
+        // localize() 改成无条件过 MessageSource，红的第一条就是它。
         String msg = extractMsg(call("legacy", "en", null));
 
         assertEquals("赛事不存在或无权使用", msg, "两参异常的原文被改写了：" + msg);
@@ -207,6 +208,25 @@ class SnapshotGuardMessageKeyTest {
 
         assertTrue(en.contains("1234") && !en.contains("1,234"), "英文带上了千分位：" + en);
         assertTrue(cn.contains("1234") && !cn.contains("1,234"), "简体带上了千分位：" + cn);
+    }
+
+    @Test
+    @DisplayName("每个键×三语都真过 MessageFormat：没一条被格式化弄坏或悄悄退原文")
+    void everyBundleKeyRendersInEveryLocale() throws Exception {
+        // 上面的语言选择例全拿 wiped 那一把键发，所以其余三条的 en/zh-TW 模板从没进过
+        // MessageFormat：一个多余的花括号、一个没成对的撇号（MessageFormat 拿它当引用符，
+        // 会把下一个字符吃掉），只有使用者真的撞上那一条拒收时才看得见。这条把词典里每个键
+        // 都推过一遍真管线，比对基准是「占位符直接换数字」——一份不经过 MessageFormat 的期望。
+        String[] args = {"24", "18"};
+        for (String key : keysOf("messages")) {
+            for (String locale : new String[] {"zh-CN", "zh-TW", "en"}) {
+                String file = localeFileOf(locale);
+                String msg = extractMsg(call("key:" + key, locale, null));
+                assertEquals(expectedText(file, key, args), msg,
+                        locale + " / " + key + " 解出来的不是词典那句话");
+                assertTrue(msg.contains("24"), locale + " / " + key + " 没把条数插进去：" + msg);
+            }
+        }
     }
 
     @Test
@@ -262,6 +282,31 @@ class SnapshotGuardMessageKeyTest {
         throw new AssertionError("找不到源码 " + suffix);
     }
 
+    /** 词典文件名按 locale 对位：跟 {@code ResourceBundleMessageSource} 的找法一致，没带区域的就是兜底那份。 */
+    private static String localeFileOf(String locale) {
+        if ("en".equals(locale)) {
+            return "messages_en";
+        }
+        if ("zh-TW".equals(locale)) {
+            return "messages_zh_TW";
+        }
+        return "messages";
+    }
+
+    /** 不经过 MessageFormat 的期望值：只把 {@code {N,number,#}} 换成第 N 个参数。 */
+    private static String expectedText(String bundleFile, String key, String[] args) throws Exception {
+        try (var in = new ClassPathResource(bundleFile + ".properties").getInputStream()) {
+            String raw = new PropertyResourceBundle(in).getString(key);
+            String out = raw;
+            for (int i = 0; i < args.length; i++) {
+                out = out.replace("{" + i + ",number,#}", args[i]);
+            }
+            assertFalse(out.contains("{") || out.contains("}"),
+                    "本探针只认 {N,number,#} 这一种占位符写法，" + bundleFile + "/" + key + " 用了别的：" + raw);
+            return out;
+        }
+    }
+
     private static Set<String> keysOf(String bundleName) throws Exception {
         try (var in = new ClassPathResource(bundleName + ".properties").getInputStream()) {
             ResourceBundle rb = new PropertyResourceBundle(in);
@@ -295,6 +340,11 @@ class SnapshotGuardMessageKeyTest {
                 case "legacy":
                     throw new BusinessException(409, "赛事不存在或无权使用");
                 default:
+                    if (probe.startsWith("key:")) {
+                        // 参数一律给两个：现有模板最多用到 {1}，多出来的参数 MessageFormat 会忽略
+                        throw new BusinessException(409, "兜底原文 24", probe.substring(4),
+                                Integer.valueOf(24), Integer.valueOf(18));
+                    }
                     throw new IllegalStateException("unknown probe: " + probe);
             }
         }
