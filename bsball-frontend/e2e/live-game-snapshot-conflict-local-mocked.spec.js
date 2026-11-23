@@ -128,19 +128,19 @@ const SNAPSHOT_GUARD_MESSAGES = {
   "zh-CN": {
     "snapshot.guard.run.regress": "本场比赛已有逐棒记录，提交的快照得分只到 {0,number,#} 分，低于记分 {1,number,#} 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状，确需从头重录请先清空比分或另开新场",
     "snapshot.guard.run.regressUnknown": "本场比赛已有逐棒记录，提交的快照读不出有效比分（payload 不可解析或不含 teamsData），低于记分 {0,number,#} 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状，确需从头重录请先清空比分或另开新场",
-    "snapshot.guard.events.wiped": "本场比赛云端已有 {0,number,#} 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；撤销只会退一步、不会把记录清零，所以这一发不是撤销造成的——请用「从云端恢复录入现场」回到服务器现状，确需从头重录请另开新场",
+    "snapshot.guard.events.wiped": "本场比赛云端已有 {0,number,#} 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；若你刚撤销了全部记录，请从云端恢复录入现场后重新操作；确需从头重录请另开新场",
     "snapshot.guard.payload.unreadable": "本场比赛云端已有 {0,number,#} 条逐棒记录，提交的快照无法解析成有效内容，已拒绝覆盖以免证据被清空；请用「从云端恢复录入现场」回到服务器现状"
   },
   "zh-TW": {
     "snapshot.guard.run.regress": "本場比賽已有逐棒記錄，提交的快照得分只到 {0,number,#} 分，低於記分 {1,number,#} 分，已拒絕覆蓋以免遺失逐棒記錄；用「從雲端恢復錄入現場」可放棄本地這份回到伺服器現況，確需從頭重錄請先清空比分或另開新場",
     "snapshot.guard.run.regressUnknown": "本場比賽已有逐棒記錄，提交的快照讀不出有效比分（payload 不可解析或不含 teamsData），低於記分 {0,number,#} 分，已拒絕覆蓋以免遺失逐棒記錄；用「從雲端恢復錄入現場」可放棄本地這份回到伺服器現況，確需從頭重錄請先清空比分或另開新場",
-    "snapshot.guard.events.wiped": "本場比賽雲端已有 {0,number,#} 條逐棒記錄，提交的快照裡一條都沒有，已拒絕覆蓋以免證據被清空；撤銷只會退一步、不會把記錄清零，所以這發不是撤銷造成的——請用「從雲端恢復錄入現場」回到伺服器現況，確需從頭重錄請另開新場",
+    "snapshot.guard.events.wiped": "本場比賽雲端已有 {0,number,#} 條逐棒記錄，提交的快照裡一條都沒有，已拒絕覆蓋以免證據被清空；若你剛撤銷了全部記錄，請從雲端恢復錄入現場後重新操作；確需從頭重錄請另開新場",
     "snapshot.guard.payload.unreadable": "本場比賽雲端已有 {0,number,#} 條逐棒記錄，提交的快照無法解析成有效內容，已拒絕覆蓋以免證據被清空；請用「從雲端恢復錄入現場」回到伺服器現況"
   },
   "en": {
     "snapshot.guard.run.regress": "This game already has play-by-play records, but the submitted snapshot only accounts for {0,number,#} runs, below the {1,number,#} on the scoreboard. The overwrite was rejected so the records survive. Use \"Restore Session from Cloud\" to drop the local copy and go back to the server state, or clear the score / start a new game if you truly need to re-enter from scratch.",
     "snapshot.guard.run.regressUnknown": "This game already has play-by-play records, but the submitted snapshot carries no readable score (unparsable payload or no teamsData), below the {0,number,#} on the scoreboard. The overwrite was rejected so the records survive. Use \"Restore Session from Cloud\" to drop the local copy, or clear the score / start a new game if you truly need to re-enter from scratch.",
-    "snapshot.guard.events.wiped": "The cloud copy of this game holds {0,number,#} play-by-play records, while the submitted snapshot contains none. Undo steps back one play at a time and can never clear the list, so this save was not caused by an undo and was rejected. Use \"Restore Session from Cloud\" to go back to the server state, or start a new game to re-enter from scratch.",
+    "snapshot.guard.events.wiped": "The cloud copy of this game holds {0,number,#} play-by-play records, while the submitted snapshot contains none, so the overwrite was rejected to keep the records. If you just undid every record, use \"Restore Session from Cloud\" to get back to the server state and start over; to truly re-enter from scratch, open a new game.",
     "snapshot.guard.payload.unreadable": "The cloud copy of this game holds {0,number,#} play-by-play records, but the submitted snapshot could not be parsed into readable content, so the overwrite was rejected. Use \"Restore Session from Cloud\" to go back to the server state."
   }
 };
@@ -167,7 +167,7 @@ function guardLocale(headers) {
 }
 
 /**
- * 后端现行快照守门的复刻（#713 拍板后只剩得分那道与清零那一格会拒收）：自带证据且总分落后于
+ * 后端现行快照守门的复刻（#713 拍板后只剩得分那道与「清零且未带撤销意图」那一格会拒收）：自带证据且总分落后于
  * 记分栏才 409，条数变短照实落库。记分栏必须与 /game/{id} 的响应同源（同一个 official），否则
  * mock 会跟线上相反（比如把该拒的那一发静默放行）。
  * 文案取自 SNAPSHOT_GUARD_MESSAGES，按请求的 X-UI-Locale 选语言——所以前端哪天忘了带那个头，
@@ -178,7 +178,7 @@ function guardLocale(headers) {
  */
 function makeServerGuard({ official, state }) {
   const officialRuns = official.home + official.away;
-  return (json, headers) => {
+  return (json, { headers = {}, allowEvidenceShrink = false } = {}) => {
     const messages = SNAPSHOT_GUARD_MESSAGES[guardLocale(headers)];
     const body = JSON.parse(json);
     const claimed = (body.teamsData?.away?.score ?? 0) + (body.teamsData?.home?.score ?? 0);
@@ -186,10 +186,11 @@ function makeServerGuard({ official, state }) {
       return { msg: formatGuardMessage(messages['snapshot.guard.run.regress'], [claimed, officialRuns]) };
     }
     const incoming = body.playEvents?.length;
-    // #713 复拍保留的那一格：清零不是任何撤销的终态（撤销只退一步），所以仍拒。
-    // 本档的用例走的是「变短」与「丢分」两型，这一格由后端测试钉住；装进 mock 只是
-    // 为了让这份服务器不会偷偷比对后端更宽。
-    if (incoming === 0 && state.events > 1) {
+    // 清零默认仍拒（旧设备/本地归零的存档）；只有撤销/重做后的显式意图才放行。
+    // 本档的用例走的是「变短」与「丢分」两型，清零+意图由后端测试钉住；装进 mock
+    // 只是为了让这份服务器不会偷偷比后端更宽。文案仍从词典取：上游改成写死一句，
+    // 词典与线上就会各说各话，而 parity 测试只对词典那份有牙。
+    if (incoming === 0 && state.events > 1 && !allowEvidenceShrink) {
       return { msg: formatGuardMessage(messages['snapshot.guard.events.wiped'], [state.events]) };
     }
     state.events = incoming ?? state.events;
@@ -223,10 +224,14 @@ async function installMock(page, { snapshotPosts, snapshotHeaders = null, replyF
     const url = new URL(request.url());
     const path = url.pathname.replace('/bsball-server', '');
     if (path === '/game/10/live-snapshot' && request.method() === 'POST') {
-      const json = request.postDataJSON().snapshotJson;
+      const requestBody = request.postDataJSON();
+      const json = requestBody.snapshotJson;
       snapshotPosts.push(json);
       if (snapshotHeaders) snapshotHeaders.push(request.headers());
-      const reply = replyFor(json, request.headers()) ?? {};
+      const reply = replyFor(json, {
+        headers: request.headers(),
+        allowEvidenceShrink: requestBody.allowEvidenceShrink === true
+      }) ?? {};
       if (reply.status) {
         await route.fulfill({ status: reply.status, contentType: 'text/plain', body: 'gateway down' });
         return;
@@ -462,6 +467,14 @@ async function installBoardMock(page, { lineupPosts, livePosts, state, official 
       if (runs > 0 && claimed < runs) {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
           code: 409, msg: formatGuardMessage(messages['snapshot.guard.run.regress'], [claimed, runs])
+        }) });
+      }
+      // 清零那一格照上游现行规则一并复刻：默认拒，带撤销意图（撤销/重做后的那一发）才放行。
+      // 缺这一段，这份 mock 就比后端窄，「mock 绿而线上拒」那种漂移查不出来。
+      const shrinkIntent = request.postDataJSON().allowEvidenceShrink === true;
+      if (body.playEvents?.length === 0 && state.events > 1 && !shrinkIntent) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+          code: 409, msg: formatGuardMessage(messages['snapshot.guard.events.wiped'], [state.events])
         }) });
       }
       state.events = body.playEvents?.length ?? state.events;

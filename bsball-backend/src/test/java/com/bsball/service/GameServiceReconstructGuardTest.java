@@ -205,6 +205,48 @@ class GameServiceReconstructGuardTest {
     }
 
     @Test
+    @DisplayName("撤销/改小本半局得分：请求带本地总比分时按本地比分判定，不被旧记分误拒")
+    void reconstructEarnedRuns_usesLocalOfficialRunsForSameSaveCorrection() {
+        // 服务器记分仍是 6（save-live 尚未落库），本地撤销一分后为 5；
+        // 其他半局 5 笔判定 + 本半局旧 1 笔，本次推 0 分 ⇒ 重建后 6-1+0=5，按本地 5 分放行。
+        givenDecisions("top", 6, 1);
+
+        gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID),
+                request("top", 0, null, Boolean.TRUE, Integer.valueOf(5)));
+
+        verify(earnedRunReconstructionService).replaceHalfInning(
+                eq(Long.valueOf(TENANT_ID)), eq(Long.valueOf(GAME_ID)), eq(3), eq("top"),
+                eq(Long.valueOf(USER_ID)), any(), eq(Long.valueOf(HOME_TEAM_ID)),
+                eq(true));
+    }
+
+    @Test
+    @DisplayName("本地总分为 0 但服务器有分：视为未载入，仍按服务器分守门")
+    void reconstructEarnedRuns_treatsZeroLocalScoreAsUnknown() {
+        givenDecisions("top", 5, 0);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID),
+                        request("top", 0, null, Boolean.TRUE, Integer.valueOf(0))));
+
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains(" 5 "), "应按服务器 6 分守门：" + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("本地总分仍高于重建后判定：照常 409（守门不因本地比分放水）")
+    void reconstructEarnedRuns_stillRejectsWhenLocalScoreExceedsDecisions() {
+        givenDecisions("top", 6, 1);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.reconstructEarnedRuns(Long.valueOf(GAME_ID),
+                        request("top", 0, null, Boolean.TRUE, Integer.valueOf(6))));
+
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains(" 5 "), "应报「重建后只有 5 笔」：" + ex.getMessage());
+    }
+
+    @Test
     @DisplayName("半局未完成（halfComplete=false）：不做完整性守门，且把 false 透传给服务")
     void reconstructEarnedRuns_halfIncompleteSkipsGuardAndPassesFlagThrough() {
         // 记分 6 分、判定表空着（不 stub 即为 0 笔）：完整重建会被守门拒掉，
@@ -252,6 +294,11 @@ class GameServiceReconstructGuardTest {
 
     private static EarnedRunHalfInningRequest request(
             String half, int runs, Boolean confirm, Boolean halfComplete) {
+        return request(half, runs, confirm, halfComplete, null);
+    }
+
+    private static EarnedRunHalfInningRequest request(
+            String half, int runs, Boolean confirm, Boolean halfComplete, Integer officialRuns) {
         EarnedRunHalfInningRequest request = new EarnedRunHalfInningRequest();
         request.setInning(Integer.valueOf(3));
         request.setHalf(half);
@@ -266,6 +313,7 @@ class GameServiceReconstructGuardTest {
         request.setPlays(plays);
         request.setConfirmPartialRebuild(confirm);
         request.setHalfComplete(halfComplete);
+        request.setOfficialRuns(officialRuns);
         return request;
     }
 }

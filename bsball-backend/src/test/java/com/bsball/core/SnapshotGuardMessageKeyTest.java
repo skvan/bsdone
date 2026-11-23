@@ -2,6 +2,7 @@ package com.bsball.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -127,10 +128,13 @@ class SnapshotGuardMessageKeyTest {
         String tw = extractMsg(call("wiped", "zh-TW", null));
         String cn = extractMsg(call("wiped", "zh-CN", null));
 
-        assertTrue(tw.contains("已拒絕覆蓋") && tw.contains("伺服器"), "繁体条目没解出来：" + tw);
+        // 只给一句繁体招牌词就够：兜底原文是简体，出现「已拒絕覆蓋」就说明真的解到了
+        // messages_zh_TW，不是退回原文（不再拿句子里其余的用词做反向断言，那些会随措辞改版而假红）。
+        assertTrue(tw.contains("已拒絕覆蓋"), "繁体条目没解出来：" + tw);
         assertFalse(tw.contains("拒绝"), "繁体里出现简体「拒绝」，说明落到简体兜底了：" + tw);
-        assertTrue(cn.contains("已拒绝覆盖") && cn.contains("服务器"), "简体条目没解出来：" + cn);
+        assertTrue(cn.contains("已拒绝覆盖"), "简体条目没解出来：" + cn);
         assertFalse(cn.contains("拒絕"), "简体里出现繁体：" + cn);
+        assertNotEquals(tw, cn, "繁简两句一字不差，至少有一份不对");
     }
 
     @Test

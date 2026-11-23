@@ -25,7 +25,9 @@ const src = fs.readFileSync(SRC_PATH, 'utf8').replace(/\r\n/g, '\n');
 const start = src.indexOf('let snapshotSyncFailed');
 const end = src.indexOf('async function ZrLite');
 assert(start >= 0 && end > start, '找不到 snapshotSyncFailed..ZrLite 区间，元件结构可能已变动');
-const code = src.slice(start, end).trimEnd();
+// 撤销/重做意图标志在模块作用域、位于切片之前；这里注入默认 false，
+// 让 pushLiveSnapshot 的单测仍能在独立闭包里执行（置位/清位由 liveGameSnapshotUndoIntent 钉住）。
+const code = 'let allowEvidenceShrink=false;\n' + src.slice(start, end).trimEnd();
 
 // Zr 依赖：R(比赛id ref)、F(可录入 flag)、Tn/to(存前刷新)、pa(构造快照对象)、Fe(消息)、ma(api)
 const make = new Function('R', 'F', 'Tn', 'to', 'pa', 'Fe', 'ma', 'lgText',

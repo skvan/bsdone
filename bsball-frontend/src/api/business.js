@@ -319,7 +319,7 @@ export const gameApi = {
     const { data } = await fetchResult(`/api/game/${id}/live-snapshot?_t=${Date.now()}`);
     return data?.snapshotJson ?? '';
   },
-  saveLiveSnapshot: (id, snapshotJson) => post(`/api/game/${id}/live-snapshot`, { snapshotJson }),
+  saveLiveSnapshot: (id, snapshotJson, allowEvidenceShrink) => post(`/api/game/${id}/live-snapshot`, { snapshotJson, allowEvidenceShrink }),
   // 电子秩序册（Issue #310）门①：阵容专用保存（受限赛事校验阵容球员 ⊆ 报名名单）
   saveLineup: (id, snapshotJson) => post(`/api/game/${id}/lineup-snapshot`, { snapshotJson }),
   saveResult: (id, data) => post(`/api/game/${id}/save-result`, data)

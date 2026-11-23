@@ -461,13 +461,7 @@ var sl=[{
 ,{
   id:"safe_last_play_sac",en:"On Last Play (Sacrifice)",cn:"上一棒内推进（牺牲打）"
 }
-],hitAdvanceReasons=[{
-  id:"safe_hit",en:"Advance on Hit (No RBI)",cn:"安打推进（不计打点）",emph:"不计打点"
-}
-,{
-  id:"safe_hit_rbi",en:"Advance on Hit (RBI)",cn:"安打推进（有打点）",emph:"有打点"
-}
-,{
+],sacAdvanceReasons=[{
   id:"safe_sac_fly",en:"Advance on Sac Fly (RBI)",cn:"牺牲高飞推进（有打点）",emph:"有打点"
 }
 ,{
@@ -475,7 +469,7 @@ var sl=[{
 }
 ];
 function Nd(u){
-  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_hit"||u==="safe_hit_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"||u==="safe_fc"
+  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"
 }
 function Ve(u){
   return u===1?"一垒":u===2?"二垒":u===3?"三垒":"本垒"
@@ -648,9 +642,6 @@ function Ud(u,f){
     id:"safe_diff_err",en:"On Different Play Error",cn:"其他失误后推进"
   }
   ,{
-    id:"safe_fc",en:"Fielder's Choice (advance)",cn:"野手选择局面下推进"
-  }
-  ,{
     id:"safe_on_throw",en:"On Throw",cn:"传杀过程中进垒"
   }
   ,{
@@ -774,11 +765,9 @@ function Wd(u,f,l){
     // 暴投/捕逸按真实投球顺序给：没投球不给；捕逸需先有投球；暴投还要求最近一球是坏球；
     // 同一球已记过 WP/PB 时隐藏（承接用「同一play内失误推进」），下一球 Ea() 重置后再出现
     o=o.filter(x=>x.id!=="safe_wp"&&x.id!=="safe_pb");
-    const advanceReasons=[...hitAdvanceReasons,{
-      id:"safe_fc",en:"Fielder's Choice (advance)",cn:"野手选择局面下推进"
-    }
-    ].filter(x=>!o.some(y=>y.id===x.id));
-    advanceReasons.length&&o.splice(0,0,...advanceReasons);
+    // 上一棒内推进/牺牲打推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）
+    const advanceReasons=[...sl,...sacAdvanceReasons],advanceIds=new Set(advanceReasons.map(x=>x.id));
+    o=advanceReasons.concat(o.filter(x=>!advanceIds.has(x.id)));
     const canWpPb=!!l.hasPitchThisAB&&!l.playWpCredited&&!l.playPbCredited
       ,add=[];
     if(canWpPb){
@@ -998,6 +987,8 @@ function iu(u,f){
 // 已成功写入 bs_hit_spray 的落点记录 rid（跨撤销/重做/重进现场去重）。
 // 放模块作用域：store 的 applyHistoryEntry 与页面 setup 的 co()/撤销/重做/快照还原都要读它。
 const sentHitSprayRids=new Set();
+// 撤销/重做后的下一次快照保存允许逐棒证据清零（#713）；默认 false：旧设备/本地归零的存档仍拒收。
+let allowEvidenceShrink=false;
 var Bu=Yc("liveGame",()=>{
   const u=x(0),f=x(""),l=x(null),o=x(!1),_=x("BASEBALL"),S=$(()=>_.value==="SOFTBALL"?1:0),R=$(()=>_.value==="SOFTBALL"?1:0);
   function F(){
@@ -6270,7 +6261,7 @@ var sg={
         return
       }
       let rbiWho=null;
-      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_hit_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
+      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
       wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([{
         playerId:p,from:s,to:r
       }
@@ -7431,7 +7422,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const plays=f.playEvents.filter((play)=>play.inning===event.inning&&play.half===event.half).map(toEarnedRunPlay);
         if(!plays.length&&!options.allowEmpty)return;
         try{
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete});
+          const localOfficialRuns=(Number(f.teamsData?.home?.score)||0)+(Number(f.teamsData?.away?.score)||0);
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
           // 半局定案会把该半局责任投手的人工 R/ER 覆写作废（后端 invalidateActiveOverrides），
@@ -7779,7 +7771,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       attempt<2;
       attempt++){
         try{
-          await ma.saveLiveSnapshot(R.value,body);
+          await ma.saveLiveSnapshot(R.value,body,allowEvidenceShrink);
+          allowEvidenceShrink=false;
           return !0
         }
         catch(error){
@@ -7836,7 +7829,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       );
       if(e)try{
-        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e)),new Promise(rr=>{
+        await Promise.race([ma.saveLiveSnapshot(R.value,JSON.stringify(e),allowEvidenceShrink).then(()=>{
+          allowEvidenceShrink=false
+        }
+        ),new Promise(rr=>{
           setTimeout(rr,1e4)
         }
         )])
@@ -8114,6 +8110,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       s&&typeof s.score=="number"&&Number.isFinite(s.score)&&(o.home.score=s.score),s&&Array.isArray(s.innings)&&(o.home.innings=s.innings.map(r=>Number(r)||0))
     }
     function ns(e){
+      // 撤销/重做/历史恢复的实际入口（页面级 as/Ff 调用）：允许本次快照把逐棒记录带回更短（含 0）的那一份。
+      allowEvidenceShrink=true;
       Object.assign(l,e.game),l.flow=normalizeErrorFlow(l.flow),Array.isArray(l.halfInningOuts)||(l.halfInningOuts=[]),Object.prototype.hasOwnProperty.call(e.game,"runnerDragCiRunnerId")||(l.runnerDragCiRunnerId=null),Object.prototype.hasOwnProperty.call(e.game,"playErrorCredited")||(l.playErrorCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playWpCredited")||(l.playWpCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"playPbCredited")||(l.playPbCredited=!1),Object.prototype.hasOwnProperty.call(e.game,"lastPitchWasBall")||(l.lastPitchWasBall=(e.game?.balls??0)>0),Object.prototype.hasOwnProperty.call(e.game,"playOut")||(l.playOut=null),Cf(e.lineup),Bf(e),o.home.roster=q.value,o.away.roster=X.value,o.home.bench=ye.value,o.away.bench=ae.value,(()=>{
         const t=a=>{
           if(!a)return a;
