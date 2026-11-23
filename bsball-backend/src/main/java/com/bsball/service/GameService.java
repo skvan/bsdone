@@ -360,7 +360,9 @@ public class GameService {
                         game.getId(), incomingRuns, officialRuns);
                 // 下面那句中文是兜底原文（漏翻、单测直调 service、日志都靠它），真正给人看的那一句
                 // 由 GlobalExceptionHandler 按请求语言从 messages*.properties 解。两份措辞必须一致，
-                // 这条由 SnapshotGuardMessageKeyTest 钉着。
+                // 逐字比对在 GameServiceLiveSnapshotGuardTest
+                // #saveLiveSnapshot_everyRejectionMatchesItsChineseBundleEntry，键/参数与传输层怎么解词在
+                // SnapshotGuardMessageKeyTest。
                 if (incomingRuns == null) {
                     throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照读不出有效比分"
                             + "（payload 不可解析或不含 teamsData），低于记分 " + officialRuns
@@ -400,7 +402,9 @@ public class GameService {
                     } else {
                         // 下面那句中文是兜底原文（漏翻、单测直调 service、日志都靠它），真正给人看的那一句
                         // 由 GlobalExceptionHandler 按请求语言从 messages*.properties 解；两份措辞必须一致，
-                        // 这条由 SnapshotGuardMessageKeyTest 钉着。
+                        // 逐字比对在 GameServiceLiveSnapshotGuardTest
+                        // #saveLiveSnapshot_everyRejectionMatchesItsChineseBundleEntry，键/参数与传输层怎么解词在
+                        // SnapshotGuardMessageKeyTest。
                         log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
                                 game.getId(), incomingEvents, existingEvents);
                         throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
