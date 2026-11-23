@@ -7442,7 +7442,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           if(halfComplete&&Array.isArray(invalidated)&&invalidated.length){
             // 走 ElMessage 而不是 J（局面提示）：那是个单格位，下一个打席 / 下一句提示就把
             // 这条盖掉，记录员实际看不到。作废覆写是一次性事件，必须自己占一条弹提示。
-            noticeOverrideInvalidation(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`);
+            noticeOverrideInvalidation(lgText(event.half==="top"?"liveGame.settle.overrideVoidTop":"liveGame.settle.overrideVoidBottom",{inning:event.inning,count:invalidated.length}));
           }
           // 这一发重建成了：之前那句「判定没更新」已经不再成立，清掉去重位，真再坏一次还能看见
           noticeEarnedRunIssue.reset();
@@ -7451,7 +7451,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
           // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
           // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
-          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`);
+          noticeEarnedRunIssue(lgText(event.half==="top"?"liveGame.settle.erIssueTop":"liveGame.settle.erIssueBottom",{inning:event.inning,msg:error?.message||String(error)}));
         }
       });
       return earnedRunSyncPending;
@@ -7511,7 +7511,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         // 走 ElMessage 而不是 J：J 是单格的局面提示，forceHalf 结尾马上会用「强制换局完成」
         // 把它盖掉（实测），而现场没有把这批记录变可信的开关，唯一出路是赛后人工复核。
         f.playEvents.length&&!settleSkipNoticed&&(settleSkipNoticed=!0,Fe.warning({
-          message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 ${f.playEvents.length} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认`,
+          message:lgText("liveGame.settle.untrustedSkipped",{count:f.playEvents.length}),
           duration:8000
         }));
         return null

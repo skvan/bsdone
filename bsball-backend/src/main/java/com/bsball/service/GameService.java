@@ -259,15 +259,18 @@ public class GameService {
      *     本地状态归零时会推来一份更短的——那种只看下面的得分一道（条数那道按 #713 的拍板放行）。</li>
      * <li>阵容板草稿（{@code buildLineupDraft}）：只有名单，连 playEvents 都没提到——
      *     那种走下面的合并保留，既不拦下保存也不丢证据。</li>
-     * <li>阵容板进入录入（{@code startEntry} 与旧板的 bootstrap）：提到一份开局默认值的
+     * <li>阵容板进入录入（{@code startEntry}）：提到一份开局默认值的
      *     teamsData（双方 0 分、1 局 0 出局）但不提 playEvents。阵容板从不主张比分，
      *     所以服务器的 teamsData 会被并回去（服务器没有时连 payload 那份 0 分一起删掉）——
      *     否则「已记分场次从阵容板进入录入」会被 409 顶回，而那份零分本来就不该落库。
      *     但这层豁免只认从阵容板端点进来的那一路（{@code lineupOnly} 要 lineupWriter 为真）：
-     *     旧板 bootstrap（{@code LiveGameLineup.js} 进录入前那一发）走的是 {@code saveLiveSnapshot}
-     *     即 live 端点，payload 自带一份 0 分的 teamsData 而不带 playEvents，所以已记分场次
-     *     重新从旧板进录入仍会被得分一道拒收（实测它 catch 掉 409 只播
-     *     「初始阵容未同步到服务器，切换页面后可能需要重排阵容」，原因到人眼里就丢了）。
+     *     同一份正文从 live 端点进来就没有这层豁免。e2e「已记分场次从阵容板点开始录入」一例
+     *     跑的是线上真在走的那条链，实测到的形状是：阵容板那一发放行且云端证据原样留着；
+     *     进录入页这一步不自动存档；用户在录入页点保存时推的是 live 端点，bootstrap 现场
+     *     带着开局 0 分而没带上云端证据，那一发仍被得分一道拒收（本该拒：分数发生过，
+     *     证据不能凭空消失），而屏幕上抬的是服务器给的原因，没有换成前端自己编的一句话。
+     *     同名的 {@code LiveGameLineup.js} 是反编译参考件，src 下没有任何地方 import 它，
+     *     拿它下结论等于测不运行的代码（接线由 tests/liveGameLineupBoardGuard409.test.mjs 钉住）。
      *     两道比对都只在服务器已有逐棒记录时存在（见下面 early return），
      *     其中得分那道会拒收，条数那道只在清空整份证据时拒收——见下文 #713 拍板。</li>
      * </ol>
@@ -340,12 +343,20 @@ public class GameService {
                 // 原因码给日志用（文案会随措辞改，稳定的 key 才能统计发生率，#713）
                 log.warn("[snapshot-guard] reason=snapshot_run_total_regress gameId={} incoming={} official={}",
                         game.getId(), incomingRuns, officialRuns);
-                throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分"
-                        + (incomingRuns == null ? "读不出有效比分（payload 不可解析或不含 teamsData）"
-                                : "只到 " + incomingRuns + " 分")
-                        + "，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
-                        + "用「从云端恢复录入现场」可放弃本地这份回到服务器现状，"
-                        + "确需从头重录请先清空比分或另开新场");
+                // 下面那句中文是兜底原文（漏翻、单测直调 service、日志都靠它），真正给人看的那一句
+                // 由 GlobalExceptionHandler 按请求语言从 messages*.properties 解。两份措辞必须一致，
+                // 这条由 SnapshotGuardMessageKeyTest 钉着。
+                if (incomingRuns == null) {
+                    throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照读不出有效比分"
+                            + "（payload 不可解析或不含 teamsData），低于记分 " + officialRuns
+                            + " 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状，"
+                            + "确需从头重录请先清空比分或另开新场",
+                            "snapshot.guard.run.regressUnknown", Integer.valueOf(officialRuns));
+                }
+                throw new BusinessException(409, "本场比赛已有逐棒记录，提交的快照得分只到 " + incomingRuns
+                        + " 分，低于记分 " + officialRuns + " 分，已拒绝覆盖以免丢失逐棒记录；"
+                        + "用「从云端恢复录入现场」可放弃本地这份回到服务器现状，确需从头重录请先清空比分或另开新场",
+                        "snapshot.guard.run.regress", incomingRuns, Integer.valueOf(officialRuns));
             }
         }
         if (mentionsEvidence) {
@@ -356,12 +367,24 @@ public class GameService {
                     // 撤销只回退一步，云端 N>1 条时本地最多少一条（云端本来只有 1 条时撤到 0 仍然放行，
                     // 见下面第二道日志）。而 0 条恰恰是 260/261 那种空壳的终态，也是旧设备/旧标签页
                     // 那份「本地状态已归零」的存档推上来的形状。
+                    // 读不出内容的 payload 也会走到这里（上面把不可解析当作「什么都提了」），
+                    // 所以换一句说得对的话：判据没变，只是别再跟使用者说「一条都没有」。
+                    String unreadable = "本场比赛云端已有 " + existingEvents
+                            + " 条逐棒记录，提交的快照无法解析成有效内容，已拒绝覆盖以免证据被清空；"
+                            + "请用「从云端恢复录入现场」回到服务器现状";
+                    if (!parseable) {
+                        log.warn("[snapshot-guard] reason=snapshot_payload_unreadable gameId={} incoming={} existing={}",
+                                game.getId(), incomingEvents, existingEvents);
+                        throw new BusinessException(409, unreadable,
+                                "snapshot.guard.payload.unreadable", Integer.valueOf(existingEvents));
+                    }
                     log.warn("[snapshot-guard] reason=snapshot_event_count_wiped gameId={} incoming={} existing={}",
                             game.getId(), incomingEvents, existingEvents);
                     throw new BusinessException(409, "本场比赛云端已有 " + existingEvents
                             + " 条逐棒记录，提交的快照里一条都没有，已拒绝覆盖以免证据被清空；"
                             + "撤销只会退一步、不会把记录清零，所以这一发不是撤销造成的——"
-                            + "请用「从云端恢复录入现场」回到服务器现状，确需从头重录请另开新场");
+                            + "请用「从云端恢复录入现场」回到服务器现状，确需从头重录请另开新场",
+                            "snapshot.guard.events.wiped", Integer.valueOf(existingEvents));
                 }
                 // 放行（#713 拍板）：撤销后的保存本来就该能把云端带回较短的那一份。
                 // 日志留着：真出现「证据凭空变短」的场次，这条是唯一能统计发生率的入口。
