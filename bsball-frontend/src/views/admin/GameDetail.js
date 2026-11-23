@@ -119,9 +119,9 @@ var mt={
       }
       ,{
         default:i(()=>[a(GameDetailHitReplay,{
-          "game-id":O.value,"players-map":F.value,teams:W.value,"home-team-id":w.value.homeTeamId,"away-team-id":w.value.awayTeamId
+          "game-id":O.value,"players-map":F.value,teams:W.value,stats:R.value,"home-team-id":w.value.homeTeamId,"away-team-id":w.value.awayTeamId
         }
-        ,null,8,["game-id","players-map","teams","home-team-id","away-team-id"])]),_:1
+        ,null,8,["game-id","players-map","teams","stats","home-team-id","away-team-id"])]),_:1
       }
       )):Ce("",!0),a(FieldSettingsDrawer,{
         modelValue:I.value,"onUpdate:modelValue":b[1]||(b[1]=d=>I.value=d),"batter-items":E.value,"pitcher-items":V.value,"fielding-items":Vf.value,"default-batter-items":C,"default-pitcher-items":z,"default-fielding-items":FG,"decimal-places":D.value,"default-decimal-places":ie,"rate-display-style":p.value,"default-rate-display-style":se,"show-trailing-zeros":f.value,"default-show-trailing-zeros":ne,"is-small-screen":x.value,onSave:Y

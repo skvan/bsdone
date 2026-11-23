@@ -2783,6 +2783,7 @@
       "foulTipCaught": "Foul Tip Caught",
       "droppedK": "Dropped 3rd K",
       "complete": "Complete Play",
+      "nextStep": "Next Step",
       "multiErrorOff": "Add Another Error",
       "multiErrorOn": "Back to Single",
       "editOuts": "Edit Outs",

@@ -1124,7 +1124,7 @@ var Ta={
                 key:`${n.inning}-${n.half}-${s.key}`,name:rt(n.inning,n.half,s.key)
               }
               ,{
-                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,ct(s,n.inning,n.half),1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
+                title:S(()=>[i("div",rs,[i("div",us,[i("div",cs,[i("div",ps,[i("span",hs,wText("liveGame.watch.orderNo",{n:ct(s,n.inning,n.half)}),1),we(s,n.inning,n.half)?(c(),h("span",ds,u(we(s,n.inning,n.half)),1)):F("",!0),i("span",bs,u(pt(s,n.inning,n.half)),1)]),s.summary?(c(),h("span",ms,u(s.summary),1)):F("",!0)]),i("div",vs,[i("div",fs,[i("div",_s,[(c(),h(L,null,O(2,o=>i("span",{
                   key:`s-${s.key}-${o}`,class:P(["pbp-sbo__dot",{
                     "pbp-sbo__dot--active":o<=ye(s,n.inning,n.half).strikes
                   }

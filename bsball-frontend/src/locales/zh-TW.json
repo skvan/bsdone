@@ -2790,6 +2790,7 @@
       "foulTipCaught": "擦棒被捕",
       "droppedK": "漏接三振",
       "complete": "完成記錄",
+      "nextStep": "下一步",
       "multiErrorOff": "再記一名失誤",
       "multiErrorOn": "切回單選",
       "editOuts": "修改出局",
