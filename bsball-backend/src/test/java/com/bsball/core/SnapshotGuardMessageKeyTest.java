@@ -170,6 +170,24 @@ class SnapshotGuardMessageKeyTest {
     }
 
     @Test
+    @DisplayName("边界实测：ja 只有带 X-UI-Locale 才给英文，只带 Accept-Language 落简体兜底")
+    void japaneseMapsToEnglishOnlyViaUiLocaleHeader() throws Exception {
+        // 这条不是给「想要的行为」背书，是把两条路径的真实差异钉住：MessageSource 只有简中
+        // （默认那份）、繁中、英三份 bundle，父类解出的 ja 无匹配就落到默认那份的简体中文。
+        // 真实浏览器使用者打不到这里——前端 i18n/index.js 的 detectLocale() 恒返回非空，
+        // request.js 一定带上 X-UI-Locale；会命中的只剩没带该头的调用方（curl、别的客户端）。
+        // 哪天决定把两条路径统一成英文，这条会先红，提醒同步改 UiLocaleResolver 的 javadoc
+        // 和 PR 说明，而不是让文档跟代码各说一套。
+        String withHeader = extractMsg(call("wiped", "ja", null));
+        String acceptOnly = extractMsg(call("wiped", null, "ja"));
+
+        assertTrue(withHeader.contains(EN_MARK), "带 X-UI-Locale: ja 本该是英文：" + withHeader);
+        assertTrue(acceptOnly.contains("已拒绝覆盖"), "Accept-Language: ja 的现况是简体兜底：" + acceptOnly);
+        assertNotEquals(withHeader, acceptOnly, "两条路径已是同一句语言，说明口径被统一了——"
+                + "这时该删掉这条并同步 UiLocaleResolver 的 javadoc，别让注释比代码旧");
+    }
+
+    @Test
     @DisplayName("X-UI-Locale 是认不出的值时交给 Accept-Language，不报错也不硬翻")
     void unknownUiLocaleDelegatesToAcceptLanguage() throws Exception {
         String msg = extractMsg(call("wiped", "fr", "zh-TW"));

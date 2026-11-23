@@ -450,6 +450,7 @@ RateLimitFilter --> CaffeineCache
 - 统一响应Result
   - code：整数状态码（200/1000/401/403/404/429/500）
   - msg：人类可读消息
+    - 业务异常若带 `messageKey`（当前只有比赛快照守门的四条 409），`msg` 由服务端按请求语言从词典解析：`messages.properties`（简体中文，兼兜底）、`messages_zh_TW`、`messages_en`。请求语言优先 `X-UI-Locale`（前端随请求带上自己 localStorage 里的界面语言），其次 `Accept-Language`，两者都没有时用简体中文（不随部署机器的 JVM 语言变）。解不出键时退回异常自带的原文，不会返回空串或键名；不带 `messageKey` 的 `BusinessException` 原文照发，其数量远多于带键的。HTTP 状态仍为 200，业务码在 `code`。
   - detail：可选详细信息
   - data：业务数据
   - timestamp：服务器时间戳

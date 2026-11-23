@@ -17,6 +17,14 @@ import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
  * 的语言一律取 en 词典（ja/ko 的 liveGame 块是空的）。后端若给 ja 请求回退到中文兜底，
  * 就成了「日文界面里夹一句简体中文」。
  *
+ * <p><b>这层映射只覆盖 {@code X-UI-Locale}，不覆盖 {@code Accept-Language}</b>（实测所得，不是
+ * 设计意图）：退到父类时 ja/ko/de 这些 locale 原样交给 MessageSource，而词典只有简中（默认那份）、
+ * 繁中、英三份，无匹配就落到默认那份的简体中文。实际打不到浏览器使用者——{@code i18n/index.js} 的
+ * {@code detectLocale()} 恒返回非空（localStorage 没值时按系统语言探测），所以 {@code request.js}
+ * 总会带上这个头；还会命中的只剩 curl 一类没有「界面语言」概念的调用方，那种场合回中文兜底可以接受。
+ * 真要把两条路径统一成英文，该改的是下面 {@link #resolveLocale} 里对父类结果的归并，不是补词典；
+ * 现状由 {@code SnapshotGuardMessageKeyTest} 那条边界断言钉着，口径一改测试先红。
+ *
  * <p>认不出来的值不报错、直接交给父类：这是新增的可选头，老客户端没带也要照常工作。
  */
 public class UiLocaleResolver

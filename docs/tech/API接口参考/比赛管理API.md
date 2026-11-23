@@ -269,6 +269,8 @@ EventService --> EventRepository
   - 作用：保存实时快照
   - Issue #234：`snapshotJson` 内增加 `activeAbContext`、`pendingAtBatResultCode`、`pendingAtBatResultText`，保存打席开始时的垒况、球数、比分、守备位置及待定结果；同样写入撤销/重做帧。旧快照缺少这些字段时按恢复现场初始化上下文，无法补出原打席开始状态。接口仍使用 `{snapshotJson}` 包装，不新增表字段。
   - 撤销清零（Issue #713）：可选 `allowEvidenceShrink`（布尔，缺省 false）。撤销/重做后的现场保存由前端显式带 true，允许把逐棒记录清零；旧设备/未标记意图的本地归零存档仍返回 409。仅清零受此开关影响，变短的非空 payload 始终放行，得分低于记分栏仍拒收。
+  - 拒收文案的语言（Issue #713 的后端 i18n 轮）：四条 409 的 `msg` 由服务端按请求语言解析，键为 `snapshot.guard.run.regress`、`snapshot.guard.run.regressUnknown`、`snapshot.guard.events.wiped`、`snapshot.guard.payload.unreadable`，词典是 `messages.properties`（简体中文，兼兜底）、`messages_zh_TW`、`messages_en`。请求语言优先 `X-UI-Locale`，其次 `Accept-Language`，两者都没有用简体中文；`ja`/`ko` 归英文只在 `X-UI-Locale` 路径生效，只发 `Accept-Language` 的其它系统语言会落到简体兜底原文（前端恒发该头，浏览器使用者走不到这一支）。响应形状不变：HTTP 200、`code=409`；解不出键退回异常自带原文，不给空串或键名。
+  - 解析不出的 payload 单独拒收：`snapshotJson` 完全读不出对象树、且本次要用 0 条覆盖云端多于 1 条的逐棒记录时，返回 409（日志 `reason=snapshot_payload_unreadable`）。这一支排在 `allowEvidenceShrink` 放行之前——带撤销意图的坏正文同样不落库，否则等于把「空壳快照」的入口开给任何带该标志的请求。
   - 参考：`GameApi.java:83-87`
 - POST /game/create
   - 作用：创建比赛
@@ -471,7 +473,7 @@ EventService --> EventRepository
 
 | 方法 | 路径 | 用途 | 说明 |
 |---|---|---|---|
-| POST | /game/{id}/lineup-snapshot | 阵容专用保存（门①） | body `{snapshotJson}` 同 `/{id}/live-snapshot`；受限赛事解析快照中 `homeLineup/awayLineup/homeBench/awayBench/homeFieldingPitcherId/awayFieldingPitcherId/homeLastDhAddedFromPoolId/awayLastDhAddedFromPoolId` 的球员 id，按主客队分别校验 ⊆ 该队有效报名名单；违规 400（消息含球员名与球队名）。阵容板保存/开始录入走此端点；比赛进行中的高频自动保存仍走 `/{id}/live-snapshot`（不解析校验） |
+| POST | /game/{id}/lineup-snapshot | 阵容专用保存（门①） | body `{snapshotJson}` 同 `/{id}/live-snapshot`；受限赛事解析快照中 `homeLineup/awayLineup/homeBench/awayBench/homeFieldingPitcherId/awayFieldingPitcherId/homeLastDhAddedFromPoolId/awayLastDhAddedFromPoolId` 的球员 id，按主客队分别校验 ⊆ 该队有效报名名单；违规 400（消息含球员名与球队名）。阵容板保存/开始录入走此端点；比赛进行中的高频自动保存仍走 `/{id}/live-snapshot`（不解析校验）。该请求的 payload 不含 `playEvents`，快照守门视同「未提及逐棒记录」：服务器现有的逐棒记录段落并回，不因清零那道拒收；若因其它原因返回 409，文案语言与 `/{id}/live-snapshot` 同一套 |
 
 ### 统计写入门（门②）
 
