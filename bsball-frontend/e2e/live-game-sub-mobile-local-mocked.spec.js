@@ -233,3 +233,35 @@ test('取消换人模式后不残留待放置卡片', async ({ page }) => {
   await page.locator('g.defender-hit[data-pos="CF"]').click();
   await expect(page.locator('g.defender-hit[data-pos="CF"]')).toContainText('#8');
 });
+
+test('未进换人模式点守备员：红字带球员信息，点外部清除', async ({ page }) => {
+  await setup(page);
+  const cf = page.locator('g.defender-hit[data-pos="CF"]');
+  await cf.click();
+  const hint = page.locator('.les-flow-card');
+  await expect(hint).toBeVisible();
+  await expect(hint).toContainText('主队 Home');
+  await expect(hint).toContainText('主中外 #8');
+  await expect(hint).toContainText('中外野手(CF)');
+  await expect(hint).toContainText('第8棒');
+  await expect(hint).toContainText('换人须进入「换人模式」');
+  await expect(hint).not.toContainText('请点顶部');
+
+  // 直接点另一个守备员：旧提示被替换为新球员信息，点击不能被吞掉
+  await page.locator('g.defender-hit[data-pos="SS"]').click();
+  await expect(hint).toContainText('主游击 #6');
+  await expect(hint).toContainText('游击(SS)');
+  await expect(hint).toContainText('第6棒');
+  await expect(hint).not.toContainText('主中外 #8');
+
+  // 点击球场空位：红字消失
+  await page.locator('svg.ballpark-svg').click({ position: { x: 60, y: 60 } });
+  await expect(hint).toHaveCount(0);
+
+  // 再点守备员，改用投球按钮：红字消失且坏球计数确实 +1
+  await cf.click();
+  await expect(hint).toBeVisible();
+  await page.locator('button[title="坏球 Ball"]').click();
+  await expect(hint).toHaveCount(0);
+  await expect(page.locator('.lg-light--ball.is-on')).toHaveCount(1);
+});

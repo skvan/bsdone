@@ -246,9 +246,9 @@ var _t={
         key:2,description:r(f)("gameDetail.gameNotFound")
       }
       ,null,8,["description"])),b.value?d(HitReplay,{
-        key:3,"game-id":_e.value,"players-map":X.value,teams:K.value,"home-team-id":b.value.homeTeamId,"away-team-id":b.value.awayTeamId
+        key:3,"game-id":_e.value,"players-map":X.value,teams:K.value,stats:B.value,"home-team-id":b.value.homeTeamId,"away-team-id":b.value.awayTeamId
       }
-      ,null,8,["game-id","players-map","teams","home-team-id","away-team-id"]):tt("",!0)],8,St)),[[G,r(U)]]),d(gt,{
+      ,null,8,["game-id","players-map","teams","stats","home-team-id","away-team-id"]):tt("",!0)],8,St)),[[G,r(U)]]),d(gt,{
         modelValue:v.value,"onUpdate:modelValue":s[0]||(s[0]=R=>v.value=R),"active-tab":ye.value,scope:ie.value,"include-game-detail-option":!0,onSaveGameDetailSettings:Le
       }
       ,null,8,["modelValue","active-tab","scope"]),d(Y,{
