@@ -1,6 +1,7 @@
 package com.bsball.service;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
+import com.bsball.model.dto.EarnedRunPlayKeyDTO;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.IdentityTransferPreviewDTO;
 import com.bsball.model.dto.IdentityTransferResultDTO;
@@ -1946,6 +1947,21 @@ public class EarnedRunReconstructionService {
                     int sb = b.sequence() != null ? b.sequence() : Integer.MAX_VALUE;
                     return Integer.compare(sa, sb);
                 })
+                .toList();
+    }
+
+    /** 回傳該場已落庫的定案打席鍵，供前端重進時校驗快照是否覆蓋雲端記錄。 */
+    public List<EarnedRunPlayKeyDTO> listPlayKeys(long tenantId, long gameId) {
+        return playRepository.findByTenantIdAndGameId(tenantId, gameId).stream()
+                .filter(p -> p.getSourceEventId() != null && !p.getSourceEventId().isBlank())
+                .sorted(Comparator
+                        .comparing(EarnedRunPlayEntity::getInning,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(p -> "top".equals(p.getHalf()) ? 0 : 1)
+                        .thenComparing(EarnedRunPlayEntity::getSequence,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(p -> new EarnedRunPlayKeyDTO(
+                        p.getInning(), p.getHalf(), p.getSequence(), p.getSourceEventId()))
                 .toList();
     }
 

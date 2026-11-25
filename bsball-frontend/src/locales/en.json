@@ -3390,6 +3390,23 @@
       "playerFallback": "Player",
       "currentEvent": "Current Event"
     },
+    "snapshotKeys": {
+      "top": "top",
+      "bottom": "bottom",
+      "halfGap": "Inning {inning} ({half}): {count} missing",
+      "gapSeparator": "; ",
+      "verifyFailed": "Could not verify snapshot completeness: {reason}. Half-inning settlement is paused; please confirm pitcher R/ER in post-game review.",
+      "verified": "Snapshot verified against {count} settled play(s) on the server. Automatic settlement resumes after saving.",
+      "gapTitle": "Local snapshot is missing settled plays",
+      "gapMessage": "The server has settled plays missing from this device: {detail}. You can restore from the cloud, or settle only the current half-inning from local records (pitcher R/ER needs post-game review).",
+      "restoreFromCloud": "Restore from cloud",
+      "partialRebuild": "Settle current half from local",
+      "gapLater": "Later",
+      "partialConfirmTitle": "Settle current half from local records",
+      "partialConfirmMessage": "The current half-inning ({inning}, {half}) will be rebuilt from incomplete local records. Pitcher R/ER needs post-game review. Continue?",
+      "partialConfirmOk": "Continue",
+      "partialDone": "Current half-inning settled from local records. Review remaining gaps post-game or restore from cloud."
+    },
     "settle": {
       "overrideVoidTop": "Top of inning {inning} settled: manual R/ER overrides for {count} pitcher(s) are void and need review again",
       "overrideVoidBottom": "Bottom of inning {inning} settled: manual R/ER overrides for {count} pitcher(s) are void and need review again",

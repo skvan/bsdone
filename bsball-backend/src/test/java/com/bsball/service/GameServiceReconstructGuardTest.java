@@ -137,6 +137,25 @@ class GameServiceReconstructGuardTest {
     }
 
     @Test
+    @DisplayName("play-keys：无权查看的比赛 403；可查看时按租户+比赛委派，空集原样返回")
+    void listEarnedRunPlayKeys_checksVisibilityAndDelegates() {
+        // 球队可见范围默认放开（null = 不按联盟收窄），本用例只验存在性与委派
+        lenient().when(scopeQuerySupport.visibleLeagueIds(any())).thenReturn(null);
+        when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.empty());
+        BusinessException forbidden = assertThrows(BusinessException.class,
+                () -> gameService.listEarnedRunPlayKeys(Long.valueOf(GAME_ID)));
+        assertEquals(403, forbidden.getCode());
+
+        when(gameRepository.findById(Long.valueOf(GAME_ID))).thenReturn(Optional.of(game));
+        when(earnedRunReconstructionService.listPlayKeys(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID))).thenReturn(List.of());
+
+        assertTrue(gameService.listEarnedRunPlayKeys(Long.valueOf(GAME_ID)).isEmpty());
+        verify(earnedRunReconstructionService).listPlayKeys(
+                Long.valueOf(TENANT_ID), Long.valueOf(GAME_ID));
+    }
+
+    @Test
     @DisplayName("本次推送补齐分母（重建后判定数 = 记分栏总分）→ 放行")
     void reconstructEarnedRuns_allowsWhenRebuildCoversScoreboard() {
         givenDecisions("bottom", 6, 2);
