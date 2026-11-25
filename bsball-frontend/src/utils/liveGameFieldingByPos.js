@@ -83,6 +83,25 @@ export function isStartingPlayer(playerId, starterIds, starterFpId) {
   return Number(starterFpId) === id;
 }
 
+/** 解析先发投手 id：显式记录优先；否则取登板序=1 的投手（含 DH 制不在打线的纯投手）。
+ *  多个候选优先 startingPosition=P；无可靠证据返回 null，避免把替补投手误判为先发。 */
+export function resolveStarterPitcherId(players, explicitId = null) {
+  const explicit = Number(explicitId);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const byId = new Map();
+  for (const player of Array.isArray(players) ? players : []) {
+    const id = Number(player?.id);
+    if (!Number.isFinite(id) || id <= 0 || byId.has(id)) continue;
+    byId.set(id, player);
+  }
+  const candidates = [...byId.values()];
+  const startedAsPitcher = (player) => normalizeFieldingPosition(player?.startingPosition) === 'P';
+  const firstPitchers = candidates.filter((player) => Number(player?.pitcherOrder) === 1);
+  // 先发守位=P 优先于裸登板序 1：旧数据重建可能把登板序 1 赋给现任投手
+  const picked = firstPitchers.find(startedAsPitcher) ?? candidates.find(startedAsPitcher) ?? firstPitchers[0];
+  return picked ? Number(picked.id) : null;
+}
+
 const COUNT_FIELDS = ['outs', 'po', 'a', 'e', 'dp', 'pb', 'catcherCs', 'catcherSb'];
 
 function emptyByPosEntry() {
