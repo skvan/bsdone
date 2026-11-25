@@ -12,9 +12,12 @@
 package com.bsball.config;
 
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -23,6 +26,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig
 implements WebMvcConfigurer {
     private final Path uploadRootPath;
+
+    /**
+     * 报错/回显文案用的请求语言（#713 那一轮）：优先 X-UI-Locale，退回 Accept-Language，
+     * 两边都没说时用简体中文。默认值必须显式给：不给时父类会拿 {@code Locale.getDefault()}，
+     * 也就是 JVM 的系统语言，同一句报错会随部署机器变。
+     */
+    @Bean
+    public LocaleResolver localeResolver() {
+        UiLocaleResolver resolver = new UiLocaleResolver();
+        resolver.setDefaultLocale(Locale.SIMPLIFIED_CHINESE);
+        return resolver;
+    }
 
     public WebConfig(Path uploadRootPath) {
         this.uploadRootPath = uploadRootPath;

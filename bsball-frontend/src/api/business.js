@@ -277,6 +277,8 @@ export const gameApi = {
     return list;
   },
   reconstructEarnedRuns: (id, data) => post(`/api/game/${id}/earned-runs/reconstruct`, data),
+  listEarnedRunPlayKeys: async (id) =>
+    (await get(`/api/game/${id}/earned-runs/play-keys`))?.data?.keys ?? [],
   listEarnedRunDecisions: (id) => fetchResult(`/api/game/${id}/earned-runs/decisions`),
   overrideEarnedRunDecision: (id, decisionId, data) =>
     put(`/api/game/${id}/earned-runs/decisions/${decisionId}`, data),

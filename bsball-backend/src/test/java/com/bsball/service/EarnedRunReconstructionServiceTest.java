@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
+import com.bsball.model.dto.EarnedRunPlayKeyDTO;
 import com.bsball.model.dto.PitcherRunTotalsDTO;
 import com.bsball.model.dto.PitcherTransferResultDTO;
 import com.bsball.model.entity.EarnedRunDecisionEntity;
@@ -1935,6 +1936,52 @@ class EarnedRunReconstructionServiceTest {
                 () -> service.transferIdentity(
                         1L, 20L, 700L, 701L, List.of("LIVE_RECORDS"), null, 9L));
         assertTrue(error.getMessage().contains("无法转记现场记录"));
+    }
+
+    @Test
+    @DisplayName("play-keys：只返回非空 sourceEventId，按局/半局/序排序")
+    void listPlayKeysFiltersAndSorts() {
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playEntity(3, "bottom", 1, "3002"),
+                playEntity(3, "top", 2, "3001"),
+                playEntity(3, "top", 1, null),
+                playEntity(3, "top", 3, "  ")));
+
+        List<EarnedRunPlayKeyDTO> keys = service.listPlayKeys(1L, 20L);
+
+        assertEquals(List.of("3001", "3002"), keys.stream()
+                .map(EarnedRunPlayKeyDTO::sourceEventId).toList());
+        assertEquals(Integer.valueOf(3), keys.get(0).inning());
+        assertEquals("top", keys.get(0).half());
+        assertEquals(Integer.valueOf(2), keys.get(0).sequence());
+    }
+
+    @Test
+    @DisplayName("play-keys：空集返回空；null 局/序排在最后，不抛 NPE")
+    void listPlayKeysHandlesEmptyAndNullOrdering() {
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        assertTrue(service.listPlayKeys(1L, 20L).isEmpty());
+
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playEntity(null, "top", null, "null-key"),
+                playEntity(1, "bottom", 1, "1002"),
+                playEntity(1, "top", 2, "1001")));
+
+        List<EarnedRunPlayKeyDTO> keys = service.listPlayKeys(1L, 20L);
+
+        assertEquals(List.of("1001", "1002", "null-key"), keys.stream()
+                .map(EarnedRunPlayKeyDTO::sourceEventId).toList());
+    }
+
+    private EarnedRunPlayEntity playEntity(Integer inning, String half, Integer sequence, String sourceEventId) {
+        EarnedRunPlayEntity entity = new EarnedRunPlayEntity();
+        entity.setTenantId(1L);
+        entity.setGameId(20L);
+        entity.setInning(inning);
+        entity.setHalf(half);
+        entity.setSequence(sequence);
+        entity.setSourceEventId(sourceEventId);
+        return entity;
     }
 
     private GameFieldingAdjustment fieldingAdjustment(long playerId, String sourceEventId) {

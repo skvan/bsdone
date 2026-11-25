@@ -2,7 +2,42 @@
 // 运行：node --test tests/liveGameLogTextsP1.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes, normalizeSingleOutChain, resolveSingleOutChain, runCauseLabel } from '../src/utils/liveGameLogTexts.js';
+import { advanceText, outText, fcGroup, pickoffGroup, nameWithNumber, caughtStealingText, toNumCodes, normalizeSingleOutChain, resolveSingleOutChain, runCauseLabel, replaceNoteText, setLogTextLocale } from '../src/utils/liveGameLogTexts.js';
+
+test('outText：自定义备注在英文日志里不机翻（noteIsCustom）', () => {
+  try {
+    setLogTextLocale('en');
+    const line = outText({
+      reasonCn: '其他',
+      runner: { name: 'A', number: 1 },
+      from: 1,
+      to: 2,
+      note: '接杀回传',
+      noteIsCustom: true
+    });
+    assert.ok(line.includes('(接杀回传)'), `自定义文字原样保留：${line}`);
+  } finally {
+    setLogTextLocale('zh-CN');
+  }
+});
+
+test('replaceNoteText：兼容全/半角括号，找不到时返回 null', () => {
+  assert.equal(
+    replaceNoteText('[10:00:01] [1上] 其他：张三 #7 于二垒出局（旧理由）', '旧理由', '新理由'),
+    '[10:00:01] [1上] 其他：张三 #7 于二垒出局（新理由）'
+  );
+  assert.equal(
+    replaceNoteText('[10:00:01] [1上] Other: 7 runner out at second (old reason)', 'old reason', 'new reason'),
+    '[10:00:01] [1上] Other: 7 runner out at second (new reason)'
+  );
+  assert.equal(replaceNoteText('其他：无备注', '不存在', '新'), null);
+  assert.equal(replaceNoteText('原样', '', '新'), null);
+  assert.equal(
+    replaceNoteText('其他：张三 于二垒出局（出局），已累计 1 人出局', '出局', '妨碍'),
+    '其他：张三 于二垒出局（妨碍），已累计 1 人出局',
+    '只替换括号里的备注，不改累计后缀'
+  );
+});
 
 test('nameWithNumber：名 (#N) / 缺号降级 / 缺名降级', () => {
   assert.equal(nameWithNumber({ name: 'Gytis', number: 8 }), 'Gytis (#8)');

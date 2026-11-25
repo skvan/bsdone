@@ -197,10 +197,16 @@ test('LiveGame 静态接线：Qr 改用统一序列；保存与强制换局前�
   assert.match(resync, /if\(!F\.value\|\|!R\.value\)return null/, '未开赛/无可录入时无对账对象');
   assert.match(resync, /if\(!earnedRunPlayEventsTrusted\)\{/, '不可信时不进对账');
   assert.match(resync, /return null\s*\}\s*const event=/, '不可信分支必须自行 return，不能落到重建');
-  assert.match(resync, /Fe\.warning\(\{[\s\S]{0,40}message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行/,
+  // 文案本轮进了词典（#713 文案本地化），所以这里钉的是通道与参数，不是那句话的字面：
+  // 字面内容由 tests/liveGameSettleNoticeI18n.test.mjs 真解一遍 vue-i18n 来保证。
+  assert.match(resync, /Fe\.warning\(\{[\s\S]{0,60}message:lgText\("liveGame\.settle\.untrustedSkipped",\{count:f\.playEvents\.length\}\)/,
     '不可信而跳过定案时要当场给记录员看见，不能拖到赛后才发现缺笔');
-  assert.doesNotMatch(resync, /J\(`本场次的本地逐棒记录/,
-    '这条不能走 J（单格局面提示）：马上会被后续提示盖掉');
+  assert.match(resync, /duration:8000/, '长文案要用读得完的停留时间，不是预设 3 秒');
+  // 通道检查改成真的会红的形态：原来钉的是「没有 J(那句话说」，那句话本身已不在档里，
+  // 于是变成永真断言。现在直接取出不可信分支，断这段里没有 J( 调用。
+  const untrustedBranch = resync.slice(resync.indexOf('if(!earnedRunPlayEventsTrusted){'));
+  assert.doesNotMatch(untrustedBranch.slice(0, untrustedBranch.indexOf('return null')), /[^.\w]J\(/,
+    '这条不能走 J（单格局面提示）：马上会被「强制换局完成」盖掉');
   assert.match(resync, /syncEarnedRunHalfInning\(event,\{allowEmpty:!0\}\)/, '可信时按当前半局定案对账');
 
   // 同一段里另外两条弹提示（判定未更新、覆写作废）也被换成 ElMessage，于是得防刷屏：
@@ -209,7 +215,8 @@ test('LiveGame 静态接线：Qr 改用统一序列；保存与强制换局前�
     liveGame.indexOf('function syncEarnedRunHalfInning(event,options={}){'),
     liveGame.indexOf('let earnedRunSyncPending')
   );
-  assert.match(sync, /noticeEarnedRunIssue\(`自责分判定未更新/, '判定未更新走按句去重的弹提示');
+  assert.match(sync, /noticeEarnedRunIssue\(lgText\(event\.half==="top"\?"liveGame\.settle\.erIssueTop":"liveGame\.settle\.erIssueBottom"/,
+    '判定未更新走按句去重的弹提示，且按上下半局取词');
   assert.doesNotMatch(sync, /Fe\.warning\(`自责分判定未更新/, '不能裸弹：那会每次保存叠一条一模一样的');
   assert.match(sync, /noticeEarnedRunIssue\.reset\(\)/, '重建成功后要清掉去重位，真再坏一次还得看得见');
   assert.match(sync, /noticeOverrideInvalidation\(/, '覆写作废用另一格去重（它在成功路径上，不跟成功一起清零）');

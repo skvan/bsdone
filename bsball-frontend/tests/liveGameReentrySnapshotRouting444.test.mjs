@@ -134,8 +134,6 @@ test('#713 pushLiveSnapshot：服务器点名拒收（409）时不重试，重�
 });
 
 test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换人在场状态会丢失」顶掉', async () => {
-  // 文案取现在唯一还会发生的拒收形状（得分倒退）：条数那道已于 #713 拍板放行，
-  // 拿它当样本会让这份测试读起来像在描述一条已经不存在的 409。
   const msg = '本场比赛已有逐棒记录，提交的快照得分只到 2 分，低于记分 24 分，已拒绝覆盖以免丢失逐棒记录；用「从云端恢复录入现场」可放弃本地这份回到服务器现状';
   const { api, calls } = ctx({ businessFail: msg });
   await api.Zr();
@@ -143,6 +141,13 @@ test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换�
   assert.equal(calls.err, 1, '拒收走 error 通道（它是服务器确定的决定，不是可重试的暂态）');
   assert.equal(calls.lastError, msg, '原因要原样到人眼里，因为下一步动作就写在里面');
   assert.equal(calls.warn, 0, '不能再被那句无关的通用文案顶掉');
+});
+
+test('#444-A Zr：返回快照同步结果，成功后为 true、连续失败为 false', async () => {
+  const { api, state } = ctx({ failRemaining: 2 });
+  assert.equal(await api.Zr(), false, '两次都失败要返回 false，调用方才能决定是否提示成功');
+  state.failRemaining = 0;
+  assert.equal(await api.Zr(), true, '恢复后成功要返回 true');
 });
 
 test('#713 Zr：拒收转成功后要清掉原因，之后的真故障回到通用文案而不是旧拒收词', async () => {

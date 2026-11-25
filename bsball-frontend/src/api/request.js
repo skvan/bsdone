@@ -15,6 +15,7 @@ import {
 import { getExplicitTenantCode, resolveToken, clearAllTenantAuth } from './tokenStorage';
 import { useAuthStore } from '../stores/auth';
 import { extractShareSource } from '../utils/shareSource';
+import { currentLocale } from '../i18n';
 
 export const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || '';
 export const BASE_URL = (import.meta.env && import.meta.env.BASE_URL) || '/bs-ball/';
@@ -153,10 +154,26 @@ function isManageContext() {
   return /^\/[^/]+\/admin(\/|$)/.test(stripDeployBase(window.location.pathname || '/'));
 }
 
+// 界面语言随请求带上（后端快照守门等 409 文案按它选语言，见后端 UiLocaleResolver）。
+// 为什么不能用标准的 Accept-Language：本项目的语言是使用者在界面上自己切的、存在 localStorage
+// （bs-ball-locale），可以和系统语言完全不同；而 fetch 的 Accept-Language 是 forbidden header，
+// 脚本改不动，浏览器只会发系统语言。只靠它就出现「界面英文、报错中文」（反之亦然）。
+// 取不到值时宁可不带这个头：后端会退回 Accept-Language，比发一个空串或 undefined 干净。
+function uiLocaleHeaders() {
+  try {
+    const locale = String(currentLocale() || '');
+    return locale ? { 'X-UI-Locale': locale } : {};
+  } catch {
+    // i18n 实例未就绪（构建期/单元环境的裸调用）：按老客户端处理，不带该头
+    return {};
+  }
+}
+
 function buildHeaders(fullUrl, custom) {
   const needAuth = !isPublicPath(fullUrl);
   return {
     'Content-Type': 'application/json',
+    ...uiLocaleHeaders(),
     ...tenantHeaders(),
     ...(needAuth ? authHeaders() : {}),
     // 管理上下文头仅随「已认证的管理区请求」附加（isManageContext() && needAuth）：

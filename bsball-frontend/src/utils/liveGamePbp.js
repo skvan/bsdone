@@ -46,6 +46,7 @@ export function buildPbpEntries(logs, limit = PBP_LOG_LIMIT) {
     const inning = parsed ? `${parsed.inning}${parsed.half === 'top' ? '上' : '下'}` : '';
     const tail = (getLineTail(raw) ?? '').trim();
     const lines = normalizeLines(raw?.lines);
+    const customReason = raw && typeof raw === 'object' && raw.customReason ? raw.customReason : null;
     const baseKey = `${time}|${inning}|${text}|${tail}|${lines.join('|')}`;
     const occurrence = seenKeys.get(baseKey) ?? 0;
     seenKeys.set(baseKey, occurrence + 1);
@@ -55,7 +56,8 @@ export function buildPbpEntries(logs, limit = PBP_LOG_LIMIT) {
       inning,
       text,
       tail,
-      lines
+      lines,
+      ...(customReason ? { customReason } : {})
     });
     if (entries.length >= max) break;
   }

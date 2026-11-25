@@ -821,6 +821,62 @@ test('Issue #656：双盗垒 2B 跑者趁传上三垒，1B 跑者 CS 2-5-4', asy
   expect(snapshot.playerStatsById['104'].fielding).toMatchObject({ a: 0, po: 1 });
 });
 
+test('Issue #656 追加：出局理由选其他可输入文字，日志可事后编辑并随快照保存', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await recordSingle(page);
+  await page.getByRole('button', { name: '全屏显示' }).click();
+  await expect(page.locator('.lg-pbp')).toBeVisible();
+
+  // 一垒跑者同垒拖拽出局 → 理由选「其他」→ 弹出输入框
+  const menu = await dragRunner(page, 1, 1, 'out');
+  await expect(menu).toBeVisible();
+  await pickMenuItem(page, '其他');
+
+  const input = page.locator('.el-message-box__input input');
+  await expect(input).toBeVisible();
+  await input.fill('趁传漏踩垒包');
+  await page.getByRole('button', { name: '保存理由' }).click();
+  await expect(page.locator('.lg-pbp__text').filter({ hasText: '趁传漏踩垒包' })).toBeVisible();
+
+  // 事后编辑：PBP 行内铅笔，预填原文字，保存后日志跟着变
+  await page.getByRole('button', { name: '编辑出局理由' }).first().click();
+  const editInput = page.locator('.el-message-box__input input');
+  await expect(editInput).toHaveValue('趁传漏踩垒包');
+  await editInput.fill('趁传时漏踩二垒');
+  await page.getByRole('button', { name: '保存理由' }).click();
+  await expect(page.locator('.lg-pbp__text').filter({ hasText: '趁传时漏踩二垒' })).toBeVisible();
+  await expect(page.locator('.lg-pbp__text').filter({ hasText: '趁传漏踩垒包' })).toHaveCount(0);
+  await expect.poll(() => bucket.snapshots.at(-1) ?? '').toContain('趁传时漏踩二垒');
+
+  // 刷新后从服务器快照恢复，理由仍在且仍可编辑
+  await page.reload();
+  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await page.getByRole('button', { name: '全屏显示' }).click();
+  await expect(page.locator('.lg-pbp__text').filter({ hasText: '趁传时漏踩二垒' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '编辑出局理由' }).first()).toBeVisible();
+});
+
+test('Issue #656 追加：取消「其他」输入不产生出局、不写日志', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await recordSingle(page);
+  await page.getByRole('button', { name: '全屏显示' }).click();
+  await expect(page.locator('.lg-pbp')).toBeVisible();
+  const rowsBefore = await page.locator('.lg-pbp__row').count();
+
+  const menu = await dragRunner(page, 1, 1, 'out');
+  await expect(menu).toBeVisible();
+  await pickMenuItem(page, '其他');
+  await page.getByRole('button', { name: '取消' }).click();
+
+  await expect(page.locator('.rdm__panel:visible')).toHaveCount(0);
+  await expect(page.locator('.el-message-box')).toHaveCount(0);
+  await expect(page.locator('.lg-pbp__text').filter({ hasText: '其他：' })).toHaveCount(0);
+  await expect(page.locator('.lg-pbp__row')).toHaveCount(rowsBefore);
+  await expect(page.getByRole('img', { name: '垒包：一垒有人' })).toBeVisible();
+});
+
 test('全屏模式回归：原因弹窗保持在视口中央', async ({ page }) => {
   const bucket = { snapshots: [] };
   await openLiveGame(page, bucket);

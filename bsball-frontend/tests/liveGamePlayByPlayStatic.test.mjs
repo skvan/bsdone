@@ -24,6 +24,8 @@ test('PBP 面板提供四向吸附按钮与日志列表', () => {
   assert.match(component, /entry\.time/);
   assert.match(component, /entry\.tail/);
   assert.match(component, /entry\.lines/);
+  assert.match(component, /entry\.customReason && editable/);
+  assert.match(component, /@click="\$emit\('edit-reason', entry\.customReason\)"/);
   assert.match(component, /buildPbpEntries/);
   assert.match(component, /props\.allowHorizontal \? DOCK_ITEMS : DOCK_ITEMS\.filter/);
 });
@@ -51,7 +53,7 @@ test('PBP 面板只在全屏时挂载，并透传 eventLog 与吸附方向', () 
   assert.match(liveGame, /c\(oe\)\?v\(LiveGamePbpSplitter,\{dock:pbpEffectiveDock\.value\}/);
   assert.match(
     liveGame,
-    /c\(oe\)\?v\(LiveGamePlayByPlay,\{logs:ke\.value,dock:pbpEffectiveDock\.value,allowHorizontal:!pbpNarrow\.value,onDockChange:setPbpDock\}/
+    /c\(oe\)\?v\(LiveGamePlayByPlay,\{logs:ke\.value,dock:pbpEffectiveDock\.value,allowHorizontal:!pbpNarrow\.value,editable:!finalReviewMode&&!substitutionMode\.value,onDockChange:setPbpDock,onEditReason:editRunnerOutOtherReason\}/
   );
 });
 

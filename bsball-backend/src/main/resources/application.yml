@@ -33,6 +33,14 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
+  # 服务端回给使用者的文案（#713 那一轮新增的四条快照拒收文案）：messages.properties 是简体中文兼兜底，
+  # 请求语言由 WebConfig 里的 LocaleResolver 定（优先 X-UI-Locale，再看 Accept-Language）。
+  # fallback-to-system-locale 显式关掉：开着时 bundle 缺词会静默拿到 JVM 的系统语言，
+  # 而服务器上 JVM 是什么语言并不确定——同一句报错会随部署机器变。
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   # JPA/Hibernate 全局属性（具体方言、ddl 在各环境 yml）
   jpa:
     properties:

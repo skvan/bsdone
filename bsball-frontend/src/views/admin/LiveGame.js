@@ -19,6 +19,7 @@ import { gameApi as ma } from '../../api/business';
 import { teamApi as Zc } from '../../api/business';
 import { resolveAssetUrl as resolveUploadUrl } from '../../api/request';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
+import { findMissingPlayKeys } from '../../domain/earnedRun/snapshotKeyCoverage';
 import { applyAbsolutePitcherTotals } from '../../domain/earnedRun/pitcherTotals';
 import { decideRbiForRun, isDoublePlayThrowingErrorException } from '../../domain/liveGameRbi';
 import { createRunLedger, beginPlay, addRun, voidCurrentPlayRuns, takeAllRuns, clearRuns, advanceOrigin, runOrigin } from '../../utils/liveGameRunLedger';
@@ -69,9 +70,9 @@ import { buildLiveBenchItems, resolveLiveSubDropHits, liveSubDropAction, liveSub
 import { buildFieldRotationMoves, formatFieldRotation, parseFieldRotation } from '../../utils/liveSubRotation.js';
 import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeamState, canCancelDh, validateReentrySlot, effectiveUnavailableIds, findReentryInTransaction } from '../../utils/liveSubstitutionMode.js';
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
-import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
+import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget, resolveStarterPitcherId } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, appendOuts as LgAppendOuts, dpRunnerOutText as LgDpRunnerOut, dpMainText as LgDpMain, hitResultText as LgHitText, noAdvanceRunText as LgNoAdvance, noAdvanceThirdText as LgNoAdvanceThird, runOutNoScoreText as LgRunOutNoScore, setLogTextLocale } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, replaceNoteText as LgReplaceNote, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, appendOuts as LgAppendOuts, dpRunnerOutText as LgDpRunnerOut, dpMainText as LgDpMain, hitResultText as LgHitText, noAdvanceRunText as LgNoAdvance, noAdvanceThirdText as LgNoAdvanceThird, runOutNoScoreText as LgRunOutNoScore, setLogTextLocale } from '../../utils/liveGameLogTexts';
 import { computeErrorChainAssists, computeErrorChainPutout } from '../../utils/liveGameErrorChain';
 import { resolveBalkAction as LgBalkAction } from '../../utils/liveGameBalk';
 import { resolveSacrificeCredit as LgSacrificeCredit } from '../../utils/liveGameSacrifice';
@@ -1032,7 +1033,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),KnMeta=x(""),KnDismiss=x(!1),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
   function applyEarnedRunTotals(result){
     const absolute=result?.pitcherAbsoluteTotals;
     if(!absolute)return;
@@ -1184,7 +1185,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,flowNoticeMeta:KnMeta,flowNoticeDismissible:KnDismiss,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -1241,8 +1242,8 @@ function qd(){
       }
       
     }
-    const N=`[${new Date().toLocaleTimeString("zh-CN",{hour12:!1})}] [${u.gameState.inning}${u.gameState.isTop?"上":"下"}] ${f(S)}`,K=F?.showInPbp!==!1,VL=Array.isArray(F?.lines)?F.lines.filter(M=>typeof M=="string"&&M.trim()).map(M=>f(M)):[];
-    R||!K||VL.length?u.eventLog.unshift({
+    const N=`[${new Date().toLocaleTimeString("zh-CN",{hour12:!1})}] [${u.gameState.inning}${u.gameState.isTop?"上":"下"}] ${f(S)}`,K=F?.showInPbp!==!1,VL=Array.isArray(F?.lines)?F.lines.filter(M=>typeof M=="string"&&M.trim()).map(M=>f(M)):[],CR=F?.customReason??null;
+    R||!K||VL.length||CR?u.eventLog.unshift({
       head:N,...R?{
         tail:R
       }
@@ -1261,15 +1262,21 @@ function qd(){
       :{
         
       }
+      ,...CR?{
+        customReason:CR
+      }
+      :{
+        
+      }
       
     }
     ):u.eventLog.unshift(N)
   }
-  function o(S,R="info"){
-    u.flowNotice=S,u.flowNoticeType=R
+  function o(S,R="info",options){
+    u.flowNotice=S,u.flowNoticeType=R,u.flowNoticeMeta=options?.meta??"",u.flowNoticeDismissible=!!options?.dismissOnOutside
   }
   function _(){
-    u.flowNotice=""
+    u.flowNotice="",u.flowNoticeMeta="",u.flowNoticeDismissible=!1
   }
   return{
     addLog:l,showFlowNotice:o,clearFlowNotice:_,withCurrentBatterOrderInLog:f,setSubstitutionLogMuted:S=>{
@@ -5008,7 +5015,7 @@ var sg={
     const { isEnglish: isEnglishUi, locale: lgLocale, text: lgText } = useLiveGameText();
     Ce(lgLocale, (locale) => setLogTextLocale(locale), { immediate: true });
     const f=Bu(),l=f.gameState,o=f.teamsData,_=f.setupForm,{
-      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
+      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,flowNoticeMeta:flowMeta,flowNoticeDismissible:flowDismiss,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
     =Kc(f),xt=$(()=>f.homeTeam),At=$(()=>f.awayTeam);
     const reviewDrawerVisible=x(!1),reviewDrawerSession=x(0);
@@ -6291,7 +6298,58 @@ var sg={
       }
       ])
     }
-    function kp(e){
+    function newRunnerOutOtherId(){
+      return`ro-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`
+    }
+    async function promptRunnerOutOtherReason({initial="",editing=!1}={}){
+      try{
+        const e=await LgBox({
+          title:lgText(editing?"liveGame.runnerOutOther.editTitle":"liveGame.runnerOutOther.title"),message:lgText("liveGame.runnerOutOther.message"),showInput:!0,inputValue:initial,inputPlaceholder:lgText("liveGame.runnerOutOther.placeholder"),inputValidator:t=>{
+            const a=String(t??"").trim();
+            return a?a.length>120?lgText("liveGame.runnerOutOther.tooLong"):!0:lgText("liveGame.runnerOutOther.required")
+          }
+          ,confirmButtonText:lgText("liveGame.runnerOutOther.save"),cancelButtonText:lgText("liveGame.common.cancel"),showCancelButton:!0,draggable:!0
+        }
+        );
+        return String(e?.value??"").trim()
+      }
+      catch{
+        return null
+      }
+    }
+    async function editRunnerOutOtherReason(e){
+      if(!F.value||finalReviewMode||substitutionMode.value||!e?.id)return;
+      const t=String(e.text??""),a=await promptRunnerOutOtherReason({
+        initial:t,editing:!0
+      }
+      );
+      if(a==null)return;
+      const s=ke.value.findIndex(r=>r&&typeof r=="object"&&r.customReason?.id===e.id);
+      if(s<0)return;
+      const r=ke.value[s],p=LgReplaceNote(r.head,t,a);
+      if(p==null){
+        Fe.warning({
+          message:lgText("liveGame.runnerOutOther.editFailed"),duration:8000
+        }
+        );
+        return
+      }
+      ke.value.splice(s,1,{
+        ...r,head:p,customReason:{
+          ...r.customReason,text:a
+        }
+      }
+      ),jt({
+        persistCache:"immediate"
+      }
+      );
+      const saved=await Zr();
+      saved&&Fe.success({
+        message:lgText("liveGame.runnerOutOther.saved"),duration:3000
+      }
+      )
+    }
+    async function kp(e){
       const t=ge.value;
       if(!t)return;
       const{
@@ -6303,6 +6361,15 @@ var sg={
         ge.value=null;
         J("本半局已达三出局或当前打席未完成，无法记录跑者出局；请先确认半局结束/攻守交换","warning");
         return
+      }
+      if(e.id==="out_other"){
+        // 先收起原因面板：它盖在 MessageBox 之上会挡住「保存理由」；取消则本次出局不记录。
+        ge.value=null;
+        const customText=await promptRunnerOutOtherReason();
+        if(customText==null)return;
+        e={
+          ...e,customText,customReasonId:newRunnerOutOtherId()
+        }
       }
       if(ge.value=null,e.id==="out_steal_fail"){
         de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
@@ -6333,8 +6400,16 @@ var sg={
         return
       }
       de(`拖拽-出局[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"出局").trim()),l.outs++,Ipy(),recordPlayOut([]);
-      const g=LgOut({reasonCn:e.cn,runner:a,from:s,to:r,outsCum:1,total:l.outs});
-      D(g),l.outs>=3&&(Je("THIRD_OUT",g),Qe())
+      const g=LgOut({
+        reasonCn:e.cn,runner:a,from:s,to:r,note:e.customText,noteIsCustom:!!e.customText,outsCum:1,total:l.outs
+      }
+      );
+      D(g,void 0,e.customText?{
+        customReason:{
+          id:e.customReasonId,text:e.customText
+        }
+      }
+      :void 0),l.outs>=3&&(Je("THIRD_OUT",g),Qe())
     }
     function Pt(){
       return{
@@ -7450,6 +7525,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       // 不变性），所以延后入库不会改变任何判定结果，只是不再每个打席撕一次人工介入。
       // 不送该选项的调用点（保存、换局、补台账）一律视为半局定案。
       const halfComplete=options.halfComplete!==false;
+      let succeeded=!0;
       earnedRunSyncPending=earnedRunSyncPending.catch(()=>{}).then(async()=>{
         const gameId=Number(R.value);
         if(!gameId||!event)return;
@@ -7457,7 +7533,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!plays.length&&!options.allowEmpty)return;
         try{
           const localOfficialRuns=(Number(f.teamsData?.home?.score)||0)+(Number(f.teamsData?.away?.score)||0);
-          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns});
+          const result=await ma.reconstructEarnedRuns(gameId,{inning:event.inning,half:event.half,plays,halfComplete,officialRuns:localOfficialRuns,...options.confirmPartialRebuild?{
+            confirmPartialRebuild:!0
+          }
+          :{
+            
+          }});
           f.earnedRunReconstruction=result?.data??result??null;
           f.applyEarnedRunTotals(f.earnedRunReconstruction);
           // 半局定案会把该半局责任投手的人工 R/ER 覆写作废（后端 invalidateActiveOverrides），
@@ -7468,17 +7549,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           if(halfComplete&&Array.isArray(invalidated)&&invalidated.length){
             // 走 ElMessage 而不是 J（局面提示）：那是个单格位，下一个打席 / 下一句提示就把
             // 这条盖掉，记录员实际看不到。作废覆写是一次性事件，必须自己占一条弹提示。
-            noticeOverrideInvalidation(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`);
+            noticeOverrideInvalidation(lgText(event.half==="top"?"liveGame.settle.overrideVoidTop":"liveGame.settle.overrideVoidBottom",{inning:event.inning,count:invalidated.length}));
           }
           // 这一发重建成了：之前那句「判定没更新」已经不再成立，清掉去重位，真再坏一次还能看见
           noticeEarnedRunIssue.reset();
         }catch(error){
           console.warn('[LiveGame] earned-run reconstruction pending',error);
+          succeeded=!1;
           // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
           // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
           // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
-          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${error?.message||String(error)}`);
+          // 服务器 msg 已按请求语言本地化（#736），直接抬出来；不再由前端按 reason 查 5 语表。
+          noticeEarnedRunIssue(lgText(event.half==="top"?"liveGame.settle.erIssueTop":"liveGame.settle.erIssueBottom",{inning:event.inning,msg:error?.message||String(error)}));
         }
+        return succeeded
       });
       return earnedRunSyncPending;
     }
@@ -7537,7 +7621,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         // 走 ElMessage 而不是 J：J 是单格的局面提示，forceHalf 结尾马上会用「强制换局完成」
         // 把它盖掉（实测），而现场没有把这批记录变可信的开关，唯一出路是赛后人工复核。
         f.playEvents.length&&!settleSkipNoticed&&(settleSkipNoticed=!0,Fe.warning({
-          message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 ${f.playEvents.length} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认`,
+          message:lgText("liveGame.settle.untrustedSkipped",{count:f.playEvents.length}),
           duration:8000
         }));
         return null
@@ -7550,6 +7634,118 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 整个入场只提一次上面那条（保存/换局/强制换局都会走 resync）
     let settleSkipNoticed=!1;
+    // #712：重进加载后用云端已落库的定案打席键校验本地快照是否覆盖完整。
+    // 证书（playEventsComplete）缺失时后端不认这份 playEvents 可信，半局定案会整个 no-op；
+    // key 覆盖关系可以替代证书：云端每个已定案打席都能在本地找到 → 恢复信任，
+    // 下一次保存把 playEventsComplete=true 写回去（证书自愈）。服务器没有 key 视为无可校验。
+    let earnedRunKeyGap=null,earnedRunKeyVerifyNoticed=!1,earnedRunKeyGapNoticed=!1;
+    function halfLabel(half){
+      return half==="bottom"?lgText("liveGame.snapshotKeys.bottom"):lgText("liveGame.snapshotKeys.top")
+    }
+    function describeEarnedRunKeyGap(gap){
+      return (gap?.byHalf??[]).map(item=>lgText("liveGame.snapshotKeys.halfGap",{
+        inning:item.inning,half:halfLabel(item.half),count:item.count
+      })).join(lgText("liveGame.snapshotKeys.gapSeparator"))
+    }
+    async function verifyEarnedRunPlayKeysCoverage(options={}){
+      if(!R.value||earnedRunPlayEventsTrusted)return earnedRunKeyGap;
+      const localEvents=Array.isArray(f.playEvents)?f.playEvents:[];
+      // 本地没有逐棒记录：没有可校验的输入，保持现有行为（设计 3.2 第 4 条）
+      if(localEvents.length===0){
+        earnedRunKeyGap=null;
+        return null
+      }
+      let serverKeys;
+      try{
+        serverKeys=await ma.listEarnedRunPlayKeys(R.value)||[]
+      }
+      catch(error){
+        // 端点失败不静默：保持不可信，并把原因留给人看（设计 3.2 第 3 条）
+        earnedRunKeyGap={
+          verifyError:error?.message||String(error),missing:[],byHalf:[]
+        };
+        earnedRunKeyVerifyNoticed||(earnedRunKeyVerifyNoticed=!0,Fe.warning({
+          message:lgText("liveGame.snapshotKeys.verifyFailed",{
+            reason:earnedRunKeyGap.verifyError
+          }
+          ),duration:8000
+        }
+        ));
+        return earnedRunKeyGap
+      }
+      const {missing,byHalf}=findMissingPlayKeys(serverKeys,localEvents);
+      if(missing.length===0){
+        earnedRunKeyGap=null;
+        // 空集合表示该场还没有落库定案，不额外信任（设计 3.2 第 4 条）
+        if(serverKeys.length>0){
+          earnedRunPlayEventsTrusted=!0,settleSkipNoticed=!1,options.notify&&Fe.info({
+            message:lgText("liveGame.snapshotKeys.verified",{
+              count:serverKeys.length
+            }
+            ),duration:6000
+          }
+          )
+        }
+        return null
+      }
+      earnedRunKeyGap={
+        verifyError:null,missing,byHalf
+      };
+      options.notify&&await promptEarnedRunKeyGap();
+      return earnedRunKeyGap
+    }
+    // 缺口提示：云端有、本地缺的定案打席。两个出路按设计 3.3：
+    // ① 从云端恢复录入现场（放弃本地短档）；② 按本地记录局部定案（仅当前半局本地有事件时）。
+    async function promptEarnedRunKeyGap(){
+      if(!earnedRunKeyGap?.missing?.length||earnedRunKeyGapNoticed)return;
+      earnedRunKeyGapNoticed=!0;
+      const half={inning:l.inning,half:l.isTop?"top":"bottom"};
+      const canPartial=f.playEvents.some(play=>play.inning===half.inning&&play.half===half.half);
+      const detail=describeEarnedRunKeyGap(earnedRunKeyGap);
+      try{
+        await LgConfirm(lgText("liveGame.snapshotKeys.gapMessage",{
+          detail
+        }
+        ),lgText("liveGame.snapshotKeys.gapTitle"),{
+          confirmButtonText:lgText("liveGame.snapshotKeys.restoreFromCloud"),cancelButtonText:canPartial?lgText("liveGame.snapshotKeys.partialRebuild"):lgText("liveGame.snapshotKeys.gapLater"),type:"warning",distinguishCancelAndClose:!0,draggable:!0
+        }
+        );
+        await bc({
+          skipConfirm:!0
+        })
+      }
+      catch(action){
+        if(action!=="cancel"||!canPartial)return;
+        try{
+          await LgConfirm(lgText("liveGame.snapshotKeys.partialConfirmMessage",{
+            inning:half.inning,half:halfLabel(half.half)
+          }
+          ),lgText("liveGame.snapshotKeys.partialConfirmTitle"),{
+            confirmButtonText:lgText("liveGame.snapshotKeys.partialConfirmOk"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+          }
+          )
+        }
+        catch{
+          return
+        }
+        // 用户显式选择「保留本地短档」：这本身就是覆盖云端的意图，等同撤销/重做后的授权。
+        // 只有在重建成功后才置位——重建失败时本地记录并没有被定案，不能让后续保存
+        // 拿着「可以截短」的意图去覆盖云端。
+        const settled=await syncEarnedRunHalfInning(half,{
+          allowEmpty:!0,confirmPartialRebuild:!0
+        }
+        );
+        if(!settled)return;
+        allowEvidenceShrink=!0;
+        earnedRunKeyGap=null;
+        // 局部定案已经替当前半局做了决定：本条「半局定案没有执行」的通用告警本轮不该再弹。
+        settleSkipNoticed=!0;
+        Fe.info({
+          message:lgText("liveGame.snapshotKeys.partialDone"),duration:8000
+        }
+        )
+      }
+    }
     const es=new WeakMap;
     function ua(e){
       nt()||requestAnimationFrame(()=>{
@@ -7793,7 +7989,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // 存了统计却没同步快照时，_c()/bc() 在跨设备/清缓存重进会取不到快照、回退 Do()
     // （只按 battingOrder 重建名单），丢「当前在场占用者」。所以失败不再静默吞掉：可能被
     // 重试救回来的失败（网络、5xx、429 限流）先重试一次，仍失败提示一次（不阻断录入本身）；
-    // 服务器点名拒收（快照覆盖守门的 409）不重试，直接把服务器给的原因抬到人前（#713）。
+    // 服务器点名拒收（快照覆盖守门 409、400/403 权限/校验；429/401 除外）不重试，
+    // 直接把服务器给的原因抬到人前（#713）。
     // 提示按「这一次要播的话」去重，而不是按「本场是否已经失败过一次」：同一句不刷屏，
     // 内容换了（先抖动、后拒收）就必须看得见；成功后清脏标与已播记录，下次真故障能重新提示。
     let snapshotSyncFailed=!1,snapshotSyncReason=null,snapshotNoticeShown=null;
@@ -7810,12 +8007,12 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return !0
         }
         catch(error){
-          // 只认 409：那是快照覆盖守门点名拒收（本项目 BusinessException 走 HTTP 200 + body.code，
-          // request.js 再包成带 apiCode 的 ApiBizError），重试只会再撞一次、多白花 800ms，再把原因
-          // 拖成下面那句「未能同步」的误导文案。其余 4xx 不敢当拒收：RateLimitFilter 对这个端点真会
-          // 回 429「请稍后再试」（重试才是对的），401 走会话重登，所以都留着原来的重试兜底。
-          if(error?.apiCode===409){
-            snapshotSyncReason=error.message||String(error);
+          // 4xx 里只有 429（限流）和 401（会话重登）值得重试；其余（409 守门、400/403 权限/
+          // 校验）重试只会再撞一次、多白花 800ms，还把原因拖成下面那句「未能同步」的误导文案。
+          // 直接把服务器原因抬到人前；msg 已由后端按请求语言本地化（#736），不再由前端映射。
+          const code=error?.apiCode;
+          if(typeof code==="number"&&code>=400&&code<500&&code!==429&&code!==401){
+            snapshotSyncReason=error?.message||String(error);
             return !1
           }
           if(attempt===0)await new Promise(rr=>{
@@ -7846,13 +8043,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       })
     }
     async function Zr(){
-      if(!R.value||!F.value)return;
+      if(!R.value||!F.value)return !1;
       Tn(),to();
       const e=pa({
         includeUndoStacks:!0
       }
       );
-      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1,snapshotNoticeShown=null):reportSnapshotSyncFailure()
+      if(!e)return !1;
+      const t=await pushLiveSnapshot(e);
+      return t?(snapshotSyncFailed=!1,snapshotNoticeShown=null,!0):(reportSnapshotSyncFailure(),!1)
     }
     async function ZrLite(){
       // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行
@@ -10483,11 +10682,44 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function gs(){
       Ma.value=!1,rc()
     }
+    // #693：未进换人模式就点球员时，红字前补该球员的球队/姓名/背号/守备位置/棒次
+    function buildSubstitutionPlayerHint(player,teamKey,options){
+      if(!player)return"";
+      const isHome=teamKey==="home";
+      const side=isHome?lgText("liveGame.team.home"):lgText("liveGame.team.away");
+      const teamName=isHome?xt.value?.name:At.value?.name;
+      const pos=options?.pos||player.position||"";
+      let posText="";
+      if(pos){
+        const posKey=`liveGame.lineup.position.${pos}`,localizedPos=lgText(posKey);
+        posText=localizedPos&&localizedPos!==posKey?`${localizedPos}(${pos})`:(It[pos]??pos)
+      }
+      const lineup=isHome?q.value:X.value;
+      const orderIndex=Array.isArray(lineup)?lineup.findIndex(row=>String(row?.id)===String(player.id)):-1;
+      const orderText=orderIndex>=0?lgText("liveGame.sub.playerInfoOrder",{n:orderIndex+1}):"";
+      const playerText=`${player.name??"--"} #${player.number??"-"}`;
+      return[teamName?`${side} ${teamName}`:side,playerText,posText,orderText].filter(Boolean).join(" · ")
+    }
+    // #693：点击提示条以外的地方，清除可外部关闭的红字提示（不干扰流程自带操作按钮）。
+    // 用 click 而不是 pointerdown：pointerdown 里移除提示条会让比分条塌陷，同一击的 click 落空。
+    function handleFlowNoticeOutsideClick(event){
+      if(!flowDismiss.value)return;
+      if(event.target instanceof Element&&event.target.closest(".les-flow-card, .live-bench-card"))return;
+      pt()
+    }
+    As(()=>{
+      document.addEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    ),yu(()=>{
+      document.removeEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    );
     function Za(e,t,a,s){
       if(substitutionModeBusy.value)return;   // 提交换人过程中不再打开任何换人浮层
       // 换人入口一律收口到换人模式（setRunner 属补跑者纠偏，不算换人）
       if(!substitutionMode.value&&e!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(t,a,s);
+        J(meta?lgText("liveGame.sub.needModeShort"):lgText("liveGame.sub.needMode"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       mt.value=e,Ga.value=t,ia.value=a,Qt.value=s?.base??null,Va.value=s?.pos??null,wt(),On.value=!0,He(()=>{
@@ -10641,7 +10873,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(substitutionModeBusy.value)return;   // 提交进行中拒绝执行，避免净变化之外的本地改动
       // 兜底：任何换人执行路径在模式外都必须拒绝（含换守备位置）
       if(!substitutionMode.value&&mt.value!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionMode.value&&substitutionModeCommitFailed.value){J(lgText("liveGame.sub.lastFailed"),"warning");return}
@@ -11281,7 +11513,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function applyFieldRotation(){
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value){
@@ -11379,7 +11611,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 执行换人：source={kind,player,code?}，hit=落点命中项；成功返回 true（统一走 cc 记账）
     function liveBenchApplyDrop(source,hit){
-      if(!substitutionMode.value){J(lgText("liveGame.sub.needMode"),"warning");return!1}
+      if(!substitutionMode.value){J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});return!1}
       if(source?.player?.disabled){J(lgText("liveGame.sub.playerUnavailable"),"warning");return!1}
       const blockReason=liveBenchSubBlockedReason();
       if(blockReason){
@@ -11517,7 +11749,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function liveBenchCardPointerDown(player,side,event){
       if(player?.disabled||event.button!==0||liveBenchDragSession)return;
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(player,liveBenchTeamKey(side));
+        J(lgText("liveGame.sub.needModeShort"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value)return;
@@ -12097,7 +12330,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       };
       const side=a.side;
       const starterIds=side?Ee(side).lineupStarterIds.value:null;
-      const starterFpId=side==="away"?awayStarterFpId.value:side==="home"?homeStarterFpId.value:null;
+      const starterFpId=a.starterFpId!==void 0?a.starterFpId:(side==="away"?awayStarterFpId.value:side==="home"?homeStarterFpId.value:null);
       // #566：守备 GS 按先发名单落库，避免结果页/个人统计恒为 0
       const fieldingGs=isStartingPlayer(e.id,starterIds,starterFpId)?1:0;
       return{
@@ -12147,11 +12380,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       d++)T(g[d]);
       const Y=s.value;
       for(const d of Y)T(d);
-      const j=[];
-      for(const d of P)(!battingIds.has(Number(d.player.id))&&(_s(d.player,e)||$z(d.player))&&!Lo(d.player)&&d.battingOrder==null)||(j.push(Eo(d.player,t,{
-        battingOrder:d.battingOrder,listOrder:d.listOrder,isPitcherRow:!1,side:e
-      }
-      )),w.add(Number(d.player.id)));
       const ee=r.value,V=p.value,E=[];
       V&&ee!=null&&Number(V.id)===Number(ee)&&E.push(b.get(Number(ee))??V);
       for(const d of g)if(!Et(d)&&_s(d,e)){
@@ -12164,6 +12392,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         $z(d.player)&&E.push(d.player)
       }
       const{rows:pitcherOrdered,orderById:pitcherOrderById}=orderPitcherRows(E);
+      // #566：DH 制纯先发投手不在打线；显式记录缺失时按登板序回补，避免 GS 恒为 0
+      const explicitStarterFpId=e==="away"?awayStarterFpId.value:homeStarterFpId.value;
+      const starterFpId=resolveStarterPitcherId([...g,...Y,...(V?[V]:[]),...E,...P.map(row=>row.player),...(Ee(e).roster?.value??[])],explicitStarterFpId);
+      const j=[];
+      for(const d of P)(!battingIds.has(Number(d.player.id))&&(_s(d.player,e)||$z(d.player))&&!Lo(d.player)&&d.battingOrder==null)||(j.push(Eo(d.player,t,{
+        battingOrder:d.battingOrder,listOrder:d.listOrder,isPitcherRow:!1,side:e,starterFpId
+      }
+      )),w.add(Number(d.player.id)));
       for(const d of pitcherOrdered){
         const z=Number(d.id);
         const se=b.get(z)??d;
@@ -12171,7 +12407,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const _e=_s(se,e)||$z(se);
         if(!Number.isFinite(z)||z<=0||(!_e&&w.has(z)))continue;
         !Oo(se)&&ee!=null&&z!==Number(ee)||!_e&&!Lo(se)||(j.push(Eo(se,t,{
-          listOrder:A++,isPitcherRow:_e,pitcherOrder:_e?pitcherOrderById.get(z):void 0,side:e
+          listOrder:A++,isPitcherRow:_e,pitcherOrder:_e?pitcherOrderById.get(z):void 0,side:e,starterFpId
         }
         )),w.add(z))
       }
@@ -12189,8 +12425,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       for(const side of["away","home"]){
         const ctx=Ee(side),teamId=Number(side==="away"?_.awayTeamId:_.homeTeamId);
         if(!teamId)continue;
-        const starterFpId=side==="away"?awayStarterFpId.value:homeStarterFpId.value;
-        rows.push(...buildFieldingPositionRows(teamId,[...ctx.lineup.value,...ctx.bench.value,...(ctx.fpRow.value?[ctx.fpRow.value]:[])],[...(ctx.lineupStarterIds.value||[]),starterFpId]))
+        const players=[...ctx.lineup.value,...ctx.bench.value,...(ctx.fpRow.value?[ctx.fpRow.value]:[])];
+        const explicitStarterFpId=side==="away"?awayStarterFpId.value:homeStarterFpId.value;
+        const starterFpId=resolveStarterPitcherId([...players,...(ctx.roster.value??[])],explicitStarterFpId);
+        rows.push(...buildFieldingPositionRows(teamId,players,[...(ctx.lineupStarterIds.value||[]),starterFpId]))
       }
       return rows
     }
@@ -12294,7 +12532,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const g=r.list??[],m=new Map(g.map(P=>[`${P.teamId}_${P.playerId}`,P])),b=(P,A,T,Y)=>{
         const j=P.positions?.[0],V=(T?.position!=null&&String(T.position).trim()!==""?String(T.position).trim():void 0)??j??"",E=(P.name??P.shortName??"")||"队员",U=(P.number??T?.number??"")||"-";
         return T?{
-          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),startingPosition:normalizeFieldPos(T?.startingPosition)||"",pitcherOrder:Number(T?.pitcherOrder)>0?Number(T.pitcherOrder):(Number(P?.pitcherOrder)>0?Number(P.pitcherOrder):void 0),stats:{
+          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),startingPosition:T?.startingPosition==null?void 0:normalizeFieldPos(T.startingPosition)||"",pitcherOrder:Number(T?.pitcherOrder)>0?Number(T.pitcherOrder):(Number(P?.pitcherOrder)>0?Number(P.pitcherOrder):void 0),stats:{
             batting:{
               ab:T?.ab??0,r:T?.r??0,h:T?.h??0,rbi:T?.rbi??0,bb:T?.bb??0,hbp:T?.hbp??0,bbHp:T?.bbHp??0,so:T?.so??0,so_swing:T?.soSwing??T?.so_swing??0,so_looking:T?.soLooking??T?.so_looking??0,sf:T?.sf??0,sh:T?.sh??0,sb:T?.sb??0,cs:T?.cs??0,doubles:T?.doubles??0,triples:T?.triples??0,hr:T?.hr??0,insideParkHr:T?.insideParkHr??0,gdp:T?.gdp??0,ibb:T?.ibb??0,io:T?.io??0
             }
@@ -12310,7 +12548,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           
         }
         :{
-          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),startingPosition:normalizeFieldPos(T?.startingPosition)||"",stats:Pt()
+          ...P,name:E,number:U,teamId:A,position:V,firstPosition:normalizeFieldPos(T?.firstPosition)||(T?.battingOrder!=null?normalizeFieldPos(V):""),startingPosition:T?.startingPosition==null?void 0:normalizeFieldPos(T.startingPosition)||"",stats:Pt()
         }
         
       }
@@ -12386,22 +12624,27 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       fieldingIpReconcileEnabled=!(r?.list??[]).some(s=>Number(s.defInn)>0);
       Gl(e)
     }
-    async function bc(){
+    async function bc(options={}){
       if(!R.value||Be.value)return;
-      try{
-        await LgConfirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
-          confirmButtonText:lgText("liveGame.restore.confirmContinue"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+      if(!options.skipConfirm){
+        try{
+          await LgConfirm(lgText("liveGame.restore.confirmMessage"),lgText("liveGame.restore.confirmTitle"),{
+            confirmButtonText:lgText("liveGame.restore.confirmContinue"),cancelButtonText:lgText("liveGame.common.cancel"),type:"warning",draggable:!0
+          }
+          )
         }
-        )
-      }
-      catch{
-        return
+        catch{
+          return
+        }
       }
       const e=R.value;
       Be.value=!0;
+      let restoredSnapshot=!1;
       try{
         const t=Yo(await ma.getLiveSnapshot(e));
         earnedRunPlayEventsTrusted=t?.playEventsComplete===true;
+        // 从云端恢复的是服务器现状，不是在本地撤销出来的短档：撤销意图到此为止。
+        allowEvidenceShrink=!1;
         if(gt(),Kt(),Ma.value=!1,$e.value=[],Ne.value=[],t){
           const g=t.setupForm??{
             
@@ -12418,31 +12661,32 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           await Vl(t,b),F.value=!0,Gl(e),jt({
             persistCache:"immediate"
           }
-          ),Fe.success(lgText("liveGame.restore.snapshotRestored")),Tn();
-          return
+          ),Fe.success(lgText("liveGame.restore.snapshotRestored")),Tn(),restoredSnapshot=!0
         }
-        const a=await ma.get(e);
-        if(!a||a.status!=="live"){
-          J(lgText("liveGame.restore.cannotContinue"),"warning");
-          return
-        }
-        N.value=a.gameMode??"BASEBALL",_.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"";
-        const[s,r,p]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e)]);
-        await Do(e,a,s,r,p),earnedRunPlayEventsTrusted=a.engineManaged!==true,jt({
-          persistCache:"immediate"
-        }
-        );
-        if(!F.value){
-          Fe.warning(lgText("liveGame.restore.noRecoverableData")),await Pn.replace({
-            name:"AdminGameLiveLineupGame",params:{
-              eventId:String(Re.value),gameId:String(e)
-            }
-            
+        else{
+          const a=await ma.get(e);
+          if(!a||a.status!=="live"){
+            J(lgText("liveGame.restore.cannotContinue"),"warning");
+            return
+          }
+          N.value=a.gameMode??"BASEBALL",_.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"";
+          const[s,r,p]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e)]);
+          await Do(e,a,s,r,p),earnedRunPlayEventsTrusted=a.engineManaged!==true,jt({
+            persistCache:"immediate"
           }
           );
-          return
+          if(!F.value){
+            Fe.warning(lgText("liveGame.restore.noRecoverableData")),await Pn.replace({
+              name:"AdminGameLiveLineupGame",params:{
+                eventId:String(Re.value),gameId:String(e)
+              }
+              
+            }
+            );
+            return
+          }
+          Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
         }
-        Fe.success("已按云端已保存比分与统计重建录入现场"),Tn()
       }
       catch(t){
         if(t?.message==="cancel")return;
@@ -12451,7 +12695,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       finally{
         Be.value=!1
       }
-      
+      // #712：等恢复流程退出、Be 复位后再校验；缺口提示里的「从云端恢复」才能再次进入 bc
+      restoredSnapshot&&await verifyEarnedRunPlayKeysCoverage({
+        notify:!0
+      }
+      )
     }
     async function _c(e,t){
       earnedRunPlayEventsTrusted=!1,finalReviewMode=!1;
@@ -12471,10 +12719,14 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             }
             
           }
-          return await Vl(b,T),F.value=!0,jt({
+          await Vl(b,T),F.value=!0,jt({
             persistCache:"immediate"
           }
-          ),t?.quiet||Fe.success(lgText("liveGame.restore.cacheRestored")),Tn(),"ok"
+          ),t?.quiet||Fe.success(lgText("liveGame.restore.cacheRestored")),Tn(),await verifyEarnedRunPlayKeysCoverage({
+            notify:!t?.quiet
+          }
+          );
+          return "ok"
         }
         return J(lgText("liveGame.restore.cannotContinue"),"warning"),_l(),await Pn.replace({
           name:"AdminGames",params:{
@@ -12486,16 +12738,25 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       _.homeTeamId=a.homeTeamId,_.awayTeamId=a.awayTeamId,_.venue=a.venue??"",R.value=a.id,N.value=a.gameMode??"BASEBALL",earnedRunPlayEventsTrusted=a.engineManaged!==true,finalReviewMode=a.status==="final",finalReviewMode&&(l.isGameEnd=!0);
       const[s,r,p,g]=await Promise.all([vt(a.homeTeamId),vt(a.awayTeamId),Wo.listByGame(e),ma.getLiveSnapshot(e)]),m=Yo(g),y=a.status==="final"?(m?{source:"server",payload:m}:null):id(zo(Re.value,e),m);
-      const loaded=y?(await Vl(y.payload,{
-        homeList:s,awayList:r
+      let loaded;
+      if(y){
+        await Vl(y.payload,{
+          homeList:s,awayList:r
+        }
+        ,p),F.value=!0,Gl(e),jt({
+          persistCache:"immediate"
+        }
+        ),t?.quiet||Fe.success(y.source==="local"?lgText("liveGame.restore.cacheRestored"):lgText("liveGame.restore.serverRestored")),Tn(),loaded="ok";
+        // #712：仅现场录入重进需要校验；赛后复核是只读快照，不做定案恢复
+        finalReviewMode||await verifyEarnedRunPlayKeysCoverage({
+          notify:!t?.quiet
+        }
+        )
       }
-      ,p),F.value=!0,Gl(e),jt({
+      else await Do(e,a,s,r,p),jt({
         persistCache:"immediate"
       }
-      ),t?.quiet||Fe.success(y.source==="local"?lgText("liveGame.restore.cacheRestored"):lgText("liveGame.restore.serverRestored")),Tn(),"ok"):(await Do(e,a,s,r,p),jt({
-        persistCache:"immediate"
-      }
-      ),t?.quiet||(F.value?Fe.success(a.status==="final"?lgText("liveGame.restore.gameFinal"):lgText("liveGame.restore.resumed")):Fe.warning(lgText("liveGame.restore.noRecoverableData"))),Tn(),"ok");
+      ),t?.quiet||(F.value?Fe.success(a.status==="final"?lgText("liveGame.restore.gameFinal"):lgText("liveGame.restore.resumed")):Fe.warning(lgText("liveGame.restore.noRecoverableData"))),Tn(),loaded="ok";
       if(a.status==="final"){
         finalReviewMode=!0,l.isGameEnd=!0;
         if(!F.value){
@@ -12912,7 +13173,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
           key:1,class:re(["les-flow-card",`les-flow-card--${c(zt)}`])
         }
-        ,[n("div",Rg,H(c(k)||cf.value),1),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
+        ,[n("div",Rg,[c(flowMeta)?n("span",{class:"les-flow-notice-meta"},H(c(flowMeta)),1):W("",!0),n("span",null,H(c(k)||cf.value),1)],64),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
           key:0
         }
         ,[v(s,{
@@ -13428,7 +13689,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,lgText("liveGame.field.bip"),-1)]),_:1
         }
-        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,onDockChange:setPbpDock},null,8,["logs","dock","allowHorizontal"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,editable:!finalReviewMode&&!substitutionMode.value,onDockChange:setPbpDock,onEditReason:editRunnerOutOtherReason},null,8,["logs","dock","allowHorizontal","editable"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
           description:lgText("liveGame.verify.busy")
         }
         )]))],2)]),_:1

@@ -181,13 +181,13 @@ export function advanceText({ reasonCn, runner, from, to, rbiNote }) {
 }
 
 /** 出局单行：{原因}：{jv垒}跑者 {名} (#N) 于{垒}出局（{链|守备员}[，note]）[，累计]（note 可选：#223 如「接杀回传」）*/
-export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielder, note, outsCum = 0, total = 0 }) {
+export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielder, note, noteIsCustom = false, outsCum = 0, total = 0 }) {
   if (isEn()) {
     const base = BASE_EN[to] ?? BASE_EN[from] ?? "";
     const chainTxt = Array.isArray(chain) && chain.length
-      ? ` (${chain.join("-")}${note ? `, ${noteEn(note)}` : ""})`
+      ? ` (${chain.join("-")}${note ? `, ${noteIsCustom ? note : noteEn(note)}` : ""})`
       : fielder ? ` (${POS_EN[fielderCode] ?? fielderCode} ${nameWithNumber(fielder, "守备员")})`
-      : note ? ` (${noteEn(note)})`
+      : note ? ` (${noteIsCustom ? note : noteEn(note)})`
       : "";
     return appendOuts(`${reasonEn(reasonCn, "Out")}: ${runnerLabel(from, runner)} out at ${base}${chainTxt}`, outsCum, total);
   }
@@ -197,6 +197,26 @@ export function outText({ reasonCn, runner, from, to, chain, fielderCode, fielde
     : note ? `（${note}）`
     : "";
   return appendOuts(`${reasonCn}：${runnerLabel(from, runner)} 于${base}出局${chainTxt}`, outsCum, total);
+}
+
+/**
+ * 替换日志正文里自定义备注的文字，保留原文括号的全/半角形态（英文日志是 ` (note)`）。
+ * 只认被括号包住的备注，避免自定义词恰好是累计后缀（如「出局」）时改错位置。
+ * 找不到时返回 null，调用方应中止（不能只改元数据、让日志与快照分叉）。
+ */
+export function replaceNoteText(head, oldText, newText) {
+  const text = String(head ?? "");
+  const oldValue = String(oldText ?? "");
+  if (!oldValue) return null;
+  for (const wrapper of [`（${oldValue}）`, ` (${oldValue})`]) {
+    const at = text.lastIndexOf(wrapper);
+    if (at >= 0) {
+      const open = wrapper.slice(0, wrapper.length - oldValue.length - 1);
+      const close = wrapper[wrapper.length - 1];
+      return text.slice(0, at) + open + String(newText ?? "") + close + text.slice(at + wrapper.length);
+    }
+  }
+  return null;
 }
 
 /** #223 接杀后回传刺杀离垒跑者：逐名列出原接杀 PO、回传 A、踩垒 PO 与跑者出局 */

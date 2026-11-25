@@ -46,7 +46,8 @@ test('实时录入链路：首个守位写入 payload、快照与无快照重建
   assert.ok(topApplied > 0 && ensureRestore > topApplied, 'Vl() 的 ensureFirstFieldPositions 必须先还原 gameState.isTop');
   assert.ok(live.includes('startingPosition:e.startingPosition==null?void 0:normalizeFieldPos(e.startingPosition)||""'), 'save-live payload 未带先发守备位（未知应省略以保留旧值）');
   assert.ok(live.includes('function ensureStartingPositions()'), '缺少先发守备位补齐入口');
-  assert.ok(live.includes('startingPosition:normalizeFieldPos(T?.startingPosition)||""'), '无快照重建未恢复先发守备位');
+  assert.ok(live.includes('startingPosition:T?.startingPosition==null?void 0:normalizeFieldPos(T.startingPosition)||""'), '无快照重建未恢复先发守备位');
+  assert.ok(!live.includes('startingPosition:normalizeFieldPos(T?.startingPosition)||""'), '旧数据未知先发守备位不得写成空串');
 });
 
 test('先发守备位补齐：开赛前按阵容写入，开赛后冻结，替补留空', () => {

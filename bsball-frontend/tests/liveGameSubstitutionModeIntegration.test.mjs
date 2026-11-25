@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeFieldingPosition } from '../src/utils/gamePlayerStat.js';
-import { isStartingPlayer } from '../src/utils/liveGameFieldingByPos.js';
+import { isStartingPlayer, resolveStarterPitcherId } from '../src/utils/liveGameFieldingByPos.js';
 
 import { orderPitcherRows } from '../src/utils/liveGamePitcherOrder.js';
 
@@ -42,7 +42,7 @@ const DEPS = ['Et', 'Oo', 'Lo', '$z', 'ue', 'Pt', 'bs', 'mc', 'dc', 'mr', 'vr', 
 const code = DEPS.map((n) => sliceFn('function ' + n + '(')).join('\n')
   + '\n' + sliceFn('function No(e,t){');
 const make = new Function('Ee', '_', 'ft', 'Nn', 'le', 'fe', 'normalizeFieldPos', 'orderPitcherRows',
-  'isStartingPlayer', 'awayStarterFpId', 'homeStarterFpId',
+  'isStartingPlayer', 'resolveStarterPitcherId', 'awayStarterFpId', 'homeStarterFpId',
   'return (function(){' + code + '\nreturn {No,Eo};})()');
 
 const ref = (v) => ({ value: v });
@@ -101,7 +101,7 @@ test('取消 DH / 投手进打序：No() 仍给投手一条打击行（不是只
     (v) => String(v ?? '').trim().toUpperCase(),
     away.lineupStarterIds, home.lineupStarterIds,
     normalizeFieldingPosition, orderPitcherRows,
-    isStartingPlayer, ref(null), ref(200),
+    isStartingPlayer, resolveStarterPitcherId, ref(null), ref(200),
   );
   const rows = No('home', 7);
   const pitcherBatting = rows.find((r) => Number(r.playerId) === 200 && r.isPitcher === 0);
@@ -126,7 +126,7 @@ test('被换下者最后守位：starter 的 bench 副本靠 lastPosition 回填
     (v) => String(v ?? '').trim().toUpperCase(),
     away.lineupStarterIds, home.lineupStarterIds,
     normalizeFieldingPosition, orderPitcherRows,
-    isStartingPlayer, ref(null), ref(200),
+    isStartingPlayer, resolveStarterPitcherId, ref(null), ref(200),
   );
   const rows = No('home', 7);
   const dh = rows.find((r) => Number(r.playerId) === 100 && r.isPitcher === 0);
@@ -212,10 +212,61 @@ test('#478 投手登板序：换投后仍按首次登板顺序编号，不按当
     () => {},
     (v) => String(v ?? '').trim().toUpperCase(),
     away.lineupStarterIds, home.lineupStarterIds, normalizeFieldingPosition, orderPitcherRows,
-    isStartingPlayer, ref(null), ref(200),
+    isStartingPlayer, resolveStarterPitcherId, ref(null), ref(200),
   );
   const rows = No('home', 7);
   const pitchers = rows.filter((row) => row.isPitcher === 1);
   assert.deepEqual(pitchers.map((row) => row.playerId), [200, 201], '先发应排在现任投手之前');
   assert.deepEqual(pitchers.map((row) => row.pitcherOrder), [1, 2]);
+});
+
+test('#566 DH 制先发投手：starterFpId 缺失时按登板序回补守备 GS，替补投手不误判', () => {
+  const starter = player(200, 'P', { pitching: { np: 30 } });
+  starter.pitcherOrder = 1;
+  starter.startingPosition = 'P';
+  const reliever = player(210, 'P', { pitching: { np: 12 } });
+  reliever.pitcherOrder = 2;
+  const home = {
+    teamId: 7,
+    lineup: ref([
+      player(1, 'C', { batting: { ab: 3 } }),
+      player(2, '1B', { batting: { ab: 3 } }),
+      player(3, '2B', { batting: { ab: 3 } }),
+      player(4, '3B', { batting: { ab: 3 } }),
+      player(5, 'SS', { batting: { ab: 3 } }),
+      player(6, 'LF', { batting: { ab: 3 } }),
+      player(7, 'CF', { batting: { ab: 3 } }),
+      player(8, 'RF', { batting: { ab: 3 } }),
+      player(9, 'DH', { batting: { ab: 3 } }),
+    ]),
+    bench: ref([starter, reliever]),
+    roster: ref([starter, reliever]),
+    fpRow: ref(null),
+    fpId: ref(200),
+    unavail: ref([]),
+    lineupStarterIds: ref([1, 2, 3, 4, 5, 6, 7, 8, 9, null, null, null]),
+    slotSubHistory: ref(Array.from({ length: 12 }, () => [])),
+  };
+  const away = {
+    teamId: 8,
+    lineup: ref([]), bench: ref([]), roster: ref([]), fpRow: ref(null), fpId: ref(null),
+    unavail: ref([]), lineupStarterIds: ref(Array(12).fill(null)),
+    slotSubHistory: ref(Array.from({ length: 12 }, () => [])),
+  };
+  const { No } = make(
+    (side) => (side === 'away' ? away : home),
+    { homeTeamId: 7, awayTeamId: 8 },
+    () => {},
+    (v) => String(v ?? '').trim().toUpperCase(),
+    away.lineupStarterIds, home.lineupStarterIds, normalizeFieldingPosition, orderPitcherRows,
+    isStartingPlayer, resolveStarterPitcherId, ref(null), ref(null),
+  );
+  const rows = No('home', 7);
+  const starterRow = rows.find((row) => Number(row.playerId) === 200 && row.isPitcher === 1);
+  const relieverRow = rows.find((row) => Number(row.playerId) === 210 && row.isPitcher === 1);
+  assert.ok(starterRow, '先发投手行必须存在');
+  assert.equal(starterRow.fieldingGs, 1, 'DH 制先发投手 GS 应为 1');
+  assert.ok(relieverRow, '替补投手行必须存在');
+  assert.equal(relieverRow.fieldingGs, 0, '替补投手 GS 应为 0');
+  assert.equal(rows.find((row) => Number(row.playerId) === 1).fieldingGs, 1, '先发野手 GS 不受影响');
 });

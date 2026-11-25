@@ -33,6 +33,7 @@ import com.bsball.model.dto.GameResponseDTO;
 import com.bsball.model.dto.EarnedRunDecisionAdjustRequest;
 import com.bsball.model.dto.EarnedRunDecisionListDTO;
 import com.bsball.model.dto.EarnedRunHalfInningRequest;
+import com.bsball.model.dto.EarnedRunPlayKeysDTO;
 import com.bsball.model.dto.EarnedRunDecisionOverrideRequest;
 import com.bsball.model.dto.FieldingAdjustmentCandidateDTO;
 import com.bsball.model.dto.FieldingAdjustmentCreateRequest;
@@ -167,6 +168,12 @@ public class GameApi {
     @GetMapping(value={"/{id}/earned-runs/decisions"})
     public Result<List<EarnedRunDecisionListDTO>> listEarnedRunDecisions(@PathVariable Long id) {
         return Result.ok(this.gameService.listEarnedRunDecisions(id));
+    }
+
+    @GetMapping(value={"/{id}/earned-runs/play-keys"})
+    public Result<EarnedRunPlayKeysDTO> listEarnedRunPlayKeys(@PathVariable Long id) {
+        return Result.ok(new EarnedRunPlayKeysDTO(
+                this.gameService.listEarnedRunPlayKeys(id)));
     }
 
     @PutMapping(value={"/{id}/earned-runs/decisions/{decisionId}"})

@@ -2676,6 +2676,8 @@
       "leaveEmptyHint": "可稍後補位",
       "modeBusy": "換人模式進行中，請先結束或取消換人模式",
       "needMode": "換人需先進入「換人模式」：請點頂部「換人模式」後再操作",
+      "needModeShort": "換人須進入「換人模式」",
+      "playerInfoOrder": "第{n}棒",
       "busyWait": "正在提交換人，請稍候",
       "lastFailed": "上次提交換人失敗，請先重試「結束換人」或取消換人模式",
       "benchEmpty": "替補席已空",
@@ -2922,7 +2924,19 @@
       "count": "{count} 條",
       "countTitle": "最多顯示最近 {limit} 條",
       "listAria": "即時比賽日誌",
-      "empty": "暫無比賽日誌"
+      "empty": "暫無比賽日誌",
+      "editReason": "編輯出局理由"
+    },
+    "runnerOutOther": {
+      "title": "跑者出局理由：其他",
+      "editTitle": "編輯跑者出局理由",
+      "message": "請填寫具體出局理由，會顯示在比賽日誌裡。",
+      "placeholder": "例如：趁傳進壘時漏踩壘包",
+      "required": "請填寫具體理由",
+      "tooLong": "理由最多 120 個字元",
+      "save": "儲存理由",
+      "saved": "出局理由已更新",
+      "editFailed": "未能在日誌中定位原理由，未儲存修改"
     },
     "scoreboard": {
       "aria": "即時記分牌",
@@ -3388,6 +3402,30 @@
       "orderNo": "第{n}棒",
       "playerFallback": "隊員",
       "currentEvent": "當前賽事"
+    },
+    "snapshotKeys": {
+      "top": "上",
+      "bottom": "下",
+      "halfGap": "第 {inning} 局{half}，缺 {count} 筆",
+      "gapSeparator": "；",
+      "verifyFailed": "無法校驗快照完整性：{reason}。本場半局定案將暫停，請賽後在自責分複核裡人工確認",
+      "verified": "已依雲端定案記錄校驗本地快照：{count} 筆記錄覆蓋完整，儲存後將恢復自動定案",
+      "gapTitle": "本地快照與雲端定案不一致",
+      "gapMessage": "雲端已有本地缺失的定案記錄：{detail}。可以放棄本地這份回到伺服器現狀，或依本地記錄局部定案當前半局（投手 R/ER 需賽後複核）。",
+      "restoreFromCloud": "從雲端恢復錄入現場",
+      "partialRebuild": "依本地記錄局部定案",
+      "gapLater": "稍後處理",
+      "partialConfirmTitle": "依本地記錄局部定案",
+      "partialConfirmMessage": "將以本地不完整記錄重建當前半局（第 {inning} 局{half}），投手 R/ER 需賽後複核。是否繼續？",
+      "partialConfirmOk": "繼續定案",
+      "partialDone": "已依本地記錄定案當前半局；其餘缺口請賽後複核或從雲端恢復"
+    },
+    "settle": {
+      "overrideVoidTop": "第 {inning} 局上定案：{count} 位投手的人工 R/ER 覆寫已失效，需重新複核",
+      "overrideVoidBottom": "第 {inning} 局下定案：{count} 位投手的人工 R/ER 覆寫已失效，需重新複核",
+      "erIssueTop": "自責分判定未更新（第 {inning} 局上）：{msg}",
+      "erIssueBottom": "自責分判定未更新（第 {inning} 局下）：{msg}",
+      "untrustedSkipped": "本場次的本地逐棒記錄被標記為不可信，半局定案沒有執行（本場 {count} 條逐棒記錄都不會送去重建）：記分與投手自責分可能對不上，請賽後在自責分複核裡人工確認"
     }
   },
   "gameResultFielding": {
