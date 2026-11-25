@@ -277,11 +277,11 @@
 
 ### P15 投手自由击球数
 
-- 公式：`pitchAb = BF - BB - IBB - HBP`（若数据库无 `pitch_ab`）
-- 来源：`pitch_bf, pitch_bb, pitch_ibb, pitch_hbp, pitch_ab`
+- 公式：`pitchAb = BF - BB - HBP - SH - SF`（若数据库无 `pitch_ab`；BB 含 IBB，不额外单减）
+- 来源：`pitch_bf, pitch_bb, pitch_hbp, pitch_sh, pitch_sf, pitch_ab`
 - 容忍度：0
 - 不可判定：只有 `pitchBbHp` 合计时，无法拆分 IBB/HBP。
-- 当前实现：SQL 有 `COALESCE(pitch_ab, BF-BB-IBB-HBP)` 兜底。
+- 当前实现：SQL 有 `COALESCE(pitch_ab, BF-BB-HBP-SH-SF)` 兜底（旧数据回退 `pitch_bb_hp - pitch_hbp`）。
 - 结论：**兜底正确**；当前分项缺失时会退化为近似值。
 
 ### P16 滚飞出局

@@ -15,8 +15,17 @@ function h(t,r){
 var a={
   pa:0,ab:0,r:0,h:0,e:0,bbHp:0,sb:0,so:0,soSwing:0,soLooking:0,rbi:0,hr:0,insideParkHr:0,doubles:0,triples:0,gdp:0,bb:0,ibb:0,hbp:0,io:0,fieldingGs:0,defInn:0,dp:0,sh:0,sf:0,cs:0,po:0,a:0,pb:0,catcherSb:0,catcherCs:0
 };
+// 投手 AB 新口径（#702）：AB = max(0, BF − BB − HBP − SH − SF)；BB 含 IBB，不额外单减
 function s(t){
-  const r=Number(t.pitchBf)||0,e=Number(t.pitchBb)||0,n=Number(t.pitchHbp)||0,i=e+n>0?e:Math.max(0,(Number(t.pitchBbHp)||0)-n);
+  const r=Number(t.pitchBf)||0,e=Number(t.pitchBb)||0,n=Number(t.pitchHbp)||0,
+    sh=Number(t.pitchSh)||0,sf=Number(t.pitchSf)||0,
+    i=e+n>0?e:Math.max(0,(Number(t.pitchBbHp)||0)-n);
+  return Math.max(0,r-i-n-sh-sf)
+}
+// 旧口径（#702 修复前，不减 SH/SF）：仅用于判断库值是否为历史自动推算值，不作为展示/保存口径
+function l(t){
+  const r=Number(t.pitchBf)||0,e=Number(t.pitchBb)||0,n=Number(t.pitchHbp)||0,
+    i=e+n>0?e:Math.max(0,(Number(t.pitchBbHp)||0)-n);
   return Math.max(0,r-i-n)
 }
 function b(t){
@@ -49,6 +58,8 @@ function resolveFirstFieldPosition(t){
 export {
   o as makeStatKey,
   b as resolveAtBats,
+  s as calcAtBatsFromBf,
+  l as legacyAtBatsFromBf,
   a as createBatterStatDefaults,
   h as makeStatRowKey,
   u as createPitcherStatDefaults,

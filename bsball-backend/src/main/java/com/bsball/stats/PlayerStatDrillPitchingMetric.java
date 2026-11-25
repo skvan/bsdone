@@ -1,6 +1,6 @@
 /*
  * Decompiled with CFR 0.152.
- * 
+ *
  * Could not load the following classes:
  *  com.bsball.stats.PlayerStatDrillPitchingMetric
  */
@@ -40,7 +40,7 @@ public enum PlayerStatDrillPitchingMetric {
     PITCH_R("COALESCE(s.pitchr, 0)"),
     GO("COALESCE(s.go, 0)"),
     FO("COALESCE(s.fo, 0)"),
-    PITCH_AB("COALESCE(s.pitch_ab, GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0)))::integer"),
+    PITCH_AB("(CASE WHEN s.pitch_ab IS NULL THEN GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0) - COALESCE(s.pitch_sh,0) - COALESCE(s.pitch_sf,0)) WHEN s.pitch_ab = 0 AND GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0) - COALESCE(s.pitch_sh,0) - COALESCE(s.pitch_sf,0)) > 0 THEN GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0) - COALESCE(s.pitch_sh,0) - COALESCE(s.pitch_sf,0)) WHEN s.pitch_ab = GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0)) AND (COALESCE(s.pitch_sh,0) <> 0 OR COALESCE(s.pitch_sf,0) <> 0) THEN GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) > 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0) - COALESCE(s.pitch_sh,0) - COALESCE(s.pitch_sf,0)) ELSE s.pitch_ab END)::integer"),
     ERA(PlayerStatDrillPitchingMetric.drillDownEraSql()),
     WHIP(PlayerStatDrillPitchingMetric.drillDownWhipSql());
 

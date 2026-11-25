@@ -57,8 +57,13 @@
             ELSE 0
         END)
     )</sql>
-    <!-- 单场投手自由击球数：有 pitch_ab 用库值，否则 BF−BB−IBB−HBP -->
-    <sql id="pitchAbEffectiveCol">COALESCE(s.pitch_ab, GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) &gt; 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0)))</sql>
+    <!-- 单场投手自由击球数（#702）：AB = max(0, BF − BB − HBP − SH − SF)，BB 含 IBB；旧数据回退 BB+HBP 合计 -->
+    <sql id="pitchAbFromBfCol">GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) &gt; 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0) - COALESCE(s.pitch_sh,0) - COALESCE(s.pitch_sf,0))</sql>
+    <!-- 旧口径（不减 SH/SF），仅用于判定历史库值是否为自动推算值 -->
+    <sql id="pitchAbLegacyFromBfCol">GREATEST(0, COALESCE(s.pitch_bf,0) - (CASE WHEN COALESCE(s.pitch_bb,0) + COALESCE(s.pitch_hbp,0) &gt; 0 THEN COALESCE(s.pitch_bb,0) ELSE GREATEST(COALESCE(s.pitch_bb_hp,0) - COALESCE(s.pitch_hbp,0), 0) END) - COALESCE(s.pitch_hbp,0))</sql>
+    <!-- 有库值：0 且新公式>0 视为旧默认值，按新公式修正；等于旧公式且存在 SH/SF 时按新公式修正（视为历史自动值）；其他非空值视为人工覆写保留。
+         局限：库表无持久人工标记，人工值若恰好等于旧公式且存在 SH/SF，会被此处修正，无法完全区分 -->
+    <sql id="pitchAbEffectiveCol">CASE WHEN s.pitch_ab IS NULL THEN <include refid="pitchAbFromBfCol"/> WHEN s.pitch_ab = 0 AND <include refid="pitchAbFromBfCol"/> &gt; 0 THEN <include refid="pitchAbFromBfCol"/> WHEN s.pitch_ab = <include refid="pitchAbLegacyFromBfCol"/> AND (COALESCE(s.pitch_sh,0) &lt;&gt; 0 OR COALESCE(s.pitch_sf,0) &lt;&gt; 0) THEN <include refid="pitchAbFromBfCol"/> ELSE s.pitch_ab END</sql>
 
     <select id="selectBattingStats" resultType="com.bsball.model.dto.PlayerStatsDTO$Batting">
         SELECT

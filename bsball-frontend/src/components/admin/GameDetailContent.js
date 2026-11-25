@@ -15,7 +15,8 @@ import { exportSfc as pl } from '../../utils/exportSfc';
 import { useTenantRouter as _l } from '../../composables/useTenantRouter';
 import { onTeamLogoError as R } from '../../utils/placeholderAssets';
 import { DEFAULT_TEAM_SVG_PATH as kl } from '../../utils/placeholderAssets';
-import { resolveAtBats as La } from '../../utils/gamePlayerStat';
+// #702：历史 pitch_ab 若等于旧公式（无 SH/SF）则按新公式动态修正，人工覆写值保留
+import { inferPitchAbState as abState } from '../../utils/pitchAbState';
 import { resolveSingles, sumHitTypes } from '../../utils/battingHits';
 import { resolveBoxViewLabel } from '../../utils/i18nText';
 import { statsHeaderKey as gdHeaderKey, statsHeaderAbbr as gdHeaderAbbr, playerColumnWidth as gdWidth } from '../../stores/statsHeaderKeys';
@@ -1088,7 +1089,7 @@ var Sl={
       let l=0,d=0,v=0,y=0,f=0,a=0,pd=0,pdt=0,psh=0,psf=0,pio=0,pkoa=0,o=0,x=0,X=0,re=0,Z=0,We=0,me=0,$e=0,V=0,pe=0,_e=0,ha=0,va=0,ba=0,ga=0,ya=0,fa=0,pa=0,_a=0,ka=0,wa=0;
       for(const w of e){
         const kt=Qt(w);
-        l+=La(w),d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,pd+=Number(w.pitchDoubles)||0,pdt+=Number(w.pitchTriples)||0,psh+=Number(w.pitchSh)||0,psf+=Number(w.pitchSf)||0,pio+=Number(w.pitchIo)||0,pkoa+=Number(w.pickoffAttempts)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,X+=Number(w.pitchInsideParkHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
+        l+=abState(w).pitAb,d+=Number(kt?.e)||0,v+=Number(w.pitchR)||Number(w.earnedR)||0,y+=Number(w.er)||0,f+=Number(w.pitchH)||0,a+=Number(w.pitchBbHp)||0,pd+=Number(w.pitchDoubles)||0,pdt+=Number(w.pitchTriples)||0,psh+=Number(w.pitchSh)||0,psf+=Number(w.pitchSf)||0,pio+=Number(w.pitchIo)||0,pkoa+=Number(w.pickoffAttempts)||0,o+=Number(w.pitchSo)||0,x+=Number(w.pitchHr)||0,X+=Number(w.pitchInsideParkHr)||0,re+=Number(w.np)||0,Z+=Number(w.pitchPa)||0,We+=Number(w.pitchBf)||0,me+=Number(w.pitchBb)||0,$e+=Number(w.pitchIbb)||0,V+=Number(w.pitchHbp)||0,pe+=Number(w.wp)||0,_e+=Number(w.bk)||0,ha+=Number(w.go)||0,va+=Number(w.fo)||0,ba+=Number(w.gs)||0,ga+=Number(w.svo)||0,ya+=Number(w.cg)||0,fa+=Number(w.pg)||0,pa+=Number(w.w)||0,_a+=Number(w.l)||0,ka+=Number(w.sv)||0,wa+=Number(w.hld)||0
       }
       return{
         _totals:!0,playerId:0,position:"",ip:t,pitchR:v,er:y,pitchH:f,pitchDoubles:pd,pitchTriples:pdt,pitchSh:psh,pitchSf:psf,pitchIo:pio,pickoffAttempts:pkoa,pitchBbHp:a,pitchSo:o,pitchHr:x,pitchInsideParkHr:X,pitAb:l,pitE:d,np:re,pitchPa:Z,pitchBf:We,pitchBb:me,pitchIbb:$e,pitchHbp:V,wp:pe,bk:_e,go:ha,fo:va,gs:ba,w:pa,l:_a,sv:ka,svo:ga,hld:wa,cg:ya,pg:fa
@@ -1280,7 +1281,7 @@ var Sl={
       if(t==="pitchR")return ce($(e,"pitchR")||$(e,"earnedR"));
       if(t==="era")return il(e);
       if(t==="whip")return nl(e);
-      if(t==="pitAb")return A(e)?C(e,"pitAb"):ce(La(e));
+      if(t==="pitAb")return A(e)?C(e,"pitAb"):ce(abState(e).pitAb);
       if(t==="pitE"){
         if(A(e))return C(e,"pitE");
         const l=Qt(e);
