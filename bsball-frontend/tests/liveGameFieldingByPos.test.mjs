@@ -11,6 +11,7 @@ import {
   isStartingPlayer,
   mergeFieldingByPos,
   normalizeFieldingPosition,
+  resolveStarterPitcherId,
 } from '../src/utils/liveGameFieldingByPos.js';
 
 const entry = (outs = 0, po = 0, a = 0, e = 0, dp = 0, pb = 0, catcherCs = 0, catcherSb = 0) => ({
@@ -193,6 +194,28 @@ test('先发判定：首发名单与 DH 制先发投手为 1，替补/无效值�
   assert.equal(isStartingPlayer(null, starters, null), false);
   assert.equal(isStartingPlayer(11, null, null), false);
   assert.equal(isStartingPlayer(11, [], null), false);
+});
+
+test('先发投手解析：显式值优先，其次登板序 1，最后按先发守位 P 兜底', () => {
+  const starter = { id: 48, pitcherOrder: 1, startingPosition: 'P' };
+  const reliever = { id: 58, pitcherOrder: 2, startingPosition: '' };
+  const twoWay = { id: 18, pitcherOrder: 1, startingPosition: 'CF' };
+  assert.equal(resolveStarterPitcherId([starter, reliever], 99), 99, '显式记录优先');
+  assert.equal(resolveStarterPitcherId([reliever, starter], null), 48);
+  assert.equal(resolveStarterPitcherId([twoWay, starter], null), 48, '同登板序优先先发守位 P');
+  assert.equal(resolveStarterPitcherId([twoWay, reliever], null), 18, '二刀流首登板仍算先发投手');
+  assert.equal(
+    resolveStarterPitcherId([{ id: 7, startingPosition: ' P ' }, reliever], null),
+    7,
+    '缺登板序时按先发守位 P 兜底'
+  );
+  assert.equal(
+    resolveStarterPitcherId([{ id: 18, pitcherOrder: 1, startingPosition: 'CF' }, { id: 48, startingPosition: 'P' }], null),
+    48,
+    '旧数据把登板序 1 赋给现任投手时，先发守位 P 证据优先'
+  );
+  assert.equal(resolveStarterPitcherId([reliever, { id: null, pitcherOrder: 1 }, { id: -1 }], null), null);
+  assert.equal(resolveStarterPitcherId(null, null), null);
 });
 
 test('并行行 byPos 合并：按守位逐项取 max，对象字段不参与 Number 运算', () => {
