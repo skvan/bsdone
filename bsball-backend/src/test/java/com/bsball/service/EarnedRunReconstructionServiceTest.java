@@ -1956,13 +1956,30 @@ class EarnedRunReconstructionServiceTest {
         assertEquals(Integer.valueOf(2), keys.get(0).sequence());
     }
 
-    private EarnedRunPlayEntity playEntity(int inning, String half, int sequence, String sourceEventId) {
+    @Test
+    @DisplayName("play-keys：空集返回空；null 局/序排在最后，不抛 NPE")
+    void listPlayKeysHandlesEmptyAndNullOrdering() {
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of());
+        assertTrue(service.listPlayKeys(1L, 20L).isEmpty());
+
+        when(playRepository.findByTenantIdAndGameId(1L, 20L)).thenReturn(List.of(
+                playEntity(null, "top", null, "null-key"),
+                playEntity(1, "bottom", 1, "1002"),
+                playEntity(1, "top", 2, "1001")));
+
+        List<EarnedRunPlayKeyDTO> keys = service.listPlayKeys(1L, 20L);
+
+        assertEquals(List.of("1001", "1002", "null-key"), keys.stream()
+                .map(EarnedRunPlayKeyDTO::sourceEventId).toList());
+    }
+
+    private EarnedRunPlayEntity playEntity(Integer inning, String half, Integer sequence, String sourceEventId) {
         EarnedRunPlayEntity entity = new EarnedRunPlayEntity();
         entity.setTenantId(1L);
         entity.setGameId(20L);
-        entity.setInning(Integer.valueOf(inning));
+        entity.setInning(inning);
         entity.setHalf(half);
-        entity.setSequence(Integer.valueOf(sequence));
+        entity.setSequence(sequence);
         entity.setSourceEventId(sourceEventId);
         return entity;
     }
