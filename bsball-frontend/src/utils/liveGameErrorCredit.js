@@ -18,7 +18,9 @@ export function selectErrorFielder(steps, pos, multiple = false) {
 }
 
 // 旧快照/撤销栈的 E flow 没有 multiError；已有多名责任者时按多选恢复，避免下一次点选清空旧选择
+// #726：合法的 ADVANCE_FE/pick_target 必须带 errorPos；无 errorPos 的是进垒瞬间被存进快照的瞬态流程，恢复时丢弃。
 export function normalizeErrorFlow(flow) {
+  if (flow?.type === 'ADVANCE_FE' && flow.advanceFeStep === 'pick_target' && flow.errorPos == null) return null;
   if (flow?.type === 'E' && flow.multiError == null && Array.isArray(flow.steps) && flow.steps.length > 1) {
     flow.multiError = true;
   }

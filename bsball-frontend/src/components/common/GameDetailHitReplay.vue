@@ -27,7 +27,12 @@
           <button type="button" :class="{ 'is-active': viewMode === 'animate' }" @click="viewMode = 'animate'">落点动画</button>
         </span>
       </div>
-      <div class="ghr-body">
+      <el-empty
+        v-if="!loading && !visibleRecords.length"
+        :description="emptyFilterText"
+        :image-size="72"
+      />
+      <div v-else class="ghr-body">
         <div class="ghr-field">
           <!-- viewBox 与录入页场地一致（-300 -150 1080 780）：保证左/右外野边线、界外区域完整显示 -->
           <svg viewBox="-300 -150 1080 780" class="ghr-svg" role="img" aria-label="击球落点场地视图">
@@ -209,11 +214,13 @@ import {
   spawnHomeRunSideSparks,
 } from '../../utils/homeRunEffect';
 import { buildSprayTypeRows, buildSprayZoneRows, sprayZoneViews } from '../../utils/sprayZones';
+import { buildBatterOptions, buildTeamOptions } from '../../utils/gameDetailHitReplayBatters';
 
 const props = defineProps({
   gameId: { type: [Number, String], default: null },
   playersMap: { type: Object, default: () => ({}) },
   teams: { type: Array, default: () => [] },
+  stats: { type: Array, default: () => [] },
   homeTeamId: { type: [Number, String], default: null },
   awayTeamId: { type: [Number, String], default: null },
 });
@@ -336,15 +343,12 @@ function teamIdOf(r) {
   return Number(r.half === 'top' ? props.awayTeamId : props.homeTeamId);
 }
 
-function teamNameOf(teamId) {
-  const team = (props.teams ?? []).find((t) => Number(t?.id) === Number(teamId));
-  return team?.name ?? `球队#${teamId}`;
-}
-
-const teamOptions = computed(() => {
-  const ids = [...new Set(records.value.map(teamIdOf))].filter((id) => Number.isFinite(id));
-  return ids.map((id) => ({ id, name: teamNameOf(id) }));
-});
+const teamOptions = computed(() => buildTeamOptions({
+  teams: props.teams,
+  records: records.value,
+  homeTeamId: props.homeTeamId,
+  awayTeamId: props.awayTeamId,
+}));
 
 const teamFiltered = computed(() => {
   if (teamKey.value === 'all') return records.value;
@@ -352,21 +356,27 @@ const teamFiltered = computed(() => {
   return records.value.filter((r) => teamIdOf(r) === id);
 });
 
-const batterOptions = computed(() => {
-  const seen = new Map();
-  for (const r of teamFiltered.value) {
-    const key = `${teamIdOf(r)}:${r.playerId}`;
-    if (!seen.has(key)) {
-      seen.set(key, { key, label: `第${r.batterOrder}棒 ${playerName(r)}` });
-    }
-  }
-  return [...seen.values()];
-});
+// 打者下拉保持平铺球员：有 stats 时补全首发/替补（含“无落点”），缺失时退回由记录反推
+const batterOptions = computed(() => buildBatterOptions({
+  stats: props.stats,
+  records: teamFiltered.value,
+  playersMap: props.playersMap,
+  teams: props.teams,
+  teamKey: teamKey.value,
+  homeTeamId: props.homeTeamId,
+  awayTeamId: props.awayTeamId,
+}));
 
 const visibleRecords = computed(() => {
   if (batterKey.value === 'all') return teamFiltered.value;
   const [teamId, playerId] = String(batterKey.value).split(':').map(Number);
   return teamFiltered.value.filter((r) => teamIdOf(r) === teamId && Number(r.playerId) === playerId);
+});
+
+const emptyFilterText = computed(() => {
+  if (!records.value.length) return '本场暂无击球落点记录';
+  if (batterKey.value !== 'all') return '该打者本场暂无击球落点记录';
+  return '当前筛选下暂无击球落点记录';
 });
 
 const viewMode = ref('heat');
@@ -577,7 +587,7 @@ function zoneText(r) {
 }
 
 .ghr-filter-batter {
-  width: 210px;
+  width: 270px;
 }
 
 .ghr-body {

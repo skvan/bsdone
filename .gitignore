@@ -60,3 +60,6 @@ compile_*.txt
 
 # Qoder IDE local cache
 .qoder/
+
+# Test artifacts (Playwright writes bsball-frontend/test-results/ on every run)
+test-results/

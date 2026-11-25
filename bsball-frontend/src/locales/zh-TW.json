@@ -2676,6 +2676,8 @@
       "leaveEmptyHint": "可稍後補位",
       "modeBusy": "換人模式進行中，請先結束或取消換人模式",
       "needMode": "換人需先進入「換人模式」：請點頂部「換人模式」後再操作",
+      "needModeShort": "換人須進入「換人模式」",
+      "playerInfoOrder": "第{n}棒",
       "busyWait": "正在提交換人，請稍候",
       "lastFailed": "上次提交換人失敗，請先重試「結束換人」或取消換人模式",
       "benchEmpty": "替補席已空",
@@ -3404,12 +3406,14 @@
       "partialConfirmTitle": "依本地記錄局部定案",
       "partialConfirmMessage": "將以本地不完整記錄重建當前半局（第 {inning} 局{half}），投手 R/ER 需賽後複核。是否繼續？",
       "partialConfirmOk": "繼續定案",
-      "partialDone": "已依本地記錄定案當前半局；其餘缺口請賽後複核或從雲端恢復",
-      "reason": {
-        "runTotalRegress": "雲端已有逐棒記錄，提交的快照得分低於記分欄，已拒絕覆蓋。請用「從雲端恢復錄入現場」或先清空比分再來",
-        "shrinkWithoutIntent": "雲端逐棒記錄比本地多，本次儲存未帶撤銷/重做意圖，已拒絕覆蓋。若是撤銷後儲存，請重新整理頁面後再試；或用「從雲端恢復錄入現場」",
-        "partialDenominator": "本次重建後的判定數低於記分欄，可能是逐分資料殘缺，已拒絕重建。請補齊其餘半局或改用投手 R/ER 人工覆寫"
-      }
+      "partialDone": "已依本地記錄定案當前半局；其餘缺口請賽後複核或從雲端恢復"
+    },
+    "settle": {
+      "overrideVoidTop": "第 {inning} 局上定案：{count} 位投手的人工 R/ER 覆寫已失效，需重新複核",
+      "overrideVoidBottom": "第 {inning} 局下定案：{count} 位投手的人工 R/ER 覆寫已失效，需重新複核",
+      "erIssueTop": "自責分判定未更新（第 {inning} 局上）：{msg}",
+      "erIssueBottom": "自責分判定未更新（第 {inning} 局下）：{msg}",
+      "untrustedSkipped": "本場次的本地逐棒記錄被標記為不可信，半局定案沒有執行（本場 {count} 條逐棒記錄都不會送去重建）：記分與投手自責分可能對不上，請賽後在自責分複核裡人工確認"
     }
   },
   "gameResultFielding": {

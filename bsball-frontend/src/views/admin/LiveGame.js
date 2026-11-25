@@ -20,7 +20,6 @@ import { teamApi as Zc } from '../../api/business';
 import { resolveAssetUrl as resolveUploadUrl } from '../../api/request';
 import { toEarnedRunPlay } from '../../domain/earnedRun/livePlayEvent';
 import { findMissingPlayKeys } from '../../domain/earnedRun/snapshotKeyCoverage';
-import { snapshotGuardReasonKey } from '../../domain/earnedRun/snapshotGuardMessage';
 import { applyAbsolutePitcherTotals } from '../../domain/earnedRun/pitcherTotals';
 import { decideRbiForRun, isDoublePlayThrowingErrorException } from '../../domain/liveGameRbi';
 import { createRunLedger, beginPlay, addRun, voidCurrentPlayRuns, takeAllRuns, clearRuns, advanceOrigin, runOrigin } from '../../utils/liveGameRunLedger';
@@ -62,7 +61,7 @@ import { getFieldingConfig as fd } from '../../utils/liveGameFieldLayout';
 import { getLineHead as ll } from '../../utils/liveGameFieldLayout';
 import { PITCHER_BALL_POSITION as cd } from '../../utils/liveGameFieldLayout';
 import { getPositionOptions as dd } from '../../utils/liveGameFieldLayout';
-import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders, reconcileTeamFieldingInnings as LgReconcileFieldingInnings } from '../../utils/liveGameFieldingIp';
+import { addOutToInnings as LgAddOutToInnings, activeFielders as LgActiveFielders, creditOutsWithinLimit as LgCreditOutsWithinLimit, outsRemainingInHalfInning as LgOutsRemaining, reconcileTeamFieldingInnings as LgReconcileFieldingInnings } from '../../utils/liveGameFieldingIp';
 import { FIELDER_COORDS as pi } from '../../utils/liveGameFieldLayout';
 import { normalizePlayText as md } from '../../utils/liveGameFieldLayout';
 import { normalizeLineList as vd } from '../../utils/liveGameFieldLayout';
@@ -1034,7 +1033,7 @@ var Bu=Yc("liveGame",()=>{
     const tt=G==="away"?ie.value:ke.value;
     return tt||(G==="away"?Ie.value:Te.value).find(yt=>Number(yt.id)===pe)
   }
-  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
+  ),wn=x([]),ln=x([]),pn=x([]),Xn=x(null),Yn=x(null),sn=x(null),Kn=x(""),Pa=x("info"),KnMeta=x(""),KnDismiss=x(!1),Sn=$(()=>O.needNextBatter&&O.outs>=3),Ue=x([]),Ft=x([]),Es=1500,wi=x(null),ht=x([]),xt=x(0),At=x(!1),Ee=x(240),zn=x(400),kn=x(.8),Ns=x(240),rl=x(555),ol=x(!1),ot=x([]),Pn=x(null),ul=x([]),earnedRunReconstruction=x(null),erDrawerVisible=x(!1);
   function applyEarnedRunTotals(result){
     const absolute=result?.pitcherAbsoluteTotals;
     if(!absolute)return;
@@ -1186,7 +1185,7 @@ var Bu=Yc("liveGame",()=>{
     return Jn=0,G
   }
   return{
-    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
+    eventId:u,eventName:f,gameId:l,gameStarted:o,gameMode:_,initialBalls:R,initialStrikes:S,resetCountForNewBatter:F,loading:N,saveLoading:K,cloudSnapshotReloadLoading:M,isFullscreen:Le,teams:he,homeRoster:Be,awayRoster:oe,venueOptions:q,setupForm:X,homeTeam:ye,awayTeam:ae,gameState:O,teamsData:te,inningRuns:De,scoreAwayTotal:xe,scoreHomeTotal:Xe,homeLineup:Te,awayLineup:Ie,homeBench:I,awayBench:le,awayFieldingPitcherId:fe,homeFieldingPitcherId:Ae,awayFieldingPitcherRow:ie,homeFieldingPitcherRow:ke,awayLastDhAddedFromPoolId:Me,homeLastDhAddedFromPoolId:ve,awayUnavailablePlayerIds:i,homeUnavailablePlayerIds:dt,awayLineupStarterIds:k,homeLineupStarterIds:zt,awaySlotSubHistory:$e,homeSlotSubHistory:Ne,offenseRoster:Ye,batterIndex:Sa,currentBatter:ka,currentPitcher:yi,eventLog:wn,atBatSummaries:ln,playEvents:pn,earnedRunReconstruction,erDrawerVisible,applyEarnedRunTotals,pendingAtBatResultCode:Xn,pendingAtBatResultText:Yn,activeAbContext:sn,flowNotice:Kn,flowNoticeType:Pa,flowNoticeMeta:KnMeta,flowNoticeDismissible:KnDismiss,inningEndConfirmPending:Sn,liveGameHistory:Ue,liveGameRedoStack:Ft,canUndo:we,canRedo:Z,QUICK_PITCH_FADE_MS:Es,quickPitchFadeKey:wi,runnerPathAnimActive:ht,runnerPathAnimKey:xt,hitSprayFlyAnimActive:At,hitSprayFlyAnimTargetX:Ee,hitSprayFlyAnimTargetY:zn,hitSprayFlyAnimDuration:kn,hitSprayFlyAnimCurrentX:Ns,hitSprayFlyAnimCurrentY:rl,hitSprayHeatmapDialogVisible:ol,hitSprayHeatmapRecords:ot,game:Pn,gamePlayerStats:ul,resetAllState:Cn,saveState:Bn,undo:pl,redo:Ba,buildHistoryEntry:Tt,applyHistoryEntry:qn,snapshotLineupForHistory:Ca,lineupStarterIdsRef:fl,slotSubHistoryRef:cl,snapshotTeamLineupStarters:Ot,snapshotLineupStartersForBothTeams:jn,ensureLineupStartersCaptured:Ia,recordSlotSubstitution:rn,resetLineupStarterTracking:ut,resetRosterState:Si,resetPlayRunCredits:un,recordPlayRun:$t,consumePlayRunCredits:ki,isGameEnd:on
   }
   
 }
@@ -1267,11 +1266,11 @@ function qd(){
     }
     ):u.eventLog.unshift(N)
   }
-  function o(S,R="info"){
-    u.flowNotice=S,u.flowNoticeType=R
+  function o(S,R="info",options){
+    u.flowNotice=S,u.flowNoticeType=R,u.flowNoticeMeta=options?.meta??"",u.flowNoticeDismissible=!!options?.dismissOnOutside
   }
   function _(){
-    u.flowNotice=""
+    u.flowNotice="",u.flowNoticeMeta="",u.flowNoticeDismissible=!1
   }
   return{
     addLog:l,showFlowNotice:o,clearFlowNotice:_,withCurrentBatterOrderInLog:f,setSubstitutionLogMuted:S=>{
@@ -5010,7 +5009,7 @@ var sg={
     const { isEnglish: isEnglishUi, locale: lgLocale, text: lgText } = useLiveGameText();
     Ce(lgLocale, (locale) => setLogTextLocale(locale), { immediate: true });
     const f=Bu(),l=f.gameState,o=f.teamsData,_=f.setupForm,{
-      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
+      eventName:S,gameId:R,gameStarted:F,gameMode:N,initialBalls:K,initialStrikes:M,loading:Le,saveLoading:he,cloudSnapshotReloadLoading:Be,isFullscreen:oe,homeLineup:q,awayLineup:X,homeBench:ye,awayBench:ae,awayFieldingPitcherId:O,homeFieldingPitcherId:te,awayFieldingPitcherRow:De,homeFieldingPitcherRow:xe,awayLastDhAddedFromPoolId:Xe,homeLastDhAddedFromPoolId:Te,awayUnavailablePlayerIds:Ie,homeUnavailablePlayerIds:I,awayLineupStarterIds:le,homeLineupStarterIds:fe,awaySlotSubHistory:Ae,homeSlotSubHistory:ie,eventLog:ke,atBatSummaries:Me,pendingAtBatResultCode:ve,pendingAtBatResultText:i,activeAbContext:dt,flowNotice:k,flowNoticeType:zt,flowNoticeMeta:flowMeta,flowNoticeDismissible:flowDismiss,liveGameHistory:$e,liveGameRedoStack:Ne,runnerPathAnimActive:Ye,runnerPathAnimKey:Sa,hitSprayFlyAnimActive:ka,hitSprayFlyAnimTargetX:yi,hitSprayFlyAnimTargetY:wn,hitSprayFlyAnimDuration:ln,hitSprayFlyAnimCurrentX:Xn,hitSprayFlyAnimCurrentY:Yn,hitSprayHeatmapDialogVisible:sn,hitSprayHeatmapRecords:Kn,teams:Pa,homeRoster:Sn,awayRoster:Ue,venueOptions:Ft,game:Es,gamePlayerStats:wi,quickPitchFadeKey:ht
     }
     =Kc(f),xt=$(()=>f.homeTeam),At=$(()=>f.awayTeam);
     const reviewDrawerVisible=x(!1),reviewDrawerSession=x(0);
@@ -5894,7 +5893,7 @@ var sg={
       await dp(e,t)
     }
     function fp(e,t){
-      de("击球结果"),beginPlayLedger(),l.flow=null;
+      l.flow=null,de("击球结果"),beginPlayLedger();
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
       pushHitSpray(e.playType,0,e.opts);
@@ -5930,7 +5929,7 @@ var sg={
     }
     function cp(e,t){
       const a=ei();
-      de("击球结果"),beginPlayLedger(),l.flow=null;
+      l.flow=null,de("击球结果"),beginPlayLedger();
       const s=be.value,r=Se.value;
       ue(s),ue(r??void 0);
       const p={
@@ -5944,7 +5943,7 @@ var sg={
       e.playType==="BB"?(s.stats.batting.bb=(s.stats.batting.bb??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchBbHp=(r.stats.pitching.pitchBbHp??0)+1,r.stats.pitching.pitchBb=(r.stats.pitching.pitchBb??0)+1),g="BB",m=isEnglishUi.value?`${s.name}: Walk (BB)`:`${s.name}: 四坏 (BB)`,D(m,a??void 0),a&&(m=`${m} · ${a}`)):(s.stats.batting.hbp=(s.stats.batting.hbp??0)+1,r?.stats?.pitching&&(r.stats.pitching.pitchBbHp=(r.stats.pitching.pitchBbHp??0)+1,r.stats.pitching.pitchHbp=(r.stats.pitching.pitchHbp??0)+1),g="HBP",m=isEnglishUi.value?`${s.name}: Hit by pitch (HBP)`:`${s.name}: 死球 (HBP)`,D(m,a??void 0),a&&(m=`${m} · ${a}`)),l.balls=0,l.strikes=0,Je(g,m),Qe()
     }
     async function dp(e,t){
-      de("击球结果"),beginPlayLedger(),l.flow=null;
+      l.flow=null,de("击球结果"),beginPlayLedger();
       const a=be.value,s=Se.value;
       ue(a),ue(s??void 0);
       const r={
@@ -6239,6 +6238,15 @@ var sg={
       // 同一 play 内先有暴投/捕逸时，承接推进走普通进垒并沿用 WP/PB 来源；
       // 只有前一次事件是失误时才需要选失误责任守备员（否则会产生幽灵失误日志与非自责分归因）。
       const samePlayWpPb=e.id==="safe_same_err"&&!l.playErrorCredited&&(l.playWpCredited||l.playPbCredited),advanceReasonId=samePlayWpPb?(l.playWpCredited?"safe_wp":"safe_pb"):e.id,advanceReasonCn=samePlayWpPb?(l.playWpCredited?"同一play内暴投推进":"同一play内捕逸推进"):e.cn;
+      // #697：本 play 已记过失误时，「同一play内失误推进」只负责跑者进垒，不再二次点选失误守备员；
+      // 菜单仅在拖拽到合法目标垒时出现，直接用目标垒 r 完成（失误明细已在前面录入过）。
+      if(e.id==="safe_same_err"&&l.playErrorCredited){
+        l.flow={
+          type:"ADVANCE_FE",runner:a,runnerBase:s,outAtBase:r,selectRunner:!1,advanceFeStep:"pick_target",advanceFeReasonId:e.id,advanceFeReasonCn:e.cn
+        }
+        ,lc(r);
+        return
+      }
       if(zd.has(e.id)&&!samePlayWpPb){
         l.flow={
           type:"ADVANCE_FE",runner:a,runnerBase:s,outAtBase:r,selectRunner:!1,advanceFeStep:"pick_fielder",advanceFeReasonId:e.id,advanceFeReasonCn:e.cn
@@ -6291,6 +6299,12 @@ var sg={
         runner:a,fromBase:s,toBase:r
       }
       =t,p=a.id??a.name??"?";
+      // #699：半局已三出局、等待下一打者或比赛结束时不允许再拖拽出局，避免局数/统计继续累加
+      if(l.outs>=3||l.needNextBatter||l.isGameEnd){
+        ge.value=null;
+        J("本半局已达三出局或当前打席未完成，无法记录跑者出局；请先确认半局结束/攻守交换","warning");
+        return
+      }
       if(ge.value=null,e.id==="out_steal_fail"){
         de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
           type:"RUNNER_OUT_TAG",runner:a,runnerBase:s,outAtBase:r,outType:"tag",stealFail:!0,steps:[]
@@ -7461,7 +7475,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           if(halfComplete&&Array.isArray(invalidated)&&invalidated.length){
             // 走 ElMessage 而不是 J（局面提示）：那是个单格位，下一个打席 / 下一句提示就把
             // 这条盖掉，记录员实际看不到。作废覆写是一次性事件，必须自己占一条弹提示。
-            noticeOverrideInvalidation(`第 ${event.inning}${event.half==="top"?"上":"下"}局定案：${invalidated.length} 位投手的人工 R/ER 覆写已失效，需重新复核`);
+            noticeOverrideInvalidation(lgText(event.half==="top"?"liveGame.settle.overrideVoidTop":"liveGame.settle.overrideVoidBottom",{inning:event.inning,count:invalidated.length}));
           }
           // 这一发重建成了：之前那句「判定没更新」已经不再成立，清掉去重位，真再坏一次还能看见
           noticeEarnedRunIssue.reset();
@@ -7471,9 +7485,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           // 后端拒写（推上来的逐分没涵盖记分）或引擎整批拒收时，判定层就此与记分栏脱勾。
           // 只写 console 会让缺笔拖到赛后复盘才发现（线上实测 game 261），必须让记录员看见；
           // 同样不能走 J（单格局面提示），否则马上被后续提示盖掉，等于没提示。
-          // 有稳定 reason 的按 5 语种文案说（#713），没有的回退服务器 msg。
-          const reasonKey=snapshotGuardReasonKey(error?.apiReason);
-          noticeEarnedRunIssue(`自责分判定未更新（第 ${event.inning}${event.half==="top"?"上":"下"}局）：${reasonKey?lgText(reasonKey):error?.message||String(error)}`);
+          // 服务器 msg 已按请求语言本地化（#736），直接抬出来；不再由前端按 reason 查 5 语表。
+          noticeEarnedRunIssue(lgText(event.half==="top"?"liveGame.settle.erIssueTop":"liveGame.settle.erIssueBottom",{inning:event.inning,msg:error?.message||String(error)}));
         }
         return succeeded
       });
@@ -7534,7 +7547,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         // 走 ElMessage 而不是 J：J 是单格的局面提示，forceHalf 结尾马上会用「强制换局完成」
         // 把它盖掉（实测），而现场没有把这批记录变可信的开关，唯一出路是赛后人工复核。
         f.playEvents.length&&!settleSkipNoticed&&(settleSkipNoticed=!0,Fe.warning({
-          message:`本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 ${f.playEvents.length} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认`,
+          message:lgText("liveGame.settle.untrustedSkipped",{count:f.playEvents.length}),
           duration:8000
         }));
         return null
@@ -7575,7 +7588,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       catch(error){
         // 端点失败不静默：保持不可信，并把原因留给人看（设计 3.2 第 3 条）
         earnedRunKeyGap={
-          verifyError:error?.apiReason||error?.message||String(error),missing:[],byHalf:[]
+          verifyError:error?.message||String(error),missing:[],byHalf:[]
         };
         earnedRunKeyVerifyNoticed||(earnedRunKeyVerifyNoticed=!0,Fe.warning({
           message:lgText("liveGame.snapshotKeys.verifyFailed",{
@@ -7651,6 +7664,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!settled)return;
         allowEvidenceShrink=!0;
         earnedRunKeyGap=null;
+        // 局部定案已经替当前半局做了决定：本条「半局定案没有执行」的通用告警本轮不该再弹。
+        settleSkipNoticed=!0;
         Fe.info({
           message:lgText("liveGame.snapshotKeys.partialDone"),duration:8000
         }
@@ -7905,11 +7920,6 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     // 提示按「这一次要播的话」去重，而不是按「本场是否已经失败过一次」：同一句不刷屏，
     // 内容换了（先抖动、后拒收）就必须看得见；成功后清脏标与已播记录，下次真故障能重新提示。
     let snapshotSyncFailed=!1,snapshotSyncReason=null,snapshotNoticeShown=null;
-    // 后端稳定原因码 → 本地化文案（#713）：文案可以改，reason 不变；不认识的原因码回退服务器 msg。
-    function snapshotSyncMessage(error){
-      const key=snapshotGuardReasonKey(error?.apiReason);
-      return key?lgText(key):error?.message||String(error)
-    }
     async function pushLiveSnapshot(e){
       const body=JSON.stringify(e);
       // 原因说的是「这一发为什么没进去」：每次进来先清掉，免得拿上一拍的拒收话解释这一拍的故障
@@ -7925,10 +7935,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         catch(error){
           // 4xx 里只有 429（限流）和 401（会话重登）值得重试；其余（409 守门、400/403 权限/
           // 校验）重试只会再撞一次、多白花 800ms，还把原因拖成下面那句「未能同步」的误导文案。
-          // 直接把服务器原因抬到人前；有稳定 reason 的按 5 语种映射，没有的回退服务器 msg（#713）。
+          // 直接把服务器原因抬到人前；msg 已由后端按请求语言本地化（#736），不再由前端映射。
           const code=error?.apiCode;
           if(typeof code==="number"&&code>=400&&code<500&&code!==429&&code!==401){
-            snapshotSyncReason=snapshotSyncMessage(error);
+            snapshotSyncReason=error?.message||String(error);
             return !1
           }
           if(attempt===0)await new Promise(rr=>{
@@ -8091,16 +8101,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ,l.isGameEnd=!!P.isGameEnd,l.hasPitchThisAB=!!P.hasPitchThisAB,l.needNextBatter=!!P.needNextBatter;
           const E=[...w.lineup,...w.bench,...b.lineup,...b.bench],U=ct=>E.find(an=>Number(an.id)===Number(ct)),d=P.flow;
           if(d&&typeof d=="object"){
-            const ct={
+            const ct=normalizeErrorFlow({
               ...d
+            })
+            ,an=ct?.runner;
+            if(ct){
+              if(an!=null&&typeof an=="object"&&!Array.isArray(an))gn(an);
+              else{
+                const _t=st(an);
+                _t!=null&&(ct.runner=U(_t))
+              }
+              yo(ct),l.flow=ct
             }
-            ,an=ct.runner;
-            if(an!=null&&typeof an=="object"&&!Array.isArray(an))gn(an);
-            else{
-              const _t=st(an);
-              _t!=null&&(ct.runner=U(_t))
-            }
-            yo(ct),l.flow=ct
+            else l.flow=null
           }
           else l.flow=null;
           const z=st(P.mvp),se=st(P.svp);
@@ -8850,10 +8863,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         const fieldingPositions=new Set(dd(N.value));
         const results=[];
         for(const side of["away","home"]){
-          const lineup=side==="away"?X.value:q.value;
-          const pitcherId=side==="away"?O.value:te.value;
+          const ctx=Ee(side),lineup=ctx.lineup.value,pitcherId=ctx.fpId.value;
+          // 保存 payload 含替补与 DH 制投手行，对账同样覆盖，避免场外球员的 byPos 把多记局数带回
+          const extraPlayers=[...(ctx.bench.value??[]),...(ctx.fpRow.value?[ctx.fpRow.value]:[])];
           const result=LgReconcileFieldingInnings({
-            side,gameState:l,lineup,pitcherId,validPositions:fieldingPositions
+            side,gameState:l,lineup,pitcherId,extraPlayers,validPositions:fieldingPositions
           });
           if(result.changed.length){
             results.push({side,...result});
@@ -8899,17 +8913,20 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const multiple=Array.isArray(fielders)&&fielders.length>1;
       return LgErrNote(names,multiple)
     }
+    // #699：出局账本（halfInningOuts/日志）照常记录，但守备局数只按本半局剩余出局累计，避免 2 出局双杀多记 1 局
     function Bt(e,t){
-      l.halfInningOuts.push((e??"出局").trim()),l.outs++,Ipy(),D(jr(e??"出局"),void 0,{
+      const allowed=LgOutsRemaining(l.outs);
+      l.halfInningOuts.push((e??"出局").trim()),l.outs=Math.min(3,l.outs+1),allowed>0?Ipy():t?.suppressOutLimitWarning||J("本半局已达三出局，本次出局未计入守备局数（请先确认半局结束/攻守交换）","warning"),D(jr(e??"出局"),void 0,{
         showInPbp:t?.pbp!==!1
       }
       )
     }
     function os(e,t,a,s){
+      const allowed=LgCreditOutsWithinLimit(e,l.outs),options={...s,suppressOutLimitWarning:!0};
       for(let r=0;
       r<e;
-      r++)Bt(r===0?t:a??t,s);
-      l.outs>3&&(l.outs=3)
+      r++)Bt(r===0?t:a??t,options);
+      l.outs=Math.min(3,l.outs),allowed<e&&J(`本半局已达三出局，${e-allowed} 个多余出局未计入守备局数（请先确认半局结束/攻守交换）`,"warning")
     }
     function Dn(e){
       for(const r of LgSingleOutStats(e)){
@@ -9105,6 +9122,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         J("暴投只能在坏球后记录","warning");
         return
       }
+      (e==="BK"||e==="WP")&&l.flow?.type!=="K_CHOOSE"&&(l.flow=null);
       if(de(e==="SB"?"盗垒":e==="CS"?"盗垒死":e==="PK"?"投手牵制":e==="ADVANCE"?"进垒":e==="ADVANCE_FE"?"暴传失误推进":e==="BK"?(N.value==="SOFTBALL"||Ut()===0?"不合法投球":"投手犯规"):e==="WP"?"暴投":e==="INT"?"妨碍守备":"妨碍跑垒"),e==="OBST"){
         l.flow={
           type:"OBST",selectRunner:!0
@@ -9161,7 +9179,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           ai({runCause:"ILLEGAL_PITCH"});
           if(l.balls>=4)return bt("BB",[]);
         }
-        else Wt("B",{logKind:action.logKind});
+        else {
+          Wt("B",{logKind:action.logKind});
+          if(l.flow?.type==="K_CHOOSE")return; // Wt 被 K_CHOOSE 守卫拦截时保留流程图
+        }
         l.flow=null
       }
       else if(e==="WP"){
@@ -9231,6 +9252,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     const ho=new Set(["G","F","L","TAG","SF","SH","DP","TP","FC"]);
     function yo(e){
       e=normalizeErrorFlow(e);
+      if(!e)return;
       if(e.type==="E"){
         Array.isArray(e.steps)||(e.steps=[]),e.required==null&&(e.required=0);
         return
@@ -9834,7 +9856,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const type=flow.type,chain=Array.isArray(flow.steps)?[...flow.steps]:[],statsChain=Array.isArray(preview.statsChain)&&preview.statsChain.length?preview.statsChain:chain,displayChain=Array.isArray(preview.displayChain)&&preview.displayChain.length?preview.displayChain:statsChain,chainText=chainDisp(type,displayChain).map(pos=>vi[pos]??pos).join("-"),batter=be.value,pitcher=Se.value,pre={
         1:l.runners[1],2:l.runners[2],3:l.runners[3]
       };
-      de("击球结果"),beginPlayLedger(),l.flow=null,ue(batter),ue(pitcher??void 0),pushHitSpray(type,0,Sr(flow));
+      l.flow=null,de("击球结果"),beginPlayLedger(),ue(batter),ue(pitcher??void 0),pushHitSpray(type,0,Sr(flow));
       const runnerLogs=[];
       for(const out of preview.outs){
         const runner=out.runner;
@@ -10248,7 +10270,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function settleRunnerOut(e){
       const a=e.runner,s=e.runnerBase,r=e.outAtBase??s,p=e.outType,g=a.id??a.name??"?",y=p==="tag"?"触杀":"封杀",C1=_i(e.steps??[]),m=Vt(C1[C1.length-1]),isCs=!!e.stealFail&&C1[0]==="C"&&C1.length>=1,catcherCsCredit=isCs&&C1.length>=2&&C1[C1.length-1]!=="C",reasonCn=isCs?"盗垒死 (CS)":`${y}出局`;
-      de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),l.flow=null,pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1),catcherCsCredit&&paceCatcherStat("catcherCs"),recordPlayOut(C1,e.stealFail?"steal":(p??"tag"));
+      l.flow=null,de(isCs?"盗垒死 (CS)":y+"出局"),beginPlayLedger(),pt(),l.runners[s]=null,yl(g,s,r),l.halfInningOuts.push(Gt(a,isCs?"盗垒死":y+"出局").trim()),l.outs++,Ipy(),Dn(C1),isCs&&(a.stats.batting.cs=(a.stats.batting.cs??0)+1),catcherCsCredit&&paceCatcherStat("catcherCs"),recordPlayOut(C1,e.stealFail?"steal":(p??"tag"));
       const b=C1.length>1?LgOut({reasonCn,runner:a,from:s,to:r,chain:LgNum(C1),outsCum:1,total:l.outs}):LgOut({reasonCn,runner:a,from:s,to:r,fielderCode:C1[0],fielder:m,outsCum:1,total:l.outs});
       D(b),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(C1[C1.length-1]),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),l.outs>=3&&(is(void 0,{
         runnerForceOut:p==="force"
@@ -10276,21 +10298,22 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     function lc(e){
       const t=l.flow;
-      if(!t||t.type!=="ADVANCE_FE"||t.advanceFeStep!=="pick_target"||!t.runner||t.errorPos==null)return;
+      // #697：同一play内失误推进复用本 play 的失误事实，不再携带失误位置；其他失误原因仍必须有 errorPos。
+      if(!t||t.type!=="ADVANCE_FE"||t.advanceFeStep!=="pick_target"||!t.runner||(t.errorPos==null&&t.advanceFeReasonId!=="safe_same_err"))return;
       const a=t.runnerBase??0;
       if(e<=a)return;
       if(!va(a,e,Ei.value)){
         J("前方垒位有人，请先处理前位跑者","warning");
         return
       }
-      const s=t.runner,r=Vt(t.errorPos),p={
+      const s=t.runner,r=t.errorPos!=null?Vt(t.errorPos):null,p={
         1:"一垒",2:"二垒",3:"三垒",4:"本垒"
       }
       ,g=s.id??s.name??"?";
       const credit=shouldCreditError(t.advanceFeReasonId);
-      de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),l.flow=null,pt();
+      l.flow=null,de(t.advanceFeReasonId?"跑者失误推进":"暴传失误推进"),pt();
       const credited=credit&&creditFieldingError(r);
-      const y=It[t.errorPos]??t.errorPos,b=iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
+      const y=t.errorPos!=null?It[t.errorPos]??t.errorPos:null,b=t.errorPos==null?(t.advanceFeReasonCn??"失误推进"):iu(t.advanceFeReasonId,y)+(credited?errorCreditNote([t.errorPos]):""),w=Se.value;
       // 牵制暴传推进同样是一次牵制企图；拖拽直接选「牵制失误推进」也走这里
       t.advanceFeReasonId==="safe_pk_err"&&creditPickoffAttempt(),a>0&&(l.runners[a]=null),e===4?(s.stats.batting.r=(s.stats.batting.r??0)+1,ls(1,{runner:s,pitcher:w??void 0,origin:"ERROR",runCause:"ERROR"}),D(LgErr({reasonCn:b,runnerName:s.name,to:"本垒得分"}),t.advanceFeReasonCn)):(l.runners[e]=s,D(LgErr({reasonCn:b,runnerName:s.name,to:p[e]}),t.advanceFeReasonCn)),Je("ADVANCE_FE",`${b}，${s.name} ${e===4?"进本垒得分":`进${p[e]}`}`),Ge([{
         playerId:g,from:a,to:e
@@ -10304,7 +10327,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(e.errorMode==="foul_error"){
-        Wt("F");
+        l.flow=null,Wt("F");
         for(const t of e.steps)creditFieldingError(Vt(t));
         D(LgFoulErr({chainText:`${e.steps.map(t=>It[t]??t).join("→")}${errorCreditNote(e.steps)}`})),l.flow=null,pt();
         return
@@ -10426,7 +10449,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           return
         }
         const Q1=a.runner,Q2=a.runnerBase;
-        de("接杀回传"),l.flow=null,beginPlayLedger(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
+        l.flow=null,de("接杀回传"),beginPlayLedger(),pt(),l.runners[Q2]=null,yl(Q1.id??Q1.name??"?",Q2,a.outAtBase??Q2),l.halfInningOuts.push(Gt(Q1,"出局").trim()),l.outs++,Ipy();
         const cbChain=[a.catchPos??"P",e];
         creditDoublePlayFielders(cbChain),l.playOut=null;
         for(const fielding of LgCatchBackStats(cbChain[0],e)){
@@ -10583,11 +10606,44 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function gs(){
       Ma.value=!1,rc()
     }
+    // #693：未进换人模式就点球员时，红字前补该球员的球队/姓名/背号/守备位置/棒次
+    function buildSubstitutionPlayerHint(player,teamKey,options){
+      if(!player)return"";
+      const isHome=teamKey==="home";
+      const side=isHome?lgText("liveGame.team.home"):lgText("liveGame.team.away");
+      const teamName=isHome?xt.value?.name:At.value?.name;
+      const pos=options?.pos||player.position||"";
+      let posText="";
+      if(pos){
+        const posKey=`liveGame.lineup.position.${pos}`,localizedPos=lgText(posKey);
+        posText=localizedPos&&localizedPos!==posKey?`${localizedPos}(${pos})`:(It[pos]??pos)
+      }
+      const lineup=isHome?q.value:X.value;
+      const orderIndex=Array.isArray(lineup)?lineup.findIndex(row=>String(row?.id)===String(player.id)):-1;
+      const orderText=orderIndex>=0?lgText("liveGame.sub.playerInfoOrder",{n:orderIndex+1}):"";
+      const playerText=`${player.name??"--"} #${player.number??"-"}`;
+      return[teamName?`${side} ${teamName}`:side,playerText,posText,orderText].filter(Boolean).join(" · ")
+    }
+    // #693：点击提示条以外的地方，清除可外部关闭的红字提示（不干扰流程自带操作按钮）。
+    // 用 click 而不是 pointerdown：pointerdown 里移除提示条会让比分条塌陷，同一击的 click 落空。
+    function handleFlowNoticeOutsideClick(event){
+      if(!flowDismiss.value)return;
+      if(event.target instanceof Element&&event.target.closest(".les-flow-card, .live-bench-card"))return;
+      pt()
+    }
+    As(()=>{
+      document.addEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    ),yu(()=>{
+      document.removeEventListener("click",handleFlowNoticeOutsideClick,!0)
+    }
+    );
     function Za(e,t,a,s){
       if(substitutionModeBusy.value)return;   // 提交换人过程中不再打开任何换人浮层
       // 换人入口一律收口到换人模式（setRunner 属补跑者纠偏，不算换人）
       if(!substitutionMode.value&&e!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(t,a,s);
+        J(meta?lgText("liveGame.sub.needModeShort"):lgText("liveGame.sub.needMode"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       mt.value=e,Ga.value=t,ia.value=a,Qt.value=s?.base??null,Va.value=s?.pos??null,wt(),On.value=!0,He(()=>{
@@ -10741,7 +10797,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(substitutionModeBusy.value)return;   // 提交进行中拒绝执行，避免净变化之外的本地改动
       // 兜底：任何换人执行路径在模式外都必须拒绝（含换守备位置）
       if(!substitutionMode.value&&mt.value!=="setRunner"){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionMode.value&&substitutionModeCommitFailed.value){J(lgText("liveGame.sub.lastFailed"),"warning");return}
@@ -11381,7 +11437,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     async function applyFieldRotation(){
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value){
@@ -11479,7 +11535,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     }
     // 执行换人：source={kind,player,code?}，hit=落点命中项；成功返回 true（统一走 cc 记账）
     function liveBenchApplyDrop(source,hit){
-      if(!substitutionMode.value){J(lgText("liveGame.sub.needMode"),"warning");return!1}
+      if(!substitutionMode.value){J(lgText("liveGame.sub.needModeShort"),"warning",{dismissOnOutside:!0});return!1}
       if(source?.player?.disabled){J(lgText("liveGame.sub.playerUnavailable"),"warning");return!1}
       const blockReason=liveBenchSubBlockedReason();
       if(blockReason){
@@ -11617,7 +11673,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function liveBenchCardPointerDown(player,side,event){
       if(player?.disabled||event.button!==0||liveBenchDragSession)return;
       if(!substitutionMode.value){
-        J(lgText("liveGame.sub.needMode"),"warning");
+        const meta=buildSubstitutionPlayerHint(player,liveBenchTeamKey(side));
+        J(lgText("liveGame.sub.needModeShort"),"warning",{meta,dismissOnOutside:!0});
         return
       }
       if(substitutionModeBusy.value)return;
@@ -11862,7 +11919,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ["G","F","L","TAG","SF","SH","DP","TP","FC"].includes(e)&&e!=="DP"&&e!=="TP"&&(t=_i(t));
       const s=(b,w=0)=>pushHitSpray(b,w,a);
       if(e==="H1"&&$l("H1",1,t,a)||e==="H2"&&$l("H2",2,t,a)||e==="H3"&&$l("H3",3,t,a)||e==="E"&&$l("E",1,t,a,meta?.chain)||e==="FC"&&!1||e==="DP"&&Mi("DP",2,t,a)||e==="TP"&&Mi("TP",3,t,a)||e==="BB"&&rr("BB",t,a)||e==="HBP"&&rr("HBP",t,a))return;
-      ["BB","HBP"].includes(e)||de(e==="HR"?"击球结果-HR":e==="IPHR"?"击球结果-IPHR":"击球结果"),beginPlayLedger(),l.flow=null;
+      ["BB","HBP"].includes(e)||(l.flow=null,de(e==="HR"?"击球结果-HR":e==="IPHR"?"击球结果-IPHR":"击球结果")),beginPlayLedger(),l.flow=null;
       const r=be.value,p=Se.value;
       ue(r),ue(p??void 0);
       let g="OTHER",m="";
@@ -12505,6 +12562,8 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       try{
         const t=Yo(await ma.getLiveSnapshot(e));
         earnedRunPlayEventsTrusted=t?.playEventsComplete===true;
+        // 从云端恢复的是服务器现状，不是在本地撤销出来的短档：撤销意图到此为止。
+        allowEvidenceShrink=!1;
         if(gt(),Kt(),Ma.value=!1,$e.value=[],Ne.value=[],t){
           const g=t.setupForm??{
             
@@ -13033,7 +13092,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         ,[n("div",dg,[c(F)&&Pp.value?(h(),C("div",mg,[Pp.value?(h(),C("div",{
           key:1,class:re(["les-flow-card",`les-flow-card--${c(zt)}`])
         }
-        ,[n("div",Rg,H(c(k)||cf.value),1),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
+        ,[n("div",Rg,[c(flowMeta)?n("span",{class:"les-flow-notice-meta"},H(c(flowMeta)),1):W("",!0),n("span",null,H(c(k)||cf.value),1)],64),n("div",xg,[c(l).flow?.type==="K_CHOOSE"?(h(),C(me,{
           key:0
         }
         ,[v(s,{

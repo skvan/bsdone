@@ -1,6 +1,6 @@
 // 比赛详情守备表行构建：按本场首次上场守位归组（含投手），组按先发打线顺序排序，同组替补缩进，缺失数据补 0
 import { normalizeFieldingPosition, resolveFirstFieldPosition } from './gamePlayerStat.js';
-import { formatInningsPitched, inningsToOuts, outsToInnings } from './inningsFormat.js';
+import { formatInningsPitched, inningsToOuts, outsToInnings, totalInningsPitched } from './inningsFormat.js';
 
 const POSITION_ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'XF'];
 const BATTING_ONLY_POSITIONS = new Set(['DH', 'PH', 'EP']);
@@ -330,9 +330,9 @@ export function expandFieldingRows(rows, expandedPlayerIds) {
 }
 
 /**
- * 守备表 Totals 汇总：计数项求和；INN 取全队最大守备局数（各球员守备局不叠加）。
+ * 守备表 Totals 汇总：计数项求和；INN 按出局数逐行求和（.1/.2 记法先换算成出局再加总）。
+ * #699：此前取全队最大值，轮换/替补会把多名球员的守备局混为一人份而低估全队局数，改为求和。
  * DP 按现有球队守备口径汇总球员 DP 记分（与球队守备榜一致；双杀会按参与人数重复计入）。
- * INN 取 max 在全员轮换/末局换替补时可能低于全队实际守备局数，属于展示口径。
  * 展开明细行（kind=breakdown）不参与合计，避免重复统计。
  */
 export function buildFieldingTotals(rows, fields = []) {
@@ -342,7 +342,7 @@ export function buildFieldingTotals(rows, fields = []) {
     const key = field?.key;
     if (!key) continue;
     if (key === 'defInn') {
-      totals[key] = list.reduce((max, row) => Math.max(max, Number(row?.defInn) || 0), 0);
+      totals[key] = totalInningsPitched(list.map((row) => Number(row?.defInn) || 0));
       continue;
     }
     totals[key] = list.reduce((sum, row) => sum + (Number(row?.[key]) || 0), 0);
