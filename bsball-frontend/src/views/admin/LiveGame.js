@@ -72,7 +72,7 @@ import { diffTeamState, summarizeTeamDiff, buildSubstitutionEvents, applyNetTeam
 import { strikeoutFieldingCredit } from '../../utils/liveGameStrikeoutFielding.js';
 import { accrueActiveFieldingOuts, accrueFieldingPlay, buildFieldingPositionRows, hasFieldingByPosBaseline, hasHistoricalFieldingStats, isStartingPlayer, mergeFieldingByPos, resolveFieldingCreditTarget } from '../../utils/liveGameFieldingByPos.js';
 import { assignPitcherOrder, seedPitcherOrders, orderPitcherRows } from '../../utils/liveGamePitcherOrder.js';
-import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, appendOuts as LgAppendOuts, dpRunnerOutText as LgDpRunnerOut, dpMainText as LgDpMain, hitResultText as LgHitText, noAdvanceRunText as LgNoAdvance, noAdvanceThirdText as LgNoAdvanceThird, runOutNoScoreText as LgRunOutNoScore, setLogTextLocale } from '../../utils/liveGameLogTexts';
+import { advanceText as LgAdvance, outText as LgOut, fcGroup as LgFc, pickoffGroup as LgPickoff, catchBackDoublePlayGroup as LgCatchBackDp, caughtStealingText as LgCs, toNumCodes as LgNum, replaceNoteText as LgReplaceNote, resolveSingleOutChain as LgResolveOut, runCauseLabel as LgRunCauseLabel, sacrificeBackfillNote as LgSacrificeNote, pitchText as LgPitch, coachTimeoutText as LgCoach, subText as LgSub, setRunnerText as LgSetRunner, pickoffNoneText as LgPickoffNone, fpMissText as LgFpMiss, foulErrorText as LgFoulErr, sysText as LgSys, errorAdvanceText as LgErr, stealSingleText as LgSteal, staysOnBaseText as LgStay, errorNoteText as LgErrNote, fieldingIpNoteText as LgIpNote, positionEn as LgPosEn, appendOuts as LgAppendOuts, dpRunnerOutText as LgDpRunnerOut, dpMainText as LgDpMain, hitResultText as LgHitText, noAdvanceRunText as LgNoAdvance, noAdvanceThirdText as LgNoAdvanceThird, runOutNoScoreText as LgRunOutNoScore, setLogTextLocale } from '../../utils/liveGameLogTexts';
 import { computeErrorChainAssists, computeErrorChainPutout } from '../../utils/liveGameErrorChain';
 import { resolveBalkAction as LgBalkAction } from '../../utils/liveGameBalk';
 import { resolveSacrificeCredit as LgSacrificeCredit } from '../../utils/liveGameSacrifice';
@@ -1242,8 +1242,8 @@ function qd(){
       }
       
     }
-    const N=`[${new Date().toLocaleTimeString("zh-CN",{hour12:!1})}] [${u.gameState.inning}${u.gameState.isTop?"上":"下"}] ${f(S)}`,K=F?.showInPbp!==!1,VL=Array.isArray(F?.lines)?F.lines.filter(M=>typeof M=="string"&&M.trim()).map(M=>f(M)):[];
-    R||!K||VL.length?u.eventLog.unshift({
+    const N=`[${new Date().toLocaleTimeString("zh-CN",{hour12:!1})}] [${u.gameState.inning}${u.gameState.isTop?"上":"下"}] ${f(S)}`,K=F?.showInPbp!==!1,VL=Array.isArray(F?.lines)?F.lines.filter(M=>typeof M=="string"&&M.trim()).map(M=>f(M)):[],CR=F?.customReason??null;
+    R||!K||VL.length||CR?u.eventLog.unshift({
       head:N,...R?{
         tail:R
       }
@@ -1258,6 +1258,12 @@ function qd(){
       }
       ,...VL.length?{
         lines:VL
+      }
+      :{
+        
+      }
+      ,...CR?{
+        customReason:CR
       }
       :{
         
@@ -6292,7 +6298,58 @@ var sg={
       }
       ])
     }
-    function kp(e){
+    function newRunnerOutOtherId(){
+      return`ro-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`
+    }
+    async function promptRunnerOutOtherReason({initial="",editing=!1}={}){
+      try{
+        const e=await LgBox({
+          title:lgText(editing?"liveGame.runnerOutOther.editTitle":"liveGame.runnerOutOther.title"),message:lgText("liveGame.runnerOutOther.message"),showInput:!0,inputValue:initial,inputPlaceholder:lgText("liveGame.runnerOutOther.placeholder"),inputValidator:t=>{
+            const a=String(t??"").trim();
+            return a?a.length>120?lgText("liveGame.runnerOutOther.tooLong"):!0:lgText("liveGame.runnerOutOther.required")
+          }
+          ,confirmButtonText:lgText("liveGame.runnerOutOther.save"),cancelButtonText:lgText("liveGame.common.cancel"),showCancelButton:!0,draggable:!0
+        }
+        );
+        return String(e?.value??"").trim()
+      }
+      catch{
+        return null
+      }
+    }
+    async function editRunnerOutOtherReason(e){
+      if(!F.value||finalReviewMode||substitutionMode.value||!e?.id)return;
+      const t=String(e.text??""),a=await promptRunnerOutOtherReason({
+        initial:t,editing:!0
+      }
+      );
+      if(a==null)return;
+      const s=ke.value.findIndex(r=>r&&typeof r=="object"&&r.customReason?.id===e.id);
+      if(s<0)return;
+      const r=ke.value[s],p=LgReplaceNote(r.head,t,a);
+      if(p==null){
+        Fe.warning({
+          message:lgText("liveGame.runnerOutOther.editFailed"),duration:8000
+        }
+        );
+        return
+      }
+      ke.value.splice(s,1,{
+        ...r,head:p,customReason:{
+          ...r.customReason,text:a
+        }
+      }
+      ),jt({
+        persistCache:"immediate"
+      }
+      );
+      const saved=await Zr();
+      saved&&Fe.success({
+        message:lgText("liveGame.runnerOutOther.saved"),duration:3000
+      }
+      )
+    }
+    async function kp(e){
       const t=ge.value;
       if(!t)return;
       const{
@@ -6304,6 +6361,15 @@ var sg={
         ge.value=null;
         J("本半局已达三出局或当前打席未完成，无法记录跑者出局；请先确认半局结束/攻守交换","warning");
         return
+      }
+      if(e.id==="out_other"){
+        // 先收起原因面板：它盖在 MessageBox 之上会挡住「保存理由」；取消则本次出局不记录。
+        ge.value=null;
+        const customText=await promptRunnerOutOtherReason();
+        if(customText==null)return;
+        e={
+          ...e,customText,customReasonId:newRunnerOutOtherId()
+        }
       }
       if(ge.value=null,e.id==="out_steal_fail"){
         de(`拖拽-触杀出局(盗垒失败)[${s}>${r}]`),clearChainVisual(),l.flow={
@@ -6334,8 +6400,16 @@ var sg={
         return
       }
       de(`拖拽-出局[${s}>${r}]`),l.runners[s]=null,yl(p,s,r),l.halfInningOuts.push(Gt(a,"出局").trim()),l.outs++,Ipy(),recordPlayOut([]);
-      const g=LgOut({reasonCn:e.cn,runner:a,from:s,to:r,outsCum:1,total:l.outs});
-      D(g),l.outs>=3&&(Je("THIRD_OUT",g),Qe())
+      const g=LgOut({
+        reasonCn:e.cn,runner:a,from:s,to:r,note:e.customText,noteIsCustom:!!e.customText,outsCum:1,total:l.outs
+      }
+      );
+      D(g,void 0,e.customText?{
+        customReason:{
+          id:e.customReasonId,text:e.customText
+        }
+      }
+      :void 0),l.outs>=3&&(Je("THIRD_OUT",g),Qe())
     }
     function Pt(){
       return{
@@ -7969,13 +8043,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       })
     }
     async function Zr(){
-      if(!R.value||!F.value)return;
+      if(!R.value||!F.value)return !1;
       Tn(),to();
       const e=pa({
         includeUndoStacks:!0
       }
       );
-      if(e)(await pushLiveSnapshot(e))?(snapshotSyncFailed=!1,snapshotNoticeShown=null):reportSnapshotSyncFailure()
+      if(!e)return !1;
+      const t=await pushLiveSnapshot(e);
+      return t?(snapshotSyncFailed=!1,snapshotNoticeShown=null,!0):(reportSnapshotSyncFailure(),!1)
     }
     async function ZrLite(){
       // 离开时保存轻量现场快照（仅含最近20步撤销栈），最多等待10秒后放行
@@ -13608,7 +13684,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }
           ,lgText("liveGame.field.bip"),-1)]),_:1
         }
-        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,onDockChange:setPbpDock},null,8,["logs","dock","allowHorizontal"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
+        ,8,["class","disabled"])])])])]),c(oe)?v(LiveGamePbpSplitter,{dock:pbpEffectiveDock.value},null,8,["dock"]):W("",!0),c(oe)?v(LiveGamePlayByPlay,{logs:ke.value,dock:pbpEffectiveDock.value,allowHorizontal:!pbpNarrow.value,editable:!finalReviewMode&&!substitutionMode.value,onDockChange:setPbpDock,onEditReason:editRunnerOutOtherReason},null,8,["logs","dock","allowHorizontal","editable"]):W("",!0)],512)],2)):(h(),C("div",pg,[v(m,{
           description:lgText("liveGame.verify.busy")
         }
         )]))],2)]),_:1

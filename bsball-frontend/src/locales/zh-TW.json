@@ -2924,7 +2924,19 @@
       "count": "{count} 條",
       "countTitle": "最多顯示最近 {limit} 條",
       "listAria": "即時比賽日誌",
-      "empty": "暫無比賽日誌"
+      "empty": "暫無比賽日誌",
+      "editReason": "編輯出局理由"
+    },
+    "runnerOutOther": {
+      "title": "跑者出局理由：其他",
+      "editTitle": "編輯跑者出局理由",
+      "message": "請填寫具體出局理由，會顯示在比賽日誌裡。",
+      "placeholder": "例如：趁傳進壘時漏踩壘包",
+      "required": "請填寫具體理由",
+      "tooLong": "理由最多 120 個字元",
+      "save": "儲存理由",
+      "saved": "出局理由已更新",
+      "editFailed": "未能在日誌中定位原理由，未儲存修改"
     },
     "scoreboard": {
       "aria": "即時記分牌",
