@@ -29,7 +29,6 @@ import lombok.Generated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
-import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -91,8 +90,10 @@ public class GlobalExceptionHandler {
         try {
             return this.messageSource.getMessage(key, e.getMessageArgs(), locale);
         }
-        catch (NoSuchMessageException ex) {
-            log.warn("\u7f3a\u5c11 locale={} \u7684\u6587\u6848\u952e {}\uff0c\u9000\u56de\u539f\u6587", (Object)locale, (Object)key);
+        catch (RuntimeException ex) {
+            // NoSuchMessageException（漏翻/键打错）与 MessageFormat 的参数类型异常都在这里兜住：
+            // 解词失败只该退回原文，不能把 409 变成 500。
+            log.warn("\u7f3a\u5c11 locale={} \u7684\u6587\u6848\u952e {}\uff0c\u9000\u56de\u539f\u6587\uff1a{}", (Object)locale, (Object)key, (Object)ex.getMessage());
             return e.getMessage();
         }
     }

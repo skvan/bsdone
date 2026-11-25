@@ -97,7 +97,7 @@ test('每条文案都带它声称的那个按钮：前端词典里真有这个�
 });
 
 test('mock 的语言判定与后端 UiLocaleResolver 同规则', () => {
-  const src = fs.readFileSync(SPEC, 'utf8');
+  const src = fs.readFileSync(SPEC, 'utf8').replace(/\r\n/g, '\n');
   const fn = src.match(/function guardLocale\(headers\)[\s\S]*?\n}\n/);
   assert.ok(fn, 'e2e spec 里找不到 guardLocale（改名了就要同步看这条）');
   const body = fn[0];
