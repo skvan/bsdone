@@ -2,6 +2,7 @@ package com.bsball.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +26,7 @@ import com.bsball.repository.StadiumRepository;
 import com.bsball.service.query.ScopeQuerySupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Locale;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 /**
  * 现场快照覆盖守门：线上 game 261 在赛后第七天被一次阵容板保存盖成「只剩 2 条 playEvents、
@@ -299,6 +302,68 @@ class GameServiceLiveSnapshotGuardTest {
     }
 
     @Test
+    @DisplayName("读不出的 payload 要说「无法解析」而不是「一条都没有」：判据没变，话要说对")
+    void saveLiveSnapshot_unparsablePayloadHasItsOwnMessage() {
+        // 记分栏刻意留 0 才走得到这一格：记分栏有分时，得分那道会先命中 regressUnknown
+        // （见《非法快照 JSON 不抛 NPE》那例，它用的是 18:6）。拒收判据跟 #716 完全相同——
+        // 不可解析当作「什么都提了」，条数 0 < 现有 24——变的只有措辞：云端明明有 24 条，
+        // 还对记录员说「你提交的一条都没有」是把责任说反，那种 payload 根本没主张过条数。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{不是 JSON"));
+
+        assertEquals("snapshot.guard.payload.unreadable", ex.getMessageKey(),
+                "要走「无法解析」那条文案，不是「清零」那条：" + ex.getMessageKey());
+        assertTrue(ex.getMessage().contains("无法解析成有效内容"), ex.getMessage());
+        assertFalse(ex.getMessage().contains("一条都没有"),
+                "云端有 24 条，这话用错了分支：" + ex.getMessage());
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("不可解析＋撤销意图：仍拒收，别让意图变成空壳的后门")
+    void saveLiveSnapshot_unparsableWithUndoIntentStillRejected() {
+        // 这一条钉的是分支先后：「读不出内容」排在「意图放行」之前。把两个对调以后，一份
+        // 读不出来的正文只要带上 allowEvidenceShrink=true 就能直接落库，把云端 24 条逐棒
+        // 证据盖成空壳——正是 261 的终态（上面那例只测了 allowEvidenceShrink=false 的一侧，
+        // 而对侧——合法空数组带意图——该拒的还是得放行，所以两个方向各钉一条）。
+        // 意图本该只放「真的把记录撤到 0」那一发：它推上来的永远是读得出的快照配一个空数组。
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        givenExistingSnapshot(RICH_SNAPSHOT);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), "{不是 JSON", Boolean.TRUE));
+
+        assertEquals("snapshot.guard.payload.unreadable", ex.getMessageKey(),
+                "带了意图也不该改判，也不该换到「一条都没有」那句：" + ex.getMessageKey());
+        verify(gameSnapshotRepository, never()).updateSnapshotJson(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("四条拒收各带一个键，且 Java 兜底原文与 messages.properties 的简体中文逐字一致")
+    void saveLiveSnapshot_everyRejectionMatchesItsChineseBundleEntry() {
+        // GameService 的注释承诺「两份措辞必须一致」，这条就是那句承诺本身：拿异常自带的
+        // key＋args 去解 messages.properties，解出来的简体中文要和源码那段字面量一字不差。
+        // 放在 service 这一侧，是因为只有这里能让四种拒和各真的发生一次；文案键也在这里钉，
+        // 免得日后有人把 throw 改回两参形式（键没了，前端的语言选择会静默失效）。
+        givenExistingSnapshot(RICH_SNAPSHOT);
+        game.setAwayScore(Integer.valueOf(0));
+        game.setHomeScore(Integer.valueOf(0));
+        assertBundleMatches(throwSnapshotGuard("{\"playEvents\":[]}"));
+        assertBundleMatches(throwSnapshotGuard("{不是 JSON"));
+        game.setAwayScore(Integer.valueOf(18));
+        game.setHomeScore(Integer.valueOf(6));
+        assertBundleMatches(throwSnapshotGuard("{\"playEvents\":[" + repeatedEvents(9, 2)
+                + "],\"teamsData\":{\"home\":{\"score\":0},\"away\":{\"score\":2}}}"));
+        // 带 teamsData 但比分读不出数字：得分那道按「读不出」说话，参数只有记分栏总分
+        assertBundleMatches(throwSnapshotGuard("{\"teamsData\":{\"home\":{\"score\":\"x\"}}}"));
+    }
+
+    @Test
     @DisplayName("真撤销形状（记分栏已有分、总分仍对得上）：变短要进得去，那才是 #713 要解的锁死")
     void saveLiveSnapshot_undoOfNonScoringPlayIsAllowed() {
         // 上一例把记分栏改成 0，验证的是「没证人时不拦」；这一例才是撤销过的现场实际发上来的东西：
@@ -514,5 +579,33 @@ class GameServiceLiveSnapshotGuardTest {
                     .append(scores ? 1 : 0).append(",\"home\":0}}");
         }
         return sb.toString();
+    }
+
+    /** 发一次快照保存并认定它被守门拒收：409 与文案键都在这里查，返回值交给一致性断言。 */
+    private BusinessException throwSnapshotGuard(String payload) {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> gameService.saveLiveSnapshot(Long.valueOf(GAME_ID), payload));
+        assertEquals(409, ex.getCode(), "守门只该给 409：" + ex.getMessage());
+        assertNotNull(ex.getMessageKey(),
+                "拒收要带稳定的文案键，否则前端换语言与统计发生率都没有抓手：" + ex.getMessage());
+        return ex;
+    }
+
+    /**
+     * Java 兜底原文 vs messages.properties 的简体中文条目，逐字比对。
+     * MessageSource 按 Boot 的 MessageSourceAutoConfiguration 那套装（ResourceBundleMessageSource
+     * ＋ basename messages ＋ UTF-8 ＋ 关掉 system locale 兜底），免得测试解出一种、线上解出另一种。
+     * 键在 bundle 里不存在时 getMessage 直接抛 NoSuchMessageException，这条会比字符串比对先红。
+     */
+    private static void assertBundleMatches(BusinessException ex) {
+        ResourceBundleMessageSource bundle = new ResourceBundleMessageSource();
+        bundle.setBasenames("messages");
+        bundle.setDefaultEncoding("UTF-8");
+        bundle.setFallbackToSystemLocale(false);
+        String rendered = bundle.getMessage(ex.getMessageKey(), ex.getMessageArgs(),
+                Locale.SIMPLIFIED_CHINESE);
+        assertEquals(rendered, ex.getMessage(),
+                "Java 兜底原文与 messages.properties 不一致（键 " + ex.getMessageKey() + "）\n  properties="
+                        + rendered + "\n  java     =" + ex.getMessage());
     }
 }

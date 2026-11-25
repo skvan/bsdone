@@ -3389,6 +3389,13 @@
       "orderNo": "No.{n}",
       "playerFallback": "Player",
       "currentEvent": "Current Event"
+    },
+    "settle": {
+      "overrideVoidTop": "Top of inning {inning} settled: manual R/ER overrides for {count} pitcher(s) are void and need review again",
+      "overrideVoidBottom": "Bottom of inning {inning} settled: manual R/ER overrides for {count} pitcher(s) are void and need review again",
+      "erIssueTop": "Earned-run decisions not updated (top of inning {inning}): {msg}",
+      "erIssueBottom": "Earned-run decisions not updated (bottom of inning {inning}): {msg}",
+      "untrustedSkipped": "This game’s local play-by-play records are marked untrustworthy, so the half-inning settle did not run: none of the {count} local records will be sent for reconstruction, so the score and pitchers’ earned runs may not add up. Confirm them in the post-game ER review."
     }
   },
   "gameResultFielding": {

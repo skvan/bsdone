@@ -23,10 +23,13 @@ package com.bsball.core;
 import com.bsball.common.Result;
 import com.bsball.exception.BusinessException;
 import com.bsball.exception.UnauthorizedException;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import lombok.Generated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +43,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // 文案键到当前请求语言的解词器（#713 文案本地化）。键与参数由 BusinessException 带上，
+    // 到这一层才解：单个构造器由 Spring 自动注入，不需要 @Autowired。
+    private final MessageSource messageSource;
+
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
 
     @ExceptionHandler(value={UnauthorizedException.class})
     public ResponseEntity<Result<Object>> handleUnauthorized(UnauthorizedException e) {
@@ -59,9 +70,32 @@ public class GlobalExceptionHandler {
             case 429 -> HttpStatus.TOO_MANY_REQUESTS;
             default -> HttpStatus.OK;
         };
-        Result<Object> r = Result.fail((String)e.getMessage());
+        Result<Object> r = Result.fail((String)this.localize(e));
         r.setCode(code);
         return ResponseEntity.status((HttpStatusCode)status).body(r);
+    }
+
+    /**
+     * 带文案键的一发按请求语言解词。解不出（漏翻、键打错）退回异常自带的原文：
+     * 宁可说一门不对的语言，也不能给使用者一个空串或键名。翻译放在这一层而不是 service，
+     * 是因为 service 单测不走 web 上下文，{@code LocaleContextHolder} 那种时候取的是 JVM 默认语言，
+     * 把翻译塞进 service 会让那些断言跟着机器语言飘。
+     */
+    private String localize(BusinessException e) {
+        String key = e.getMessageKey();
+        if (key == null) {
+            return e.getMessage();
+        }
+        Locale locale = LocaleContextHolder.getLocale();
+        try {
+            return this.messageSource.getMessage(key, e.getMessageArgs(), locale);
+        }
+        catch (RuntimeException ex) {
+            // NoSuchMessageException（漏翻/键打错）与 MessageFormat 的参数类型异常都在这里兜住：
+            // 解词失败只该退回原文，不能把 409 变成 500。
+            log.warn("\u7f3a\u5c11 locale={} \u7684\u6587\u6848\u952e {}\uff0c\u9000\u56de\u539f\u6587\uff1a{}", (Object)locale, (Object)key, (Object)ex.getMessage());
+            return e.getMessage();
+        }
     }
 
     @ExceptionHandler(value={NoResourceFoundException.class})

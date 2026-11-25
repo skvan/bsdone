@@ -3390,6 +3390,13 @@
       "orderNo": "第{n}棒",
       "playerFallback": "队员",
       "currentEvent": "当前赛事"
+    },
+    "settle": {
+      "overrideVoidTop": "第 {inning} 局上定案：{count} 位投手的人工 R/ER 覆写已失效，需重新复核",
+      "overrideVoidBottom": "第 {inning} 局下定案：{count} 位投手的人工 R/ER 覆写已失效，需重新复核",
+      "erIssueTop": "自责分判定未更新（第 {inning} 局上）：{msg}",
+      "erIssueBottom": "自责分判定未更新（第 {inning} 局下）：{msg}",
+      "untrustedSkipped": "本场次的本地逐棒记录被标记为不可信，半局定案没有执行（本场 {count} 条逐棒记录都不会送去重建）：记分与投手自责分可能对不上，请赛后在自责分复核里人工确认"
     }
   },
   "gameResultFielding": {
