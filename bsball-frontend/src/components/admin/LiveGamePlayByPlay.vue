@@ -65,6 +65,19 @@
           <p class="lg-pbp__text">
             <span>{{ entry.text }}</span>
             <span v-if="entry.tail" class="lg-pbp__tail">{{ entry.tail }}</span>
+            <button
+              v-if="entry.customReason && editable"
+              type="button"
+              class="lg-pbp__edit"
+              :title="lt('liveGame.pbp.editReason')"
+              :aria-label="lt('liveGame.pbp.editReason')"
+              @click="$emit('edit-reason', entry.customReason)"
+            >
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M10.6 2.9a1.4 1.4 0 0 1 2 2L5.8 11.7l-2.7.8.8-2.7 6.7-6.9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                <path d="M9.6 4l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+              </svg>
+            </button>
           </p>
           <p v-for="(line, lineIndex) in entry.lines" :key="lineIndex" class="lg-pbp__sub">{{ line }}</p>
         </div>
@@ -92,9 +105,10 @@ const { text: lt } = useLiveGameText();
 const props = defineProps({
   logs: { type: Array, default: () => [] },
   dock: { type: String, default: 'bottom' },
-  allowHorizontal: { type: Boolean, default: true }
+  allowHorizontal: { type: Boolean, default: true },
+  editable: { type: Boolean, default: true }
 });
-defineEmits(['dock-change']);
+defineEmits(['dock-change', 'edit-reason']);
 
 const DOCK_ITEMS = [
   { key: 'top', title: '吸附到上方', bar: { x: 4.6, y: 4.6, w: 8.8, h: 3.1 } },
@@ -448,6 +462,37 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   vertical-align: 1px;
+}
+
+.lg-pbp__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  vertical-align: -3px;
+}
+
+.lg-pbp__edit svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.lg-pbp__edit:hover {
+  background: var(--el-color-primary-light-9);
+}
+
+.lg-pbp__edit:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 1px;
 }
 
 .lg-pbp__sub {

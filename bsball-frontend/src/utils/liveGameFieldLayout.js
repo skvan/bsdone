@@ -255,7 +255,7 @@ function Mt(e){
     if(typeof r=="string")s=x(r);
     else if(r&&typeof r=="object"&&"head"in r&&typeof r.head=="string"){
       const i=r,o=x(i.head);
-      i.tail||i.showInPbp===!1||Array.isArray(i.lines)?s={
+      i.tail||i.showInPbp===!1||Array.isArray(i.lines)||i.customReason?s={
         head:o,...i.tail?{
           tail:i.tail
         }
@@ -270,6 +270,12 @@ function Mt(e){
         }
         ,...Array.isArray(i.lines)?{
           lines:i.lines
+        }
+        :{
+          
+        }
+        ,...i.customReason?{
+          customReason:i.customReason
         }
         :{
           

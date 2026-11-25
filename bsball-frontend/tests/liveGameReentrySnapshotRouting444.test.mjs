@@ -143,6 +143,13 @@ test('#713 Zr：拒收时把服务器给的原因原样抬出来，不被「换�
   assert.equal(calls.warn, 0, '不能再被那句无关的通用文案顶掉');
 });
 
+test('#444-A Zr：返回快照同步结果，成功后为 true、连续失败为 false', async () => {
+  const { api, state } = ctx({ failRemaining: 2 });
+  assert.equal(await api.Zr(), false, '两次都失败要返回 false，调用方才能决定是否提示成功');
+  state.failRemaining = 0;
+  assert.equal(await api.Zr(), true, '恢复后成功要返回 true');
+});
+
 test('#713 Zr：拒收转成功后要清掉原因，之后的真故障回到通用文案而不是旧拒收词', async () => {
   const { api, calls, state } = ctx({ businessFail: '旧一轮的拒收原因', failRemaining: Infinity });
   await api.Zr();

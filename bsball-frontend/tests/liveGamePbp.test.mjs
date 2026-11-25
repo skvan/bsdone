@@ -36,6 +36,17 @@ test('buildPbpEntries：解析时间/局次/正文，并保留 tail 与 lines', 
   });
 });
 
+test('buildPbpEntries：透传可事后编辑的自定义出局理由', () => {
+  const entries = buildPbpEntries([
+    {
+      head: '[10:00:01] [1上] 其他：T2P1 #1 于二垒出局（趁传漏踩垒包）',
+      customReason: { id: 'ro-1', text: '趁传漏踩垒包' }
+    }
+  ]);
+
+  assert.deepEqual(entries[0].customReason, { id: 'ro-1', text: '趁传漏踩垒包' });
+});
+
 test('buildPbpEntries：过滤 showInPbp:false 的系统条目', () => {
   const entries = buildPbpEntries([
     { head: '[10:00:30] [1下] 比赛开始', showInPbp: false },

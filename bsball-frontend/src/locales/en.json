@@ -2917,7 +2917,19 @@
       "count": "{count} entries",
       "countTitle": "Shows up to the latest {limit}",
       "listAria": "Live game log",
-      "empty": "No plays yet"
+      "empty": "No plays yet",
+      "editReason": "Edit out reason"
+    },
+    "runnerOutOther": {
+      "title": "Runner out reason: Other",
+      "editTitle": "Edit runner out reason",
+      "message": "Enter the specific reason. It will appear in the game log.",
+      "placeholder": "e.g. missed the base while advancing on the throw",
+      "required": "Please enter a reason",
+      "tooLong": "The reason must be 120 characters or fewer",
+      "save": "Save reason",
+      "saved": "Runner out reason updated",
+      "editFailed": "Could not find the original reason in the log; nothing was saved"
     },
     "scoreboard": {
       "aria": "Live scoreboard",

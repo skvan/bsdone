@@ -155,6 +155,22 @@ test('Issue 656：legacy CS 路由同样只在捕手有助杀时记 CCS', () => 
   assert.ok(source.includes('e!=="C"&&paceCatcherStat("catcherCs")'), '仅 C 触杀不记 catcherCs');
 });
 
+test('Issue 656 追加：跑者出局理由选其他时可输入文字，并显示/编辑在日志', () => {
+  const kpBlock = sliceBetween('function kp(e){', 'function Pt(){');
+  assert.match(kpBlock, /e\.id==="out_other"/, 'kp 要单独识别「其他」');
+  assert.match(kpBlock, /await promptRunnerOutOtherReason/, '选其他时先弹出输入框');
+  assert.match(kpBlock, /note:e\.customText/, '输入文字要进入出局日志正文');
+  assert.match(kpBlock, /customReason:/, '日志条目要带可事后编辑的元数据');
+  assert.match(source, /function promptRunnerOutOtherReason/, '输入框封装存在');
+  assert.match(source, /function editRunnerOutOtherReason/, '事后编辑入口存在');
+  assert.match(source, /onEditReason:editRunnerOutOtherReason/, 'PBP 组件接线到事后编辑');
+  assert.match(
+    sliceBetween('function qd(){', 'var Iu="bs-ball-live-pitch-menu-glyphs";'),
+    /customReason/,
+    'addLog 要把 customReason 写进 eventLog 对象条目'
+  );
+});
+
 test('触杀/封杀选项进入传球链：分别路由 RUNNER_OUT_TAG / RUNNER_OUT_FORCE', () => {
   const kpBlock = sliceBetween('function kp(e){', 'function Pt(){');
   assert.match(kpBlock, /if\(e\.id==="out_tag"\|\|e\.id==="out_force"\)\{/);
