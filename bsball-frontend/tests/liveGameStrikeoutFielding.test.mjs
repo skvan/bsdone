@@ -28,14 +28,14 @@ import { dirname, join } from 'node:path';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/LiveGame.js');
 
-test('LiveGame 接线：普通/擦棒三振与漏接三振均调用守备记账', () => {
+test('LiveGame 接线：普通/擦棒三振记捕手 PO，漏接三振出局按链分配 PO/A', () => {
   const src = fs.readFileSync(SRC, 'utf8');
   assert.equal((src.match(/creditStrikeoutFielding\("caught"\)/g) ?? []).length, 3, '普通/界外/擦棒三个三振分支都要记捕手 PO');
-  assert.equal((src.match(/creditStrikeoutFielding\("dropped",t\)/g) ?? []).length, 1, '漏接三振一垒出局要按点选守备员分配 PO/A');
+  assert.equal((src.match(/creditStrikeoutFielding\("dropped"/g) ?? []).length, 1, '漏接三振出局 ≤2 步沿用 #483 单点规则');
   assert.ok(src.includes('import { strikeoutFieldingCredit }'), '缺少纯函数导入');
 });
 
-test('LiveGame 接线定位：captured 分属 vo/Df/go，dropped 属 So', () => {
+test('LiveGame 接线定位：captured 分属 vo/Df/go，漏接三振出局在 So 按步数分流', () => {
   const src = fs.readFileSync(SRC, 'utf8');
   const slice = (a, b) => {
     const i = src.indexOf(a); const j = src.indexOf(b, i);
@@ -45,5 +45,7 @@ test('LiveGame 接线定位：captured 分属 vo/Df/go，dropped 属 So', () => 
   assert.match(slice('function vo(', 'function Df('), /creditStrikeoutFielding\("caught"\)/);
   assert.match(slice('function Df(', 'function go('), /creditStrikeoutFielding\("caught"\)/);
   assert.match(slice('function go(', 'function Mf('), /creditStrikeoutFielding\("caught"\)/);
-  assert.match(slice('function So(', 'function dk3ReachOnError('), /creditStrikeoutFielding\("dropped",t\)/);
+  const so = slice('function So(', 'function dk3ReachOnError(');
+  assert.match(so, /chain\.length<=2\?creditStrikeoutFielding\("dropped",chain\[chain\.length-1\]\):Dn\(chain\)/, '漏接三振出局未按 1-2 步单点规则/长链单出局链分流');
+  assert.match(so, /recordPlayOut\(\[\],"strikeout"\)/, '漏接三振出局未保留三振出局上下文');
 });
