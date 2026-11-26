@@ -402,7 +402,7 @@ function Un(u,f,g){
   }
   if(u==="DK3"){
     const S=l[l.length-1]??l[0];
-    return S?`${o||nu(l)} ${l.length>1?"传杀 一垒出局":"接杀出局"}`:"接杀出局"
+    return S?`${o||nu(l)} ${l.length>1?"传杀 一垒出局":"触杀出局"}`:"触杀出局"
   }
   if(u==="SF")return _&&o?`${o} 传杀 牺飞`:o?`${o} 接杀 牺飞`:"接杀 牺飞";
   if(u==="SH")return _&&o?`${o} 传杀 牺牲触击`:o?`${o} 接杀 牺牲触击`:"接杀 牺牲触击";
@@ -7272,7 +7272,7 @@ var sg={
         if(isDk3ChainFlow(e)){
           const dk3Steps=e.steps??[],dk3Len=dk3Steps.length,dk3Chain=chainDisp("DK3",dk3Steps).map(dk3Pos=>vi[dk3Pos]??dk3Pos).join("-");
           if(dk3Len>=hu)return`漏接三振：${dk3Chain}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
-          return dk3Len<=1?"漏接三振：捕手已接球 — 直接点「完成记录」记捕手接杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾":`漏接三振：${dk3Chain}（已可完成）— 可继续点选后续传球，或点「完成记录」；开始下一动作也会自动收尾`
+          return dk3Len<=1?"漏接三振：捕手已接球 — 直接点「完成记录」记捕手触杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾":`漏接三振：${dk3Chain}（已可完成）— 可继续点选后续传球，或点「完成记录」；开始下一动作也会自动收尾`
         }
         return"漏接三振：请选择完成处理的守备员"
       }
@@ -9437,7 +9437,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ))return;
       fn.value||Ge(forcePlanAnimation(plan)),finish()
     }
-    // #696：漏接三振出局按传球链记账——直接完成=捕手接杀 PO；C→1B=捕手 A + 一垒 PO。
+    // #696：漏接三振出局按传球链记账——直接完成=捕手触杀 PO；C→1B=捕手 A + 一垒 PO。
     function So(e,t){
       const a=be.value,s=Se.value;
       if(!a)return;
@@ -9445,7 +9445,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ue(a),ue(s??void 0),Bt(Gt(a,"漏接三振出局")),a.stats.batting.so=(a.stats.batting.so??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,e?a.stats.batting.so_looking=(a.stats.batting.so_looking??0)+1:a.stats.batting.so_swing=(a.stats.batting.so_swing??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchSo=(s.stats.pitching.pitchSo??0)+1);
       // ≤2 步沿用 #483 单点规则（C=捕手PO；C→X=捕手A+X PO）；更长链用单出局链补中间助杀
       chain.length<=2?creditStrikeoutFielding("dropped",chain[chain.length-1]):Dn(chain),recordPlayOut([],"strikeout");
-      const p=e?"判进":"挥空",g=Un2("DK3",chain),m=`${a.name}: 漏接三振（${p}）：${g||"捕手接杀出局"} (K)`;
+      const p=e?"判进":"挥空",g=Un2("DK3",chain),m=`${a.name}: 漏接三振（${p}）：${g||"捕手触杀出局"} (K)`;
       D(m),Je("DK3_OUT_1ST",m),l.balls=0,l.strikes=0,Qe()
     }
     function dk3ReachOnError(e,t){
@@ -9482,7 +9482,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           type:"DK3_FIELDER_PICK",dk3Code:e,selectRunner:!1
         };
         chain&&(flow.steps=["C"],flow.required=1),l.flow=flow;
-        const catcherReadyHint="漏接三振：捕手已接球 — 直接点「完成记录」记捕手接杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾",fielderHint=e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员";
+        const catcherReadyHint="漏接三振：捕手已接球 — 直接点「完成记录」记捕手触杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾",fielderHint=e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员";
         J(chain?catcherReadyHint:fielderHint,"info");
         chain&&syncChainVisualFromFlow()
       }

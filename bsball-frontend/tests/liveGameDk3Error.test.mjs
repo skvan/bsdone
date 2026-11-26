@@ -57,6 +57,6 @@ test('守备员选择提示按失误/出局/待处理分支区分文案', () => 
   const body = slice(src, 'if(e.type==="DK3_FIELDER_PICK"){', 'if(e.type==="RUNNER_OUT_TAG"');
   assert.match(body, /if\(e\.dk3Code\?\.endsWith\(":e"\)\)return"漏接三振：请点击失误责任守备员"/, '失误分支提示缺失');
   assert.match(body, /if\(isDk3ChainFlow\(e\)\)\{/, '出局分支未进入传球链提示');
-  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手接杀/, '出局分支缺少直接完成提示');
+  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手触杀/, '出局分支缺少直接完成提示');
   assert.match(body, /return"漏接三振：请选择完成处理的守备员"/, '非链式分支提示缺失');
 });

@@ -26,7 +26,7 @@ test('jf：o1 进入以捕手为起点的传球链（steps=["C"]、required=1）
   const body = slice(read(), 'function jf(e){', 'function Jf(e){');
   assert.match(body, /const chain=e\.endsWith\(":o1"\),flow=\{/, '未识别 o1 链式分支');
   assert.match(body, /chain&&\(flow\.steps=\["C"\],flow\.required=1\),l\.flow=flow/, '未以捕手预置链首');
-  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手接杀/, '缺少直接完成=捕手接杀提示');
+  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手触杀/, '缺少直接完成=捕手触杀提示');
   assert.match(body, /chain&&syncChainVisualFromFlow\(\)/, '进入链式未同步球场视觉');
 });
 
@@ -52,7 +52,7 @@ test('Ro：链式漏接三振点选守备员时追加步骤并播放传球动画
   assert.match(body, /Jf\(e\)/, 'WP/PB/E 单点分支未保留');
 });
 
-test('So：≤2 步沿用单点规则，长链走单出局链；日志区分接杀/传杀', () => {
+test('So：≤2 步沿用单点规则，长链走单出局链；日志区分触杀/传杀', () => {
   const body = slice(read(), 'function So(e,t){', 'function dk3ReachOnError(');
   assert.match(body, /const chain=_i\(Array\.isArray\(t\)&&t\.length\?t:\["C"\]\)/, '未归一化传球链');
   assert.match(body, /chain\.length<=2\?creditStrikeoutFielding\("dropped",chain\[chain\.length-1\]\):Dn\(chain\)/, '未按 1-2 步单点规则/长链单出局链分流');
@@ -60,15 +60,15 @@ test('So：≤2 步沿用单点规则，长链走单出局链；日志区分接�
   assert.match(body, /Un2\("DK3",chain\)/, '日志未按链生成');
 });
 
-test('Un：DK3 链日志直接完成=接杀，捕手传一垒=传杀一垒出局', () => {
+test('Un：DK3 链日志直接完成=触杀，捕手传一垒=传杀一垒出局', () => {
   const body = slice(read(), 'if(u==="DK3"){', 'if(u==="SF")');
-  assert.match(body, /接杀出局/, '缺少捕手接杀文案');
+  assert.match(body, /触杀出局/, '缺少捕手触杀文案');
   assert.match(body, /传杀 一垒出局/, '缺少捕手传一垒文案');
 });
 
 test('提示：初始可完成后仍提示点选接球守备员；形成链后显示链并提示可完成', () => {
   const body = slice(read(), 'if(e.type==="DK3_FIELDER_PICK"){', 'if(e.type==="RUNNER_OUT_TAG"');
   assert.match(body, /chainDisp\("DK3",dk3Steps\)/, '未显示当前传球链');
-  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手接杀/, '缺少直接完成提示');
+  assert.match(body, /捕手已接球 — 直接点「完成记录」记捕手触杀/, '缺少直接完成提示');
   assert.match(body, /已可完成/, '缺少链形成后的完成提示');
 });

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // #696 不死三振（漏接三振）在一垒出局：恢复传球链
-// - 直接完成记录：捕手接杀 PO，投手三振
+// - 直接完成记录：捕手触杀 PO，投手三振
 // - 捕手传一垒：捕手 A、一垒 PO，投手三振
 const positions = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const players = [1, 2].flatMap((teamId) => positions.map((position, index) => ({
@@ -120,12 +120,12 @@ function logText(snap) {
   return snap.eventLog.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('\n');
 }
 
-test('漏接三振在一垒出局：直接完成记录=捕手接杀 PO，投手三振', async ({ page }) => {
+test('漏接三振在一垒出局：直接完成记录=捕手触杀 PO，投手三振', async ({ page }) => {
   const { savedSnapshots } = await setupLiveGame(page);
   const flowBar = await openDk3OutAtFirst(page);
 
   await expect(flowBar).toContainText('捕手已接球');
-  await expect(flowBar).toContainText('直接点「完成记录」记捕手接杀');
+  await expect(flowBar).toContainText('直接点「完成记录」记捕手触杀');
   await page.getByRole('button', { name: '完成记录' }).click();
   await expect(flowBar).toHaveCount(0);
 
@@ -136,7 +136,7 @@ test('漏接三振在一垒出局：直接完成记录=捕手接杀 PO，投手�
   expect(snap.playerStatsById['101'].pitching.pitchSo).toBe(1);
   expect(snap.playerStatsById['201'].batting).toMatchObject({ so: 1, ab: 1 });
   const text = logText(snap);
-  expect(text).toContain('捕手 T1P2 (#2) 接杀出局 (K)');
+  expect(text).toContain('捕手 T1P2 (#2) 触杀出局 (K)');
 });
 
 test('漏接三振在一垒出局：捕手传一垒=捕手 A、一垒 PO，投手三振', async ({ page }) => {
