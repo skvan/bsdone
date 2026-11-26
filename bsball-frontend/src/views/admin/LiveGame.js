@@ -9801,6 +9801,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       :pi[e]
     }
+    function chainLandingFielder(flow){
+      const code=String(flow?.bipSpray?.sprayFieldPos??"").trim().toUpperCase();
+      return code&&ballTargetOf(code)?code:""
+    }
     function ballAppearAt(e,t){
       chainAnimSeq+=1,Xn.value=e,Yn.value=t,ka.value=!0,He(()=>{
         const a=Rn.value?.querySelector(".hit-spray-fly-anim");
@@ -10109,7 +10113,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }:{})
           ,bipSpray:w
         }
-        ,J("落点已记录：请按传球顺序点选守备员（最后一位为接球失误者）；无传球链可直接「完成记录」","info");
+        ,J("落点已记录：可直接点接球失误者（落点守备员自动作为首传），或按传球顺序点选；无传球链可直接「完成记录」","info");
         return
       }
       if(Yv.has(g)){
@@ -10567,11 +10571,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
             return
           }
-          const s={
+          // #695 后续：球已落在守备员处，第一次点接球失误者时自动把落点守备员补为首传（4→3）
+          const landing=chainLandingFielder(a)
+          ,autoOrigin=!a.chain.length&&landing&&landing!==e&&(a.steps??[]).includes(e)?ballTargetOf(landing):null;
+          autoOrigin&&a.chain.push(landing);
+          const s=autoOrigin??{
             x:Xn.value,y:Yn.value
           }
           ,r=ballTargetOf(e)
           ,C0=a.chain.length;
+          autoOrigin&&ballAppearAt(autoOrigin.x,autoOrigin.y);
           a.chain.push(e),C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),pt();
           return
         }
