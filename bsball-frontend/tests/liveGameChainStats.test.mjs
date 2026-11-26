@@ -91,6 +91,23 @@ test('单出局链记账：末位 PO，去重助杀且排除 PO 本人（5-2-5 /
   assert.deepEqual(computeSingleOutChainStats(null), []);
 });
 
+test('漏接三振出局：直接完成=捕手PO；捕手传一垒=捕手A+一垒PO；捕手传投手=捕手A+投手PO', () => {
+  assert.deepEqual(computeSingleOutChainStats(['C']), [{ pos: 'C', po: 1, a: 0 }]);
+  assert.deepEqual(computeSingleOutChainStats(['C', 'C']), [{ pos: 'C', po: 1, a: 0 }]);
+  assert.deepEqual(computeSingleOutChainStats(['C', '1B']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '1B', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C', '1B', '1B']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: '1B', po: 1, a: 0 },
+  ]);
+  assert.deepEqual(computeSingleOutChainStats(['C', 'P']), [
+    { pos: 'C', po: 0, a: 1 },
+    { pos: 'P', po: 1, a: 0 },
+  ]);
+});
+
 test('单出局链：盗垒死多传夹杀 C-5-4 / C-5-6 记捕手A、三垒手A、末位PO；仅C触杀为捕手PO', () => {
   assert.deepEqual(computeSingleOutChainStats(['C', '3B', '2B']), [
     { pos: 'C', po: 0, a: 1 },
