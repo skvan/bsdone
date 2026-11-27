@@ -2825,8 +2825,8 @@
       "swingTitle": "挥空（计好球）Swing & Miss",
       "foul": "界外球",
       "foulTitle": "界外球 Foul Ball",
-      "bip": "界内球",
-      "bipTitle": "界内击球：与点击投手(P) 打开的菜单相同（滚地球/飞球等细分与直接结果）",
+      "bip": "击出",
+      "bipTitle": "击出：与点击投手(P) 打开的菜单相同（滚地球/飞球等细分与直接结果）",
       "hrLanding": "HR落点"
     },
     "verify": {

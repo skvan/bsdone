@@ -77,7 +77,7 @@ test('English UI: top bar, scoreboard, corrections menu and fix-runners dialog',
   await expect(page.locator('.lg-scoreboard')).toContainText('BAT');
   await expect(page.locator('.lg-scoreboard')).toContainText('PIT');
   const text = await page.locator('.live-game-page').innerText();
-  for (const zh of ['实时比赛录入', '保存比赛', '换人模式', '全屏显示', '坏球', '好球', '界外球', '界内球', '打线', '板凳席无可用球员', '替补']) {
+  for (const zh of ['实时比赛录入', '保存比赛', '换人模式', '全屏显示', '坏球', '好球', '界外球', '击出', '打线', '板凳席无可用球员', '替补']) {
     expect(text, `English UI still shows ${zh}`).not.toContain(zh);
   }
   await page.locator('button[title="Runner & Score Corrections"]').click();

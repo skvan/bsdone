@@ -42,9 +42,11 @@ test('投球菜单：中文模式保留原文案', () => {
   assert.ok(source.includes('点选项即记录'));
   assert.ok(source.includes('关闭'));
   assert.ok(source.includes('漏接三振'));
+  assert.ok(source.includes('lgpm__col-title">击出'), '击出列标题不应退回界内球');
+  assert.ok(source.includes("'击出'"), '击出面包屑不应退回界内球');
 });
 
-test('投球菜单：六个界内球球种都有英文名，窄屏英文标题仍显示', () => {
+test('投球菜单：六个击出球种都有英文名，窄屏英文标题仍显示', () => {
   const block = source.match(/const BIP_RESULTS = \{([\s\S]*?)\n\};/)?.[1] || '';
   assert.ok(block, '未找到 BIP_RESULTS');
   for (const key of ['bip_g', 'bip_hg', 'bip_fly', 'bip_ld', 'bip_bunt', 'bip_pop']) {

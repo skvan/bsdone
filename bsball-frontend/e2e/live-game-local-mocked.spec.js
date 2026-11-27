@@ -94,7 +94,7 @@ for (const { gameMode, walk } of scenarios) {
 
     await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
     await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-    await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 
     const recordBall = async () => {
       await page.locator('button[title="坏球 Ball"]').click();
@@ -166,7 +166,7 @@ for (const { gameMode, walk } of scenarios) {
     expect(redoneSnapshot.atBatSummaries).toEqual(snapshot.atBatSummaries);
 
     await page.reload();
-    await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
     await expect.poll(() => intercepted.filter((entry) => entry === 'GET /game/10/live-snapshot').length).toBeGreaterThan(1);
     expect(intercepted.some((entry) => entry.includes('/game/10/save-live'))).toBe(true);
     const saveCount = savedSnapshots.length;
