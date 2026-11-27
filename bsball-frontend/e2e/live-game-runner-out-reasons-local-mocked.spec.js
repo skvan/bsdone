@@ -933,3 +933,69 @@ test('普通模式回归：原因弹窗保持在视口中央', async ({ page }) 
   const centerY = box.y + box.height / 2;
   expect(Math.abs(centerY - viewport.height / 2)).toBeLessThanOrEqual(32);
 });
+
+async function walkRunnerToThird(page) {
+  await throwBalls(page, 4);
+  await dragRunner(page, 1, 2, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+  await dragRunner(page, 2, 3, 'safe');
+  await pickMenuItem(page, '盗垒成功 (SB)');
+}
+
+async function expectNoSacrificeAdvanceReasons(menu) {
+  await expect(menu.getByText('牺牲高飞推进（有打点）')).toHaveCount(0);
+  await expect(menu.getByText('牺牲触击推进')).toHaveCount(0);
+}
+
+test('#654：击球员选 SF，跑者用上一棒内推进（有打点）得分，SF/RBI/pitchSf 准确', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await walkRunnerToThird(page);
+
+  await openBipType(page, '飞球');
+  await clickBipItem(page, '高飞牺牲（SF）');
+  await clickFielder(page, 'CF');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  await page.waitForTimeout(400);
+
+  const homeMenu = await dragRunner(page, 3, 4, 'safe');
+  await expect(homeMenu.getByText('上一棒内推进（有打点）')).toBeVisible();
+  await expectNoSacrificeAdvanceReasons(homeMenu);
+  await pickMenuItem(page, '上一棒内推进（有打点）');
+
+  const snap = await saveGame(page, bucket);
+  expect(snap.gameState.outs).toBe(1);
+  expect(snap.playerStatsById['202'].batting).toMatchObject({ sf: 1, rbi: 1, ab: 0 });
+  expect(snap.playerStatsById['101'].pitching.pitchSf).toBe(1);
+  expect(snap.playerStatsById['201'].batting.r).toBe(1);
+  const log = JSON.stringify(snap.eventLog);
+  expect(log).toContain('接杀 牺飞');
+  expect(log).toContain('上一棒内推进（有打点）');
+});
+
+test('#654：击球员选 SH，跑者用上一棒内推进（牺牲打）得分，SH/RBI/pitchSh 准确且不重复改 SF/SH/AB', async ({ page }) => {
+  const bucket = { snapshots: [] };
+  await openLiveGame(page, bucket);
+  await walkRunnerToThird(page);
+
+  await openBipType(page, '短打');
+  await clickBipItem(page, '牺牲触击（SH）');
+  await clickFielder(page, '3B');
+  await clickFielder(page, '1B');
+  await page.getByRole('button', { name: /完成记录/ }).click();
+  await page.waitForTimeout(400);
+
+  const homeMenu = await dragRunner(page, 3, 4, 'safe');
+  await expect(homeMenu.getByText('上一棒内推进（牺牲打）')).toBeVisible();
+  await expectNoSacrificeAdvanceReasons(homeMenu);
+  await pickMenuItem(page, '上一棒内推进（牺牲打）');
+
+  const snap = await saveGame(page, bucket);
+  expect(snap.gameState.outs).toBe(1);
+  expect(snap.playerStatsById['202'].batting).toMatchObject({ sh: 1, sf: 0, rbi: 1, ab: 0 });
+  expect(snap.playerStatsById['101'].pitching.pitchSh).toBe(1);
+  expect(snap.playerStatsById['201'].batting.r).toBe(1);
+  const log = JSON.stringify(snap.eventLog);
+  expect(log).toContain('牺牲触击');
+  expect(log).toContain('上一棒内推进（牺牲打）');
+});

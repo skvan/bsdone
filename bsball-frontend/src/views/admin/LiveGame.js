@@ -471,15 +471,9 @@ var sl=[{
 ,{
   id:"safe_last_play_sac",en:"On Last Play (Sacrifice)",cn:"上一棒内推进（牺牲打）"
 }
-],sacAdvanceReasons=[{
-  id:"safe_sac_fly",en:"Advance on Sac Fly (RBI)",cn:"牺牲高飞推进（有打点）",emph:"有打点"
-}
-,{
-  id:"safe_sac_bunt",en:"Advance on Sac Bunt",cn:"牺牲触击推进"
-}
 ];
 function Nd(u){
-  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"
+  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"
 }
 function Ve(u){
   return u===1?"一垒":u===2?"二垒":u===3?"三垒":"本垒"
@@ -775,8 +769,9 @@ function Wd(u,f,l){
     // 暴投/捕逸按真实投球顺序给：没投球不给；捕逸需先有投球；暴投还要求最近一球是坏球；
     // 同一球已记过 WP/PB 时隐藏（承接用「同一play内失误推进」），下一球 Ea() 重置后再出现
     o=o.filter(x=>x.id!=="safe_wp"&&x.id!=="safe_pb");
-    // 上一棒内推进/牺牲打推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）
-    const advanceReasons=[...sl,...sacAdvanceReasons],advanceIds=new Set(advanceReasons.map(x=>x.id));
+    // 上一棒内推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）；
+    // 牺牲打由击球员结果 SF/SH 定义，跑者不再选「牺牲高飞/触击推进」（#654）
+    const advanceReasons=[...sl],advanceIds=new Set(advanceReasons.map(x=>x.id));
     o=advanceReasons.concat(o.filter(x=>!advanceIds.has(x.id)));
     const canWpPb=!!l.hasPitchThisAB&&!l.playWpCredited&&!l.playPbCredited
       ,add=[];
@@ -6300,7 +6295,7 @@ var sg={
         return
       }
       let rbiWho=null;
-      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
+      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi());
       wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([{
         playerId:p,from:s,to:r
       }
@@ -7439,9 +7434,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=Ar.value.find(s=>Number(s.id)===Number(t.batterPlayerId))??null;
       if(!a)return null;
       // 牺牲打补记：只认上一棒已记的击球出局；补记 SF/SH 并回减 AB（PA 不变）。
-      const resultCode=String(t.resultCode??""),credit=LgSacrificeCredit({resultCode,toBase:e});
+      const resultCode=String(t.resultCode??"").trim().toUpperCase(),credit=LgSacrificeCredit({resultCode,toBase:e});
       if(!credit){
-        if(resultCode!=="SF"&&resultCode!=="SH")J("上一棒结果不是可用于牺牲打的出局，已仅记录跑者推进","warning");
+        if(resultCode==="SF"||resultCode==="SH"){
+          // 击球员已在击球结果声明牺牲打：跑者得分时补打点，不重复改 SF/SH、AB 与投手统计
+          return Number(e)===4?creditLastBatterRbi()||null:null
+        }
+        J("上一棒结果不是可用于牺牲打的出局，已仅记录跑者推进","warning");
         return null
       }
       ue(a),a.stats.batting.ab=Math.max(0,(a.stats.batting.ab??0)-1);
@@ -7465,7 +7464,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!e||e.inning!==l.inning||e.half!==t)return!1;
       const a=Ar.value.find(s=>Number(s.id)===Number(e.batterPlayerId))??null;
       if(!a)return!1;
-      return ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1,a
+      ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1;
+      const event=Array.isArray(f.playEvents)?f.playEvents.find(x=>x.id===e.id):null;
+      return event&&(event.rbi=e.rbi),a
     }
     function Sf(){
       const e=ke.value[0];
