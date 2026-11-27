@@ -104,12 +104,12 @@ async function setup(page) {
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   return { savedLive, snapshots, errors };
 }
 
 async function recordDouble(page) {
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   // 浮层打开后 240ms 内会拦截点击

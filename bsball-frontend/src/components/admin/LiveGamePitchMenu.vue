@@ -117,7 +117,7 @@
             </template>
           </section>
 
-          <!-- 界内球 -->
+          <!-- 击出 -->
           <section class="lgpm__col lgpm__col--bip" :class="{ 'lgpm__col--active': activeColumn === 'bip' }">
             <template v-if="bipDrill">
               <div class="lgpm__col-head lgpm__col-head--crumb">
@@ -179,7 +179,7 @@
             </template>
             <template v-else>
               <div class="lgpm__col-head">
-                <span v-if="!isEnglish" class="lgpm__col-title">界内球</span>
+                <span v-if="!isEnglish" class="lgpm__col-title">击出</span>
                 <span class="lgpm__col-en">BALL IN PLAY</span>
               </div>
               <div class="lgpm__col-hint">{{ isEnglish ? 'Pick pitch type → record result' : '选球种 → 记录结果' }}</div>
@@ -628,10 +628,10 @@ const bipCrumb = computed(() => {
   const en = isEnglish.value;
   const type = bipData.value;
   const typeLabel = type ? (en ? type.en : type.cn) : '';
-  if (!type) return { parent: en ? 'In Play' : '界内球', current: '', sub: '', count: 0, foot: '', backTitle: en ? 'Pitch Type' : '球种' };
+  if (!type) return { parent: en ? 'In Play' : '击出', current: '', sub: '', count: 0, foot: '', backTitle: en ? 'Pitch Type' : '球种' };
   if (bipStage.value === 'out') {
     return {
-      parent: en ? `In Play › ${typeLabel}` : `界内球 › ${typeLabel}`,
+      parent: en ? `In Play › ${typeLabel}` : `击出 › ${typeLabel}`,
       current: en ? 'Out' : '出局',
       sub: en ? 'Choose the out base' : '选择出局垒位',
       count: type.outs.length,
@@ -641,7 +641,7 @@ const bipCrumb = computed(() => {
   }
   if (bipStage.value === 'sac') {
     return {
-      parent: en ? 'In Play › Bunt' : '界内球 › 短打',
+      parent: en ? 'In Play › Bunt' : '击出 › 短打',
       current: en ? 'Sacrifice Bunt' : '牺牲短打',
       sub: en ? 'Choose how the batter reached' : '选择上垒方式',
       count: BIP_SAC_ITEMS.length,
@@ -650,7 +650,7 @@ const bipCrumb = computed(() => {
     };
   }
   return {
-    parent: en ? 'In Play' : '界内球',
+    parent: en ? 'In Play' : '击出',
     current: typeLabel,
     sub: en ? 'Choose plate result' : '选择打席结果',
     count: 1 + bipResultItems.value.length,
@@ -668,7 +668,7 @@ const routeLabel = computed(() => {
   }
   if (panelStack.value[1] !== 'bip') return '';
   const crumb = bipCrumb.value;
-  if (!crumb.current) return en ? 'In Play' : '界内球';
+  if (!crumb.current) return en ? 'In Play' : '击出';
   return `${crumb.parent.replace(' › ', ' > ')} > ${crumb.current}`;
 });
 

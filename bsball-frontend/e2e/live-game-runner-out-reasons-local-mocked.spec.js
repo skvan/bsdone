@@ -77,7 +77,7 @@ async function openLiveGame(page, bucket) {
     });
   });
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 }
 
 async function throwBalls(page, count) {
@@ -123,7 +123,7 @@ async function dragRunner(page, fromBase, toBase, half) {
 }
 
 async function recordSingle(page) {
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   await page.waitForTimeout(500);
   await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^滚地球$/ }).click();
   await page.waitForTimeout(500);
@@ -134,7 +134,7 @@ async function recordSingle(page) {
 }
 
 async function openBipType(page, typeText) {
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const bip = page.locator('.lgpm__col--bip');
   await expect(bip).toBeVisible({ timeout: 15000 });
   const typeItem = bip.locator('.lgpm__cn, .lgpm__result').filter({ hasText: new RegExp(`^${typeText}`) });
@@ -259,7 +259,7 @@ test('Issue #527：飞球接杀后同垒出局改走封杀传球链，无离垒�
   await expect(toSecond.getByText('盗垒成功 (SB)')).toBeVisible();
   await pickMenuItem(page, '盗垒成功 (SB)');
 
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   await page.waitForTimeout(500);
   await page.locator('.lgpm__col--bip .lgpm__cn, .lgpm__col--bip .lgpm__result', { hasText: /^飞球$/ }).click();
   await page.waitForTimeout(500);
@@ -612,7 +612,7 @@ test('Issue #527：保存重载后 play 上下文恢复，第二出局仍记 DP'
   await recordGroundOut(page, 'SS');
   await saveGame(page, bucket);
   await page.reload();
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   await page.waitForTimeout(1200);
   await waitForRunnerToken(page, 2);
   const menu = await dragRunner(page, 2, 3, 'out');
@@ -874,7 +874,7 @@ test('Issue #656 追加：出局理由选其他可输入文字，日志可事后
 
   // 刷新后从服务器快照恢复，理由仍在且仍可编辑
   await page.reload();
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   await page.getByRole('button', { name: '全屏显示' }).click();
   await expect(page.locator('.lg-pbp__text').filter({ hasText: '趁传时漏踩二垒' })).toBeVisible();
   await expect(page.getByRole('button', { name: '编辑出局理由' }).first()).toBeVisible();

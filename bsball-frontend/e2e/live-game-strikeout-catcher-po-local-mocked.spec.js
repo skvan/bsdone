@@ -74,7 +74,7 @@ test('三振：投手 K、捕手 PO、打者 SO/AB 同步落库', async ({ page 
 
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 
   for (let i = 0; i < 3; i++) {
     await page.locator('button[title="好球 Called Strike"]').click();

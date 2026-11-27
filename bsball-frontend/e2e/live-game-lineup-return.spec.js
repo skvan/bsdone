@@ -95,7 +95,7 @@ async function setupLiveGame(page, { played = false } = {}) {
 
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 }
 
 test('首个 Play 前「编辑阵容」可返回先发阵容页', async ({ page }) => {

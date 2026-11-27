@@ -1873,7 +1873,7 @@ var hm=["aria-label"],ym={
       ,[n("span",{
         class:"lgpfm__cn lgpfm__cn--bip"
       }
-      ,"界内球"),n("span",{
+      ,"击出"),n("span",{
         class:"lgpfm__en"
       }
       ,"Ball In Play")],-1)),i[149]||(i[149]=n("span",{
@@ -7196,7 +7196,7 @@ var sg={
       return e.map(uf).join("、")
     }
     function ff(e){
-      return e.bipCode||e.bipSpray?"界内击出：失误上垒；":"失误上垒："
+      return e.bipCode||e.bipSpray?"击出：失误上垒；":"失误上垒："
     }
     function buildDoublePlayPreview(flow, runner3Decision = null) {
       if (!flow || (flow.type !== "DP" && flow.type !== "TP")) return null;
@@ -7300,7 +7300,7 @@ var sg={
       }
       if(e.type==="BIP_HIT_PENDING"){
         const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后可点「完成记录」":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
-        return s?`界内击出：${s} → ${r}；${p}`:`界内击出 → ${r}；${p}`
+        return s?`击出：${s} → ${r}；${p}`:`击出 → ${r}；${p}`
       }
       if(e.type==="DP"&&!LgCanStartDoublePlay(l.runners))return"双杀：一垒无人，无法形成双杀（仅二垒/三垒有人按单独出局记录）";
       if(e.type==="TP"&&!LgCanStartTriplePlay(l.runners))return"三杀：一、二垒都需有人";
@@ -9319,7 +9319,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!settleChainIfReady())warnFlowBusy(l.flow);
         return !1
       }
-      return l.isGameEnd?!1:l.needNextBatter?(J("请先确认半局结束（三出局后的攻守交换）后再记界内击出","warning"),!1):(de("界内击出投球"),Ea(),l.hasPitchThisAB=!0,!0)
+      return l.isGameEnd?!1:l.needNextBatter?(J("请先确认半局结束（三出局后的攻守交换）后再记录击出","warning"),!1):(de("界内击出投球"),Ea(),l.hasPitchThisAB=!0,!0)
     }
     function rt(e){
       Yt("",e)
@@ -9512,7 +9512,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function ko(e,t){
       if(l.flow&&!settleChainIfReady())return warnFlowBusy(l.flow),!1;
       if(!Gf())return!1;
-      // 界内失误上垒（#695）：先选失误责任守备员（可多选），下一步再选落点与传球链
+      // 击出失误上垒（#695）：先选失误责任守备员（可多选），下一步再选落点与传球链
       if(t==="E"){
         l.flow={
           type:"E",steps:[],selectRunner:!1,multiError:!1,errorMode:"batted_error",phase:"pick_error"
@@ -9536,18 +9536,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       };
       const g=ou(e);
       if(p&&Cs.has(e)){
-        J(`界内击出：${g}；${It[p]??p} 已接球，请点选封杀传杀守备员（独力接杀可再点同一守位）`,"info");
+        J(`击出：${g}；${It[p]??p} 已接球，请点选封杀传杀守备员（独力接杀可再点同一守位）`,"info");
         return
       }
       if(p&&ru.has(e)){
-        J(`界内击出：${g}；${It[p]??p} 已接球 — 可点「完成记录」，或继续点选记录接杀后回传`,"info");
+        J(`击出：${g}；${It[p]??p} 已接球 — 可点「完成记录」，或继续点选记录接杀后回传`,"info");
         return
       }
       if(e==="E"){
         pt();
         return
       }
-      J(`界内击出：${g}；请继续点选守备员完成记录`,"info")
+      J(`击出：${g}；请继续点选守备员完成记录`,"info")
     }
     function Qf(e,t){
       if(liveBenchStartFieldSwapDrag(e,t))return;
@@ -10173,10 +10173,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       l.flow=null,pt(),clearChainVisual();
       const e=$e.value[0];
       if(e?.nextAction==="界内击出投球"||e?.nextAction==="隐含投球（击出或守备）"){
-        as(),J("已取消界内击出记录","info");
+        as(),J("已取消击出记录","info");
         return
       }
-      J("已取消界内击出记录","info")
+      J("已取消击出记录","info")
     }
     async function ec(){
       if(wt(),l.hitSprayQueue.length>0){
