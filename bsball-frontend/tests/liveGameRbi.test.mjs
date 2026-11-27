@@ -79,11 +79,12 @@ test('雙殺傳球失誤特例記一出局、取消 E 並將結果保存為 FC',
   assert.match(liveGame, /doublePlayThrowingErrorException:!0/);
 });
 
-test('SF/SH 不再自动结算得分；推进原因由拖拽选择，牺牲高飞得分才记 RBI', () => {
+test('SF/SH 不再自动结算得分；牺牲打由击球员结果记录，跑者用上一棒内推进记 RBI', () => {
   assert.ok(!liveGame.includes('牺牲打得分 RBI 判定'), 'SF/SH 不再预弹 RBI 判定');
   assert.ok(!liveGame.includes('bo(r,sacrificeRunDecision)'), 'SH 不再自动推进跑者');
-  assert.match(liveGame, /id:"safe_sac_fly"/, '拖拽原因提供牺牲高飞推进');
-  assert.match(liveGame, /id:"safe_sac_bunt"/, '拖拽原因提供牺牲触击推进');
-  assert.match(liveGame, /e\.id==="safe_sac_fly"&&r===4&&\(rbiWho=creditLastBatterRbi\(\)\)/, '牺牲高飞得分时由拖拽原因记 RBI');
+  assert.ok(!liveGame.includes('safe_sac_fly'), '牺牲高飞推进（有打点）已移除');
+  assert.ok(!liveGame.includes('safe_sac_bunt'), '牺牲触击推进已移除');
+  assert.match(liveGame, /id:"safe_last_play_rbi"/, '上一棒内推进（有打点）承接 RBI');
+  assert.match(liveGame, /e\.id==="safe_last_play_rbi"&&r===4&&\(rbiWho=creditLastBatterRbi\(\)\)/, '上一棒内推进（有打点）得分时记 RBI');
   assert.match(liveGame, /e==="SF"\)\{[\s\S]*?s\("SF",0\)/, 'SF 只记录打者出局与落点');
 });

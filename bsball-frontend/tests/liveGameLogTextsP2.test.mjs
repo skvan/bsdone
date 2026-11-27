@@ -71,7 +71,8 @@ test('LiveGame.js：#224 RBI 注记接入点（pu/fp/HR/IPHR/SF/上一棒/记账
   assert.match(src, /hn\("HR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'HR 注记');
   assert.match(src, /hn\("IPHR",b\)\}（\$\{r\.name\}：\$\{b\}打点）/, 'IPHR 注记');
   assert.ok(!src.includes('sfRbi'), 'SF 不再自动结算打点，改由拖拽原因记账');
-  assert.match(src, /id:"safe_sac_fly"/, '拖拽原因提供牺牲高飞推进');
+  assert.ok(!src.includes('safe_sac_fly') && !src.includes('safe_sac_bunt'), '牺牲高飞/触击推进原因已移除');
+  assert.match(src, /id:"safe_last_play_rbi"/, '上一棒内推进（有打点）承接 RBI');
   assert.match(src, /rbiWho=creditLastBatterRbi\(\)/, '上一棒内推进打点人捕获');
   assert.match(src, /wp\(a,s,r,advanceReasonCn,advanceReasonId,rbiWho\?/, 'wp 注记注入');
   assert.match(src, /fc_forced\[3\]\?\(D\(LgAdvance\(\{\r?\n\s+reasonCn:"野选推进得分",runner:fc_old\[3\],from:3,to:4,rbiNote:/, 'fcApply 被迫得分：先落文本（含打点注记）');
