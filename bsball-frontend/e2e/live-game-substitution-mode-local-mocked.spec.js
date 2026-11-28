@@ -79,7 +79,7 @@ async function setup(page) {
 }
 
 async function recordGroundOut13(page) {
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   // 浮层打开后 240ms 内会拦截点击

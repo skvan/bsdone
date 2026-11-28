@@ -39,9 +39,10 @@ test('Nd() 覆盖三项「上一棒内推进」变体', () => {
   for (const id of ['"safe_last_play"', '"safe_last_play_sac"', '"safe_last_play_rbi"']) {
     assert.ok(body.includes(id), 'Nd 应包含 ' + id);
   }
+  assert.ok(!body.includes('safe_sac_fly') && !body.includes('safe_sac_bunt'), 'Nd 不得再包含已移除的牺牲推进原因');
 });
 
-test('既有挂接不被破坏：lc 失误得分仍带 origin=ERROR；wf/creditLastBatterRbi 原样', () => {
+test('既有挂接不被破坏：lc 失误得分仍带 origin=ERROR；wf/creditLastBatterRbi 仍存在且职责不变', () => {
   assert.match(src, /ls\(1,\{runner:s,pitcher:w\?\?void 0,origin:"ERROR",runCause:"ERROR"\}\)/,
     'lc 的失误得分挂接仍在');
   assert.match(src, /function wf\(e\)\{/, 'wf 存在');

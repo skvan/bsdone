@@ -86,7 +86,7 @@ test('半局结束自动保存统计：确认攻守交换后自动提交 save-li
 
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 
   const strike = page.locator('button[title="挥空（计好球）Swing & Miss"]');
   const flowBar = page.locator('.les-flow-card');

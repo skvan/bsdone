@@ -85,7 +85,7 @@ async function setupLiveGame(page) {
 
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   return { savedSnapshots, intercepted };
 }
 
@@ -179,7 +179,7 @@ test('漏接三振守备失误上一垒：撤销、重做与云端恢复后数�
   expectSameSnapshotState(redone, snapshot);
 
   await page.reload();
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   await expect.poll(() => intercepted.filter((entry) => entry === 'GET /game/10/live-snapshot').length).toBeGreaterThan(1);
   const restored = await saveAndReadSnapshot(page, savedSnapshots);
   expectSameSnapshotState(restored, snapshot);

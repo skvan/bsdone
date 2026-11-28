@@ -118,7 +118,7 @@ async function setup(page, options = {}) {
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
   return { snapshots, savedLive };
 }
 
@@ -156,7 +156,7 @@ async function saveSnapshot(page, snapshots) {
 }
 
 async function openDoublePlayGroundBall(page) {
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   await page.waitForTimeout(350);
@@ -339,7 +339,7 @@ test('第二个出局后可继续延长传球链，完成记录仍只结算两�
 
 test('双杀入口：仅二垒有人时不提供双杀', async ({ page }) => {
   await setup(page, { runners: 'secondOnly' });
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const menu = page.locator('.lgpm__panel');
   await expect(menu).toBeVisible();
   await page.waitForTimeout(350);

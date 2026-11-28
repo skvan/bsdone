@@ -42,6 +42,7 @@ test('已记 SF/SH、安打、保送、触身、失误、野选等结果不补�
 
 test('wf() 使用纯函数判定，并回减 AB（PA 不变）', () => {
   const body = pick('function wf(e){', '// 「上一棒内推进（有打点）」');
+  assert.match(body, /const resultCode=String\(t\.resultCode\?\?""\)\.trim\(\)\.toUpperCase\(\)/, '结果码先归一化');
   assert.match(body, /LgSacrificeCredit\(\{resultCode,toBase:e\}\)/, '走纯函数判定');
   assert.match(body, /a\.stats\.batting\.ab=Math\.max\(0,\(a\.stats\.batting\.ab\?\?0\)-1\)/,
     '补记牺牲打必须回减 AB，且不出现负数');
@@ -69,4 +70,16 @@ test('正常菜单的 SF/SH 分支本身不累加 AB', () => {
   const sh = pick('else if(e==="SH")', 'else if(e==="E"){');
   assert.doesNotMatch(sf, /stats\.batting\.ab/, '正常 SF 不得累加 AB');
   assert.doesNotMatch(sh, /stats\.batting\.ab/, '正常 SH 不得累加 AB');
+});
+
+test('击球员已选 SF/SH：跑者选“上一棒内推进（牺牲打）”只补 RBI，不重复改 SF/SH/AB/投手', () => {
+  const body = pick('function wf(e){', '// 「上一棒内推进（有打点）」');
+  const branch = body.indexOf('if(resultCode==="SF"||resultCode==="SH"){');
+  const ab = body.indexOf('a.stats.batting.ab=Math.max');
+  assert.ok(branch >= 0, '缺少已记 SF/SH 的补打点分支');
+  assert.ok(ab > branch, '已记 SF/SH 分支必须在 AB 回减之前');
+  assert.match(body, /return Number\(e\)===4\?creditLastBatterRbi\(\)\|\|null:null/, '跑者得分时仅补 RBI');
+  const rbi = pick('function creditLastBatterRbi(){', 'function Sf(){');
+  assert.match(rbi, /Array\.isArray\(f\.playEvents\)\?f\.playEvents\.find\(x=>x\.id===e\.id\)/, 'RBI 补记需定位 playEvent');
+  assert.match(rbi, /event&&\(event\.rbi=e\.rbi\)/, 'RBI 补记同步 playEvent');
 });

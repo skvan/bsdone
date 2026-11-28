@@ -379,6 +379,10 @@ function _i(u){
 function chainDisp(u,f){
   return u==="DP"||u==="TP"?LgChainDisplay(u,f):_i(f)
 }
+// #696：漏接三振“在一垒出局”的传球链（steps 存在即链式；WP/PB/E 仍为单点选择）
+function isDk3ChainFlow(u){
+  return!!u&&u.type==="DK3_FIELDER_PICK"&&Array.isArray(u.steps)
+}
 function $d(u){
   return _i(u).length>1
 }
@@ -395,6 +399,10 @@ function Un(u,f,g){
   if(u==="TAG"){
     const S=l[l.length-1]??l[0];
     return S?`${o||nu([S])} 接杀 触杀出局`:"接杀 触杀出局"
+  }
+  if(u==="DK3"){
+    const S=l[l.length-1]??l[0];
+    return S?`${o||nu(l)} ${l.length>1?"传杀 一垒出局":"触杀出局"}`:"触杀出局"
   }
   if(u==="SF")return _&&o?`${o} 传杀 牺飞`:o?`${o} 接杀 牺飞`:"接杀 牺飞";
   if(u==="SH")return _&&o?`${o} 传杀 牺牲触击`:o?`${o} 接杀 牺牲触击`:"接杀 牺牲触击";
@@ -463,15 +471,9 @@ var sl=[{
 ,{
   id:"safe_last_play_sac",en:"On Last Play (Sacrifice)",cn:"上一棒内推进（牺牲打）"
 }
-],sacAdvanceReasons=[{
-  id:"safe_sac_fly",en:"Advance on Sac Fly (RBI)",cn:"牺牲高飞推进（有打点）",emph:"有打点"
-}
-,{
-  id:"safe_sac_bunt",en:"Advance on Sac Bunt",cn:"牺牲触击推进"
-}
 ];
 function Nd(u){
-  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"||u==="safe_sac_fly"||u==="safe_sac_bunt"
+  return u==="safe_last_play"||u==="safe_last_play_sac"||u==="safe_last_play_rbi"
 }
 function Ve(u){
   return u===1?"一垒":u===2?"二垒":u===3?"三垒":"本垒"
@@ -767,8 +769,9 @@ function Wd(u,f,l){
     // 暴投/捕逸按真实投球顺序给：没投球不给；捕逸需先有投球；暴投还要求最近一球是坏球；
     // 同一球已记过 WP/PB 时隐藏（承接用「同一play内失误推进」），下一球 Ea() 重置后再出现
     o=o.filter(x=>x.id!=="safe_wp"&&x.id!=="safe_pb");
-    // 上一棒内推进/牺牲打推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）
-    const advanceReasons=[...sl,...sacAdvanceReasons],advanceIds=new Set(advanceReasons.map(x=>x.id));
+    // 上一棒内推进固定置顶：覆盖已移除的「安打推进」「野手选择局面下推进」（#694）；
+    // 牺牲打由击球员结果 SF/SH 定义，跑者不再选「牺牲高飞/触击推进」（#654）
+    const advanceReasons=[...sl],advanceIds=new Set(advanceReasons.map(x=>x.id));
     o=advanceReasons.concat(o.filter(x=>!advanceIds.has(x.id)));
     const canWpPb=!!l.hasPitchThisAB&&!l.playWpCredited&&!l.playPbCredited
       ,add=[];
@@ -1865,7 +1868,7 @@ var hm=["aria-label"],ym={
       ,[n("span",{
         class:"lgpfm__cn lgpfm__cn--bip"
       }
-      ,"界内球"),n("span",{
+      ,"击出"),n("span",{
         class:"lgpfm__en"
       }
       ,"Ball In Play")],-1)),i[149]||(i[149]=n("span",{
@@ -6292,7 +6295,7 @@ var sg={
         return
       }
       let rbiWho=null;
-      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi()),e.id==="safe_sac_fly"&&r===4&&(rbiWho=creditLastBatterRbi());
+      e.id==="safe_last_play_sac"&&s!==r&&(rbiWho=wf(r)),e.id==="safe_last_play_rbi"&&r===4&&(rbiWho=creditLastBatterRbi());
       wp(a,s,r,advanceReasonCn,advanceReasonId,rbiWho?`${rbiWho.name??"打者"}：1打点`:void 0),Ge([{
         playerId:p,from:s,to:r
       }
@@ -7188,7 +7191,7 @@ var sg={
       return e.map(uf).join("、")
     }
     function ff(e){
-      return e.bipCode||e.bipSpray?"界内击出：失误上垒；":"失误上垒："
+      return e.bipCode||e.bipSpray?"击出：失误上垒；":"失误上垒："
     }
     function buildDoublePlayPreview(flow, runner3Decision = null) {
       if (!flow || (flow.type !== "DP" && flow.type !== "TP")) return null;
@@ -7259,7 +7262,15 @@ var sg={
       }
       if(e.type==="PK")return e.selectRunner?`投手牵制：${t}`:e.pkFailOptionsShown?"牵制失败后局面：":"牵制成功还是失败？";
       if(e.type==="PK_PE")return"牵制暴传：选择失误者，再选择目标垒";
-      if(e.type==="DK3_FIELDER_PICK")return e.dk3Code?.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请选择完成处理的守备员";
+      if(e.type==="DK3_FIELDER_PICK"){
+        if(e.dk3Code?.endsWith(":e"))return"漏接三振：请点击失误责任守备员";
+        if(isDk3ChainFlow(e)){
+          const dk3Steps=e.steps??[],dk3Len=dk3Steps.length,dk3Chain=chainDisp("DK3",dk3Steps).map(dk3Pos=>vi[dk3Pos]??dk3Pos).join("-");
+          if(dk3Len>=hu)return`漏接三振：${dk3Chain}（已达上限 ${hu} 步）— 请点「完成记录」收尾`;
+          return dk3Len<=1?"漏接三振：捕手已接球 — 直接点「完成记录」记捕手触杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾":`漏接三振：${dk3Chain}（已可完成）— 可继续点选后续传球，或点「完成记录」；开始下一动作也会自动收尾`
+        }
+        return"漏接三振：请选择完成处理的守备员"
+      }
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
         const C2=_i(e.steps??[]),Y2=e.outType==="tag"?"触杀":"封杀";
         if(e.stealFail){
@@ -7284,7 +7295,7 @@ var sg={
       }
       if(e.type==="BIP_HIT_PENDING"){
         const s=e.bipCode?Cu(e.bipCode):"",r=e.resolveType?ou(e.resolveType):"击球结果",p=e.resolveType==="HR"?"请点击外野 LF/CF/RF 落点，或点「跳过方位」":e.resolveType&&ru.has(e.resolveType)?"请点击接杀守备位置，确认后可点「完成记录」":e.resolveType&&Cs.has(e.resolveType)?"请点击接球守备位置，再点选封杀传杀目标（独力接杀可再点同一守位）":"请点击场上守备位置标示落点，或点「跳过方位」";
-        return s?`界内击出：${s} → ${r}；${p}`:`界内击出 → ${r}；${p}`
+        return s?`击出：${s} → ${r}；${p}`:`击出 → ${r}；${p}`
       }
       if(e.type==="DP"&&!LgCanStartDoublePlay(l.runners))return"双杀：一垒无人，无法形成双杀（仅二垒/三垒有人按单独出局记录）";
       if(e.type==="TP"&&!LgCanStartTriplePlay(l.runners))return"三杀：一、二垒都需有人";
@@ -7423,9 +7434,13 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const a=Ar.value.find(s=>Number(s.id)===Number(t.batterPlayerId))??null;
       if(!a)return null;
       // 牺牲打补记：只认上一棒已记的击球出局；补记 SF/SH 并回减 AB（PA 不变）。
-      const resultCode=String(t.resultCode??""),credit=LgSacrificeCredit({resultCode,toBase:e});
+      const resultCode=String(t.resultCode??"").trim().toUpperCase(),credit=LgSacrificeCredit({resultCode,toBase:e});
       if(!credit){
-        if(resultCode!=="SF"&&resultCode!=="SH")J("上一棒结果不是可用于牺牲打的出局，已仅记录跑者推进","warning");
+        if(resultCode==="SF"||resultCode==="SH"){
+          // 击球员已在击球结果声明牺牲打：跑者得分时补打点，不重复改 SF/SH、AB 与投手统计
+          return Number(e)===4?creditLastBatterRbi()||null:null
+        }
+        J("上一棒结果不是可用于牺牲打的出局，已仅记录跑者推进","warning");
         return null
       }
       ue(a),a.stats.batting.ab=Math.max(0,(a.stats.batting.ab??0)-1);
@@ -7449,7 +7464,9 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       if(!e||e.inning!==l.inning||e.half!==t)return!1;
       const a=Ar.value.find(s=>Number(s.id)===Number(e.batterPlayerId))??null;
       if(!a)return!1;
-      return ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1,a
+      ue(a),a.stats.batting.rbi=(a.stats.batting.rbi??0)+1,e.rbi=(e.rbi??0)+1;
+      const event=Array.isArray(f.playEvents)?f.playEvents.find(x=>x.id===e.id):null;
+      return event&&(event.rbi=e.rbi),a
     }
     function Sf(){
       const e=ke.value[0];
@@ -9303,7 +9320,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         if(!settleChainIfReady())warnFlowBusy(l.flow);
         return !1
       }
-      return l.isGameEnd?!1:l.needNextBatter?(J("请先确认半局结束（三出局后的攻守交换）后再记界内击出","warning"),!1):(de("界内击出投球"),Ea(),l.hasPitchThisAB=!0,!0)
+      return l.isGameEnd?!1:l.needNextBatter?(J("请先确认半局结束（三出局后的攻守交换）后再记录击出","warning"),!1):(de("界内击出投球"),Ea(),l.hasPitchThisAB=!0,!0)
     }
     function rt(e){
       Yt("",e)
@@ -9421,15 +9438,15 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       ))return;
       fn.value||Ge(forcePlanAnimation(plan)),finish()
     }
+    // #696：漏接三振出局按传球链记账——直接完成=捕手触杀 PO；C→1B=捕手 A + 一垒 PO。
     function So(e,t){
       const a=be.value,s=Se.value;
       if(!a)return;
+      const chain=_i(Array.isArray(t)&&t.length?t:["C"]);
       ue(a),ue(s??void 0),Bt(Gt(a,"漏接三振出局")),a.stats.batting.so=(a.stats.batting.so??0)+1,a.stats.batting.ab=(a.stats.batting.ab??0)+1,e?a.stats.batting.so_looking=(a.stats.batting.so_looking??0)+1:a.stats.batting.so_swing=(a.stats.batting.so_swing??0)+1,s?.stats?.pitching&&(s.stats.pitching.pitchSo=(s.stats.pitching.pitchSo??0)+1);
-      creditStrikeoutFielding("dropped",t),recordPlayOut([],"strikeout");
-      const p=e?"判进":"挥空",g=t?It[t]??t:"",m=`${a.name}: 漏接三振（${p}）：击球员于一垒出局 (K)${g?`；守备处理 ${
-        g
-      }
-      `:""}`;
+      // ≤2 步沿用 #483 单点规则（C=捕手PO；C→X=捕手A+X PO）；更长链用单出局链补中间助杀
+      chain.length<=2?creditStrikeoutFielding("dropped",chain[chain.length-1]):Dn(chain),recordPlayOut([],"strikeout");
+      const p=e?"判进":"挥空",g=Un2("DK3",chain),m=`${a.name}: 漏接三振（${p}）：${g||"捕手触杀出局"} (K)`;
       D(m),Je("DK3_OUT_1ST",m),l.balls=0,l.strikes=0,Qe()
     }
     function dk3ReachOnError(e,t){
@@ -9462,15 +9479,19 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           D(LgSys({kind:"dk3_guard",code:e}));
           return
         }
-        l.flow={
+        const chain=e.endsWith(":o1"),flow={
           type:"DK3_FIELDER_PICK",dk3Code:e,selectRunner:!1
-        }
-        ,J(e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员","info")
+        };
+        chain&&(flow.steps=["C"],flow.required=1),l.flow=flow;
+        const catcherReadyHint="漏接三振：捕手已接球 — 直接点「完成记录」记捕手触杀，或点选接球守备员形成传球链；开始下一动作也会自动收尾",fielderHint=e.endsWith(":e")?"漏接三振：请点击失误责任守备员":"漏接三振：请点击完成处理的守备员";
+        J(chain?catcherReadyHint:fielderHint,"info");
+        chain&&syncChainVisualFromFlow()
       }
       
     }
     function Jf(e){
       const t=l.flow,a=t?.type==="DK3_FIELDER_PICK"?t.dk3Code:void 0;
+      if(isDk3ChainFlow(t))return;
       if(a)switch(de(`漏接三振:${a}`),qf(),l.flow=null,a){
         case"dk3:sw:wp":ii(!0,!1,e);
         break;
@@ -9478,15 +9499,11 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         break;
         case"dk3:sw:e":dk3ReachOnError(!1,e);
         break;
-        case"dk3:sw:o1":So(!1,e);
-        break;
         case"dk3:lk:wp":ii(!0,!0,e);
         break;
         case"dk3:lk:pb":ii(!1,!0,e);
         break;
         case"dk3:lk:e":dk3ReachOnError(!0,e);
-        break;
-        case"dk3:lk:o1":So(!0,e);
         break;
         default:D(LgSys({kind:"dk3_guard",code:a}));
         break
@@ -9496,7 +9513,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
     function ko(e,t){
       if(l.flow&&!settleChainIfReady())return warnFlowBusy(l.flow),!1;
       if(!Gf())return!1;
-      // 界内失误上垒（#695）：先选失误责任守备员（可多选），下一步再选落点与传球链
+      // 击出失误上垒（#695）：先选失误责任守备员（可多选），下一步再选落点与传球链
       if(t==="E"){
         l.flow={
           type:"E",steps:[],selectRunner:!1,multiError:!1,errorMode:"batted_error",phase:"pick_error"
@@ -9520,18 +9537,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       };
       const g=ou(e);
       if(p&&Cs.has(e)){
-        J(`界内击出：${g}；${It[p]??p} 已接球，请点选封杀传杀守备员（独力接杀可再点同一守位）`,"info");
+        J(`击出：${g}；${It[p]??p} 已接球，请点选封杀传杀守备员（独力接杀可再点同一守位）`,"info");
         return
       }
       if(p&&ru.has(e)){
-        J(`界内击出：${g}；${It[p]??p} 已接球 — 可点「完成记录」，或继续点选记录接杀后回传`,"info");
+        J(`击出：${g}；${It[p]??p} 已接球 — 可点「完成记录」，或继续点选记录接杀后回传`,"info");
         return
       }
       if(e==="E"){
         pt();
         return
       }
-      J(`界内击出：${g}；请继续点选守备员完成记录`,"info")
+      J(`击出：${g}；请继续点选守备员完成记录`,"info")
     }
     function Qf(e,t){
       if(liveBenchStartFieldSwapDrag(e,t))return;
@@ -9792,7 +9809,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       )(performance.now())
     }
     const CHAIN_TYPES=new Set(["G","SH","FC","DP","TP","F","L","TAG","SF"]);
-    const isChainFlow=e=>!!e&&(CHAIN_TYPES.has(e.type)||e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE");
+    const isChainFlow=e=>!!e&&(CHAIN_TYPES.has(e.type)||isDk3ChainFlow(e)||e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE");
     let chainAnimSeq=0;
     const chainTrail=x([]),chainHl=x(null);
     function ballTargetOf(e){
@@ -9800,6 +9817,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         x:240,y:448
       }
       :pi[e]
+    }
+    function chainLandingFielder(flow){
+      const code=String(flow?.bipSpray?.sprayFieldPos??"").trim().toUpperCase();
+      return code&&ballTargetOf(code)?code:""
     }
     function ballAppearAt(e,t){
       chainAnimSeq+=1,Xn.value=e,Yn.value=t,ka.value=!0,He(()=>{
@@ -9861,12 +9882,28 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       const p=ballTargetOf(a[a.length-1]);
       Xn.value=p.x,Yn.value=p.y,ka.value=!0,markChainHl(p.x,p.y,!1)
     }
+    // 链结算后的球场视觉收尾：清掉旧链、把球停在末位守备员身上并高亮
+    function finishChainVisual(lastPos){
+      pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1;
+      const p=ballTargetOf(lastPos);
+      chainDone.value=p,Xn.value=p.x,Yn.value=p.y,markChainHl(p.x,p.y,!0)
+    }
     function settleChainIfReady(force=!1){
       const e=l.flow;
       if(!e)return!1;
       if(e.type==="RUNNER_OUT_TAG"||e.type==="RUNNER_OUT_FORCE"){
         if(!(e.steps?.length??0))return!1;
         return settleRunnerOut(e),!0
+      }
+      if(isDk3ChainFlow(e)){
+        if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
+        if(!be.value){
+          J("缺少击球员，无法完成漏接三振记录","warning");
+          return!1
+        }
+        const a=_i(e.steps??[]);
+        de(`漏接三振:${e.dk3Code}`),qf(),l.flow=null,So(e.dk3Code?.includes(":lk:"),a),finishChainVisual(a[a.length-1]??"C");
+        return!0
       }
       if(!CHAIN_TYPES.has(e.type))return!1;
       if(!LgChainReady(e.type,e.steps??[],e.required??us(e.type)))return!1;
@@ -9877,7 +9914,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       }
       const a=_i(e.steps),s=a[a.length-1],lastStepAction=e.steps?.length?e.stepActions?.[e.steps.length-1]??null:null;
       l.flow=null;
-      return bt(e.type,a,Sr(e),{lastStepAction}),pt(),chainTrail.value=[],battedTrail.value=null,chainAnimSeq+=1,chainDone.value=ballTargetOf(s),Xn.value=chainDone.value.x,Yn.value=chainDone.value.y,markChainHl(chainDone.value.x,chainDone.value.y,!0),!0
+      return bt(e.type,a,Sr(e),{lastStepAction}),finishChainVisual(s),!0
     }
     function completeChainFlow(){
       return settleChainIfReady(!0)
@@ -10109,7 +10146,7 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
           }:{})
           ,bipSpray:w
         }
-        ,J("落点已记录：请按传球顺序点选守备员（最后一位为接球失误者）；无传球链可直接「完成记录」","info");
+        ,J("落点已记录：可直接点接球失误者（落点守备员自动作为首传），或按传球顺序点选；无传球链可直接「完成记录」","info");
         return
       }
       if(Yv.has(g)){
@@ -10137,10 +10174,10 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
       l.flow=null,pt(),clearChainVisual();
       const e=$e.value[0];
       if(e?.nextAction==="界内击出投球"||e?.nextAction==="隐含投球（击出或守备）"){
-        as(),J("已取消界内击出记录","info");
+        as(),J("已取消击出记录","info");
         return
       }
-      J("已取消界内击出记录","info")
+      J("已取消击出记录","info")
     }
     async function ec(){
       if(wt(),l.hitSprayQueue.length>0){
@@ -10541,6 +10578,18 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
         return
       }
       if(a?.type==="DK3_FIELDER_PICK"){
+        if(isDk3ChainFlow(a)){
+          if(a.steps.length>=hu){
+            J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
+            return
+          }
+          const s={
+            x:Xn.value,y:Yn.value
+          }
+          ,r=ballTargetOf(e);
+          a.steps.push(e),r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),pt();
+          return
+        }
         Jf(e);
         return
       }
@@ -10567,11 +10616,16 @@ G:"滚地球",SH:"牺牲触击",FC:"野手选择",DP:"双杀",TP:"三杀"
             J(`单次最多记录 ${hu} 步传球，请「完成记录」收尾`,"warning");
             return
           }
-          const s={
+          // #695 后续：球已落在守备员处，第一次点接球失误者时自动把落点守备员补为首传（4→3）
+          const landing=chainLandingFielder(a)
+          ,autoOrigin=!a.chain.length&&landing&&landing!==e&&(a.steps??[]).includes(e)?ballTargetOf(landing):null;
+          autoOrigin&&a.chain.push(landing);
+          const s=autoOrigin??{
             x:Xn.value,y:Yn.value
           }
           ,r=ballTargetOf(e)
           ,C0=a.chain.length;
+          autoOrigin&&ballAppearAt(autoOrigin.x,autoOrigin.y);
           a.chain.push(e),C0===0?(ballAppearAt(r.x,r.y),markChainHl(r.x,r.y,!1)):r.x===s.x&&r.y===s.y?markChainHl(r.x,r.y,!0):(pushChainTrail(s,r),ballFlyTo(r.x,r.y,450),markChainHl(r.x,r.y,!1)),pt();
           return
         }

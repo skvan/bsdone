@@ -73,12 +73,12 @@ test('pitch menu board: root, BIP result, out locations, conditions', async ({ p
 
   await page.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
   await page.goto('/bs-ball/bs-ball/admin/events/1/games/10/live');
-  await expect(page.getByRole('button', { name: '界内球' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '击出' })).toBeVisible();
 
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   const menu = page.locator('.lgpm');
   await expect(menu).toBeVisible();
-  await expect(menu.locator('.lgpm__col-title')).toHaveText(['投球判定', '界内球', '上垒与妨碍', '其他裁定']);
+  await expect(menu.locator('.lgpm__col-title')).toHaveText(['投球判定', '击出', '上垒与妨碍', '其他裁定']);
   await expect(menu.locator('.lgpm__state')).toContainText('第 1 局上');
   await expect(menu.locator('.lgpm__state')).toContainText('B 0');
   const pitchCol = menu.locator('.lgpm__col--pitch');
@@ -113,7 +113,7 @@ test('pitch menu board: root, BIP result, out locations, conditions', async ({ p
     await expect(page.locator('button[title="坏球 Ball"]')).toBeVisible();
   };
   for (let i = 0; i < 4; i++) await recordBall();
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   await expect(menu).toBeVisible();
   await menu.locator('.lgpm__col--bip').getByRole('button', { name: /^滚地球/ }).click();
   await expect(bip.getByRole('button', { name: '野手选择' })).toBeVisible();
@@ -129,7 +129,7 @@ test('pitch menu board: root, BIP result, out locations, conditions', async ({ p
   // 再走一个保送，让一、二垒有人：三杀应出现。
   await menu.getByRole('button', { name: '关闭' }).click();
   for (let i = 0; i < 4; i++) await recordBall();
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   await expect(menu).toBeVisible();
   await menu.locator('.lgpm__col--bip').getByRole('button', { name: /^滚地球/ }).click();
   await expect(bip.getByRole('button', { name: '三杀' })).toBeVisible();
@@ -140,7 +140,7 @@ test('pitch menu board: root, BIP result, out locations, conditions', async ({ p
     await page.locator('button[title="好球 Called Strike"]').click();
     await expect(page.locator('button[title="好球 Called Strike"]')).toBeVisible();
   }
-  await page.getByRole('button', { name: '界内球' }).click();
+  await page.getByRole('button', { name: '击出' }).click();
   await expect(menu).toBeVisible();
   await expect(pitchCol.getByText('漏接三振', { exact: true })).toBeVisible();
   await expect(pitchCol.getByText('指尖接杀', { exact: true })).toBeVisible();
