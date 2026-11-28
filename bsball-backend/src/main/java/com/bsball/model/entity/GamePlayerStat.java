@@ -1,6 +1,6 @@
 /*
  * Decompiled with CFR 0.152.
- * 
+ *
  * Could not load the following classes:
  *  com.bsball.common.BoolToIntDeserializer
  *  com.bsball.model.entity.BaseEntity
@@ -236,7 +236,7 @@ extends BaseEntity {
     @Comment(value="\u8f6e\u51fb\u6570\uff08\u9762\u5bf9\u6253\u8005 BF\uff09")
     private Integer pitchBf;
     @Column(name="pitch_ab", columnDefinition="integer")
-    @Comment(value="\u6295\u624b\u81ea\u7531\u51fb\u7403\u6570\uff08\u4e0e BF \u72ec\u7acb\uff1bNULL \u65f6\u6309 BF\u2212BB\u2212IBB\u2212HBP \u63a8\u7b97\uff09")
+    @Comment(value="投手自由击球数（与 BF 独立；NULL 时按 BF−BB−HBP−SH−SF 推算，BB 含 IBB）")
     private Integer pitchAb;
     @Column(columnDefinition="integer")
     @Comment(value="\u6295\u7403\u6570")

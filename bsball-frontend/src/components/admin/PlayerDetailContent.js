@@ -15,6 +15,7 @@ import { useStatsTableMeta as Dt } from '../../composables/useStatsTableMeta';
 import { loadPrintExport as br } from '../../utils/printExport';
 import { exportSfc as gt } from '../../utils/exportSfc';
 import { playerApi as ca } from '../../api/business';
+import { resolveAtBats as resolvePitchAb } from '../../utils/gamePlayerStat';
 import { useTenantRouter as yr } from '../../composables/useTenantRouter';
 // ---- 微信分享（Issue #343，手工补丁） ----
 import { useWechatShare, buildPlayerShareUrl, buildPlayerShareMeta } from '../../composables/useWechatShare';
@@ -2354,10 +2355,7 @@ var vl={
         return l.pitchBbHp!=null?l.pitchBbHp:(Number(l.pitchBb)||0)+(Number(l.pitchHbp)||0)
       }
       if(a==="pitchAb"){
-        const l=e;
-        if(l.pitchAb!=null&&l.pitchAb!==void 0)return l.pitchAb;
-        const P=Number(l.pitchBf)||0,T=Number(l.pitchBb)||0,H=Number(l.pitchHbp)||0,W=T+H>0?T:Math.max(0,(Number(l.pitchBbHp)||0)-H);
-        return Math.max(0,P-W-H)
+        return resolvePitchAb(e)
       }
       const f=e[a];
       return f==null||f===""?"—":a==="ip"||a==="inn"?Je(Number(f)):f
@@ -2527,9 +2525,7 @@ var vl={
       return e.pitchBbHp!=null?e.pitchBbHp:(Number(e.pitchBb)||0)+(Number(e.pitchHbp)||0)
     }
     function i(e){
-      if(e.pitchAb!=null&&e.pitchAb!==void 0)return e.pitchAb;
-      const a=Number(e.pitchBf)||0,T=Number(e.pitchBb)||0,H=Number(e.pitchHbp)||0,W=T+H>0?T:Math.max(0,(Number(e.pitchBbHp)||0)-H);
-      return Math.max(0,a-W-H)
+      return resolvePitchAb(e)
     }
     function w(e,a){
       switch(a){

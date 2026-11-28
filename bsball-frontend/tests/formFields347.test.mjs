@@ -101,6 +101,76 @@ test('投手 AB 回退不重复扣 IBB，并兼容旧 BBHP 合计', () => {
   assert.equal(resolveAtBats({ pitchBf: 10, pitchAb: 8 }), 8);
 });
 
+test('投手 AB 扣除 SH/SF（#702）', () => {
+  // BF10/BB2/HBP1/SH1/SF1 → 10−2−1−1−1 = 5
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 2, pitchHbp: 1, pitchSh: 1, pitchSf: 1 }), 5);
+  // 仅 SH：10−2−1−1 = 6
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 2, pitchHbp: 1, pitchSh: 1 }), 6);
+  // 仅 SF：10−2−1−1 = 6
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 2, pitchHbp: 1, pitchSf: 1 }), 6);
+  // 旧 BBHP 合计回退 + SH/SF：10−3−0−1−1 = 5
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 0, pitchHbp: 0, pitchBbHp: 3, pitchSh: 1, pitchSf: 1 }), 5);
+  // 缺省/空值按 0 处理，不影响原口径
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 2, pitchHbp: 1, pitchSh: null, pitchSf: undefined }), 7);
+  // 下限截断为 0
+  assert.equal(resolveAtBats({ pitchBf: 2, pitchBb: 2, pitchHbp: 1, pitchSh: 1, pitchSf: 1 }), 0);
+  // 有 pitchAb 时仍优先（人工覆写）
+  assert.equal(resolveAtBats({ pitchBf: 10, pitchBb: 2, pitchHbp: 1, pitchSh: 1, pitchSf: 1, pitchAb: 6 }), 6);
+});
+
+test('投手 AB 公式全链路保持 SH/SF 一致（#702）', () => {
+  const mapperXml = read('../../bsball-backend/src/main/resources/mapper/PlayerStatsMapper.xml');
+  const from = mapperXml.indexOf('id="pitchAbEffectiveCol"');
+  assert.ok(from > 0, 'Mapper 缺少 pitchAbEffectiveCol');
+  const abFragment = mapperXml.slice(from, mapperXml.indexOf('</sql>', from));
+  assert.ok(abFragment.includes('s.pitch_sh'), 'Mapper AB 回退未减 pitch_sh');
+  assert.ok(abFragment.includes('s.pitch_sf'), 'Mapper AB 回退未减 pitch_sf');
+
+  const drill = read('../../bsball-backend/src/main/java/com/bsball/stats/PlayerStatDrillPitchingMetric.java');
+  const abLine = drill.split('\n').find((line) => line.includes('PITCH_AB(')) || '';
+  assert.ok(abLine.includes('s.pitch_sh') && abLine.includes('s.pitch_sf'), '下钻 PITCH_AB 未减 SH/SF');
+  // #702 历史库值动态修正：空值→新公式；库值=旧公式且 SH/SF>0→新公式；其他→保留
+  for (const marker of ['s.pitch_ab IS NULL', 's.pitch_ab =', 'ELSE s.pitch_ab END']) {
+    assert.ok(abFragment.includes(marker), `Mapper AB 缺少历史修正分支：${marker}`);
+    assert.ok(abLine.includes(marker), `下钻 PITCH_AB 缺少历史修正分支：${marker}`);
+  }
+  // #702 回填同步：0 值兜底分支，SQL 与 Java 钻取必须同样具备
+  assert.ok(abFragment.includes('s.pitch_ab = 0 AND'), 'Mapper AB 缺少 0 值兜底分支');
+  assert.ok(abLine.includes('s.pitch_ab = 0 AND'), '下钻 PITCH_AB 缺少 0 值兜底分支');
+
+  assert.ok(player.includes('resolvePitchAb'), '球员详情应复用共享 resolveAtBats');
+  assert.ok(!player.includes('const a=Number(e.pitchBf)||0'), '球员详情不应保留内联 AB 公式');
+  assert.ok(games.includes('BF−BB−HBP−SH−SF'), '结果录入 AB 列提示应为新口径');
+  // D：BF 缺失时由 AB 反推，BB 已含 IBB，不再单加 pitchIbb
+  const taBody = (games.match(/function ta\(t\)\{[^}]*\}/) || [''])[0];
+  assert.ok(taBody.includes('pitchSh') && taBody.includes('pitchSf'), 'ta() 未计入 SH/SF');
+  assert.ok(!taBody.includes('pitchIbb'), 'ta() 不应再加 IBB（BB 已含）');
+  // C：保存走 toSavePitchAb，禁止默认 0
+  assert.ok(games.includes('pitchAb:p?savePitchAb(v)'), '保存载荷应使用 toSavePitchAb');
+  assert.ok(!games.includes('Math.floor(Number(v?.pitAb??0))'), '不应再直接写 pitAb（默认 0）');
+
+  const sacrifice = { 'zh-CN': /牺牲/, 'zh-TW': /犧牲/, en: /sacrifice/i, ja: /犠(打|飛)/, ko: /희생/ };
+  // 按 key 收集所有 AB 说明；纯列名（无公式线索）除外，避免 ja/ko 的意译公式被漏检
+  const FORMULA_HINT = /BF|[−-]|minus|扣[除掉]|から|에서|빼|faced|타자수/i;
+  const collectAbTips = (node, out = []) => {
+    if (!node || typeof node !== 'object') return out;
+    for (const [key, value] of Object.entries(node)) {
+      if ((key === 'pitAb' || key === 'pitchAb') && typeof value === 'string' && FORMULA_HINT.test(value)) out.push(value);
+      else collectAbTips(value, out);
+    }
+    return out;
+  };
+  for (const [name, dict] of Object.entries(locales)) {
+    const tips = collectAbTips(dict);
+    assert.ok(tips.length >= 3, `${name} 缺少 AB 公式文案`);
+    for (const tip of tips) {
+      assert.ok(/SH/.test(tip) || sacrifice[name].test(tip), `${name} AB 文案未含牺牲打：${tip}`);
+      assert.ok(!/BF\s*[−-]\s*BB\s*[−-]\s*IBB/.test(tip), `${name} AB 文案残留旧口径：${tip}`);
+      assert.ok(!/minus walks\/IBB\/HBP/.test(tip), `${name} AB 文案残留旧口径：${tip}`);
+    }
+  }
+});
+
 test('统计表列名：pitchIbb/pitchHbp 映射到 IBB/HBP 词典', () => {
   assert.ok(tableMeta.includes("pitchIbb: 'ibb'"));
   assert.ok(tableMeta.includes("pitchHbp: 'hbp'"));
@@ -119,4 +189,14 @@ test('默认值与五语种词条', () => {
       assert.ok(dict.player?.seasonColTip?.[key], `${name} seasonColTip 缺少 ${key}`);
     }
   }
+});
+
+test('Excel 导入投手 AB 显式标记人工，保存不被公式覆盖（#702 跟修）', () => {
+  const marker = '...b.pitAb!=null&&{pitAb:b.pitAb,abManual:!0}';
+  assert.equal(games.split(marker).length - 1, 2, '主/客投手导入带 pitAb 时都应标记 abManual');
+  assert.ok(!games.includes('...b.pitAb!=null&&{pitAb:b.pitAb}'), '存在未标记 abManual 的导入 AB 行');
+  const mapperXml = read('../../bsball-backend/src/main/resources/mapper/PlayerStatsMapper.xml');
+  assert.ok(mapperXml.includes('无法完全区分'), 'Mapper CASE 注释应声明无持久人工标记的局限');
+  const state = read('../src/utils/pitchAbState.js');
+  assert.ok(state.includes('无法完全区分'), 'pitchAbState 注释应声明无持久人工标记的局限');
 });

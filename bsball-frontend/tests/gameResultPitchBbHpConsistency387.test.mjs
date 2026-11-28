@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toSavePitchAb } from '../src/utils/pitchAbState.js';
 
 const SRC_PATH = process.env.GAMES_PATH
   || join(dirname(fileURLToPath(import.meta.url)), '../src/views/admin/Games.js');
@@ -37,17 +38,19 @@ const si = line.indexOf(START);
 const ei = line.indexOf(END, si);
 assert(si >= 0 && ei > si, '投手 payload 段落边界变动，请同步本测试的锚点');
 const segment = line.slice(si, ei);
-const buildPayload = new Function('p', 'v', `return {${segment}}`);
+const buildPayload = new Function('p', 'v', 'savePitchAb', `return {${segment}}`);
+/** 绑定真实的 AB 保存口径（#702），保证 payload 求值不失真 */
+const payloadOf = (p, v) => buildPayload(p, v, toSavePitchAb);
 
 /** 四根投手四死栏：守卫之后「不送」＝保留，所以只有「送数字」才是用户想要的清零 */
 const FOUR = ['pitchBb', 'pitchIbb', 'pitchHbp', 'pitchBbHp'];
 
 test('1 结果页清空 BB/HBP 输入框：合计与拆分一起归零，不留 bb=5 / bbHp=0 的矛盾行', () => {
-  const saved = buildPayload({}, { pitchBb: 5 });        // 先正常存一次
+  const saved = payloadOf({}, { pitchBb: 5 });        // 先正常存一次
   assert.equal(saved.pitchBb, 5);
   assert.equal(saved.pitchBbHp, 5);
 
-  const cleared = buildPayload({}, { pitchBb: null });   // 用户清空输入框后保存
+  const cleared = payloadOf({}, { pitchBb: null });   // 用户清空输入框后保存
   assert.equal(cleared.pitchBb, 0, '拆分栏 BB 必须送数字：后端守卫会把「缺字段」解释成保留既有值');
   assert.equal(cleared.pitchBbHp, 0, '合计栏与拆分栏必须同进同出');
   assert.equal(cleared.pitchBb + cleared.pitchHbp, cleared.pitchBbHp, '合计恒等于拆分之和');
@@ -55,7 +58,7 @@ test('1 结果页清空 BB/HBP 输入框：合计与拆分一起归零，不留 
 
 test('2 四栏在 payload 里恒为数字，绝不会因输入框为空而缺席', () => {
   for (const v of [{}, { pitchBb: 3 }, { pitchBb: 3, pitchIbb: 1, pitchHbp: 2 }, { pitchHbp: 0 }]) {
-    const payload = buildPayload({}, v);
+    const payload = payloadOf({}, v);
     for (const key of FOUR) {
       assert.ok(key in payload, `${key} 不应缺席（缺席＝后端保留旧值）`);
       assert.equal(typeof payload[key], 'number', `${key} 应为数字，实际 ${JSON.stringify(payload[key])}`);
@@ -75,7 +78,7 @@ test('3 静态护栏：拆分栏与派生合计栏同用 ??0，不得再回到�
 });
 
 test('4 相邻口径不被顺手改动：撤銷/归零仍是送 0，np/pitchPa/pitchBf 仍原样透传', () => {
-  const payload = buildPayload({ ip: 2 }, { pitchBb: 2, pitchHbp: 1, pitchIo: 3, np: 40 });
+  const payload = payloadOf({ ip: 2 }, { pitchBb: 2, pitchHbp: 1, pitchIo: 3, np: 40 });
   assert.equal(payload.pitchBbHp, 3, '合计 = BB + HBP（不含 IBB，沿用既有派生口径）');
   assert.equal(payload.pitchIo, 3);
   assert.equal(payload.np, 40);

@@ -41,6 +41,24 @@ class PlayerStatDrillMetricFormulaTest {
     }
 
     @Test
+    @DisplayName("投手 AB 钻取扣除 SH/SF，并动态修正历史旧公式库值（#702）")
+    void pitchAbDrillExcludesSacrifices() {
+        String sql = PlayerStatDrillPitchingMetric.PITCH_AB.getValueSql();
+
+        // 空值 → 新公式
+        assertTrue(sql.contains("s.pitch_ab IS NULL"), sql);
+        // 历史库值 = 旧公式且 SH/SF 存在 → 新公式
+        assertTrue(sql.contains("s.pitch_ab ="), sql);
+        // 其他非空值（人工覆写）→ 保留
+        assertTrue(sql.contains("ELSE s.pitch_ab END"), sql);
+        assertTrue(sql.contains("COALESCE(s.pitch_sh,0)"), sql);
+        assertTrue(sql.contains("COALESCE(s.pitch_sf,0)"), sql);
+        // 保留旧数据 BBHP 回退与整数转换
+        assertTrue(sql.contains("COALESCE(s.pitch_bb_hp,0)"), sql);
+        assertTrue(sql.contains("::integer"), sql);
+    }
+
+    @Test
     @DisplayName("守备钻取支持 DP 与捕手 SB")
     void fieldingDrillSupportsDpAndCatcherSb() {
         assertEquals(PlayerStatDrillFieldingMetric.DP, PlayerStatDrillFieldingMetric.fromApi("dp"));
